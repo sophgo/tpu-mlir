@@ -1,0 +1,16 @@
+/*===- TableGen'erated file -------------------------------------*- C++ -*-===*\
+|*                                                                            *|
+|* Dialect Definitions                                                        *|
+|*                                                                            *|
+|* Automatically generated file, do not edit!                                 *|
+|*                                                                            *|
+\*===----------------------------------------------------------------------===*/
+
+DEFINE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::SparseTensorDialect)
+namespace mlir {
+namespace sparse_tensor {
+
+SparseTensorDialect::~SparseTensorDialect() = default;
+
+} // namespace sparse_tensor
+} // namespace mlir

@@ -1,0 +1,268 @@
+/*===- TableGen'erated file -------------------------------------*- C++ -*-===*\
+|*                                                                            *|
+|* Enum Utility Definitions                                                   *|
+|*                                                                            *|
+|* Automatically generated file, do not edit!                                 *|
+|*                                                                            *|
+\*===----------------------------------------------------------------------===*/
+
+namespace mlir {
+namespace omp {
+::llvm::StringRef AtomicBinOpKindToString(AtomicBinOpKind val) {
+  switch (val) {
+    case AtomicBinOpKind::ADD: return "ADD";
+    case AtomicBinOpKind::MUL: return "MUL";
+    case AtomicBinOpKind::SUB: return "SUB";
+    case AtomicBinOpKind::DIV: return "DIV";
+    case AtomicBinOpKind::AND: return "AND";
+    case AtomicBinOpKind::OR: return "OR";
+    case AtomicBinOpKind::XOR: return "XOR";
+    case AtomicBinOpKind::SHIFTR: return "SHIFTR";
+    case AtomicBinOpKind::SHIFTL: return "SHIFTL";
+    case AtomicBinOpKind::MAX: return "MAX";
+    case AtomicBinOpKind::MIN: return "MIN";
+    case AtomicBinOpKind::EQV: return "EQV";
+    case AtomicBinOpKind::NEQV: return "NEQV";
+  }
+  return "";
+}
+
+::llvm::Optional<AtomicBinOpKind> AtomicBinOpKindToEnum(::llvm::StringRef str) {
+  return ::llvm::StringSwitch<::llvm::Optional<AtomicBinOpKind>>(str)
+      .Case("ADD", AtomicBinOpKind::ADD)
+      .Case("MUL", AtomicBinOpKind::MUL)
+      .Case("SUB", AtomicBinOpKind::SUB)
+      .Case("DIV", AtomicBinOpKind::DIV)
+      .Case("AND", AtomicBinOpKind::AND)
+      .Case("OR", AtomicBinOpKind::OR)
+      .Case("XOR", AtomicBinOpKind::XOR)
+      .Case("SHIFTR", AtomicBinOpKind::SHIFTR)
+      .Case("SHIFTL", AtomicBinOpKind::SHIFTL)
+      .Case("MAX", AtomicBinOpKind::MAX)
+      .Case("MIN", AtomicBinOpKind::MIN)
+      .Case("EQV", AtomicBinOpKind::EQV)
+      .Case("NEQV", AtomicBinOpKind::NEQV)
+      .Default(::llvm::None);
+}
+::llvm::Optional<AtomicBinOpKind> symbolizeAtomicBinOpKind(uint64_t value) {
+  switch (value) {
+  case 0: return AtomicBinOpKind::ADD;
+  case 1: return AtomicBinOpKind::MUL;
+  case 2: return AtomicBinOpKind::SUB;
+  case 3: return AtomicBinOpKind::DIV;
+  case 4: return AtomicBinOpKind::AND;
+  case 5: return AtomicBinOpKind::OR;
+  case 6: return AtomicBinOpKind::XOR;
+  case 7: return AtomicBinOpKind::SHIFTR;
+  case 8: return AtomicBinOpKind::SHIFTL;
+  case 9: return AtomicBinOpKind::MAX;
+  case 10: return AtomicBinOpKind::MIN;
+  case 11: return AtomicBinOpKind::EQV;
+  case 12: return AtomicBinOpKind::NEQV;
+  default: return ::llvm::None;
+  }
+}
+
+bool AtomicBinOpKindAttr::classof(::mlir::Attribute attr) {
+  return (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))) && (((attr.cast<::mlir::IntegerAttr>().getInt() == 0)) || ((attr.cast<::mlir::IntegerAttr>().getInt() == 1)) || ((attr.cast<::mlir::IntegerAttr>().getInt() == 2)) || ((attr.cast<::mlir::IntegerAttr>().getInt() == 3)) || ((attr.cast<::mlir::IntegerAttr>().getInt() == 4)) || ((attr.cast<::mlir::IntegerAttr>().getInt() == 5)) || ((attr.cast<::mlir::IntegerAttr>().getInt() == 6)) || ((attr.cast<::mlir::IntegerAttr>().getInt() == 7)) || ((attr.cast<::mlir::IntegerAttr>().getInt() == 8)) || ((attr.cast<::mlir::IntegerAttr>().getInt() == 9)) || ((attr.cast<::mlir::IntegerAttr>().getInt() == 10)) || ((attr.cast<::mlir::IntegerAttr>().getInt() == 11)) || ((attr.cast<::mlir::IntegerAttr>().getInt() == 12)));
+}
+AtomicBinOpKindAttr AtomicBinOpKindAttr::get(::mlir::MLIRContext *context, AtomicBinOpKind val) {
+  ::mlir::IntegerType intType = ::mlir::IntegerType::get(context, 64);
+  ::mlir::IntegerAttr baseAttr = ::mlir::IntegerAttr::get(intType, static_cast<uint64_t>(val));
+  return baseAttr.cast<AtomicBinOpKindAttr>();
+}
+AtomicBinOpKind AtomicBinOpKindAttr::getValue() const {
+  return static_cast<AtomicBinOpKind>(::mlir::IntegerAttr::getInt());
+}
+} // namespace omp
+} // namespace mlir
+
+namespace mlir {
+namespace omp {
+::llvm::StringRef stringifyClauseDepend(ClauseDepend val) {
+  switch (val) {
+    case ClauseDepend::dependsource: return "dependsource";
+    case ClauseDepend::dependsink: return "dependsink";
+  }
+  return "";
+}
+
+::llvm::Optional<ClauseDepend> symbolizeClauseDepend(::llvm::StringRef str) {
+  return ::llvm::StringSwitch<::llvm::Optional<ClauseDepend>>(str)
+      .Case("dependsource", ClauseDepend::dependsource)
+      .Case("dependsink", ClauseDepend::dependsink)
+      .Default(::llvm::None);
+}
+::llvm::Optional<ClauseDepend> symbolizeClauseDepend(uint32_t value) {
+  switch (value) {
+  case 0: return ClauseDepend::dependsource;
+  case 1: return ClauseDepend::dependsink;
+  default: return ::llvm::None;
+  }
+}
+
+} // namespace omp
+} // namespace mlir
+
+namespace mlir {
+namespace omp {
+::llvm::StringRef stringifyClauseMemoryOrderKind(ClauseMemoryOrderKind val) {
+  switch (val) {
+    case ClauseMemoryOrderKind::seq_cst: return "seq_cst";
+    case ClauseMemoryOrderKind::acq_rel: return "acq_rel";
+    case ClauseMemoryOrderKind::acquire: return "acquire";
+    case ClauseMemoryOrderKind::release: return "release";
+    case ClauseMemoryOrderKind::relaxed: return "relaxed";
+  }
+  return "";
+}
+
+::llvm::Optional<ClauseMemoryOrderKind> symbolizeClauseMemoryOrderKind(::llvm::StringRef str) {
+  return ::llvm::StringSwitch<::llvm::Optional<ClauseMemoryOrderKind>>(str)
+      .Case("seq_cst", ClauseMemoryOrderKind::seq_cst)
+      .Case("acq_rel", ClauseMemoryOrderKind::acq_rel)
+      .Case("acquire", ClauseMemoryOrderKind::acquire)
+      .Case("release", ClauseMemoryOrderKind::release)
+      .Case("relaxed", ClauseMemoryOrderKind::relaxed)
+      .Default(::llvm::None);
+}
+::llvm::Optional<ClauseMemoryOrderKind> symbolizeClauseMemoryOrderKind(uint32_t value) {
+  switch (value) {
+  case 0: return ClauseMemoryOrderKind::seq_cst;
+  case 1: return ClauseMemoryOrderKind::acq_rel;
+  case 2: return ClauseMemoryOrderKind::acquire;
+  case 3: return ClauseMemoryOrderKind::release;
+  case 4: return ClauseMemoryOrderKind::relaxed;
+  default: return ::llvm::None;
+  }
+}
+
+} // namespace omp
+} // namespace mlir
+
+namespace mlir {
+namespace omp {
+::llvm::StringRef stringifyClauseOrderKind(ClauseOrderKind val) {
+  switch (val) {
+    case ClauseOrderKind::concurrent: return "concurrent";
+  }
+  return "";
+}
+
+::llvm::Optional<ClauseOrderKind> symbolizeClauseOrderKind(::llvm::StringRef str) {
+  return ::llvm::StringSwitch<::llvm::Optional<ClauseOrderKind>>(str)
+      .Case("concurrent", ClauseOrderKind::concurrent)
+      .Default(::llvm::None);
+}
+::llvm::Optional<ClauseOrderKind> symbolizeClauseOrderKind(uint32_t value) {
+  switch (value) {
+  case 1: return ClauseOrderKind::concurrent;
+  default: return ::llvm::None;
+  }
+}
+
+} // namespace omp
+} // namespace mlir
+
+namespace mlir {
+namespace omp {
+::llvm::StringRef stringifyClauseProcBindKind(ClauseProcBindKind val) {
+  switch (val) {
+    case ClauseProcBindKind::primary: return "primary";
+    case ClauseProcBindKind::master: return "master";
+    case ClauseProcBindKind::close: return "close";
+    case ClauseProcBindKind::spread: return "spread";
+  }
+  return "";
+}
+
+::llvm::Optional<ClauseProcBindKind> symbolizeClauseProcBindKind(::llvm::StringRef str) {
+  return ::llvm::StringSwitch<::llvm::Optional<ClauseProcBindKind>>(str)
+      .Case("primary", ClauseProcBindKind::primary)
+      .Case("master", ClauseProcBindKind::master)
+      .Case("close", ClauseProcBindKind::close)
+      .Case("spread", ClauseProcBindKind::spread)
+      .Default(::llvm::None);
+}
+::llvm::Optional<ClauseProcBindKind> symbolizeClauseProcBindKind(uint32_t value) {
+  switch (value) {
+  case 0: return ClauseProcBindKind::primary;
+  case 1: return ClauseProcBindKind::master;
+  case 2: return ClauseProcBindKind::close;
+  case 3: return ClauseProcBindKind::spread;
+  default: return ::llvm::None;
+  }
+}
+
+} // namespace omp
+} // namespace mlir
+
+namespace mlir {
+namespace omp {
+::llvm::StringRef stringifyClauseScheduleKind(ClauseScheduleKind val) {
+  switch (val) {
+    case ClauseScheduleKind::Static: return "Static";
+    case ClauseScheduleKind::Dynamic: return "Dynamic";
+    case ClauseScheduleKind::Guided: return "Guided";
+    case ClauseScheduleKind::Auto: return "Auto";
+    case ClauseScheduleKind::Runtime: return "Runtime";
+  }
+  return "";
+}
+
+::llvm::Optional<ClauseScheduleKind> symbolizeClauseScheduleKind(::llvm::StringRef str) {
+  return ::llvm::StringSwitch<::llvm::Optional<ClauseScheduleKind>>(str)
+      .Case("Static", ClauseScheduleKind::Static)
+      .Case("Dynamic", ClauseScheduleKind::Dynamic)
+      .Case("Guided", ClauseScheduleKind::Guided)
+      .Case("Auto", ClauseScheduleKind::Auto)
+      .Case("Runtime", ClauseScheduleKind::Runtime)
+      .Default(::llvm::None);
+}
+::llvm::Optional<ClauseScheduleKind> symbolizeClauseScheduleKind(uint32_t value) {
+  switch (value) {
+  case 0: return ClauseScheduleKind::Static;
+  case 1: return ClauseScheduleKind::Dynamic;
+  case 2: return ClauseScheduleKind::Guided;
+  case 3: return ClauseScheduleKind::Auto;
+  case 4: return ClauseScheduleKind::Runtime;
+  default: return ::llvm::None;
+  }
+}
+
+} // namespace omp
+} // namespace mlir
+
+namespace mlir {
+namespace omp {
+::llvm::StringRef stringifyScheduleModifier(ScheduleModifier val) {
+  switch (val) {
+    case ScheduleModifier::none: return "none";
+    case ScheduleModifier::monotonic: return "monotonic";
+    case ScheduleModifier::nonmonotonic: return "nonmonotonic";
+    case ScheduleModifier::simd: return "simd";
+  }
+  return "";
+}
+
+::llvm::Optional<ScheduleModifier> symbolizeScheduleModifier(::llvm::StringRef str) {
+  return ::llvm::StringSwitch<::llvm::Optional<ScheduleModifier>>(str)
+      .Case("none", ScheduleModifier::none)
+      .Case("monotonic", ScheduleModifier::monotonic)
+      .Case("nonmonotonic", ScheduleModifier::nonmonotonic)
+      .Case("simd", ScheduleModifier::simd)
+      .Default(::llvm::None);
+}
+::llvm::Optional<ScheduleModifier> symbolizeScheduleModifier(uint32_t value) {
+  switch (value) {
+  case 0: return ScheduleModifier::none;
+  case 1: return ScheduleModifier::monotonic;
+  case 2: return ScheduleModifier::nonmonotonic;
+  case 3: return ScheduleModifier::simd;
+  default: return ::llvm::None;
+  }
+}
+
+} // namespace omp
+} // namespace mlir
+

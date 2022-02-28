@@ -1,0 +1,68 @@
+/*===- TableGen'erated file -------------------------------------*- C++ -*-===*\
+|*                                                                            *|
+|* Dialect Declarations                                                       *|
+|*                                                                            *|
+|* Automatically generated file, do not edit!                                 *|
+|*                                                                            *|
+\*===----------------------------------------------------------------------===*/
+
+namespace mlir {
+namespace linalg {
+
+class LinalgDialect : public ::mlir::Dialect {
+  explicit LinalgDialect(::mlir::MLIRContext *context)
+    : ::mlir::Dialect(getDialectNamespace(), context,
+      ::mlir::TypeID::get<LinalgDialect>()) {
+    
+    getContext()->getOrLoadDialect<arith::ArithmeticDialect>();
+
+    getContext()->getOrLoadDialect<AffineDialect>();
+
+    getContext()->getOrLoadDialect<math::MathDialect>();
+
+    getContext()->getOrLoadDialect<memref::MemRefDialect>();
+
+    getContext()->getOrLoadDialect<tensor::TensorDialect>();
+
+    initialize();
+  }
+
+  void initialize();
+  friend class ::mlir::MLIRContext;
+public:
+  ~LinalgDialect() override;
+  static constexpr ::llvm::StringLiteral getDialectNamespace() {
+    return ::llvm::StringLiteral("linalg");
+  }
+
+  /// Register canonicalization patterns.
+  void getCanonicalizationPatterns(
+      ::mlir::RewritePatternSet &results) const override;
+
+  /// Materialize a single constant operation from a given attribute value with
+  /// the desired resultant type.
+  ::mlir::Operation *materializeConstant(::mlir::OpBuilder &builder,
+                                         ::mlir::Attribute value,
+                                         ::mlir::Type type,
+                                         ::mlir::Location loc) override;
+
+    /// Provides a hook for verifying dialect attributes attached to the given
+    /// op.
+    ::mlir::LogicalResult verifyOperationAttribute(
+        ::mlir::Operation *op, ::mlir::NamedAttribute attribute) override;
+
+    /// Attribute name used to to memoize indexing maps for named ops.
+    constexpr const static ::llvm::StringLiteral
+        kMemoizedIndexingMapsAttrName = "linalg.memoized_indexing_maps";
+
+    using RegionBuilderFunType = llvm::function_ref<
+      void(ImplicitLocOpBuilder &b, Block &, ArrayRef<NamedAttribute>)>;
+    RegionBuilderFunType getRegionBuilder(StringRef name) {
+      return namedStructuredOpRegionBuilders.lookup(name);
+    }
+    private:
+      llvm::StringMap<RegionBuilderFunType> namedStructuredOpRegionBuilders;
+  };
+} // namespace linalg
+} // namespace mlir
+DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::LinalgDialect)
