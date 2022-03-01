@@ -11,8 +11,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef MLIR_INFERENCEINTERFACE
-#define MLIR_INFERENCEINTERFACE
+#ifndef SOPHGO_INFERENCEINTERFACE
+#define SOPHGO_INFERENCEINTERFACE
 
 include "mlir/IR/OpBase.td"
 
@@ -26,14 +26,14 @@ def InferenceInterface : OpInterface<"InferenceInterface"> {
         }],
         /*retType=*/"::mlir::LogicalResult",
         /*methodName=*/"inference",
-        /*args=*/(ins)
+        /*args=*/(ins "InferenceParameter&":$param)
       >,
       InterfaceMethod<
         /*desc=*/[{
         }],
         /*retType=*/"::mlir::LogicalResult",
         /*methodName=*/"init",
-        /*args=*/(ins),
+        /*args=*/(ins "InferenceParameter&":$param),
         [{}],
         [{return ::mlir::success();}]
       >,
@@ -42,15 +42,10 @@ def InferenceInterface : OpInterface<"InferenceInterface"> {
         }],
         /*retType=*/"void",
         /*methodName=*/"deinit",
-        /*args=*/(ins),
+        /*args=*/(ins "InferenceParameter&":$param),
         [{}],
         [{return;}]
       >,
   ];
-  let extraClassDeclaration = [{
-    std::vector<float*> input_buffers;
-    std::vector<float*> output_buffers;
-    void * handle = nullptr; // for dnnl implement
-  }];
 }
-#endif // MLIR_INFERENCEINTERFACE
+#endif // SOPHGO_INFERENCEINTERFACE
