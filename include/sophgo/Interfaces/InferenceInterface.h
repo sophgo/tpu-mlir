@@ -11,14 +11,21 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef MLIR_INTERFACES_INFERENCEINTERFACE_H_
-#define MLIR_INTERFACES_INFERENCEINTERFACE_H_
+#ifndef SOPHGO_INTERFACES_INFERENCEINTERFACE_H_
+#define SOPHGO_INTERFACES_INFERENCEINTERFACE_H_
 
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Operation.h"
 
+namespace mlir {
+  struct InferenceParameter {
+    std::vector<float*> inputs;
+    std::vector<float*> outputs;
+    void * handle = nullptr;
+  };
+}
 /// Include the ODS generated interface header files.
 #include "sophgo/Interfaces/InferenceInterface.h.inc"
 
-#endif // MLIR_INTERFACES_INFERENCE_H_
+#endif // SOPHGO_INTERFACES_INFERENCEINTERFACE_H_

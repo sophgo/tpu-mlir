@@ -33,6 +33,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <unordered_map>
 
 #define DEBUG_TYPE "interpreter"
@@ -59,7 +60,8 @@ public:
 private:
   ModuleOp module;
   std::unordered_map<std::string, mlir::Value> value_map; // activation value
-  llvm::DenseMap<mlir::Value, std::shared_ptr<std::vector<float>>> mem_map;
+  std::map<std::string, std::shared_ptr<InferenceParameter>> inference_map;
+  std::map<std::string, std::shared_ptr<std::vector<float>>> mem_map;
 };
 
 } // namespace mlir

@@ -20,7 +20,5 @@ private:
   std::vector<primitive> net;
   std::vector<std::unordered_map<int, memory>> net_args;
   pooling_forward::primitive_desc prim_desc;
-  memory::dims src_shape;
-  memory::dims dst_shape;
 };
 } // namespace dnnl
