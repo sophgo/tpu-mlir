@@ -73,6 +73,8 @@ tpuc-opt resnet18.mlir \
 
 * 目前shape还不支持动态shape和shape推导，后续支持
 
+* vscode的pybind11路径配置没有配好，Python.hu也没有定位好
+
 ## 一些思考
 
 #### 是否第一层用TOSA Dialect ?
