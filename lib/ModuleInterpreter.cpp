@@ -32,8 +32,9 @@ void ModuleInterpreter::allocate_resources() {
     // alloce buffer for all value
     func.walk([&](Operation *op) {
       if (isa<ReturnOp>(op)) {
-        for (auto opd : op->getOperands()) {
-          auto name = op->getAttrOfType<StringAttr>("name").str();
+        for (auto v : op->getOperands()) {
+          auto opd = v.getDefiningOp();
+          auto name = opd->getAttrOfType<StringAttr>("name").str();
           output_names.push_back(name);
         }
       } else {
@@ -122,6 +123,14 @@ llvm::ArrayRef<int64_t> ModuleInterpreter::getTensorShape(const std::string &nam
     llvm_unreachable("Error, getTensorShape failed");
   }
   return it->second.getType().cast<RankedTensorType>().getShape();
+}
+
+std::vector<std::string> ModuleInterpreter::getAllTensorName() {
+  std::vector<std::string> ret;
+  for (auto &kv : value_map) {
+    ret.push_back(kv.first);
+  }
+  return ret;
 }
 
 } // namespace mlir
