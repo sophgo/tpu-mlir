@@ -33,8 +33,6 @@
 
 #include <fstream>
 #include <iostream>
-#include <mutex>
-#include <omp.h>
 #include <unordered_map>
 
 #define DEBUG_TYPE "interpreter"
@@ -52,6 +50,7 @@ public:
   void setTensor(const std::string &name, const void *data, size_t size);
   std::shared_ptr<std::vector<float>> getTensor(const std::string &name);
   llvm::ArrayRef<int64_t> getTensorShape(const std::string &name);
+  std::vector<std::string> getAllTensorName();
 
 public:
   std::vector<std::string> input_names;
