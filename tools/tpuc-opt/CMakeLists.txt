@@ -9,13 +9,7 @@ set(LLVM_LINK_COMPONENTS
 
 set(LIBS
   ${dialect_libs}
-  MLIRDialect
   MLIROptLib
-  MLIRParser
-  MLIRPass
-  MLIRTransforms
-  MLIRSupport
-  MLIRIR
   SophgoInitAll
   )
 
