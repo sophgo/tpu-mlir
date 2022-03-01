@@ -8,6 +8,7 @@ add_mlir_library(SophgoTops
 
   DEPENDS
   MLIRTopsOpsIncGen
+  MLIRInferenceInterfaceIncGen
 
   LINK_COMPONENTS
   Core
@@ -15,6 +16,7 @@ add_mlir_library(SophgoTops
   LINK_LIBS PUBLIC
   MLIRIR
   MLIRSupport
+  MLIRStandard
   MLIRSideEffectInterfaces
   SophgoSupport
 )

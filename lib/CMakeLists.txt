@@ -1,3 +1,4 @@
+add_subdirectory(Interfaces)
 add_subdirectory(Support)
 add_subdirectory(Dialect)
 
@@ -11,6 +12,7 @@ add_mlir_library(SophgoInitAll
   LINK_LIBS PUBLIC
   MLIRIR
   MLIRSupport
+  MLIRInferenceInterface
   SophgoTops
   SophgoSupport
 )
