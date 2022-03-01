@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-import os
-import sys
 import abc
 import onnx, onnxruntime
 import numpy as np

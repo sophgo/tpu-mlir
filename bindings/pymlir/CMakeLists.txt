@@ -14,6 +14,11 @@ pybind11_add_module(pymlir pymlir.cpp)
 
 target_link_libraries(pymlir PRIVATE
   SophgoInitAll
+  MLIRTransforms
+  MLIRTranslation
+  LLVMCore
+  LLVMSupport
+  LLVMAsmParser
 )
 install(TARGETS pymlir DESTINATION python)
 

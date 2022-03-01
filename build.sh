@@ -17,11 +17,6 @@ echo "INSTALL_PATH: $INSTALL_PATH"
 
 # prepare install/build dir
 mkdir -p $BUILD_PATH
-mkdir -p $INSTALL_PATH
-mkdir -p $INSTALL_PATH/python
-mkdir -p $INSTALL_PATH/bin
-mkdir -p $INSTALL_PATH/lib
-mkdir -p $INSTALL_PATH/include
 
 pushd $BUILD_PATH
 cmake -G Ninja \
