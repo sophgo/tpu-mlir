@@ -7,7 +7,8 @@
                 "${workspaceFolder}/build/include",
                 "${workspaceFolder}/third_party/llvm/include",
                 "${workspaceFolder}/third_party/oneDNN/include",
-                "/usr/local/lib/python3.9/site-packages/pybind11/include"
+                "/usr/local/lib/python3.9/site-packages/pybind11/include",
+                "/usr/local/Cellar/python@3.9/3.9.5/Frameworks/Python.framework/Versions/3.9/include/python3.9"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",
