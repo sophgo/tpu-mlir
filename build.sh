@@ -28,7 +28,7 @@ cmake -G Ninja \
     $BUILD_FLAG \
     -DCMAKE_INSTALL_PREFIX=$INSTALL_PATH \
     $PROJECT_ROOT
-cmake --build . --target install
+cmake --build . --target install mlir-doc
 popd
 
 # Clean up some files for release build
