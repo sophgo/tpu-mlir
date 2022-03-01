@@ -52,6 +52,10 @@ tpuc-opt resnet18.mlir \
     -o resnet18_opt.mlir
 ```
 
+#### 调试方法
+``` shell
+gdb --args python /work/python/tools/model_runner.py --input resnet18_in_fp32.npz --model resnet18_opt.mlir --output resnet18_out.npz
+```
 
 ## 待解决问题
 
@@ -73,7 +77,11 @@ tpuc-opt resnet18.mlir \
 
 * 目前shape还不支持动态shape和shape推导，后续支持
 
-* vscode的pybind11路径配置没有配好，Python.hu也没有定位好
+* vscode的pybind11路径配置没有配好，Python.h也没有定位好
+
+* tpuc-opt为什么编译时间这么久，需要研究一下
+
+* 为了省时间，直接用晶视的npz_tool，后续再做优化
 
 ## 一些思考
 

@@ -11,11 +11,12 @@
 
 namespace mlir {
 
-ModuleInterpreter::~ModuleInterpreter(){
+ModuleInterpreter::~ModuleInterpreter() {
   for (auto func : module.getOps<FuncOp>()) {
     func.walk([&](Operation *op) {
       if (auto infer_op = llvm::dyn_cast<mlir::InferenceInterface>(op)) {
-        infer_op.deinit();
+        auto name = op->getAttrOfType<StringAttr>("name").str();
+        infer_op.deinit(*inference_map[name]);
       }
     });
   }
@@ -31,7 +32,9 @@ void ModuleInterpreter::allocate_resources() {
     // }
     // alloce buffer for all value
     func.walk([&](Operation *op) {
-      if (isa<ReturnOp>(op)) {
+      if (op == func.getOperation()) {
+        // self
+      } else if (isa<ReturnOp>(op)) {
         for (auto v : op->getOperands()) {
           auto opd = v.getDefiningOp();
           auto name = opd->getAttrOfType<StringAttr>("name").str();
@@ -43,9 +46,9 @@ void ModuleInterpreter::allocate_resources() {
         auto count = type.getNumElements();
         auto name = op->getAttrOfType<StringAttr>("name").str();
         if (isa<tops::WeightOp>(op)) {
-          mem_map[result] = wfile->readTensor<float>(name, type);
+          mem_map[name] = wfile->readTensor<float>(name, type);
         } else {
-          mem_map[result] = std::make_shared<std::vector<float>>(count);
+          mem_map[name] = std::make_shared<std::vector<float>>(count);
           value_map[name] = result;
         }
         if (isa<tops::InputOp>(op)) {
@@ -56,22 +59,28 @@ void ModuleInterpreter::allocate_resources() {
     // input output buffers for all ops
     func.walk([&](Operation *op) {
       if (auto infer_op = llvm::dyn_cast<mlir::InferenceInterface>(op)) {
-        auto result = op->getResult(0);
-        infer_op.output_buffers.push_back(mem_map[result]->data());
+        auto name = op->getAttrOfType<StringAttr>("name").str();
+        auto param = std::make_shared<InferenceParameter>();
+        param->outputs.push_back(mem_map[name]->data());
         for (auto input : op->getOperands()) {
           if (input.getType().isa<mlir::NoneType>()) {
-            infer_op.input_buffers.push_back(nullptr);
-          } else if (mem_map.find(input) == mem_map.end()) {
+            param->inputs.push_back(nullptr);
+            continue;
+          }
+          auto input_name =
+              input.getDefiningOp()->getAttrOfType<StringAttr>("name").str();
+          if (mem_map.find(input_name) == mem_map.end()) {
             input.dump();
             llvm_unreachable("input operands not allocated");
           } else {
-            infer_op.input_buffers.push_back(mem_map[input]->data());
+            param->inputs.push_back(mem_map[input_name]->data());
           }
         }
-        if(failed(infer_op.init())) {
+        if (failed(infer_op.init(*param))) {
           op->dump();
           llvm_unreachable("op inferece init failed");
         }
+        inference_map[name] = param;
       }
     });
   }
@@ -83,7 +92,8 @@ void ModuleInterpreter::invoke() {
     //   continue;
     // }
     func.walk([&](mlir::InferenceInterface infer_op) {
-      if (failed(infer_op.inference())) {
+      auto name = infer_op->getAttrOfType<StringAttr>("name").str();
+      if (failed(infer_op.inference(*inference_map[name]))) {
         infer_op.dump();
         llvm_unreachable("invoke failed!!");
       }
@@ -91,32 +101,35 @@ void ModuleInterpreter::invoke() {
   }
 }
 
-void ModuleInterpreter::setTensor(const std::string &name, const void * data,
+void ModuleInterpreter::setTensor(const std::string &name, const void *data,
                                   size_t size) {
-  auto it = value_map.find(name);
-  if (it == value_map.end()) {
+  auto it = mem_map.find(name);
+  if (it == mem_map.end()) {
     llvm::errs() << "Can't find op name: " << name << "\n";
     llvm_unreachable("Error, setTensor failed");
   }
-  auto &act = mem_map[it->second];
+  auto act = it->second;
   if (act->size() * sizeof(float) != size) {
-    llvm::errs() << "Tensor " << name << " data need size: " << act->size() * sizeof(float)
+    llvm::errs() << "Tensor " << name
+                 << " data need size: " << act->size() * sizeof(float)
                  << " , but set size: " << size << "\n";
     llvm_unreachable("Error, setTensor failed");
   }
   memcpy(act->data(), data, size);
 }
 
-std::shared_ptr<std::vector<float>> ModuleInterpreter::getTensor(const std::string &name) {
-  auto it = value_map.find(name);
-  if (it == value_map.end()) {
+std::shared_ptr<std::vector<float>>
+ModuleInterpreter::getTensor(const std::string &name) {
+  auto it = mem_map.find(name);
+  if (it == mem_map.end()) {
     llvm::errs() << "Can't find op name: " << name << "\n";
-    llvm_unreachable("Error, getTensor failed");
+    llvm_unreachable("Error, setTensor failed");
   }
-  return mem_map[it->second];
+  return it->second;
 }
 
-llvm::ArrayRef<int64_t> ModuleInterpreter::getTensorShape(const std::string &name) {
+llvm::ArrayRef<int64_t>
+ModuleInterpreter::getTensorShape(const std::string &name) {
   auto it = value_map.find(name);
   if (it == value_map.end()) {
     llvm::errs() << "Can't find op name: " << name << "\n";
