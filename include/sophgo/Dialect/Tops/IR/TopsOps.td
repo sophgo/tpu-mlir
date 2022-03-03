@@ -35,6 +35,10 @@ def Tops_WeightOp : Tops_Op<"Weight", [NoSideEffect]> {
   let summary = "load weight operator";
 
   let description = [{
+    Load weight from a file. The file should be a valid .npy format file.
+    This Op does not take any input, and the attribute captures the file name.
+    The Output is an n-dimensional tensor whose type matches
+    the tensor type in the .npy file.
   }];
 
   let arguments = (
@@ -61,6 +65,19 @@ def Tops_InputOp: Tops_Op<"Input",[NoSideEffect]> {
 def Tops_BatchNormOp: Tops_Op<"BatchNorm",[NoSideEffect]> {
   let summary = "BatchNormalization operation";
   let description = [{
+    Applies Batch Normalization over a 4D input (a mini-batch of 2D inputs
+    with additional channel dimension) as described in the paper
+    Batch Normalization: Accelerating Deep Network Training by Reducing
+    Internal Covariate Shift <https://arxiv.org/abs/1502.03167>`__ .
+
+    ```math
+        y = \frac{x - \mathrm{E}[x]}{ \sqrt{\mathrm{Var}[x] + \epsilon}} * \gamma + \beta
+        y = \frac{input - mean}{variance + epsilon} * scale + bias
+    ```
+
+    The mean and standard-deviation are calculated per-dimension over
+    the mini-batches and $$\gamma$$ and $$\beta$$ are learnable parameter vectors
+    of size C (where C is the input channel size).
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -77,9 +94,57 @@ def Tops_BatchNormOp: Tops_Op<"BatchNorm",[NoSideEffect]> {
 
 def Tops_ConvOp: Tops_Op<"Conv",[NoSideEffect,
   DeclareOpInterfaceMethods<InferenceInterface,["init","deinit"]>]> {
-  let summary = "conv operator";
+  let summary = "convolution operator";
 
   let description = [{
+    In the simplest case, the output value of the layer with input size
+    $$(N, C_{\text{in}}, H, W)$$ and output $$(N, C_{\text{out}}, H_{\text{out}}, W_{\text{out}})$$
+    can be precisely described as:
+
+    ```math
+        \text{out}(N_i, C_{\text{out}_j}) = \text{bias}(C_{\text{out}_j}) +
+        \sum_{k = 0}^{C_{\text{in}} - 1} \text{weight}(C_{\text{out}_j}, k) \star \text{input}(N_i, k)
+    ```
+
+
+    where $$\star$$ is the valid 2D cross-correlation operator,
+    $$N$$ is a batch size, $$C$$ denotes a number of channels,
+    $$H$$ is a height of input planes in pixels, and $$W$$ is
+    width in pixels.
+
+    weight (Tensor): the learnable weights of the module of shape
+    $$(\text{out\_channels}, \frac{\text{in\_channels}}{\text{groups}},
+    \text{kernel\_size[0]}, \text{kernel\_size[1]})$$
+
+    bias (Tensor optional): the learnable bias of the module of shape (out_channels).
+
+    - **stride**: controls the stride for the cross-correlation, a single
+      number or a tuple.
+
+    - **padding**: controls the amount of padding applied to the input. It
+      contains four ints with top, left, bottom, right respectively.
+
+    - **dilation**: controls the spacing between the kernel points; also
+      known as the à trous algorithm. It is harder to describe, but this
+      [Link](https://github.com/vdumoulin/conv_arithmetic/blob/master/README.md)
+      has a nice visualization of what **dilation** does.
+
+    - **groups**: (optional): Number of blocked connections from input
+            channels to output channels. Default: 1
+
+
+    Shape:
+        - Input: $$(N, C_{in}, H_{in}, W_{in})$$
+        - Output: $$(N, C_{out}, H_{out}, W_{out})$$ where
+
+          ```math
+              H_{out} = \left\lfloor\frac{H_{in}  + \text{padding}[0] + \text{padding}[2] - \text{dilation}[0]
+                        \times (\text{kernel\_size}[0] - 1) - 1}{\text{stride}[0]} + 1\right\rfloor
+          ```
+          ```math
+              W_{out} = \left\lfloor\frac{W_{in}  + \text{padding}[1] + \text{padding}[3] - \text{dilation}[1]
+                        \times (\text{kernel\_size}[1] - 1) - 1}{\text{stride}[1]} + 1\right\rfloor
+          ```
   }];
 
   let arguments = (ins
@@ -111,6 +176,8 @@ class Tops_PoolOp <string mnemonic> : Tops_Op<mnemonic,
   let summary = "pool operator";
 
   let description = [{
+    This performs an  pooling over the given input tensor. A sliding
+    window of size given by <kernel size> is passed over the input tensor.
   }];
 
   let arguments = (ins
@@ -142,6 +209,8 @@ def Tops_AddOp: Tops_Op<"Add",[NoSideEffect,
   let summary = "add operator";
 
   let description = [{
+    Elementwise addition of input1 and input2. Axis of size 1 will be broadcast,
+    as necessary.
   }];
 
   let arguments = (ins
@@ -159,6 +228,9 @@ def Tops_MatMulOp: Tops_Op<"MatMul",[NoSideEffect,
   let summary = "matmul operator";
 
   let description = [{
+    Performs a two dimensional matrix multiplication. This allows both inputs to
+    be activations, rather than reserving weights as an attribute in the
+    FULLY_CONNECTED operator.
   }];
 
   let arguments = (ins
@@ -181,6 +253,7 @@ def Tops_ReluOp: Tops_Op<"Relu",[NoSideEffect,
   let summary = "Relu operator";
 
   let description = [{
+     ReLU with a scalar maximum value.
   }];
 
   let arguments = (
@@ -195,8 +268,11 @@ def Tops_ReluOp: Tops_Op<"Relu",[NoSideEffect,
 
 def Tops_ReshapeOp:Tops_Op<"Reshape",[NoSideEffect,
   DeclareOpInterfaceMethods<InferenceInterface>]> {
-  let summary = "TOPS Reshape operation";
+  let summary = "Reshape operation";
   let description = [{
+    Returns a tensor with the same type/values as the input, with a new shape
+    specified by the shape argument. Reshape may operate on tensors of any rank.
+    No data conversion happens during a reshape operation.
   }];
   let arguments = (ins
     AnyTensor:$input,
