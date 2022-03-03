@@ -4,9 +4,11 @@ class BaseConverter(object):
         self.operands = dict()
         self.tensors = dict()
         self.shapes = dict()
+        self.input_names = list()
+        self.output_names = list()
 
-    def run(self):
-        raise NotImplementedError('run')
+    def generate_mlir(self, mlir_file:str):
+        raise NotImplementedError('generate_mlir')
 
     def addShape(self, name, shape):
         if isinstance(shape, tuple):

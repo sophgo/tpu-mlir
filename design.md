@@ -21,8 +21,6 @@
   * operation的资源申请与forward过程分离；
   * interpet能用oneDNN的，用oneDNN；不能用oneDNN的，尽量用OMP
 
-* 用'F32'，不要用'FP32'，与mlir保持一致
-
 * mlir默认整型是INT64，默认浮点型是F64. attribute的类型尽量保持一致.好处如下：
 
 ``` mlir
@@ -43,18 +41,14 @@ model_transform.py \
     --model_type onnx \
     --model_name resnet18 \
     --model_def  ../resnet18.onnx \
-    --tolerance 0.99,0.99,0.96 \
+    --input ../resnet18_in_f32.npz \
     --mlir resnet18.mlir
 
-# 后续集成到model_transform.py里面
-tpuc-opt resnet18.mlir \
-    --canonicalize \
-    -o resnet18_opt.mlir
 ```
 
 #### 调试方法
 ``` shell
-gdb --args python /work/python/tools/model_runner.py --input resnet18_in_fp32.npz --model resnet18_opt.mlir --output resnet18_out.npz
+gdb --args python /work/python/tools/model_runner.py --input resnet18_in_f32.npz --model resnet18_opt.mlir --output resnet18_out.npz
 ```
 
 ## 待解决问题
@@ -67,11 +61,11 @@ gdb --args python /work/python/tools/model_runner.py --input resnet18_in_fp32.np
 
 * dnnl pool与conv参考matmul优化
 
-* 数据全部按fp32存储，后续支持其他类型
+* 数据全部按f32存储，后续支持其他类型
 
 * 目前所有op都认为是一个输出，后续支持多输出op ?
 
-* tpuc-opt能否需要实现python版本？
+* sophgo-opt能否需要实现python版本？
 
 * tops的pass只有一个：Fuse Relu到conv和add，其他pass需要补充完整
 
@@ -79,9 +73,11 @@ gdb --args python /work/python/tools/model_runner.py --input resnet18_in_fp32.np
 
 * vscode的pybind11路径配置没有配好，Python.h也没有定位好
 
-* tpuc-opt为什么编译时间这么久，需要研究一下
+* sophgo-opt为什么编译时间这么久，需要研究一下
 
 * 为了省时间，直接用晶视的npz_tool，后续再做优化
+
+* resnet18.onnx (40多M，目前用于测试，后续删掉)
 
 ## 一些思考
 

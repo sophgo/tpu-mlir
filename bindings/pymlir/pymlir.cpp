@@ -30,10 +30,6 @@
 
 using namespace mlir;
 
-#define OP_NAME "name"
-#define OP_TYPE "type"
-#define OP_QUANT "quant"
-
 typedef std::map<std::string, std::shared_ptr<std::vector<float>>> tensor_map_t;
 typedef std::map<std::string, std::vector<int64_t>> shape_map_t;
 
@@ -98,31 +94,14 @@ public:
     registry.insert<tops::TopsDialect, StandardOpsDialect>();
     context_ = std::make_unique<MLIRContext>(registry);
 
-    module_ = parseMLIRInput(filename);
-    if (!module_) {
-      llvm::errs() << "Error, parse :" << filename << "\n";
-      llvm_unreachable("could not parse mlir file\n");
-    }
+    module_ = parseSourceFile(filename, context_.get());
+    assert(module_);
     if (interpreter_) {
       interpreter_.reset();
     }
 
     interpreter_ = std::make_unique<ModuleInterpreter>(module_.get());
     interpreter_->allocate_resources();
-  }
-
-  OwningOpRef<ModuleOp> parseMLIRInput(StringRef inputFilename) {
-    // Set up the input file.
-    std::string errorMessage;
-    auto file = openInputFile(inputFilename, &errorMessage);
-    if (!file) {
-      llvm::errs() << errorMessage << "\n";
-      llvm_unreachable("read find failed");
-    }
-
-    llvm::SourceMgr sourceMgr;
-    sourceMgr.AddNewSourceBuffer(std::move(file), llvm::SMLoc());
-    return parseSourceFile(sourceMgr, context_.get());
   }
 
   py::dict getAllTensor() {

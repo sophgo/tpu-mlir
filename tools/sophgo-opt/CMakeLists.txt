@@ -13,16 +13,16 @@ set(LIBS
   SophgoInitAll
   )
 
-add_llvm_executable(tpuc-opt
-  tpuc-opt.cpp
+add_llvm_executable(sophgo-opt
+  sophgo-opt.cpp
 
   DEPENDS
   ${LIBS}
   )
 
-target_link_libraries(tpuc-opt PRIVATE ${LIBS})
-llvm_update_compile_flags(tpuc-opt)
+target_link_libraries(sophgo-opt PRIVATE ${LIBS})
+llvm_update_compile_flags(sophgo-opt)
 
-mlir_check_all_link_libraries(tpuc-opt)
+mlir_check_all_link_libraries(sophgo-opt)
 
-install(TARGETS tpuc-opt DESTINATION bin)
+install(TARGETS sophgo-opt DESTINATION bin)
