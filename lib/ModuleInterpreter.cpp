@@ -32,7 +32,7 @@ void ModuleInterpreter::allocate_resources() {
     // }
     // alloce buffer for all value
     func.walk([&](Operation *op) {
-      if (op == func.getOperation()) {
+      if (op == func.getOperation() || isa<tops::NoneOp>(op)) {
         // self
       } else if (isa<ReturnOp>(op)) {
         for (auto v : op->getOperands()) {
