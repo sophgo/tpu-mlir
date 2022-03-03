@@ -6,6 +6,7 @@ endif()
 
 project(nntoolchain LANGUAGES CXX C)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
 
@@ -15,7 +16,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED YES)
 
 set(MLIR_DIR ${PROJECT_SOURCE_DIR}/third_party/llvm/lib/cmake/mlir)
 
-# Fix Me. try to using cmake module to define customized sophgo function.
+# Fix Me. try to use cmake module to define customized sophgo function.
 # reference https://github.com/llvm/circt/blob/main/cmake/modules/AddCIRCT.cmake
 set(MLIR_BINARY_DIR ${PROJECT_BINARY_DIR})
 
@@ -87,4 +88,3 @@ add_subdirectory(third_party)
 add_subdirectory(lib)
 add_subdirectory(tools)
 add_subdirectory(bindings)
-
