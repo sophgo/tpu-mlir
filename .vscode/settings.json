@@ -74,7 +74,7 @@
     "C_Cpp.formatting": "clangFormat",
     "C_Cpp.clang_format_style": "LLVM",
     "python.analysis.extraPaths": [
-        "./llvm/python_packages/mlir_core"
+        "./third_party/llvm/python_packages/mlir_core"
     ],
     "python.formatting.provider": "yapf",
     "python.formatting.yapfArgs": [

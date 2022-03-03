@@ -8,6 +8,7 @@ from numbers import Number
 import onnxsim.onnx_simplifier as onnxsim
 
 import onnx
+import onnxruntime
 import numpy as np
 
 onnx_attr_translator = {
@@ -57,6 +58,7 @@ def convert_onnx_attribute_proto(attr_proto):
 
 
 class BaseNode():
+
     def __init__(self, info):
         self.name = str(info["name"])
         self.op_type = str(info["op_type"])
@@ -66,6 +68,7 @@ class BaseNode():
 
 
 class OnnxNode(BaseNode):
+
     def __init__(self, node):
         info = dict()
         info["name"] = node.output[0]
@@ -80,13 +83,11 @@ class OnnxNode(BaseNode):
 
 
 class OnnxConverter(BaseConverter):
-    def __init__(self, model_name: str, onnx_file: str, input_shapes: list, mlir_file: str):
+
+    def __init__(self, model_name: str, onnx_file: str, input_shapes: list):
         super().__init__()
         self.model_name = model_name
         self.weight_file = "{}_tops_weight.npz".format(model_name)
-        self.mlir_file = mlir_file
-        self.input_names = list()
-        self.output_names = list()
         self.model = None
         self.mlir = None
         self.load_onnx_model(onnx_file, input_shapes)
@@ -107,7 +108,8 @@ class OnnxConverter(BaseConverter):
         }
 
     def __del__(self):
-        del self.mlir
+        if self.mlir != None:
+            del self.mlir
 
     def load_onnx_model(self, onnx_file, input_shapes: list):
         self.model = onnx.load(onnx_file)
@@ -121,7 +123,7 @@ class OnnxConverter(BaseConverter):
         # add all weight
         for tensor in self.model.graph.initializer:
             name = tensor.name
-            # all weight convert to fp32
+            # all weight convert to f32
             # TODO: support other type
             data = numpy_helper.to_array(tensor).astype(np.float32)
             self.addTensor(name, data)
@@ -134,7 +136,8 @@ class OnnxConverter(BaseConverter):
                 self.output_names.append(output.name)
                 shape = [i.dim_value for i in output.type.tensor_type.shape.dim]
                 self.addShape(output.name, shape)
-        onnx.save(self.model, "{}_debug.onnx".format(self.model_name))
+        self.onnx_file = "{}_opt.onnx".format(self.model_name)
+        onnx.save(self.model, self.onnx_file)
 
     def model_shape_infer(self, input_shapes):
         inputs = onnxsim.get_inputs(self.model)
@@ -172,7 +175,7 @@ class OnnxConverter(BaseConverter):
         # init importer
         self.mlir = MLIRImporter(input_shapes, output_shapes, self.weight_file)
 
-    def run(self):
+    def generate_mlir(self, mlir_file:str):
         """convert all to mlir"""
         # add input op
         for idx, _name in enumerate(self.input_names):
@@ -195,10 +198,10 @@ class OnnxConverter(BaseConverter):
 
         self.mlir.create_return_op(return_op)
         mlir_txt = self.mlir.print_module()
-        with open(self.mlir_file, "w") as f:
+        with open(mlir_file, "w") as f:
             f.write(mlir_txt)
         self.WeightToNpz(self.weight_file)
-        print("Save mlir file: {}".format(self.mlir_file))
+        print("Save mlir file: {}".format(mlir_file))
 
     def convert_add_op(self, onnx_node):
         assert (len(onnx_node.inputs) == 2)

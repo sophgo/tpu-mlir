@@ -1,2 +1,2 @@
-add_subdirectory(tpuc-opt)
+add_subdirectory(sophgo-opt)
 

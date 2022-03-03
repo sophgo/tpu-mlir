@@ -171,13 +171,13 @@ def npz_compare(args_list):
 
   tc = TensorCompare(close_order_tol=3,
                      cosine_similarity_tol = tolerance[0],
-                     correlation_similarity_tol = tolerance[1],
-                     euclidean_similarity_tol = tolerance[2],
+                     euclidean_similarity_tol = tolerance[1],
                      signal_to_quantization_noise_tol = float('-inf'))
 
-  common = set(npz1.files) & set(npz2.files)
-  if excepts:
-    common = common - set(excepts)
+  common = list()
+  for name in npz1.files:
+    if name in npz2.files and name not in excepts:
+       common.append(name)
   if ordered_names:
     names = []
     for name in ordered_names:

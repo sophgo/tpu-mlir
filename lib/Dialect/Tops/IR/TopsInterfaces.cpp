@@ -87,6 +87,9 @@ LogicalResult tops::AddOp::inference(InferenceParameter &p) {
       }
     }
   }
+  if (do_relu()) {
+    relu(p.outputs[0], p.outputs[0], num_elem);
+  }
   return success();
 }
 

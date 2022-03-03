@@ -31,12 +31,10 @@ class TensorCompare():
 
   def __init__(self, close_order_tol=3,
                cosine_similarity_tol = 0.99,
-               correlation_similarity_tol = 0.99,
                euclidean_similarity_tol = 0.90,
                signal_to_quantization_noise_tol = 50):
     self.close_order_tol            = close_order_tol
     self.cosine_similarity_tol      = cosine_similarity_tol
-    self.correlation_similarity_tol = correlation_similarity_tol
     self.euclidean_similarity_tol   = euclidean_similarity_tol
     self.signal_to_quantization_noise_tol   = signal_to_quantization_noise_tol
     return
@@ -136,9 +134,6 @@ class TensorCompare():
     # cosine_similarity_my = self.cosine_similarity(d1.flatten(), d2.flatten())
     cosine_similarity = 1 - spatial.distance.cosine(d1.flatten().astype(np.float32),
                                                     d2.flatten().astype(np.float32))
-    # correlation similarity
-    #1 - spatial.distance.correlation(d1.flatten(), d2.flatten())
-    correlation_similarity = cosine_similarity
     # measure euclidean similarity
     m = (d1+d2)/2
     ed = self.euclidean_distance(d1.flatten(), d2.flatten())
@@ -148,12 +143,10 @@ class TensorCompare():
     sqnr = self.sqnr_similarity(d1, d2)
 
     similarities["cosine"] = cosine_similarity
-    similarities["correlation"] = correlation_similarity
     similarities["euclid"] = euclidean_similarity
     similarities["sqnr"] = sqnr
     # check similarity
     if (cosine_similarity > self.cosine_similarity_tol
-        and correlation_similarity > self.correlation_similarity_tol
         and euclidean_similarity > self.euclidean_similarity_tol
         and sqnr > self.signal_to_quantization_noise_tol):
       return (True, self.SIMILAR, similarities, None)
@@ -183,7 +176,6 @@ class TensorCompare():
         print("    close order            = {}".format(result[2]["close_order"]))
       if (result[1] == self.SIMILAR or result[1] == self.NOT_SIMILAR):
         print("    cosine_similarity      = {:.6f}".format(result[2]["cosine"]))
-        print("    correlation_similarity = {:.6f}".format(result[2]["correlation"]))
         print("    euclidean_similarity   = {:.6f}".format(result[2]["euclid"]))
         print("    sqnr_similarity        = {:.6f}".format(result[2]["sqnr"]))
     if d1.dtype == np.int8:
@@ -226,7 +218,6 @@ class TensorCompareStats():
     self.count[TensorCompare.SIMILAR] = 0
     self.count[TensorCompare.NOT_SIMILAR] = 0
     self.min_cosine_similarity = 1.0
-    self.min_correlation_similarity = 1.0
     self.min_euclidean_similarity = 1.0
     self.min_sqnr = float('inf')
 
@@ -245,7 +236,6 @@ class TensorCompareStats():
     # record min similarity
     if result[1] == TensorCompare.SIMILAR or result[1] == TensorCompare.NOT_SIMILAR:
       self.min_cosine_similarity = min(self.min_cosine_similarity, result[2]["cosine"])
-      self.min_correlation_similarity = min(self.min_correlation_similarity, result[2]["correlation"])
       self.min_euclidean_similarity = min(self.min_euclidean_similarity, result[2]["euclid"])
       self.min_sqnr = min(self.min_sqnr, result[2]["sqnr"])
 
@@ -260,9 +250,8 @@ class TensorCompareStats():
     print("  %d not equal, %d not similar"
           %(self.count[TensorCompare.NOT_EQUAL],
             self.count[TensorCompare.NOT_SIMILAR]))
-    print("min_similiarity = ({}, {}, {}, {})".format(
+    print("min_similiarity = ({}, {}, {})".format(
             self.min_cosine_similarity,
-            self.min_correlation_similarity,
             self.min_euclidean_similarity,
             self.min_sqnr))
 
