@@ -16,7 +16,7 @@ set(CMAKE_IMPORT_FILE_VERSION 1)
 set(_targetsDefined)
 set(_targetsNotDefined)
 set(_expectedTargets)
-foreach(_expectedTarget MLIRAnalysis MLIRPresburger MLIRAffineToStandard MLIRArithmeticToLLVM MLIRArithmeticToSPIRV MLIRArmNeon2dToIntr MLIRAsyncToLLVM MLIRBufferizationToMemRef MLIRComplexToLLVM MLIRComplexToStandard MLIRControlFlowToLLVM MLIRControlFlowToSPIRV MLIRGPUToGPURuntimeTransforms MLIRGPUToNVVMTransforms MLIRGPUToROCDLTransforms MLIRGPUToSPIRV MLIRGPUToVulkanTransforms MLIRLinalgToLLVM MLIRLinalgToSPIRV MLIRLinalgToStandard MLIRLLVMCommonConversion MLIRMathToLibm MLIRMathToLLVM MLIRMathToSPIRV MLIRMemRefToLLVM MLIRMemRefToSPIRV MLIROpenACCToLLVM MLIROpenACCToSCF MLIROpenMPToLLVM MLIRPDLToPDLInterp MLIRReconcileUnrealizedCasts MLIRSCFToControlFlow MLIRSCFToGPU MLIRSCFToOpenMP MLIRSCFToSPIRV MLIRShapeToStandard MLIRSPIRVToLLVM MLIRStandardToLLVM MLIRStandardToSPIRV MLIRTosaToLinalg MLIRTosaToSCF MLIRTosaToStandard MLIRVectorToROCDL MLIRVectorToLLVM MLIRVectorToGPU MLIRVectorToSCF MLIRVectorToSPIRV MLIRAffineAnalysis MLIRAffine MLIRAffineTransforms MLIRAffineUtils MLIRArithmetic MLIRArithmeticTransforms MLIRArithmeticUtils MLIRArmNeon MLIRArmSVE MLIRArmSVETransforms MLIRAsync MLIRAsyncTransforms MLIRAMX MLIRAMXTransforms MLIRBufferization MLIRBufferizationTransforms MLIRComplex MLIRControlFlow MLIRDLTI MLIREmitC MLIRGPUOps MLIRGPUTransforms MLIRLinalgAnalysis MLIRAffineBufferizableOpInterfaceImpl MLIRLinalgBufferizableOpInterfaceImpl MLIRModuleBufferization MLIRLinalg MLIRLinalgTransforms MLIRLinalgUtils MLIRLLVMIRTransforms MLIRLLVMIR MLIRNVVMIR MLIRROCDLIR MLIRMath MLIRMathTransforms MLIRMemRef MLIRMemRefTransforms MLIRMemRefUtils MLIROpenACC MLIROpenMP MLIRPDL MLIRPDLInterp MLIRQuant MLIRQuantTransforms MLIRQuantUtils MLIRSCF MLIRSCFTransforms MLIRSCFUtils MLIRShape MLIRShapeOpsTransforms MLIRSparseTensor MLIRSparseTensorTransforms MLIRSparseTensorPipelines MLIRSparseTensorUtils MLIRSPIRV MLIRSPIRVModuleCombiner MLIRSPIRVConversion MLIRSPIRVTransforms MLIRSPIRVUtils MLIRStandard MLIRStandardOpsTransforms MLIRTensor MLIRTensorInferTypeOpInterfaceImpl MLIRTensorTilingInterfaceImpl MLIRTensorTransforms MLIRTensorUtils MLIRTosa MLIRTosaTransforms MLIRDialectUtils MLIRVector MLIRVectorTransforms MLIRVectorUtils MLIRX86Vector MLIRX86VectorTransforms MLIRDialect MLIRIR MLIRCallInterfaces MLIRCastInterfaces MLIRControlFlowInterfaces MLIRCopyOpInterface MLIRDataLayoutInterfaces MLIRDerivedAttributeOpInterface MLIRInferTypeOpInterface MLIRSideEffectInterfaces MLIRTilingInterface MLIRVectorInterfaces MLIRViewLikeInterface MLIRLoopLikeInterface MLIRParser MLIRPass MLIRReduce MLIRRewrite MLIRSupport MLIROptLib MLIRTableGen MLIRTargetCpp MLIRSPIRVDeserialization MLIRSPIRVSerialization MLIRSPIRVBinaryUtils MLIRSPIRVTranslateRegistration MLIRArmNeonToLLVMIRTranslation MLIRArmSVEToLLVMIRTranslation MLIRAMXToLLVMIRTranslation MLIRLLVMToLLVMIRTranslation MLIRNVVMToLLVMIRTranslation MLIROpenACCToLLVMIRTranslation MLIROpenMPToLLVMIRTranslation MLIRROCDLToLLVMIRTranslation MLIRX86VectorToLLVMIRTranslation MLIRTargetLLVMIRExport MLIRToLLVMIRTranslationRegistration MLIRTargetLLVMIRImport MLIRLspServerLib MLIRReduceLib MLIRPDLLAST MLIRPDLLParser MLIRTransformUtils MLIRTransforms MLIRTranslation MLIRExecutionEngine MLIRJitRunner mlir_c_runner_utils mlir_runner_utils mlir_async_runtime MLIRCAPIDebug obj.MLIRCAPIDebug MLIRCAPIAsync obj.MLIRCAPIAsync MLIRCAPIGPU obj.MLIRCAPIGPU MLIRCAPILLVM obj.MLIRCAPILLVM MLIRCAPILinalg obj.MLIRCAPILinalg MLIRCAPISCF obj.MLIRCAPISCF MLIRCAPIShape obj.MLIRCAPIShape MLIRCAPISparseTensor obj.MLIRCAPISparseTensor MLIRCAPIStandard obj.MLIRCAPIStandard MLIRCAPITensor obj.MLIRCAPITensor MLIRCAPIQuant obj.MLIRCAPIQuant MLIRCAPIPDL obj.MLIRCAPIPDL MLIRCAPIConversion obj.MLIRCAPIConversion MLIRCAPIInterfaces obj.MLIRCAPIInterfaces MLIRCAPIIR obj.MLIRCAPIIR MLIRCAPIRegistration obj.MLIRCAPIRegistration MLIRCAPITransforms obj.MLIRCAPITransforms MLIRCAPIExecutionEngine obj.MLIRCAPIExecutionEngine MLIRTestAnalysis MLIRTestStandardToLLVM MLIRAffineTransformsTestPasses MLIRDLTITestPasses MLIRGPUTestPasses MLIRLinalgTestPasses MLIRMathTestPasses MLIRMemRefTestPasses MLIRSCFTestPasses MLIRShapeTestPasses MLIRSPIRVTestPasses MLIRStandardOpsTestPasses MLIRTensorTestPasses MLIRTestDialect MLIRTosaTestPasses MLIRVectorTestPasses MLIRTestIR MLIRTestPass MLIRTestReducer MLIRTestRewrite MLIRTestTransforms MLIRPythonTestDialect MLIRCAPIPythonTestDialect obj.MLIRCAPIPythonTestDialect MLIRMlirOptMain MLIRPythonSources MLIRPythonSources.Dialects MLIRPythonSources.Core MLIRPythonSources.ExecutionEngine MLIRPythonSources.Passes MLIRPythonCAPIHeaderSources MLIRPythonSources.Dialects.async_dialect MLIRPythonSources.Dialects.async_dialect.ops_gen MLIRPythonSources.Dialects.builtin MLIRPythonSources.Dialects.builtin.ops_gen MLIRPythonSources.Dialects.cf MLIRPythonSources.Dialects.cf.ops_gen MLIRPythonSources.Dialects.gpu MLIRPythonSources.Dialects.gpu.ops_gen MLIRPythonSources.Dialects.linalg MLIRPythonSources.Dialects.linalg.ops_gen MLIRPythonSources.Dialects.math MLIRPythonSources.Dialects.math.ops_gen MLIRPythonSources.Dialects.arith MLIRPythonSources.Dialects.arith.ops_gen MLIRPythonSources.Dialects.memref MLIRPythonSources.Dialects.memref.ops_gen MLIRPythonSources.Dialects.quant MLIRPythonSources.Dialects.pdl MLIRPythonSources.Dialects.pdl.ops_gen MLIRPythonSources.Dialects.scf MLIRPythonSources.Dialects.scf.ops_gen MLIRPythonSources.Dialects.shape MLIRPythonSources.Dialects.shape.ops_gen MLIRPythonSources.Dialects.sparse_tensor MLIRPythonSources.Dialects.sparse_tensor.ops_gen MLIRPythonSources.Dialects.std MLIRPythonSources.Dialects.std.ops_gen MLIRPythonSources.Dialects.tensor MLIRPythonSources.Dialects.tensor.ops_gen MLIRPythonSources.Dialects.tosa MLIRPythonSources.Dialects.tosa.ops_gen MLIRPythonSources.Dialects.vector MLIRPythonSources.Dialects.vector.ops_gen MLIRPythonExtension.Core MLIRPythonExtension.Dialects.Linalg.Pybind MLIRPythonExtension.Dialects.Quant.Pybind MLIRPythonExtension.Dialects.PDL.Pybind MLIRPythonExtension.Dialects.SparseTensor.Pybind MLIRPythonExtension.AllPassesRegistration MLIRPythonExtension.AsyncDialectPasses MLIRPythonExtension.Conversions MLIRPythonExtension.ExecutionEngine MLIRPythonExtension.GPUDialectPasses MLIRPythonExtension.LinalgPasses MLIRPythonExtension.SparseTensorDialectPasses MLIRPythonExtension.Transforms MLIRPythonTestSources MLIRPythonTestSources.Dialects MLIRPythonTestSources.Dialects.PythonTest MLIRPythonTestSources.Dialects.PythonTest.ops_gen MLIRPythonTestSources.PythonTestExtension)
+foreach(_expectedTarget MLIRAnalysis MLIRPresburger MLIRAffineToStandard MLIRArithmeticToLLVM MLIRArithmeticToSPIRV MLIRArmNeon2dToIntr MLIRAsyncToLLVM MLIRBufferizationToMemRef MLIRComplexToLLVM MLIRComplexToStandard MLIRControlFlowToLLVM MLIRControlFlowToSPIRV MLIRFuncToSPIRV MLIRGPUToGPURuntimeTransforms MLIRGPUToNVVMTransforms MLIRGPUToROCDLTransforms MLIRGPUToSPIRV MLIRGPUToVulkanTransforms MLIRLinalgToLLVM MLIRLinalgToSPIRV MLIRLinalgToStandard MLIRLLVMCommonConversion MLIRMathToLibm MLIRMathToLLVM MLIRMathToSPIRV MLIRMemRefToLLVM MLIRMemRefToSPIRV MLIROpenACCToLLVM MLIROpenACCToSCF MLIROpenMPToLLVM MLIRPDLToPDLInterp MLIRReconcileUnrealizedCasts MLIRSCFToControlFlow MLIRSCFToGPU MLIRSCFToOpenMP MLIRSCFToSPIRV MLIRShapeToStandard MLIRSPIRVToLLVM MLIRStandardToLLVM MLIRTensorToSPIRV MLIRTosaToLinalg MLIRTosaToSCF MLIRTosaToStandard MLIRVectorToROCDL MLIRVectorToLLVM MLIRVectorToGPU MLIRVectorToSCF MLIRVectorToSPIRV MLIRAffineAnalysis MLIRAffine MLIRAffineTransforms MLIRAffineUtils MLIRArithmetic MLIRArithmeticTransforms MLIRArithmeticUtils MLIRArmNeon MLIRArmSVE MLIRArmSVETransforms MLIRAsync MLIRAsyncTransforms MLIRAMX MLIRAMXTransforms MLIRBufferization MLIRBufferizationTransforms MLIRComplex MLIRControlFlow MLIRDLTI MLIREmitC MLIRFunc MLIRFuncTransforms MLIRGPUOps MLIRGPUTransforms MLIRLinalgAnalysis MLIRAffineBufferizableOpInterfaceImpl MLIRModuleBufferization MLIRLinalg MLIRLinalgTransforms MLIRLinalgUtils MLIRLLVMIRTransforms MLIRLLVMIR MLIRNVVMIR MLIRROCDLIR MLIRMath MLIRMathTransforms MLIRMemRef MLIRMemRefTransforms MLIRMemRefUtils MLIROpenACC MLIROpenMP MLIRPDL MLIRPDLInterp MLIRQuant MLIRQuantTransforms MLIRQuantUtils MLIRSCF MLIRSCFTransforms MLIRSCFUtils MLIRShape MLIRShapeOpsTransforms MLIRSparseTensor MLIRSparseTensorTransforms MLIRSparseTensorPipelines MLIRSparseTensorUtils MLIRSPIRV MLIRSPIRVModuleCombiner MLIRSPIRVConversion MLIRSPIRVTransforms MLIRSPIRVUtils MLIRTensor MLIRTensorInferTypeOpInterfaceImpl MLIRTensorTilingInterfaceImpl MLIRTensorTransforms MLIRTensorUtils MLIRTosa MLIRTosaTransforms MLIRDialectUtils MLIRVector MLIRVectorTransforms MLIRVectorUtils MLIRX86Vector MLIRX86VectorTransforms MLIRDialect MLIRIR MLIRCallInterfaces MLIRCastInterfaces MLIRControlFlowInterfaces MLIRCopyOpInterface MLIRDataLayoutInterfaces MLIRDerivedAttributeOpInterface MLIRInferTypeOpInterface MLIRSideEffectInterfaces MLIRTilingInterface MLIRVectorInterfaces MLIRViewLikeInterface MLIRLoopLikeInterface MLIRParser MLIRPass MLIRReduce MLIRRewrite MLIRSupport MLIROptLib MLIRTableGen MLIRTargetCpp MLIRSPIRVDeserialization MLIRSPIRVSerialization MLIRSPIRVBinaryUtils MLIRSPIRVTranslateRegistration MLIRArmNeonToLLVMIRTranslation MLIRArmSVEToLLVMIRTranslation MLIRAMXToLLVMIRTranslation MLIRLLVMToLLVMIRTranslation MLIRNVVMToLLVMIRTranslation MLIROpenACCToLLVMIRTranslation MLIROpenMPToLLVMIRTranslation MLIRROCDLToLLVMIRTranslation MLIRX86VectorToLLVMIRTranslation MLIRTargetLLVMIRExport MLIRToLLVMIRTranslationRegistration MLIRTargetLLVMIRImport MLIRLspServerLib MLIRReduceLib MLIRPDLLAST MLIRPDLLCodeGen MLIRPDLLODS MLIRTransformUtils MLIRTransforms MLIRTranslation MLIRExecutionEngine MLIRJitRunner mlir_c_runner_utils mlir_runner_utils mlir_async_runtime MLIRCAPIDebug obj.MLIRCAPIDebug MLIRCAPIAsync obj.MLIRCAPIAsync MLIRCAPIGPU obj.MLIRCAPIGPU MLIRCAPILLVM obj.MLIRCAPILLVM MLIRCAPILinalg obj.MLIRCAPILinalg MLIRCAPISCF obj.MLIRCAPISCF MLIRCAPIShape obj.MLIRCAPIShape MLIRCAPISparseTensor obj.MLIRCAPISparseTensor MLIRCAPIFunc obj.MLIRCAPIFunc MLIRCAPITensor obj.MLIRCAPITensor MLIRCAPIQuant obj.MLIRCAPIQuant MLIRCAPIPDL obj.MLIRCAPIPDL MLIRCAPIConversion obj.MLIRCAPIConversion MLIRCAPIInterfaces obj.MLIRCAPIInterfaces MLIRCAPIIR obj.MLIRCAPIIR MLIRCAPIRegistration obj.MLIRCAPIRegistration MLIRCAPITransforms obj.MLIRCAPITransforms MLIRCAPIExecutionEngine obj.MLIRCAPIExecutionEngine MLIRTestAnalysis MLIRTestStandardToLLVM MLIRAffineTransformsTestPasses MLIRDLTITestPasses MLIRFuncTestPasses MLIRGPUTestPasses MLIRLinalgTestPasses MLIRMathTestPasses MLIRMemRefTestPasses MLIRSCFTestPasses MLIRShapeTestPasses MLIRSPIRVTestPasses MLIRTensorTestPasses MLIRTestDialect MLIRTosaTestPasses MLIRVectorTestPasses MLIRTestIR MLIRTestPass MLIRTestReducer MLIRTestRewrite MLIRTestTransforms MLIRPythonTestDialect MLIRCAPIPythonTestDialect obj.MLIRCAPIPythonTestDialect MLIRMlirOptMain MLIRPythonSources MLIRPythonSources.Dialects MLIRPythonSources.Core MLIRPythonSources.ExecutionEngine MLIRPythonSources.Passes MLIRPythonCAPIHeaderSources MLIRPythonSources.Dialects.async_dialect MLIRPythonSources.Dialects.async_dialect.ops_gen MLIRPythonSources.Dialects.builtin MLIRPythonSources.Dialects.builtin.ops_gen MLIRPythonSources.Dialects.cf MLIRPythonSources.Dialects.cf.ops_gen MLIRPythonSources.Dialects.func MLIRPythonSources.Dialects.func.ops_gen MLIRPythonSources.Dialects.gpu MLIRPythonSources.Dialects.gpu.ops_gen MLIRPythonSources.Dialects.linalg MLIRPythonSources.Dialects.linalg.ops_gen MLIRPythonSources.Dialects.math MLIRPythonSources.Dialects.math.ops_gen MLIRPythonSources.Dialects.arith MLIRPythonSources.Dialects.arith.ops_gen MLIRPythonSources.Dialects.memref MLIRPythonSources.Dialects.memref.ops_gen MLIRPythonSources.Dialects.quant MLIRPythonSources.Dialects.pdl MLIRPythonSources.Dialects.pdl.ops_gen MLIRPythonSources.Dialects.scf MLIRPythonSources.Dialects.scf.ops_gen MLIRPythonSources.Dialects.shape MLIRPythonSources.Dialects.shape.ops_gen MLIRPythonSources.Dialects.sparse_tensor MLIRPythonSources.Dialects.sparse_tensor.ops_gen MLIRPythonSources.Dialects.tensor MLIRPythonSources.Dialects.tensor.ops_gen MLIRPythonSources.Dialects.tosa MLIRPythonSources.Dialects.tosa.ops_gen MLIRPythonSources.Dialects.vector MLIRPythonSources.Dialects.vector.ops_gen MLIRPythonExtension.Core MLIRPythonExtension.Dialects.Linalg.Pybind MLIRPythonExtension.Dialects.Quant.Pybind MLIRPythonExtension.Dialects.PDL.Pybind MLIRPythonExtension.Dialects.SparseTensor.Pybind MLIRPythonExtension.AllPassesRegistration MLIRPythonExtension.AsyncDialectPasses MLIRPythonExtension.Conversions MLIRPythonExtension.ExecutionEngine MLIRPythonExtension.GPUDialectPasses MLIRPythonExtension.LinalgPasses MLIRPythonExtension.SparseTensorDialectPasses MLIRPythonExtension.Transforms MLIRPythonTestSources MLIRPythonTestSources.Dialects MLIRPythonTestSources.Dialects.PythonTest MLIRPythonTestSources.Dialects.PythonTest.ops_gen MLIRPythonTestSources.PythonTestExtension)
   list(APPEND _expectedTargets ${_expectedTarget})
   if(NOT TARGET ${_expectedTarget})
     list(APPEND _targetsNotDefined ${_expectedTarget})
@@ -68,7 +68,7 @@ set_target_properties(MLIRPresburger PROPERTIES
 add_library(MLIRAffineToStandard STATIC IMPORTED)
 
 set_target_properties(MLIRAffineToStandard PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRAffine;MLIRAffineUtils;MLIRArithmetic;MLIRIR;MLIRMemRef;MLIRSCF;MLIRPass;MLIRStandard;MLIRTransforms;MLIRVector;LLVMCore;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRAffine;MLIRAffineUtils;MLIRArithmetic;MLIRIR;MLIRMemRef;MLIRSCF;MLIRPass;MLIRTransforms;MLIRVector;LLVMCore;LLVMSupport"
 )
 
 # Create imported target MLIRArithmeticToLLVM
@@ -82,7 +82,7 @@ set_target_properties(MLIRArithmeticToLLVM PROPERTIES
 add_library(MLIRArithmeticToSPIRV STATIC IMPORTED)
 
 set_target_properties(MLIRArithmeticToSPIRV PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRArithmetic;MLIRSPIRVConversion;MLIRSPIRV;LLVMCore;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRArithmetic;MLIRFuncToSPIRV;MLIRSPIRVConversion;MLIRSPIRV;LLVMCore;LLVMSupport"
 )
 
 # Create imported target MLIRArmNeon2dToIntr
@@ -96,7 +96,7 @@ set_target_properties(MLIRArmNeon2dToIntr PROPERTIES
 add_library(MLIRAsyncToLLVM STATIC IMPORTED)
 
 set_target_properties(MLIRAsyncToLLVM PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRArithmetic;MLIRAsync;MLIRLLVMCommonConversion;MLIRLLVMIR;MLIRStandardOpsTransforms;MLIRStandardToLLVM;MLIRTransforms;LLVMCore;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRArithmetic;MLIRAsync;MLIRFuncTransforms;MLIRLLVMCommonConversion;MLIRLLVMIR;MLIRStandardToLLVM;MLIRTransforms;LLVMCore;LLVMSupport"
 )
 
 # Create imported target MLIRBufferizationToMemRef
@@ -110,14 +110,14 @@ set_target_properties(MLIRBufferizationToMemRef PROPERTIES
 add_library(MLIRComplexToLLVM STATIC IMPORTED)
 
 set_target_properties(MLIRComplexToLLVM PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRComplex;MLIRLLVMCommonConversion;MLIRLLVMIR;MLIRStandardOpsTransforms;MLIRTransforms;LLVMCore;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRComplex;MLIRLLVMCommonConversion;MLIRLLVMIR;MLIRTransforms;LLVMCore;LLVMSupport"
 )
 
 # Create imported target MLIRComplexToStandard
 add_library(MLIRComplexToStandard STATIC IMPORTED)
 
 set_target_properties(MLIRComplexToStandard PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRArithmetic;MLIRComplex;MLIRIR;MLIRMath;MLIRStandard;MLIRTransforms;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRArithmetic;MLIRComplex;MLIRIR;MLIRMath;MLIRTransforms;LLVMSupport"
 )
 
 # Create imported target MLIRControlFlowToLLVM
@@ -132,6 +132,13 @@ add_library(MLIRControlFlowToSPIRV STATIC IMPORTED)
 
 set_target_properties(MLIRControlFlowToSPIRV PROPERTIES
   INTERFACE_LINK_LIBRARIES "MLIRIR;MLIRControlFlow;MLIRPass;MLIRSPIRV;MLIRSPIRVConversion;MLIRSupport;MLIRTransformUtils;LLVMSupport"
+)
+
+# Create imported target MLIRFuncToSPIRV
+add_library(MLIRFuncToSPIRV STATIC IMPORTED)
+
+set_target_properties(MLIRFuncToSPIRV PROPERTIES
+  INTERFACE_LINK_LIBRARIES "MLIRFunc;MLIRIR;MLIRPass;MLIRSPIRV;MLIRSPIRVConversion;MLIRSupport;MLIRTransformUtils;LLVMSupport"
 )
 
 # Create imported target MLIRGPUToGPURuntimeTransforms
@@ -159,14 +166,14 @@ set_target_properties(MLIRGPUToROCDLTransforms PROPERTIES
 add_library(MLIRGPUToSPIRV STATIC IMPORTED)
 
 set_target_properties(MLIRGPUToSPIRV PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRArithmeticToSPIRV;MLIRGPUOps;MLIRIR;MLIRPass;MLIRSCFToSPIRV;MLIRSPIRV;MLIRSPIRVConversion;MLIRStandardToSPIRV;MLIRSupport;MLIRTransforms;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRArithmeticToSPIRV;MLIRGPUOps;MLIRFuncToSPIRV;MLIRIR;MLIRPass;MLIRSCFToSPIRV;MLIRSPIRV;MLIRSPIRVConversion;MLIRSupport;MLIRTransforms;LLVMSupport"
 )
 
 # Create imported target MLIRGPUToVulkanTransforms
 add_library(MLIRGPUToVulkanTransforms STATIC IMPORTED)
 
 set_target_properties(MLIRGPUToVulkanTransforms PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRGPUOps;MLIRIR;MLIRLLVMIR;MLIRPass;MLIRSPIRV;MLIRSPIRVSerialization;MLIRStandard;MLIRSupport;MLIRTransforms;MLIRTranslation;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRFunc;MLIRGPUOps;MLIRIR;MLIRLLVMIR;MLIRPass;MLIRSPIRV;MLIRSPIRVSerialization;MLIRSupport;MLIRTransforms;MLIRTranslation;LLVMSupport"
 )
 
 # Create imported target MLIRLinalgToLLVM
@@ -187,7 +194,7 @@ set_target_properties(MLIRLinalgToSPIRV PROPERTIES
 add_library(MLIRLinalgToStandard STATIC IMPORTED)
 
 set_target_properties(MLIRLinalgToStandard PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRIR;MLIRLinalg;MLIRMemRef;MLIRPass;MLIRSCF;MLIRTransforms;LLVMCore;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRFunc;MLIRIR;MLIRLinalg;MLIRMemRef;MLIRPass;MLIRSCF;MLIRTransforms;LLVMCore;LLVMSupport"
 )
 
 # Create imported target MLIRLLVMCommonConversion
@@ -201,7 +208,7 @@ set_target_properties(MLIRLLVMCommonConversion PROPERTIES
 add_library(MLIRMathToLibm STATIC IMPORTED)
 
 set_target_properties(MLIRMathToLibm PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRArithmetic;MLIRDialectUtils;MLIRMath;MLIRStandardOpsTransforms;MLIRVector;MLIRVectorUtils;LLVMCore;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRArithmetic;MLIRDialectUtils;MLIRFunc;MLIRMath;MLIRTransformUtils;MLIRVector;MLIRVectorUtils;LLVMCore;LLVMSupport"
 )
 
 # Create imported target MLIRMathToLLVM
@@ -278,21 +285,21 @@ set_target_properties(MLIRSCFToControlFlow PROPERTIES
 add_library(MLIRSCFToGPU STATIC IMPORTED)
 
 set_target_properties(MLIRSCFToGPU PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRAffine;MLIRAffineToStandard;MLIRArithmetic;MLIRComplex;MLIRGPUTransforms;MLIRIR;MLIRLinalg;MLIRMemRef;MLIRPass;MLIRStandard;MLIRSupport;MLIRTransforms;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRAffine;MLIRAffineToStandard;MLIRArithmetic;MLIRComplex;MLIRGPUTransforms;MLIRIR;MLIRLinalg;MLIRMemRef;MLIRPass;MLIRSupport;MLIRTransforms;LLVMSupport"
 )
 
 # Create imported target MLIRSCFToOpenMP
 add_library(MLIRSCFToOpenMP STATIC IMPORTED)
 
 set_target_properties(MLIRSCFToOpenMP PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRAnalysis;MLIRArithmetic;MLIRLLVMIR;MLIROpenMP;MLIRSCF;MLIRStandard;MLIRTransforms;LLVMCore;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRAnalysis;MLIRArithmetic;MLIRLLVMIR;MLIROpenMP;MLIRSCF;MLIRTransforms;LLVMCore;LLVMSupport"
 )
 
 # Create imported target MLIRSCFToSPIRV
 add_library(MLIRSCFToSPIRV STATIC IMPORTED)
 
 set_target_properties(MLIRSCFToSPIRV PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRArithmeticToSPIRV;MLIRMemRefToSPIRV;MLIRSPIRV;MLIRSPIRVConversion;MLIRStandardToSPIRV;MLIRIR;MLIRPass;MLIRSCF;MLIRStandard;MLIRSupport;MLIRTransforms;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRArithmeticToSPIRV;MLIRFuncToSPIRV;MLIRMemRefToSPIRV;MLIRSPIRV;MLIRSPIRVConversion;MLIRIR;MLIRPass;MLIRSCF;MLIRSupport;MLIRTransforms;LLVMSupport"
 )
 
 # Create imported target MLIRShapeToStandard
@@ -313,14 +320,14 @@ set_target_properties(MLIRSPIRVToLLVM PROPERTIES
 add_library(MLIRStandardToLLVM STATIC IMPORTED)
 
 set_target_properties(MLIRStandardToLLVM PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRAnalysis;MLIRArithmeticToLLVM;MLIRControlFlowToLLVM;MLIRDataLayoutInterfaces;MLIRLLVMCommonConversion;MLIRLLVMIR;MLIRMath;MLIRStandard;MLIRTransforms;LLVMCore;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRAnalysis;MLIRArithmeticToLLVM;MLIRControlFlowToLLVM;MLIRDataLayoutInterfaces;MLIRFunc;MLIRLLVMCommonConversion;MLIRLLVMIR;MLIRMath;MLIRTransforms;LLVMCore;LLVMSupport"
 )
 
-# Create imported target MLIRStandardToSPIRV
-add_library(MLIRStandardToSPIRV STATIC IMPORTED)
+# Create imported target MLIRTensorToSPIRV
+add_library(MLIRTensorToSPIRV STATIC IMPORTED)
 
-set_target_properties(MLIRStandardToSPIRV PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRArithmeticToSPIRV;MLIRControlFlowToSPIRV;MLIRIR;MLIRMathToSPIRV;MLIRMemRef;MLIRPass;MLIRSPIRV;MLIRSPIRVConversion;MLIRSupport;MLIRTransformUtils;MLIRStandard;MLIRTensor;LLVMSupport"
+set_target_properties(MLIRTensorToSPIRV PROPERTIES
+  INTERFACE_LINK_LIBRARIES "MLIRArithmeticToSPIRV;MLIRFuncToSPIRV;MLIRIR;MLIRPass;MLIRSPIRV;MLIRSPIRVConversion;MLIRSupport;MLIRTransformUtils;MLIRTensor;LLVMSupport"
 )
 
 # Create imported target MLIRTosaToLinalg
@@ -334,14 +341,14 @@ set_target_properties(MLIRTosaToLinalg PROPERTIES
 add_library(MLIRTosaToSCF STATIC IMPORTED)
 
 set_target_properties(MLIRTosaToSCF PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRIR;MLIRSCF;MLIRStandard;MLIRPass;MLIRTensor;MLIRTosa;MLIRTosaTransforms;MLIRSupport;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRIR;MLIRSCF;MLIRPass;MLIRTensor;MLIRTosa;MLIRTosaTransforms;MLIRSupport;LLVMSupport"
 )
 
 # Create imported target MLIRTosaToStandard
 add_library(MLIRTosaToStandard STATIC IMPORTED)
 
 set_target_properties(MLIRTosaToStandard PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRArithmetic;MLIRIR;MLIRStandard;MLIRPass;MLIRTosa;MLIRTosaTransforms;MLIRSupport;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRArithmetic;MLIRIR;MLIRPass;MLIRTosa;MLIRTosaTransforms;MLIRSupport;LLVMSupport"
 )
 
 # Create imported target MLIRVectorToROCDL
@@ -397,7 +404,7 @@ set_target_properties(MLIRAffine PROPERTIES
 add_library(MLIRAffineTransforms STATIC IMPORTED)
 
 set_target_properties(MLIRAffineTransforms PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRAffine;MLIRAffineAnalysis;MLIRAffineUtils;MLIRArithmetic;MLIRIR;MLIRMemRef;MLIRPass;MLIRSCFUtils;MLIRSideEffectInterfaces;MLIRStandard;MLIRTransformUtils;MLIRVector;MLIRVectorUtils;MLIRVectorToLLVM;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRAffine;MLIRAffineAnalysis;MLIRAffineUtils;MLIRArithmetic;MLIRIR;MLIRMemRef;MLIRPass;MLIRSCFUtils;MLIRSideEffectInterfaces;MLIRTransformUtils;MLIRVector;MLIRVectorUtils;MLIRVectorToLLVM;LLVMSupport"
 )
 
 # Create imported target MLIRAffineUtils
@@ -446,21 +453,21 @@ set_target_properties(MLIRArmSVE PROPERTIES
 add_library(MLIRArmSVETransforms STATIC IMPORTED)
 
 set_target_properties(MLIRArmSVETransforms PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRArmSVE;MLIRIR;MLIRLLVMCommonConversion;MLIRLLVMIR;MLIRStandard;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRArmSVE;MLIRFunc;MLIRIR;MLIRLLVMCommonConversion;MLIRLLVMIR;LLVMSupport"
 )
 
 # Create imported target MLIRAsync
 add_library(MLIRAsync STATIC IMPORTED)
 
 set_target_properties(MLIRAsync PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRDialect;MLIRInferTypeOpInterface;MLIRIR;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRControlFlowInterfaces;MLIRDialect;MLIRInferTypeOpInterface;MLIRIR;LLVMSupport"
 )
 
 # Create imported target MLIRAsyncTransforms
 add_library(MLIRAsyncTransforms STATIC IMPORTED)
 
 set_target_properties(MLIRAsyncTransforms PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRArithmetic;MLIRAsync;MLIRIR;MLIRPass;MLIRSCF;MLIRSCFToControlFlow;MLIRStandard;MLIRTransforms;MLIRTransformUtils;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRArithmetic;MLIRAsync;MLIRFunc;MLIRIR;MLIRPass;MLIRSCF;MLIRSCFToControlFlow;MLIRTransforms;MLIRTransformUtils;LLVMSupport"
 )
 
 # Create imported target MLIRAMX
@@ -488,7 +495,7 @@ set_target_properties(MLIRBufferization PROPERTIES
 add_library(MLIRBufferizationTransforms STATIC IMPORTED)
 
 set_target_properties(MLIRBufferizationTransforms PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRBufferization;MLIRControlFlowInterfaces;MLIRInferTypeOpInterface;MLIRIR;MLIRMemRef;MLIRPass;MLIRStandard;MLIRTransforms;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRBufferization;MLIRControlFlowInterfaces;MLIRFunc;MLIRInferTypeOpInterface;MLIRIR;MLIRMemRef;MLIRPass;MLIRTransforms;LLVMSupport"
 )
 
 # Create imported target MLIRComplex
@@ -519,6 +526,20 @@ set_target_properties(MLIREmitC PROPERTIES
   INTERFACE_LINK_LIBRARIES "MLIRIR;MLIRSideEffectInterfaces;LLVMSupport"
 )
 
+# Create imported target MLIRFunc
+add_library(MLIRFunc STATIC IMPORTED)
+
+set_target_properties(MLIRFunc PROPERTIES
+  INTERFACE_LINK_LIBRARIES "MLIRCallInterfaces;MLIRControlFlow;MLIRControlFlowInterfaces;MLIRInferTypeOpInterface;MLIRIR;MLIRSideEffectInterfaces;LLVMSupport"
+)
+
+# Create imported target MLIRFuncTransforms
+add_library(MLIRFuncTransforms STATIC IMPORTED)
+
+set_target_properties(MLIRFuncTransforms PROPERTIES
+  INTERFACE_LINK_LIBRARIES "MLIRAffine;MLIRArithmeticTransforms;MLIRBufferization;MLIRBufferizationTransforms;MLIRFunc;MLIRIR;MLIRMemRef;MLIRPass;MLIRSCF;MLIRTransforms;LLVMSupport"
+)
+
 # Create imported target MLIRGPUOps
 add_library(MLIRGPUOps STATIC IMPORTED)
 
@@ -530,14 +551,14 @@ set_target_properties(MLIRGPUOps PROPERTIES
 add_library(MLIRGPUTransforms STATIC IMPORTED)
 
 set_target_properties(MLIRGPUTransforms PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRAffineUtils;MLIRArithmetic;MLIRAsync;MLIRDataLayoutInterfaces;MLIRGPUOps;MLIRIR;MLIRLLVMIR;MLIRLLVMToLLVMIRTranslation;MLIRMemRef;MLIRPass;MLIRSCF;MLIRStandard;MLIRSupport;MLIRTransformUtils;LLVMCore;LLVMMC;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRAffineUtils;MLIRArithmetic;MLIRAsync;MLIRDataLayoutInterfaces;MLIRGPUOps;MLIRIR;MLIRLLVMIR;MLIRLLVMToLLVMIRTranslation;MLIRMemRef;MLIRPass;MLIRSCF;MLIRSupport;MLIRTransformUtils;LLVMCore;LLVMMC;LLVMSupport"
 )
 
 # Create imported target MLIRLinalgAnalysis
 add_library(MLIRLinalgAnalysis STATIC IMPORTED)
 
 set_target_properties(MLIRLinalgAnalysis PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRAffineAnalysis;MLIRAnalysis;MLIRIR;MLIRLinalg;MLIRMemRef;MLIRStandard;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRAffineAnalysis;MLIRAnalysis;MLIRIR;MLIRLinalg;MLIRMemRef;LLVMSupport"
 )
 
 # Create imported target MLIRAffineBufferizableOpInterfaceImpl
@@ -547,18 +568,11 @@ set_target_properties(MLIRAffineBufferizableOpInterfaceImpl PROPERTIES
   INTERFACE_LINK_LIBRARIES "MLIRAffine;MLIRBufferization;LLVMSupport"
 )
 
-# Create imported target MLIRLinalgBufferizableOpInterfaceImpl
-add_library(MLIRLinalgBufferizableOpInterfaceImpl STATIC IMPORTED)
-
-set_target_properties(MLIRLinalgBufferizableOpInterfaceImpl PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRBufferization;MLIRBufferizationTransforms;MLIRIR;MLIRLinalg;MLIRTensor;LLVMSupport"
-)
-
 # Create imported target MLIRModuleBufferization
 add_library(MLIRModuleBufferization STATIC IMPORTED)
 
 set_target_properties(MLIRModuleBufferization PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRBufferization;MLIRBufferizationTransforms;MLIRIR;MLIRMemRef;MLIRStandard;MLIRStandardOpsTransforms;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRBufferization;MLIRBufferizationTransforms;MLIRFunc;MLIRFuncTransforms;MLIRIR;MLIRMemRef;LLVMSupport"
 )
 
 # Create imported target MLIRLinalg
@@ -572,14 +586,14 @@ set_target_properties(MLIRLinalg PROPERTIES
 add_library(MLIRLinalgTransforms STATIC IMPORTED)
 
 set_target_properties(MLIRLinalgTransforms PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRAffine;MLIRAffineBufferizableOpInterfaceImpl;MLIRAffineUtils;MLIRAnalysis;MLIRArithmetic;MLIRArithmeticTransforms;MLIRBufferization;MLIRComplex;MLIRInferTypeOpInterface;MLIRIR;MLIRMemRef;MLIRLinalg;MLIRLinalgAnalysis;MLIRLinalgBufferizableOpInterfaceImpl;MLIRLinalgUtils;MLIRModuleBufferization;MLIRSCF;MLIRSCFTransforms;MLIRSCFUtils;MLIRPass;MLIRSparseTensor;MLIRStandard;MLIRStandardOpsTransforms;MLIRStandardToLLVM;MLIRTensor;MLIRTensorTilingInterfaceImpl;MLIRTensorTransforms;MLIRTransforms;MLIRTransformUtils;MLIRVector;MLIRVectorTransforms;MLIRVectorUtils;MLIRX86VectorTransforms;MLIRVectorToSCF;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRAffine;MLIRAffineBufferizableOpInterfaceImpl;MLIRAffineUtils;MLIRAnalysis;MLIRArithmetic;MLIRArithmeticTransforms;MLIRBufferization;MLIRComplex;MLIRFunc;MLIRFuncTransforms;MLIRInferTypeOpInterface;MLIRIR;MLIRMemRef;MLIRLinalg;MLIRLinalgAnalysis;MLIRLinalgUtils;MLIRModuleBufferization;MLIRSCF;MLIRSCFTransforms;MLIRSCFUtils;MLIRPass;MLIRSparseTensor;MLIRStandardToLLVM;MLIRTensor;MLIRTensorTilingInterfaceImpl;MLIRTensorTransforms;MLIRTransforms;MLIRTransformUtils;MLIRVector;MLIRVectorTransforms;MLIRVectorUtils;MLIRX86VectorTransforms;MLIRVectorToSCF;LLVMSupport"
 )
 
 # Create imported target MLIRLinalgUtils
 add_library(MLIRLinalgUtils STATIC IMPORTED)
 
 set_target_properties(MLIRLinalgUtils PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRAffine;MLIRAffineAnalysis;MLIRAffineUtils;MLIRArithmetic;MLIRIR;MLIRLinalg;MLIRSCF;MLIRPass;MLIRStandard;MLIRTensorUtils;MLIRTransformUtils;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRAffine;MLIRAffineAnalysis;MLIRAffineUtils;MLIRArithmetic;MLIRIR;MLIRLinalg;MLIRSCF;MLIRPass;MLIRTensorUtils;MLIRTransformUtils;LLVMSupport"
 )
 
 # Create imported target MLIRLLVMIRTransforms
@@ -621,7 +635,7 @@ set_target_properties(MLIRMath PROPERTIES
 add_library(MLIRMathTransforms STATIC IMPORTED)
 
 set_target_properties(MLIRMathTransforms PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRArithmetic;MLIRDialectUtils;MLIRIR;MLIRMath;MLIRPass;MLIRStandard;MLIRTransforms;MLIRX86Vector;MLIRVector;MLIRVectorUtils;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRArithmetic;MLIRDialectUtils;MLIRIR;MLIRMath;MLIRPass;MLIRTransforms;MLIRX86Vector;MLIRVector;MLIRVectorUtils;LLVMSupport"
 )
 
 # Create imported target MLIRMemRef
@@ -635,7 +649,7 @@ set_target_properties(MLIRMemRef PROPERTIES
 add_library(MLIRMemRefTransforms STATIC IMPORTED)
 
 set_target_properties(MLIRMemRefTransforms PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRAffine;MLIRAffineUtils;MLIRArithmetic;MLIRInferTypeOpInterface;MLIRMemRef;MLIRPass;MLIRStandard;MLIRTensor;MLIRTransforms;MLIRVector;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRAffine;MLIRAffineUtils;MLIRArithmetic;MLIRFunc;MLIRInferTypeOpInterface;MLIRLoopLikeInterface;MLIRMemRef;MLIRPass;MLIRTensor;MLIRTransforms;MLIRVector;LLVMSupport"
 )
 
 # Create imported target MLIRMemRefUtils
@@ -698,21 +712,21 @@ set_target_properties(MLIRQuantUtils PROPERTIES
 add_library(MLIRSCF STATIC IMPORTED)
 
 set_target_properties(MLIRSCF PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRArithmetic;MLIRBufferization;MLIRIR;MLIRLoopLikeInterface;MLIRSideEffectInterfaces;MLIRStandard;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRArithmetic;MLIRBufferization;MLIRControlFlow;MLIRIR;MLIRLoopLikeInterface;MLIRSideEffectInterfaces;LLVMSupport"
 )
 
 # Create imported target MLIRSCFTransforms
 add_library(MLIRSCFTransforms STATIC IMPORTED)
 
 set_target_properties(MLIRSCFTransforms PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRAffine;MLIRAffineAnalysis;MLIRArithmetic;MLIRBufferization;MLIRBufferizationTransforms;MLIRDialectUtils;MLIRIR;MLIRMemRef;MLIRPass;MLIRSCF;MLIRSCFUtils;MLIRStandard;MLIRSupport;MLIRTensor;MLIRTransforms;MLIRTransformUtils;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRAffine;MLIRAffineAnalysis;MLIRArithmetic;MLIRBufferization;MLIRBufferizationTransforms;MLIRDialectUtils;MLIRIR;MLIRMemRef;MLIRPass;MLIRSCF;MLIRSCFUtils;MLIRSupport;MLIRTensor;MLIRTransforms;MLIRTransformUtils;LLVMSupport"
 )
 
 # Create imported target MLIRSCFUtils
 add_library(MLIRSCFUtils STATIC IMPORTED)
 
 set_target_properties(MLIRSCFUtils PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRAffine;MLIRAffineAnalysis;MLIRAnalysis;MLIRArithmetic;MLIRDialectUtils;MLIRIR;MLIRSCF;MLIRStandard;MLIRSupport;MLIRTransforms;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRAffine;MLIRAffineAnalysis;MLIRAnalysis;MLIRArithmetic;MLIRDialectUtils;MLIRFunc;MLIRIR;MLIRSCF;MLIRSupport;MLIRTransforms;LLVMSupport"
 )
 
 # Create imported target MLIRShape
@@ -740,14 +754,14 @@ set_target_properties(MLIRSparseTensor PROPERTIES
 add_library(MLIRSparseTensorTransforms STATIC IMPORTED)
 
 set_target_properties(MLIRSparseTensorTransforms PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRArithmetic;MLIRBufferization;MLIRIR;MLIRLLVMIR;MLIRLinalg;MLIRLinalgTransforms;MLIRMemRef;MLIRPass;MLIRSCF;MLIRSCFTransforms;MLIRSCFUtils;MLIRStandard;MLIRSparseTensor;MLIRSparseTensorUtils;MLIRTensor;MLIRTransforms;MLIRVector;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRArithmetic;MLIRBufferization;MLIRFunc;MLIRIR;MLIRLLVMIR;MLIRLinalg;MLIRLinalgTransforms;MLIRMemRef;MLIRPass;MLIRSCF;MLIRSCFTransforms;MLIRSCFUtils;MLIRSparseTensor;MLIRSparseTensorUtils;MLIRTensor;MLIRTransforms;MLIRVector;LLVMSupport"
 )
 
 # Create imported target MLIRSparseTensorPipelines
 add_library(MLIRSparseTensorPipelines STATIC IMPORTED)
 
 set_target_properties(MLIRSparseTensorPipelines PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRArithmeticTransforms;MLIRAffineToStandard;MLIRBufferizationTransforms;MLIRLinalgTransforms;MLIRMathToLLVM;MLIRMemRefToLLVM;MLIRPass;MLIRReconcileUnrealizedCasts;MLIRSCFToControlFlow;MLIRSparseTensor;MLIRSparseTensorTransforms;MLIRStandardOpsTransforms;MLIRTensorTransforms;MLIRVectorToLLVM;MLIRVectorTransforms;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRArithmeticTransforms;MLIRAffineToStandard;MLIRBufferizationTransforms;MLIRFuncTransforms;MLIRLinalgTransforms;MLIRMathToLLVM;MLIRMemRefToLLVM;MLIRPass;MLIRReconcileUnrealizedCasts;MLIRSCFToControlFlow;MLIRSparseTensor;MLIRSparseTensorTransforms;MLIRTensorTransforms;MLIRVectorToLLVM;MLIRVectorTransforms;LLVMSupport"
 )
 
 # Create imported target MLIRSparseTensorUtils
@@ -790,20 +804,6 @@ add_library(MLIRSPIRVUtils STATIC IMPORTED)
 
 set_target_properties(MLIRSPIRVUtils PROPERTIES
   INTERFACE_LINK_LIBRARIES "MLIRSPIRV;LLVMSupport"
-)
-
-# Create imported target MLIRStandard
-add_library(MLIRStandard STATIC IMPORTED)
-
-set_target_properties(MLIRStandard PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRArithmetic;MLIRCallInterfaces;MLIRCastInterfaces;MLIRControlFlow;MLIRControlFlowInterfaces;MLIRInferTypeOpInterface;MLIRIR;MLIRSideEffectInterfaces;MLIRVectorInterfaces;LLVMSupport"
-)
-
-# Create imported target MLIRStandardOpsTransforms
-add_library(MLIRStandardOpsTransforms STATIC IMPORTED)
-
-set_target_properties(MLIRStandardOpsTransforms PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRAffine;MLIRArithmeticTransforms;MLIRBufferization;MLIRBufferizationTransforms;MLIRIR;MLIRMemRef;MLIRPass;MLIRSCF;MLIRStandard;MLIRTransforms;LLVMSupport"
 )
 
 # Create imported target MLIRTensor
@@ -852,7 +852,7 @@ set_target_properties(MLIRTosa PROPERTIES
 add_library(MLIRTosaTransforms STATIC IMPORTED)
 
 set_target_properties(MLIRTosaTransforms PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRPass;MLIRTosa;MLIRStandard;MLIRTransformUtils;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRFunc;MLIRPass;MLIRTosa;MLIRTransformUtils;LLVMSupport"
 )
 
 # Create imported target MLIRDialectUtils
@@ -880,7 +880,7 @@ set_target_properties(MLIRVectorTransforms PROPERTIES
 add_library(MLIRVectorUtils STATIC IMPORTED)
 
 set_target_properties(MLIRVectorUtils PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRAffine;MLIRAffineAnalysis;MLIRArithmetic;MLIRDialectUtils;MLIRIR;MLIRMemRef;MLIRStandard;MLIRTensor;MLIRVector;MLIRVectorInterfaces;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRAffine;MLIRAffineAnalysis;MLIRArithmetic;MLIRDialectUtils;MLIRFunc;MLIRIR;MLIRMemRef;MLIRTensor;MLIRVector;MLIRVectorInterfaces;LLVMSupport"
 )
 
 # Create imported target MLIRX86Vector
@@ -1044,7 +1044,7 @@ add_library(MLIRTableGen STATIC IMPORTED)
 add_library(MLIRTargetCpp STATIC IMPORTED)
 
 set_target_properties(MLIRTargetCpp PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRArithmetic;MLIRControlFlow;MLIREmitC;MLIRIR;MLIRMath;MLIRSCF;MLIRStandard;MLIRSupport;MLIRTranslation;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRArithmetic;MLIRControlFlow;MLIREmitC;MLIRFunc;MLIRIR;MLIRMath;MLIRSCF;MLIRSupport;MLIRTranslation;LLVMSupport"
 )
 
 # Create imported target MLIRSPIRVDeserialization
@@ -1142,7 +1142,7 @@ set_target_properties(MLIRX86VectorToLLVMIRTranslation PROPERTIES
 add_library(MLIRTargetLLVMIRExport STATIC IMPORTED)
 
 set_target_properties(MLIRTargetLLVMIRExport PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRLLVMIR;MLIRLLVMIRTransforms;MLIRTranslation;LLVMCore;LLVMFrontendOpenMP;LLVMTransformUtils;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRDLTI;MLIRLLVMIR;MLIRLLVMIRTransforms;MLIRTranslation;LLVMCore;LLVMFrontendOpenMP;LLVMTransformUtils;LLVMSupport"
 )
 
 # Create imported target MLIRToLLVMIRTranslationRegistration
@@ -1156,7 +1156,7 @@ set_target_properties(MLIRToLLVMIRTranslationRegistration PROPERTIES
 add_library(MLIRTargetLLVMIRImport STATIC IMPORTED)
 
 set_target_properties(MLIRTargetLLVMIRImport PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRLLVMIR;MLIRTranslation;LLVMCore;LLVMIRReader;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRDLTI;MLIRLLVMIR;MLIRTranslation;LLVMCore;LLVMIRReader;LLVMSupport"
 )
 
 # Create imported target MLIRLspServerLib
@@ -1177,14 +1177,21 @@ set_target_properties(MLIRReduceLib PROPERTIES
 add_library(MLIRPDLLAST STATIC IMPORTED)
 
 set_target_properties(MLIRPDLLAST PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRSupport;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRPDLLODS;MLIRSupport;LLVMSupport"
 )
 
-# Create imported target MLIRPDLLParser
-add_library(MLIRPDLLParser STATIC IMPORTED)
+# Create imported target MLIRPDLLCodeGen
+add_library(MLIRPDLLCodeGen STATIC IMPORTED)
 
-set_target_properties(MLIRPDLLParser PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRPDLLAST;MLIRSupport;LLVMSupport"
+set_target_properties(MLIRPDLLCodeGen PROPERTIES
+  INTERFACE_LINK_LIBRARIES "MLIRParser;MLIRPDLLAST;MLIRPDL;MLIRSupport;LLVMSupport"
+)
+
+# Create imported target MLIRPDLLODS
+add_library(MLIRPDLLODS STATIC IMPORTED)
+
+set_target_properties(MLIRPDLLODS PROPERTIES
+  INTERFACE_LINK_LIBRARIES "MLIRSupport;LLVMSupport"
 )
 
 # Create imported target MLIRTransformUtils
@@ -1219,7 +1226,7 @@ set_target_properties(MLIRExecutionEngine PROPERTIES
 add_library(MLIRJitRunner STATIC IMPORTED)
 
 set_target_properties(MLIRJitRunner PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRAffineAnalysis;MLIRAffine;MLIRAffineTransforms;MLIRAffineUtils;MLIRArithmetic;MLIRArithmeticTransforms;MLIRArithmeticUtils;MLIRArmNeon;MLIRArmSVE;MLIRArmSVETransforms;MLIRAsync;MLIRAsyncTransforms;MLIRAMX;MLIRAMXTransforms;MLIRBufferization;MLIRBufferizationTransforms;MLIRComplex;MLIRControlFlow;MLIRDLTI;MLIREmitC;MLIRGPUOps;MLIRGPUTransforms;MLIRLinalgAnalysis;MLIRAffineBufferizableOpInterfaceImpl;MLIRLinalgBufferizableOpInterfaceImpl;MLIRModuleBufferization;MLIRLinalg;MLIRLinalgTransforms;MLIRLinalgUtils;MLIRLLVMIRTransforms;MLIRLLVMIR;MLIRNVVMIR;MLIRROCDLIR;MLIRMath;MLIRMathTransforms;MLIRMemRef;MLIRMemRefTransforms;MLIRMemRefUtils;MLIROpenACC;MLIROpenMP;MLIRPDL;MLIRPDLInterp;MLIRQuant;MLIRQuantTransforms;MLIRQuantUtils;MLIRSCF;MLIRSCFTransforms;MLIRSCFUtils;MLIRShape;MLIRShapeOpsTransforms;MLIRSparseTensor;MLIRSparseTensorTransforms;MLIRSparseTensorPipelines;MLIRSparseTensorUtils;MLIRSPIRV;MLIRSPIRVModuleCombiner;MLIRSPIRVConversion;MLIRSPIRVTransforms;MLIRSPIRVUtils;MLIRStandard;MLIRStandardOpsTransforms;MLIRTensor;MLIRTensorInferTypeOpInterfaceImpl;MLIRTensorTilingInterfaceImpl;MLIRTensorTransforms;MLIRTensorUtils;MLIRTosa;MLIRTosaTransforms;MLIRVector;MLIRVectorTransforms;MLIRVectorUtils;MLIRX86Vector;MLIRX86VectorTransforms;MLIRExecutionEngine;MLIRIR;MLIRParser;MLIRStandard;MLIRLLVMToLLVMIRTranslation;MLIRTargetLLVMIRExport;MLIRTransforms;MLIRStandardToLLVM;MLIRSupport;LLVMCore;LLVMOrcJIT;LLVMJITLink;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRAffineAnalysis;MLIRAffine;MLIRAffineTransforms;MLIRAffineUtils;MLIRArithmetic;MLIRArithmeticTransforms;MLIRArithmeticUtils;MLIRArmNeon;MLIRArmSVE;MLIRArmSVETransforms;MLIRAsync;MLIRAsyncTransforms;MLIRAMX;MLIRAMXTransforms;MLIRBufferization;MLIRBufferizationTransforms;MLIRComplex;MLIRControlFlow;MLIRDLTI;MLIREmitC;MLIRFunc;MLIRFuncTransforms;MLIRGPUOps;MLIRGPUTransforms;MLIRLinalgAnalysis;MLIRAffineBufferizableOpInterfaceImpl;MLIRModuleBufferization;MLIRLinalg;MLIRLinalgTransforms;MLIRLinalgUtils;MLIRLLVMIRTransforms;MLIRLLVMIR;MLIRNVVMIR;MLIRROCDLIR;MLIRMath;MLIRMathTransforms;MLIRMemRef;MLIRMemRefTransforms;MLIRMemRefUtils;MLIROpenACC;MLIROpenMP;MLIRPDL;MLIRPDLInterp;MLIRQuant;MLIRQuantTransforms;MLIRQuantUtils;MLIRSCF;MLIRSCFTransforms;MLIRSCFUtils;MLIRShape;MLIRShapeOpsTransforms;MLIRSparseTensor;MLIRSparseTensorTransforms;MLIRSparseTensorPipelines;MLIRSparseTensorUtils;MLIRSPIRV;MLIRSPIRVModuleCombiner;MLIRSPIRVConversion;MLIRSPIRVTransforms;MLIRSPIRVUtils;MLIRTensor;MLIRTensorInferTypeOpInterfaceImpl;MLIRTensorTilingInterfaceImpl;MLIRTensorTransforms;MLIRTensorUtils;MLIRTosa;MLIRTosaTransforms;MLIRVector;MLIRVectorTransforms;MLIRVectorUtils;MLIRX86Vector;MLIRX86VectorTransforms;MLIRExecutionEngine;MLIRFunc;MLIRIR;MLIRParser;MLIRLLVMToLLVMIRTranslation;MLIRTargetLLVMIRExport;MLIRTransforms;MLIRStandardToLLVM;MLIRSupport;LLVMCore;LLVMOrcJIT;LLVMJITLink;LLVMSupport"
 )
 
 # Create imported target mlir_c_runner_utils
@@ -1331,17 +1338,17 @@ set_target_properties(MLIRCAPISparseTensor PROPERTIES
 # Create imported target obj.MLIRCAPISparseTensor
 add_library(obj.MLIRCAPISparseTensor OBJECT IMPORTED)
 
-# Create imported target MLIRCAPIStandard
-add_library(MLIRCAPIStandard STATIC IMPORTED)
+# Create imported target MLIRCAPIFunc
+add_library(MLIRCAPIFunc STATIC IMPORTED)
 
-set_target_properties(MLIRCAPIStandard PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRCAPIIR;MLIRStandard;LLVMSupport"
-  MLIR_AGGREGATE_DEP_LIBS_IMPORTED "MLIRCAPIIR;MLIRStandard;LLVMSupport"
-  MLIR_AGGREGATE_OBJECT_LIB_IMPORTED "obj.MLIRCAPIStandard"
+set_target_properties(MLIRCAPIFunc PROPERTIES
+  INTERFACE_LINK_LIBRARIES "MLIRCAPIIR;MLIRFunc;LLVMSupport"
+  MLIR_AGGREGATE_DEP_LIBS_IMPORTED "MLIRCAPIIR;MLIRFunc;LLVMSupport"
+  MLIR_AGGREGATE_OBJECT_LIB_IMPORTED "obj.MLIRCAPIFunc"
 )
 
-# Create imported target obj.MLIRCAPIStandard
-add_library(obj.MLIRCAPIStandard OBJECT IMPORTED)
+# Create imported target obj.MLIRCAPIFunc
+add_library(obj.MLIRCAPIFunc OBJECT IMPORTED)
 
 # Create imported target MLIRCAPITensor
 add_library(MLIRCAPITensor STATIC IMPORTED)
@@ -1383,8 +1390,8 @@ add_library(obj.MLIRCAPIPDL OBJECT IMPORTED)
 add_library(MLIRCAPIConversion STATIC IMPORTED)
 
 set_target_properties(MLIRCAPIConversion PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRAffineToStandard;MLIRArithmeticToLLVM;MLIRArithmeticToSPIRV;MLIRArmNeon2dToIntr;MLIRAsyncToLLVM;MLIRBufferizationToMemRef;MLIRComplexToLLVM;MLIRComplexToStandard;MLIRControlFlowToLLVM;MLIRControlFlowToSPIRV;MLIRGPUToGPURuntimeTransforms;MLIRGPUToNVVMTransforms;MLIRGPUToROCDLTransforms;MLIRGPUToSPIRV;MLIRGPUToVulkanTransforms;MLIRLinalgToLLVM;MLIRLinalgToSPIRV;MLIRLinalgToStandard;MLIRLLVMCommonConversion;MLIRMathToLibm;MLIRMathToLLVM;MLIRMathToSPIRV;MLIRMemRefToLLVM;MLIRMemRefToSPIRV;MLIROpenACCToLLVM;MLIROpenACCToSCF;MLIROpenMPToLLVM;MLIRPDLToPDLInterp;MLIRReconcileUnrealizedCasts;MLIRSCFToControlFlow;MLIRSCFToGPU;MLIRSCFToOpenMP;MLIRSCFToSPIRV;MLIRShapeToStandard;MLIRSPIRVToLLVM;MLIRStandardToLLVM;MLIRStandardToSPIRV;MLIRTosaToLinalg;MLIRTosaToSCF;MLIRTosaToStandard;MLIRVectorToROCDL;MLIRVectorToLLVM;MLIRVectorToGPU;MLIRVectorToSCF;MLIRVectorToSPIRV;LLVMSupport"
-  MLIR_AGGREGATE_DEP_LIBS_IMPORTED "MLIRAffineToStandard;MLIRArithmeticToLLVM;MLIRArithmeticToSPIRV;MLIRArmNeon2dToIntr;MLIRAsyncToLLVM;MLIRBufferizationToMemRef;MLIRComplexToLLVM;MLIRComplexToStandard;MLIRControlFlowToLLVM;MLIRControlFlowToSPIRV;MLIRGPUToGPURuntimeTransforms;MLIRGPUToNVVMTransforms;MLIRGPUToROCDLTransforms;MLIRGPUToSPIRV;MLIRGPUToVulkanTransforms;MLIRLinalgToLLVM;MLIRLinalgToSPIRV;MLIRLinalgToStandard;MLIRLLVMCommonConversion;MLIRMathToLibm;MLIRMathToLLVM;MLIRMathToSPIRV;MLIRMemRefToLLVM;MLIRMemRefToSPIRV;MLIROpenACCToLLVM;MLIROpenACCToSCF;MLIROpenMPToLLVM;MLIRPDLToPDLInterp;MLIRReconcileUnrealizedCasts;MLIRSCFToControlFlow;MLIRSCFToGPU;MLIRSCFToOpenMP;MLIRSCFToSPIRV;MLIRShapeToStandard;MLIRSPIRVToLLVM;MLIRStandardToLLVM;MLIRStandardToSPIRV;MLIRTosaToLinalg;MLIRTosaToSCF;MLIRTosaToStandard;MLIRVectorToROCDL;MLIRVectorToLLVM;MLIRVectorToGPU;MLIRVectorToSCF;MLIRVectorToSPIRV;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRAffineToStandard;MLIRArithmeticToLLVM;MLIRArithmeticToSPIRV;MLIRArmNeon2dToIntr;MLIRAsyncToLLVM;MLIRBufferizationToMemRef;MLIRComplexToLLVM;MLIRComplexToStandard;MLIRControlFlowToLLVM;MLIRControlFlowToSPIRV;MLIRFuncToSPIRV;MLIRGPUToGPURuntimeTransforms;MLIRGPUToNVVMTransforms;MLIRGPUToROCDLTransforms;MLIRGPUToSPIRV;MLIRGPUToVulkanTransforms;MLIRLinalgToLLVM;MLIRLinalgToSPIRV;MLIRLinalgToStandard;MLIRLLVMCommonConversion;MLIRMathToLibm;MLIRMathToLLVM;MLIRMathToSPIRV;MLIRMemRefToLLVM;MLIRMemRefToSPIRV;MLIROpenACCToLLVM;MLIROpenACCToSCF;MLIROpenMPToLLVM;MLIRPDLToPDLInterp;MLIRReconcileUnrealizedCasts;MLIRSCFToControlFlow;MLIRSCFToGPU;MLIRSCFToOpenMP;MLIRSCFToSPIRV;MLIRShapeToStandard;MLIRSPIRVToLLVM;MLIRStandardToLLVM;MLIRTensorToSPIRV;MLIRTosaToLinalg;MLIRTosaToSCF;MLIRTosaToStandard;MLIRVectorToROCDL;MLIRVectorToLLVM;MLIRVectorToGPU;MLIRVectorToSCF;MLIRVectorToSPIRV;LLVMSupport"
+  MLIR_AGGREGATE_DEP_LIBS_IMPORTED "MLIRAffineToStandard;MLIRArithmeticToLLVM;MLIRArithmeticToSPIRV;MLIRArmNeon2dToIntr;MLIRAsyncToLLVM;MLIRBufferizationToMemRef;MLIRComplexToLLVM;MLIRComplexToStandard;MLIRControlFlowToLLVM;MLIRControlFlowToSPIRV;MLIRFuncToSPIRV;MLIRGPUToGPURuntimeTransforms;MLIRGPUToNVVMTransforms;MLIRGPUToROCDLTransforms;MLIRGPUToSPIRV;MLIRGPUToVulkanTransforms;MLIRLinalgToLLVM;MLIRLinalgToSPIRV;MLIRLinalgToStandard;MLIRLLVMCommonConversion;MLIRMathToLibm;MLIRMathToLLVM;MLIRMathToSPIRV;MLIRMemRefToLLVM;MLIRMemRefToSPIRV;MLIROpenACCToLLVM;MLIROpenACCToSCF;MLIROpenMPToLLVM;MLIRPDLToPDLInterp;MLIRReconcileUnrealizedCasts;MLIRSCFToControlFlow;MLIRSCFToGPU;MLIRSCFToOpenMP;MLIRSCFToSPIRV;MLIRShapeToStandard;MLIRSPIRVToLLVM;MLIRStandardToLLVM;MLIRTensorToSPIRV;MLIRTosaToLinalg;MLIRTosaToSCF;MLIRTosaToStandard;MLIRVectorToROCDL;MLIRVectorToLLVM;MLIRVectorToGPU;MLIRVectorToSCF;MLIRVectorToSPIRV;LLVMSupport"
   MLIR_AGGREGATE_OBJECT_LIB_IMPORTED "obj.MLIRCAPIConversion"
 )
 
@@ -1419,8 +1426,8 @@ add_library(obj.MLIRCAPIIR OBJECT IMPORTED)
 add_library(MLIRCAPIRegistration STATIC IMPORTED)
 
 set_target_properties(MLIRCAPIRegistration PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRCAPIIR;MLIRLLVMToLLVMIRTranslation;MLIRAffineAnalysis;MLIRAffine;MLIRAffineTransforms;MLIRAffineUtils;MLIRArithmetic;MLIRArithmeticTransforms;MLIRArithmeticUtils;MLIRArmNeon;MLIRArmSVE;MLIRArmSVETransforms;MLIRAsync;MLIRAsyncTransforms;MLIRAMX;MLIRAMXTransforms;MLIRBufferization;MLIRBufferizationTransforms;MLIRComplex;MLIRControlFlow;MLIRDLTI;MLIREmitC;MLIRGPUOps;MLIRGPUTransforms;MLIRLinalgAnalysis;MLIRAffineBufferizableOpInterfaceImpl;MLIRLinalgBufferizableOpInterfaceImpl;MLIRModuleBufferization;MLIRLinalg;MLIRLinalgTransforms;MLIRLinalgUtils;MLIRLLVMIRTransforms;MLIRLLVMIR;MLIRNVVMIR;MLIRROCDLIR;MLIRMath;MLIRMathTransforms;MLIRMemRef;MLIRMemRefTransforms;MLIRMemRefUtils;MLIROpenACC;MLIROpenMP;MLIRPDL;MLIRPDLInterp;MLIRQuant;MLIRQuantTransforms;MLIRQuantUtils;MLIRSCF;MLIRSCFTransforms;MLIRSCFUtils;MLIRShape;MLIRShapeOpsTransforms;MLIRSparseTensor;MLIRSparseTensorTransforms;MLIRSparseTensorPipelines;MLIRSparseTensorUtils;MLIRSPIRV;MLIRSPIRVModuleCombiner;MLIRSPIRVConversion;MLIRSPIRVTransforms;MLIRSPIRVUtils;MLIRStandard;MLIRStandardOpsTransforms;MLIRTensor;MLIRTensorInferTypeOpInterfaceImpl;MLIRTensorTilingInterfaceImpl;MLIRTensorTransforms;MLIRTensorUtils;MLIRTosa;MLIRTosaTransforms;MLIRVector;MLIRVectorTransforms;MLIRVectorUtils;MLIRX86Vector;MLIRX86VectorTransforms;MLIRTargetCpp;MLIRSPIRVDeserialization;MLIRSPIRVSerialization;MLIRSPIRVBinaryUtils;MLIRSPIRVTranslateRegistration;MLIRArmNeonToLLVMIRTranslation;MLIRArmSVEToLLVMIRTranslation;MLIRAMXToLLVMIRTranslation;MLIRLLVMToLLVMIRTranslation;MLIRNVVMToLLVMIRTranslation;MLIROpenACCToLLVMIRTranslation;MLIROpenMPToLLVMIRTranslation;MLIRROCDLToLLVMIRTranslation;MLIRX86VectorToLLVMIRTranslation;MLIRTargetLLVMIRExport;MLIRToLLVMIRTranslationRegistration;MLIRTargetLLVMIRImport;MLIRAffineToStandard;MLIRArithmeticToLLVM;MLIRArithmeticToSPIRV;MLIRArmNeon2dToIntr;MLIRAsyncToLLVM;MLIRBufferizationToMemRef;MLIRComplexToLLVM;MLIRComplexToStandard;MLIRControlFlowToLLVM;MLIRControlFlowToSPIRV;MLIRGPUToGPURuntimeTransforms;MLIRGPUToNVVMTransforms;MLIRGPUToROCDLTransforms;MLIRGPUToSPIRV;MLIRGPUToVulkanTransforms;MLIRLinalgToLLVM;MLIRLinalgToSPIRV;MLIRLinalgToStandard;MLIRLLVMCommonConversion;MLIRMathToLibm;MLIRMathToLLVM;MLIRMathToSPIRV;MLIRMemRefToLLVM;MLIRMemRefToSPIRV;MLIROpenACCToLLVM;MLIROpenACCToSCF;MLIROpenMPToLLVM;MLIRPDLToPDLInterp;MLIRReconcileUnrealizedCasts;MLIRSCFToControlFlow;MLIRSCFToGPU;MLIRSCFToOpenMP;MLIRSCFToSPIRV;MLIRShapeToStandard;MLIRSPIRVToLLVM;MLIRStandardToLLVM;MLIRStandardToSPIRV;MLIRTosaToLinalg;MLIRTosaToSCF;MLIRTosaToStandard;MLIRVectorToROCDL;MLIRVectorToLLVM;MLIRVectorToGPU;MLIRVectorToSCF;MLIRVectorToSPIRV;LLVMSupport"
-  MLIR_AGGREGATE_DEP_LIBS_IMPORTED "MLIRCAPIIR;MLIRLLVMToLLVMIRTranslation;MLIRAffineAnalysis;MLIRAffine;MLIRAffineTransforms;MLIRAffineUtils;MLIRArithmetic;MLIRArithmeticTransforms;MLIRArithmeticUtils;MLIRArmNeon;MLIRArmSVE;MLIRArmSVETransforms;MLIRAsync;MLIRAsyncTransforms;MLIRAMX;MLIRAMXTransforms;MLIRBufferization;MLIRBufferizationTransforms;MLIRComplex;MLIRControlFlow;MLIRDLTI;MLIREmitC;MLIRGPUOps;MLIRGPUTransforms;MLIRLinalgAnalysis;MLIRAffineBufferizableOpInterfaceImpl;MLIRLinalgBufferizableOpInterfaceImpl;MLIRModuleBufferization;MLIRLinalg;MLIRLinalgTransforms;MLIRLinalgUtils;MLIRLLVMIRTransforms;MLIRLLVMIR;MLIRNVVMIR;MLIRROCDLIR;MLIRMath;MLIRMathTransforms;MLIRMemRef;MLIRMemRefTransforms;MLIRMemRefUtils;MLIROpenACC;MLIROpenMP;MLIRPDL;MLIRPDLInterp;MLIRQuant;MLIRQuantTransforms;MLIRQuantUtils;MLIRSCF;MLIRSCFTransforms;MLIRSCFUtils;MLIRShape;MLIRShapeOpsTransforms;MLIRSparseTensor;MLIRSparseTensorTransforms;MLIRSparseTensorPipelines;MLIRSparseTensorUtils;MLIRSPIRV;MLIRSPIRVModuleCombiner;MLIRSPIRVConversion;MLIRSPIRVTransforms;MLIRSPIRVUtils;MLIRStandard;MLIRStandardOpsTransforms;MLIRTensor;MLIRTensorInferTypeOpInterfaceImpl;MLIRTensorTilingInterfaceImpl;MLIRTensorTransforms;MLIRTensorUtils;MLIRTosa;MLIRTosaTransforms;MLIRVector;MLIRVectorTransforms;MLIRVectorUtils;MLIRX86Vector;MLIRX86VectorTransforms;MLIRTargetCpp;MLIRSPIRVDeserialization;MLIRSPIRVSerialization;MLIRSPIRVBinaryUtils;MLIRSPIRVTranslateRegistration;MLIRArmNeonToLLVMIRTranslation;MLIRArmSVEToLLVMIRTranslation;MLIRAMXToLLVMIRTranslation;MLIRLLVMToLLVMIRTranslation;MLIRNVVMToLLVMIRTranslation;MLIROpenACCToLLVMIRTranslation;MLIROpenMPToLLVMIRTranslation;MLIRROCDLToLLVMIRTranslation;MLIRX86VectorToLLVMIRTranslation;MLIRTargetLLVMIRExport;MLIRToLLVMIRTranslationRegistration;MLIRTargetLLVMIRImport;MLIRAffineToStandard;MLIRArithmeticToLLVM;MLIRArithmeticToSPIRV;MLIRArmNeon2dToIntr;MLIRAsyncToLLVM;MLIRBufferizationToMemRef;MLIRComplexToLLVM;MLIRComplexToStandard;MLIRControlFlowToLLVM;MLIRControlFlowToSPIRV;MLIRGPUToGPURuntimeTransforms;MLIRGPUToNVVMTransforms;MLIRGPUToROCDLTransforms;MLIRGPUToSPIRV;MLIRGPUToVulkanTransforms;MLIRLinalgToLLVM;MLIRLinalgToSPIRV;MLIRLinalgToStandard;MLIRLLVMCommonConversion;MLIRMathToLibm;MLIRMathToLLVM;MLIRMathToSPIRV;MLIRMemRefToLLVM;MLIRMemRefToSPIRV;MLIROpenACCToLLVM;MLIROpenACCToSCF;MLIROpenMPToLLVM;MLIRPDLToPDLInterp;MLIRReconcileUnrealizedCasts;MLIRSCFToControlFlow;MLIRSCFToGPU;MLIRSCFToOpenMP;MLIRSCFToSPIRV;MLIRShapeToStandard;MLIRSPIRVToLLVM;MLIRStandardToLLVM;MLIRStandardToSPIRV;MLIRTosaToLinalg;MLIRTosaToSCF;MLIRTosaToStandard;MLIRVectorToROCDL;MLIRVectorToLLVM;MLIRVectorToGPU;MLIRVectorToSCF;MLIRVectorToSPIRV;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRCAPIIR;MLIRLLVMToLLVMIRTranslation;MLIRAffineAnalysis;MLIRAffine;MLIRAffineTransforms;MLIRAffineUtils;MLIRArithmetic;MLIRArithmeticTransforms;MLIRArithmeticUtils;MLIRArmNeon;MLIRArmSVE;MLIRArmSVETransforms;MLIRAsync;MLIRAsyncTransforms;MLIRAMX;MLIRAMXTransforms;MLIRBufferization;MLIRBufferizationTransforms;MLIRComplex;MLIRControlFlow;MLIRDLTI;MLIREmitC;MLIRFunc;MLIRFuncTransforms;MLIRGPUOps;MLIRGPUTransforms;MLIRLinalgAnalysis;MLIRAffineBufferizableOpInterfaceImpl;MLIRModuleBufferization;MLIRLinalg;MLIRLinalgTransforms;MLIRLinalgUtils;MLIRLLVMIRTransforms;MLIRLLVMIR;MLIRNVVMIR;MLIRROCDLIR;MLIRMath;MLIRMathTransforms;MLIRMemRef;MLIRMemRefTransforms;MLIRMemRefUtils;MLIROpenACC;MLIROpenMP;MLIRPDL;MLIRPDLInterp;MLIRQuant;MLIRQuantTransforms;MLIRQuantUtils;MLIRSCF;MLIRSCFTransforms;MLIRSCFUtils;MLIRShape;MLIRShapeOpsTransforms;MLIRSparseTensor;MLIRSparseTensorTransforms;MLIRSparseTensorPipelines;MLIRSparseTensorUtils;MLIRSPIRV;MLIRSPIRVModuleCombiner;MLIRSPIRVConversion;MLIRSPIRVTransforms;MLIRSPIRVUtils;MLIRTensor;MLIRTensorInferTypeOpInterfaceImpl;MLIRTensorTilingInterfaceImpl;MLIRTensorTransforms;MLIRTensorUtils;MLIRTosa;MLIRTosaTransforms;MLIRVector;MLIRVectorTransforms;MLIRVectorUtils;MLIRX86Vector;MLIRX86VectorTransforms;MLIRTargetCpp;MLIRSPIRVDeserialization;MLIRSPIRVSerialization;MLIRSPIRVBinaryUtils;MLIRSPIRVTranslateRegistration;MLIRArmNeonToLLVMIRTranslation;MLIRArmSVEToLLVMIRTranslation;MLIRAMXToLLVMIRTranslation;MLIRLLVMToLLVMIRTranslation;MLIRNVVMToLLVMIRTranslation;MLIROpenACCToLLVMIRTranslation;MLIROpenMPToLLVMIRTranslation;MLIRROCDLToLLVMIRTranslation;MLIRX86VectorToLLVMIRTranslation;MLIRTargetLLVMIRExport;MLIRToLLVMIRTranslationRegistration;MLIRTargetLLVMIRImport;MLIRAffineToStandard;MLIRArithmeticToLLVM;MLIRArithmeticToSPIRV;MLIRArmNeon2dToIntr;MLIRAsyncToLLVM;MLIRBufferizationToMemRef;MLIRComplexToLLVM;MLIRComplexToStandard;MLIRControlFlowToLLVM;MLIRControlFlowToSPIRV;MLIRFuncToSPIRV;MLIRGPUToGPURuntimeTransforms;MLIRGPUToNVVMTransforms;MLIRGPUToROCDLTransforms;MLIRGPUToSPIRV;MLIRGPUToVulkanTransforms;MLIRLinalgToLLVM;MLIRLinalgToSPIRV;MLIRLinalgToStandard;MLIRLLVMCommonConversion;MLIRMathToLibm;MLIRMathToLLVM;MLIRMathToSPIRV;MLIRMemRefToLLVM;MLIRMemRefToSPIRV;MLIROpenACCToLLVM;MLIROpenACCToSCF;MLIROpenMPToLLVM;MLIRPDLToPDLInterp;MLIRReconcileUnrealizedCasts;MLIRSCFToControlFlow;MLIRSCFToGPU;MLIRSCFToOpenMP;MLIRSCFToSPIRV;MLIRShapeToStandard;MLIRSPIRVToLLVM;MLIRStandardToLLVM;MLIRTensorToSPIRV;MLIRTosaToLinalg;MLIRTosaToSCF;MLIRTosaToStandard;MLIRVectorToROCDL;MLIRVectorToLLVM;MLIRVectorToGPU;MLIRVectorToSCF;MLIRVectorToSPIRV;LLVMSupport"
+  MLIR_AGGREGATE_DEP_LIBS_IMPORTED "MLIRCAPIIR;MLIRLLVMToLLVMIRTranslation;MLIRAffineAnalysis;MLIRAffine;MLIRAffineTransforms;MLIRAffineUtils;MLIRArithmetic;MLIRArithmeticTransforms;MLIRArithmeticUtils;MLIRArmNeon;MLIRArmSVE;MLIRArmSVETransforms;MLIRAsync;MLIRAsyncTransforms;MLIRAMX;MLIRAMXTransforms;MLIRBufferization;MLIRBufferizationTransforms;MLIRComplex;MLIRControlFlow;MLIRDLTI;MLIREmitC;MLIRFunc;MLIRFuncTransforms;MLIRGPUOps;MLIRGPUTransforms;MLIRLinalgAnalysis;MLIRAffineBufferizableOpInterfaceImpl;MLIRModuleBufferization;MLIRLinalg;MLIRLinalgTransforms;MLIRLinalgUtils;MLIRLLVMIRTransforms;MLIRLLVMIR;MLIRNVVMIR;MLIRROCDLIR;MLIRMath;MLIRMathTransforms;MLIRMemRef;MLIRMemRefTransforms;MLIRMemRefUtils;MLIROpenACC;MLIROpenMP;MLIRPDL;MLIRPDLInterp;MLIRQuant;MLIRQuantTransforms;MLIRQuantUtils;MLIRSCF;MLIRSCFTransforms;MLIRSCFUtils;MLIRShape;MLIRShapeOpsTransforms;MLIRSparseTensor;MLIRSparseTensorTransforms;MLIRSparseTensorPipelines;MLIRSparseTensorUtils;MLIRSPIRV;MLIRSPIRVModuleCombiner;MLIRSPIRVConversion;MLIRSPIRVTransforms;MLIRSPIRVUtils;MLIRTensor;MLIRTensorInferTypeOpInterfaceImpl;MLIRTensorTilingInterfaceImpl;MLIRTensorTransforms;MLIRTensorUtils;MLIRTosa;MLIRTosaTransforms;MLIRVector;MLIRVectorTransforms;MLIRVectorUtils;MLIRX86Vector;MLIRX86VectorTransforms;MLIRTargetCpp;MLIRSPIRVDeserialization;MLIRSPIRVSerialization;MLIRSPIRVBinaryUtils;MLIRSPIRVTranslateRegistration;MLIRArmNeonToLLVMIRTranslation;MLIRArmSVEToLLVMIRTranslation;MLIRAMXToLLVMIRTranslation;MLIRLLVMToLLVMIRTranslation;MLIRNVVMToLLVMIRTranslation;MLIROpenACCToLLVMIRTranslation;MLIROpenMPToLLVMIRTranslation;MLIRROCDLToLLVMIRTranslation;MLIRX86VectorToLLVMIRTranslation;MLIRTargetLLVMIRExport;MLIRToLLVMIRTranslationRegistration;MLIRTargetLLVMIRImport;MLIRAffineToStandard;MLIRArithmeticToLLVM;MLIRArithmeticToSPIRV;MLIRArmNeon2dToIntr;MLIRAsyncToLLVM;MLIRBufferizationToMemRef;MLIRComplexToLLVM;MLIRComplexToStandard;MLIRControlFlowToLLVM;MLIRControlFlowToSPIRV;MLIRFuncToSPIRV;MLIRGPUToGPURuntimeTransforms;MLIRGPUToNVVMTransforms;MLIRGPUToROCDLTransforms;MLIRGPUToSPIRV;MLIRGPUToVulkanTransforms;MLIRLinalgToLLVM;MLIRLinalgToSPIRV;MLIRLinalgToStandard;MLIRLLVMCommonConversion;MLIRMathToLibm;MLIRMathToLLVM;MLIRMathToSPIRV;MLIRMemRefToLLVM;MLIRMemRefToSPIRV;MLIROpenACCToLLVM;MLIROpenACCToSCF;MLIROpenMPToLLVM;MLIRPDLToPDLInterp;MLIRReconcileUnrealizedCasts;MLIRSCFToControlFlow;MLIRSCFToGPU;MLIRSCFToOpenMP;MLIRSCFToSPIRV;MLIRShapeToStandard;MLIRSPIRVToLLVM;MLIRStandardToLLVM;MLIRTensorToSPIRV;MLIRTosaToLinalg;MLIRTosaToSCF;MLIRTosaToStandard;MLIRVectorToROCDL;MLIRVectorToLLVM;MLIRVectorToGPU;MLIRVectorToSCF;MLIRVectorToSPIRV;LLVMSupport"
   MLIR_AGGREGATE_OBJECT_LIB_IMPORTED "obj.MLIRCAPIRegistration"
 )
 
@@ -1479,18 +1486,25 @@ set_target_properties(MLIRDLTITestPasses PROPERTIES
   INTERFACE_LINK_LIBRARIES "MLIRDLTI;MLIRPass;MLIRTestDialect;LLVMSupport"
 )
 
+# Create imported target MLIRFuncTestPasses
+add_library(MLIRFuncTestPasses STATIC IMPORTED)
+
+set_target_properties(MLIRFuncTestPasses PROPERTIES
+  INTERFACE_LINK_LIBRARIES "MLIRAffine;MLIRPass;MLIRFuncTransforms;MLIRTestDialect;MLIRTransformUtils;LLVMSupport"
+)
+
 # Create imported target MLIRGPUTestPasses
 add_library(MLIRGPUTestPasses STATIC IMPORTED)
 
 set_target_properties(MLIRGPUTestPasses PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRAffine;MLIRGPUOps;MLIRGPUToGPURuntimeTransforms;MLIRLLVMToLLVMIRTranslation;MLIRNVVMIR;MLIRNVVMToLLVMIRTranslation;MLIRPass;MLIRROCDLIR;MLIRROCDLToLLVMIRTranslation;MLIRSCF;MLIRStandard;MLIRTransformUtils;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRAffine;MLIRFunc;MLIRGPUOps;MLIRGPUToGPURuntimeTransforms;MLIRLLVMToLLVMIRTranslation;MLIRNVVMIR;MLIRNVVMToLLVMIRTranslation;MLIRPass;MLIRROCDLIR;MLIRROCDLToLLVMIRTranslation;MLIRSCF;MLIRTransformUtils;LLVMSupport"
 )
 
 # Create imported target MLIRLinalgTestPasses
 add_library(MLIRLinalgTestPasses STATIC IMPORTED)
 
 set_target_properties(MLIRLinalgTestPasses PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRAffine;MLIRAffineBufferizableOpInterfaceImpl;MLIRArithmetic;MLIRArithmeticTransforms;MLIRBufferization;MLIRBufferizationTransforms;MLIRGPUTransforms;MLIRLinalg;MLIRLinalgBufferizableOpInterfaceImpl;MLIRLinalgTransforms;MLIRLLVMToLLVMIRTranslation;MLIRMemRef;MLIRPass;MLIRSCF;MLIRSCFTransforms;MLIRStandard;MLIRStandardOpsTransforms;MLIRTensor;MLIRTensorTransforms;MLIRTransformUtils;MLIRVector;MLIRVectorToSCF;MLIRVectorTransforms;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRAffine;MLIRAffineBufferizableOpInterfaceImpl;MLIRArithmetic;MLIRArithmeticTransforms;MLIRBufferization;MLIRBufferizationTransforms;MLIRGPUTransforms;MLIRLinalg;MLIRLinalgTransforms;MLIRLLVMToLLVMIRTranslation;MLIRMemRef;MLIRPass;MLIRSCF;MLIRSCFTransforms;MLIRTensor;MLIRTensorTransforms;MLIRTransformUtils;MLIRVector;MLIRVectorToSCF;MLIRVectorTransforms;LLVMSupport"
 )
 
 # Create imported target MLIRMathTestPasses
@@ -1504,7 +1518,7 @@ set_target_properties(MLIRMathTestPasses PROPERTIES
 add_library(MLIRMemRefTestPasses STATIC IMPORTED)
 
 set_target_properties(MLIRMemRefTestPasses PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRPass;MLIRMemRefTransforms;MLIRTestDialect;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRPass;MLIRMemRef;MLIRMemRefTransforms;MLIRTestDialect;LLVMSupport"
 )
 
 # Create imported target MLIRSCFTestPasses
@@ -1528,13 +1542,6 @@ set_target_properties(MLIRSPIRVTestPasses PROPERTIES
   INTERFACE_LINK_LIBRARIES "MLIRGPUOps;MLIRIR;MLIRPass;MLIRSPIRV;MLIRSPIRVConversion;MLIRSPIRVModuleCombiner;MLIRSupport;LLVMSupport"
 )
 
-# Create imported target MLIRStandardOpsTestPasses
-add_library(MLIRStandardOpsTestPasses STATIC IMPORTED)
-
-set_target_properties(MLIRStandardOpsTestPasses PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRAffine;MLIRPass;MLIRStandardOpsTransforms;MLIRTestDialect;MLIRTransformUtils;LLVMSupport"
-)
-
 # Create imported target MLIRTensorTestPasses
 add_library(MLIRTensorTestPasses STATIC IMPORTED)
 
@@ -1546,7 +1553,7 @@ set_target_properties(MLIRTensorTestPasses PROPERTIES
 add_library(MLIRTestDialect STATIC IMPORTED)
 
 set_target_properties(MLIRTestDialect PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRControlFlowInterfaces;MLIRDataLayoutInterfaces;MLIRDerivedAttributeOpInterface;MLIRDialect;MLIRDLTI;MLIRIR;MLIRInferTypeOpInterface;MLIRLinalg;MLIRLinalgTransforms;MLIRLLVMIR;MLIRPass;MLIRReduce;MLIRStandard;MLIRStandardOpsTransforms;MLIRTensor;MLIRTransformUtils;MLIRTransforms;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRControlFlowInterfaces;MLIRDataLayoutInterfaces;MLIRDerivedAttributeOpInterface;MLIRDialect;MLIRDLTI;MLIRFunc;MLIRFuncTransforms;MLIRIR;MLIRInferTypeOpInterface;MLIRLinalg;MLIRLinalgTransforms;MLIRLLVMIR;MLIRPass;MLIRReduce;MLIRTensor;MLIRTransformUtils;MLIRTransforms;LLVMSupport"
 )
 
 # Create imported target MLIRTosaTestPasses
@@ -1560,7 +1567,7 @@ set_target_properties(MLIRTosaTestPasses PROPERTIES
 add_library(MLIRVectorTestPasses STATIC IMPORTED)
 
 set_target_properties(MLIRVectorTestPasses PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRAffine;MLIRAnalysis;MLIRLinalg;MLIRLinalgTransforms;MLIRLLVMIR;MLIRMemRef;MLIRPass;MLIRSCF;MLIRStandard;MLIRTransformUtils;MLIRVector;MLIRVectorToSCF;MLIRX86Vector;LLVMSupport"
+  INTERFACE_LINK_LIBRARIES "MLIRAffine;MLIRAnalysis;MLIRFunc;MLIRLinalg;MLIRLinalgTransforms;MLIRLLVMIR;MLIRMemRef;MLIRPass;MLIRSCF;MLIRTransformUtils;MLIRVector;MLIRVectorToSCF;MLIRX86Vector;LLVMSupport"
 )
 
 # Create imported target MLIRTestIR
@@ -1621,7 +1628,7 @@ add_library(obj.MLIRCAPIPythonTestDialect OBJECT IMPORTED)
 add_library(MLIRMlirOptMain STATIC IMPORTED)
 
 set_target_properties(MLIRMlirOptMain PROPERTIES
-  INTERFACE_LINK_LIBRARIES "MLIRAffineAnalysis;MLIRAffine;MLIRAffineTransforms;MLIRAffineUtils;MLIRArithmetic;MLIRArithmeticTransforms;MLIRArithmeticUtils;MLIRArmNeon;MLIRArmSVE;MLIRArmSVETransforms;MLIRAsync;MLIRAsyncTransforms;MLIRAMX;MLIRAMXTransforms;MLIRBufferization;MLIRBufferizationTransforms;MLIRComplex;MLIRControlFlow;MLIRDLTI;MLIREmitC;MLIRGPUOps;MLIRGPUTransforms;MLIRLinalgAnalysis;MLIRAffineBufferizableOpInterfaceImpl;MLIRLinalgBufferizableOpInterfaceImpl;MLIRModuleBufferization;MLIRLinalg;MLIRLinalgTransforms;MLIRLinalgUtils;MLIRLLVMIRTransforms;MLIRLLVMIR;MLIRNVVMIR;MLIRROCDLIR;MLIRMath;MLIRMathTransforms;MLIRMemRef;MLIRMemRefTransforms;MLIRMemRefUtils;MLIROpenACC;MLIROpenMP;MLIRPDL;MLIRPDLInterp;MLIRQuant;MLIRQuantTransforms;MLIRQuantUtils;MLIRSCF;MLIRSCFTransforms;MLIRSCFUtils;MLIRShape;MLIRShapeOpsTransforms;MLIRSparseTensor;MLIRSparseTensorTransforms;MLIRSparseTensorPipelines;MLIRSparseTensorUtils;MLIRSPIRV;MLIRSPIRVModuleCombiner;MLIRSPIRVConversion;MLIRSPIRVTransforms;MLIRSPIRVUtils;MLIRStandard;MLIRStandardOpsTransforms;MLIRTensor;MLIRTensorInferTypeOpInterfaceImpl;MLIRTensorTilingInterfaceImpl;MLIRTensorTransforms;MLIRTensorUtils;MLIRTosa;MLIRTosaTransforms;MLIRVector;MLIRVectorTransforms;MLIRVectorUtils;MLIRX86Vector;MLIRX86VectorTransforms;MLIRTosaTestPasses;MLIRAffineToStandard;MLIRArithmeticToLLVM;MLIRArithmeticToSPIRV;MLIRArmNeon2dToIntr;MLIRAsyncToLLVM;MLIRBufferizationToMemRef;MLIRComplexToLLVM;MLIRComplexToStandard;MLIRControlFlowToLLVM;MLIRControlFlowToSPIRV;MLIRGPUToGPURuntimeTransforms;MLIRGPUToNVVMTransforms;MLIRGPUToROCDLTransforms;MLIRGPUToSPIRV;MLIRGPUToVulkanTransforms;MLIRLinalgToLLVM;MLIRLinalgToSPIRV;MLIRLinalgToStandard;MLIRLLVMCommonConversion;MLIRMathToLibm;MLIRMathToLLVM;MLIRMathToSPIRV;MLIRMemRefToLLVM;MLIRMemRefToSPIRV;MLIROpenACCToLLVM;MLIROpenACCToSCF;MLIROpenMPToLLVM;MLIRPDLToPDLInterp;MLIRReconcileUnrealizedCasts;MLIRSCFToControlFlow;MLIRSCFToGPU;MLIRSCFToOpenMP;MLIRSCFToSPIRV;MLIRShapeToStandard;MLIRSPIRVToLLVM;MLIRStandardToLLVM;MLIRStandardToSPIRV;MLIRTosaToLinalg;MLIRTosaToSCF;MLIRTosaToStandard;MLIRVectorToROCDL;MLIRVectorToLLVM;MLIRVectorToGPU;MLIRVectorToSCF;MLIRVectorToSPIRV;MLIRTestStandardToLLVM;MLIRAffineTransformsTestPasses;MLIRDLTITestPasses;MLIRGPUTestPasses;MLIRLinalgTestPasses;MLIRMathTestPasses;MLIRMemRefTestPasses;MLIRSCFTestPasses;MLIRShapeTestPasses;MLIRSPIRVTestPasses;MLIRStandardOpsTestPasses;MLIRTensorTestPasses;MLIRTestAnalysis;MLIRTestDialect;MLIRTestIR;MLIRTestPass;MLIRTestReducer;MLIRTestRewrite;MLIRTestTransforms;MLIRVectorTestPasses;MLIRAffineAnalysis;MLIRAnalysis;MLIRDialect;MLIROptLib;MLIRParser;MLIRPass;MLIRTransforms;MLIRTransformUtils;MLIRSupport;MLIRIR;LLVMSupport;LLVMCore;LLVMSupport;LLVMAsmParser"
+  INTERFACE_LINK_LIBRARIES "MLIRAffineAnalysis;MLIRAffine;MLIRAffineTransforms;MLIRAffineUtils;MLIRArithmetic;MLIRArithmeticTransforms;MLIRArithmeticUtils;MLIRArmNeon;MLIRArmSVE;MLIRArmSVETransforms;MLIRAsync;MLIRAsyncTransforms;MLIRAMX;MLIRAMXTransforms;MLIRBufferization;MLIRBufferizationTransforms;MLIRComplex;MLIRControlFlow;MLIRDLTI;MLIREmitC;MLIRFunc;MLIRFuncTransforms;MLIRGPUOps;MLIRGPUTransforms;MLIRLinalgAnalysis;MLIRAffineBufferizableOpInterfaceImpl;MLIRModuleBufferization;MLIRLinalg;MLIRLinalgTransforms;MLIRLinalgUtils;MLIRLLVMIRTransforms;MLIRLLVMIR;MLIRNVVMIR;MLIRROCDLIR;MLIRMath;MLIRMathTransforms;MLIRMemRef;MLIRMemRefTransforms;MLIRMemRefUtils;MLIROpenACC;MLIROpenMP;MLIRPDL;MLIRPDLInterp;MLIRQuant;MLIRQuantTransforms;MLIRQuantUtils;MLIRSCF;MLIRSCFTransforms;MLIRSCFUtils;MLIRShape;MLIRShapeOpsTransforms;MLIRSparseTensor;MLIRSparseTensorTransforms;MLIRSparseTensorPipelines;MLIRSparseTensorUtils;MLIRSPIRV;MLIRSPIRVModuleCombiner;MLIRSPIRVConversion;MLIRSPIRVTransforms;MLIRSPIRVUtils;MLIRTensor;MLIRTensorInferTypeOpInterfaceImpl;MLIRTensorTilingInterfaceImpl;MLIRTensorTransforms;MLIRTensorUtils;MLIRTosa;MLIRTosaTransforms;MLIRVector;MLIRVectorTransforms;MLIRVectorUtils;MLIRX86Vector;MLIRX86VectorTransforms;MLIRTosaTestPasses;MLIRAffineToStandard;MLIRArithmeticToLLVM;MLIRArithmeticToSPIRV;MLIRArmNeon2dToIntr;MLIRAsyncToLLVM;MLIRBufferizationToMemRef;MLIRComplexToLLVM;MLIRComplexToStandard;MLIRControlFlowToLLVM;MLIRControlFlowToSPIRV;MLIRFuncToSPIRV;MLIRGPUToGPURuntimeTransforms;MLIRGPUToNVVMTransforms;MLIRGPUToROCDLTransforms;MLIRGPUToSPIRV;MLIRGPUToVulkanTransforms;MLIRLinalgToLLVM;MLIRLinalgToSPIRV;MLIRLinalgToStandard;MLIRLLVMCommonConversion;MLIRMathToLibm;MLIRMathToLLVM;MLIRMathToSPIRV;MLIRMemRefToLLVM;MLIRMemRefToSPIRV;MLIROpenACCToLLVM;MLIROpenACCToSCF;MLIROpenMPToLLVM;MLIRPDLToPDLInterp;MLIRReconcileUnrealizedCasts;MLIRSCFToControlFlow;MLIRSCFToGPU;MLIRSCFToOpenMP;MLIRSCFToSPIRV;MLIRShapeToStandard;MLIRSPIRVToLLVM;MLIRStandardToLLVM;MLIRTensorToSPIRV;MLIRTosaToLinalg;MLIRTosaToSCF;MLIRTosaToStandard;MLIRVectorToROCDL;MLIRVectorToLLVM;MLIRVectorToGPU;MLIRVectorToSCF;MLIRVectorToSPIRV;MLIRTestStandardToLLVM;MLIRAffineTransformsTestPasses;MLIRDLTITestPasses;MLIRFuncTestPasses;MLIRGPUTestPasses;MLIRLinalgTestPasses;MLIRMathTestPasses;MLIRMemRefTestPasses;MLIRSCFTestPasses;MLIRShapeTestPasses;MLIRSPIRVTestPasses;MLIRTensorTestPasses;MLIRTestAnalysis;MLIRTestDialect;MLIRTestIR;MLIRTestPass;MLIRTestReducer;MLIRTestRewrite;MLIRTestTransforms;MLIRVectorTestPasses;MLIRAffineAnalysis;MLIRAnalysis;MLIRDialect;MLIROptLib;MLIRParser;MLIRPass;MLIRTransforms;MLIRTransformUtils;MLIRSupport;MLIRIR;LLVMSupport;LLVMCore;LLVMSupport;LLVMAsmParser"
 )
 
 # Create imported target MLIRPythonSources
@@ -1641,7 +1648,7 @@ add_library(MLIRPythonSources.Dialects INTERFACE IMPORTED)
 
 set_target_properties(MLIRPythonSources.Dialects PROPERTIES
   INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/src/python/MLIRPythonSources.Dialects"
-  mlir_python_DEPENDS "MLIRPythonSources.Dialects.async_dialect;MLIRPythonSources.Dialects.builtin;MLIRPythonSources.Dialects.cf;MLIRPythonSources.Dialects.gpu;MLIRPythonSources.Dialects.linalg;MLIRPythonSources.Dialects.math;MLIRPythonSources.Dialects.arith;MLIRPythonSources.Dialects.memref;MLIRPythonSources.Dialects.quant;MLIRPythonSources.Dialects.pdl;MLIRPythonSources.Dialects.scf;MLIRPythonSources.Dialects.shape;MLIRPythonSources.Dialects.sparse_tensor;MLIRPythonSources.Dialects.std;MLIRPythonSources.Dialects.tensor;MLIRPythonSources.Dialects.tosa;MLIRPythonSources.Dialects.vector"
+  mlir_python_DEPENDS "MLIRPythonSources.Dialects.async_dialect;MLIRPythonSources.Dialects.builtin;MLIRPythonSources.Dialects.cf;MLIRPythonSources.Dialects.func;MLIRPythonSources.Dialects.gpu;MLIRPythonSources.Dialects.linalg;MLIRPythonSources.Dialects.math;MLIRPythonSources.Dialects.arith;MLIRPythonSources.Dialects.memref;MLIRPythonSources.Dialects.quant;MLIRPythonSources.Dialects.pdl;MLIRPythonSources.Dialects.scf;MLIRPythonSources.Dialects.shape;MLIRPythonSources.Dialects.sparse_tensor;MLIRPythonSources.Dialects.tensor;MLIRPythonSources.Dialects.tosa;MLIRPythonSources.Dialects.vector"
   mlir_python_DEST_PREFIX ""
   mlir_python_ROOT_DIR "/work/llvm-project/mlir/python"
   mlir_python_SOURCES ""
@@ -1692,7 +1699,7 @@ set_target_properties(MLIRPythonCAPIHeaderSources PROPERTIES
   mlir_python_DEPENDS ""
   mlir_python_DEST_PREFIX "_mlir_libs/include"
   mlir_python_ROOT_DIR "/work/llvm-project/mlir/include"
-  mlir_python_SOURCES "mlir-c/AffineExpr.h;mlir-c/AffineMap.h;mlir-c/Bindings/Python/Interop.h;mlir-c/BuiltinAttributes.h;mlir-c/BuiltinTypes.h;mlir-c/Conversion.h;mlir-c/Debug.h;mlir-c/Diagnostics.h;mlir-c/Dialect/Async.h;mlir-c/Dialect/GPU.h;mlir-c/Dialect/LLVM.h;mlir-c/Dialect/Linalg.h;mlir-c/Dialect/PDL.h;mlir-c/Dialect/Quant.h;mlir-c/Dialect/SCF.h;mlir-c/Dialect/Shape.h;mlir-c/Dialect/SparseTensor.h;mlir-c/Dialect/Standard.h;mlir-c/Dialect/Tensor.h;mlir-c/ExecutionEngine.h;mlir-c/IR.h;mlir-c/IntegerSet.h;mlir-c/Interfaces.h;mlir-c/Pass.h;mlir-c/Registration.h;mlir-c/Support.h;mlir-c/Transforms.h"
+  mlir_python_SOURCES "mlir-c/AffineExpr.h;mlir-c/AffineMap.h;mlir-c/Bindings/Python/Interop.h;mlir-c/BuiltinAttributes.h;mlir-c/BuiltinTypes.h;mlir-c/Conversion.h;mlir-c/Debug.h;mlir-c/Diagnostics.h;mlir-c/Dialect/Async.h;mlir-c/Dialect/Func.h;mlir-c/Dialect/GPU.h;mlir-c/Dialect/LLVM.h;mlir-c/Dialect/Linalg.h;mlir-c/Dialect/PDL.h;mlir-c/Dialect/Quant.h;mlir-c/Dialect/SCF.h;mlir-c/Dialect/Shape.h;mlir-c/Dialect/SparseTensor.h;mlir-c/Dialect/Tensor.h;mlir-c/ExecutionEngine.h;mlir-c/IR.h;mlir-c/IntegerSet.h;mlir-c/Interfaces.h;mlir-c/Pass.h;mlir-c/Registration.h;mlir-c/Support.h;mlir-c/Transforms.h"
   mlir_python_SOURCES_TYPE "pure"
 )
 
@@ -1765,6 +1772,30 @@ set_target_properties(MLIRPythonSources.Dialects.cf.ops_gen PROPERTIES
   mlir_python_DEST_PREFIX ""
   mlir_python_ROOT_DIR "/work/llvm-project/build/tools/mlir/python"
   mlir_python_SOURCES "dialects/_cf_ops_gen.py"
+  mlir_python_SOURCES_TYPE "pure"
+)
+
+# Create imported target MLIRPythonSources.Dialects.func
+add_library(MLIRPythonSources.Dialects.func INTERFACE IMPORTED)
+
+set_target_properties(MLIRPythonSources.Dialects.func PROPERTIES
+  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/src/python/MLIRPythonSources.Dialects.func"
+  mlir_python_DEPENDS "MLIRPythonSources.Dialects.func.ops_gen"
+  mlir_python_DEST_PREFIX ""
+  mlir_python_ROOT_DIR "/work/llvm-project/mlir/python/mlir"
+  mlir_python_SOURCES "dialects/func.py;dialects/_func_ops_ext.py"
+  mlir_python_SOURCES_TYPE "pure"
+)
+
+# Create imported target MLIRPythonSources.Dialects.func.ops_gen
+add_library(MLIRPythonSources.Dialects.func.ops_gen INTERFACE IMPORTED)
+
+set_target_properties(MLIRPythonSources.Dialects.func.ops_gen PROPERTIES
+  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/src/python/MLIRPythonSources.Dialects.func.ops_gen"
+  mlir_python_DEPENDS ""
+  mlir_python_DEST_PREFIX ""
+  mlir_python_ROOT_DIR "/work/llvm-project/build/tools/mlir/python"
+  mlir_python_SOURCES "dialects/_func_ops_gen.py"
   mlir_python_SOURCES_TYPE "pure"
 )
 
@@ -1996,30 +2027,6 @@ set_target_properties(MLIRPythonSources.Dialects.sparse_tensor.ops_gen PROPERTIE
   mlir_python_SOURCES_TYPE "pure"
 )
 
-# Create imported target MLIRPythonSources.Dialects.std
-add_library(MLIRPythonSources.Dialects.std INTERFACE IMPORTED)
-
-set_target_properties(MLIRPythonSources.Dialects.std PROPERTIES
-  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/src/python/MLIRPythonSources.Dialects.std"
-  mlir_python_DEPENDS "MLIRPythonSources.Dialects.std.ops_gen"
-  mlir_python_DEST_PREFIX ""
-  mlir_python_ROOT_DIR "/work/llvm-project/mlir/python/mlir"
-  mlir_python_SOURCES "dialects/std.py;dialects/_std_ops_ext.py"
-  mlir_python_SOURCES_TYPE "pure"
-)
-
-# Create imported target MLIRPythonSources.Dialects.std.ops_gen
-add_library(MLIRPythonSources.Dialects.std.ops_gen INTERFACE IMPORTED)
-
-set_target_properties(MLIRPythonSources.Dialects.std.ops_gen PROPERTIES
-  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/src/python/MLIRPythonSources.Dialects.std.ops_gen"
-  mlir_python_DEPENDS ""
-  mlir_python_DEST_PREFIX ""
-  mlir_python_ROOT_DIR "/work/llvm-project/build/tools/mlir/python"
-  mlir_python_SOURCES "dialects/_std_ops_gen.py"
-  mlir_python_SOURCES_TYPE "pure"
-)
-
 # Create imported target MLIRPythonSources.Dialects.tensor
 add_library(MLIRPythonSources.Dialects.tensor INTERFACE IMPORTED)
 
@@ -2099,7 +2106,7 @@ set_target_properties(MLIRPythonExtension.Core PROPERTIES
   INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/src/python/MLIRPythonExtension.Core"
   mlir_python_CPP_SOURCES "MainModule.cpp;IRAffine.cpp;IRAttributes.cpp;IRCore.cpp;IRInterfaces.cpp;IRModule.cpp;IRTypes.cpp;PybindUtils.cpp;Pass.cpp;Globals.h;IRModule.h;Pass.h;PybindUtils.h"
   mlir_python_DEPENDS ""
-  mlir_python_EMBED_CAPI_LINK_LIBS "MLIRCAPIDebug;MLIRCAPIIR;MLIRCAPIInterfaces;MLIRCAPIRegistration;MLIRCAPIStandard"
+  mlir_python_EMBED_CAPI_LINK_LIBS "MLIRCAPIDebug;MLIRCAPIIR;MLIRCAPIInterfaces;MLIRCAPIRegistration;MLIRCAPIFunc"
   mlir_python_EXTENSION_MODULE_NAME "_mlir"
   mlir_python_PRIVATE_LINK_LIBS "LLVMSupport"
   mlir_python_ROOT_DIR "/work/llvm-project/mlir/lib/Bindings/Python"

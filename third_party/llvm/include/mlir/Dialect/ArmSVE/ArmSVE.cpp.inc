@@ -237,7 +237,7 @@ void ScalableMaskedAddFIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ScalableMaskedAddFIntrOp::verifyInvariants() {
+::mlir::LogicalResult ScalableMaskedAddFIntrOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -269,6 +269,10 @@ void ScalableMaskedAddFIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult ScalableMaskedAddFIntrOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 } // namespace arm_sve
@@ -397,7 +401,7 @@ void ScalableMaskedAddFOp::build(::mlir::OpBuilder &, ::mlir::OperationState &od
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ScalableMaskedAddFOp::verifyInvariants() {
+::mlir::LogicalResult ScalableMaskedAddFOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -433,6 +437,10 @@ void ScalableMaskedAddFOp::build(::mlir::OpBuilder &, ::mlir::OperationState &od
   if (!((std::equal_to<>()(getI1SameShape((*this->getODSOperands(1).begin()).getType()), (*this->getODSOperands(0).begin()).getType()))))
     return emitOpError("failed to verify that mask has i1 element type and same shape as operands");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult ScalableMaskedAddFOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult ScalableMaskedAddFOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -609,7 +617,7 @@ void ScalableMaskedAddIIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ScalableMaskedAddIIntrOp::verifyInvariants() {
+::mlir::LogicalResult ScalableMaskedAddIIntrOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -641,6 +649,10 @@ void ScalableMaskedAddIIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult ScalableMaskedAddIIntrOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 } // namespace arm_sve
@@ -769,7 +781,7 @@ void ScalableMaskedAddIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &od
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ScalableMaskedAddIOp::verifyInvariants() {
+::mlir::LogicalResult ScalableMaskedAddIOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -805,6 +817,10 @@ void ScalableMaskedAddIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &od
   if (!((std::equal_to<>()(getI1SameShape((*this->getODSOperands(1).begin()).getType()), (*this->getODSOperands(0).begin()).getType()))))
     return emitOpError("failed to verify that mask has i1 element type and same shape as operands");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult ScalableMaskedAddIOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult ScalableMaskedAddIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -981,7 +997,7 @@ void ScalableMaskedDivFIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ScalableMaskedDivFIntrOp::verifyInvariants() {
+::mlir::LogicalResult ScalableMaskedDivFIntrOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1013,6 +1029,10 @@ void ScalableMaskedDivFIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult ScalableMaskedDivFIntrOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 } // namespace arm_sve
@@ -1141,7 +1161,7 @@ void ScalableMaskedDivFOp::build(::mlir::OpBuilder &, ::mlir::OperationState &od
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ScalableMaskedDivFOp::verifyInvariants() {
+::mlir::LogicalResult ScalableMaskedDivFOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1177,6 +1197,10 @@ void ScalableMaskedDivFOp::build(::mlir::OpBuilder &, ::mlir::OperationState &od
   if (!((std::equal_to<>()(getI1SameShape((*this->getODSOperands(1).begin()).getType()), (*this->getODSOperands(0).begin()).getType()))))
     return emitOpError("failed to verify that mask has i1 element type and same shape as operands");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult ScalableMaskedDivFOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult ScalableMaskedDivFOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -1353,7 +1377,7 @@ void ScalableMaskedMulFIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ScalableMaskedMulFIntrOp::verifyInvariants() {
+::mlir::LogicalResult ScalableMaskedMulFIntrOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1385,6 +1409,10 @@ void ScalableMaskedMulFIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult ScalableMaskedMulFIntrOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 } // namespace arm_sve
@@ -1513,7 +1541,7 @@ void ScalableMaskedMulFOp::build(::mlir::OpBuilder &, ::mlir::OperationState &od
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ScalableMaskedMulFOp::verifyInvariants() {
+::mlir::LogicalResult ScalableMaskedMulFOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1549,6 +1577,10 @@ void ScalableMaskedMulFOp::build(::mlir::OpBuilder &, ::mlir::OperationState &od
   if (!((std::equal_to<>()(getI1SameShape((*this->getODSOperands(1).begin()).getType()), (*this->getODSOperands(0).begin()).getType()))))
     return emitOpError("failed to verify that mask has i1 element type and same shape as operands");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult ScalableMaskedMulFOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult ScalableMaskedMulFOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -1725,7 +1757,7 @@ void ScalableMaskedMulIIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ScalableMaskedMulIIntrOp::verifyInvariants() {
+::mlir::LogicalResult ScalableMaskedMulIIntrOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1757,6 +1789,10 @@ void ScalableMaskedMulIIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult ScalableMaskedMulIIntrOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 } // namespace arm_sve
@@ -1885,7 +1921,7 @@ void ScalableMaskedMulIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &od
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ScalableMaskedMulIOp::verifyInvariants() {
+::mlir::LogicalResult ScalableMaskedMulIOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1921,6 +1957,10 @@ void ScalableMaskedMulIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &od
   if (!((std::equal_to<>()(getI1SameShape((*this->getODSOperands(1).begin()).getType()), (*this->getODSOperands(0).begin()).getType()))))
     return emitOpError("failed to verify that mask has i1 element type and same shape as operands");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult ScalableMaskedMulIOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult ScalableMaskedMulIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -2097,7 +2137,7 @@ void ScalableMaskedSDivIIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationStat
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ScalableMaskedSDivIIntrOp::verifyInvariants() {
+::mlir::LogicalResult ScalableMaskedSDivIIntrOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -2129,6 +2169,10 @@ void ScalableMaskedSDivIIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationStat
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult ScalableMaskedSDivIIntrOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 } // namespace arm_sve
@@ -2257,7 +2301,7 @@ void ScalableMaskedSDivIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ScalableMaskedSDivIOp::verifyInvariants() {
+::mlir::LogicalResult ScalableMaskedSDivIOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -2293,6 +2337,10 @@ void ScalableMaskedSDivIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
   if (!((std::equal_to<>()(getI1SameShape((*this->getODSOperands(1).begin()).getType()), (*this->getODSOperands(0).begin()).getType()))))
     return emitOpError("failed to verify that mask has i1 element type and same shape as operands");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult ScalableMaskedSDivIOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult ScalableMaskedSDivIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -2469,7 +2517,7 @@ void ScalableMaskedSubFIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ScalableMaskedSubFIntrOp::verifyInvariants() {
+::mlir::LogicalResult ScalableMaskedSubFIntrOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -2501,6 +2549,10 @@ void ScalableMaskedSubFIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult ScalableMaskedSubFIntrOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 } // namespace arm_sve
@@ -2629,7 +2681,7 @@ void ScalableMaskedSubFOp::build(::mlir::OpBuilder &, ::mlir::OperationState &od
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ScalableMaskedSubFOp::verifyInvariants() {
+::mlir::LogicalResult ScalableMaskedSubFOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -2665,6 +2717,10 @@ void ScalableMaskedSubFOp::build(::mlir::OpBuilder &, ::mlir::OperationState &od
   if (!((std::equal_to<>()(getI1SameShape((*this->getODSOperands(1).begin()).getType()), (*this->getODSOperands(0).begin()).getType()))))
     return emitOpError("failed to verify that mask has i1 element type and same shape as operands");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult ScalableMaskedSubFOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult ScalableMaskedSubFOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -2841,7 +2897,7 @@ void ScalableMaskedSubIIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ScalableMaskedSubIIntrOp::verifyInvariants() {
+::mlir::LogicalResult ScalableMaskedSubIIntrOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -2873,6 +2929,10 @@ void ScalableMaskedSubIIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult ScalableMaskedSubIIntrOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 } // namespace arm_sve
@@ -3001,7 +3061,7 @@ void ScalableMaskedSubIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &od
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ScalableMaskedSubIOp::verifyInvariants() {
+::mlir::LogicalResult ScalableMaskedSubIOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -3037,6 +3097,10 @@ void ScalableMaskedSubIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &od
   if (!((std::equal_to<>()(getI1SameShape((*this->getODSOperands(1).begin()).getType()), (*this->getODSOperands(0).begin()).getType()))))
     return emitOpError("failed to verify that mask has i1 element type and same shape as operands");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult ScalableMaskedSubIOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult ScalableMaskedSubIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -3213,7 +3277,7 @@ void ScalableMaskedUDivIIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationStat
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ScalableMaskedUDivIIntrOp::verifyInvariants() {
+::mlir::LogicalResult ScalableMaskedUDivIIntrOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -3245,6 +3309,10 @@ void ScalableMaskedUDivIIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationStat
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult ScalableMaskedUDivIIntrOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 } // namespace arm_sve
@@ -3373,7 +3441,7 @@ void ScalableMaskedUDivIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ScalableMaskedUDivIOp::verifyInvariants() {
+::mlir::LogicalResult ScalableMaskedUDivIOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -3409,6 +3477,10 @@ void ScalableMaskedUDivIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
   if (!((std::equal_to<>()(getI1SameShape((*this->getODSOperands(1).begin()).getType()), (*this->getODSOperands(0).begin()).getType()))))
     return emitOpError("failed to verify that mask has i1 element type and same shape as operands");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult ScalableMaskedUDivIOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult ScalableMaskedUDivIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -3585,7 +3657,7 @@ void SdotIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult SdotIntrOp::verifyInvariants() {
+::mlir::LogicalResult SdotIntrOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -3617,6 +3689,10 @@ void SdotIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult SdotIntrOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 } // namespace arm_sve
@@ -3745,7 +3821,7 @@ void SdotOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult SdotOp::verifyInvariants() {
+::mlir::LogicalResult SdotOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -3781,6 +3857,10 @@ void SdotOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(0).begin()).getType(), (*this->getODSResults(0).begin()).getType()})))))
     return emitOpError("failed to verify that all of {acc, dst} have same type");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult SdotOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult SdotOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -3960,7 +4040,7 @@ void SmmlaIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult SmmlaIntrOp::verifyInvariants() {
+::mlir::LogicalResult SmmlaIntrOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -3992,6 +4072,10 @@ void SmmlaIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult SmmlaIntrOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 } // namespace arm_sve
@@ -4120,7 +4204,7 @@ void SmmlaOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult SmmlaOp::verifyInvariants() {
+::mlir::LogicalResult SmmlaOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -4156,6 +4240,10 @@ void SmmlaOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(0).begin()).getType(), (*this->getODSResults(0).begin()).getType()})))))
     return emitOpError("failed to verify that all of {acc, dst} have same type");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult SmmlaOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult SmmlaOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -4335,7 +4423,7 @@ void UdotIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult UdotIntrOp::verifyInvariants() {
+::mlir::LogicalResult UdotIntrOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -4367,6 +4455,10 @@ void UdotIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult UdotIntrOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 } // namespace arm_sve
@@ -4495,7 +4587,7 @@ void UdotOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult UdotOp::verifyInvariants() {
+::mlir::LogicalResult UdotOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -4531,6 +4623,10 @@ void UdotOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(0).begin()).getType(), (*this->getODSResults(0).begin()).getType()})))))
     return emitOpError("failed to verify that all of {acc, dst} have same type");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult UdotOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult UdotOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -4710,7 +4806,7 @@ void UmmlaIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult UmmlaIntrOp::verifyInvariants() {
+::mlir::LogicalResult UmmlaIntrOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -4742,6 +4838,10 @@ void UmmlaIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult UmmlaIntrOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 } // namespace arm_sve
@@ -4870,7 +4970,7 @@ void UmmlaOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult UmmlaOp::verifyInvariants() {
+::mlir::LogicalResult UmmlaOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -4906,6 +5006,10 @@ void UmmlaOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(0).begin()).getType(), (*this->getODSResults(0).begin()).getType()})))))
     return emitOpError("failed to verify that all of {acc, dst} have same type");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult UmmlaOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult UmmlaOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {

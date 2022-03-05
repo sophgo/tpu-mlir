@@ -182,7 +182,7 @@ void SMullOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult SMullOp::verifyInvariants() {
+::mlir::LogicalResult SMullOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -212,6 +212,10 @@ void SMullOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   if (!((std::equal_to<>()((*this->getODSOperands(0).begin()).getType().cast<VectorType>().scaleElementBitwidth(2), (*this->getODSResults(0).begin()).getType()))))
     return emitOpError("failed to verify that res has same vector shape and element bitwidth scaled by 2 as a");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult SMullOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult SMullOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -419,7 +423,7 @@ void Sdot2dOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult Sdot2dOp::verifyInvariants() {
+::mlir::LogicalResult Sdot2dOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -463,6 +467,10 @@ void Sdot2dOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   if (!((b().getType().cast<VectorType>().getShape()[0] == a().getType().cast<VectorType>().getShape()[0])))
     return emitOpError("failed to verify that operand `b` should have as many rows as the size of operand `a`");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult Sdot2dOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult Sdot2dOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -704,7 +712,7 @@ void SdotOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult SdotOp::verifyInvariants() {
+::mlir::LogicalResult SdotOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -742,6 +750,10 @@ void SdotOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   if (!((std::equal_to<>()(VectorType::get({(*this->getODSOperands(1).begin()).getType().cast<VectorType>().getShape()[0] / 4},IntegerType::get((*this->getODSOperands(1).begin()).getType().getContext(), 32)), (*this->getODSResults(0).begin()).getType()))))
     return emitOpError("failed to verify that res has the same number of elements as operand b");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult SdotOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult SdotOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {

@@ -168,7 +168,7 @@ void AbsOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult AbsOp::verifyInvariants() {
+::mlir::LogicalResult AbsOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -190,6 +190,10 @@ void AbsOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
   if (!((std::equal_to<>()((*this->getODSOperands(0).begin()).getType().cast<ComplexType>().getElementType(), (*this->getODSResults(0).begin()).getType()))))
     return emitOpError("failed to verify that complex element type matches result type");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult AbsOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult AbsOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -367,7 +371,7 @@ void AddOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 
 }
 
-::mlir::LogicalResult AddOp::verifyInvariants() {
+::mlir::LogicalResult AddOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -393,6 +397,10 @@ void AddOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult AddOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult AddOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -566,7 +574,7 @@ void ConstantOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ConstantOp::verifyInvariants() {
+::mlir::LogicalResult ConstantOp::verifyInvariantsImpl() {
   {
     auto tblgen_value = (*this)->getAttr(getValueAttrName());
     if (!tblgen_value)
@@ -584,7 +592,13 @@ void ConstantOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
         return ::mlir::failure();
     }
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult ConstantOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 ::mlir::ParseResult ConstantOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -739,7 +753,7 @@ void CreateOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult CreateOp::verifyInvariants() {
+::mlir::LogicalResult CreateOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -771,6 +785,10 @@ void CreateOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   if (!((std::equal_to<>()((*this->getODSResults(0).begin()).getType().cast<ComplexType>().getElementType(), (*this->getODSOperands(1).begin()).getType()))))
     return emitOpError("failed to verify that complex element type matches imaginary operand type");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult CreateOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult CreateOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -962,7 +980,7 @@ void DivOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 
 }
 
-::mlir::LogicalResult DivOp::verifyInvariants() {
+::mlir::LogicalResult DivOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -988,6 +1006,10 @@ void DivOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult DivOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult DivOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -1190,7 +1212,7 @@ void EqualOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
   }
 }
 
-::mlir::LogicalResult EqualOp::verifyInvariants() {
+::mlir::LogicalResult EqualOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1218,6 +1240,10 @@ void EqualOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
   if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(0).begin()).getType(), (*this->getODSOperands(1).begin()).getType()})))))
     return emitOpError("failed to verify that all of {lhs, rhs} have same type");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult EqualOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::LogicalResult EqualOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
@@ -1394,7 +1420,7 @@ void ExpOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 
 }
 
-::mlir::LogicalResult ExpOp::verifyInvariants() {
+::mlir::LogicalResult ExpOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1414,6 +1440,10 @@ void ExpOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult ExpOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult ExpOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -1555,7 +1585,7 @@ void ImOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ImOp::verifyInvariants() {
+::mlir::LogicalResult ImOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1577,6 +1607,10 @@ void ImOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::
   if (!((std::equal_to<>()((*this->getODSOperands(0).begin()).getType().cast<ComplexType>().getElementType(), (*this->getODSResults(0).begin()).getType()))))
     return emitOpError("failed to verify that complex element type matches result type");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult ImOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult ImOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -1737,7 +1771,7 @@ void Log1pOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
 
 }
 
-::mlir::LogicalResult Log1pOp::verifyInvariants() {
+::mlir::LogicalResult Log1pOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1757,6 +1791,10 @@ void Log1pOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult Log1pOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult Log1pOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -1911,7 +1949,7 @@ void LogOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 
 }
 
-::mlir::LogicalResult LogOp::verifyInvariants() {
+::mlir::LogicalResult LogOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1931,6 +1969,10 @@ void LogOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult LogOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult LogOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -2102,7 +2144,7 @@ void MulOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 
 }
 
-::mlir::LogicalResult MulOp::verifyInvariants() {
+::mlir::LogicalResult MulOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -2128,6 +2170,10 @@ void MulOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult MulOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult MulOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -2296,7 +2342,7 @@ void NegOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 
 }
 
-::mlir::LogicalResult NegOp::verifyInvariants() {
+::mlir::LogicalResult NegOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -2316,6 +2362,10 @@ void NegOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult NegOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult NegOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -2504,7 +2554,7 @@ void NotEqualOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
   }
 }
 
-::mlir::LogicalResult NotEqualOp::verifyInvariants() {
+::mlir::LogicalResult NotEqualOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -2532,6 +2582,10 @@ void NotEqualOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
   if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(0).begin()).getType(), (*this->getODSOperands(1).begin()).getType()})))))
     return emitOpError("failed to verify that all of {lhs, rhs} have same type");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult NotEqualOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::LogicalResult NotEqualOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
@@ -2695,7 +2749,7 @@ void ReOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ReOp::verifyInvariants() {
+::mlir::LogicalResult ReOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -2717,6 +2771,10 @@ void ReOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::
   if (!((std::equal_to<>()((*this->getODSOperands(0).begin()).getType().cast<ComplexType>().getElementType(), (*this->getODSResults(0).begin()).getType()))))
     return emitOpError("failed to verify that complex element type matches result type");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult ReOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult ReOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -2877,7 +2935,7 @@ void SignOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 
 }
 
-::mlir::LogicalResult SignOp::verifyInvariants() {
+::mlir::LogicalResult SignOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -2897,6 +2955,10 @@ void SignOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult SignOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult SignOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -3068,7 +3130,7 @@ void SubOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 
 }
 
-::mlir::LogicalResult SubOp::verifyInvariants() {
+::mlir::LogicalResult SubOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -3094,6 +3156,10 @@ void SubOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult SubOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult SubOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {

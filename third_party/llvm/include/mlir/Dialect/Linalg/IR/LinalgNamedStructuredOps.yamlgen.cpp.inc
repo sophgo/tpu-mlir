@@ -1,5 +1,158 @@
 
 //===----------------------------------------------------------------------===//
+// Implementation of ElemwiseUnaryOp
+//===----------------------------------------------------------------------===//
+
+ArrayAttr ElemwiseUnaryOp::iterator_types() {
+  int64_t rank = getRank(getOutputOperand(0));
+  return Builder(getContext()).getStrArrayAttr(
+    SmallVector<StringRef>(rank, getParallelIteratorTypeName()));
+}
+
+ArrayAttr ElemwiseUnaryOp::indexing_maps() {
+  MLIRContext *context = getContext();
+  AffineMap scalarMap = AffineMap::get(getNumParallelLoops(), 0, context);
+  AffineMap tensorMap = AffineMap::getMultiDimIdentityMap(
+    getNumParallelLoops(), context);
+  SmallVector<AffineMap> indexingMaps;
+  for (OpOperand *opOperand : getInputAndOutputOperands())
+    indexingMaps.push_back(isScalar(opOperand) ? scalarMap : tensorMap);
+  return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
+}
+
+unsigned ElemwiseUnaryOp::getNumRegionArgs() { return 2; }
+
+std::string ElemwiseUnaryOp::getLibraryCallName() {
+  return generateLibraryCallName(getOperation());
+}
+
+void ElemwiseUnaryOp::regionBuilder(ImplicitLocOpBuilder &b,
+                        Block &block, ArrayRef<NamedAttribute> attrs) {
+  assert(2 > 0 && block.getNumArguments() == 2 &&
+         "ElemwiseUnaryOp regionBuilder expects 2 (>=0) args");
+  RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
+  SmallVector<Value> yields;
+  
+UnaryFn funVal = UnaryFn::exp;
+auto funIter = llvm::find_if(attrs, [&](const NamedAttribute &attr) {
+                              return attr.getName() == "fun"; });
+if (funIter != attrs.end()) {
+  if (auto attr = funIter->getValue().dyn_cast<UnaryFnAttr>())
+    funVal = attr.getValue();
+}
+
+  
+TypeFn castVal = TypeFn::cast_signed;
+auto castIter = llvm::find_if(attrs, [&](const NamedAttribute &attr) {
+                              return attr.getName() == "cast"; });
+if (castIter != attrs.end()) {
+  if (auto attr = castIter->getValue().dyn_cast<TypeFnAttr>())
+    castVal = attr.getValue();
+}
+
+  Value value1 = helper.buildTypeFn(castVal, block.getArgument(1).getType(), block.getArgument(0));
+  Value value2 = helper.buildUnaryFn(funVal, value1);
+  yields.push_back(value2);
+  helper.yieldOutputs(yields);
+}
+
+ParseResult ElemwiseUnaryOp::parse(OpAsmParser &parser, OperationState &result) {
+  return ::parseNamedStructuredOp<ElemwiseUnaryOp>(parser, result);
+}
+void ElemwiseUnaryOp::print(OpAsmPrinter &p) {
+  ::printNamedStructuredOp(p, *this);
+}
+
+LogicalResult ElemwiseUnaryOp::fold(ArrayRef<Attribute>,
+                        SmallVectorImpl<OpFoldResult> &) {
+  return foldMemRefCast(*this);
+}
+void ElemwiseUnaryOp::getEffects(SmallVectorImpl<
+    SideEffects::EffectInstance<MemoryEffects::Effect> >&effects) {
+      SmallVector<Value> inputBuffers = getInputBufferOperands();
+      SmallVector<Value> outputBuffers = getOutputBufferOperands();
+      getGenericEffectsImpl(effects,
+        getOperation()->getResults(), inputBuffers, outputBuffers);
+}
+
+//===----------------------------------------------------------------------===//
+// Implementation of ElemwiseBinaryOp
+//===----------------------------------------------------------------------===//
+
+ArrayAttr ElemwiseBinaryOp::iterator_types() {
+  int64_t rank = getRank(getOutputOperand(0));
+  return Builder(getContext()).getStrArrayAttr(
+    SmallVector<StringRef>(rank, getParallelIteratorTypeName()));
+}
+
+ArrayAttr ElemwiseBinaryOp::indexing_maps() {
+  MLIRContext *context = getContext();
+  AffineMap scalarMap = AffineMap::get(getNumParallelLoops(), 0, context);
+  AffineMap tensorMap = AffineMap::getMultiDimIdentityMap(
+    getNumParallelLoops(), context);
+  SmallVector<AffineMap> indexingMaps;
+  for (OpOperand *opOperand : getInputAndOutputOperands())
+    indexingMaps.push_back(isScalar(opOperand) ? scalarMap : tensorMap);
+  return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
+}
+
+unsigned ElemwiseBinaryOp::getNumRegionArgs() { return 3; }
+
+std::string ElemwiseBinaryOp::getLibraryCallName() {
+  return generateLibraryCallName(getOperation());
+}
+
+void ElemwiseBinaryOp::regionBuilder(ImplicitLocOpBuilder &b,
+                        Block &block, ArrayRef<NamedAttribute> attrs) {
+  assert(3 > 0 && block.getNumArguments() == 3 &&
+         "ElemwiseBinaryOp regionBuilder expects 3 (>=0) args");
+  RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
+  SmallVector<Value> yields;
+  
+BinaryFn funVal = BinaryFn::add;
+auto funIter = llvm::find_if(attrs, [&](const NamedAttribute &attr) {
+                              return attr.getName() == "fun"; });
+if (funIter != attrs.end()) {
+  if (auto attr = funIter->getValue().dyn_cast<BinaryFnAttr>())
+    funVal = attr.getValue();
+}
+
+  
+TypeFn castVal = TypeFn::cast_signed;
+auto castIter = llvm::find_if(attrs, [&](const NamedAttribute &attr) {
+                              return attr.getName() == "cast"; });
+if (castIter != attrs.end()) {
+  if (auto attr = castIter->getValue().dyn_cast<TypeFnAttr>())
+    castVal = attr.getValue();
+}
+
+  Value value1 = helper.buildTypeFn(castVal, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildTypeFn(castVal, block.getArgument(2).getType(), block.getArgument(1));
+  Value value3 = helper.buildBinaryFn(funVal, value1, value2);
+  yields.push_back(value3);
+  helper.yieldOutputs(yields);
+}
+
+ParseResult ElemwiseBinaryOp::parse(OpAsmParser &parser, OperationState &result) {
+  return ::parseNamedStructuredOp<ElemwiseBinaryOp>(parser, result);
+}
+void ElemwiseBinaryOp::print(OpAsmPrinter &p) {
+  ::printNamedStructuredOp(p, *this);
+}
+
+LogicalResult ElemwiseBinaryOp::fold(ArrayRef<Attribute>,
+                        SmallVectorImpl<OpFoldResult> &) {
+  return foldMemRefCast(*this);
+}
+void ElemwiseBinaryOp::getEffects(SmallVectorImpl<
+    SideEffects::EffectInstance<MemoryEffects::Effect> >&effects) {
+      SmallVector<Value> inputBuffers = getInputBufferOperands();
+      SmallVector<Value> outputBuffers = getOutputBufferOperands();
+      getGenericEffectsImpl(effects,
+        getOperation()->getResults(), inputBuffers, outputBuffers);
+}
+
+//===----------------------------------------------------------------------===//
 // Implementation of MatmulOp
 //===----------------------------------------------------------------------===//
 
@@ -48,10 +201,19 @@ void MatmulOp::regionBuilder(ImplicitLocOpBuilder &b,
          "MatmulOp regionBuilder expects 3 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(0));
-  Value value2 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(1));
-  Value value3 = helper.arithfn__mul(value1, value2);
-  Value value4 = helper.arithfn__add(block.getArgument(2), value3);
+  
+TypeFn castVal = TypeFn::cast_signed;
+auto castIter = llvm::find_if(attrs, [&](const NamedAttribute &attr) {
+                              return attr.getName() == "cast"; });
+if (castIter != attrs.end()) {
+  if (auto attr = castIter->getValue().dyn_cast<TypeFnAttr>())
+    castVal = attr.getValue();
+}
+
+  Value value1 = helper.buildTypeFn(castVal, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildTypeFn(castVal, block.getArgument(2).getType(), block.getArgument(1));
+  Value value3 = helper.buildBinaryFn(BinaryFn::mul, value1, value2);
+  Value value4 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(2), value3);
   yields.push_back(value4);
   helper.yieldOutputs(yields);
 }
@@ -124,10 +286,11 @@ void MatmulUnsignedOp::regionBuilder(ImplicitLocOpBuilder &b,
          "MatmulUnsignedOp regionBuilder expects 3 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast_unsigned(block.getArgument(2).getType(), block.getArgument(0));
-  Value value2 = helper.typefn__cast_unsigned(block.getArgument(2).getType(), block.getArgument(1));
-  Value value3 = helper.arithfn__mul(value1, value2);
-  Value value4 = helper.arithfn__add(block.getArgument(2), value3);
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_unsigned, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildTypeFn(TypeFn::cast_unsigned, block.getArgument(2).getType(), block.getArgument(1));
+  Value value3 = helper.buildBinaryFn(BinaryFn::mul, value1, value2);
+  Value value4 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(2), value3);
   yields.push_back(value4);
   helper.yieldOutputs(yields);
 }
@@ -204,14 +367,15 @@ void QuantizedMatmulOp::regionBuilder(ImplicitLocOpBuilder &b,
          "QuantizedMatmulOp regionBuilder expects 5 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast(block.getArgument(4).getType(), block.getArgument(0));
-  Value value2 = helper.typefn__cast(block.getArgument(4).getType(), block.getArgument(2));
-  Value value3 = helper.arithfn__sub(value1, value2);
-  Value value4 = helper.typefn__cast(block.getArgument(4).getType(), block.getArgument(1));
-  Value value5 = helper.typefn__cast(block.getArgument(4).getType(), block.getArgument(3));
-  Value value6 = helper.arithfn__sub(value4, value5);
-  Value value7 = helper.arithfn__mul(value3, value6);
-  Value value8 = helper.arithfn__add(block.getArgument(4), value7);
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(4).getType(), block.getArgument(0));
+  Value value2 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(4).getType(), block.getArgument(2));
+  Value value3 = helper.buildBinaryFn(BinaryFn::sub, value1, value2);
+  Value value4 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(4).getType(), block.getArgument(1));
+  Value value5 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(4).getType(), block.getArgument(3));
+  Value value6 = helper.buildBinaryFn(BinaryFn::sub, value4, value5);
+  Value value7 = helper.buildBinaryFn(BinaryFn::mul, value3, value6);
+  Value value8 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(4), value7);
   yields.push_back(value8);
   helper.yieldOutputs(yields);
 }
@@ -287,10 +451,11 @@ void Mmt4DOp::regionBuilder(ImplicitLocOpBuilder &b,
          "Mmt4DOp regionBuilder expects 3 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(0));
-  Value value2 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(1));
-  Value value3 = helper.arithfn__mul(value1, value2);
-  Value value4 = helper.arithfn__add(block.getArgument(2), value3);
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(1));
+  Value value3 = helper.buildBinaryFn(BinaryFn::mul, value1, value2);
+  Value value4 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(2), value3);
   yields.push_back(value4);
   helper.yieldOutputs(yields);
 }
@@ -364,10 +529,11 @@ void BatchMatmulOp::regionBuilder(ImplicitLocOpBuilder &b,
          "BatchMatmulOp regionBuilder expects 3 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(0));
-  Value value2 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(1));
-  Value value3 = helper.arithfn__mul(value1, value2);
-  Value value4 = helper.arithfn__add(block.getArgument(2), value3);
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(1));
+  Value value3 = helper.buildBinaryFn(BinaryFn::mul, value1, value2);
+  Value value4 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(2), value3);
   yields.push_back(value4);
   helper.yieldOutputs(yields);
 }
@@ -445,14 +611,15 @@ void QuantizedBatchMatmulOp::regionBuilder(ImplicitLocOpBuilder &b,
          "QuantizedBatchMatmulOp regionBuilder expects 5 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast(block.getArgument(4).getType(), block.getArgument(0));
-  Value value2 = helper.typefn__cast(block.getArgument(4).getType(), block.getArgument(2));
-  Value value3 = helper.arithfn__sub(value1, value2);
-  Value value4 = helper.typefn__cast(block.getArgument(4).getType(), block.getArgument(1));
-  Value value5 = helper.typefn__cast(block.getArgument(4).getType(), block.getArgument(3));
-  Value value6 = helper.arithfn__sub(value4, value5);
-  Value value7 = helper.arithfn__mul(value3, value6);
-  Value value8 = helper.arithfn__add(block.getArgument(4), value7);
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(4).getType(), block.getArgument(0));
+  Value value2 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(4).getType(), block.getArgument(2));
+  Value value3 = helper.buildBinaryFn(BinaryFn::sub, value1, value2);
+  Value value4 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(4).getType(), block.getArgument(1));
+  Value value5 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(4).getType(), block.getArgument(3));
+  Value value6 = helper.buildBinaryFn(BinaryFn::sub, value4, value5);
+  Value value7 = helper.buildBinaryFn(BinaryFn::mul, value3, value6);
+  Value value8 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(4), value7);
   yields.push_back(value8);
   helper.yieldOutputs(yields);
 }
@@ -524,10 +691,11 @@ void MatvecOp::regionBuilder(ImplicitLocOpBuilder &b,
          "MatvecOp regionBuilder expects 3 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(0));
-  Value value2 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(1));
-  Value value3 = helper.arithfn__mul(value1, value2);
-  Value value4 = helper.arithfn__add(block.getArgument(2), value3);
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(1));
+  Value value3 = helper.buildBinaryFn(BinaryFn::mul, value1, value2);
+  Value value4 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(2), value3);
   yields.push_back(value4);
   helper.yieldOutputs(yields);
 }
@@ -599,10 +767,11 @@ void VecmatOp::regionBuilder(ImplicitLocOpBuilder &b,
          "VecmatOp regionBuilder expects 3 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(0));
-  Value value2 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(1));
-  Value value3 = helper.arithfn__mul(value1, value2);
-  Value value4 = helper.arithfn__add(block.getArgument(2), value3);
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(1));
+  Value value3 = helper.buildBinaryFn(BinaryFn::mul, value1, value2);
+  Value value4 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(2), value3);
   yields.push_back(value4);
   helper.yieldOutputs(yields);
 }
@@ -675,10 +844,11 @@ void BatchMatvecOp::regionBuilder(ImplicitLocOpBuilder &b,
          "BatchMatvecOp regionBuilder expects 3 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(0));
-  Value value2 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(1));
-  Value value3 = helper.arithfn__mul(value1, value2);
-  Value value4 = helper.arithfn__add(block.getArgument(2), value3);
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(1));
+  Value value3 = helper.buildBinaryFn(BinaryFn::mul, value1, value2);
+  Value value4 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(2), value3);
   yields.push_back(value4);
   helper.yieldOutputs(yields);
 }
@@ -749,10 +919,11 @@ void DotOp::regionBuilder(ImplicitLocOpBuilder &b,
          "DotOp regionBuilder expects 3 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(0));
-  Value value2 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(1));
-  Value value3 = helper.arithfn__mul(value1, value2);
-  Value value4 = helper.arithfn__add(block.getArgument(2), value3);
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(1));
+  Value value3 = helper.buildBinaryFn(BinaryFn::mul, value1, value2);
+  Value value4 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(2), value3);
   yields.push_back(value4);
   helper.yieldOutputs(yields);
 }
@@ -824,10 +995,11 @@ void Conv1DOp::regionBuilder(ImplicitLocOpBuilder &b,
          "Conv1DOp regionBuilder expects 3 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(0));
-  Value value2 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(1));
-  Value value3 = helper.arithfn__mul(value1, value2);
-  Value value4 = helper.arithfn__add(block.getArgument(2), value3);
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(1));
+  Value value3 = helper.buildBinaryFn(BinaryFn::mul, value1, value2);
+  Value value4 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(2), value3);
   yields.push_back(value4);
   helper.yieldOutputs(yields);
 }
@@ -901,10 +1073,11 @@ void Conv2DOp::regionBuilder(ImplicitLocOpBuilder &b,
          "Conv2DOp regionBuilder expects 3 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(0));
-  Value value2 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(1));
-  Value value3 = helper.arithfn__mul(value1, value2);
-  Value value4 = helper.arithfn__add(block.getArgument(2), value3);
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(1));
+  Value value3 = helper.buildBinaryFn(BinaryFn::mul, value1, value2);
+  Value value4 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(2), value3);
   yields.push_back(value4);
   helper.yieldOutputs(yields);
 }
@@ -980,10 +1153,11 @@ void Conv3DOp::regionBuilder(ImplicitLocOpBuilder &b,
          "Conv3DOp regionBuilder expects 3 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(0));
-  Value value2 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(1));
-  Value value3 = helper.arithfn__mul(value1, value2);
-  Value value4 = helper.arithfn__add(block.getArgument(2), value3);
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(1));
+  Value value3 = helper.buildBinaryFn(BinaryFn::mul, value1, value2);
+  Value value4 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(2), value3);
   yields.push_back(value4);
   helper.yieldOutputs(yields);
 }
@@ -1088,10 +1262,11 @@ void Conv1DNwcWcfOp::regionBuilder(ImplicitLocOpBuilder &b,
          "Conv1DNwcWcfOp regionBuilder expects 3 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(0));
-  Value value2 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(1));
-  Value value3 = helper.arithfn__mul(value1, value2);
-  Value value4 = helper.arithfn__add(block.getArgument(2), value3);
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(1));
+  Value value3 = helper.buildBinaryFn(BinaryFn::mul, value1, value2);
+  Value value4 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(2), value3);
   yields.push_back(value4);
   helper.yieldOutputs(yields);
 }
@@ -1206,10 +1381,11 @@ void Conv2DNhwcHwcfOp::regionBuilder(ImplicitLocOpBuilder &b,
          "Conv2DNhwcHwcfOp regionBuilder expects 3 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(0));
-  Value value2 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(1));
-  Value value3 = helper.arithfn__mul(value1, value2);
-  Value value4 = helper.arithfn__add(block.getArgument(2), value3);
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(1));
+  Value value3 = helper.buildBinaryFn(BinaryFn::mul, value1, value2);
+  Value value4 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(2), value3);
   yields.push_back(value4);
   helper.yieldOutputs(yields);
 }
@@ -1328,14 +1504,15 @@ void Conv2DNhwcHwcfQOp::regionBuilder(ImplicitLocOpBuilder &b,
          "Conv2DNhwcHwcfQOp regionBuilder expects 5 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast(block.getArgument(4).getType(), block.getArgument(0));
-  Value value2 = helper.typefn__cast(block.getArgument(4).getType(), block.getArgument(2));
-  Value value3 = helper.arithfn__sub(value1, value2);
-  Value value4 = helper.typefn__cast(block.getArgument(4).getType(), block.getArgument(1));
-  Value value5 = helper.typefn__cast(block.getArgument(4).getType(), block.getArgument(3));
-  Value value6 = helper.arithfn__sub(value4, value5);
-  Value value7 = helper.arithfn__mul(value3, value6);
-  Value value8 = helper.arithfn__add(block.getArgument(4), value7);
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(4).getType(), block.getArgument(0));
+  Value value2 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(4).getType(), block.getArgument(2));
+  Value value3 = helper.buildBinaryFn(BinaryFn::sub, value1, value2);
+  Value value4 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(4).getType(), block.getArgument(1));
+  Value value5 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(4).getType(), block.getArgument(3));
+  Value value6 = helper.buildBinaryFn(BinaryFn::sub, value4, value5);
+  Value value7 = helper.buildBinaryFn(BinaryFn::mul, value3, value6);
+  Value value8 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(4), value7);
   yields.push_back(value8);
   helper.yieldOutputs(yields);
 }
@@ -1450,10 +1627,11 @@ void Conv2DNchwFchwOp::regionBuilder(ImplicitLocOpBuilder &b,
          "Conv2DNchwFchwOp regionBuilder expects 3 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(0));
-  Value value2 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(1));
-  Value value3 = helper.arithfn__mul(value1, value2);
-  Value value4 = helper.arithfn__add(block.getArgument(2), value3);
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(1));
+  Value value3 = helper.buildBinaryFn(BinaryFn::mul, value1, value2);
+  Value value4 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(2), value3);
   yields.push_back(value4);
   helper.yieldOutputs(yields);
 }
@@ -1578,10 +1756,11 @@ void Conv3DNdhwcDhwcfOp::regionBuilder(ImplicitLocOpBuilder &b,
          "Conv3DNdhwcDhwcfOp regionBuilder expects 3 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(0));
-  Value value2 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(1));
-  Value value3 = helper.arithfn__mul(value1, value2);
-  Value value4 = helper.arithfn__add(block.getArgument(2), value3);
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(1));
+  Value value3 = helper.buildBinaryFn(BinaryFn::mul, value1, value2);
+  Value value4 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(2), value3);
   yields.push_back(value4);
   helper.yieldOutputs(yields);
 }
@@ -1685,10 +1864,11 @@ void DepthwiseConv1DNwcWcOp::regionBuilder(ImplicitLocOpBuilder &b,
          "DepthwiseConv1DNwcWcOp regionBuilder expects 3 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(0));
-  Value value2 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(1));
-  Value value3 = helper.arithfn__mul(value1, value2);
-  Value value4 = helper.arithfn__add(block.getArgument(2), value3);
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(1));
+  Value value3 = helper.buildBinaryFn(BinaryFn::mul, value1, value2);
+  Value value4 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(2), value3);
   yields.push_back(value4);
   helper.yieldOutputs(yields);
 }
@@ -1802,10 +1982,11 @@ void DepthwiseConv2DNhwcHwcOp::regionBuilder(ImplicitLocOpBuilder &b,
          "DepthwiseConv2DNhwcHwcOp regionBuilder expects 3 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(0));
-  Value value2 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(1));
-  Value value3 = helper.arithfn__mul(value1, value2);
-  Value value4 = helper.arithfn__add(block.getArgument(2), value3);
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(1));
+  Value value3 = helper.buildBinaryFn(BinaryFn::mul, value1, value2);
+  Value value4 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(2), value3);
   yields.push_back(value4);
   helper.yieldOutputs(yields);
 }
@@ -1923,14 +2104,15 @@ void DepthwiseConv2DNhwcHwcQOp::regionBuilder(ImplicitLocOpBuilder &b,
          "DepthwiseConv2DNhwcHwcQOp regionBuilder expects 5 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast(block.getArgument(4).getType(), block.getArgument(0));
-  Value value2 = helper.typefn__cast(block.getArgument(4).getType(), block.getArgument(2));
-  Value value3 = helper.arithfn__sub(value1, value2);
-  Value value4 = helper.typefn__cast(block.getArgument(4).getType(), block.getArgument(1));
-  Value value5 = helper.typefn__cast(block.getArgument(4).getType(), block.getArgument(3));
-  Value value6 = helper.arithfn__sub(value4, value5);
-  Value value7 = helper.arithfn__mul(value3, value6);
-  Value value8 = helper.arithfn__add(block.getArgument(4), value7);
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(4).getType(), block.getArgument(0));
+  Value value2 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(4).getType(), block.getArgument(2));
+  Value value3 = helper.buildBinaryFn(BinaryFn::sub, value1, value2);
+  Value value4 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(4).getType(), block.getArgument(1));
+  Value value5 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(4).getType(), block.getArgument(3));
+  Value value6 = helper.buildBinaryFn(BinaryFn::sub, value4, value5);
+  Value value7 = helper.buildBinaryFn(BinaryFn::mul, value3, value6);
+  Value value8 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(4), value7);
   yields.push_back(value8);
   helper.yieldOutputs(yields);
 }
@@ -2045,10 +2227,11 @@ void DepthwiseConv2DNhwcHwcmOp::regionBuilder(ImplicitLocOpBuilder &b,
          "DepthwiseConv2DNhwcHwcmOp regionBuilder expects 3 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(0));
-  Value value2 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(1));
-  Value value3 = helper.arithfn__mul(value1, value2);
-  Value value4 = helper.arithfn__add(block.getArgument(2), value3);
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(1));
+  Value value3 = helper.buildBinaryFn(BinaryFn::mul, value1, value2);
+  Value value4 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(2), value3);
   yields.push_back(value4);
   helper.yieldOutputs(yields);
 }
@@ -2167,14 +2350,15 @@ void DepthwiseConv2DNhwcHwcmQOp::regionBuilder(ImplicitLocOpBuilder &b,
          "DepthwiseConv2DNhwcHwcmQOp regionBuilder expects 5 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast(block.getArgument(4).getType(), block.getArgument(0));
-  Value value2 = helper.typefn__cast(block.getArgument(4).getType(), block.getArgument(2));
-  Value value3 = helper.arithfn__sub(value1, value2);
-  Value value4 = helper.typefn__cast(block.getArgument(4).getType(), block.getArgument(1));
-  Value value5 = helper.typefn__cast(block.getArgument(4).getType(), block.getArgument(3));
-  Value value6 = helper.arithfn__sub(value4, value5);
-  Value value7 = helper.arithfn__mul(value3, value6);
-  Value value8 = helper.arithfn__add(block.getArgument(4), value7);
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(4).getType(), block.getArgument(0));
+  Value value2 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(4).getType(), block.getArgument(2));
+  Value value3 = helper.buildBinaryFn(BinaryFn::sub, value1, value2);
+  Value value4 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(4).getType(), block.getArgument(1));
+  Value value5 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(4).getType(), block.getArgument(3));
+  Value value6 = helper.buildBinaryFn(BinaryFn::sub, value4, value5);
+  Value value7 = helper.buildBinaryFn(BinaryFn::mul, value3, value6);
+  Value value8 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(4), value7);
   yields.push_back(value8);
   helper.yieldOutputs(yields);
 }
@@ -2288,8 +2472,9 @@ void PoolingNhwcSumOp::regionBuilder(ImplicitLocOpBuilder &b,
          "PoolingNhwcSumOp regionBuilder expects 3 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(0));
-  Value value2 = helper.arithfn__add(block.getArgument(2), value1);
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(2), value1);
   yields.push_back(value2);
   helper.yieldOutputs(yields);
 }
@@ -2403,8 +2588,9 @@ void PoolingNhwcMaxOp::regionBuilder(ImplicitLocOpBuilder &b,
          "PoolingNhwcMaxOp regionBuilder expects 3 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(0));
-  Value value2 = helper.arithfn__max(block.getArgument(2), value1);
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildBinaryFn(BinaryFn::max_signed, block.getArgument(2), value1);
   yields.push_back(value2);
   helper.yieldOutputs(yields);
 }
@@ -2518,8 +2704,9 @@ void PoolingNhwcMaxUnsignedOp::regionBuilder(ImplicitLocOpBuilder &b,
          "PoolingNhwcMaxUnsignedOp regionBuilder expects 3 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast_unsigned(block.getArgument(2).getType(), block.getArgument(0));
-  Value value2 = helper.arithfn__max_unsigned(block.getArgument(2), value1);
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_unsigned, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildBinaryFn(BinaryFn::max_unsigned, block.getArgument(2), value1);
   yields.push_back(value2);
   helper.yieldOutputs(yields);
 }
@@ -2633,8 +2820,9 @@ void PoolingNchwMaxOp::regionBuilder(ImplicitLocOpBuilder &b,
          "PoolingNchwMaxOp regionBuilder expects 3 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(0));
-  Value value2 = helper.arithfn__max(block.getArgument(2), value1);
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildBinaryFn(BinaryFn::max_signed, block.getArgument(2), value1);
   yields.push_back(value2);
   helper.yieldOutputs(yields);
 }
@@ -2748,8 +2936,9 @@ void PoolingNhwcMinOp::regionBuilder(ImplicitLocOpBuilder &b,
          "PoolingNhwcMinOp regionBuilder expects 3 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(0));
-  Value value2 = helper.arithfn__min(block.getArgument(2), value1);
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildBinaryFn(BinaryFn::min_signed, block.getArgument(2), value1);
   yields.push_back(value2);
   helper.yieldOutputs(yields);
 }
@@ -2863,8 +3052,9 @@ void PoolingNhwcMinUnsignedOp::regionBuilder(ImplicitLocOpBuilder &b,
          "PoolingNhwcMinUnsignedOp regionBuilder expects 3 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast_unsigned(block.getArgument(2).getType(), block.getArgument(0));
-  Value value2 = helper.arithfn__min_unsigned(block.getArgument(2), value1);
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_unsigned, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildBinaryFn(BinaryFn::min_unsigned, block.getArgument(2), value1);
   yields.push_back(value2);
   helper.yieldOutputs(yields);
 }
@@ -2988,8 +3178,9 @@ void PoolingNdhwcSumOp::regionBuilder(ImplicitLocOpBuilder &b,
          "PoolingNdhwcSumOp regionBuilder expects 3 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(0));
-  Value value2 = helper.arithfn__add(block.getArgument(2), value1);
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(2), value1);
   yields.push_back(value2);
   helper.yieldOutputs(yields);
 }
@@ -3113,8 +3304,9 @@ void PoolingNdhwcMaxOp::regionBuilder(ImplicitLocOpBuilder &b,
          "PoolingNdhwcMaxOp regionBuilder expects 3 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(0));
-  Value value2 = helper.arithfn__max(block.getArgument(2), value1);
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildBinaryFn(BinaryFn::max_signed, block.getArgument(2), value1);
   yields.push_back(value2);
   helper.yieldOutputs(yields);
 }
@@ -3238,8 +3430,9 @@ void PoolingNdhwcMinOp::regionBuilder(ImplicitLocOpBuilder &b,
          "PoolingNdhwcMinOp regionBuilder expects 3 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast(block.getArgument(2).getType(), block.getArgument(0));
-  Value value2 = helper.arithfn__min(block.getArgument(2), value1);
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildBinaryFn(BinaryFn::min_signed, block.getArgument(2), value1);
   yields.push_back(value2);
   helper.yieldOutputs(yields);
 }
@@ -3296,7 +3489,8 @@ void FillTensorOp::regionBuilder(ImplicitLocOpBuilder &b,
          "FillTensorOp regionBuilder expects 2 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
-  Value value1 = helper.typefn__cast(block.getArgument(1).getType(), block.getArgument(0));
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(1).getType(), block.getArgument(0));
   yields.push_back(value1);
   helper.yieldOutputs(yields);
 }
@@ -3370,35 +3564,36 @@ void FillRng2DOp::regionBuilder(ImplicitLocOpBuilder &b,
          "FillRng2DOp regionBuilder expects 4 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
+  
   Value value1 = helper.constant("2147483647 : i64");
-  Value value2 = helper.typefn__cast(helper.getFloat64Type(), value1);
+  Value value2 = helper.buildTypeFn(TypeFn::cast_signed, helper.getFloat64Type(), value1);
   Value value3 = helper.index(1);
-  Value value4 = helper.typefn__cast(helper.getIntegerType(32), value3);
+  Value value4 = helper.buildTypeFn(TypeFn::cast_signed, helper.getIntegerType(32), value3);
   Value value5 = helper.index(0);
-  Value value6 = helper.typefn__cast(helper.getIntegerType(32), value5);
-  Value value7 = helper.arithfn__add(value6, block.getArgument(2));
+  Value value6 = helper.buildTypeFn(TypeFn::cast_signed, helper.getIntegerType(32), value5);
+  Value value7 = helper.buildBinaryFn(BinaryFn::add, value6, block.getArgument(2));
   Value value8 = helper.constant("1103515245 : i64");
-  Value value9 = helper.typefn__cast(helper.getIntegerType(32), value8);
-  Value value10 = helper.arithfn__mul(value7, value9);
+  Value value9 = helper.buildTypeFn(TypeFn::cast_signed, helper.getIntegerType(32), value8);
+  Value value10 = helper.buildBinaryFn(BinaryFn::mul, value7, value9);
   Value value11 = helper.constant("12345 : i64");
-  Value value12 = helper.typefn__cast(helper.getIntegerType(32), value11);
-  Value value13 = helper.arithfn__add(value10, value12);
-  Value value14 = helper.arithfn__add(value4, value13);
+  Value value12 = helper.buildTypeFn(TypeFn::cast_signed, helper.getIntegerType(32), value11);
+  Value value13 = helper.buildBinaryFn(BinaryFn::add, value10, value12);
+  Value value14 = helper.buildBinaryFn(BinaryFn::add, value4, value13);
   Value value15 = helper.constant("1103515245 : i64");
-  Value value16 = helper.typefn__cast(helper.getIntegerType(32), value15);
-  Value value17 = helper.arithfn__mul(value14, value16);
+  Value value16 = helper.buildTypeFn(TypeFn::cast_signed, helper.getIntegerType(32), value15);
+  Value value17 = helper.buildBinaryFn(BinaryFn::mul, value14, value16);
   Value value18 = helper.constant("12345 : i64");
-  Value value19 = helper.typefn__cast(helper.getIntegerType(32), value18);
-  Value value20 = helper.arithfn__add(value17, value19);
-  Value value21 = helper.typefn__cast(helper.getFloat64Type(), value20);
-  Value value22 = helper.arithfn__add(value2, value21);
-  Value value23 = helper.arithfn__sub(block.getArgument(1), block.getArgument(0));
+  Value value19 = helper.buildTypeFn(TypeFn::cast_signed, helper.getIntegerType(32), value18);
+  Value value20 = helper.buildBinaryFn(BinaryFn::add, value17, value19);
+  Value value21 = helper.buildTypeFn(TypeFn::cast_signed, helper.getFloat64Type(), value20);
+  Value value22 = helper.buildBinaryFn(BinaryFn::add, value2, value21);
+  Value value23 = helper.buildBinaryFn(BinaryFn::sub, block.getArgument(1), block.getArgument(0));
   Value value24 = helper.constant("2.3283063999999999E-10 : f64");
-  Value value25 = helper.typefn__cast(helper.getFloat64Type(), value24);
-  Value value26 = helper.arithfn__mul(value23, value25);
-  Value value27 = helper.arithfn__mul(value22, value26);
-  Value value28 = helper.arithfn__add(value27, block.getArgument(0));
-  Value value29 = helper.typefn__cast(block.getArgument(3).getType(), value28);
+  Value value25 = helper.buildTypeFn(TypeFn::cast_signed, helper.getFloat64Type(), value24);
+  Value value26 = helper.buildBinaryFn(BinaryFn::mul, value23, value25);
+  Value value27 = helper.buildBinaryFn(BinaryFn::mul, value22, value26);
+  Value value28 = helper.buildBinaryFn(BinaryFn::add, value27, block.getArgument(0));
+  Value value29 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(3).getType(), value28);
   yields.push_back(value29);
   helper.yieldOutputs(yields);
 }
@@ -3468,12 +3663,13 @@ void SoftPlus2DOp::regionBuilder(ImplicitLocOpBuilder &b,
          "SoftPlus2DOp regionBuilder expects 2 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
+  
   Value value1 = helper.constant("1.000000e+00 : f64");
-  Value value2 = helper.typefn__cast(block.getArgument(1).getType(), value1);
-  Value value3 = helper.typefn__cast(block.getArgument(1).getType(), block.getArgument(0));
-  Value value4 = helper.arithfn__exp(value3);
-  Value value5 = helper.arithfn__add(value2, value4);
-  Value value6 = helper.arithfn__log(value5);
+  Value value2 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(1).getType(), value1);
+  Value value3 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(1).getType(), block.getArgument(0));
+  Value value4 = helper.buildUnaryFn(UnaryFn::exp, value3);
+  Value value5 = helper.buildBinaryFn(BinaryFn::add, value2, value4);
+  Value value6 = helper.buildUnaryFn(UnaryFn::log, value5);
   yields.push_back(value6);
   helper.yieldOutputs(yields);
 }

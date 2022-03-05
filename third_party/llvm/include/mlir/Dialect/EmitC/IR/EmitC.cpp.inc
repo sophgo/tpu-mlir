@@ -12,7 +12,8 @@
 ::mlir::emitc::ApplyOp,
 ::mlir::emitc::CallOp,
 ::mlir::emitc::ConstantOp,
-::mlir::emitc::IncludeOp
+::mlir::emitc::IncludeOp,
+::mlir::emitc::VariableOp
 #endif  // GET_OP_LIST
 
 #ifdef GET_OP_CLASSES
@@ -210,7 +211,7 @@ void ApplyOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ApplyOp::verifyInvariants() {
+::mlir::LogicalResult ApplyOp::verifyInvariantsImpl() {
   {
     auto tblgen_applicableOperator = (*this)->getAttr(applicableOperatorAttrName());
     if (!tblgen_applicableOperator)
@@ -237,7 +238,13 @@ void ApplyOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
         return ::mlir::failure();
     }
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult ApplyOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 ::mlir::ParseResult ApplyOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -529,7 +536,7 @@ void CallOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult CallOp::verifyInvariants() {
+::mlir::LogicalResult CallOp::verifyInvariantsImpl() {
   {
     auto tblgen_callee = (*this)->getAttr(calleeAttrName());
     if (!tblgen_callee)
@@ -566,7 +573,13 @@ void CallOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
         return ::mlir::failure();
     }
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult CallOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 ::mlir::ParseResult CallOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -725,7 +738,7 @@ void ConstantOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ConstantOp::verifyInvariants() {
+::mlir::LogicalResult ConstantOp::verifyInvariantsImpl() {
   {
     auto tblgen_value = (*this)->getAttr(valueAttrName());
     if (!tblgen_value)
@@ -743,7 +756,13 @@ void ConstantOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
         return ::mlir::failure();
     }
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult ConstantOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 } // namespace emitc
@@ -908,7 +927,7 @@ void IncludeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult IncludeOp::verifyInvariants() {
+::mlir::LogicalResult IncludeOp::verifyInvariantsImpl() {
   {
     auto tblgen_include = (*this)->getAttr(includeAttrName());
     if (!tblgen_include)
@@ -925,12 +944,151 @@ void IncludeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   return ::mlir::success();
 }
 
+::mlir::LogicalResult IncludeOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
 void IncludeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace emitc
 } // namespace mlir
 DEFINE_EXPLICIT_TYPE_ID(::mlir::emitc::IncludeOp)
+
+namespace mlir {
+namespace emitc {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::emitc::VariableOp definitions
+//===----------------------------------------------------------------------===//
+
+VariableOpAdaptor::VariableOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+
+VariableOpAdaptor::VariableOpAdaptor(VariableOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+
+::mlir::ValueRange VariableOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> VariableOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange VariableOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::DictionaryAttr VariableOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::Attribute VariableOpAdaptor::valueAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  ::mlir::Attribute attr = odsAttrs.get("value").cast<::mlir::Attribute>();
+  return attr;
+}
+
+::mlir::Attribute VariableOpAdaptor::value() {
+  auto attr = valueAttr();
+  return attr;
+}
+
+::mlir::LogicalResult VariableOpAdaptor::verify(::mlir::Location loc) {
+  {
+    auto tblgen_value = odsAttrs.get("value");
+    if (!tblgen_value)
+      return emitError(loc, "'emitc.variable' op ""requires attribute 'value'");
+
+    if (tblgen_value && !((true)))
+      return emitError(loc, "'emitc.variable' op ""attribute 'value' failed to satisfy constraint: any attribute");
+  }
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> VariableOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range VariableOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+std::pair<unsigned, unsigned> VariableOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range VariableOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Attribute VariableOp::valueAttr() {
+  return (*this)->getAttr(valueAttrName()).cast<::mlir::Attribute>();
+}
+
+::mlir::Attribute VariableOp::value() {
+  auto attr = valueAttr();
+  return attr;
+}
+
+void VariableOp::valueAttr(::mlir::Attribute attr) {
+  (*this)->setAttr(valueAttrName(), attr);
+}
+
+void VariableOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type resultType0, ::mlir::Attribute value) {
+  odsState.addAttribute(valueAttrName(odsState.name), value);
+  odsState.addTypes(resultType0);
+}
+
+void VariableOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Attribute value) {
+  odsState.addAttribute(valueAttrName(odsState.name), value);
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void VariableOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 0u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult VariableOp::verifyInvariantsImpl() {
+  {
+    auto tblgen_value = (*this)->getAttr(valueAttrName());
+    if (!tblgen_value)
+      return emitOpError("requires attribute 'value'");
+
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_EmitC2(*this, tblgen_value, "value")))
+      return ::mlir::failure();
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_EmitC0(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult VariableOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
+}
+
+} // namespace emitc
+} // namespace mlir
+DEFINE_EXPLICIT_TYPE_ID(::mlir::emitc::VariableOp)
 
 
 #endif  // GET_OP_CLASSES

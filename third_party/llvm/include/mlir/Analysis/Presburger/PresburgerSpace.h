@@ -18,11 +18,17 @@
 #include "llvm/Support/raw_ostream.h"
 
 namespace mlir {
+namespace presburger {
 
 class PresburgerLocalSpace;
 
-/// PresburgerSpace is a tuple of identifiers with information about what kind
-/// they correspond to. The identifiers can be split into three types:
+/// Kind of identifier. Implementation wise SetDims are treated as Range
+/// ids, and spaces with no distinction between dimension ids are treated
+/// as relations with zero domain ids.
+enum class IdKind { Symbol, Local, Domain, Range, SetDim = Range };
+
+/// PresburgerSpace is the space of all possible values of a tuple of integer
+/// valued variables/identifiers. Each identifier has one of the three types:
 ///
 /// Dimension: Ordinary variables over which the space is represented.
 ///
@@ -31,27 +37,39 @@ class PresburgerLocalSpace;
 /// family of spaces indexed by the symbolic identifiers.
 ///
 /// Local: Local identifiers correspond to existentially quantified variables.
+/// For example, consider the space: `(x, exists q)` where x is a dimension
+/// identifier and q is a local identifier. Let us put the constraints:
+///       `1 <= x <= 7, x = 2q`
+/// on this space to get the set:
+///       `(x) : (exists q : q <= x <= 7, x = 2q)`.
+/// An assignment to symbolic and dimension variables is valid if there
+/// exists some assignment to the local variable `q` satisfying these
+/// constraints. For this example, the set is equivalent to {2, 4, 6}.
+/// Mathematically, existential quantification can be thought of as the result
+/// of projection. In this example, `q` is existentially quantified. This can be
+/// thought of as the result of projecting out `q` from the previous example,
+/// i.e. we obtained {2, 4, 6} by projecting out the second dimension from
+/// {(2, 1), (4, 2), (6, 2)}.
 ///
 /// Dimension identifiers are further divided into Domain and Range identifiers
 /// to support building relations.
 ///
 /// Spaces with distinction between domain and range identifiers should use
 /// IdKind::Domain and IdKind::Range to refer to domain and range identifiers.
+/// Identifiers for such spaces are stored in the following order:
+///       [Domain, Range, Symbols, Locals]
 ///
 /// Spaces with no distinction between domain and range identifiers should use
-/// IdKind::SetDim to refer to dimension identifiers.
+/// IdKind::SetDim to refer to dimension identifiers. Identifiers for such
+/// spaces are stored in the following order:
+///       [SetDim, Symbol, Locals]
 ///
-/// PresburgerSpace does not support identifiers of kind Local. See
-/// PresburgerLocalSpace for an extension that supports Local ids.
+/// PresburgerSpace does not allow identifiers of kind Local. See
+/// PresburgerLocalSpace for an extension that does allow local identifiers.
 class PresburgerSpace {
   friend PresburgerLocalSpace;
 
 public:
-  /// Kind of identifier. Implementation wise SetDims are treated as Range
-  /// ids, and spaces with no distinction between dimension ids are treated
-  /// as relations with zero domain ids.
-  enum IdKind { Symbol, Local, Domain, Range, SetDim = Range };
-
   static PresburgerSpace getRelationSpace(unsigned numDomain, unsigned numRange,
                                           unsigned numSymbols);
 
@@ -94,6 +112,10 @@ public:
 
   /// Removes identifiers in the column range [idStart, idLimit).
   virtual void removeIdRange(unsigned idStart, unsigned idLimit);
+
+  /// Returns true if both the spaces are equal i.e. if both spaces have the
+  /// same number of identifiers of each kind (excluding Local Identifiers).
+  bool isEqual(const PresburgerSpace &other) const;
 
   /// Changes the partition between dimensions and symbols. Depending on the new
   /// symbol count, either a chunk of dimensional identifiers immediately before
@@ -175,8 +197,13 @@ protected:
   PresburgerLocalSpace(unsigned numDims, unsigned numSymbols,
                        unsigned numLocals)
       : PresburgerSpace(Set, /*numDomain=*/0, numDims, numSymbols, numLocals) {}
+
+  /// Returns true if both the spaces are equal i.e. if both spaces have the
+  /// same number of identifiers of each kind.
+  bool isEqual(const PresburgerLocalSpace &other) const;
 };
 
+} // namespace presburger
 } // namespace mlir
 
 #endif // MLIR_ANALYSIS_PRESBURGER_PRESBURGERSPACE_H

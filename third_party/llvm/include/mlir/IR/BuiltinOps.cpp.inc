@@ -285,7 +285,7 @@ void FuncOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult FuncOp::verifyInvariants() {
+::mlir::LogicalResult FuncOp::verifyInvariantsImpl() {
   {
     auto tblgen_sym_name = (*this)->getAttr(sym_nameAttrName());
     if (!tblgen_sym_name)
@@ -314,7 +314,13 @@ void FuncOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
       if (::mlir::failed(__mlir_ods_local_region_constraint_BuiltinOps0(*this, region, "body", index++)))
         return ::mlir::failure();
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult FuncOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 } // namespace mlir
@@ -450,7 +456,7 @@ void ModuleOp::sym_visibilityAttr(::mlir::StringAttr attr) {
   return (*this)->removeAttr(sym_visibilityAttrName());
 }
 
-::mlir::LogicalResult ModuleOp::verifyInvariants() {
+::mlir::LogicalResult ModuleOp::verifyInvariantsImpl() {
   {
     auto tblgen_sym_name = (*this)->getAttr(sym_nameAttrName());
     if (::mlir::failed(__mlir_ods_local_attr_constraint_BuiltinOps0(*this, tblgen_sym_name, "sym_name")))
@@ -468,7 +474,13 @@ void ModuleOp::sym_visibilityAttr(::mlir::StringAttr attr) {
       if (::mlir::failed(__mlir_ods_local_region_constraint_BuiltinOps1(*this, region, "body", index++)))
         return ::mlir::failure();
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult ModuleOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 ::mlir::ParseResult ModuleOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -622,7 +634,7 @@ void UnrealizedConversionCastOp::build(::mlir::OpBuilder &, ::mlir::OperationSta
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult UnrealizedConversionCastOp::verifyInvariants() {
+::mlir::LogicalResult UnrealizedConversionCastOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -642,6 +654,10 @@ void UnrealizedConversionCastOp::build(::mlir::OpBuilder &, ::mlir::OperationSta
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult UnrealizedConversionCastOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult UnrealizedConversionCastOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {

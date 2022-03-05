@@ -35,6 +35,14 @@ public:
     return ::llvm::StringLiteral("linalg");
   }
 
+  /// Parse an attribute registered to this dialect.
+  ::mlir::Attribute parseAttribute(::mlir::DialectAsmParser &parser,
+                                   ::mlir::Type type) const override;
+
+  /// Print an attribute registered to this dialect.
+  void printAttribute(::mlir::Attribute attr,
+                      ::mlir::DialectAsmPrinter &os) const override;
+
   /// Register canonicalization patterns.
   void getCanonicalizationPatterns(
       ::mlir::RewritePatternSet &results) const override;

@@ -733,6 +733,70 @@ class DotOp(_ods_ir.OpView):
 
 @_ods_cext.register_operation(_Dialect)
 @_ods_extend_opview_class(_ods_ext_module)
+class ElemwiseBinaryOp(_ods_ir.OpView):
+  OPERATION_NAME = "linalg.elemwise_binary"
+
+  _ODS_OPERAND_SEGMENTS = [-1,-1,]
+
+  _ODS_REGIONS = (1, True)
+
+  @builtins.property
+  def inputs(self):
+    operand_range = _ods_segmented_accessor(
+         self.operation.operands,
+         self.operation.attributes["operand_segment_sizes"], 0)
+    return operand_range
+
+  @builtins.property
+  def outputs(self):
+    operand_range = _ods_segmented_accessor(
+         self.operation.operands,
+         self.operation.attributes["operand_segment_sizes"], 1)
+    return operand_range
+
+  @builtins.property
+  def result_tensors(self):
+    _ods_variadic_group_length = len(self.operation.results) - 1 + 1
+    return self.operation.results[0:0 + _ods_variadic_group_length]
+
+  @builtins.property
+  def region(self):
+    return self.regions[0]
+
+@_ods_cext.register_operation(_Dialect)
+@_ods_extend_opview_class(_ods_ext_module)
+class ElemwiseUnaryOp(_ods_ir.OpView):
+  OPERATION_NAME = "linalg.elemwise_unary"
+
+  _ODS_OPERAND_SEGMENTS = [-1,-1,]
+
+  _ODS_REGIONS = (1, True)
+
+  @builtins.property
+  def inputs(self):
+    operand_range = _ods_segmented_accessor(
+         self.operation.operands,
+         self.operation.attributes["operand_segment_sizes"], 0)
+    return operand_range
+
+  @builtins.property
+  def outputs(self):
+    operand_range = _ods_segmented_accessor(
+         self.operation.operands,
+         self.operation.attributes["operand_segment_sizes"], 1)
+    return operand_range
+
+  @builtins.property
+  def result_tensors(self):
+    _ods_variadic_group_length = len(self.operation.results) - 1 + 1
+    return self.operation.results[0:0 + _ods_variadic_group_length]
+
+  @builtins.property
+  def region(self):
+    return self.regions[0]
+
+@_ods_cext.register_operation(_Dialect)
+@_ods_extend_opview_class(_ods_ext_module)
 class FillOp(_ods_ir.OpView):
   OPERATION_NAME = "linalg.fill"
 
@@ -980,77 +1044,6 @@ class InitTensorOp(_ods_ir.OpView):
   @builtins.property
   def result(self):
     return self.operation.results[0]
-
-@_ods_cext.register_operation(_Dialect)
-@_ods_extend_opview_class(_ods_ext_module)
-class TiledLoopOp(_ods_ir.OpView):
-  OPERATION_NAME = "linalg.tiled_loop"
-
-  _ODS_OPERAND_SEGMENTS = [-1,-1,-1,-1,-1,]
-
-  _ODS_REGIONS = (1, True)
-
-  def __init__(self, results_, lowerBound, upperBound, step, inputs, outputs, iterator_types, distribution_types, *, loc=None, ip=None):
-    operands = []
-    results = []
-    attributes = {}
-    regions = None
-    operands.append(_get_op_results_or_values(lowerBound))
-    operands.append(_get_op_results_or_values(upperBound))
-    operands.append(_get_op_results_or_values(step))
-    operands.append(_get_op_results_or_values(inputs))
-    operands.append(_get_op_results_or_values(outputs))
-    attributes["iterator_types"] = iterator_types
-    if distribution_types is not None: attributes["distribution_types"] = distribution_types
-    results.extend(results_)
-    _ods_successors = None
-    super().__init__(self.build_generic(
-      attributes=attributes, results=results, operands=operands,
-      successors=_ods_successors, regions=regions, loc=loc, ip=ip))
-
-  @builtins.property
-  def lowerBound(self):
-    operand_range = _ods_segmented_accessor(
-         self.operation.operands,
-         self.operation.attributes["operand_segment_sizes"], 0)
-    return operand_range
-
-  @builtins.property
-  def upperBound(self):
-    operand_range = _ods_segmented_accessor(
-         self.operation.operands,
-         self.operation.attributes["operand_segment_sizes"], 1)
-    return operand_range
-
-  @builtins.property
-  def step(self):
-    operand_range = _ods_segmented_accessor(
-         self.operation.operands,
-         self.operation.attributes["operand_segment_sizes"], 2)
-    return operand_range
-
-  @builtins.property
-  def inputs(self):
-    operand_range = _ods_segmented_accessor(
-         self.operation.operands,
-         self.operation.attributes["operand_segment_sizes"], 3)
-    return operand_range
-
-  @builtins.property
-  def outputs(self):
-    operand_range = _ods_segmented_accessor(
-         self.operation.operands,
-         self.operation.attributes["operand_segment_sizes"], 4)
-    return operand_range
-
-  @builtins.property
-  def results_(self):
-    _ods_variadic_group_length = len(self.operation.results) - 1 + 1
-    return self.operation.results[0:0 + _ods_variadic_group_length]
-
-  @builtins.property
-  def region(self):
-    return self.regions[0]
 
 @_ods_cext.register_operation(_Dialect)
 @_ods_extend_opview_class(_ods_ext_module)

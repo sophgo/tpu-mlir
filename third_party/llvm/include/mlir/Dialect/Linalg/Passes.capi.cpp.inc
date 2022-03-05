@@ -79,14 +79,6 @@ void mlirRegisterLinalgLinalgInlineScalarOperands() {
 }
 
 
-MlirPass mlirCreateLinalgLinalgLowerTiledLoopsToSCF() {
-  return wrap(mlir::createConvertLinalgTiledLoopsToSCFPass().release());
-}
-void mlirRegisterLinalgLinalgLowerTiledLoopsToSCF() {
-  registerLinalgLowerTiledLoopsToSCFPass();
-}
-
-
 MlirPass mlirCreateLinalgLinalgLowerToAffineLoops() {
   return wrap(mlir::createConvertLinalgToAffineLoopsPass().release());
 }

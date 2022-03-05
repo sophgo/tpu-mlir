@@ -87,6 +87,22 @@ void mlirRegisterConversionConvertControlFlowToLLVM() {
 }
 
 
+MlirPass mlirCreateConversionConvertControlFlowToSPIRV() {
+  return wrap(mlir::createConvertControlFlowToSPIRVPass().release());
+}
+void mlirRegisterConversionConvertControlFlowToSPIRV() {
+  registerConvertControlFlowToSPIRVPass();
+}
+
+
+MlirPass mlirCreateConversionConvertFuncToSPIRV() {
+  return wrap(mlir::createConvertFuncToSPIRVPass().release());
+}
+void mlirRegisterConversionConvertFuncToSPIRV() {
+  registerConvertFuncToSPIRVPass();
+}
+
+
 MlirPass mlirCreateConversionConvertGPUToSPIRV() {
   return wrap(mlir::createConvertGPUToSPIRVPass().release());
 }
@@ -263,11 +279,11 @@ void mlirRegisterConversionConvertStandardToLLVM() {
 }
 
 
-MlirPass mlirCreateConversionConvertStandardToSPIRV() {
-  return wrap(mlir::createConvertStandardToSPIRVPass().release());
+MlirPass mlirCreateConversionConvertTensorToSPIRV() {
+  return wrap(mlir::createConvertTensorToSPIRVPass().release());
 }
-void mlirRegisterConversionConvertStandardToSPIRV() {
-  registerConvertStandardToSPIRVPass();
+void mlirRegisterConversionConvertTensorToSPIRV() {
+  registerConvertTensorToSPIRVPass();
 }
 
 

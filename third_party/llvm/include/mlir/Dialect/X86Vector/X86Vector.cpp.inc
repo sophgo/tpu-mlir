@@ -354,7 +354,7 @@ void DotIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
   }
 }
 
-::mlir::LogicalResult DotIntrOp::verifyInvariants() {
+::mlir::LogicalResult DotIntrOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -388,6 +388,10 @@ void DotIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
   if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(0).begin()).getType(), (*this->getODSOperands(1).begin()).getType(), (*this->getODSResults(0).begin()).getType()})))))
     return emitOpError("failed to verify that all of {a, b, res} have same type");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult DotIntrOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::LogicalResult DotIntrOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
@@ -524,7 +528,7 @@ void DotOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 
 }
 
-::mlir::LogicalResult DotOp::verifyInvariants() {
+::mlir::LogicalResult DotOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -550,6 +554,10 @@ void DotOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult DotOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult DotOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -769,7 +777,7 @@ void MaskCompressIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationS
   }
 }
 
-::mlir::LogicalResult MaskCompressIntrOp::verifyInvariants() {
+::mlir::LogicalResult MaskCompressIntrOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -805,6 +813,10 @@ void MaskCompressIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationS
   if (!((std::equal_to<>()(VectorType::get({(*this->getODSResults(0).begin()).getType().cast<VectorType>().getShape()[0]}, IntegerType::get((*this->getODSResults(0).begin()).getType().getContext(), 1)), (*this->getODSOperands(2).begin()).getType()))))
     return emitOpError("failed to verify that `k` has the same number of bits as elements in `res`");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult MaskCompressIntrOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::LogicalResult MaskCompressIntrOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
@@ -1050,7 +1062,7 @@ void MaskCompressOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
   }
 }
 
-::mlir::LogicalResult MaskCompressOp::verifyInvariants() {
+::mlir::LogicalResult MaskCompressOp::verifyInvariantsImpl() {
   {
     auto tblgen_constant_src = (*this)->getAttr(constant_srcAttrName());
     if (::mlir::failed(__mlir_ods_local_attr_constraint_X86Vector0(*this, tblgen_constant_src, "constant_src")))
@@ -1095,7 +1107,13 @@ void MaskCompressOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
     return emitOpError("failed to verify that all of {a, dst} have same type");
   if (!((std::equal_to<>()(VectorType::get({(*this->getODSResults(0).begin()).getType().cast<VectorType>().getShape()[0]}, IntegerType::get((*this->getODSResults(0).begin()).getType().getContext(), 1)), (*this->getODSOperands(0).begin()).getType()))))
     return emitOpError("failed to verify that `k` has the same number of bits as elements in `dst`");
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult MaskCompressOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 ::mlir::LogicalResult MaskCompressOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
@@ -1408,7 +1426,7 @@ void MaskRndScaleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
   }
 }
 
-::mlir::LogicalResult MaskRndScaleOp::verifyInvariants() {
+::mlir::LogicalResult MaskRndScaleOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1456,6 +1474,10 @@ void MaskRndScaleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
   if (!((std::equal_to<>()(IntegerType::get((*this->getODSResults(0).begin()).getType().getContext(), ((*this->getODSResults(0).begin()).getType().cast<VectorType>().getShape()[0])), (*this->getODSOperands(3).begin()).getType()))))
     return emitOpError("failed to verify that imm has the same number of bits as elements in dst");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult MaskRndScaleOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::LogicalResult MaskRndScaleOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
@@ -1767,7 +1789,7 @@ void MaskRndScalePDIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operatio
   }
 }
 
-::mlir::LogicalResult MaskRndScalePDIntrOp::verifyInvariants() {
+::mlir::LogicalResult MaskRndScalePDIntrOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1813,6 +1835,10 @@ void MaskRndScalePDIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operatio
   if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(0).begin()).getType(), (*this->getODSOperands(2).begin()).getType(), (*this->getODSResults(0).begin()).getType()})))))
     return emitOpError("failed to verify that all of {src, a, res} have same type");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult MaskRndScalePDIntrOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::LogicalResult MaskRndScalePDIntrOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
@@ -2017,7 +2043,7 @@ void MaskRndScalePSIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operatio
   }
 }
 
-::mlir::LogicalResult MaskRndScalePSIntrOp::verifyInvariants() {
+::mlir::LogicalResult MaskRndScalePSIntrOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -2063,6 +2089,10 @@ void MaskRndScalePSIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operatio
   if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(0).begin()).getType(), (*this->getODSOperands(2).begin()).getType(), (*this->getODSResults(0).begin()).getType()})))))
     return emitOpError("failed to verify that all of {src, a, res} have same type");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult MaskRndScalePSIntrOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::LogicalResult MaskRndScalePSIntrOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
@@ -2267,7 +2297,7 @@ void MaskScaleFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
   }
 }
 
-::mlir::LogicalResult MaskScaleFOp::verifyInvariants() {
+::mlir::LogicalResult MaskScaleFOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -2315,6 +2345,10 @@ void MaskScaleFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
   if (!((std::equal_to<>()(IntegerType::get((*this->getODSResults(0).begin()).getType().getContext(), ((*this->getODSResults(0).begin()).getType().cast<VectorType>().getShape()[0])), (*this->getODSOperands(3).begin()).getType()))))
     return emitOpError("failed to verify that k has the same number of bits as elements in dst");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult MaskScaleFOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::LogicalResult MaskScaleFOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
@@ -2626,7 +2660,7 @@ void MaskScaleFPDIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationS
   }
 }
 
-::mlir::LogicalResult MaskScaleFPDIntrOp::verifyInvariants() {
+::mlir::LogicalResult MaskScaleFPDIntrOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -2672,6 +2706,10 @@ void MaskScaleFPDIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationS
   if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(0).begin()).getType(), (*this->getODSOperands(1).begin()).getType(), (*this->getODSOperands(2).begin()).getType(), (*this->getODSResults(0).begin()).getType()})))))
     return emitOpError("failed to verify that all of {src, a, b, res} have same type");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult MaskScaleFPDIntrOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::LogicalResult MaskScaleFPDIntrOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
@@ -2876,7 +2914,7 @@ void MaskScaleFPSIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationS
   }
 }
 
-::mlir::LogicalResult MaskScaleFPSIntrOp::verifyInvariants() {
+::mlir::LogicalResult MaskScaleFPSIntrOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -2922,6 +2960,10 @@ void MaskScaleFPSIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationS
   if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(0).begin()).getType(), (*this->getODSOperands(1).begin()).getType(), (*this->getODSOperands(2).begin()).getType(), (*this->getODSResults(0).begin()).getType()})))))
     return emitOpError("failed to verify that all of {src, a, b, res} have same type");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult MaskScaleFPSIntrOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::LogicalResult MaskScaleFPSIntrOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
@@ -3041,7 +3083,7 @@ void RsqrtIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
 
 }
 
-::mlir::LogicalResult RsqrtIntrOp::verifyInvariants() {
+::mlir::LogicalResult RsqrtIntrOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -3061,6 +3103,10 @@ void RsqrtIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult RsqrtIntrOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 void RsqrtIntrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
@@ -3173,7 +3219,7 @@ void RsqrtOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
 
 }
 
-::mlir::LogicalResult RsqrtOp::verifyInvariants() {
+::mlir::LogicalResult RsqrtOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -3193,6 +3239,10 @@ void RsqrtOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult RsqrtOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult RsqrtOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -3350,7 +3400,7 @@ void Vp2IntersectDIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult Vp2IntersectDIntrOp::verifyInvariants() {
+::mlir::LogicalResult Vp2IntersectDIntrOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -3376,6 +3426,10 @@ void Vp2IntersectDIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult Vp2IntersectDIntrOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 void Vp2IntersectDIntrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
@@ -3505,7 +3559,7 @@ void Vp2IntersectOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult Vp2IntersectOp::verifyInvariants() {
+::mlir::LogicalResult Vp2IntersectOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -3543,6 +3597,10 @@ void Vp2IntersectOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
   if (!((std::equal_to<>()(VectorType::get({(*this->getODSOperands(0).begin()).getType().cast<VectorType>().getShape()[0]}, IntegerType::get((*this->getODSOperands(0).begin()).getType().getContext(), 1)), (*this->getODSResults(1).begin()).getType()))))
     return emitOpError("failed to verify that k2 has the same number of bits as elements in b");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult Vp2IntersectOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult Vp2IntersectOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -3723,7 +3781,7 @@ void Vp2IntersectQIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult Vp2IntersectQIntrOp::verifyInvariants() {
+::mlir::LogicalResult Vp2IntersectQIntrOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -3749,6 +3807,10 @@ void Vp2IntersectQIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult Vp2IntersectQIntrOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 void Vp2IntersectQIntrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {

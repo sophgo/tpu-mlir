@@ -364,6 +364,7 @@
     vp_sdiv,                                   // llvm.vp.sdiv
     vp_select,                                 // llvm.vp.select
     vp_shl,                                    // llvm.vp.shl
+    vp_sitofp,                                 // llvm.vp.sitofp
     vp_srem,                                   // llvm.vp.srem
     vp_store,                                  // llvm.vp.store
     vp_sub,                                    // llvm.vp.sub
@@ -374,4 +375,4 @@
     write_register,                            // llvm.write_register
     xray_customevent,                          // llvm.xray.customevent
     xray_typedevent,                           // llvm.xray.typedevent
-    num_intrinsics = 10765
+    num_intrinsics = 10851

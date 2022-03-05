@@ -141,7 +141,7 @@ void CloneOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult CloneOp::verifyInvariants() {
+::mlir::LogicalResult CloneOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -161,6 +161,10 @@ void CloneOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult CloneOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult CloneOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -319,7 +323,7 @@ void ToMemrefOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ToMemrefOp::verifyInvariants() {
+::mlir::LogicalResult ToMemrefOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -341,6 +345,10 @@ void ToMemrefOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   if (!((std::equal_to<>()(memref::getTensorTypeFromMemRefType((*this->getODSResults(0).begin()).getType()), (*this->getODSOperands(0).begin()).getType()))))
     return emitOpError("failed to verify that type of 'tensor' is the tensor equivalent of 'memref'");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult ToMemrefOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult ToMemrefOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -494,7 +502,7 @@ void ToTensorOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ToTensorOp::verifyInvariants() {
+::mlir::LogicalResult ToTensorOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -516,6 +524,10 @@ void ToTensorOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   if (!((std::equal_to<>()(memref::getTensorTypeFromMemRefType((*this->getODSOperands(0).begin()).getType()), (*this->getODSResults(0).begin()).getType()))))
     return emitOpError("failed to verify that result type matches tensor equivalent of 'memref'");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult ToTensorOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult ToTensorOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {

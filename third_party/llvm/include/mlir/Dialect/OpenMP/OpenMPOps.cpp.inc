@@ -105,7 +105,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps0(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps1(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !((((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))) && (((attr.cast<::mlir::IntegerAttr>().getInt() == 0)) || ((attr.cast<::mlir::IntegerAttr>().getInt() == 1)) || ((attr.cast<::mlir::IntegerAttr>().getInt() == 2)) || ((attr.cast<::mlir::IntegerAttr>().getInt() == 3)) || ((attr.cast<::mlir::IntegerAttr>().getInt() == 4))))) {
+  if (attr && !((attr.isa<::mlir::omp::ClauseMemoryOrderKindAttr>()))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: MemoryOrderKind Clause";
   }
@@ -114,15 +114,6 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps1(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps2(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !((attr.isa<::mlir::omp::ClauseMemoryOrderKindAttr>()))) {
-    return op->emitOpError("attribute '") << attrName
-        << "' failed to satisfy constraint: MemoryOrderKind Clause";
-  }
-  return ::mlir::success();
-}
-
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps3(
-    ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((attr.isa<::mlir::StringAttr>()))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: string attribute";
@@ -130,7 +121,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps3(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps4(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps3(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((attr.isa<::mlir::FlatSymbolRefAttr>()))) {
     return op->emitOpError("attribute '") << attrName
@@ -139,7 +130,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps4(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps5(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps4(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((attr.isa<::mlir::omp::ClauseDependAttr>()))) {
     return op->emitOpError("attribute '") << attrName
@@ -148,7 +139,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps5(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps6(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps5(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))) && ((attr.cast<::mlir::IntegerAttr>().getInt() >= 0)))) {
     return op->emitOpError("attribute '") << attrName
@@ -157,7 +148,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps6(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps7(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps6(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((attr.isa<::mlir::UnitAttr>()))) {
     return op->emitOpError("attribute '") << attrName
@@ -166,7 +157,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps7(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps8(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps7(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((attr.isa<::mlir::omp::ClauseProcBindKindAttr>()))) {
     return op->emitOpError("attribute '") << attrName
@@ -175,7 +166,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps8(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps9(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps8(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !(((attr.isa<::mlir::TypeAttr>())) && ((attr.cast<::mlir::TypeAttr>().getValue().isa<::mlir::Type>())))) {
     return op->emitOpError("attribute '") << attrName
@@ -184,7 +175,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps9(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps10(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps9(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return (attr.isa<::mlir::SymbolRefAttr>()); })))) {
     return op->emitOpError("attribute '") << attrName
@@ -193,7 +184,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps10(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps11(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps10(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((attr.isa<::mlir::omp::ClauseScheduleKindAttr>()))) {
     return op->emitOpError("attribute '") << attrName
@@ -202,7 +193,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps11(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps12(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps11(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((attr.isa<::mlir::omp::ScheduleModifierAttr>()))) {
     return op->emitOpError("attribute '") << attrName
@@ -211,7 +202,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps12(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps13(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps12(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((attr.isa<::mlir::omp::ClauseOrderKindAttr>()))) {
     return op->emitOpError("attribute '") << attrName
@@ -272,30 +263,30 @@ std::pair<unsigned, unsigned> AtomicCaptureOpAdaptor::getODSOperandIndexAndLengt
   return odsAttrs;
 }
 
-::mlir::IntegerAttr AtomicCaptureOpAdaptor::hintAttr() {
+::mlir::IntegerAttr AtomicCaptureOpAdaptor::hint_valAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("hint").dyn_cast_or_null<::mlir::IntegerAttr>();
+  ::mlir::IntegerAttr attr = odsAttrs.get("hint_val").dyn_cast_or_null<::mlir::IntegerAttr>();
   if (!attr)
     attr = ::mlir::Builder(odsAttrs.getContext()).getIntegerAttr(::mlir::Builder(odsAttrs.getContext()).getIntegerType(64), 0);
   return attr;
 }
 
-uint64_t AtomicCaptureOpAdaptor::hint() {
-  auto attr = hintAttr();
+uint64_t AtomicCaptureOpAdaptor::hint_val() {
+  auto attr = hint_valAttr();
     if (!attr)
       return ::mlir::Builder(odsAttrs.getContext()).getIntegerAttr(::mlir::Builder(odsAttrs.getContext()).getIntegerType(64), 0).getValue().getZExtValue();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::IntegerAttr AtomicCaptureOpAdaptor::memory_orderAttr() {
+::mlir::omp::ClauseMemoryOrderKindAttr AtomicCaptureOpAdaptor::memory_order_valAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("memory_order").dyn_cast_or_null<::mlir::IntegerAttr>();
+  ::mlir::omp::ClauseMemoryOrderKindAttr attr = odsAttrs.get("memory_order_val").dyn_cast_or_null<::mlir::omp::ClauseMemoryOrderKindAttr>();
   return attr;
 }
 
-::llvm::Optional< ::llvm::APInt > AtomicCaptureOpAdaptor::memory_order() {
-  auto attr = memory_orderAttr();
-  return attr ? ::llvm::Optional< ::llvm::APInt >(attr.getValue()) : (::llvm::None);
+::llvm::Optional<::mlir::omp::ClauseMemoryOrderKind> AtomicCaptureOpAdaptor::memory_order_val() {
+  auto attr = memory_order_valAttr();
+  return attr ? ::llvm::Optional<::mlir::omp::ClauseMemoryOrderKind>(attr.getValue()) : (::llvm::None);
 }
 
 ::mlir::RegionRange AtomicCaptureOpAdaptor::getRegions() {
@@ -308,14 +299,14 @@ uint64_t AtomicCaptureOpAdaptor::hint() {
 
 ::mlir::LogicalResult AtomicCaptureOpAdaptor::verify(::mlir::Location loc) {
   {
-    auto tblgen_hint = odsAttrs.get("hint");
-    if (tblgen_hint && !(((tblgen_hint.isa<::mlir::IntegerAttr>())) && ((tblgen_hint.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
-      return emitError(loc, "'omp.atomic.capture' op ""attribute 'hint' failed to satisfy constraint: 64-bit signless integer attribute");
+    auto tblgen_hint_val = odsAttrs.get("hint_val");
+    if (tblgen_hint_val && !(((tblgen_hint_val.isa<::mlir::IntegerAttr>())) && ((tblgen_hint_val.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
+      return emitError(loc, "'omp.atomic.capture' op ""attribute 'hint_val' failed to satisfy constraint: 64-bit signless integer attribute");
   }
   {
-    auto tblgen_memory_order = odsAttrs.get("memory_order");
-    if (tblgen_memory_order && !((((tblgen_memory_order.isa<::mlir::IntegerAttr>())) && ((tblgen_memory_order.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))) && (((tblgen_memory_order.cast<::mlir::IntegerAttr>().getInt() == 0)) || ((tblgen_memory_order.cast<::mlir::IntegerAttr>().getInt() == 1)) || ((tblgen_memory_order.cast<::mlir::IntegerAttr>().getInt() == 2)) || ((tblgen_memory_order.cast<::mlir::IntegerAttr>().getInt() == 3)) || ((tblgen_memory_order.cast<::mlir::IntegerAttr>().getInt() == 4)))))
-      return emitError(loc, "'omp.atomic.capture' op ""attribute 'memory_order' failed to satisfy constraint: MemoryOrderKind Clause");
+    auto tblgen_memory_order_val = odsAttrs.get("memory_order_val");
+    if (tblgen_memory_order_val && !((tblgen_memory_order_val.isa<::mlir::omp::ClauseMemoryOrderKindAttr>())))
+      return emitError(loc, "'omp.atomic.capture' op ""attribute 'memory_order_val' failed to satisfy constraint: MemoryOrderKind Clause");
   }
   return ::mlir::success();
 }
@@ -344,68 +335,68 @@ std::pair<unsigned, unsigned> AtomicCaptureOp::getODSResultIndexAndLength(unsign
   return (*this)->getRegion(0);
 }
 
-::mlir::IntegerAttr AtomicCaptureOp::hintAttr() {
-  return (*this)->getAttr(hintAttrName()).dyn_cast_or_null<::mlir::IntegerAttr>();
+::mlir::IntegerAttr AtomicCaptureOp::hint_valAttr() {
+  return (*this)->getAttr(hint_valAttrName()).dyn_cast_or_null<::mlir::IntegerAttr>();
 }
 
-uint64_t AtomicCaptureOp::hint() {
-  auto attr = hintAttr();
+uint64_t AtomicCaptureOp::hint_val() {
+  auto attr = hint_valAttr();
     if (!attr)
       return ::mlir::Builder((*this)->getContext()).getIntegerAttr(::mlir::Builder((*this)->getContext()).getIntegerType(64), 0).getValue().getZExtValue();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::IntegerAttr AtomicCaptureOp::memory_orderAttr() {
-  return (*this)->getAttr(memory_orderAttrName()).dyn_cast_or_null<::mlir::IntegerAttr>();
+::mlir::omp::ClauseMemoryOrderKindAttr AtomicCaptureOp::memory_order_valAttr() {
+  return (*this)->getAttr(memory_order_valAttrName()).dyn_cast_or_null<::mlir::omp::ClauseMemoryOrderKindAttr>();
 }
 
-::llvm::Optional< ::llvm::APInt > AtomicCaptureOp::memory_order() {
-  auto attr = memory_orderAttr();
-  return attr ? ::llvm::Optional< ::llvm::APInt >(attr.getValue()) : (::llvm::None);
+::llvm::Optional<::mlir::omp::ClauseMemoryOrderKind> AtomicCaptureOp::memory_order_val() {
+  auto attr = memory_order_valAttr();
+  return attr ? ::llvm::Optional<::mlir::omp::ClauseMemoryOrderKind>(attr.getValue()) : (::llvm::None);
 }
 
-void AtomicCaptureOp::hintAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(hintAttrName(), attr);
+void AtomicCaptureOp::hint_valAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(hint_valAttrName(), attr);
 }
 
-void AtomicCaptureOp::memory_orderAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(memory_orderAttrName(), attr);
+void AtomicCaptureOp::memory_order_valAttr(::mlir::omp::ClauseMemoryOrderKindAttr attr) {
+  (*this)->setAttr(memory_order_valAttrName(), attr);
 }
 
-::mlir::Attribute AtomicCaptureOp::removeMemory_orderAttr() {
-  return (*this)->removeAttr(memory_orderAttrName());
+::mlir::Attribute AtomicCaptureOp::removeMemory_order_valAttr() {
+  return (*this)->removeAttr(memory_order_valAttrName());
 }
 
-void AtomicCaptureOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::IntegerAttr hint, /*optional*/::mlir::IntegerAttr memory_order) {
-  odsState.addAttribute(hintAttrName(odsState.name), hint);
-  if (memory_order) {
-  odsState.addAttribute(memory_orderAttrName(odsState.name), memory_order);
+void AtomicCaptureOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
+  odsState.addAttribute(hint_valAttrName(odsState.name), hint_val);
+  if (memory_order_val) {
+  odsState.addAttribute(memory_order_valAttrName(odsState.name), memory_order_val);
   }
   (void)odsState.addRegion();
 }
 
-void AtomicCaptureOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::IntegerAttr hint, /*optional*/::mlir::IntegerAttr memory_order) {
-  odsState.addAttribute(hintAttrName(odsState.name), hint);
-  if (memory_order) {
-  odsState.addAttribute(memory_orderAttrName(odsState.name), memory_order);
+void AtomicCaptureOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
+  odsState.addAttribute(hint_valAttrName(odsState.name), hint_val);
+  if (memory_order_val) {
+  odsState.addAttribute(memory_order_valAttrName(odsState.name), memory_order_val);
   }
   (void)odsState.addRegion();
   assert(resultTypes.size() == 0u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
 
-void AtomicCaptureOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, uint64_t hint, /*optional*/::mlir::IntegerAttr memory_order) {
-  odsState.addAttribute(hintAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), hint));
-  if (memory_order) {
-  odsState.addAttribute(memory_orderAttrName(odsState.name), memory_order);
+void AtomicCaptureOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, uint64_t hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
+  odsState.addAttribute(hint_valAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), hint_val));
+  if (memory_order_val) {
+  odsState.addAttribute(memory_order_valAttrName(odsState.name), memory_order_val);
   }
   (void)odsState.addRegion();
 }
 
-void AtomicCaptureOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, uint64_t hint, /*optional*/::mlir::IntegerAttr memory_order) {
-  odsState.addAttribute(hintAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), hint));
-  if (memory_order) {
-  odsState.addAttribute(memory_orderAttrName(odsState.name), memory_order);
+void AtomicCaptureOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, uint64_t hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
+  odsState.addAttribute(hint_valAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), hint_val));
+  if (memory_order_val) {
+  odsState.addAttribute(memory_order_valAttrName(odsState.name), memory_order_val);
   }
   (void)odsState.addRegion();
   assert(resultTypes.size() == 0u && "mismatched number of results");
@@ -422,15 +413,15 @@ void AtomicCaptureOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult AtomicCaptureOp::verifyInvariants() {
+::mlir::LogicalResult AtomicCaptureOp::verifyInvariantsImpl() {
   {
-    auto tblgen_hint = (*this)->getAttr(hintAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps0(*this, tblgen_hint, "hint")))
+    auto tblgen_hint_val = (*this)->getAttr(hint_valAttrName());
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps0(*this, tblgen_hint_val, "hint_val")))
       return ::mlir::failure();
   }
   {
-    auto tblgen_memory_order = (*this)->getAttr(memory_orderAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps1(*this, tblgen_memory_order, "memory_order")))
+    auto tblgen_memory_order_val = (*this)->getAttr(memory_order_valAttrName());
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps1(*this, tblgen_memory_order_val, "memory_order_val")))
       return ::mlir::failure();
   }
   {
@@ -440,7 +431,101 @@ void AtomicCaptureOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
       if (::mlir::failed(__mlir_ods_local_region_constraint_OpenMPOps0(*this, region, "region", index++)))
         return ::mlir::failure();
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult AtomicCaptureOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
+}
+
+::mlir::ParseResult AtomicCaptureOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::mlir::omp::ClauseMemoryOrderKindAttr memory_order_valAttr;
+  ::mlir::IntegerAttr hint_valAttr;
+  std::unique_ptr<::mlir::Region> regionRegion = std::make_unique<::mlir::Region>();
+  bool memory_orderClause = false;
+  bool hintClause = false;
+  while(true) {
+if (succeeded(parser.parseOptionalKeyword("memory_order"))) {
+
+  if (memory_orderClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`memory_order` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  memory_orderClause = true;
+  result.addAttribute("memory_order", UnitAttr::get(parser.getContext()));
+  if (parser.parseLParen())
+    return ::mlir::failure();
+  {
+    if (parseClauseAttr(parser, memory_order_valAttr))
+      return ::mlir::failure();
+    if (memory_order_valAttr)
+      result.addAttribute("memory_order_val", memory_order_valAttr);
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else if (succeeded(parser.parseOptionalKeyword("hint"))) {
+
+  if (hintClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`hint` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  hintClause = true;
+  result.addAttribute("hint", UnitAttr::get(parser.getContext()));
+  if (parser.parseLParen())
+    return ::mlir::failure();
+  {
+    if (parseSynchronizationHint(parser, hint_valAttr))
+      return ::mlir::failure();
+    result.addAttribute("hint_val", hint_valAttr);
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else  {
+    break;
+  }
+}
+
+  if (parser.parseRegion(*regionRegion))
+    return ::mlir::failure();
+
+  ensureTerminator(*regionRegion, parser.getBuilder(), result.location);
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  result.addRegion(std::move(regionRegion));
+  return ::mlir::success();
+}
+
+void AtomicCaptureOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ' << " ";
+  if ((*this)->hasAttrOfType<UnitAttr>("memory_order")) {
+  _odsPrinter << ' ' << "memory_order";
+  _odsPrinter << "(";
+  printClauseAttr(_odsPrinter, *this, memory_order_valAttr());
+  _odsPrinter << ")";
+  }
+  if ((*this)->hasAttrOfType<UnitAttr>("hint")) {
+  _odsPrinter << ' ' << "hint";
+  _odsPrinter << "(";
+  printSynchronizationHint(_odsPrinter, *this, hint_valAttr());
+  _odsPrinter << ")";
+  }
+  _odsPrinter << ' ';
+
+  {
+    bool printTerminator = true;
+    if (auto *term = region().empty() ? nullptr : region().begin()->getTerminator()) {
+      printTerminator = !term->getAttrDictionary().empty() ||
+                        term->getNumOperands() != 0 ||
+                        term->getNumResults() != 0;
+    }
+    _odsPrinter.printRegion(region(), /*printEntryBlockArgs=*/true,
+      /*printBlockTerminators=*/printTerminator);
+  }
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"hint", "memory_order", "memory_order_val", "hint_val"});
 }
 
 } // namespace omp
@@ -484,42 +569,42 @@ std::pair<unsigned, unsigned> AtomicReadOpAdaptor::getODSOperandIndexAndLength(u
   return odsAttrs;
 }
 
-::mlir::IntegerAttr AtomicReadOpAdaptor::hintAttr() {
+::mlir::IntegerAttr AtomicReadOpAdaptor::hint_valAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("hint").dyn_cast_or_null<::mlir::IntegerAttr>();
+  ::mlir::IntegerAttr attr = odsAttrs.get("hint_val").dyn_cast_or_null<::mlir::IntegerAttr>();
   if (!attr)
     attr = ::mlir::Builder(odsAttrs.getContext()).getIntegerAttr(::mlir::Builder(odsAttrs.getContext()).getIntegerType(64), 0);
   return attr;
 }
 
-uint64_t AtomicReadOpAdaptor::hint() {
-  auto attr = hintAttr();
+uint64_t AtomicReadOpAdaptor::hint_val() {
+  auto attr = hint_valAttr();
     if (!attr)
       return ::mlir::Builder(odsAttrs.getContext()).getIntegerAttr(::mlir::Builder(odsAttrs.getContext()).getIntegerType(64), 0).getValue().getZExtValue();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::omp::ClauseMemoryOrderKindAttr AtomicReadOpAdaptor::memory_orderAttr() {
+::mlir::omp::ClauseMemoryOrderKindAttr AtomicReadOpAdaptor::memory_order_valAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::omp::ClauseMemoryOrderKindAttr attr = odsAttrs.get("memory_order").dyn_cast_or_null<::mlir::omp::ClauseMemoryOrderKindAttr>();
+  ::mlir::omp::ClauseMemoryOrderKindAttr attr = odsAttrs.get("memory_order_val").dyn_cast_or_null<::mlir::omp::ClauseMemoryOrderKindAttr>();
   return attr;
 }
 
-::llvm::Optional<::mlir::omp::ClauseMemoryOrderKind> AtomicReadOpAdaptor::memory_order() {
-  auto attr = memory_orderAttr();
+::llvm::Optional<::mlir::omp::ClauseMemoryOrderKind> AtomicReadOpAdaptor::memory_order_val() {
+  auto attr = memory_order_valAttr();
   return attr ? ::llvm::Optional<::mlir::omp::ClauseMemoryOrderKind>(attr.getValue()) : (::llvm::None);
 }
 
 ::mlir::LogicalResult AtomicReadOpAdaptor::verify(::mlir::Location loc) {
   {
-    auto tblgen_hint = odsAttrs.get("hint");
-    if (tblgen_hint && !(((tblgen_hint.isa<::mlir::IntegerAttr>())) && ((tblgen_hint.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
-      return emitError(loc, "'omp.atomic.read' op ""attribute 'hint' failed to satisfy constraint: 64-bit signless integer attribute");
+    auto tblgen_hint_val = odsAttrs.get("hint_val");
+    if (tblgen_hint_val && !(((tblgen_hint_val.isa<::mlir::IntegerAttr>())) && ((tblgen_hint_val.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
+      return emitError(loc, "'omp.atomic.read' op ""attribute 'hint_val' failed to satisfy constraint: 64-bit signless integer attribute");
   }
   {
-    auto tblgen_memory_order = odsAttrs.get("memory_order");
-    if (tblgen_memory_order && !((tblgen_memory_order.isa<::mlir::omp::ClauseMemoryOrderKindAttr>())))
-      return emitError(loc, "'omp.atomic.read' op ""attribute 'memory_order' failed to satisfy constraint: MemoryOrderKind Clause");
+    auto tblgen_memory_order_val = odsAttrs.get("memory_order_val");
+    if (tblgen_memory_order_val && !((tblgen_memory_order_val.isa<::mlir::omp::ClauseMemoryOrderKindAttr>())))
+      return emitError(loc, "'omp.atomic.read' op ""attribute 'memory_order_val' failed to satisfy constraint: MemoryOrderKind Clause");
   }
   return ::mlir::success();
 }
@@ -564,73 +649,73 @@ std::pair<unsigned, unsigned> AtomicReadOp::getODSResultIndexAndLength(unsigned 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::IntegerAttr AtomicReadOp::hintAttr() {
-  return (*this)->getAttr(hintAttrName()).dyn_cast_or_null<::mlir::IntegerAttr>();
+::mlir::IntegerAttr AtomicReadOp::hint_valAttr() {
+  return (*this)->getAttr(hint_valAttrName()).dyn_cast_or_null<::mlir::IntegerAttr>();
 }
 
-uint64_t AtomicReadOp::hint() {
-  auto attr = hintAttr();
+uint64_t AtomicReadOp::hint_val() {
+  auto attr = hint_valAttr();
     if (!attr)
       return ::mlir::Builder((*this)->getContext()).getIntegerAttr(::mlir::Builder((*this)->getContext()).getIntegerType(64), 0).getValue().getZExtValue();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::omp::ClauseMemoryOrderKindAttr AtomicReadOp::memory_orderAttr() {
-  return (*this)->getAttr(memory_orderAttrName()).dyn_cast_or_null<::mlir::omp::ClauseMemoryOrderKindAttr>();
+::mlir::omp::ClauseMemoryOrderKindAttr AtomicReadOp::memory_order_valAttr() {
+  return (*this)->getAttr(memory_order_valAttrName()).dyn_cast_or_null<::mlir::omp::ClauseMemoryOrderKindAttr>();
 }
 
-::llvm::Optional<::mlir::omp::ClauseMemoryOrderKind> AtomicReadOp::memory_order() {
-  auto attr = memory_orderAttr();
+::llvm::Optional<::mlir::omp::ClauseMemoryOrderKind> AtomicReadOp::memory_order_val() {
+  auto attr = memory_order_valAttr();
   return attr ? ::llvm::Optional<::mlir::omp::ClauseMemoryOrderKind>(attr.getValue()) : (::llvm::None);
 }
 
-void AtomicReadOp::hintAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(hintAttrName(), attr);
+void AtomicReadOp::hint_valAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(hint_valAttrName(), attr);
 }
 
-void AtomicReadOp::memory_orderAttr(::mlir::omp::ClauseMemoryOrderKindAttr attr) {
-  (*this)->setAttr(memory_orderAttrName(), attr);
+void AtomicReadOp::memory_order_valAttr(::mlir::omp::ClauseMemoryOrderKindAttr attr) {
+  (*this)->setAttr(memory_order_valAttrName(), attr);
 }
 
-::mlir::Attribute AtomicReadOp::removeMemory_orderAttr() {
-  return (*this)->removeAttr(memory_orderAttrName());
+::mlir::Attribute AtomicReadOp::removeMemory_order_valAttr() {
+  return (*this)->removeAttr(memory_order_valAttrName());
 }
 
-void AtomicReadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value x, ::mlir::Value v, ::mlir::IntegerAttr hint, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order) {
+void AtomicReadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value x, ::mlir::Value v, ::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addOperands(x);
   odsState.addOperands(v);
-  odsState.addAttribute(hintAttrName(odsState.name), hint);
-  if (memory_order) {
-  odsState.addAttribute(memory_orderAttrName(odsState.name), memory_order);
+  odsState.addAttribute(hint_valAttrName(odsState.name), hint_val);
+  if (memory_order_val) {
+  odsState.addAttribute(memory_order_valAttrName(odsState.name), memory_order_val);
   }
 }
 
-void AtomicReadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value x, ::mlir::Value v, ::mlir::IntegerAttr hint, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order) {
+void AtomicReadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value x, ::mlir::Value v, ::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addOperands(x);
   odsState.addOperands(v);
-  odsState.addAttribute(hintAttrName(odsState.name), hint);
-  if (memory_order) {
-  odsState.addAttribute(memory_orderAttrName(odsState.name), memory_order);
+  odsState.addAttribute(hint_valAttrName(odsState.name), hint_val);
+  if (memory_order_val) {
+  odsState.addAttribute(memory_order_valAttrName(odsState.name), memory_order_val);
   }
   assert(resultTypes.size() == 0u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
 
-void AtomicReadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value x, ::mlir::Value v, uint64_t hint, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order) {
+void AtomicReadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value x, ::mlir::Value v, uint64_t hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addOperands(x);
   odsState.addOperands(v);
-  odsState.addAttribute(hintAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), hint));
-  if (memory_order) {
-  odsState.addAttribute(memory_orderAttrName(odsState.name), memory_order);
+  odsState.addAttribute(hint_valAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), hint_val));
+  if (memory_order_val) {
+  odsState.addAttribute(memory_order_valAttrName(odsState.name), memory_order_val);
   }
 }
 
-void AtomicReadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value x, ::mlir::Value v, uint64_t hint, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order) {
+void AtomicReadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value x, ::mlir::Value v, uint64_t hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addOperands(x);
   odsState.addOperands(v);
-  odsState.addAttribute(hintAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), hint));
-  if (memory_order) {
-  odsState.addAttribute(memory_orderAttrName(odsState.name), memory_order);
+  odsState.addAttribute(hint_valAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), hint_val));
+  if (memory_order_val) {
+  odsState.addAttribute(memory_order_valAttrName(odsState.name), memory_order_val);
   }
   assert(resultTypes.size() == 0u && "mismatched number of results");
   odsState.addTypes(resultTypes);
@@ -644,15 +729,15 @@ void AtomicReadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult AtomicReadOp::verifyInvariants() {
+::mlir::LogicalResult AtomicReadOp::verifyInvariantsImpl() {
   {
-    auto tblgen_hint = (*this)->getAttr(hintAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps0(*this, tblgen_hint, "hint")))
+    auto tblgen_hint_val = (*this)->getAttr(hint_valAttrName());
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps0(*this, tblgen_hint_val, "hint_val")))
       return ::mlir::failure();
   }
   {
-    auto tblgen_memory_order = (*this)->getAttr(memory_orderAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps2(*this, tblgen_memory_order, "memory_order")))
+    auto tblgen_memory_order_val = (*this)->getAttr(memory_order_valAttrName());
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps1(*this, tblgen_memory_order_val, "memory_order_val")))
       return ::mlir::failure();
   }
   {
@@ -670,7 +755,129 @@ void AtomicReadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
         return ::mlir::failure();
     }
   }
-  return verify();
+  if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(0).begin()).getType(), (*this->getODSOperands(1).begin()).getType()})))))
+    return emitOpError("failed to verify that all of {x, v} have same type");
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult AtomicReadOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
+}
+
+::mlir::ParseResult AtomicReadOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::mlir::OpAsmParser::OperandType vRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> vOperands(vRawOperands);  ::llvm::SMLoc vOperandsLoc;
+  (void)vOperandsLoc;
+  ::mlir::OpAsmParser::OperandType xRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> xOperands(xRawOperands);  ::llvm::SMLoc xOperandsLoc;
+  (void)xOperandsLoc;
+  ::mlir::omp::ClauseMemoryOrderKindAttr memory_order_valAttr;
+  ::mlir::IntegerAttr hint_valAttr;
+  ::mlir::Type xRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> xTypes(xRawTypes);
+
+  vOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperand(vRawOperands[0]))
+    return ::mlir::failure();
+  if (parser.parseEqual())
+    return ::mlir::failure();
+
+  xOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperand(xRawOperands[0]))
+    return ::mlir::failure();
+  bool memory_orderClause = false;
+  bool hintClause = false;
+  while(true) {
+if (succeeded(parser.parseOptionalKeyword("memory_order"))) {
+
+  if (memory_orderClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`memory_order` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  memory_orderClause = true;
+  result.addAttribute("memory_order", UnitAttr::get(parser.getContext()));
+  if (parser.parseLParen())
+    return ::mlir::failure();
+  {
+    if (parseClauseAttr(parser, memory_order_valAttr))
+      return ::mlir::failure();
+    if (memory_order_valAttr)
+      result.addAttribute("memory_order_val", memory_order_valAttr);
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else if (succeeded(parser.parseOptionalKeyword("hint"))) {
+
+  if (hintClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`hint` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  hintClause = true;
+  result.addAttribute("hint", UnitAttr::get(parser.getContext()));
+  if (parser.parseLParen())
+    return ::mlir::failure();
+  {
+    if (parseSynchronizationHint(parser, hint_valAttr))
+      return ::mlir::failure();
+    result.addAttribute("hint_val", hint_valAttr);
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else  {
+    break;
+  }
+}
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  {
+    ::mlir::omp::PointerLikeType type;
+    if (parser.parseCustomTypeWithFallback(type))
+      return ::mlir::failure();
+    xRawTypes[0] = type;
+  }
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  if (parser.resolveOperands(xOperands, xTypes, xOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(vOperands, xTypes[0], result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void AtomicReadOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ';
+  _odsPrinter << v();
+  _odsPrinter << ' ' << "=";
+  _odsPrinter << ' ';
+  _odsPrinter << x();
+  _odsPrinter << ' ' << " ";
+  if ((*this)->hasAttrOfType<UnitAttr>("memory_order")) {
+  _odsPrinter << ' ' << "memory_order";
+  _odsPrinter << "(";
+  printClauseAttr(_odsPrinter, *this, memory_order_valAttr());
+  _odsPrinter << ")";
+  }
+  if ((*this)->hasAttrOfType<UnitAttr>("hint")) {
+  _odsPrinter << ' ' << "hint";
+  _odsPrinter << "(";
+  printSynchronizationHint(_odsPrinter, *this, hint_valAttr());
+  _odsPrinter << ")";
+  }
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  {
+    auto type = x().getType();
+    if (auto validType = type.dyn_cast<::mlir::omp::PointerLikeType>())
+      _odsPrinter.printStrippedAttrOrType(validType);
+   else
+     _odsPrinter << type;
+  }
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"hint", "memory_order", "memory_order_val", "hint_val"});
 }
 
 } // namespace omp
@@ -710,29 +917,29 @@ std::pair<unsigned, unsigned> AtomicUpdateOpAdaptor::getODSOperandIndexAndLength
   return odsAttrs;
 }
 
-::mlir::IntegerAttr AtomicUpdateOpAdaptor::hintAttr() {
+::mlir::IntegerAttr AtomicUpdateOpAdaptor::hint_valAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("hint").dyn_cast_or_null<::mlir::IntegerAttr>();
+  ::mlir::IntegerAttr attr = odsAttrs.get("hint_val").dyn_cast_or_null<::mlir::IntegerAttr>();
   if (!attr)
     attr = ::mlir::Builder(odsAttrs.getContext()).getIntegerAttr(::mlir::Builder(odsAttrs.getContext()).getIntegerType(64), 0);
   return attr;
 }
 
-uint64_t AtomicUpdateOpAdaptor::hint() {
-  auto attr = hintAttr();
+uint64_t AtomicUpdateOpAdaptor::hint_val() {
+  auto attr = hint_valAttr();
     if (!attr)
       return ::mlir::Builder(odsAttrs.getContext()).getIntegerAttr(::mlir::Builder(odsAttrs.getContext()).getIntegerType(64), 0).getValue().getZExtValue();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::omp::ClauseMemoryOrderKindAttr AtomicUpdateOpAdaptor::memory_orderAttr() {
+::mlir::omp::ClauseMemoryOrderKindAttr AtomicUpdateOpAdaptor::memory_order_valAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::omp::ClauseMemoryOrderKindAttr attr = odsAttrs.get("memory_order").dyn_cast_or_null<::mlir::omp::ClauseMemoryOrderKindAttr>();
+  ::mlir::omp::ClauseMemoryOrderKindAttr attr = odsAttrs.get("memory_order_val").dyn_cast_or_null<::mlir::omp::ClauseMemoryOrderKindAttr>();
   return attr;
 }
 
-::llvm::Optional<::mlir::omp::ClauseMemoryOrderKind> AtomicUpdateOpAdaptor::memory_order() {
-  auto attr = memory_orderAttr();
+::llvm::Optional<::mlir::omp::ClauseMemoryOrderKind> AtomicUpdateOpAdaptor::memory_order_val() {
+  auto attr = memory_order_valAttr();
   return attr ? ::llvm::Optional<::mlir::omp::ClauseMemoryOrderKind>(attr.getValue()) : (::llvm::None);
 }
 
@@ -746,14 +953,14 @@ uint64_t AtomicUpdateOpAdaptor::hint() {
 
 ::mlir::LogicalResult AtomicUpdateOpAdaptor::verify(::mlir::Location loc) {
   {
-    auto tblgen_hint = odsAttrs.get("hint");
-    if (tblgen_hint && !(((tblgen_hint.isa<::mlir::IntegerAttr>())) && ((tblgen_hint.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
-      return emitError(loc, "'omp.atomic.update' op ""attribute 'hint' failed to satisfy constraint: 64-bit signless integer attribute");
+    auto tblgen_hint_val = odsAttrs.get("hint_val");
+    if (tblgen_hint_val && !(((tblgen_hint_val.isa<::mlir::IntegerAttr>())) && ((tblgen_hint_val.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
+      return emitError(loc, "'omp.atomic.update' op ""attribute 'hint_val' failed to satisfy constraint: 64-bit signless integer attribute");
   }
   {
-    auto tblgen_memory_order = odsAttrs.get("memory_order");
-    if (tblgen_memory_order && !((tblgen_memory_order.isa<::mlir::omp::ClauseMemoryOrderKindAttr>())))
-      return emitError(loc, "'omp.atomic.update' op ""attribute 'memory_order' failed to satisfy constraint: MemoryOrderKind Clause");
+    auto tblgen_memory_order_val = odsAttrs.get("memory_order_val");
+    if (tblgen_memory_order_val && !((tblgen_memory_order_val.isa<::mlir::omp::ClauseMemoryOrderKindAttr>())))
+      return emitError(loc, "'omp.atomic.update' op ""attribute 'memory_order_val' failed to satisfy constraint: MemoryOrderKind Clause");
   }
   return ::mlir::success();
 }
@@ -792,72 +999,72 @@ std::pair<unsigned, unsigned> AtomicUpdateOp::getODSResultIndexAndLength(unsigne
   return (*this)->getRegion(0);
 }
 
-::mlir::IntegerAttr AtomicUpdateOp::hintAttr() {
-  return (*this)->getAttr(hintAttrName()).dyn_cast_or_null<::mlir::IntegerAttr>();
+::mlir::IntegerAttr AtomicUpdateOp::hint_valAttr() {
+  return (*this)->getAttr(hint_valAttrName()).dyn_cast_or_null<::mlir::IntegerAttr>();
 }
 
-uint64_t AtomicUpdateOp::hint() {
-  auto attr = hintAttr();
+uint64_t AtomicUpdateOp::hint_val() {
+  auto attr = hint_valAttr();
     if (!attr)
       return ::mlir::Builder((*this)->getContext()).getIntegerAttr(::mlir::Builder((*this)->getContext()).getIntegerType(64), 0).getValue().getZExtValue();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::omp::ClauseMemoryOrderKindAttr AtomicUpdateOp::memory_orderAttr() {
-  return (*this)->getAttr(memory_orderAttrName()).dyn_cast_or_null<::mlir::omp::ClauseMemoryOrderKindAttr>();
+::mlir::omp::ClauseMemoryOrderKindAttr AtomicUpdateOp::memory_order_valAttr() {
+  return (*this)->getAttr(memory_order_valAttrName()).dyn_cast_or_null<::mlir::omp::ClauseMemoryOrderKindAttr>();
 }
 
-::llvm::Optional<::mlir::omp::ClauseMemoryOrderKind> AtomicUpdateOp::memory_order() {
-  auto attr = memory_orderAttr();
+::llvm::Optional<::mlir::omp::ClauseMemoryOrderKind> AtomicUpdateOp::memory_order_val() {
+  auto attr = memory_order_valAttr();
   return attr ? ::llvm::Optional<::mlir::omp::ClauseMemoryOrderKind>(attr.getValue()) : (::llvm::None);
 }
 
-void AtomicUpdateOp::hintAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(hintAttrName(), attr);
+void AtomicUpdateOp::hint_valAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(hint_valAttrName(), attr);
 }
 
-void AtomicUpdateOp::memory_orderAttr(::mlir::omp::ClauseMemoryOrderKindAttr attr) {
-  (*this)->setAttr(memory_orderAttrName(), attr);
+void AtomicUpdateOp::memory_order_valAttr(::mlir::omp::ClauseMemoryOrderKindAttr attr) {
+  (*this)->setAttr(memory_order_valAttrName(), attr);
 }
 
-::mlir::Attribute AtomicUpdateOp::removeMemory_orderAttr() {
-  return (*this)->removeAttr(memory_orderAttrName());
+::mlir::Attribute AtomicUpdateOp::removeMemory_order_valAttr() {
+  return (*this)->removeAttr(memory_order_valAttrName());
 }
 
-void AtomicUpdateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value x, ::mlir::IntegerAttr hint, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order) {
+void AtomicUpdateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value x, ::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addOperands(x);
-  odsState.addAttribute(hintAttrName(odsState.name), hint);
-  if (memory_order) {
-  odsState.addAttribute(memory_orderAttrName(odsState.name), memory_order);
+  odsState.addAttribute(hint_valAttrName(odsState.name), hint_val);
+  if (memory_order_val) {
+  odsState.addAttribute(memory_order_valAttrName(odsState.name), memory_order_val);
   }
   (void)odsState.addRegion();
 }
 
-void AtomicUpdateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value x, ::mlir::IntegerAttr hint, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order) {
+void AtomicUpdateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value x, ::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addOperands(x);
-  odsState.addAttribute(hintAttrName(odsState.name), hint);
-  if (memory_order) {
-  odsState.addAttribute(memory_orderAttrName(odsState.name), memory_order);
+  odsState.addAttribute(hint_valAttrName(odsState.name), hint_val);
+  if (memory_order_val) {
+  odsState.addAttribute(memory_order_valAttrName(odsState.name), memory_order_val);
   }
   (void)odsState.addRegion();
   assert(resultTypes.size() == 0u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
 
-void AtomicUpdateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value x, uint64_t hint, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order) {
+void AtomicUpdateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value x, uint64_t hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addOperands(x);
-  odsState.addAttribute(hintAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), hint));
-  if (memory_order) {
-  odsState.addAttribute(memory_orderAttrName(odsState.name), memory_order);
+  odsState.addAttribute(hint_valAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), hint_val));
+  if (memory_order_val) {
+  odsState.addAttribute(memory_order_valAttrName(odsState.name), memory_order_val);
   }
   (void)odsState.addRegion();
 }
 
-void AtomicUpdateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value x, uint64_t hint, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order) {
+void AtomicUpdateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value x, uint64_t hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addOperands(x);
-  odsState.addAttribute(hintAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), hint));
-  if (memory_order) {
-  odsState.addAttribute(memory_orderAttrName(odsState.name), memory_order);
+  odsState.addAttribute(hint_valAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), hint_val));
+  if (memory_order_val) {
+  odsState.addAttribute(memory_order_valAttrName(odsState.name), memory_order_val);
   }
   (void)odsState.addRegion();
   assert(resultTypes.size() == 0u && "mismatched number of results");
@@ -874,15 +1081,15 @@ void AtomicUpdateOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult AtomicUpdateOp::verifyInvariants() {
+::mlir::LogicalResult AtomicUpdateOp::verifyInvariantsImpl() {
   {
-    auto tblgen_hint = (*this)->getAttr(hintAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps0(*this, tblgen_hint, "hint")))
+    auto tblgen_hint_val = (*this)->getAttr(hint_valAttrName());
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps0(*this, tblgen_hint_val, "hint_val")))
       return ::mlir::failure();
   }
   {
-    auto tblgen_memory_order = (*this)->getAttr(memory_orderAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps2(*this, tblgen_memory_order, "memory_order")))
+    auto tblgen_memory_order_val = (*this)->getAttr(memory_order_valAttrName());
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps1(*this, tblgen_memory_order_val, "memory_order_val")))
       return ::mlir::failure();
   }
   {
@@ -901,7 +1108,132 @@ void AtomicUpdateOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
       if (::mlir::failed(__mlir_ods_local_region_constraint_OpenMPOps0(*this, region, "region", index++)))
         return ::mlir::failure();
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult AtomicUpdateOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
+}
+
+::mlir::ParseResult AtomicUpdateOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::mlir::omp::ClauseMemoryOrderKindAttr memory_order_valAttr;
+  ::mlir::IntegerAttr hint_valAttr;
+  ::mlir::OpAsmParser::OperandType xRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> xOperands(xRawOperands);  ::llvm::SMLoc xOperandsLoc;
+  (void)xOperandsLoc;
+  ::mlir::Type xRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> xTypes(xRawTypes);
+  std::unique_ptr<::mlir::Region> regionRegion = std::make_unique<::mlir::Region>();
+  bool memory_orderClause = false;
+  bool hintClause = false;
+  while(true) {
+if (succeeded(parser.parseOptionalKeyword("memory_order"))) {
+
+  if (memory_orderClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`memory_order` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  memory_orderClause = true;
+  result.addAttribute("memory_order", UnitAttr::get(parser.getContext()));
+  if (parser.parseLParen())
+    return ::mlir::failure();
+  {
+    if (parseClauseAttr(parser, memory_order_valAttr))
+      return ::mlir::failure();
+    if (memory_order_valAttr)
+      result.addAttribute("memory_order_val", memory_order_valAttr);
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else if (succeeded(parser.parseOptionalKeyword("hint"))) {
+
+  if (hintClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`hint` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  hintClause = true;
+  result.addAttribute("hint", UnitAttr::get(parser.getContext()));
+  if (parser.parseLParen())
+    return ::mlir::failure();
+  {
+    if (parseSynchronizationHint(parser, hint_valAttr))
+      return ::mlir::failure();
+    result.addAttribute("hint_val", hint_valAttr);
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else  {
+    break;
+  }
+}
+
+  xOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperand(xRawOperands[0]))
+    return ::mlir::failure();
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  {
+    ::mlir::omp::PointerLikeType type;
+    if (parser.parseCustomTypeWithFallback(type))
+      return ::mlir::failure();
+    xRawTypes[0] = type;
+  }
+
+  if (parser.parseRegion(*regionRegion))
+    return ::mlir::failure();
+
+  ensureTerminator(*regionRegion, parser.getBuilder(), result.location);
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  result.addRegion(std::move(regionRegion));
+  if (parser.resolveOperands(xOperands, xTypes, xOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void AtomicUpdateOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ' << " ";
+  if ((*this)->hasAttrOfType<UnitAttr>("memory_order")) {
+  _odsPrinter << ' ' << "memory_order";
+  _odsPrinter << "(";
+  printClauseAttr(_odsPrinter, *this, memory_order_valAttr());
+  _odsPrinter << ")";
+  }
+  if ((*this)->hasAttrOfType<UnitAttr>("hint")) {
+  _odsPrinter << ' ' << "hint";
+  _odsPrinter << "(";
+  printSynchronizationHint(_odsPrinter, *this, hint_valAttr());
+  _odsPrinter << ")";
+  }
+  _odsPrinter << ' ';
+  _odsPrinter << x();
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  {
+    auto type = x().getType();
+    if (auto validType = type.dyn_cast<::mlir::omp::PointerLikeType>())
+      _odsPrinter.printStrippedAttrOrType(validType);
+   else
+     _odsPrinter << type;
+  }
+  _odsPrinter << ' ';
+
+  {
+    bool printTerminator = true;
+    if (auto *term = region().empty() ? nullptr : region().begin()->getTerminator()) {
+      printTerminator = !term->getAttrDictionary().empty() ||
+                        term->getNumOperands() != 0 ||
+                        term->getNumResults() != 0;
+    }
+    _odsPrinter.printRegion(region(), /*printEntryBlockArgs=*/true,
+      /*printBlockTerminators=*/printTerminator);
+  }
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"hint", "memory_order", "memory_order_val", "hint_val"});
 }
 
 } // namespace omp
@@ -945,42 +1277,42 @@ std::pair<unsigned, unsigned> AtomicWriteOpAdaptor::getODSOperandIndexAndLength(
   return odsAttrs;
 }
 
-::mlir::IntegerAttr AtomicWriteOpAdaptor::hintAttr() {
+::mlir::IntegerAttr AtomicWriteOpAdaptor::hint_valAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("hint").dyn_cast_or_null<::mlir::IntegerAttr>();
+  ::mlir::IntegerAttr attr = odsAttrs.get("hint_val").dyn_cast_or_null<::mlir::IntegerAttr>();
   if (!attr)
     attr = ::mlir::Builder(odsAttrs.getContext()).getIntegerAttr(::mlir::Builder(odsAttrs.getContext()).getIntegerType(64), 0);
   return attr;
 }
 
-uint64_t AtomicWriteOpAdaptor::hint() {
-  auto attr = hintAttr();
+uint64_t AtomicWriteOpAdaptor::hint_val() {
+  auto attr = hint_valAttr();
     if (!attr)
       return ::mlir::Builder(odsAttrs.getContext()).getIntegerAttr(::mlir::Builder(odsAttrs.getContext()).getIntegerType(64), 0).getValue().getZExtValue();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::omp::ClauseMemoryOrderKindAttr AtomicWriteOpAdaptor::memory_orderAttr() {
+::mlir::omp::ClauseMemoryOrderKindAttr AtomicWriteOpAdaptor::memory_order_valAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::omp::ClauseMemoryOrderKindAttr attr = odsAttrs.get("memory_order").dyn_cast_or_null<::mlir::omp::ClauseMemoryOrderKindAttr>();
+  ::mlir::omp::ClauseMemoryOrderKindAttr attr = odsAttrs.get("memory_order_val").dyn_cast_or_null<::mlir::omp::ClauseMemoryOrderKindAttr>();
   return attr;
 }
 
-::llvm::Optional<::mlir::omp::ClauseMemoryOrderKind> AtomicWriteOpAdaptor::memory_order() {
-  auto attr = memory_orderAttr();
+::llvm::Optional<::mlir::omp::ClauseMemoryOrderKind> AtomicWriteOpAdaptor::memory_order_val() {
+  auto attr = memory_order_valAttr();
   return attr ? ::llvm::Optional<::mlir::omp::ClauseMemoryOrderKind>(attr.getValue()) : (::llvm::None);
 }
 
 ::mlir::LogicalResult AtomicWriteOpAdaptor::verify(::mlir::Location loc) {
   {
-    auto tblgen_hint = odsAttrs.get("hint");
-    if (tblgen_hint && !(((tblgen_hint.isa<::mlir::IntegerAttr>())) && ((tblgen_hint.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
-      return emitError(loc, "'omp.atomic.write' op ""attribute 'hint' failed to satisfy constraint: 64-bit signless integer attribute");
+    auto tblgen_hint_val = odsAttrs.get("hint_val");
+    if (tblgen_hint_val && !(((tblgen_hint_val.isa<::mlir::IntegerAttr>())) && ((tblgen_hint_val.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
+      return emitError(loc, "'omp.atomic.write' op ""attribute 'hint_val' failed to satisfy constraint: 64-bit signless integer attribute");
   }
   {
-    auto tblgen_memory_order = odsAttrs.get("memory_order");
-    if (tblgen_memory_order && !((tblgen_memory_order.isa<::mlir::omp::ClauseMemoryOrderKindAttr>())))
-      return emitError(loc, "'omp.atomic.write' op ""attribute 'memory_order' failed to satisfy constraint: MemoryOrderKind Clause");
+    auto tblgen_memory_order_val = odsAttrs.get("memory_order_val");
+    if (tblgen_memory_order_val && !((tblgen_memory_order_val.isa<::mlir::omp::ClauseMemoryOrderKindAttr>())))
+      return emitError(loc, "'omp.atomic.write' op ""attribute 'memory_order_val' failed to satisfy constraint: MemoryOrderKind Clause");
   }
   return ::mlir::success();
 }
@@ -1025,73 +1357,73 @@ std::pair<unsigned, unsigned> AtomicWriteOp::getODSResultIndexAndLength(unsigned
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::IntegerAttr AtomicWriteOp::hintAttr() {
-  return (*this)->getAttr(hintAttrName()).dyn_cast_or_null<::mlir::IntegerAttr>();
+::mlir::IntegerAttr AtomicWriteOp::hint_valAttr() {
+  return (*this)->getAttr(hint_valAttrName()).dyn_cast_or_null<::mlir::IntegerAttr>();
 }
 
-uint64_t AtomicWriteOp::hint() {
-  auto attr = hintAttr();
+uint64_t AtomicWriteOp::hint_val() {
+  auto attr = hint_valAttr();
     if (!attr)
       return ::mlir::Builder((*this)->getContext()).getIntegerAttr(::mlir::Builder((*this)->getContext()).getIntegerType(64), 0).getValue().getZExtValue();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::omp::ClauseMemoryOrderKindAttr AtomicWriteOp::memory_orderAttr() {
-  return (*this)->getAttr(memory_orderAttrName()).dyn_cast_or_null<::mlir::omp::ClauseMemoryOrderKindAttr>();
+::mlir::omp::ClauseMemoryOrderKindAttr AtomicWriteOp::memory_order_valAttr() {
+  return (*this)->getAttr(memory_order_valAttrName()).dyn_cast_or_null<::mlir::omp::ClauseMemoryOrderKindAttr>();
 }
 
-::llvm::Optional<::mlir::omp::ClauseMemoryOrderKind> AtomicWriteOp::memory_order() {
-  auto attr = memory_orderAttr();
+::llvm::Optional<::mlir::omp::ClauseMemoryOrderKind> AtomicWriteOp::memory_order_val() {
+  auto attr = memory_order_valAttr();
   return attr ? ::llvm::Optional<::mlir::omp::ClauseMemoryOrderKind>(attr.getValue()) : (::llvm::None);
 }
 
-void AtomicWriteOp::hintAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(hintAttrName(), attr);
+void AtomicWriteOp::hint_valAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(hint_valAttrName(), attr);
 }
 
-void AtomicWriteOp::memory_orderAttr(::mlir::omp::ClauseMemoryOrderKindAttr attr) {
-  (*this)->setAttr(memory_orderAttrName(), attr);
+void AtomicWriteOp::memory_order_valAttr(::mlir::omp::ClauseMemoryOrderKindAttr attr) {
+  (*this)->setAttr(memory_order_valAttrName(), attr);
 }
 
-::mlir::Attribute AtomicWriteOp::removeMemory_orderAttr() {
-  return (*this)->removeAttr(memory_orderAttrName());
+::mlir::Attribute AtomicWriteOp::removeMemory_order_valAttr() {
+  return (*this)->removeAttr(memory_order_valAttrName());
 }
 
-void AtomicWriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value address, ::mlir::Value value, ::mlir::IntegerAttr hint, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order) {
+void AtomicWriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value address, ::mlir::Value value, ::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addOperands(address);
   odsState.addOperands(value);
-  odsState.addAttribute(hintAttrName(odsState.name), hint);
-  if (memory_order) {
-  odsState.addAttribute(memory_orderAttrName(odsState.name), memory_order);
+  odsState.addAttribute(hint_valAttrName(odsState.name), hint_val);
+  if (memory_order_val) {
+  odsState.addAttribute(memory_order_valAttrName(odsState.name), memory_order_val);
   }
 }
 
-void AtomicWriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value address, ::mlir::Value value, ::mlir::IntegerAttr hint, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order) {
+void AtomicWriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value address, ::mlir::Value value, ::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addOperands(address);
   odsState.addOperands(value);
-  odsState.addAttribute(hintAttrName(odsState.name), hint);
-  if (memory_order) {
-  odsState.addAttribute(memory_orderAttrName(odsState.name), memory_order);
+  odsState.addAttribute(hint_valAttrName(odsState.name), hint_val);
+  if (memory_order_val) {
+  odsState.addAttribute(memory_order_valAttrName(odsState.name), memory_order_val);
   }
   assert(resultTypes.size() == 0u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
 
-void AtomicWriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value address, ::mlir::Value value, uint64_t hint, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order) {
+void AtomicWriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value address, ::mlir::Value value, uint64_t hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addOperands(address);
   odsState.addOperands(value);
-  odsState.addAttribute(hintAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), hint));
-  if (memory_order) {
-  odsState.addAttribute(memory_orderAttrName(odsState.name), memory_order);
+  odsState.addAttribute(hint_valAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), hint_val));
+  if (memory_order_val) {
+  odsState.addAttribute(memory_order_valAttrName(odsState.name), memory_order_val);
   }
 }
 
-void AtomicWriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value address, ::mlir::Value value, uint64_t hint, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order) {
+void AtomicWriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value address, ::mlir::Value value, uint64_t hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addOperands(address);
   odsState.addOperands(value);
-  odsState.addAttribute(hintAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), hint));
-  if (memory_order) {
-  odsState.addAttribute(memory_orderAttrName(odsState.name), memory_order);
+  odsState.addAttribute(hint_valAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), hint_val));
+  if (memory_order_val) {
+  odsState.addAttribute(memory_order_valAttrName(odsState.name), memory_order_val);
   }
   assert(resultTypes.size() == 0u && "mismatched number of results");
   odsState.addTypes(resultTypes);
@@ -1105,15 +1437,15 @@ void AtomicWriteOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult AtomicWriteOp::verifyInvariants() {
+::mlir::LogicalResult AtomicWriteOp::verifyInvariantsImpl() {
   {
-    auto tblgen_hint = (*this)->getAttr(hintAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps0(*this, tblgen_hint, "hint")))
+    auto tblgen_hint_val = (*this)->getAttr(hint_valAttrName());
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps0(*this, tblgen_hint_val, "hint_val")))
       return ::mlir::failure();
   }
   {
-    auto tblgen_memory_order = (*this)->getAttr(memory_orderAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps2(*this, tblgen_memory_order, "memory_order")))
+    auto tblgen_memory_order_val = (*this)->getAttr(memory_order_valAttrName());
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps1(*this, tblgen_memory_order_val, "memory_order_val")))
       return ::mlir::failure();
   }
   {
@@ -1131,7 +1463,147 @@ void AtomicWriteOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
         return ::mlir::failure();
     }
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult AtomicWriteOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
+}
+
+::mlir::ParseResult AtomicWriteOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::mlir::OpAsmParser::OperandType addressRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> addressOperands(addressRawOperands);  ::llvm::SMLoc addressOperandsLoc;
+  (void)addressOperandsLoc;
+  ::mlir::OpAsmParser::OperandType valueRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
+  (void)valueOperandsLoc;
+  ::mlir::IntegerAttr hint_valAttr;
+  ::mlir::omp::ClauseMemoryOrderKindAttr memory_order_valAttr;
+  ::mlir::Type addressRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> addressTypes(addressRawTypes);
+  ::mlir::Type valueRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> valueTypes(valueRawTypes);
+
+  addressOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperand(addressRawOperands[0]))
+    return ::mlir::failure();
+  if (parser.parseEqual())
+    return ::mlir::failure();
+
+  valueOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperand(valueRawOperands[0]))
+    return ::mlir::failure();
+  bool hintClause = false;
+  bool memory_orderClause = false;
+  while(true) {
+if (succeeded(parser.parseOptionalKeyword("hint"))) {
+
+  if (hintClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`hint` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  hintClause = true;
+  result.addAttribute("hint", UnitAttr::get(parser.getContext()));
+  if (parser.parseLParen())
+    return ::mlir::failure();
+  {
+    if (parseSynchronizationHint(parser, hint_valAttr))
+      return ::mlir::failure();
+    result.addAttribute("hint_val", hint_valAttr);
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else if (succeeded(parser.parseOptionalKeyword("memory_order"))) {
+
+  if (memory_orderClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`memory_order` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  memory_orderClause = true;
+  result.addAttribute("memory_order", UnitAttr::get(parser.getContext()));
+  if (parser.parseLParen())
+    return ::mlir::failure();
+  {
+    if (parseClauseAttr(parser, memory_order_valAttr))
+      return ::mlir::failure();
+    if (memory_order_valAttr)
+      result.addAttribute("memory_order_val", memory_order_valAttr);
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else  {
+    break;
+  }
+}
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  {
+    ::mlir::omp::PointerLikeType type;
+    if (parser.parseCustomTypeWithFallback(type))
+      return ::mlir::failure();
+    addressRawTypes[0] = type;
+  }
+  if (parser.parseComma())
+    return ::mlir::failure();
+
+  {
+    ::mlir::Type type;
+    if (parser.parseCustomTypeWithFallback(type))
+      return ::mlir::failure();
+    valueRawTypes[0] = type;
+  }
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  if (parser.resolveOperands(addressOperands, addressTypes, addressOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(valueOperands, valueTypes, valueOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void AtomicWriteOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ';
+  _odsPrinter << address();
+  _odsPrinter << ' ' << "=";
+  _odsPrinter << ' ';
+  _odsPrinter << value();
+  _odsPrinter << ' ' << " ";
+  if ((*this)->hasAttrOfType<UnitAttr>("hint")) {
+  _odsPrinter << ' ' << "hint";
+  _odsPrinter << "(";
+  printSynchronizationHint(_odsPrinter, *this, hint_valAttr());
+  _odsPrinter << ")";
+  }
+  if ((*this)->hasAttrOfType<UnitAttr>("memory_order")) {
+  _odsPrinter << ' ' << "memory_order";
+  _odsPrinter << "(";
+  printClauseAttr(_odsPrinter, *this, memory_order_valAttr());
+  _odsPrinter << ")";
+  }
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  {
+    auto type = address().getType();
+    if (auto validType = type.dyn_cast<::mlir::omp::PointerLikeType>())
+      _odsPrinter.printStrippedAttrOrType(validType);
+   else
+     _odsPrinter << type;
+  }
+  _odsPrinter << ",";
+  _odsPrinter << ' ';
+  {
+    auto type = value().getType();
+    if (auto validType = type.dyn_cast<::mlir::Type>())
+      _odsPrinter.printStrippedAttrOrType(validType);
+   else
+     _odsPrinter << type;
+  }
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"hint", "memory_order", "hint_val", "memory_order_val"});
 }
 
 } // namespace omp
@@ -1207,8 +1679,12 @@ void BarrierOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult BarrierOp::verifyInvariants() {
+::mlir::LogicalResult BarrierOp::verifyInvariantsImpl() {
   return ::mlir::success();
+}
+
+::mlir::LogicalResult BarrierOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult BarrierOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -1265,16 +1741,16 @@ std::pair<unsigned, unsigned> CriticalDeclareOpAdaptor::getODSOperandIndexAndLen
   return attr.getValue();
 }
 
-::mlir::IntegerAttr CriticalDeclareOpAdaptor::hintAttr() {
+::mlir::IntegerAttr CriticalDeclareOpAdaptor::hint_valAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("hint").dyn_cast_or_null<::mlir::IntegerAttr>();
+  ::mlir::IntegerAttr attr = odsAttrs.get("hint_val").dyn_cast_or_null<::mlir::IntegerAttr>();
   if (!attr)
     attr = ::mlir::Builder(odsAttrs.getContext()).getIntegerAttr(::mlir::Builder(odsAttrs.getContext()).getIntegerType(64), 0);
   return attr;
 }
 
-uint64_t CriticalDeclareOpAdaptor::hint() {
-  auto attr = hintAttr();
+uint64_t CriticalDeclareOpAdaptor::hint_val() {
+  auto attr = hint_valAttr();
     if (!attr)
       return ::mlir::Builder(odsAttrs.getContext()).getIntegerAttr(::mlir::Builder(odsAttrs.getContext()).getIntegerType(64), 0).getValue().getZExtValue();
   return attr.getValue().getZExtValue();
@@ -1290,9 +1766,9 @@ uint64_t CriticalDeclareOpAdaptor::hint() {
       return emitError(loc, "'omp.critical.declare' op ""attribute 'sym_name' failed to satisfy constraint: string attribute");
   }
   {
-    auto tblgen_hint = odsAttrs.get("hint");
-    if (tblgen_hint && !(((tblgen_hint.isa<::mlir::IntegerAttr>())) && ((tblgen_hint.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
-      return emitError(loc, "'omp.critical.declare' op ""attribute 'hint' failed to satisfy constraint: 64-bit signless integer attribute");
+    auto tblgen_hint_val = odsAttrs.get("hint_val");
+    if (tblgen_hint_val && !(((tblgen_hint_val.isa<::mlir::IntegerAttr>())) && ((tblgen_hint_val.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
+      return emitError(loc, "'omp.critical.declare' op ""attribute 'hint_val' failed to satisfy constraint: 64-bit signless integer attribute");
   }
   return ::mlir::success();
 }
@@ -1326,12 +1802,12 @@ std::pair<unsigned, unsigned> CriticalDeclareOp::getODSResultIndexAndLength(unsi
   return attr.getValue();
 }
 
-::mlir::IntegerAttr CriticalDeclareOp::hintAttr() {
-  return (*this)->getAttr(hintAttrName()).dyn_cast_or_null<::mlir::IntegerAttr>();
+::mlir::IntegerAttr CriticalDeclareOp::hint_valAttr() {
+  return (*this)->getAttr(hint_valAttrName()).dyn_cast_or_null<::mlir::IntegerAttr>();
 }
 
-uint64_t CriticalDeclareOp::hint() {
-  auto attr = hintAttr();
+uint64_t CriticalDeclareOp::hint_val() {
+  auto attr = hint_valAttr();
     if (!attr)
       return ::mlir::Builder((*this)->getContext()).getIntegerAttr(::mlir::Builder((*this)->getContext()).getIntegerType(64), 0).getValue().getZExtValue();
   return attr.getValue().getZExtValue();
@@ -1341,30 +1817,30 @@ void CriticalDeclareOp::sym_nameAttr(::mlir::StringAttr attr) {
   (*this)->setAttr(sym_nameAttrName(), attr);
 }
 
-void CriticalDeclareOp::hintAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(hintAttrName(), attr);
+void CriticalDeclareOp::hint_valAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(hint_valAttrName(), attr);
 }
 
-void CriticalDeclareOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::StringAttr sym_name, ::mlir::IntegerAttr hint) {
+void CriticalDeclareOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::StringAttr sym_name, ::mlir::IntegerAttr hint_val) {
   odsState.addAttribute(sym_nameAttrName(odsState.name), sym_name);
-  odsState.addAttribute(hintAttrName(odsState.name), hint);
+  odsState.addAttribute(hint_valAttrName(odsState.name), hint_val);
 }
 
-void CriticalDeclareOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::StringAttr sym_name, ::mlir::IntegerAttr hint) {
+void CriticalDeclareOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::StringAttr sym_name, ::mlir::IntegerAttr hint_val) {
   odsState.addAttribute(sym_nameAttrName(odsState.name), sym_name);
-  odsState.addAttribute(hintAttrName(odsState.name), hint);
+  odsState.addAttribute(hint_valAttrName(odsState.name), hint_val);
   assert(resultTypes.size() == 0u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
 
-void CriticalDeclareOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::llvm::StringRef sym_name, uint64_t hint) {
+void CriticalDeclareOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::llvm::StringRef sym_name, uint64_t hint_val) {
   odsState.addAttribute(sym_nameAttrName(odsState.name), odsBuilder.getStringAttr(sym_name));
-  odsState.addAttribute(hintAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), hint));
+  odsState.addAttribute(hint_valAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), hint_val));
 }
 
-void CriticalDeclareOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::llvm::StringRef sym_name, uint64_t hint) {
+void CriticalDeclareOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::llvm::StringRef sym_name, uint64_t hint_val) {
   odsState.addAttribute(sym_nameAttrName(odsState.name), odsBuilder.getStringAttr(sym_name));
-  odsState.addAttribute(hintAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), hint));
+  odsState.addAttribute(hint_valAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), hint_val));
   assert(resultTypes.size() == 0u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -1377,34 +1853,59 @@ void CriticalDeclareOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult CriticalDeclareOp::verifyInvariants() {
+::mlir::LogicalResult CriticalDeclareOp::verifyInvariantsImpl() {
   {
     auto tblgen_sym_name = (*this)->getAttr(sym_nameAttrName());
     if (!tblgen_sym_name)
       return emitOpError("requires attribute 'sym_name'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps3(*this, tblgen_sym_name, "sym_name")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps2(*this, tblgen_sym_name, "sym_name")))
       return ::mlir::failure();
   }
   {
-    auto tblgen_hint = (*this)->getAttr(hintAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps0(*this, tblgen_hint, "hint")))
+    auto tblgen_hint_val = (*this)->getAttr(hint_valAttrName());
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps0(*this, tblgen_hint_val, "hint_val")))
       return ::mlir::failure();
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult CriticalDeclareOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 ::mlir::ParseResult CriticalDeclareOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::StringAttr sym_nameAttr;
-  ::mlir::IntegerAttr hintAttr;
+  ::mlir::IntegerAttr hint_valAttr;
 
   if (parser.parseSymbolName(sym_nameAttr, "sym_name", result.attributes))
     return ::mlir::failure();
-  {
-    if (parseSynchronizationHint(parser, hintAttr))
-      return ::mlir::failure();
-    result.addAttribute("hint", hintAttr);
+  bool hintClause = false;
+  while(true) {
+if (succeeded(parser.parseOptionalKeyword("hint"))) {
+
+  if (hintClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`hint` clause can appear at most once in the expansion of the "
+             "oilist directive";
   }
+  hintClause = true;
+  result.addAttribute("hint", UnitAttr::get(parser.getContext()));
+  if (parser.parseLParen())
+    return ::mlir::failure();
+  {
+    if (parseSynchronizationHint(parser, hint_valAttr))
+      return ::mlir::failure();
+    result.addAttribute("hint_val", hint_valAttr);
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else  {
+    break;
+  }
+}
   if (parser.parseOptionalAttrDict(result.attributes))
     return ::mlir::failure();
   return ::mlir::success();
@@ -1413,9 +1914,14 @@ void CriticalDeclareOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
 void CriticalDeclareOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
   _odsPrinter.printSymbolName(sym_nameAttr().getValue());
-  _odsPrinter << ' ';
-  printSynchronizationHint(_odsPrinter, *this, hintAttr());
-  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"sym_name", "hint"});
+  _odsPrinter << ' ' << " ";
+  if ((*this)->hasAttrOfType<UnitAttr>("hint")) {
+  _odsPrinter << ' ' << "hint";
+  _odsPrinter << "(";
+  printSynchronizationHint(_odsPrinter, *this, hint_valAttr());
+  _odsPrinter << ")";
+  }
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"hint", "sym_name", "hint_val"});
 }
 
 } // namespace omp
@@ -1546,10 +2052,10 @@ void CriticalOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult CriticalOp::verifyInvariants() {
+::mlir::LogicalResult CriticalOp::verifyInvariantsImpl() {
   {
     auto tblgen_name = (*this)->getAttr(nameAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps4(*this, tblgen_name, "name")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps3(*this, tblgen_name, "name")))
       return ::mlir::failure();
   }
   {
@@ -1559,7 +2065,13 @@ void CriticalOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
       if (::mlir::failed(__mlir_ods_local_region_constraint_OpenMPOps1(*this, region, "region", index++)))
         return ::mlir::failure();
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult CriticalOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 ::mlir::ParseResult CriticalOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -1704,7 +2216,7 @@ void FlushOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult FlushOp::verifyInvariants() {
+::mlir::LogicalResult FlushOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1715,6 +2227,10 @@ void FlushOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult FlushOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult FlushOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -1843,7 +2359,7 @@ void MasterOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult MasterOp::verifyInvariants() {
+::mlir::LogicalResult MasterOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
 
@@ -1852,6 +2368,10 @@ void MasterOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
         return ::mlir::failure();
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult MasterOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult MasterOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -2065,15 +2585,15 @@ void OrderedOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult OrderedOp::verifyInvariants() {
+::mlir::LogicalResult OrderedOp::verifyInvariantsImpl() {
   {
     auto tblgen_depend_type_val = (*this)->getAttr(depend_type_valAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps5(*this, tblgen_depend_type_val, "depend_type_val")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps4(*this, tblgen_depend_type_val, "depend_type_val")))
       return ::mlir::failure();
   }
   {
     auto tblgen_num_loops_val = (*this)->getAttr(num_loops_valAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps6(*this, tblgen_num_loops_val, "num_loops_val")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps5(*this, tblgen_num_loops_val, "num_loops_val")))
       return ::mlir::failure();
   }
   {
@@ -2085,7 +2605,13 @@ void OrderedOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
         return ::mlir::failure();
     }
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult OrderedOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 ::mlir::ParseResult OrderedOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -2284,10 +2810,10 @@ void OrderedRegionOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult OrderedRegionOp::verifyInvariants() {
+::mlir::LogicalResult OrderedRegionOp::verifyInvariantsImpl() {
   {
     auto tblgen_simd = (*this)->getAttr(simdAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps7(*this, tblgen_simd, "simd")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps6(*this, tblgen_simd, "simd")))
       return ::mlir::failure();
   }
   {
@@ -2297,7 +2823,13 @@ void OrderedRegionOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
       if (::mlir::failed(__mlir_ods_local_region_constraint_OpenMPOps1(*this, region, "region", index++)))
         return ::mlir::failure();
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult OrderedRegionOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 ::mlir::ParseResult OrderedRegionOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -2554,7 +3086,7 @@ void ParallelOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ParallelOp::verifyInvariants() {
+::mlir::LogicalResult ParallelOp::verifyInvariantsImpl() {
   {
     auto sizeAttr = (*this)->getAttr(operand_segment_sizesAttrName()).dyn_cast<::mlir::DenseIntElementsAttr>();
     if (!sizeAttr)
@@ -2567,7 +3099,7 @@ void ParallelOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   }
     {
     auto tblgen_proc_bind_val = (*this)->getAttr(proc_bind_valAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps8(*this, tblgen_proc_bind_val, "proc_bind_val")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps7(*this, tblgen_proc_bind_val, "proc_bind_val")))
       return ::mlir::failure();
   }
   {
@@ -2614,7 +3146,13 @@ void ParallelOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
       if (::mlir::failed(__mlir_ods_local_region_constraint_OpenMPOps1(*this, region, "region", index++)))
         return ::mlir::failure();
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult ParallelOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 ::mlir::ParseResult ParallelOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -2748,7 +3286,7 @@ if (succeeded(parser.parseOptionalKeyword("if"))) {
   if (parser.parseLParen())
     return ::mlir::failure();
   {
-    if (parseProcBindKind(parser, proc_bind_valAttr))
+    if (parseClauseAttr(parser, proc_bind_valAttr))
       return ::mlir::failure();
     if (proc_bind_valAttr)
       result.addAttribute("proc_bind_val", proc_bind_valAttr);
@@ -2808,7 +3346,7 @@ void ParallelOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   if ((*this)->hasAttrOfType<UnitAttr>("proc_bind")) {
   _odsPrinter << ' ' << "proc_bind";
   _odsPrinter << "(";
-  printProcBindKind(_odsPrinter, *this, proc_bind_valAttr());
+  printClauseAttr(_odsPrinter, *this, proc_bind_valAttr());
   _odsPrinter << ")";
   }
   _odsPrinter << ' ';
@@ -3011,13 +3549,13 @@ void ReductionDeclareOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsS
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ReductionDeclareOp::verifyInvariants() {
+::mlir::LogicalResult ReductionDeclareOp::verifyInvariantsImpl() {
   {
     auto tblgen_sym_name = (*this)->getAttr(sym_nameAttrName());
     if (!tblgen_sym_name)
       return emitOpError("requires attribute 'sym_name'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps3(*this, tblgen_sym_name, "sym_name")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps2(*this, tblgen_sym_name, "sym_name")))
       return ::mlir::failure();
   }
   {
@@ -3025,7 +3563,7 @@ void ReductionDeclareOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsS
     if (!tblgen_type)
       return emitOpError("requires attribute 'type'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps9(*this, tblgen_type, "type")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps8(*this, tblgen_type, "type")))
       return ::mlir::failure();
   }
   {
@@ -3043,7 +3581,13 @@ void ReductionDeclareOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsS
       if (::mlir::failed(__mlir_ods_local_region_constraint_OpenMPOps1(*this, region, "atomicReductionRegion", index++)))
         return ::mlir::failure();
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult ReductionDeclareOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 ::mlir::ParseResult ReductionDeclareOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -3206,7 +3750,7 @@ void ReductionOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ReductionOp::verifyInvariants() {
+::mlir::LogicalResult ReductionOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -3224,7 +3768,13 @@ void ReductionOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   }
   if (!((std::equal_to<>()((*this->getODSOperands(1).begin()).getType().cast<::mlir::omp::PointerLikeType>().getElementType(), (*this->getODSOperands(0).begin()).getType()))))
     return emitOpError("failed to verify that value types matches accumulator element type");
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult ReductionOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 ::mlir::ParseResult ReductionOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -3377,7 +3927,7 @@ void SectionOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult SectionOp::verifyInvariants() {
+::mlir::LogicalResult SectionOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
 
@@ -3386,6 +3936,10 @@ void SectionOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
         return ::mlir::failure();
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult SectionOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult SectionOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -3681,7 +4235,7 @@ void SectionsOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult SectionsOp::verifyInvariants() {
+::mlir::LogicalResult SectionsOp::verifyInvariantsImpl() {
   {
     auto sizeAttr = (*this)->getAttr(operand_segment_sizesAttrName()).dyn_cast<::mlir::DenseIntElementsAttr>();
     if (!sizeAttr)
@@ -3694,12 +4248,12 @@ void SectionsOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   }
     {
     auto tblgen_reductions = (*this)->getAttr(reductionsAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps10(*this, tblgen_reductions, "reductions")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps9(*this, tblgen_reductions, "reductions")))
       return ::mlir::failure();
   }
   {
     auto tblgen_nowait = (*this)->getAttr(nowaitAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps7(*this, tblgen_nowait, "nowait")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps6(*this, tblgen_nowait, "nowait")))
       return ::mlir::failure();
   }
   {
@@ -3730,7 +4284,122 @@ void SectionsOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
       if (::mlir::failed(__mlir_ods_local_region_constraint_OpenMPOps0(*this, region, "region", index++)))
         return ::mlir::failure();
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult SectionsOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
+}
+
+::mlir::ParseResult SectionsOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> reduction_varsOperands;
+  ::llvm::SMLoc reduction_varsOperandsLoc;
+  (void)reduction_varsOperandsLoc;
+  ::mlir::SmallVector<::mlir::Type, 1> reduction_varsTypes;
+  ::mlir::ArrayAttr reductionsAttr;
+  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allocate_varsOperands;
+  ::llvm::SMLoc allocate_varsOperandsLoc;
+  (void)allocate_varsOperandsLoc;
+  ::mlir::SmallVector<::mlir::Type, 1> allocate_varsTypes;
+  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allocators_varsOperands;
+  ::llvm::SMLoc allocators_varsOperandsLoc;
+  (void)allocators_varsOperandsLoc;
+  ::mlir::SmallVector<::mlir::Type, 1> allocators_varsTypes;
+  std::unique_ptr<::mlir::Region> regionRegion = std::make_unique<::mlir::Region>();
+  bool reductionClause = false;
+  bool allocateClause = false;
+  bool nowaitClause = false;
+  while(true) {
+if (succeeded(parser.parseOptionalKeyword("reduction"))) {
+
+  if (reductionClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`reduction` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  reductionClause = true;
+  result.addAttribute("reduction", UnitAttr::get(parser.getContext()));
+  if (parser.parseLParen())
+    return ::mlir::failure();
+  {
+    reduction_varsOperandsLoc = parser.getCurrentLocation();
+    if (parseReductionVarList(parser, reduction_varsOperands, reduction_varsTypes, reductionsAttr))
+      return ::mlir::failure();
+    if (reductionsAttr)
+      result.addAttribute("reductions", reductionsAttr);
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else if (succeeded(parser.parseOptionalKeyword("allocate"))) {
+
+  if (allocateClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`allocate` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  allocateClause = true;
+  result.addAttribute("allocate", UnitAttr::get(parser.getContext()));
+  if (parser.parseLParen())
+    return ::mlir::failure();
+  {
+    allocate_varsOperandsLoc = parser.getCurrentLocation();
+    allocators_varsOperandsLoc = parser.getCurrentLocation();
+    if (parseAllocateAndAllocator(parser, allocate_varsOperands, allocate_varsTypes, allocators_varsOperands, allocators_varsTypes))
+      return ::mlir::failure();
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else if (succeeded(parser.parseOptionalKeyword("nowait"))) {
+
+  if (nowaitClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`nowait` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  nowaitClause = true;
+  result.addAttribute("nowait", UnitAttr::get(parser.getContext()));
+    } else  {
+    break;
+  }
+}
+
+  if (parser.parseRegion(*regionRegion))
+    return ::mlir::failure();
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  result.addRegion(std::move(regionRegion));
+  result.addAttribute("operand_segment_sizes", parser.getBuilder().getI32VectorAttr({static_cast<int32_t>(reduction_varsOperands.size()), static_cast<int32_t>(allocate_varsOperands.size()), static_cast<int32_t>(allocators_varsOperands.size())}));
+  if (parser.resolveOperands(reduction_varsOperands, reduction_varsTypes, reduction_varsOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(allocate_varsOperands, allocate_varsTypes, allocate_varsOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(allocators_varsOperands, allocators_varsTypes, allocators_varsOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void SectionsOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ' << " ";
+  if ((*this)->hasAttrOfType<UnitAttr>("reduction")) {
+  _odsPrinter << ' ' << "reduction";
+  _odsPrinter << "(";
+  printReductionVarList(_odsPrinter, *this, reduction_vars(), reduction_vars().getTypes(), reductionsAttr());
+  _odsPrinter << ")";
+  }
+  if ((*this)->hasAttrOfType<UnitAttr>("allocate")) {
+  _odsPrinter << ' ' << "allocate";
+  _odsPrinter << "(";
+  printAllocateAndAllocator(_odsPrinter, *this, allocate_vars(), allocate_vars().getTypes(), allocators_vars(), allocators_vars().getTypes());
+  _odsPrinter << ")";
+  }
+  if ((*this)->hasAttrOfType<UnitAttr>("nowait")) {
+  _odsPrinter << ' ' << "nowait";
+  }
+  _odsPrinter << ' ';
+  _odsPrinter.printRegion(region());
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"operand_segment_sizes", "nowait", "allocate", "reduction", "reductions"});
 }
 
 } // namespace omp
@@ -3982,7 +4651,7 @@ void TargetOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult TargetOp::verifyInvariants() {
+::mlir::LogicalResult TargetOp::verifyInvariantsImpl() {
   {
     auto sizeAttr = (*this)->getAttr(operand_segment_sizesAttrName()).dyn_cast<::mlir::DenseIntElementsAttr>();
     if (!sizeAttr)
@@ -3995,7 +4664,7 @@ void TargetOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   }
     {
     auto tblgen_nowait = (*this)->getAttr(nowaitAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps7(*this, tblgen_nowait, "nowait")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps6(*this, tblgen_nowait, "nowait")))
       return ::mlir::failure();
   }
   {
@@ -4042,6 +4711,10 @@ void TargetOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
         return ::mlir::failure();
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult TargetOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult TargetOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -4303,8 +4976,12 @@ void TaskwaitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult TaskwaitOp::verifyInvariants() {
+::mlir::LogicalResult TaskwaitOp::verifyInvariantsImpl() {
   return ::mlir::success();
+}
+
+::mlir::LogicalResult TaskwaitOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult TaskwaitOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -4390,8 +5067,12 @@ void TaskyieldOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult TaskyieldOp::verifyInvariants() {
+::mlir::LogicalResult TaskyieldOp::verifyInvariantsImpl() {
   return ::mlir::success();
+}
+
+::mlir::LogicalResult TaskyieldOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult TaskyieldOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -4477,8 +5158,12 @@ void TerminatorOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult TerminatorOp::verifyInvariants() {
+::mlir::LogicalResult TerminatorOp::verifyInvariantsImpl() {
   return ::mlir::success();
+}
+
+::mlir::LogicalResult TerminatorOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult TerminatorOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -4987,7 +5672,180 @@ void WsLoopOp::inclusiveAttr(::mlir::UnitAttr attr) {
   return (*this)->removeAttr(inclusiveAttrName());
 }
 
-::mlir::LogicalResult WsLoopOp::verifyInvariants() {
+void WsLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange lowerBound, ::mlir::ValueRange upperBound, ::mlir::ValueRange step, ::mlir::ValueRange linear_vars, ::mlir::ValueRange linear_step_vars, ::mlir::ValueRange reduction_vars, /*optional*/::mlir::ArrayAttr reductions, /*optional*/::mlir::omp::ClauseScheduleKindAttr schedule_val, /*optional*/::mlir::Value schedule_chunk_var, /*optional*/::mlir::omp::ScheduleModifierAttr schedule_modifier, /*optional*/::mlir::UnitAttr simd_modifier, /*optional*/::mlir::IntegerAttr collapse_val, /*optional*/::mlir::UnitAttr nowait, /*optional*/::mlir::IntegerAttr ordered_val, /*optional*/::mlir::omp::ClauseOrderKindAttr order_val, /*optional*/::mlir::UnitAttr inclusive) {
+  odsState.addOperands(lowerBound);
+  odsState.addOperands(upperBound);
+  odsState.addOperands(step);
+  odsState.addOperands(linear_vars);
+  odsState.addOperands(linear_step_vars);
+  odsState.addOperands(reduction_vars);
+  if (schedule_chunk_var)
+    odsState.addOperands(schedule_chunk_var);
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(lowerBound.size()), static_cast<int32_t>(upperBound.size()), static_cast<int32_t>(step.size()), static_cast<int32_t>(linear_vars.size()), static_cast<int32_t>(linear_step_vars.size()), static_cast<int32_t>(reduction_vars.size()), (schedule_chunk_var ? 1 : 0)}));
+  if (reductions) {
+  odsState.addAttribute(reductionsAttrName(odsState.name), reductions);
+  }
+  if (schedule_val) {
+  odsState.addAttribute(schedule_valAttrName(odsState.name), schedule_val);
+  }
+  if (schedule_modifier) {
+  odsState.addAttribute(schedule_modifierAttrName(odsState.name), schedule_modifier);
+  }
+  if (simd_modifier) {
+  odsState.addAttribute(simd_modifierAttrName(odsState.name), simd_modifier);
+  }
+  if (collapse_val) {
+  odsState.addAttribute(collapse_valAttrName(odsState.name), collapse_val);
+  }
+  if (nowait) {
+  odsState.addAttribute(nowaitAttrName(odsState.name), nowait);
+  }
+  if (ordered_val) {
+  odsState.addAttribute(ordered_valAttrName(odsState.name), ordered_val);
+  }
+  if (order_val) {
+  odsState.addAttribute(order_valAttrName(odsState.name), order_val);
+  }
+  if (inclusive) {
+  odsState.addAttribute(inclusiveAttrName(odsState.name), inclusive);
+  }
+  (void)odsState.addRegion();
+}
+
+void WsLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange lowerBound, ::mlir::ValueRange upperBound, ::mlir::ValueRange step, ::mlir::ValueRange linear_vars, ::mlir::ValueRange linear_step_vars, ::mlir::ValueRange reduction_vars, /*optional*/::mlir::ArrayAttr reductions, /*optional*/::mlir::omp::ClauseScheduleKindAttr schedule_val, /*optional*/::mlir::Value schedule_chunk_var, /*optional*/::mlir::omp::ScheduleModifierAttr schedule_modifier, /*optional*/::mlir::UnitAttr simd_modifier, /*optional*/::mlir::IntegerAttr collapse_val, /*optional*/::mlir::UnitAttr nowait, /*optional*/::mlir::IntegerAttr ordered_val, /*optional*/::mlir::omp::ClauseOrderKindAttr order_val, /*optional*/::mlir::UnitAttr inclusive) {
+  odsState.addOperands(lowerBound);
+  odsState.addOperands(upperBound);
+  odsState.addOperands(step);
+  odsState.addOperands(linear_vars);
+  odsState.addOperands(linear_step_vars);
+  odsState.addOperands(reduction_vars);
+  if (schedule_chunk_var)
+    odsState.addOperands(schedule_chunk_var);
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(lowerBound.size()), static_cast<int32_t>(upperBound.size()), static_cast<int32_t>(step.size()), static_cast<int32_t>(linear_vars.size()), static_cast<int32_t>(linear_step_vars.size()), static_cast<int32_t>(reduction_vars.size()), (schedule_chunk_var ? 1 : 0)}));
+  if (reductions) {
+  odsState.addAttribute(reductionsAttrName(odsState.name), reductions);
+  }
+  if (schedule_val) {
+  odsState.addAttribute(schedule_valAttrName(odsState.name), schedule_val);
+  }
+  if (schedule_modifier) {
+  odsState.addAttribute(schedule_modifierAttrName(odsState.name), schedule_modifier);
+  }
+  if (simd_modifier) {
+  odsState.addAttribute(simd_modifierAttrName(odsState.name), simd_modifier);
+  }
+  if (collapse_val) {
+  odsState.addAttribute(collapse_valAttrName(odsState.name), collapse_val);
+  }
+  if (nowait) {
+  odsState.addAttribute(nowaitAttrName(odsState.name), nowait);
+  }
+  if (ordered_val) {
+  odsState.addAttribute(ordered_valAttrName(odsState.name), ordered_val);
+  }
+  if (order_val) {
+  odsState.addAttribute(order_valAttrName(odsState.name), order_val);
+  }
+  if (inclusive) {
+  odsState.addAttribute(inclusiveAttrName(odsState.name), inclusive);
+  }
+  (void)odsState.addRegion();
+  assert(resultTypes.size() == 0u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void WsLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange lowerBound, ::mlir::ValueRange upperBound, ::mlir::ValueRange step, ::mlir::ValueRange linear_vars, ::mlir::ValueRange linear_step_vars, ::mlir::ValueRange reduction_vars, /*optional*/::mlir::ArrayAttr reductions, /*optional*/::mlir::omp::ClauseScheduleKindAttr schedule_val, /*optional*/::mlir::Value schedule_chunk_var, /*optional*/::mlir::omp::ScheduleModifierAttr schedule_modifier, /*optional*/bool simd_modifier, /*optional*/::mlir::IntegerAttr collapse_val, /*optional*/bool nowait, /*optional*/::mlir::IntegerAttr ordered_val, /*optional*/::mlir::omp::ClauseOrderKindAttr order_val, /*optional*/bool inclusive) {
+  odsState.addOperands(lowerBound);
+  odsState.addOperands(upperBound);
+  odsState.addOperands(step);
+  odsState.addOperands(linear_vars);
+  odsState.addOperands(linear_step_vars);
+  odsState.addOperands(reduction_vars);
+  if (schedule_chunk_var)
+    odsState.addOperands(schedule_chunk_var);
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(lowerBound.size()), static_cast<int32_t>(upperBound.size()), static_cast<int32_t>(step.size()), static_cast<int32_t>(linear_vars.size()), static_cast<int32_t>(linear_step_vars.size()), static_cast<int32_t>(reduction_vars.size()), (schedule_chunk_var ? 1 : 0)}));
+  if (reductions) {
+  odsState.addAttribute(reductionsAttrName(odsState.name), reductions);
+  }
+  if (schedule_val) {
+  odsState.addAttribute(schedule_valAttrName(odsState.name), schedule_val);
+  }
+  if (schedule_modifier) {
+  odsState.addAttribute(schedule_modifierAttrName(odsState.name), schedule_modifier);
+  }
+  if (simd_modifier) {
+  odsState.addAttribute(simd_modifierAttrName(odsState.name), odsBuilder.getUnitAttr());
+  }
+  if (collapse_val) {
+  odsState.addAttribute(collapse_valAttrName(odsState.name), collapse_val);
+  }
+  if (nowait) {
+  odsState.addAttribute(nowaitAttrName(odsState.name), odsBuilder.getUnitAttr());
+  }
+  if (ordered_val) {
+  odsState.addAttribute(ordered_valAttrName(odsState.name), ordered_val);
+  }
+  if (order_val) {
+  odsState.addAttribute(order_valAttrName(odsState.name), order_val);
+  }
+  if (inclusive) {
+  odsState.addAttribute(inclusiveAttrName(odsState.name), odsBuilder.getUnitAttr());
+  }
+  (void)odsState.addRegion();
+}
+
+void WsLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange lowerBound, ::mlir::ValueRange upperBound, ::mlir::ValueRange step, ::mlir::ValueRange linear_vars, ::mlir::ValueRange linear_step_vars, ::mlir::ValueRange reduction_vars, /*optional*/::mlir::ArrayAttr reductions, /*optional*/::mlir::omp::ClauseScheduleKindAttr schedule_val, /*optional*/::mlir::Value schedule_chunk_var, /*optional*/::mlir::omp::ScheduleModifierAttr schedule_modifier, /*optional*/bool simd_modifier, /*optional*/::mlir::IntegerAttr collapse_val, /*optional*/bool nowait, /*optional*/::mlir::IntegerAttr ordered_val, /*optional*/::mlir::omp::ClauseOrderKindAttr order_val, /*optional*/bool inclusive) {
+  odsState.addOperands(lowerBound);
+  odsState.addOperands(upperBound);
+  odsState.addOperands(step);
+  odsState.addOperands(linear_vars);
+  odsState.addOperands(linear_step_vars);
+  odsState.addOperands(reduction_vars);
+  if (schedule_chunk_var)
+    odsState.addOperands(schedule_chunk_var);
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(lowerBound.size()), static_cast<int32_t>(upperBound.size()), static_cast<int32_t>(step.size()), static_cast<int32_t>(linear_vars.size()), static_cast<int32_t>(linear_step_vars.size()), static_cast<int32_t>(reduction_vars.size()), (schedule_chunk_var ? 1 : 0)}));
+  if (reductions) {
+  odsState.addAttribute(reductionsAttrName(odsState.name), reductions);
+  }
+  if (schedule_val) {
+  odsState.addAttribute(schedule_valAttrName(odsState.name), schedule_val);
+  }
+  if (schedule_modifier) {
+  odsState.addAttribute(schedule_modifierAttrName(odsState.name), schedule_modifier);
+  }
+  if (simd_modifier) {
+  odsState.addAttribute(simd_modifierAttrName(odsState.name), odsBuilder.getUnitAttr());
+  }
+  if (collapse_val) {
+  odsState.addAttribute(collapse_valAttrName(odsState.name), collapse_val);
+  }
+  if (nowait) {
+  odsState.addAttribute(nowaitAttrName(odsState.name), odsBuilder.getUnitAttr());
+  }
+  if (ordered_val) {
+  odsState.addAttribute(ordered_valAttrName(odsState.name), ordered_val);
+  }
+  if (order_val) {
+  odsState.addAttribute(order_valAttrName(odsState.name), order_val);
+  }
+  if (inclusive) {
+  odsState.addAttribute(inclusiveAttrName(odsState.name), odsBuilder.getUnitAttr());
+  }
+  (void)odsState.addRegion();
+  assert(resultTypes.size() == 0u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void WsLoopOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  for (unsigned i = 0; i != 1; ++i)
+    (void)odsState.addRegion();
+  assert(resultTypes.size() == 0u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult WsLoopOp::verifyInvariantsImpl() {
   {
     auto sizeAttr = (*this)->getAttr(operand_segment_sizesAttrName()).dyn_cast<::mlir::DenseIntElementsAttr>();
     if (!sizeAttr)
@@ -5000,47 +5858,47 @@ void WsLoopOp::inclusiveAttr(::mlir::UnitAttr attr) {
   }
     {
     auto tblgen_reductions = (*this)->getAttr(reductionsAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps10(*this, tblgen_reductions, "reductions")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps9(*this, tblgen_reductions, "reductions")))
       return ::mlir::failure();
   }
   {
     auto tblgen_schedule_val = (*this)->getAttr(schedule_valAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps11(*this, tblgen_schedule_val, "schedule_val")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps10(*this, tblgen_schedule_val, "schedule_val")))
       return ::mlir::failure();
   }
   {
     auto tblgen_schedule_modifier = (*this)->getAttr(schedule_modifierAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps12(*this, tblgen_schedule_modifier, "schedule_modifier")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps11(*this, tblgen_schedule_modifier, "schedule_modifier")))
       return ::mlir::failure();
   }
   {
     auto tblgen_simd_modifier = (*this)->getAttr(simd_modifierAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps7(*this, tblgen_simd_modifier, "simd_modifier")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps6(*this, tblgen_simd_modifier, "simd_modifier")))
       return ::mlir::failure();
   }
   {
     auto tblgen_collapse_val = (*this)->getAttr(collapse_valAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps6(*this, tblgen_collapse_val, "collapse_val")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps5(*this, tblgen_collapse_val, "collapse_val")))
       return ::mlir::failure();
   }
   {
     auto tblgen_nowait = (*this)->getAttr(nowaitAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps7(*this, tblgen_nowait, "nowait")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps6(*this, tblgen_nowait, "nowait")))
       return ::mlir::failure();
   }
   {
     auto tblgen_ordered_val = (*this)->getAttr(ordered_valAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps6(*this, tblgen_ordered_val, "ordered_val")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps5(*this, tblgen_ordered_val, "ordered_val")))
       return ::mlir::failure();
   }
   {
     auto tblgen_order_val = (*this)->getAttr(order_valAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps13(*this, tblgen_order_val, "order_val")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps12(*this, tblgen_order_val, "order_val")))
       return ::mlir::failure();
   }
   {
     auto tblgen_inclusive = (*this)->getAttr(inclusiveAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps7(*this, tblgen_inclusive, "inclusive")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps6(*this, tblgen_inclusive, "inclusive")))
       return ::mlir::failure();
   }
   {
@@ -5102,7 +5960,13 @@ void WsLoopOp::inclusiveAttr(::mlir::UnitAttr attr) {
       if (::mlir::failed(__mlir_ods_local_region_constraint_OpenMPOps1(*this, region, "region", index++)))
         return ::mlir::failure();
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult WsLoopOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 } // namespace omp
@@ -5204,6 +6068,10 @@ std::pair<unsigned, unsigned> YieldOp::getODSResultIndexAndLength(unsigned index
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
+void YieldOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState) {
+ build(odsBuilder, odsState, {}); 
+}
+
 void YieldOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange results) {
   odsState.addOperands(results);
 }
@@ -5215,7 +6083,7 @@ void YieldOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult YieldOp::verifyInvariants() {
+::mlir::LogicalResult YieldOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -5226,6 +6094,10 @@ void YieldOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult YieldOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult YieldOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {

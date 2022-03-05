@@ -213,7 +213,7 @@ void ConditionOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ConditionOp::verifyInvariants() {
+::mlir::LogicalResult ConditionOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -230,6 +230,10 @@ void ConditionOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult ConditionOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult ConditionOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -383,7 +387,7 @@ void ExecuteRegionOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ExecuteRegionOp::verifyInvariants() {
+::mlir::LogicalResult ExecuteRegionOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSResults(0);
@@ -400,7 +404,13 @@ void ExecuteRegionOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
       if (::mlir::failed(__mlir_ods_local_region_constraint_SCFOps0(*this, region, "region", index++)))
         return ::mlir::failure();
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult ExecuteRegionOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 } // namespace scf
@@ -574,7 +584,7 @@ std::pair<unsigned, unsigned> ForOp::getODSResultIndexAndLength(unsigned index) 
   return (*this)->getRegion(0);
 }
 
-::mlir::LogicalResult ForOp::verifyInvariants() {
+::mlir::LogicalResult ForOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -618,7 +628,13 @@ std::pair<unsigned, unsigned> ForOp::getODSResultIndexAndLength(unsigned index) 
       if (::mlir::failed(__mlir_ods_local_region_constraint_SCFOps1(*this, region, "region", index++)))
         return ::mlir::failure();
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult ForOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 } // namespace scf
@@ -730,7 +746,7 @@ std::pair<unsigned, unsigned> IfOp::getODSResultIndexAndLength(unsigned index) {
   return (*this)->getRegion(1);
 }
 
-::mlir::LogicalResult IfOp::verifyInvariants() {
+::mlir::LogicalResult IfOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -760,7 +776,13 @@ std::pair<unsigned, unsigned> IfOp::getODSResultIndexAndLength(unsigned index) {
       if (::mlir::failed(__mlir_ods_local_region_constraint_SCFOps0(*this, region, "elseRegion", index++)))
         return ::mlir::failure();
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult IfOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 } // namespace scf
@@ -936,7 +958,7 @@ std::pair<unsigned, unsigned> ParallelOp::getODSResultIndexAndLength(unsigned in
   return (*this)->getRegion(0);
 }
 
-::mlir::LogicalResult ParallelOp::verifyInvariants() {
+::mlir::LogicalResult ParallelOp::verifyInvariantsImpl() {
   {
     auto sizeAttr = (*this)->getAttr(getOperandSegmentSizesAttrName()).dyn_cast<::mlir::DenseIntElementsAttr>();
     if (!sizeAttr)
@@ -990,7 +1012,13 @@ std::pair<unsigned, unsigned> ParallelOp::getODSResultIndexAndLength(unsigned in
       if (::mlir::failed(__mlir_ods_local_region_constraint_SCFOps1(*this, region, "region", index++)))
         return ::mlir::failure();
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult ParallelOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 } // namespace scf
@@ -1076,7 +1104,7 @@ std::pair<unsigned, unsigned> ReduceOp::getODSResultIndexAndLength(unsigned inde
   return (*this)->getRegion(0);
 }
 
-::mlir::LogicalResult ReduceOp::verifyInvariants() {
+::mlir::LogicalResult ReduceOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1093,7 +1121,13 @@ std::pair<unsigned, unsigned> ReduceOp::getODSResultIndexAndLength(unsigned inde
       if (::mlir::failed(__mlir_ods_local_region_constraint_SCFOps1(*this, region, "reductionOperator", index++)))
         return ::mlir::failure();
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult ReduceOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 } // namespace scf
@@ -1185,7 +1219,7 @@ void ReduceReturnOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ReduceReturnOp::verifyInvariants() {
+::mlir::LogicalResult ReduceReturnOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1195,7 +1229,13 @@ void ReduceReturnOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
         return ::mlir::failure();
     }
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult ReduceReturnOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 ::mlir::ParseResult ReduceReturnOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -1387,7 +1427,7 @@ void WhileOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult WhileOp::verifyInvariants() {
+::mlir::LogicalResult WhileOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1417,7 +1457,13 @@ void WhileOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
       if (::mlir::failed(__mlir_ods_local_region_constraint_SCFOps1(*this, region, "after", index++)))
         return ::mlir::failure();
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult WhileOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 } // namespace scf
@@ -1534,7 +1580,7 @@ void YieldOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult YieldOp::verifyInvariants() {
+::mlir::LogicalResult YieldOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1545,6 +1591,10 @@ void YieldOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult YieldOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult YieldOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {

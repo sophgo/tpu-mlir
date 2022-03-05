@@ -62,6 +62,16 @@ MLIR_CAPI_EXPORTED void mlirRegisterConversionConvertControlFlowToLLVM();
 
 
 /* Create Conversion Pass. */
+MLIR_CAPI_EXPORTED MlirPass mlirCreateConversionConvertControlFlowToSPIRV();
+MLIR_CAPI_EXPORTED void mlirRegisterConversionConvertControlFlowToSPIRV();
+
+
+/* Create Conversion Pass. */
+MLIR_CAPI_EXPORTED MlirPass mlirCreateConversionConvertFuncToSPIRV();
+MLIR_CAPI_EXPORTED void mlirRegisterConversionConvertFuncToSPIRV();
+
+
+/* Create Conversion Pass. */
 MLIR_CAPI_EXPORTED MlirPass mlirCreateConversionConvertGPUToSPIRV();
 MLIR_CAPI_EXPORTED void mlirRegisterConversionConvertGPUToSPIRV();
 
@@ -172,8 +182,8 @@ MLIR_CAPI_EXPORTED void mlirRegisterConversionConvertStandardToLLVM();
 
 
 /* Create Conversion Pass. */
-MLIR_CAPI_EXPORTED MlirPass mlirCreateConversionConvertStandardToSPIRV();
-MLIR_CAPI_EXPORTED void mlirRegisterConversionConvertStandardToSPIRV();
+MLIR_CAPI_EXPORTED MlirPass mlirCreateConversionConvertTensorToSPIRV();
+MLIR_CAPI_EXPORTED void mlirRegisterConversionConvertTensorToSPIRV();
 
 
 /* Create Conversion Pass. */

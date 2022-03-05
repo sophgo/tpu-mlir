@@ -462,7 +462,7 @@ void ConstFakeQuant::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
 
 }
 
-::mlir::LogicalResult ConstFakeQuant::verifyInvariants() {
+::mlir::LogicalResult ConstFakeQuant::verifyInvariantsImpl() {
   {
     auto tblgen_min = (*this)->getAttr(minAttrName());
     if (!tblgen_min)
@@ -516,6 +516,10 @@ void ConstFakeQuant::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult ConstFakeQuant::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 void ConstFakeQuant::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
@@ -867,7 +871,7 @@ void ConstFakeQuantPerAxis::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operati
 
 }
 
-::mlir::LogicalResult ConstFakeQuantPerAxis::verifyInvariants() {
+::mlir::LogicalResult ConstFakeQuantPerAxis::verifyInvariantsImpl() {
   {
     auto tblgen_min = (*this)->getAttr(minAttrName());
     if (!tblgen_min)
@@ -929,6 +933,10 @@ void ConstFakeQuantPerAxis::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operati
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult ConstFakeQuantPerAxis::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 void ConstFakeQuantPerAxis::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
@@ -1085,7 +1093,7 @@ void CoupledRefOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
 
 }
 
-::mlir::LogicalResult CoupledRefOp::verifyInvariants() {
+::mlir::LogicalResult CoupledRefOp::verifyInvariantsImpl() {
   {
     auto tblgen_coupledKey = (*this)->getAttr(coupledKeyAttrName());
     if (!tblgen_coupledKey)
@@ -1113,6 +1121,10 @@ void CoupledRefOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult CoupledRefOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 } // namespace quant
@@ -1205,7 +1217,7 @@ void DequantizeCastOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult DequantizeCastOp::verifyInvariants() {
+::mlir::LogicalResult DequantizeCastOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1225,6 +1237,10 @@ void DequantizeCastOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult DequantizeCastOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 void DequantizeCastOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
@@ -1320,7 +1336,7 @@ void QuantizeCastOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult QuantizeCastOp::verifyInvariants() {
+::mlir::LogicalResult QuantizeCastOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1340,6 +1356,10 @@ void QuantizeCastOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult QuantizeCastOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 void QuantizeCastOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
@@ -1596,7 +1616,7 @@ void QuantizeRegionOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult QuantizeRegionOp::verifyInvariants() {
+::mlir::LogicalResult QuantizeRegionOp::verifyInvariantsImpl() {
   {
     auto tblgen_input_specs = (*this)->getAttr(input_specsAttrName());
     if (!tblgen_input_specs)
@@ -1646,7 +1666,13 @@ void QuantizeRegionOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
       if (::mlir::failed(__mlir_ods_local_region_constraint_QuantOps0(*this, region, "body", index++)))
         return ::mlir::failure();
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult QuantizeRegionOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 void QuantizeRegionOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
@@ -1762,7 +1788,7 @@ void ReturnOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ReturnOp::verifyInvariants() {
+::mlir::LogicalResult ReturnOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1773,6 +1799,10 @@ void ReturnOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult ReturnOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 } // namespace quant
@@ -1997,7 +2027,7 @@ void StatisticsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
 
 }
 
-::mlir::LogicalResult StatisticsOp::verifyInvariants() {
+::mlir::LogicalResult StatisticsOp::verifyInvariantsImpl() {
   {
     auto tblgen_layerStats = (*this)->getAttr(layerStatsAttrName());
     if (!tblgen_layerStats)
@@ -2034,7 +2064,13 @@ void StatisticsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
         return ::mlir::failure();
     }
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult StatisticsOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 } // namespace quant
@@ -2188,7 +2224,7 @@ void StatisticsRefOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationStat
 
 }
 
-::mlir::LogicalResult StatisticsRefOp::verifyInvariants() {
+::mlir::LogicalResult StatisticsRefOp::verifyInvariantsImpl() {
   {
     auto tblgen_statsKey = (*this)->getAttr(statsKeyAttrName());
     if (!tblgen_statsKey)
@@ -2216,6 +2252,10 @@ void StatisticsRefOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationStat
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult StatisticsRefOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 } // namespace quant
@@ -2308,7 +2348,7 @@ void StorageCastOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult StorageCastOp::verifyInvariants() {
+::mlir::LogicalResult StorageCastOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -2328,6 +2368,10 @@ void StorageCastOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult StorageCastOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 void StorageCastOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {

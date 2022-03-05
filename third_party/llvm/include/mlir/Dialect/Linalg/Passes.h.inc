@@ -147,6 +147,7 @@ protected:
   ::mlir::Pass::Option<bool> printConflicts{*this, "print-conflicts", ::llvm::cl::desc("Annotates IR with RaW conflicts. Requires test-analysis-only."), ::llvm::cl::init(false)};
   ::mlir::Pass::Option<bool> allowReturnMemref{*this, "allow-return-memref", ::llvm::cl::desc("Allows the return of memrefs (for testing purposes only)"), ::llvm::cl::init(false)};
   ::mlir::Pass::Option<bool> allowUnknownOps{*this, "allow-unknown-ops", ::llvm::cl::desc("Allows unknown (not bufferizable) ops in the input IR."), ::llvm::cl::init(false)};
+  ::mlir::Pass::Option<bool> alwaysAliasingWithDest{*this, "always-aliasing-with-dest", ::llvm::cl::desc("Tensor OpResult cannot bufferize inplace OpOperands other than out or dest OpOperands (if the op has a notion of such operands)"), ::llvm::cl::init(true)};
   ::mlir::Pass::Option<bool> useAlloca{*this, "use-alloca", ::llvm::cl::desc("Use stack allocations for memrefs (for testing purposes only)"), ::llvm::cl::init(false)};
   ::mlir::Pass::Option<bool> fullyDynamicLayoutMaps{*this, "fully-dynamic-layout-maps", ::llvm::cl::desc("Generate MemRef types with dynamic offset+strides by default."), ::llvm::cl::init(true)};
   ::mlir::Pass::Option<unsigned> analysisFuzzerSeed{*this, "analysis-fuzzer-seed", ::llvm::cl::desc("Analyze ops in random order with a given seed (fuzzer)"), ::llvm::cl::init(0)};
@@ -436,56 +437,6 @@ public:
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
     
   registry.insert<linalg::LinalgDialect>();
-
-  }
-
-protected:
-};
-
-//===----------------------------------------------------------------------===//
-// LinalgLowerTiledLoopsToSCF
-//===----------------------------------------------------------------------===//
-
-template <typename DerivedT>
-class LinalgLowerTiledLoopsToSCFBase : public ::mlir::OperationPass<FuncOp> {
-public:
-  using Base = LinalgLowerTiledLoopsToSCFBase;
-
-  LinalgLowerTiledLoopsToSCFBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  LinalgLowerTiledLoopsToSCFBase(const LinalgLowerTiledLoopsToSCFBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
-
-  /// Returns the command-line argument attached to this pass.
-  static constexpr ::llvm::StringLiteral getArgumentName() {
-    return ::llvm::StringLiteral("convert-linalg-tiled-loops-to-scf");
-  }
-  ::llvm::StringRef getArgument() const override { return "convert-linalg-tiled-loops-to-scf"; }
-
-  ::llvm::StringRef getDescription() const override { return "Lower linalg tiled loops to SCF loops and parallel loops"; }
-
-  /// Returns the derived pass name.
-  static constexpr ::llvm::StringLiteral getPassName() {
-    return ::llvm::StringLiteral("LinalgLowerTiledLoopsToSCF");
-  }
-  ::llvm::StringRef getName() const override { return "LinalgLowerTiledLoopsToSCF"; }
-
-  /// Support isa/dyn_cast functionality for the derived pass class.
-  static bool classof(const ::mlir::Pass *pass) {
-    return pass->getTypeID() == ::mlir::TypeID::get<DerivedT>();
-  }
-
-  /// A clone method to create a copy of this pass.
-  std::unique_ptr<::mlir::Pass> clonePass() const override {
-    return std::make_unique<DerivedT>(*static_cast<const DerivedT *>(this));
-  }
-
-  /// Return the dialect that must be loaded in the context before this pass.
-  void getDependentDialects(::mlir::DialectRegistry &registry) const override {
-    
-  registry.insert<linalg::LinalgDialect>();
-
-  registry.insert<scf::SCFDialect>();
-
-  registry.insert<AffineDialect>();
 
   }
 
@@ -1313,8 +1264,7 @@ public:
 
 protected:
   ::mlir::Pass::ListOption<int64_t> tileSizes{*this, "tile-sizes", ::llvm::cl::desc("Tile sizes"), llvm::cl::ZeroOrMore, llvm::cl::MiscFlags::CommaSeparated};
-  ::mlir::Pass::Option<std::string> loopType{*this, "loop-type", ::llvm::cl::desc("Specify the type of loops to generate: for, parallel or tiled_loop"), ::llvm::cl::init("for")};
-  ::mlir::Pass::ListOption<std::string> distributionTypes{*this, "distribution-types", ::llvm::cl::desc("DistributionTypes (if loop-type=tiled_loop)"), llvm::cl::ZeroOrMore, llvm::cl::MiscFlags::CommaSeparated};
+  ::mlir::Pass::Option<std::string> loopType{*this, "loop-type", ::llvm::cl::desc("Specify the type of loops to generate: for, parallel"), ::llvm::cl::init("for")};
 };
 #undef GEN_PASS_CLASSES
 #endif // GEN_PASS_CLASSES
@@ -1407,16 +1357,6 @@ inline void registerLinalgGeneralizationPass() {
 inline void registerLinalgInlineScalarOperandsPass() {
   ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
     return mlir::createLinalgInlineScalarOperandsPass();
-  });
-}
-
-//===----------------------------------------------------------------------===//
-// LinalgLowerTiledLoopsToSCF Registration
-//===----------------------------------------------------------------------===//
-
-inline void registerLinalgLowerTiledLoopsToSCFPass() {
-  ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
-    return mlir::createConvertLinalgTiledLoopsToSCFPass();
   });
 }
 
@@ -1604,7 +1544,6 @@ inline void registerLinalgPasses() {
   registerLinalgFoldUnitExtentDimsPass();
   registerLinalgGeneralizationPass();
   registerLinalgInlineScalarOperandsPass();
-  registerLinalgLowerTiledLoopsToSCFPass();
   registerLinalgLowerToAffineLoopsPass();
   registerLinalgLowerToLoopsPass();
   registerLinalgLowerToParallelLoopsPass();

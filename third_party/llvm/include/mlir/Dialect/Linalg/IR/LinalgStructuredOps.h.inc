@@ -90,6 +90,16 @@ class DotOp;
 } // namespace mlir
 namespace mlir {
 namespace linalg {
+class ElemwiseBinaryOp;
+} // namespace linalg
+} // namespace mlir
+namespace mlir {
+namespace linalg {
+class ElemwiseUnaryOp;
+} // namespace linalg
+} // namespace mlir
+namespace mlir {
+namespace linalg {
 class FillOp;
 } // namespace linalg
 } // namespace mlir
@@ -230,7 +240,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class BatchMatmulOp : public ::mlir::Op<BatchMatmulOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::linalg::ContractionOpInterface::Trait> {
+class BatchMatmulOp : public ::mlir::Op<BatchMatmulOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -268,6 +278,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -289,7 +300,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -340,7 +351,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class BatchMatvecOp : public ::mlir::Op<BatchMatvecOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::linalg::ContractionOpInterface::Trait> {
+class BatchMatvecOp : public ::mlir::Op<BatchMatvecOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -378,6 +389,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -399,7 +411,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -454,7 +466,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class Conv1DNwcWcfOp : public ::mlir::Op<Conv1DNwcWcfOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class Conv1DNwcWcfOp : public ::mlir::Op<Conv1DNwcWcfOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -515,6 +527,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -536,7 +549,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -555,8 +568,8 @@ public:
     static unsigned getNumRegionArgs();
     std::string getLibraryCallName();
 
-    bool hasDynamicIndexingMaps();
-    LogicalResult verifyIndexingMapRequiredAttributes();
+      bool hasDynamicIndexingMaps();
+      LogicalResult verifyIndexingMapRequiredAttributes();
 
 };
 } // namespace linalg
@@ -590,7 +603,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class Conv1DOp : public ::mlir::Op<Conv1DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class Conv1DOp : public ::mlir::Op<Conv1DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -628,6 +641,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -649,7 +663,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -704,7 +718,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class Conv2DNchwFchwOp : public ::mlir::Op<Conv2DNchwFchwOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class Conv2DNchwFchwOp : public ::mlir::Op<Conv2DNchwFchwOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -765,6 +779,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -786,7 +801,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -805,8 +820,8 @@ public:
     static unsigned getNumRegionArgs();
     std::string getLibraryCallName();
 
-    bool hasDynamicIndexingMaps();
-    LogicalResult verifyIndexingMapRequiredAttributes();
+      bool hasDynamicIndexingMaps();
+      LogicalResult verifyIndexingMapRequiredAttributes();
 
 };
 } // namespace linalg
@@ -844,7 +859,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class Conv2DNhwcHwcfOp : public ::mlir::Op<Conv2DNhwcHwcfOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class Conv2DNhwcHwcfOp : public ::mlir::Op<Conv2DNhwcHwcfOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -905,6 +920,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -926,7 +942,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -945,8 +961,8 @@ public:
     static unsigned getNumRegionArgs();
     std::string getLibraryCallName();
 
-    bool hasDynamicIndexingMaps();
-    LogicalResult verifyIndexingMapRequiredAttributes();
+      bool hasDynamicIndexingMaps();
+      LogicalResult verifyIndexingMapRequiredAttributes();
 
 };
 } // namespace linalg
@@ -984,7 +1000,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class Conv2DNhwcHwcfQOp : public ::mlir::Op<Conv2DNhwcHwcfQOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class Conv2DNhwcHwcfQOp : public ::mlir::Op<Conv2DNhwcHwcfQOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -1045,6 +1061,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -1066,7 +1083,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -1085,8 +1102,8 @@ public:
     static unsigned getNumRegionArgs();
     std::string getLibraryCallName();
 
-    bool hasDynamicIndexingMaps();
-    LogicalResult verifyIndexingMapRequiredAttributes();
+      bool hasDynamicIndexingMaps();
+      LogicalResult verifyIndexingMapRequiredAttributes();
 
 };
 } // namespace linalg
@@ -1120,7 +1137,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class Conv2DOp : public ::mlir::Op<Conv2DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class Conv2DOp : public ::mlir::Op<Conv2DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -1158,6 +1175,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -1179,7 +1197,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -1234,7 +1252,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class Conv3DNdhwcDhwcfOp : public ::mlir::Op<Conv3DNdhwcDhwcfOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class Conv3DNdhwcDhwcfOp : public ::mlir::Op<Conv3DNdhwcDhwcfOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -1295,6 +1313,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -1316,7 +1335,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -1335,8 +1354,8 @@ public:
     static unsigned getNumRegionArgs();
     std::string getLibraryCallName();
 
-    bool hasDynamicIndexingMaps();
-    LogicalResult verifyIndexingMapRequiredAttributes();
+      bool hasDynamicIndexingMaps();
+      LogicalResult verifyIndexingMapRequiredAttributes();
 
 };
 } // namespace linalg
@@ -1370,7 +1389,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class Conv3DOp : public ::mlir::Op<Conv3DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class Conv3DOp : public ::mlir::Op<Conv3DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -1408,6 +1427,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -1429,7 +1449,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -1484,7 +1504,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class DepthwiseConv1DNwcWcOp : public ::mlir::Op<DepthwiseConv1DNwcWcOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class DepthwiseConv1DNwcWcOp : public ::mlir::Op<DepthwiseConv1DNwcWcOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -1545,6 +1565,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -1566,7 +1587,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -1585,8 +1606,8 @@ public:
     static unsigned getNumRegionArgs();
     std::string getLibraryCallName();
 
-    bool hasDynamicIndexingMaps();
-    LogicalResult verifyIndexingMapRequiredAttributes();
+      bool hasDynamicIndexingMaps();
+      LogicalResult verifyIndexingMapRequiredAttributes();
 
 };
 } // namespace linalg
@@ -1624,7 +1645,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class DepthwiseConv2DNhwcHwcOp : public ::mlir::Op<DepthwiseConv2DNhwcHwcOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class DepthwiseConv2DNhwcHwcOp : public ::mlir::Op<DepthwiseConv2DNhwcHwcOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -1685,6 +1706,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -1706,7 +1728,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -1725,8 +1747,8 @@ public:
     static unsigned getNumRegionArgs();
     std::string getLibraryCallName();
 
-    bool hasDynamicIndexingMaps();
-    LogicalResult verifyIndexingMapRequiredAttributes();
+      bool hasDynamicIndexingMaps();
+      LogicalResult verifyIndexingMapRequiredAttributes();
 
 };
 } // namespace linalg
@@ -1764,7 +1786,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class DepthwiseConv2DNhwcHwcQOp : public ::mlir::Op<DepthwiseConv2DNhwcHwcQOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class DepthwiseConv2DNhwcHwcQOp : public ::mlir::Op<DepthwiseConv2DNhwcHwcQOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -1825,6 +1847,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -1846,7 +1869,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -1865,8 +1888,8 @@ public:
     static unsigned getNumRegionArgs();
     std::string getLibraryCallName();
 
-    bool hasDynamicIndexingMaps();
-    LogicalResult verifyIndexingMapRequiredAttributes();
+      bool hasDynamicIndexingMaps();
+      LogicalResult verifyIndexingMapRequiredAttributes();
 
 };
 } // namespace linalg
@@ -1904,7 +1927,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class DepthwiseConv2DNhwcHwcmOp : public ::mlir::Op<DepthwiseConv2DNhwcHwcmOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class DepthwiseConv2DNhwcHwcmOp : public ::mlir::Op<DepthwiseConv2DNhwcHwcmOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -1965,6 +1988,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -1986,7 +2010,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -2005,8 +2029,8 @@ public:
     static unsigned getNumRegionArgs();
     std::string getLibraryCallName();
 
-    bool hasDynamicIndexingMaps();
-    LogicalResult verifyIndexingMapRequiredAttributes();
+      bool hasDynamicIndexingMaps();
+      LogicalResult verifyIndexingMapRequiredAttributes();
 
 };
 } // namespace linalg
@@ -2044,7 +2068,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class DepthwiseConv2DNhwcHwcmQOp : public ::mlir::Op<DepthwiseConv2DNhwcHwcmQOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class DepthwiseConv2DNhwcHwcmQOp : public ::mlir::Op<DepthwiseConv2DNhwcHwcmQOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -2105,6 +2129,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -2126,7 +2151,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -2145,8 +2170,8 @@ public:
     static unsigned getNumRegionArgs();
     std::string getLibraryCallName();
 
-    bool hasDynamicIndexingMaps();
-    LogicalResult verifyIndexingMapRequiredAttributes();
+      bool hasDynamicIndexingMaps();
+      LogicalResult verifyIndexingMapRequiredAttributes();
 
 };
 } // namespace linalg
@@ -2180,7 +2205,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class DotOp : public ::mlir::Op<DotOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::linalg::ContractionOpInterface::Trait> {
+class DotOp : public ::mlir::Op<DotOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -2218,6 +2243,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -2239,7 +2265,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -2262,6 +2288,282 @@ public:
 } // namespace linalg
 } // namespace mlir
 DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::DotOp)
+
+namespace mlir {
+namespace linalg {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::linalg::ElemwiseBinaryOp declarations
+//===----------------------------------------------------------------------===//
+
+class ElemwiseBinaryOpAdaptor {
+public:
+  ElemwiseBinaryOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  ElemwiseBinaryOpAdaptor(ElemwiseBinaryOp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange inputs();
+  ::mlir::ValueRange outputs();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::linalg::BinaryFnAttr funAttr();
+  ::mlir::linalg::BinaryFn fun();
+  ::mlir::linalg::TypeFnAttr castAttr();
+  ::mlir::linalg::TypeFn cast();
+  ::mlir::RegionRange getRegions();
+  ::mlir::Region &region();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class ElemwiseBinaryOp : public ::mlir::Op<ElemwiseBinaryOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = ElemwiseBinaryOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("fun"), ::llvm::StringRef("cast"), ::llvm::StringRef("operand_segment_sizes")};
+    return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr funAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr funAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
+  ::mlir::StringAttr castAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr castAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr operand_segment_sizesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("linalg.elemwise_binary");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange outputsMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &region();
+  ::mlir::linalg::BinaryFnAttr funAttr();
+  ::mlir::linalg::BinaryFn fun();
+  ::mlir::linalg::TypeFnAttr castAttr();
+  ::mlir::linalg::TypeFn cast();
+  void funAttr(::mlir::linalg::BinaryFnAttr attr);
+  void castAttr(::mlir::linalg::TypeFnAttr attr);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute fun, Attribute cast, ArrayRef<NamedAttribute> attributes = {});
+  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
+  void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+private:
+  ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
+    return getAttributeNameForIndex((*this)->getName(), index);
+  }
+
+  static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
+    assert(index < 3 && "invalid attribute index");
+    return name.getRegisteredInfo()->getAttributeNames()[index];
+  }
+
+public:
+  // Return whether the op accesses the iteration indices.
+  bool hasIndexSemantics() {
+    return !this->getBody()->getOps<IndexOp>().empty();
+  }
+
+  LogicalResult reifyResultShapes(OpBuilder &b,
+      ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+        reifiedReturnShapes);
+  }
+
+    // Auto-generated.
+    ArrayAttr iterator_types();
+    ArrayAttr indexing_maps();
+    static void regionBuilder(ImplicitLocOpBuilder &b,
+                              Block &block, ArrayRef<NamedAttribute> attrs);
+    static std::function<void(ImplicitLocOpBuilder &,
+                              Block &, ArrayRef<NamedAttribute>)>
+    getRegionBuilder() {
+      return regionBuilder;
+    }
+
+    // Generic methods.
+    static unsigned getNumRegionArgs();
+    std::string getLibraryCallName();
+
+};
+} // namespace linalg
+} // namespace mlir
+DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::ElemwiseBinaryOp)
+
+namespace mlir {
+namespace linalg {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::linalg::ElemwiseUnaryOp declarations
+//===----------------------------------------------------------------------===//
+
+class ElemwiseUnaryOpAdaptor {
+public:
+  ElemwiseUnaryOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  ElemwiseUnaryOpAdaptor(ElemwiseUnaryOp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange inputs();
+  ::mlir::ValueRange outputs();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::linalg::UnaryFnAttr funAttr();
+  ::mlir::linalg::UnaryFn fun();
+  ::mlir::linalg::TypeFnAttr castAttr();
+  ::mlir::linalg::TypeFn cast();
+  ::mlir::RegionRange getRegions();
+  ::mlir::Region &region();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class ElemwiseUnaryOp : public ::mlir::Op<ElemwiseUnaryOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = ElemwiseUnaryOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("fun"), ::llvm::StringRef("cast"), ::llvm::StringRef("operand_segment_sizes")};
+    return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr funAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr funAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
+  ::mlir::StringAttr castAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr castAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr operand_segment_sizesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("linalg.elemwise_unary");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange outputsMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &region();
+  ::mlir::linalg::UnaryFnAttr funAttr();
+  ::mlir::linalg::UnaryFn fun();
+  ::mlir::linalg::TypeFnAttr castAttr();
+  ::mlir::linalg::TypeFn cast();
+  void funAttr(::mlir::linalg::UnaryFnAttr attr);
+  void castAttr(::mlir::linalg::TypeFnAttr attr);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute fun, Attribute cast, ArrayRef<NamedAttribute> attributes = {});
+  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
+  void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+private:
+  ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
+    return getAttributeNameForIndex((*this)->getName(), index);
+  }
+
+  static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
+    assert(index < 3 && "invalid attribute index");
+    return name.getRegisteredInfo()->getAttributeNames()[index];
+  }
+
+public:
+  // Return whether the op accesses the iteration indices.
+  bool hasIndexSemantics() {
+    return !this->getBody()->getOps<IndexOp>().empty();
+  }
+
+  LogicalResult reifyResultShapes(OpBuilder &b,
+      ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+        reifiedReturnShapes);
+  }
+
+    // Auto-generated.
+    ArrayAttr iterator_types();
+    ArrayAttr indexing_maps();
+    static void regionBuilder(ImplicitLocOpBuilder &b,
+                              Block &block, ArrayRef<NamedAttribute> attrs);
+    static std::function<void(ImplicitLocOpBuilder &,
+                              Block &, ArrayRef<NamedAttribute>)>
+    getRegionBuilder() {
+      return regionBuilder;
+    }
+
+    // Generic methods.
+    static unsigned getNumRegionArgs();
+    std::string getLibraryCallName();
+
+};
+} // namespace linalg
+} // namespace mlir
+DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::ElemwiseUnaryOp)
 
 namespace mlir {
 namespace linalg {
@@ -2290,7 +2592,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class FillOp : public ::mlir::Op<FillOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
+class FillOp : public ::mlir::Op<FillOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -2318,14 +2620,14 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, /*optional*/::mlir::Type result, ::mlir::Value value, ::mlir::Value output);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value value, ::mlir::Value output);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  ::mlir::LogicalResult verify();
   static void getCanonicalizationPatterns(::mlir::RewritePatternSet &results, ::mlir::MLIRContext *context);
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-private:
-  ::mlir::LogicalResult verify();
 public:
   // Return whether the op accesses the iteration indices.
   bool hasIndexSemantics() {
@@ -2334,7 +2636,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -2401,7 +2703,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class FillRng2DOp : public ::mlir::Op<FillRng2DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments> {
+class FillRng2DOp : public ::mlir::Op<FillRng2DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -2439,6 +2741,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -2460,7 +2763,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -2511,7 +2814,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class FillTensorOp : public ::mlir::Op<FillTensorOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments> {
+class FillTensorOp : public ::mlir::Op<FillTensorOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -2549,6 +2852,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -2570,7 +2874,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -2629,7 +2933,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class GenericOp : public ::mlir::Op<GenericOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments> {
+class GenericOp : public ::mlir::Op<GenericOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -2716,7 +3020,9 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  ::mlir::LogicalResult verify();
   static void getCanonicalizationPatterns(::mlir::RewritePatternSet &results, ::mlir::MLIRContext *context);
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -2730,7 +3036,6 @@ private:
     return name.getRegisteredInfo()->getAttributeNames()[index];
   }
 
-  ::mlir::LogicalResult verify();
 public:
   // Return whether the op accesses the iteration indices.
   bool hasIndexSemantics() {
@@ -2739,7 +3044,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -2784,6 +3089,8 @@ public:
   ::mlir::ValueRange inputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::linalg::TypeFnAttr castAttr();
+  ::mlir::linalg::TypeFn cast();
   ::mlir::RegionRange getRegions();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
@@ -2792,23 +3099,31 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class MatmulOp : public ::mlir::Op<MatmulOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::linalg::ContractionOpInterface::Trait> {
+class MatmulOp : public ::mlir::Op<MatmulOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = MatmulOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("operand_segment_sizes")};
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("cast"), ::llvm::StringRef("operand_segment_sizes")};
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr operand_segment_sizesAttrName() {
+  ::mlir::StringAttr castAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr castAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
+  }
+
+  ::mlir::StringAttr operand_segment_sizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
   }
 
   static constexpr ::llvm::StringLiteral getOperationName() {
@@ -2825,11 +3140,16 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Operation::result_range result_tensors();
   ::mlir::Region &region();
+  ::mlir::linalg::TypeFnAttr castAttr();
+  ::mlir::linalg::TypeFn cast();
+  void castAttr(::mlir::linalg::TypeFnAttr attr);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute cast, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -2839,7 +3159,7 @@ private:
   }
 
   static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
-    assert(index < 1 && "invalid attribute index");
+    assert(index < 2 && "invalid attribute index");
     return name.getRegisteredInfo()->getAttributeNames()[index];
   }
 
@@ -2851,7 +3171,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -2902,7 +3222,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class MatmulUnsignedOp : public ::mlir::Op<MatmulUnsignedOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::linalg::ContractionOpInterface::Trait> {
+class MatmulUnsignedOp : public ::mlir::Op<MatmulUnsignedOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -2940,6 +3260,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -2961,7 +3282,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -3012,7 +3333,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class MatvecOp : public ::mlir::Op<MatvecOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::linalg::ContractionOpInterface::Trait> {
+class MatvecOp : public ::mlir::Op<MatvecOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3050,6 +3371,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -3071,7 +3393,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -3122,7 +3444,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class Mmt4DOp : public ::mlir::Op<Mmt4DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::linalg::ContractionOpInterface::Trait> {
+class Mmt4DOp : public ::mlir::Op<Mmt4DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3160,6 +3482,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -3181,7 +3504,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -3236,7 +3559,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class PoolingNchwMaxOp : public ::mlir::Op<PoolingNchwMaxOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class PoolingNchwMaxOp : public ::mlir::Op<PoolingNchwMaxOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3297,6 +3620,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -3318,7 +3642,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -3337,8 +3661,8 @@ public:
     static unsigned getNumRegionArgs();
     std::string getLibraryCallName();
 
-    bool hasDynamicIndexingMaps();
-    LogicalResult verifyIndexingMapRequiredAttributes();
+      bool hasDynamicIndexingMaps();
+      LogicalResult verifyIndexingMapRequiredAttributes();
 
 };
 } // namespace linalg
@@ -3376,7 +3700,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class PoolingNdhwcMaxOp : public ::mlir::Op<PoolingNdhwcMaxOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class PoolingNdhwcMaxOp : public ::mlir::Op<PoolingNdhwcMaxOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3437,6 +3761,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -3458,7 +3783,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -3477,8 +3802,8 @@ public:
     static unsigned getNumRegionArgs();
     std::string getLibraryCallName();
 
-    bool hasDynamicIndexingMaps();
-    LogicalResult verifyIndexingMapRequiredAttributes();
+      bool hasDynamicIndexingMaps();
+      LogicalResult verifyIndexingMapRequiredAttributes();
 
 };
 } // namespace linalg
@@ -3516,7 +3841,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class PoolingNdhwcMinOp : public ::mlir::Op<PoolingNdhwcMinOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class PoolingNdhwcMinOp : public ::mlir::Op<PoolingNdhwcMinOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3577,6 +3902,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -3598,7 +3924,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -3617,8 +3943,8 @@ public:
     static unsigned getNumRegionArgs();
     std::string getLibraryCallName();
 
-    bool hasDynamicIndexingMaps();
-    LogicalResult verifyIndexingMapRequiredAttributes();
+      bool hasDynamicIndexingMaps();
+      LogicalResult verifyIndexingMapRequiredAttributes();
 
 };
 } // namespace linalg
@@ -3656,7 +3982,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class PoolingNdhwcSumOp : public ::mlir::Op<PoolingNdhwcSumOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class PoolingNdhwcSumOp : public ::mlir::Op<PoolingNdhwcSumOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3717,6 +4043,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -3738,7 +4065,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -3757,8 +4084,8 @@ public:
     static unsigned getNumRegionArgs();
     std::string getLibraryCallName();
 
-    bool hasDynamicIndexingMaps();
-    LogicalResult verifyIndexingMapRequiredAttributes();
+      bool hasDynamicIndexingMaps();
+      LogicalResult verifyIndexingMapRequiredAttributes();
 
 };
 } // namespace linalg
@@ -3796,7 +4123,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class PoolingNhwcMaxOp : public ::mlir::Op<PoolingNhwcMaxOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class PoolingNhwcMaxOp : public ::mlir::Op<PoolingNhwcMaxOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3857,6 +4184,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -3878,7 +4206,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -3897,8 +4225,8 @@ public:
     static unsigned getNumRegionArgs();
     std::string getLibraryCallName();
 
-    bool hasDynamicIndexingMaps();
-    LogicalResult verifyIndexingMapRequiredAttributes();
+      bool hasDynamicIndexingMaps();
+      LogicalResult verifyIndexingMapRequiredAttributes();
 
 };
 } // namespace linalg
@@ -3936,7 +4264,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class PoolingNhwcMaxUnsignedOp : public ::mlir::Op<PoolingNhwcMaxUnsignedOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class PoolingNhwcMaxUnsignedOp : public ::mlir::Op<PoolingNhwcMaxUnsignedOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3997,6 +4325,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -4018,7 +4347,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -4037,8 +4366,8 @@ public:
     static unsigned getNumRegionArgs();
     std::string getLibraryCallName();
 
-    bool hasDynamicIndexingMaps();
-    LogicalResult verifyIndexingMapRequiredAttributes();
+      bool hasDynamicIndexingMaps();
+      LogicalResult verifyIndexingMapRequiredAttributes();
 
 };
 } // namespace linalg
@@ -4076,7 +4405,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class PoolingNhwcMinOp : public ::mlir::Op<PoolingNhwcMinOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class PoolingNhwcMinOp : public ::mlir::Op<PoolingNhwcMinOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4137,6 +4466,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -4158,7 +4488,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -4177,8 +4507,8 @@ public:
     static unsigned getNumRegionArgs();
     std::string getLibraryCallName();
 
-    bool hasDynamicIndexingMaps();
-    LogicalResult verifyIndexingMapRequiredAttributes();
+      bool hasDynamicIndexingMaps();
+      LogicalResult verifyIndexingMapRequiredAttributes();
 
 };
 } // namespace linalg
@@ -4216,7 +4546,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class PoolingNhwcMinUnsignedOp : public ::mlir::Op<PoolingNhwcMinUnsignedOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class PoolingNhwcMinUnsignedOp : public ::mlir::Op<PoolingNhwcMinUnsignedOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4277,6 +4607,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -4298,7 +4629,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -4317,8 +4648,8 @@ public:
     static unsigned getNumRegionArgs();
     std::string getLibraryCallName();
 
-    bool hasDynamicIndexingMaps();
-    LogicalResult verifyIndexingMapRequiredAttributes();
+      bool hasDynamicIndexingMaps();
+      LogicalResult verifyIndexingMapRequiredAttributes();
 
 };
 } // namespace linalg
@@ -4356,7 +4687,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class PoolingNhwcSumOp : public ::mlir::Op<PoolingNhwcSumOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class PoolingNhwcSumOp : public ::mlir::Op<PoolingNhwcSumOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4417,6 +4748,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -4438,7 +4770,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -4457,8 +4789,8 @@ public:
     static unsigned getNumRegionArgs();
     std::string getLibraryCallName();
 
-    bool hasDynamicIndexingMaps();
-    LogicalResult verifyIndexingMapRequiredAttributes();
+      bool hasDynamicIndexingMaps();
+      LogicalResult verifyIndexingMapRequiredAttributes();
 
 };
 } // namespace linalg
@@ -4492,7 +4824,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class QuantizedBatchMatmulOp : public ::mlir::Op<QuantizedBatchMatmulOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments> {
+class QuantizedBatchMatmulOp : public ::mlir::Op<QuantizedBatchMatmulOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4530,6 +4862,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -4551,7 +4884,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -4602,7 +4935,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class QuantizedMatmulOp : public ::mlir::Op<QuantizedMatmulOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments> {
+class QuantizedMatmulOp : public ::mlir::Op<QuantizedMatmulOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4640,6 +4973,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -4661,7 +4995,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -4712,7 +5046,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class SoftPlus2DOp : public ::mlir::Op<SoftPlus2DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments> {
+class SoftPlus2DOp : public ::mlir::Op<SoftPlus2DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4750,6 +5084,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -4771,7 +5106,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 
@@ -4822,7 +5157,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class VecmatOp : public ::mlir::Op<VecmatOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::linalg::ContractionOpInterface::Trait> {
+class VecmatOp : public ::mlir::Op<VecmatOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4860,6 +5195,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -4881,7 +5217,7 @@ public:
 
   LogicalResult reifyResultShapes(OpBuilder &b,
       ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
         reifiedReturnShapes);
   }
 

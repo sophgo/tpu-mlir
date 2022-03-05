@@ -1,5 +1,251 @@
 
 //===----------------------------------------------------------------------===//
+// Op definition for ElemwiseUnaryOp
+//===----------------------------------------------------------------------===//
+
+def ElemwiseUnaryOp : LinalgStructuredBase_Op<"elemwise_unary", !listconcat([AttrSizedOperandSegments],
+  /*extraInterfaces=*/[])> {
+    
+  let summary = [{ Applies the unary function fun elementwise. }];
+  let description = [{
+    Numeric casting is performed on the input operand, promoting it to the same
+data type as the accumulator/output.
+  }];
+
+    let arguments = (ins
+      Variadic<AnyType>:$inputs,
+      Variadic<AnyShaped>:$outputs,
+DefaultValuedAttr<UnaryFnAttr, "UnaryFn::exp">:$fun,
+DefaultValuedAttr<TypeFnAttr, "TypeFn::cast_signed">:$cast
+    );
+    let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
+    let regions = (region AnyRegion:$region);
+
+    let skipDefaultBuilders = 1;
+    let builders = [
+      OpBuilder<
+      (ins "ValueRange":$inputs, "ValueRange":$outputs,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        $_state.addOperands(inputs);
+        $_state.addOperands(outputs);
+        SmallVector<Type> resultTensorTypes;
+        copy_if(outputs.getTypes(),
+                std::back_inserter(resultTensorTypes),
+                [](Type type) { return type.isa<RankedTensorType>(); });
+        $_state.addTypes(resultTensorTypes);
+        $_state.addAttribute(
+          "operand_segment_sizes",
+          $_builder.getI32VectorAttr({
+            static_cast<int32_t>(inputs.size()),
+            static_cast<int32_t>(outputs.size())}));
+        $_state.addAttributes(attributes);
+        createAndFillStructuredOpRegion<ElemwiseUnaryOp>(
+          $_builder,
+          $_state,
+          TypeRange(inputs),
+          TypeRange(outputs));
+      }]>,
+      OpBuilder<
+      (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
+            "ValueRange":$outputs,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        $_state.addOperands(inputs);
+        $_state.addOperands(outputs);
+        $_state.addTypes(resultTensorTypes);
+        $_state.addAttributes(attributes);
+        $_state.addAttribute(
+          "operand_segment_sizes",
+          $_builder.getI32VectorAttr({
+            static_cast<int32_t>(inputs.size()),
+            static_cast<int32_t>(outputs.size())}));
+        createAndFillStructuredOpRegion<ElemwiseUnaryOp>(
+          $_builder,
+          $_state,
+          TypeRange(inputs),
+          TypeRange(outputs));
+      }]>,
+      OpBuilder<
+      (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        $_state.addOperands(operands);
+        $_state.addAttributes(attributes);
+        $_state.addTypes(resultTensorTypes);
+        (void)$_state.addRegion();
+      }]>
+      
+  , OpBuilder<
+  (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
+       "ValueRange":$outputs, "Attribute":$fun, "Attribute":$cast,
+       CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+  [{
+    $_state.addOperands(inputs);
+    $_state.addOperands(outputs);
+    $_state.addTypes(resultTensorTypes);
+    $_state.addAttribute("fun", fun);
+$_state.addAttribute("cast", cast);
+    $_state.addAttributes(attributes);
+    $_state.addAttribute(
+      "operand_segment_sizes",
+      $_builder.getI32VectorAttr({
+        static_cast<int32_t>(inputs.size()),
+        static_cast<int32_t>(outputs.size())}));
+    createAndFillStructuredOpRegion<ElemwiseUnaryOp>(
+      $_builder,
+      $_state,
+      TypeRange(inputs),
+      TypeRange(outputs));
+  }]>
+
+    ];
+    let hasCustomAssemblyFormat = 1;
+    let hasFolder = 1;
+
+    let extraClassDeclaration = structuredOpsBaseDecls # [{
+      // Auto-generated.
+      ArrayAttr iterator_types();
+      ArrayAttr indexing_maps();
+      static void regionBuilder(ImplicitLocOpBuilder &b,
+                                Block &block, ArrayRef<NamedAttribute> attrs);
+      static std::function<void(ImplicitLocOpBuilder &,
+                                Block &, ArrayRef<NamedAttribute>)>
+      getRegionBuilder() {
+        return regionBuilder;
+      }
+
+      // Generic methods.
+      static unsigned getNumRegionArgs();
+      std::string getLibraryCallName();
+      
+    }];
+}
+
+//===----------------------------------------------------------------------===//
+// Op definition for ElemwiseBinaryOp
+//===----------------------------------------------------------------------===//
+
+def ElemwiseBinaryOp : LinalgStructuredBase_Op<"elemwise_binary", !listconcat([AttrSizedOperandSegments],
+  /*extraInterfaces=*/[])> {
+    
+  let summary = [{ Applies the binary function fun elementwise. }];
+  let description = [{
+    Numeric casting is performed on the input operand, promoting it to the same
+data type as the accumulator/output.
+  }];
+
+    let arguments = (ins
+      Variadic<AnyType>:$inputs,
+      Variadic<AnyShaped>:$outputs,
+DefaultValuedAttr<BinaryFnAttr, "BinaryFn::add">:$fun,
+DefaultValuedAttr<TypeFnAttr, "TypeFn::cast_signed">:$cast
+    );
+    let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
+    let regions = (region AnyRegion:$region);
+
+    let skipDefaultBuilders = 1;
+    let builders = [
+      OpBuilder<
+      (ins "ValueRange":$inputs, "ValueRange":$outputs,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        $_state.addOperands(inputs);
+        $_state.addOperands(outputs);
+        SmallVector<Type> resultTensorTypes;
+        copy_if(outputs.getTypes(),
+                std::back_inserter(resultTensorTypes),
+                [](Type type) { return type.isa<RankedTensorType>(); });
+        $_state.addTypes(resultTensorTypes);
+        $_state.addAttribute(
+          "operand_segment_sizes",
+          $_builder.getI32VectorAttr({
+            static_cast<int32_t>(inputs.size()),
+            static_cast<int32_t>(outputs.size())}));
+        $_state.addAttributes(attributes);
+        createAndFillStructuredOpRegion<ElemwiseBinaryOp>(
+          $_builder,
+          $_state,
+          TypeRange(inputs),
+          TypeRange(outputs));
+      }]>,
+      OpBuilder<
+      (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
+            "ValueRange":$outputs,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        $_state.addOperands(inputs);
+        $_state.addOperands(outputs);
+        $_state.addTypes(resultTensorTypes);
+        $_state.addAttributes(attributes);
+        $_state.addAttribute(
+          "operand_segment_sizes",
+          $_builder.getI32VectorAttr({
+            static_cast<int32_t>(inputs.size()),
+            static_cast<int32_t>(outputs.size())}));
+        createAndFillStructuredOpRegion<ElemwiseBinaryOp>(
+          $_builder,
+          $_state,
+          TypeRange(inputs),
+          TypeRange(outputs));
+      }]>,
+      OpBuilder<
+      (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        $_state.addOperands(operands);
+        $_state.addAttributes(attributes);
+        $_state.addTypes(resultTensorTypes);
+        (void)$_state.addRegion();
+      }]>
+      
+  , OpBuilder<
+  (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
+       "ValueRange":$outputs, "Attribute":$fun, "Attribute":$cast,
+       CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+  [{
+    $_state.addOperands(inputs);
+    $_state.addOperands(outputs);
+    $_state.addTypes(resultTensorTypes);
+    $_state.addAttribute("fun", fun);
+$_state.addAttribute("cast", cast);
+    $_state.addAttributes(attributes);
+    $_state.addAttribute(
+      "operand_segment_sizes",
+      $_builder.getI32VectorAttr({
+        static_cast<int32_t>(inputs.size()),
+        static_cast<int32_t>(outputs.size())}));
+    createAndFillStructuredOpRegion<ElemwiseBinaryOp>(
+      $_builder,
+      $_state,
+      TypeRange(inputs),
+      TypeRange(outputs));
+  }]>
+
+    ];
+    let hasCustomAssemblyFormat = 1;
+    let hasFolder = 1;
+
+    let extraClassDeclaration = structuredOpsBaseDecls # [{
+      // Auto-generated.
+      ArrayAttr iterator_types();
+      ArrayAttr indexing_maps();
+      static void regionBuilder(ImplicitLocOpBuilder &b,
+                                Block &block, ArrayRef<NamedAttribute> attrs);
+      static std::function<void(ImplicitLocOpBuilder &,
+                                Block &, ArrayRef<NamedAttribute>)>
+      getRegionBuilder() {
+        return regionBuilder;
+      }
+
+      // Generic methods.
+      static unsigned getNumRegionArgs();
+      std::string getLibraryCallName();
+      
+    }];
+}
+
+//===----------------------------------------------------------------------===//
 // Op definition for MatmulOp
 //===----------------------------------------------------------------------===//
 
@@ -14,7 +260,8 @@ them to the same data type as the accumulator/output.
 
     let arguments = (ins
       Variadic<AnyType>:$inputs,
-      Variadic<AnyShaped>:$outputs
+      Variadic<AnyShaped>:$outputs,
+DefaultValuedAttr<TypeFnAttr, "TypeFn::cast_signed">:$cast
     );
     let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
     let regions = (region AnyRegion:$region);
@@ -74,6 +321,28 @@ them to the same data type as the accumulator/output.
         (void)$_state.addRegion();
       }]>
       
+  , OpBuilder<
+  (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
+       "ValueRange":$outputs, "Attribute":$cast,
+       CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+  [{
+    $_state.addOperands(inputs);
+    $_state.addOperands(outputs);
+    $_state.addTypes(resultTensorTypes);
+    $_state.addAttribute("cast", cast);
+    $_state.addAttributes(attributes);
+    $_state.addAttribute(
+      "operand_segment_sizes",
+      $_builder.getI32VectorAttr({
+        static_cast<int32_t>(inputs.size()),
+        static_cast<int32_t>(outputs.size())}));
+    createAndFillStructuredOpRegion<MatmulOp>(
+      $_builder,
+      $_state,
+      TypeRange(inputs),
+      TypeRange(outputs));
+  }]>
+
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
@@ -1367,6 +1636,9 @@ DefaultValuedAttr<RankedI64ElementsAttr<[1]>, "{ static_cast<int64_t>(1) }">:$di
     $_state.addOperands(inputs);
     $_state.addOperands(outputs);
     $_state.addTypes(resultTensorTypes);
+    $_state.addAttribute("strides", strides);
+$_state.addAttribute("dilations", dilations);
+    $_state.addAttributes(attributes);
     $_state.addAttribute(
       "operand_segment_sizes",
       $_builder.getI32VectorAttr({
@@ -1377,9 +1649,6 @@ DefaultValuedAttr<RankedI64ElementsAttr<[1]>, "{ static_cast<int64_t>(1) }">:$di
       $_state,
       TypeRange(inputs),
       TypeRange(outputs));
-    $_state.addAttribute("strides", strides);
-$_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
   }]>
 
     ];
@@ -1402,9 +1671,9 @@ $_state.addAttribute("dilations", dilations);
       static unsigned getNumRegionArgs();
       std::string getLibraryCallName();
       
-      bool hasDynamicIndexingMaps();
-      LogicalResult verifyIndexingMapRequiredAttributes();
-    
+        bool hasDynamicIndexingMaps();
+        LogicalResult verifyIndexingMapRequiredAttributes();
+      
     }];
 }
 
@@ -1497,6 +1766,9 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
     $_state.addOperands(inputs);
     $_state.addOperands(outputs);
     $_state.addTypes(resultTensorTypes);
+    $_state.addAttribute("strides", strides);
+$_state.addAttribute("dilations", dilations);
+    $_state.addAttributes(attributes);
     $_state.addAttribute(
       "operand_segment_sizes",
       $_builder.getI32VectorAttr({
@@ -1507,9 +1779,6 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
       $_state,
       TypeRange(inputs),
       TypeRange(outputs));
-    $_state.addAttribute("strides", strides);
-$_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
   }]>
 
     ];
@@ -1532,9 +1801,9 @@ $_state.addAttribute("dilations", dilations);
       static unsigned getNumRegionArgs();
       std::string getLibraryCallName();
       
-      bool hasDynamicIndexingMaps();
-      LogicalResult verifyIndexingMapRequiredAttributes();
-    
+        bool hasDynamicIndexingMaps();
+        LogicalResult verifyIndexingMapRequiredAttributes();
+      
     }];
 }
 
@@ -1628,6 +1897,9 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
     $_state.addOperands(inputs);
     $_state.addOperands(outputs);
     $_state.addTypes(resultTensorTypes);
+    $_state.addAttribute("strides", strides);
+$_state.addAttribute("dilations", dilations);
+    $_state.addAttributes(attributes);
     $_state.addAttribute(
       "operand_segment_sizes",
       $_builder.getI32VectorAttr({
@@ -1638,9 +1910,6 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
       $_state,
       TypeRange(inputs),
       TypeRange(outputs));
-    $_state.addAttribute("strides", strides);
-$_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
   }]>
 
     ];
@@ -1663,9 +1932,9 @@ $_state.addAttribute("dilations", dilations);
       static unsigned getNumRegionArgs();
       std::string getLibraryCallName();
       
-      bool hasDynamicIndexingMaps();
-      LogicalResult verifyIndexingMapRequiredAttributes();
-    
+        bool hasDynamicIndexingMaps();
+        LogicalResult verifyIndexingMapRequiredAttributes();
+      
     }];
 }
 
@@ -1758,6 +2027,9 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
     $_state.addOperands(inputs);
     $_state.addOperands(outputs);
     $_state.addTypes(resultTensorTypes);
+    $_state.addAttribute("strides", strides);
+$_state.addAttribute("dilations", dilations);
+    $_state.addAttributes(attributes);
     $_state.addAttribute(
       "operand_segment_sizes",
       $_builder.getI32VectorAttr({
@@ -1768,9 +2040,6 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
       $_state,
       TypeRange(inputs),
       TypeRange(outputs));
-    $_state.addAttribute("strides", strides);
-$_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
   }]>
 
     ];
@@ -1793,9 +2062,9 @@ $_state.addAttribute("dilations", dilations);
       static unsigned getNumRegionArgs();
       std::string getLibraryCallName();
       
-      bool hasDynamicIndexingMaps();
-      LogicalResult verifyIndexingMapRequiredAttributes();
-    
+        bool hasDynamicIndexingMaps();
+        LogicalResult verifyIndexingMapRequiredAttributes();
+      
     }];
 }
 
@@ -1884,6 +2153,9 @@ DefaultValuedAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static
     $_state.addOperands(inputs);
     $_state.addOperands(outputs);
     $_state.addTypes(resultTensorTypes);
+    $_state.addAttribute("strides", strides);
+$_state.addAttribute("dilations", dilations);
+    $_state.addAttributes(attributes);
     $_state.addAttribute(
       "operand_segment_sizes",
       $_builder.getI32VectorAttr({
@@ -1894,9 +2166,6 @@ DefaultValuedAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static
       $_state,
       TypeRange(inputs),
       TypeRange(outputs));
-    $_state.addAttribute("strides", strides);
-$_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
   }]>
 
     ];
@@ -1919,9 +2188,9 @@ $_state.addAttribute("dilations", dilations);
       static unsigned getNumRegionArgs();
       std::string getLibraryCallName();
       
-      bool hasDynamicIndexingMaps();
-      LogicalResult verifyIndexingMapRequiredAttributes();
-    
+        bool hasDynamicIndexingMaps();
+        LogicalResult verifyIndexingMapRequiredAttributes();
+      
     }];
 }
 
@@ -2011,6 +2280,9 @@ DefaultValuedAttr<RankedI64ElementsAttr<[1]>, "{ static_cast<int64_t>(1) }">:$di
     $_state.addOperands(inputs);
     $_state.addOperands(outputs);
     $_state.addTypes(resultTensorTypes);
+    $_state.addAttribute("strides", strides);
+$_state.addAttribute("dilations", dilations);
+    $_state.addAttributes(attributes);
     $_state.addAttribute(
       "operand_segment_sizes",
       $_builder.getI32VectorAttr({
@@ -2021,9 +2293,6 @@ DefaultValuedAttr<RankedI64ElementsAttr<[1]>, "{ static_cast<int64_t>(1) }">:$di
       $_state,
       TypeRange(inputs),
       TypeRange(outputs));
-    $_state.addAttribute("strides", strides);
-$_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
   }]>
 
     ];
@@ -2046,9 +2315,9 @@ $_state.addAttribute("dilations", dilations);
       static unsigned getNumRegionArgs();
       std::string getLibraryCallName();
       
-      bool hasDynamicIndexingMaps();
-      LogicalResult verifyIndexingMapRequiredAttributes();
-    
+        bool hasDynamicIndexingMaps();
+        LogicalResult verifyIndexingMapRequiredAttributes();
+      
     }];
 }
 
@@ -2138,6 +2407,9 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
     $_state.addOperands(inputs);
     $_state.addOperands(outputs);
     $_state.addTypes(resultTensorTypes);
+    $_state.addAttribute("strides", strides);
+$_state.addAttribute("dilations", dilations);
+    $_state.addAttributes(attributes);
     $_state.addAttribute(
       "operand_segment_sizes",
       $_builder.getI32VectorAttr({
@@ -2148,9 +2420,6 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
       $_state,
       TypeRange(inputs),
       TypeRange(outputs));
-    $_state.addAttribute("strides", strides);
-$_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
   }]>
 
     ];
@@ -2173,9 +2442,9 @@ $_state.addAttribute("dilations", dilations);
       static unsigned getNumRegionArgs();
       std::string getLibraryCallName();
       
-      bool hasDynamicIndexingMaps();
-      LogicalResult verifyIndexingMapRequiredAttributes();
-    
+        bool hasDynamicIndexingMaps();
+        LogicalResult verifyIndexingMapRequiredAttributes();
+      
     }];
 }
 
@@ -2264,6 +2533,9 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
     $_state.addOperands(inputs);
     $_state.addOperands(outputs);
     $_state.addTypes(resultTensorTypes);
+    $_state.addAttribute("strides", strides);
+$_state.addAttribute("dilations", dilations);
+    $_state.addAttributes(attributes);
     $_state.addAttribute(
       "operand_segment_sizes",
       $_builder.getI32VectorAttr({
@@ -2274,9 +2546,6 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
       $_state,
       TypeRange(inputs),
       TypeRange(outputs));
-    $_state.addAttribute("strides", strides);
-$_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
   }]>
 
     ];
@@ -2299,9 +2568,9 @@ $_state.addAttribute("dilations", dilations);
       static unsigned getNumRegionArgs();
       std::string getLibraryCallName();
       
-      bool hasDynamicIndexingMaps();
-      LogicalResult verifyIndexingMapRequiredAttributes();
-    
+        bool hasDynamicIndexingMaps();
+        LogicalResult verifyIndexingMapRequiredAttributes();
+      
     }];
 }
 
@@ -2390,6 +2659,9 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
     $_state.addOperands(inputs);
     $_state.addOperands(outputs);
     $_state.addTypes(resultTensorTypes);
+    $_state.addAttribute("strides", strides);
+$_state.addAttribute("dilations", dilations);
+    $_state.addAttributes(attributes);
     $_state.addAttribute(
       "operand_segment_sizes",
       $_builder.getI32VectorAttr({
@@ -2400,9 +2672,6 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
       $_state,
       TypeRange(inputs),
       TypeRange(outputs));
-    $_state.addAttribute("strides", strides);
-$_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
   }]>
 
     ];
@@ -2425,9 +2694,9 @@ $_state.addAttribute("dilations", dilations);
       static unsigned getNumRegionArgs();
       std::string getLibraryCallName();
       
-      bool hasDynamicIndexingMaps();
-      LogicalResult verifyIndexingMapRequiredAttributes();
-    
+        bool hasDynamicIndexingMaps();
+        LogicalResult verifyIndexingMapRequiredAttributes();
+      
     }];
 }
 
@@ -2516,6 +2785,9 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
     $_state.addOperands(inputs);
     $_state.addOperands(outputs);
     $_state.addTypes(resultTensorTypes);
+    $_state.addAttribute("strides", strides);
+$_state.addAttribute("dilations", dilations);
+    $_state.addAttributes(attributes);
     $_state.addAttribute(
       "operand_segment_sizes",
       $_builder.getI32VectorAttr({
@@ -2526,9 +2798,6 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
       $_state,
       TypeRange(inputs),
       TypeRange(outputs));
-    $_state.addAttribute("strides", strides);
-$_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
   }]>
 
     ];
@@ -2551,9 +2820,9 @@ $_state.addAttribute("dilations", dilations);
       static unsigned getNumRegionArgs();
       std::string getLibraryCallName();
       
-      bool hasDynamicIndexingMaps();
-      LogicalResult verifyIndexingMapRequiredAttributes();
-    
+        bool hasDynamicIndexingMaps();
+        LogicalResult verifyIndexingMapRequiredAttributes();
+      
     }];
 }
 
@@ -2642,6 +2911,9 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
     $_state.addOperands(inputs);
     $_state.addOperands(outputs);
     $_state.addTypes(resultTensorTypes);
+    $_state.addAttribute("strides", strides);
+$_state.addAttribute("dilations", dilations);
+    $_state.addAttributes(attributes);
     $_state.addAttribute(
       "operand_segment_sizes",
       $_builder.getI32VectorAttr({
@@ -2652,9 +2924,6 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
       $_state,
       TypeRange(inputs),
       TypeRange(outputs));
-    $_state.addAttribute("strides", strides);
-$_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
   }]>
 
     ];
@@ -2677,9 +2946,9 @@ $_state.addAttribute("dilations", dilations);
       static unsigned getNumRegionArgs();
       std::string getLibraryCallName();
       
-      bool hasDynamicIndexingMaps();
-      LogicalResult verifyIndexingMapRequiredAttributes();
-    
+        bool hasDynamicIndexingMaps();
+        LogicalResult verifyIndexingMapRequiredAttributes();
+      
     }];
 }
 
@@ -2768,6 +3037,9 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
     $_state.addOperands(inputs);
     $_state.addOperands(outputs);
     $_state.addTypes(resultTensorTypes);
+    $_state.addAttribute("strides", strides);
+$_state.addAttribute("dilations", dilations);
+    $_state.addAttributes(attributes);
     $_state.addAttribute(
       "operand_segment_sizes",
       $_builder.getI32VectorAttr({
@@ -2778,9 +3050,6 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
       $_state,
       TypeRange(inputs),
       TypeRange(outputs));
-    $_state.addAttribute("strides", strides);
-$_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
   }]>
 
     ];
@@ -2803,9 +3072,9 @@ $_state.addAttribute("dilations", dilations);
       static unsigned getNumRegionArgs();
       std::string getLibraryCallName();
       
-      bool hasDynamicIndexingMaps();
-      LogicalResult verifyIndexingMapRequiredAttributes();
-    
+        bool hasDynamicIndexingMaps();
+        LogicalResult verifyIndexingMapRequiredAttributes();
+      
     }];
 }
 
@@ -2894,6 +3163,9 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
     $_state.addOperands(inputs);
     $_state.addOperands(outputs);
     $_state.addTypes(resultTensorTypes);
+    $_state.addAttribute("strides", strides);
+$_state.addAttribute("dilations", dilations);
+    $_state.addAttributes(attributes);
     $_state.addAttribute(
       "operand_segment_sizes",
       $_builder.getI32VectorAttr({
@@ -2904,9 +3176,6 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
       $_state,
       TypeRange(inputs),
       TypeRange(outputs));
-    $_state.addAttribute("strides", strides);
-$_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
   }]>
 
     ];
@@ -2929,9 +3198,9 @@ $_state.addAttribute("dilations", dilations);
       static unsigned getNumRegionArgs();
       std::string getLibraryCallName();
       
-      bool hasDynamicIndexingMaps();
-      LogicalResult verifyIndexingMapRequiredAttributes();
-    
+        bool hasDynamicIndexingMaps();
+        LogicalResult verifyIndexingMapRequiredAttributes();
+      
     }];
 }
 
@@ -3020,6 +3289,9 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
     $_state.addOperands(inputs);
     $_state.addOperands(outputs);
     $_state.addTypes(resultTensorTypes);
+    $_state.addAttribute("strides", strides);
+$_state.addAttribute("dilations", dilations);
+    $_state.addAttributes(attributes);
     $_state.addAttribute(
       "operand_segment_sizes",
       $_builder.getI32VectorAttr({
@@ -3030,9 +3302,6 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
       $_state,
       TypeRange(inputs),
       TypeRange(outputs));
-    $_state.addAttribute("strides", strides);
-$_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
   }]>
 
     ];
@@ -3055,9 +3324,9 @@ $_state.addAttribute("dilations", dilations);
       static unsigned getNumRegionArgs();
       std::string getLibraryCallName();
       
-      bool hasDynamicIndexingMaps();
-      LogicalResult verifyIndexingMapRequiredAttributes();
-    
+        bool hasDynamicIndexingMaps();
+        LogicalResult verifyIndexingMapRequiredAttributes();
+      
     }];
 }
 
@@ -3146,6 +3415,9 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
     $_state.addOperands(inputs);
     $_state.addOperands(outputs);
     $_state.addTypes(resultTensorTypes);
+    $_state.addAttribute("strides", strides);
+$_state.addAttribute("dilations", dilations);
+    $_state.addAttributes(attributes);
     $_state.addAttribute(
       "operand_segment_sizes",
       $_builder.getI32VectorAttr({
@@ -3156,9 +3428,6 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
       $_state,
       TypeRange(inputs),
       TypeRange(outputs));
-    $_state.addAttribute("strides", strides);
-$_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
   }]>
 
     ];
@@ -3181,9 +3450,9 @@ $_state.addAttribute("dilations", dilations);
       static unsigned getNumRegionArgs();
       std::string getLibraryCallName();
       
-      bool hasDynamicIndexingMaps();
-      LogicalResult verifyIndexingMapRequiredAttributes();
-    
+        bool hasDynamicIndexingMaps();
+        LogicalResult verifyIndexingMapRequiredAttributes();
+      
     }];
 }
 
@@ -3272,6 +3541,9 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
     $_state.addOperands(inputs);
     $_state.addOperands(outputs);
     $_state.addTypes(resultTensorTypes);
+    $_state.addAttribute("strides", strides);
+$_state.addAttribute("dilations", dilations);
+    $_state.addAttributes(attributes);
     $_state.addAttribute(
       "operand_segment_sizes",
       $_builder.getI32VectorAttr({
@@ -3282,9 +3554,6 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
       $_state,
       TypeRange(inputs),
       TypeRange(outputs));
-    $_state.addAttribute("strides", strides);
-$_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
   }]>
 
     ];
@@ -3307,9 +3576,9 @@ $_state.addAttribute("dilations", dilations);
       static unsigned getNumRegionArgs();
       std::string getLibraryCallName();
       
-      bool hasDynamicIndexingMaps();
-      LogicalResult verifyIndexingMapRequiredAttributes();
-    
+        bool hasDynamicIndexingMaps();
+        LogicalResult verifyIndexingMapRequiredAttributes();
+      
     }];
 }
 
@@ -3398,6 +3667,9 @@ DefaultValuedAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static
     $_state.addOperands(inputs);
     $_state.addOperands(outputs);
     $_state.addTypes(resultTensorTypes);
+    $_state.addAttribute("strides", strides);
+$_state.addAttribute("dilations", dilations);
+    $_state.addAttributes(attributes);
     $_state.addAttribute(
       "operand_segment_sizes",
       $_builder.getI32VectorAttr({
@@ -3408,9 +3680,6 @@ DefaultValuedAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static
       $_state,
       TypeRange(inputs),
       TypeRange(outputs));
-    $_state.addAttribute("strides", strides);
-$_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
   }]>
 
     ];
@@ -3433,9 +3702,9 @@ $_state.addAttribute("dilations", dilations);
       static unsigned getNumRegionArgs();
       std::string getLibraryCallName();
       
-      bool hasDynamicIndexingMaps();
-      LogicalResult verifyIndexingMapRequiredAttributes();
-    
+        bool hasDynamicIndexingMaps();
+        LogicalResult verifyIndexingMapRequiredAttributes();
+      
     }];
 }
 
@@ -3524,6 +3793,9 @@ DefaultValuedAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static
     $_state.addOperands(inputs);
     $_state.addOperands(outputs);
     $_state.addTypes(resultTensorTypes);
+    $_state.addAttribute("strides", strides);
+$_state.addAttribute("dilations", dilations);
+    $_state.addAttributes(attributes);
     $_state.addAttribute(
       "operand_segment_sizes",
       $_builder.getI32VectorAttr({
@@ -3534,9 +3806,6 @@ DefaultValuedAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static
       $_state,
       TypeRange(inputs),
       TypeRange(outputs));
-    $_state.addAttribute("strides", strides);
-$_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
   }]>
 
     ];
@@ -3559,9 +3828,9 @@ $_state.addAttribute("dilations", dilations);
       static unsigned getNumRegionArgs();
       std::string getLibraryCallName();
       
-      bool hasDynamicIndexingMaps();
-      LogicalResult verifyIndexingMapRequiredAttributes();
-    
+        bool hasDynamicIndexingMaps();
+        LogicalResult verifyIndexingMapRequiredAttributes();
+      
     }];
 }
 
@@ -3650,6 +3919,9 @@ DefaultValuedAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static
     $_state.addOperands(inputs);
     $_state.addOperands(outputs);
     $_state.addTypes(resultTensorTypes);
+    $_state.addAttribute("strides", strides);
+$_state.addAttribute("dilations", dilations);
+    $_state.addAttributes(attributes);
     $_state.addAttribute(
       "operand_segment_sizes",
       $_builder.getI32VectorAttr({
@@ -3660,9 +3932,6 @@ DefaultValuedAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static
       $_state,
       TypeRange(inputs),
       TypeRange(outputs));
-    $_state.addAttribute("strides", strides);
-$_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
   }]>
 
     ];
@@ -3685,9 +3954,9 @@ $_state.addAttribute("dilations", dilations);
       static unsigned getNumRegionArgs();
       std::string getLibraryCallName();
       
-      bool hasDynamicIndexingMaps();
-      LogicalResult verifyIndexingMapRequiredAttributes();
-    
+        bool hasDynamicIndexingMaps();
+        LogicalResult verifyIndexingMapRequiredAttributes();
+      
     }];
 }
 

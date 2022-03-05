@@ -18,6 +18,9 @@
 ::mlir::Block *mlir::BranchOpInterface::getSuccessorForOperands(::mlir::ArrayRef<::mlir::Attribute> operands) {
       return getImpl()->getSuccessorForOperands(getImpl(), getOperation(), operands);
   }
+bool mlir::BranchOpInterface::areTypesCompatible(::mlir::Type lhs, ::mlir::Type rhs) {
+      return getImpl()->areTypesCompatible(getImpl(), getOperation(), lhs, rhs);
+  }
 ::mlir::OperandRange mlir::RegionBranchOpInterface::getSuccessorEntryOperands(unsigned index) {
       return getImpl()->getSuccessorEntryOperands(getImpl(), getOperation(), index);
   }
@@ -26,6 +29,9 @@ void mlir::RegionBranchOpInterface::getSuccessorRegions(::mlir::Optional<unsigne
   }
 void mlir::RegionBranchOpInterface::getRegionInvocationBounds(::mlir::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::InvocationBounds> & invocationBounds) {
       return getImpl()->getRegionInvocationBounds(getImpl(), getOperation(), operands, invocationBounds);
+  }
+bool mlir::RegionBranchOpInterface::areTypesCompatible(::mlir::Type lhs, ::mlir::Type rhs) {
+      return getImpl()->areTypesCompatible(getImpl(), getOperation(), lhs, rhs);
   }
 ::mlir::MutableOperandRange mlir::RegionBranchTerminatorOpInterface::getMutableSuccessorOperands(::mlir::Optional<unsigned> index) {
       return getImpl()->getMutableSuccessorOperands(getImpl(), getOperation(), index);

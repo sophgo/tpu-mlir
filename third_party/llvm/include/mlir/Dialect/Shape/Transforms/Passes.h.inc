@@ -111,7 +111,7 @@ public:
   }
   ::llvm::StringRef getArgument() const override { return "shape-to-shape-lowering"; }
 
-  ::llvm::StringRef getDescription() const override { return "Legalize Shape dialect to be convertible to Standard"; }
+  ::llvm::StringRef getDescription() const override { return "Legalize Shape dialect to be convertible to Arithmetic"; }
 
   /// Returns the derived pass name.
   static constexpr ::llvm::StringLiteral getPassName() {

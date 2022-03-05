@@ -316,7 +316,7 @@ void AddToGroupOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
   }
 }
 
-::mlir::LogicalResult AddToGroupOp::verifyInvariants() {
+::mlir::LogicalResult AddToGroupOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -342,6 +342,10 @@ void AddToGroupOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult AddToGroupOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::LogicalResult AddToGroupOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
@@ -498,7 +502,7 @@ void AwaitAllOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult AwaitAllOp::verifyInvariants() {
+::mlir::LogicalResult AwaitAllOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -509,6 +513,10 @@ void AwaitAllOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult AwaitAllOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult AwaitAllOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -623,7 +631,7 @@ std::pair<unsigned, unsigned> AwaitOp::getODSResultIndexAndLength(unsigned index
   return results.empty() ? ::mlir::Value() : *results.begin();
 }
 
-::mlir::LogicalResult AwaitOp::verifyInvariants() {
+::mlir::LogicalResult AwaitOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -647,7 +655,13 @@ std::pair<unsigned, unsigned> AwaitOp::getODSResultIndexAndLength(unsigned index
         return ::mlir::failure();
     }
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult AwaitOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 ::mlir::ParseResult AwaitOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -811,7 +825,7 @@ void CoroBeginOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
   }
 }
 
-::mlir::LogicalResult CoroBeginOp::verifyInvariants() {
+::mlir::LogicalResult CoroBeginOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -831,6 +845,10 @@ void CoroBeginOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult CoroBeginOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::LogicalResult CoroBeginOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
@@ -953,7 +971,7 @@ void CoroEndOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult CoroEndOp::verifyInvariants() {
+::mlir::LogicalResult CoroEndOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -964,6 +982,10 @@ void CoroEndOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult CoroEndOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult CoroEndOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -1093,7 +1115,7 @@ void CoroFreeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult CoroFreeOp::verifyInvariants() {
+::mlir::LogicalResult CoroFreeOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1110,6 +1132,10 @@ void CoroFreeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult CoroFreeOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult CoroFreeOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -1255,7 +1281,7 @@ void CoroIdOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
   }
 }
 
-::mlir::LogicalResult CoroIdOp::verifyInvariants() {
+::mlir::LogicalResult CoroIdOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSResults(0);
@@ -1266,6 +1292,10 @@ void CoroIdOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult CoroIdOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::LogicalResult CoroIdOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
@@ -1411,7 +1441,7 @@ void CoroSaveOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
   }
 }
 
-::mlir::LogicalResult CoroSaveOp::verifyInvariants() {
+::mlir::LogicalResult CoroSaveOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1431,6 +1461,10 @@ void CoroSaveOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult CoroSaveOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::LogicalResult CoroSaveOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
@@ -1571,7 +1605,7 @@ void CoroSuspendOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult CoroSuspendOp::verifyInvariants() {
+::mlir::LogicalResult CoroSuspendOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1585,6 +1619,10 @@ void CoroSuspendOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
     unsigned index = 0; (void)index;
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult CoroSuspendOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult CoroSuspendOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -1763,7 +1801,7 @@ void CreateGroupOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState 
   }
 }
 
-::mlir::LogicalResult CreateGroupOp::verifyInvariants() {
+::mlir::LogicalResult CreateGroupOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1783,6 +1821,10 @@ void CreateGroupOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState 
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult CreateGroupOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 void CreateGroupOp::getCanonicalizationPatterns(::mlir::RewritePatternSet &results, ::mlir::MLIRContext *context) {
@@ -2000,7 +2042,7 @@ std::pair<unsigned, unsigned> ExecuteOp::getODSResultIndexAndLength(unsigned ind
   return (*this)->getRegion(0);
 }
 
-::mlir::LogicalResult ExecuteOp::verifyInvariants() {
+::mlir::LogicalResult ExecuteOp::verifyInvariantsImpl() {
   {
     auto sizeAttr = (*this)->getAttr(operand_segment_sizesAttrName()).dyn_cast<::mlir::DenseIntElementsAttr>();
     if (!sizeAttr)
@@ -2048,7 +2090,13 @@ std::pair<unsigned, unsigned> ExecuteOp::getODSResultIndexAndLength(unsigned ind
       if (::mlir::failed(__mlir_ods_local_region_constraint_AsyncOps0(*this, region, "body", index++)))
         return ::mlir::failure();
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult ExecuteOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 } // namespace async
@@ -2186,7 +2234,7 @@ void RuntimeAddRefOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult RuntimeAddRefOp::verifyInvariants() {
+::mlir::LogicalResult RuntimeAddRefOp::verifyInvariantsImpl() {
   {
     auto tblgen_count = (*this)->getAttr(countAttrName());
     if (!tblgen_count)
@@ -2205,6 +2253,10 @@ void RuntimeAddRefOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult RuntimeAddRefOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult RuntimeAddRefOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -2389,7 +2441,7 @@ void RuntimeAddToGroupOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operation
   }
 }
 
-::mlir::LogicalResult RuntimeAddToGroupOp::verifyInvariants() {
+::mlir::LogicalResult RuntimeAddToGroupOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -2415,6 +2467,10 @@ void RuntimeAddToGroupOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operation
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult RuntimeAddToGroupOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::LogicalResult RuntimeAddToGroupOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
@@ -2587,7 +2643,7 @@ void RuntimeAwaitAndResumeOp::build(::mlir::OpBuilder &, ::mlir::OperationState 
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult RuntimeAwaitAndResumeOp::verifyInvariants() {
+::mlir::LogicalResult RuntimeAwaitAndResumeOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -2604,6 +2660,10 @@ void RuntimeAwaitAndResumeOp::build(::mlir::OpBuilder &, ::mlir::OperationState 
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult RuntimeAwaitAndResumeOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult RuntimeAwaitAndResumeOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -2751,7 +2811,7 @@ void RuntimeAwaitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult RuntimeAwaitOp::verifyInvariants() {
+::mlir::LogicalResult RuntimeAwaitOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -2762,6 +2822,10 @@ void RuntimeAwaitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult RuntimeAwaitOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult RuntimeAwaitOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -2929,7 +2993,7 @@ void RuntimeCreateGroupOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operatio
   }
 }
 
-::mlir::LogicalResult RuntimeCreateGroupOp::verifyInvariants() {
+::mlir::LogicalResult RuntimeCreateGroupOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -2949,6 +3013,10 @@ void RuntimeCreateGroupOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operatio
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult RuntimeCreateGroupOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::LogicalResult RuntimeCreateGroupOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
@@ -3079,7 +3147,7 @@ void RuntimeCreateOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult RuntimeCreateOp::verifyInvariants() {
+::mlir::LogicalResult RuntimeCreateOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSResults(0);
@@ -3090,6 +3158,10 @@ void RuntimeCreateOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult RuntimeCreateOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult RuntimeCreateOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -3258,7 +3330,7 @@ void RuntimeDropRefOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult RuntimeDropRefOp::verifyInvariants() {
+::mlir::LogicalResult RuntimeDropRefOp::verifyInvariantsImpl() {
   {
     auto tblgen_count = (*this)->getAttr(countAttrName());
     if (!tblgen_count)
@@ -3277,6 +3349,10 @@ void RuntimeDropRefOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult RuntimeDropRefOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult RuntimeDropRefOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -3444,7 +3520,7 @@ void RuntimeIsErrorOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationSta
   }
 }
 
-::mlir::LogicalResult RuntimeIsErrorOp::verifyInvariants() {
+::mlir::LogicalResult RuntimeIsErrorOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -3464,6 +3540,10 @@ void RuntimeIsErrorOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationSta
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult RuntimeIsErrorOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::LogicalResult RuntimeIsErrorOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
@@ -3610,7 +3690,7 @@ void RuntimeLoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult RuntimeLoadOp::verifyInvariants() {
+::mlir::LogicalResult RuntimeLoadOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -3632,6 +3712,10 @@ void RuntimeLoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
   if (!((std::equal_to<>()((*this->getODSOperands(0).begin()).getType().cast<ValueType>().getValueType(), (*this->getODSResults(0).begin()).getType()))))
     return emitOpError("failed to verify that type of 'value' matches element type of 'storage'");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult RuntimeLoadOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult RuntimeLoadOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -3788,7 +3872,7 @@ void RuntimeNumWorkerThreadsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Ope
   }
 }
 
-::mlir::LogicalResult RuntimeNumWorkerThreadsOp::verifyInvariants() {
+::mlir::LogicalResult RuntimeNumWorkerThreadsOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSResults(0);
@@ -3799,6 +3883,10 @@ void RuntimeNumWorkerThreadsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Ope
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult RuntimeNumWorkerThreadsOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::LogicalResult RuntimeNumWorkerThreadsOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
@@ -3928,7 +4016,7 @@ void RuntimeResumeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult RuntimeResumeOp::verifyInvariants() {
+::mlir::LogicalResult RuntimeResumeOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -3939,6 +4027,10 @@ void RuntimeResumeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult RuntimeResumeOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult RuntimeResumeOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -4052,7 +4144,7 @@ void RuntimeSetAvailableOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult RuntimeSetAvailableOp::verifyInvariants() {
+::mlir::LogicalResult RuntimeSetAvailableOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -4063,6 +4155,10 @@ void RuntimeSetAvailableOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult RuntimeSetAvailableOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult RuntimeSetAvailableOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -4195,7 +4291,7 @@ void RuntimeSetErrorOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult RuntimeSetErrorOp::verifyInvariants() {
+::mlir::LogicalResult RuntimeSetErrorOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -4206,6 +4302,10 @@ void RuntimeSetErrorOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult RuntimeSetErrorOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult RuntimeSetErrorOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -4354,7 +4454,7 @@ void RuntimeStoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult RuntimeStoreOp::verifyInvariants() {
+::mlir::LogicalResult RuntimeStoreOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -4373,6 +4473,10 @@ void RuntimeStoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
   if (!((std::equal_to<>()((*this->getODSOperands(1).begin()).getType().cast<ValueType>().getValueType(), (*this->getODSOperands(0).begin()).getType()))))
     return emitOpError("failed to verify that type of 'value' matches element type of 'storage'");
   return ::mlir::success();
+}
+
+::mlir::LogicalResult RuntimeStoreOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult RuntimeStoreOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -4546,7 +4650,7 @@ void YieldOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult YieldOp::verifyInvariants() {
+::mlir::LogicalResult YieldOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -4556,7 +4660,13 @@ void YieldOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
         return ::mlir::failure();
     }
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult YieldOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 ::mlir::ParseResult YieldOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {

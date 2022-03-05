@@ -326,7 +326,7 @@ set_target_properties(LLVMMCA PROPERTIES
 add_library(LLVMObjCopy STATIC IMPORTED)
 
 set_target_properties(LLVMObjCopy PROPERTIES
-  INTERFACE_LINK_LIBRARIES "LLVMObject;LLVMSupport;LLVMMC"
+  INTERFACE_LINK_LIBRARIES "LLVMBinaryFormat;LLVMObject;LLVMSupport;LLVMMC"
 )
 
 # Create imported target LLVMObject

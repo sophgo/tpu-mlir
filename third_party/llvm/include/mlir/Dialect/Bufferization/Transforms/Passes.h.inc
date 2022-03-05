@@ -224,6 +224,58 @@ protected:
 };
 
 //===----------------------------------------------------------------------===//
+// OneShotBufferize
+//===----------------------------------------------------------------------===//
+
+template <typename DerivedT>
+class OneShotBufferizeBase : public ::mlir::OperationPass<ModuleOp> {
+public:
+  using Base = OneShotBufferizeBase;
+
+  OneShotBufferizeBase() : ::mlir::OperationPass<ModuleOp>(::mlir::TypeID::get<DerivedT>()) {}
+  OneShotBufferizeBase(const OneShotBufferizeBase &other) : ::mlir::OperationPass<ModuleOp>(other) {}
+
+  /// Returns the command-line argument attached to this pass.
+  static constexpr ::llvm::StringLiteral getArgumentName() {
+    return ::llvm::StringLiteral("one-shot-bufferize");
+  }
+  ::llvm::StringRef getArgument() const override { return "one-shot-bufferize"; }
+
+  ::llvm::StringRef getDescription() const override { return "One-Shot Bufferize"; }
+
+  /// Returns the derived pass name.
+  static constexpr ::llvm::StringLiteral getPassName() {
+    return ::llvm::StringLiteral("OneShotBufferize");
+  }
+  ::llvm::StringRef getName() const override { return "OneShotBufferize"; }
+
+  /// Support isa/dyn_cast functionality for the derived pass class.
+  static bool classof(const ::mlir::Pass *pass) {
+    return pass->getTypeID() == ::mlir::TypeID::get<DerivedT>();
+  }
+
+  /// A clone method to create a copy of this pass.
+  std::unique_ptr<::mlir::Pass> clonePass() const override {
+    return std::make_unique<DerivedT>(*static_cast<const DerivedT *>(this));
+  }
+
+  /// Return the dialect that must be loaded in the context before this pass.
+  void getDependentDialects(::mlir::DialectRegistry &registry) const override {
+    
+  }
+
+protected:
+  ::mlir::Pass::Option<bool> allowReturnMemref{*this, "allow-return-memref", ::llvm::cl::desc("Allows the return of memrefs (for testing purposes only)"), ::llvm::cl::init(false)};
+  ::mlir::Pass::Option<bool> allowUnknownOps{*this, "allow-unknown-ops", ::llvm::cl::desc("Allows unknown (not bufferizable) ops in the input IR."), ::llvm::cl::init(false)};
+  ::mlir::Pass::Option<unsigned> analysisFuzzerSeed{*this, "analysis-fuzzer-seed", ::llvm::cl::desc("Test only: Analyze ops in random order with a given seed (fuzzer)"), ::llvm::cl::init(0)};
+  ::mlir::Pass::Option<bool> createDeallocs{*this, "create-deallocs", ::llvm::cl::desc("Specify if buffers should be deallocated. For compatibility with core bufferization passes."), ::llvm::cl::init(true)};
+  ::mlir::Pass::ListOption<std::string> dialectFilter{*this, "dialect-filter", ::llvm::cl::desc("Restrict bufferization to ops from these dialects."), llvm::cl::MiscFlags::CommaSeparated};
+  ::mlir::Pass::Option<bool> fullyDynamicLayoutMaps{*this, "fully-dynamic-layout-maps", ::llvm::cl::desc("Generate MemRef types with dynamic offset+strides by default."), ::llvm::cl::init(true)};
+  ::mlir::Pass::Option<bool> testAnalysisOnly{*this, "test-analysis-only", ::llvm::cl::desc("Test only: Only run inplaceability analysis and annotate IR"), ::llvm::cl::init(false)};
+  ::mlir::Pass::Option<bool> printConflicts{*this, "print-conflicts", ::llvm::cl::desc("Test only: Annotate IR with RaW conflicts. Requires test-analysis-only."), ::llvm::cl::init(false)};
+};
+
+//===----------------------------------------------------------------------===//
 // PromoteBuffersToStack
 //===----------------------------------------------------------------------===//
 
@@ -323,6 +375,16 @@ inline void registerFinalizingBufferizePass() {
 }
 
 //===----------------------------------------------------------------------===//
+// OneShotBufferize Registration
+//===----------------------------------------------------------------------===//
+
+inline void registerOneShotBufferizePass() {
+  ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
+    return mlir::bufferization::createOneShotBufferizePass();
+  });
+}
+
+//===----------------------------------------------------------------------===//
 // PromoteBuffersToStack Registration
 //===----------------------------------------------------------------------===//
 
@@ -342,6 +404,7 @@ inline void registerBufferizationPasses() {
   registerBufferLoopHoistingPass();
   registerBufferResultsToOutParamsPass();
   registerFinalizingBufferizePass();
+  registerOneShotBufferizePass();
   registerPromoteBuffersToStackPass();
 }
 #undef GEN_PASS_REGISTRATION

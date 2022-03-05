@@ -13,7 +13,9 @@ namespace llvm {
 namespace Intrinsic {
 enum NVVMIntrinsics : unsigned {
 // Enum values for intrinsics
-    nvvm_add_rm_d = 5116,                             // llvm.nvvm.add.rm.d
+    nvvm_abs_bf16 = 5117,                             // llvm.nvvm.abs.bf16
+    nvvm_abs_bf16x2,                           // llvm.nvvm.abs.bf16x2
+    nvvm_add_rm_d,                             // llvm.nvvm.add.rm.d
     nvvm_add_rm_f,                             // llvm.nvvm.add.rm.f
     nvvm_add_rm_ftz_f,                         // llvm.nvvm.add.rm.ftz.f
     nvvm_add_rn_d,                             // llvm.nvvm.add.rn.d
@@ -123,6 +125,8 @@ enum NVVMIntrinsics : unsigned {
     nvvm_div_rz_ftz_f,                         // llvm.nvvm.div.rz.ftz.f
     nvvm_ex2_approx_d,                         // llvm.nvvm.ex2.approx.d
     nvvm_ex2_approx_f,                         // llvm.nvvm.ex2.approx.f
+    nvvm_ex2_approx_f16,                       // llvm.nvvm.ex2.approx.f16
+    nvvm_ex2_approx_f16x2,                     // llvm.nvvm.ex2.approx.f16x2
     nvvm_ex2_approx_ftz_f,                     // llvm.nvvm.ex2.approx.ftz.f
     nvvm_f2bf16_rn,                            // llvm.nvvm.f2bf16.rn
     nvvm_f2bf16_rn_relu,                       // llvm.nvvm.f2bf16.rn.relu
@@ -180,21 +184,97 @@ enum NVVMIntrinsics : unsigned {
     nvvm_fma_rm_d,                             // llvm.nvvm.fma.rm.d
     nvvm_fma_rm_f,                             // llvm.nvvm.fma.rm.f
     nvvm_fma_rm_ftz_f,                         // llvm.nvvm.fma.rm.ftz.f
+    nvvm_fma_rn_bf16,                          // llvm.nvvm.fma.rn.bf16
+    nvvm_fma_rn_bf16x2,                        // llvm.nvvm.fma.rn.bf16x2
     nvvm_fma_rn_d,                             // llvm.nvvm.fma.rn.d
     nvvm_fma_rn_f,                             // llvm.nvvm.fma.rn.f
+    nvvm_fma_rn_f16,                           // llvm.nvvm.fma.rn.f16
+    nvvm_fma_rn_f16x2,                         // llvm.nvvm.fma.rn.f16x2
     nvvm_fma_rn_ftz_f,                         // llvm.nvvm.fma.rn.ftz.f
+    nvvm_fma_rn_ftz_f16,                       // llvm.nvvm.fma.rn.ftz.f16
+    nvvm_fma_rn_ftz_f16x2,                     // llvm.nvvm.fma.rn.ftz.f16x2
+    nvvm_fma_rn_ftz_relu_f16,                  // llvm.nvvm.fma.rn.ftz.relu.f16
+    nvvm_fma_rn_ftz_relu_f16x2,                // llvm.nvvm.fma.rn.ftz.relu.f16x2
+    nvvm_fma_rn_ftz_sat_f16,                   // llvm.nvvm.fma.rn.ftz.sat.f16
+    nvvm_fma_rn_ftz_sat_f16x2,                 // llvm.nvvm.fma.rn.ftz.sat.f16x2
+    nvvm_fma_rn_relu_bf16,                     // llvm.nvvm.fma.rn.relu.bf16
+    nvvm_fma_rn_relu_bf16x2,                   // llvm.nvvm.fma.rn.relu.bf16x2
+    nvvm_fma_rn_relu_f16,                      // llvm.nvvm.fma.rn.relu.f16
+    nvvm_fma_rn_relu_f16x2,                    // llvm.nvvm.fma.rn.relu.f16x2
+    nvvm_fma_rn_sat_f16,                       // llvm.nvvm.fma.rn.sat.f16
+    nvvm_fma_rn_sat_f16x2,                     // llvm.nvvm.fma.rn.sat.f16x2
     nvvm_fma_rp_d,                             // llvm.nvvm.fma.rp.d
     nvvm_fma_rp_f,                             // llvm.nvvm.fma.rp.f
     nvvm_fma_rp_ftz_f,                         // llvm.nvvm.fma.rp.ftz.f
     nvvm_fma_rz_d,                             // llvm.nvvm.fma.rz.d
     nvvm_fma_rz_f,                             // llvm.nvvm.fma.rz.f
     nvvm_fma_rz_ftz_f,                         // llvm.nvvm.fma.rz.ftz.f
+    nvvm_fmax_bf16,                            // llvm.nvvm.fmax.bf16
+    nvvm_fmax_bf16x2,                          // llvm.nvvm.fmax.bf16x2
     nvvm_fmax_d,                               // llvm.nvvm.fmax.d
     nvvm_fmax_f,                               // llvm.nvvm.fmax.f
+    nvvm_fmax_f16,                             // llvm.nvvm.fmax.f16
+    nvvm_fmax_f16x2,                           // llvm.nvvm.fmax.f16x2
     nvvm_fmax_ftz_f,                           // llvm.nvvm.fmax.ftz.f
+    nvvm_fmax_ftz_f16,                         // llvm.nvvm.fmax.ftz.f16
+    nvvm_fmax_ftz_f16x2,                       // llvm.nvvm.fmax.ftz.f16x2
+    nvvm_fmax_ftz_nan_f,                       // llvm.nvvm.fmax.ftz.nan.f
+    nvvm_fmax_ftz_nan_f16,                     // llvm.nvvm.fmax.ftz.nan.f16
+    nvvm_fmax_ftz_nan_f16x2,                   // llvm.nvvm.fmax.ftz.nan.f16x2
+    nvvm_fmax_ftz_nan_xorsign_abs_f,           // llvm.nvvm.fmax.ftz.nan.xorsign.abs.f
+    nvvm_fmax_ftz_nan_xorsign_abs_f16,         // llvm.nvvm.fmax.ftz.nan.xorsign.abs.f16
+    nvvm_fmax_ftz_nan_xorsign_abs_f16x2,       // llvm.nvvm.fmax.ftz.nan.xorsign.abs.f16x2
+    nvvm_fmax_ftz_xorsign_abs_f,               // llvm.nvvm.fmax.ftz.xorsign.abs.f
+    nvvm_fmax_ftz_xorsign_abs_f16,             // llvm.nvvm.fmax.ftz.xorsign.abs.f16
+    nvvm_fmax_ftz_xorsign_abs_f16x2,           // llvm.nvvm.fmax.ftz.xorsign.abs.f16x2
+    nvvm_fmax_nan_bf16,                        // llvm.nvvm.fmax.nan.bf16
+    nvvm_fmax_nan_bf16x2,                      // llvm.nvvm.fmax.nan.bf16x2
+    nvvm_fmax_nan_f,                           // llvm.nvvm.fmax.nan.f
+    nvvm_fmax_nan_f16,                         // llvm.nvvm.fmax.nan.f16
+    nvvm_fmax_nan_f16x2,                       // llvm.nvvm.fmax.nan.f16x2
+    nvvm_fmax_nan_xorsign_abs_bf16,            // llvm.nvvm.fmax.nan.xorsign.abs.bf16
+    nvvm_fmax_nan_xorsign_abs_bf16x2,          // llvm.nvvm.fmax.nan.xorsign.abs.bf16x2
+    nvvm_fmax_nan_xorsign_abs_f,               // llvm.nvvm.fmax.nan.xorsign.abs.f
+    nvvm_fmax_nan_xorsign_abs_f16,             // llvm.nvvm.fmax.nan.xorsign.abs.f16
+    nvvm_fmax_nan_xorsign_abs_f16x2,           // llvm.nvvm.fmax.nan.xorsign.abs.f16x2
+    nvvm_fmax_xorsign_abs_bf16,                // llvm.nvvm.fmax.xorsign.abs.bf16
+    nvvm_fmax_xorsign_abs_bf16x2,              // llvm.nvvm.fmax.xorsign.abs.bf16x2
+    nvvm_fmax_xorsign_abs_f,                   // llvm.nvvm.fmax.xorsign.abs.f
+    nvvm_fmax_xorsign_abs_f16,                 // llvm.nvvm.fmax.xorsign.abs.f16
+    nvvm_fmax_xorsign_abs_f16x2,               // llvm.nvvm.fmax.xorsign.abs.f16x2
+    nvvm_fmin_bf16,                            // llvm.nvvm.fmin.bf16
+    nvvm_fmin_bf16x2,                          // llvm.nvvm.fmin.bf16x2
     nvvm_fmin_d,                               // llvm.nvvm.fmin.d
     nvvm_fmin_f,                               // llvm.nvvm.fmin.f
+    nvvm_fmin_f16,                             // llvm.nvvm.fmin.f16
+    nvvm_fmin_f16x2,                           // llvm.nvvm.fmin.f16x2
     nvvm_fmin_ftz_f,                           // llvm.nvvm.fmin.ftz.f
+    nvvm_fmin_ftz_f16,                         // llvm.nvvm.fmin.ftz.f16
+    nvvm_fmin_ftz_f16x2,                       // llvm.nvvm.fmin.ftz.f16x2
+    nvvm_fmin_ftz_nan_f,                       // llvm.nvvm.fmin.ftz.nan.f
+    nvvm_fmin_ftz_nan_f16,                     // llvm.nvvm.fmin.ftz.nan.f16
+    nvvm_fmin_ftz_nan_f16x2,                   // llvm.nvvm.fmin.ftz.nan.f16x2
+    nvvm_fmin_ftz_nan_xorsign_abs_f,           // llvm.nvvm.fmin.ftz.nan.xorsign.abs.f
+    nvvm_fmin_ftz_nan_xorsign_abs_f16,         // llvm.nvvm.fmin.ftz.nan.xorsign.abs.f16
+    nvvm_fmin_ftz_nan_xorsign_abs_f16x2,       // llvm.nvvm.fmin.ftz.nan.xorsign.abs.f16x2
+    nvvm_fmin_ftz_xorsign_abs_f,               // llvm.nvvm.fmin.ftz.xorsign.abs.f
+    nvvm_fmin_ftz_xorsign_abs_f16,             // llvm.nvvm.fmin.ftz.xorsign.abs.f16
+    nvvm_fmin_ftz_xorsign_abs_f16x2,           // llvm.nvvm.fmin.ftz.xorsign.abs.f16x2
+    nvvm_fmin_nan_bf16,                        // llvm.nvvm.fmin.nan.bf16
+    nvvm_fmin_nan_bf16x2,                      // llvm.nvvm.fmin.nan.bf16x2
+    nvvm_fmin_nan_f,                           // llvm.nvvm.fmin.nan.f
+    nvvm_fmin_nan_f16,                         // llvm.nvvm.fmin.nan.f16
+    nvvm_fmin_nan_f16x2,                       // llvm.nvvm.fmin.nan.f16x2
+    nvvm_fmin_nan_xorsign_abs_bf16,            // llvm.nvvm.fmin.nan.xorsign.abs.bf16
+    nvvm_fmin_nan_xorsign_abs_bf16x2,          // llvm.nvvm.fmin.nan.xorsign.abs.bf16x2
+    nvvm_fmin_nan_xorsign_abs_f,               // llvm.nvvm.fmin.nan.xorsign.abs.f
+    nvvm_fmin_nan_xorsign_abs_f16,             // llvm.nvvm.fmin.nan.xorsign.abs.f16
+    nvvm_fmin_nan_xorsign_abs_f16x2,           // llvm.nvvm.fmin.nan.xorsign.abs.f16x2
+    nvvm_fmin_xorsign_abs_bf16,                // llvm.nvvm.fmin.xorsign.abs.bf16
+    nvvm_fmin_xorsign_abs_bf16x2,              // llvm.nvvm.fmin.xorsign.abs.bf16x2
+    nvvm_fmin_xorsign_abs_f,                   // llvm.nvvm.fmin.xorsign.abs.f
+    nvvm_fmin_xorsign_abs_f16,                 // llvm.nvvm.fmin.xorsign.abs.f16
+    nvvm_fmin_xorsign_abs_f16x2,               // llvm.nvvm.fmin.xorsign.abs.f16x2
     nvvm_fns,                                  // llvm.nvvm.fns
     nvvm_i2d_rm,                               // llvm.nvvm.i2d.rm
     nvvm_i2d_rn,                               // llvm.nvvm.i2d.rn
@@ -358,6 +438,8 @@ enum NVVMIntrinsics : unsigned {
     nvvm_mulhi_ll,                             // llvm.nvvm.mulhi.ll
     nvvm_mulhi_ui,                             // llvm.nvvm.mulhi.ui
     nvvm_mulhi_ull,                            // llvm.nvvm.mulhi.ull
+    nvvm_neg_bf16,                             // llvm.nvvm.neg.bf16
+    nvvm_neg_bf16x2,                           // llvm.nvvm.neg.bf16x2
     nvvm_prmt,                                 // llvm.nvvm.prmt
     nvvm_ptr_constant_to_gen,                  // llvm.nvvm.ptr.constant.to.gen
     nvvm_ptr_gen_to_constant,                  // llvm.nvvm.ptr.gen.to.constant

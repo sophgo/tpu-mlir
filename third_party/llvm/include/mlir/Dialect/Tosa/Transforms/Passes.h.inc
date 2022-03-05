@@ -40,7 +40,7 @@ public:
   /// Return the dialect that must be loaded in the context before this pass.
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
     
-  registry.insert<StandardOpsDialect>();
+  registry.insert<func::FuncDialect>();
 
   registry.insert<tensor::TensorDialect>();
 

@@ -430,7 +430,7 @@ void ApplyNativeConstraintOp::build(::mlir::OpBuilder &, ::mlir::OperationState 
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ApplyNativeConstraintOp::verifyInvariants() {
+::mlir::LogicalResult ApplyNativeConstraintOp::verifyInvariantsImpl() {
   {
     auto tblgen_name = (*this)->getAttr(nameAttrName());
     if (!tblgen_name)
@@ -453,7 +453,13 @@ void ApplyNativeConstraintOp::build(::mlir::OpBuilder &, ::mlir::OperationState 
         return ::mlir::failure();
     }
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult ApplyNativeConstraintOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 ::mlir::ParseResult ApplyNativeConstraintOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -719,7 +725,7 @@ void ApplyNativeRewriteOp::build(::mlir::OpBuilder &, ::mlir::OperationState &od
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ApplyNativeRewriteOp::verifyInvariants() {
+::mlir::LogicalResult ApplyNativeRewriteOp::verifyInvariantsImpl() {
   {
     auto tblgen_name = (*this)->getAttr(nameAttrName());
     if (!tblgen_name)
@@ -751,7 +757,13 @@ void ApplyNativeRewriteOp::build(::mlir::OpBuilder &, ::mlir::OperationState &od
         return ::mlir::failure();
     }
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult ApplyNativeRewriteOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 ::mlir::ParseResult ApplyNativeRewriteOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -1000,7 +1012,7 @@ void AttributeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult AttributeOp::verifyInvariants() {
+::mlir::LogicalResult AttributeOp::verifyInvariantsImpl() {
   {
     auto tblgen_value = (*this)->getAttr(valueAttrName());
     if (::mlir::failed(__mlir_ods_local_attr_constraint_PDLOps2(*this, tblgen_value, "value")))
@@ -1029,7 +1041,13 @@ void AttributeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
         return ::mlir::failure();
     }
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult AttributeOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 ::mlir::ParseResult AttributeOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -1082,9 +1100,6 @@ void AttributeOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter.printAttribute(valueAttr());
   }
   _odsPrinter.printOptionalAttrDictWithKeyword((*this)->getAttrs(), /*elidedAttrs=*/{"value"});
-}
-
-void AttributeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace pdl
@@ -1176,7 +1191,7 @@ void EraseOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult EraseOp::verifyInvariants() {
+::mlir::LogicalResult EraseOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1187,6 +1202,10 @@ void EraseOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult EraseOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult EraseOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -1341,7 +1360,7 @@ void OperandOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult OperandOp::verifyInvariants() {
+::mlir::LogicalResult OperandOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1365,7 +1384,13 @@ void OperandOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
         return ::mlir::failure();
     }
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult OperandOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 ::mlir::ParseResult OperandOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -1404,9 +1429,6 @@ void OperandOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
     _odsPrinter << value;
   }
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
-}
-
-void OperandOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace pdl
@@ -1540,7 +1562,7 @@ void OperandsOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult OperandsOp::verifyInvariants() {
+::mlir::LogicalResult OperandsOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1564,7 +1586,13 @@ void OperandsOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
         return ::mlir::failure();
     }
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult OperandsOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 ::mlir::ParseResult OperandsOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -1603,9 +1631,6 @@ void OperandsOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
     _odsPrinter << value;
   }
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
-}
-
-void OperandsOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace pdl
@@ -1846,7 +1871,7 @@ void OperationOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult OperationOp::verifyInvariants() {
+::mlir::LogicalResult OperationOp::verifyInvariantsImpl() {
   {
     auto sizeAttr = (*this)->getAttr(operand_segment_sizesAttrName()).dyn_cast<::mlir::DenseIntElementsAttr>();
     if (!sizeAttr)
@@ -1900,7 +1925,13 @@ void OperationOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
         return ::mlir::failure();
     }
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult OperationOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 ::mlir::ParseResult OperationOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -2182,7 +2213,7 @@ void PatternOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult PatternOp::verifyInvariants() {
+::mlir::LogicalResult PatternOp::verifyInvariantsImpl() {
   {
     auto tblgen_benefit = (*this)->getAttr(benefitAttrName());
     if (!tblgen_benefit)
@@ -2203,7 +2234,13 @@ void PatternOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
       if (::mlir::failed(__mlir_ods_local_region_constraint_PDLOps0(*this, region, "body", index++)))
         return ::mlir::failure();
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult PatternOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 ::mlir::ParseResult PatternOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -2412,7 +2449,7 @@ void ReplaceOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ReplaceOp::verifyInvariants() {
+::mlir::LogicalResult ReplaceOp::verifyInvariantsImpl() {
   {
     auto sizeAttr = (*this)->getAttr(operand_segment_sizesAttrName()).dyn_cast<::mlir::DenseIntElementsAttr>();
     if (!sizeAttr)
@@ -2449,7 +2486,13 @@ void ReplaceOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
         return ::mlir::failure();
     }
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult ReplaceOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 ::mlir::ParseResult ReplaceOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -2670,7 +2713,7 @@ void ResultOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ResultOp::verifyInvariants() {
+::mlir::LogicalResult ResultOp::verifyInvariantsImpl() {
   {
     auto tblgen_index = (*this)->getAttr(indexAttrName());
     if (!tblgen_index)
@@ -2698,6 +2741,10 @@ void ResultOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
     }
   }
   return ::mlir::success();
+}
+
+::mlir::LogicalResult ResultOp::verifyInvariants() {
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult ResultOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -2871,7 +2918,7 @@ void ResultsOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ResultsOp::verifyInvariants() {
+::mlir::LogicalResult ResultsOp::verifyInvariantsImpl() {
   {
     auto tblgen_index = (*this)->getAttr(indexAttrName());
     if (::mlir::failed(__mlir_ods_local_attr_constraint_PDLOps5(*this, tblgen_index, "index")))
@@ -2895,7 +2942,13 @@ void ResultsOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
         return ::mlir::failure();
     }
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult ResultsOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 ::mlir::ParseResult ResultsOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -3183,7 +3236,7 @@ void RewriteOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult RewriteOp::verifyInvariants() {
+::mlir::LogicalResult RewriteOp::verifyInvariantsImpl() {
   {
     auto sizeAttr = (*this)->getAttr(operand_segment_sizesAttrName()).dyn_cast<::mlir::DenseIntElementsAttr>();
     if (!sizeAttr)
@@ -3231,7 +3284,13 @@ void RewriteOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
       if (::mlir::failed(__mlir_ods_local_region_constraint_PDLOps1(*this, region, "body", index++)))
         return ::mlir::failure();
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult RewriteOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 ::mlir::ParseResult RewriteOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -3457,7 +3516,7 @@ void TypeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult TypeOp::verifyInvariants() {
+::mlir::LogicalResult TypeOp::verifyInvariantsImpl() {
   {
     auto tblgen_type = (*this)->getAttr(typeAttrName());
     if (::mlir::failed(__mlir_ods_local_attr_constraint_PDLOps6(*this, tblgen_type, "type")))
@@ -3472,7 +3531,13 @@ void TypeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
         return ::mlir::failure();
     }
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult TypeOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 ::mlir::ParseResult TypeOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -3498,9 +3563,6 @@ void TypeOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
   _odsPrinter.printAttributeWithoutType(typeAttr());
   }
-}
-
-void TypeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace pdl
@@ -3620,7 +3682,7 @@ void TypesOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult TypesOp::verifyInvariants() {
+::mlir::LogicalResult TypesOp::verifyInvariantsImpl() {
   {
     auto tblgen_types = (*this)->getAttr(typesAttrName());
     if (::mlir::failed(__mlir_ods_local_attr_constraint_PDLOps7(*this, tblgen_types, "types")))
@@ -3635,7 +3697,13 @@ void TypesOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
         return ::mlir::failure();
     }
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult TypesOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 ::mlir::ParseResult TypesOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -3661,9 +3729,6 @@ void TypesOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
   _odsPrinter.printAttributeWithoutType(typesAttr());
   }
-}
-
-void TypesOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace pdl

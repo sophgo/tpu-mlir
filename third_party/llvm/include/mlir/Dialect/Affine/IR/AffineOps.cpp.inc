@@ -319,7 +319,7 @@ void AffineApplyOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult AffineApplyOp::verifyInvariants() {
+::mlir::LogicalResult AffineApplyOp::verifyInvariantsImpl() {
   {
     auto tblgen_map = (*this)->getAttr(mapAttrName());
     if (!tblgen_map)
@@ -346,7 +346,13 @@ void AffineApplyOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
         return ::mlir::failure();
     }
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult AffineApplyOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 void AffineApplyOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
@@ -465,7 +471,7 @@ std::pair<unsigned, unsigned> AffineForOp::getODSResultIndexAndLength(unsigned i
   return (*this)->getRegion(0);
 }
 
-::mlir::LogicalResult AffineForOp::verifyInvariants() {
+::mlir::LogicalResult AffineForOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -491,7 +497,13 @@ std::pair<unsigned, unsigned> AffineForOp::getODSResultIndexAndLength(unsigned i
       if (::mlir::failed(__mlir_ods_local_region_constraint_AffineOps0(*this, region, "region", index++)))
         return ::mlir::failure();
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult AffineForOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 } // namespace mlir
@@ -615,7 +627,7 @@ std::pair<unsigned, unsigned> AffineIfOp::getODSResultIndexAndLength(unsigned in
   return (*this)->getRegion(1);
 }
 
-::mlir::LogicalResult AffineIfOp::verifyInvariants() {
+::mlir::LogicalResult AffineIfOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -645,7 +657,13 @@ std::pair<unsigned, unsigned> AffineIfOp::getODSResultIndexAndLength(unsigned in
       if (::mlir::failed(__mlir_ods_local_region_constraint_AffineOps1(*this, region, "elseRegion", index++)))
         return ::mlir::failure();
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult AffineIfOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 } // namespace mlir
@@ -784,7 +802,7 @@ void AffineLoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult AffineLoadOp::verifyInvariants() {
+::mlir::LogicalResult AffineLoadOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -809,7 +827,13 @@ void AffineLoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
         return ::mlir::failure();
     }
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult AffineLoadOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 void AffineLoadOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
@@ -984,7 +1008,7 @@ void AffineMaxOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult AffineMaxOp::verifyInvariants() {
+::mlir::LogicalResult AffineMaxOp::verifyInvariantsImpl() {
   {
     auto tblgen_map = (*this)->getAttr(mapAttrName());
     if (!tblgen_map)
@@ -1011,7 +1035,13 @@ void AffineMaxOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
         return ::mlir::failure();
     }
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult AffineMaxOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 void AffineMaxOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
@@ -1184,7 +1214,7 @@ void AffineMinOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult AffineMinOp::verifyInvariants() {
+::mlir::LogicalResult AffineMinOp::verifyInvariantsImpl() {
   {
     auto tblgen_map = (*this)->getAttr(mapAttrName());
     if (!tblgen_map)
@@ -1211,7 +1241,13 @@ void AffineMinOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
         return ::mlir::failure();
     }
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult AffineMinOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 void AffineMinOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
@@ -1568,7 +1604,7 @@ void AffineParallelOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult AffineParallelOp::verifyInvariants() {
+::mlir::LogicalResult AffineParallelOp::verifyInvariantsImpl() {
   {
     auto tblgen_reductions = (*this)->getAttr(reductionsAttrName());
     if (!tblgen_reductions)
@@ -1642,7 +1678,13 @@ void AffineParallelOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
       if (::mlir::failed(__mlir_ods_local_region_constraint_AffineOps0(*this, region, "region", index++)))
         return ::mlir::failure();
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult AffineParallelOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 } // namespace mlir
@@ -1911,7 +1953,7 @@ void AffinePrefetchOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult AffinePrefetchOp::verifyInvariants() {
+::mlir::LogicalResult AffinePrefetchOp::verifyInvariantsImpl() {
   {
     auto tblgen_isWrite = (*this)->getAttr(isWriteAttrName());
     if (!tblgen_isWrite)
@@ -1951,7 +1993,13 @@ void AffinePrefetchOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
         return ::mlir::failure();
     }
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult AffinePrefetchOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 } // namespace mlir
@@ -2079,7 +2127,7 @@ std::pair<unsigned, unsigned> AffineStoreOp::getODSResultIndexAndLength(unsigned
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::LogicalResult AffineStoreOp::verifyInvariants() {
+::mlir::LogicalResult AffineStoreOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -2101,7 +2149,13 @@ std::pair<unsigned, unsigned> AffineStoreOp::getODSResultIndexAndLength(unsigned
         return ::mlir::failure();
     }
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult AffineStoreOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 void AffineStoreOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
@@ -2245,7 +2299,7 @@ void AffineVectorLoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsS
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult AffineVectorLoadOp::verifyInvariants() {
+::mlir::LogicalResult AffineVectorLoadOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -2270,7 +2324,13 @@ void AffineVectorLoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsS
         return ::mlir::failure();
     }
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult AffineVectorLoadOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 void AffineVectorLoadOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
@@ -2403,7 +2463,7 @@ std::pair<unsigned, unsigned> AffineVectorStoreOp::getODSResultIndexAndLength(un
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::LogicalResult AffineVectorStoreOp::verifyInvariants() {
+::mlir::LogicalResult AffineVectorStoreOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -2425,7 +2485,13 @@ std::pair<unsigned, unsigned> AffineVectorStoreOp::getODSResultIndexAndLength(un
         return ::mlir::failure();
     }
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult AffineVectorStoreOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 void AffineVectorStoreOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
@@ -2545,7 +2611,7 @@ void AffineYieldOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult AffineYieldOp::verifyInvariants() {
+::mlir::LogicalResult AffineYieldOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -2555,7 +2621,13 @@ void AffineYieldOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
         return ::mlir::failure();
     }
   }
-  return verify();
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult AffineYieldOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
 }
 
 ::mlir::ParseResult AffineYieldOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {

@@ -92,8 +92,6 @@ public:
 
   registry.insert<scf::SCFDialect>();
 
-  registry.insert<StandardOpsDialect>();
-
   registry.insert<vector::VectorDialect>();
 
   }
@@ -153,12 +151,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class ConvertArithmeticToSPIRVBase : public ::mlir::OperationPass<FuncOp> {
+class ConvertArithmeticToSPIRVBase : public ::mlir::OperationPass<ModuleOp> {
 public:
   using Base = ConvertArithmeticToSPIRVBase;
 
-  ConvertArithmeticToSPIRVBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  ConvertArithmeticToSPIRVBase(const ConvertArithmeticToSPIRVBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  ConvertArithmeticToSPIRVBase() : ::mlir::OperationPass<ModuleOp>(::mlir::TypeID::get<DerivedT>()) {}
+  ConvertArithmeticToSPIRVBase(const ConvertArithmeticToSPIRVBase &other) : ::mlir::OperationPass<ModuleOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -479,6 +477,100 @@ protected:
 };
 
 //===----------------------------------------------------------------------===//
+// ConvertControlFlowToSPIRV
+//===----------------------------------------------------------------------===//
+
+template <typename DerivedT>
+class ConvertControlFlowToSPIRVBase : public ::mlir::OperationPass<ModuleOp> {
+public:
+  using Base = ConvertControlFlowToSPIRVBase;
+
+  ConvertControlFlowToSPIRVBase() : ::mlir::OperationPass<ModuleOp>(::mlir::TypeID::get<DerivedT>()) {}
+  ConvertControlFlowToSPIRVBase(const ConvertControlFlowToSPIRVBase &other) : ::mlir::OperationPass<ModuleOp>(other) {}
+
+  /// Returns the command-line argument attached to this pass.
+  static constexpr ::llvm::StringLiteral getArgumentName() {
+    return ::llvm::StringLiteral("convert-cf-to-spirv");
+  }
+  ::llvm::StringRef getArgument() const override { return "convert-cf-to-spirv"; }
+
+  ::llvm::StringRef getDescription() const override { return "Convert ControlFlow dialect to SPIR-V dialect"; }
+
+  /// Returns the derived pass name.
+  static constexpr ::llvm::StringLiteral getPassName() {
+    return ::llvm::StringLiteral("ConvertControlFlowToSPIRV");
+  }
+  ::llvm::StringRef getName() const override { return "ConvertControlFlowToSPIRV"; }
+
+  /// Support isa/dyn_cast functionality for the derived pass class.
+  static bool classof(const ::mlir::Pass *pass) {
+    return pass->getTypeID() == ::mlir::TypeID::get<DerivedT>();
+  }
+
+  /// A clone method to create a copy of this pass.
+  std::unique_ptr<::mlir::Pass> clonePass() const override {
+    return std::make_unique<DerivedT>(*static_cast<const DerivedT *>(this));
+  }
+
+  /// Return the dialect that must be loaded in the context before this pass.
+  void getDependentDialects(::mlir::DialectRegistry &registry) const override {
+    
+  registry.insert<spirv::SPIRVDialect>();
+
+  }
+
+protected:
+  ::mlir::Pass::Option<bool> emulateNon32BitScalarTypes{*this, "emulate-non-32-bit-scalar-types", ::llvm::cl::desc("Emulate non-32-bit scalar types with 32-bit ones if missing native support"), ::llvm::cl::init(true)};
+};
+
+//===----------------------------------------------------------------------===//
+// ConvertFuncToSPIRV
+//===----------------------------------------------------------------------===//
+
+template <typename DerivedT>
+class ConvertFuncToSPIRVBase : public ::mlir::OperationPass<ModuleOp> {
+public:
+  using Base = ConvertFuncToSPIRVBase;
+
+  ConvertFuncToSPIRVBase() : ::mlir::OperationPass<ModuleOp>(::mlir::TypeID::get<DerivedT>()) {}
+  ConvertFuncToSPIRVBase(const ConvertFuncToSPIRVBase &other) : ::mlir::OperationPass<ModuleOp>(other) {}
+
+  /// Returns the command-line argument attached to this pass.
+  static constexpr ::llvm::StringLiteral getArgumentName() {
+    return ::llvm::StringLiteral("convert-func-to-spirv");
+  }
+  ::llvm::StringRef getArgument() const override { return "convert-func-to-spirv"; }
+
+  ::llvm::StringRef getDescription() const override { return "Convert Func dialect to SPIR-V dialect"; }
+
+  /// Returns the derived pass name.
+  static constexpr ::llvm::StringLiteral getPassName() {
+    return ::llvm::StringLiteral("ConvertFuncToSPIRV");
+  }
+  ::llvm::StringRef getName() const override { return "ConvertFuncToSPIRV"; }
+
+  /// Support isa/dyn_cast functionality for the derived pass class.
+  static bool classof(const ::mlir::Pass *pass) {
+    return pass->getTypeID() == ::mlir::TypeID::get<DerivedT>();
+  }
+
+  /// A clone method to create a copy of this pass.
+  std::unique_ptr<::mlir::Pass> clonePass() const override {
+    return std::make_unique<DerivedT>(*static_cast<const DerivedT *>(this));
+  }
+
+  /// Return the dialect that must be loaded in the context before this pass.
+  void getDependentDialects(::mlir::DialectRegistry &registry) const override {
+    
+  registry.insert<spirv::SPIRVDialect>();
+
+  }
+
+protected:
+  ::mlir::Pass::Option<bool> emulateNon32BitScalarTypes{*this, "emulate-non-32-bit-scalar-types", ::llvm::cl::desc("Emulate non-32-bit scalar types with 32-bit ones if missing native support"), ::llvm::cl::init(true)};
+};
+
+//===----------------------------------------------------------------------===//
 // ConvertGPUToSPIRV
 //===----------------------------------------------------------------------===//
 
@@ -609,11 +701,11 @@ public:
   /// Return the dialect that must be loaded in the context before this pass.
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
     
+  registry.insert<cf::ControlFlowDialect>();
+
   registry.insert<memref::MemRefDialect>();
 
   registry.insert<NVVM::NVVMDialect>();
-
-  registry.insert<StandardOpsDialect>();
 
   }
 
@@ -806,9 +898,9 @@ public:
   /// Return the dialect that must be loaded in the context before this pass.
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
     
-  registry.insert<memref::MemRefDialect>();
+  registry.insert<func::FuncDialect>();
 
-  registry.insert<StandardOpsDialect>();
+  registry.insert<memref::MemRefDialect>();
 
   }
 
@@ -902,7 +994,7 @@ public:
     
   registry.insert<arith::ArithmeticDialect>();
 
-  registry.insert<StandardOpsDialect>();
+  registry.insert<func::FuncDialect>();
 
   registry.insert<vector::VectorDialect>();
 
@@ -1329,6 +1421,8 @@ public:
 
   registry.insert<LLVM::LLVMDialect>();
 
+  registry.insert<memref::MemRefDialect>();
+
   }
 
 protected:
@@ -1467,8 +1561,6 @@ public:
   /// Return the dialect that must be loaded in the context before this pass.
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
     
-  registry.insert<StandardOpsDialect>();
-
   registry.insert<scf::SCFDialect>();
 
   }
@@ -1527,30 +1619,30 @@ protected:
 };
 
 //===----------------------------------------------------------------------===//
-// ConvertStandardToSPIRV
+// ConvertTensorToSPIRV
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class ConvertStandardToSPIRVBase : public ::mlir::OperationPass<ModuleOp> {
+class ConvertTensorToSPIRVBase : public ::mlir::OperationPass<ModuleOp> {
 public:
-  using Base = ConvertStandardToSPIRVBase;
+  using Base = ConvertTensorToSPIRVBase;
 
-  ConvertStandardToSPIRVBase() : ::mlir::OperationPass<ModuleOp>(::mlir::TypeID::get<DerivedT>()) {}
-  ConvertStandardToSPIRVBase(const ConvertStandardToSPIRVBase &other) : ::mlir::OperationPass<ModuleOp>(other) {}
+  ConvertTensorToSPIRVBase() : ::mlir::OperationPass<ModuleOp>(::mlir::TypeID::get<DerivedT>()) {}
+  ConvertTensorToSPIRVBase(const ConvertTensorToSPIRVBase &other) : ::mlir::OperationPass<ModuleOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
-    return ::llvm::StringLiteral("convert-std-to-spirv");
+    return ::llvm::StringLiteral("convert-tensor-to-spirv");
   }
-  ::llvm::StringRef getArgument() const override { return "convert-std-to-spirv"; }
+  ::llvm::StringRef getArgument() const override { return "convert-tensor-to-spirv"; }
 
-  ::llvm::StringRef getDescription() const override { return "Convert Standard dialect to SPIR-V dialect"; }
+  ::llvm::StringRef getDescription() const override { return "Convert Tensor dialect to SPIR-V dialect"; }
 
   /// Returns the derived pass name.
   static constexpr ::llvm::StringLiteral getPassName() {
-    return ::llvm::StringLiteral("ConvertStandardToSPIRV");
+    return ::llvm::StringLiteral("ConvertTensorToSPIRV");
   }
-  ::llvm::StringRef getName() const override { return "ConvertStandardToSPIRV"; }
+  ::llvm::StringRef getName() const override { return "ConvertTensorToSPIRV"; }
 
   /// Support isa/dyn_cast functionality for the derived pass class.
   static bool classof(const ::mlir::Pass *pass) {
@@ -2266,8 +2358,6 @@ public:
     
   registry.insert<arith::ArithmeticDialect>();
 
-  registry.insert<StandardOpsDialect>();
-
   registry.insert<tensor::TensorDialect>();
 
   }
@@ -2375,6 +2465,26 @@ inline void registerConvertComplexToStandardPass() {
 inline void registerConvertControlFlowToLLVMPass() {
   ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
     return mlir::cf::createConvertControlFlowToLLVMPass();
+  });
+}
+
+//===----------------------------------------------------------------------===//
+// ConvertControlFlowToSPIRV Registration
+//===----------------------------------------------------------------------===//
+
+inline void registerConvertControlFlowToSPIRVPass() {
+  ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
+    return mlir::createConvertControlFlowToSPIRVPass();
+  });
+}
+
+//===----------------------------------------------------------------------===//
+// ConvertFuncToSPIRV Registration
+//===----------------------------------------------------------------------===//
+
+inline void registerConvertFuncToSPIRVPass() {
+  ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
+    return mlir::createConvertFuncToSPIRVPass();
   });
 }
 
@@ -2599,12 +2709,12 @@ inline void registerConvertStandardToLLVMPass() {
 }
 
 //===----------------------------------------------------------------------===//
-// ConvertStandardToSPIRV Registration
+// ConvertTensorToSPIRV Registration
 //===----------------------------------------------------------------------===//
 
-inline void registerConvertStandardToSPIRVPass() {
+inline void registerConvertTensorToSPIRVPass() {
   ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
-    return mlir::createConvertStandardToSPIRVPass();
+    return mlir::createConvertTensorToSPIRVPass();
   });
 }
 
@@ -2773,6 +2883,8 @@ inline void registerConversionPasses() {
   registerConvertComplexToLLVMPass();
   registerConvertComplexToStandardPass();
   registerConvertControlFlowToLLVMPass();
+  registerConvertControlFlowToSPIRVPass();
+  registerConvertFuncToSPIRVPass();
   registerConvertGPUToSPIRVPass();
   registerConvertGpuLaunchFuncToVulkanLaunchFuncPass();
   registerConvertGpuOpsToNVVMOpsPass();
@@ -2795,7 +2907,7 @@ inline void registerConversionPasses() {
   registerConvertShapeConstraintsPass();
   registerConvertShapeToStandardPass();
   registerConvertStandardToLLVMPass();
-  registerConvertStandardToSPIRVPass();
+  registerConvertTensorToSPIRVPass();
   registerConvertVectorToGPUPass();
   registerConvertVectorToLLVMPass();
   registerConvertVectorToROCDLPass();

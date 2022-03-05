@@ -57,11 +57,6 @@ MLIR_CAPI_EXPORTED void mlirRegisterLinalgLinalgInlineScalarOperands();
 
 
 /* Create Linalg Pass. */
-MLIR_CAPI_EXPORTED MlirPass mlirCreateLinalgLinalgLowerTiledLoopsToSCF();
-MLIR_CAPI_EXPORTED void mlirRegisterLinalgLinalgLowerTiledLoopsToSCF();
-
-
-/* Create Linalg Pass. */
 MLIR_CAPI_EXPORTED MlirPass mlirCreateLinalgLinalgLowerToAffineLoops();
 MLIR_CAPI_EXPORTED void mlirRegisterLinalgLinalgLowerToAffineLoops();
 

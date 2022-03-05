@@ -16,7 +16,6 @@ add_mlir_library(SophgoTops
   LINK_LIBS PUBLIC
   MLIRIR
   MLIRSupport
-  MLIRStandard
   MLIRSideEffectInterfaces
   SophgoSupport
 )
