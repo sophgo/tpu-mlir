@@ -33,7 +33,6 @@
 #include <fstream>
 #include <iostream>
 #include <map>
-#include <unordered_map>
 
 #define DEBUG_TYPE "interpreter"
 
@@ -50,15 +49,15 @@ public:
   void setTensor(const std::string &name, const void *data, size_t size);
   std::shared_ptr<std::vector<float>> getTensor(const std::string &name);
   llvm::ArrayRef<int64_t> getTensorShape(const std::string &name);
-  std::vector<std::string> getAllTensorName();
 
 public:
   std::vector<std::string> input_names;
   std::vector<std::string> output_names;
+  std::vector<std::string> all_tensor_names; // activation tensor, without weight
 
 private:
   ModuleOp module;
-  std::unordered_map<std::string, mlir::Value> value_map; // activation value
+  std::map<std::string, mlir::Value> value_map;
   std::map<std::string, std::shared_ptr<InferenceParameter>> inference_map;
   std::map<std::string, std::shared_ptr<std::vector<float>>> mem_map;
 };

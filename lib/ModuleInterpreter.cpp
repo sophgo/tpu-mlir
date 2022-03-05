@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <functional>
 #include <memory>
-#include <mutex>
 #include <numeric>
 
 namespace mlir {
@@ -27,6 +26,9 @@ void ModuleInterpreter::allocate_resources() {
   auto weight_file =
       module->getAttrOfType<StringAttr>("tops.weight_file").str();
   auto wfile = openTensorFile(weight_file);
+  all_tensor_names.clear();
+  value_map.clear();
+  mem_map.clear();
   for (auto func : module.getOps<FuncOp>()) {
     // if (func.getName() != "main") {
     //   continue;
@@ -46,11 +48,12 @@ void ModuleInterpreter::allocate_resources() {
         auto type = result.getType().cast<TensorType>();
         auto count = type.getNumElements();
         auto name = op->getAttrOfType<StringAttr>("name").str();
+        value_map[name] = result;
         if (isa<tops::WeightOp>(op)) {
           mem_map[name] = wfile->readTensor<float>(name, type);
         } else {
           mem_map[name] = std::make_shared<std::vector<float>>(count);
-          value_map[name] = result;
+          all_tensor_names.push_back(name);
         }
         if (isa<tops::InputOp>(op)) {
           input_names.push_back(name);
@@ -137,14 +140,6 @@ ModuleInterpreter::getTensorShape(const std::string &name) {
     llvm_unreachable("Error, getTensorShape failed");
   }
   return it->second.getType().cast<RankedTensorType>().getShape();
-}
-
-std::vector<std::string> ModuleInterpreter::getAllTensorName() {
-  std::vector<std::string> ret;
-  for (auto &kv : value_map) {
-    ret.push_back(kv.first);
-  }
-  return ret;
 }
 
 } // namespace mlir
