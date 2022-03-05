@@ -1,9 +1,9 @@
 ## clone and build llvm
 
 ``` shell
-# 2022-02-21 10:30
+# 2022-03-05 12:30
 git clone https://github.com/llvm/llvm-project.git
-cd llvm-project && git checkout efe5b8ad904bfb1d9abe6ac7123494b534040238 && cd ..
+cd llvm-project && git checkout f909aed671fee194297ba9190f0e4baa4b10d0c2 && cd ..
 mkdir -p llvm-project/build
 cd llvm-project/build
 cmake -G Ninja ../llvm \
@@ -17,22 +17,5 @@ cmake -G Ninja ../llvm \
    -DCMAKE_INSTALL_PREFIX=install
 cmake --build . --target install
 
-# remove all unused bin, only keep mlir-tblgen
-shopt -s extglob
-pushd install/bin/
-for file in `ls !(mlir-tblgen)`; do echo "" > $file; done
-popd
-# remove all unused lib
-# keep:
-# libLLVMCore.a libLLVMSupport.a obj* cmake libMLIRAnalysis.a
-# libMLIRArithmetic.a libMLIRCallInterfaces.a libMLIRControlFlow.a libMLIRIR.a
-# libMLIRControlFlowInterfaces.a libMLIRDialect.a libMLIRInferTypeOpInterface.a
-# libMLIRMlirOptMain.a libMLIROptLib.a libMLIRParser.a libMLIRPass.a libMLIRPDL.a
-# libMLIRPDLInterp.a libMLIRPDLLParser.a libMLIRPDLToPDLInterp.a libMLIRRewrite.a
-# libMLIRSideEffectInterfaces.a libMLIRStandard.a libMLIRSupport.a
-# libMLIRTransforms.a libMLIRTransformUtils.a
-pushd install/lib/
-for file in `ls !(libMLIR*.a|libLLVMCore.a|libLLVMSupport.a|obj*|cmake|...)`; do echo "" > $file; done
+# use clean.sh to remove unused binary
 
-popd
-```

@@ -3,6 +3,7 @@
 #include "sophgo/Support/TensorFile.h"
 #include "sophgo/Dialect/Tops/IR/TopsOps.h"
 #include "mlir/IR/BuiltinOps.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include <algorithm>
 #include <functional>
 #include <memory>
@@ -34,7 +35,7 @@ void ModuleInterpreter::allocate_resources() {
     func.walk([&](Operation *op) {
       if (op == func.getOperation() || isa<tops::NoneOp>(op)) {
         // self
-      } else if (isa<ReturnOp>(op)) {
+      } else if (isa<func::ReturnOp>(op)) {
         for (auto v : op->getOperands()) {
           auto opd = v.getDefiningOp();
           auto name = opd->getAttrOfType<StringAttr>("name").str();

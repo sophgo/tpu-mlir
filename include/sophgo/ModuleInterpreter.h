@@ -25,7 +25,6 @@
 
 #include "sophgo/Interfaces/InferenceInterface.h"
 
-#include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/MLIRContext.h"
 
