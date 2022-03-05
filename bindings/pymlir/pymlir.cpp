@@ -9,8 +9,6 @@
 // -------------
 #include "sophgo/Dialect/Tops/IR/TopsOps.h"
 #include "sophgo/ModuleInterpreter.h"
-
-#include "mlir/Dialect/StandardOps/IR/Ops.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/Dialect.h"
 #include "mlir/IR/BuiltinOps.h"
@@ -20,6 +18,7 @@
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Support/FileUtilities.h"
 #include "mlir/Transforms/Passes.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
@@ -91,7 +90,7 @@ public:
     }
 
     DialectRegistry registry;
-    registry.insert<tops::TopsDialect, StandardOpsDialect>();
+    registry.insert<func::FuncDialect, tops::TopsDialect>();
     context_ = std::make_unique<MLIRContext>(registry);
 
     module_ = parseSourceFile(filename, context_.get());

@@ -10,11 +10,10 @@
 #include "sophgo/InitAll.h"
 #include "sophgo/Dialect/Tops/IR/TopsOps.h"
 #include "mlir/Transforms/Passes.h"
-#include "mlir/Dialect/StandardOps/IR/Ops.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 
 void mlir::sophgo::registerAllDialects(mlir::DialectRegistry &registry) {
-  registry.insert<mlir::tops::TopsDialect>();
-  registry.insert<mlir::StandardOpsDialect>();
+  registry.insert<func::FuncDialect, mlir::tops::TopsDialect>();
 }
 
 void mlir::sophgo::registerAllPasses() {

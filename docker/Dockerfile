@@ -58,7 +58,7 @@ RUN pip3 install --no-cache-dir \
     paramiko jedi==0.17.2 ipython torch==1.10.2 torchvision==0.11.2 \
     onnx==1.10.2 onnxruntime==1.10.0 onnx-simplifier \
     tensorflow==2.6.2 packaging==20.3 Jinja2==2.11.2 \
-    tf2onnx==1.9.3 pycocotools ply gitpython "pybind11[global]"
+    tf2onnx==1.9.3 pycocotools ply gitpython pybind11[global]
 
 #=================== Setup default python =========
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 0
