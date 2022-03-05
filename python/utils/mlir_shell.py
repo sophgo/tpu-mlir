@@ -16,7 +16,7 @@ def mlir_opt(mlirfile, opt_mlirfile):
 
 
 def f32_blobs_compare(a_npz: str, b_npz: str, tolerance: str, excepts=None, show_detail=True):
-    cmd = ["cvi_npz_tool.py", "compare", a_npz, b_npz, "--tolerance", tolerance]
+    cmd = ["npz_tool.py", "compare", a_npz, b_npz, "--tolerance", tolerance]
     if excepts:
         cmd.extend(["--except", excepts])
     if show_detail:

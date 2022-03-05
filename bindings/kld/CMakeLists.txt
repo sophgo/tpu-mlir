@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.5)
+add_library(calibration_math SHARED calibration_math.cpp)
+target_link_libraries(calibration_math pthread)
+target_compile_options(calibration_math PRIVATE -Wl,-soname,calibration_math -fPIC)
+set_target_properties(calibration_math PROPERTIES PREFIX "")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Werror")
+install(TARGETS calibration_math DESTINATION lib)
