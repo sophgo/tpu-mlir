@@ -101,34 +101,27 @@ public:
 
     interpreter_ = std::make_unique<ModuleInterpreter>(module_.get());
     interpreter_->allocate_resources();
+    for (auto &name : interpreter_->input_names) {
+      input_names.append(name);
+    }
+    for (auto &name : interpreter_->output_names) {
+      output_names.append(name);
+    }
+    for (auto &name : interpreter_->all_tensor_names) {
+      all_tensor_names.append(name);
+    }
   }
 
   py::dict getAllTensor() {
     tensor_map_t tensorMap_;
     shape_map_t shapeMap_;
-    auto all_tensor_names = interpreter_->getAllTensorName();
+    auto &all_tensor_names = interpreter_->all_tensor_names;
     for (auto &tensor_name : all_tensor_names) {
       tensorMap_[tensor_name] = interpreter_->getTensor(tensor_name);
       shapeMap_[tensor_name] = interpreter_->getTensorShape(tensor_name);
     }
 
     return getTensorDict(tensorMap_, shapeMap_);
-  }
-  py::list get_input_names() {
-    py::list ret;
-    auto &inputs = interpreter_->input_names;
-    for (auto &i : inputs) {
-      ret.append(i);
-    }
-    return ret;
-  }
-  py::list get_output_names() {
-    py::list ret;
-    auto &outputs = interpreter_->output_names;
-    for (auto &i : outputs) {
-      ret.append(i);
-    }
-    return ret;
   }
 
   void set_tensor(
@@ -144,7 +137,9 @@ public:
   void invoke() { interpreter_->invoke(); }
 
 public:
-  py::list opInfo_;
+  py::list all_tensor_names;
+  py::list input_names;
+  py::list output_names;
   static std::string version;
 
 private:
@@ -153,6 +148,10 @@ private:
   std::string weightFilePath_;
   std::unique_ptr<ModuleInterpreter> interpreter_;
 };
+
+#ifndef MLIR_VERSION
+#define MLIR_VERSION "version unknown"
+#endif
 
 std::string py_module::version = MLIR_VERSION;
 
@@ -163,12 +162,12 @@ PYBIND11_MODULE(pymlir, m) {
   py::class_<py_module>(m, "module", "MLIR Module")
       .def(py::init<>())
       .def("load", &py_module::load, "load module from IR")
-      .def("get_all_tensor", &py_module::getAllTensor, "dump all tensor data")
       .def("set_tensor", &py_module::set_tensor)
       .def("get_tensor", &py_module::get_tensor, "get one tensor data")
-      .def_readwrite("op_info", &py_module::opInfo_)
+      .def("get_all_tensor", &py_module::getAllTensor, "dump all tensor data")
       .def("invoke", &py_module::invoke)
-      .def("get_input_names", &py_module::get_input_names)
-      .def("get_output_names", &py_module::get_output_names)
+      .def_readonly("input_names", &py_module::input_names)
+      .def_readonly("output_names", &py_module::output_names)
+      .def_readonly("all_tensor_names", &py_module::all_tensor_names)
       .def_readonly_static("version", &py_module::version);
 }

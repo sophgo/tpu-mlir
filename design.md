@@ -55,8 +55,6 @@ gdb --args python /work/python/tools/model_runner.py --input resnet18_in_f32.npz
 
 * llvm库精简 (目前从2GB精简到200MB，希望能减到100MB以内)
 
-* op注视补充完整
-
 * docker需要配置成用普通用户权限
 
 * dnnl pool与conv参考matmul优化
@@ -75,9 +73,13 @@ gdb --args python /work/python/tools/model_runner.py --input resnet18_in_f32.npz
 
 * sophgo-opt为什么编译时间这么久，需要研究一下
 
-* 为了省时间，直接用晶视的npz_tool，后续再做优化
+* 为了省时间，直接用晶视的npz_tool/calibation_tool，后续再做优化。其中cali的min和max直接取最小值和最大值，是否也应该做kld算法求min/max？另外tune没有加入，作用很大，后续再加入。
 
 * resnet18.onnx (40多M，目前用于测试，后续删掉)
+
+* install内容很多，后期再整理一下
+
+* mlir近期Verifier.cpp加入了一个OpTrait::IsTerminator的判断，会触发assert，目前现象来看像是mlir自身的bug。先删掉这个判断，不会照成任何影响。后期再升级llvm，再看会不会触发这个问题。
 
 ## 一些思考
 
