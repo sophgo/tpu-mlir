@@ -30,22 +30,6 @@
 %4 = "tops.Conv"(%1, %2, %3) {kernel_shape = [3, 3], name = "output_Conv"}
 ```
 
-## 代码编译方法
-source ./envsetup.sh
-./build.sh
-
-## 工具使用方式
-
-``` shell
-model_transform.py \
-    --model_type onnx \
-    --model_name resnet18 \
-    --model_def  ../resnet18.onnx \
-    --input ../resnet18_in_f32.npz \
-    --mlir resnet18.mlir
-
-```
-
 #### 调试方法
 ``` shell
 gdb --args python /work/python/tools/model_runner.py --input resnet18_in_f32.npz --model resnet18_opt.mlir --output resnet18_out.npz
