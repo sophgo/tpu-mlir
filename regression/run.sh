@@ -9,7 +9,7 @@ model_transform.py \
     --input ../resnet18_in_f32.npz \
     --mlir resnet18.mlir
 
-#calibration
+# do calibration
 mkdir -p dataset
 cp ../resnet18_in_f32.npz dataset/
 run_calibration.py resnet18.mlir \
@@ -17,4 +17,8 @@ run_calibration.py resnet18.mlir \
     --input_num 1 \
     -o resnet18_cali_table
 
+# import calibration
+sophgo-opt resnet18.mlir \
+    --import-calibration='calibration-table=resnet18_cali_table' \
+    -o resnet18_cali.mlir
 popd

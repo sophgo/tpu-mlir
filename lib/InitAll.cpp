@@ -9,6 +9,7 @@
 
 #include "sophgo/InitAll.h"
 #include "sophgo/Dialect/Tops/IR/TopsOps.h"
+#include "sophgo/Dialect/Tops/Transforms/Passes.h"
 #include "mlir/Transforms/Passes.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 
@@ -17,6 +18,7 @@ void mlir::sophgo::registerAllDialects(mlir::DialectRegistry &registry) {
 }
 
 void mlir::sophgo::registerAllPasses() {
-  mlir::registerCanonicalizerPass();
+  registerCanonicalizerPass();
+  tops::registerTopsPasses();
 }
 

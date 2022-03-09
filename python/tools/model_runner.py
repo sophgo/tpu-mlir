@@ -9,17 +9,15 @@ import onnxruntime
 def mlir_inference(inputs: dict, mlir_file: str, dump_all:bool = True) -> dict:
     module = pymlir.module()
     module.load(mlir_file)
-    input_names = module.get_input_names()
-    for name in input_names:
+    for name in module.input_names:
         assert (name in inputs)
         module.set_tensor(name, inputs[name])
     module.invoke()
     tensors = module.get_all_tensor()
     if dump_all:
        return tensors
-    output_names = module.get_output_names()
     outputs = dict()
-    for name in output_names:
+    for name in module.output_names:
        outputs[name] = tensors[name]
     return outputs
 
