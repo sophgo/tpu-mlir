@@ -252,7 +252,7 @@ class MLIRImporter(object):
             output_txt = "({})".format(output_txt)
 
         tpu_func = """
-            module attributes {{tops.weight_file= \"{weight_file}\"}} {{
+            module attributes {{mlir.weight_file= \"{weight_file}\", mlir.state=\"TOPS_F32\"}} {{
                 func @main({args}) -> {output} {{
                     %0 = \"tops.None\"() : () -> none
             }}}}
