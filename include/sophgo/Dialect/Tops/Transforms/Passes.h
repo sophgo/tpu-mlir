@@ -15,11 +15,12 @@
 #include "sophgo/Dialect/Tops/IR/TopsOps.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/Quant/QuantOps.h"
 
 namespace mlir {
 namespace tops {
 
-std::unique_ptr<OperationPass<ModuleOp>> createImportCalibrationPass();
+std::unique_ptr<OperationPass<ModuleOp>> createImportCalibrationTablePass();
 
 #define GEN_PASS_REGISTRATION
 #define GEN_PASS_CLASSES

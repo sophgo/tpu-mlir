@@ -19,6 +19,7 @@ add_mlir_library(SophgoTops
   MLIRPass
   MLIRSupport
   MLIRFunc
+  MLIRQuant
   MLIRSideEffectInterfaces
   SophgoSupport
 )
