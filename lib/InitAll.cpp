@@ -12,13 +12,15 @@
 #include "sophgo/Dialect/Tops/Transforms/Passes.h"
 #include "mlir/Transforms/Passes.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/Quant/QuantOps.h"
+#include "mlir/IR/Dialect.h"
 
 void mlir::sophgo::registerAllDialects(mlir::DialectRegistry &registry) {
-  registry.insert<func::FuncDialect, mlir::tops::TopsDialect>();
+  registry.insert<func::FuncDialect, mlir::tops::TopsDialect,
+                  mlir::quant::QuantizationDialect>();
 }
 
 void mlir::sophgo::registerAllPasses() {
   registerCanonicalizerPass();
   tops::registerTopsPasses();
 }
-
