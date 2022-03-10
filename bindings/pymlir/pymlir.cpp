@@ -19,6 +19,7 @@
 #include "mlir/Support/FileUtilities.h"
 #include "mlir/Transforms/Passes.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/Quant/QuantOps.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
@@ -90,7 +91,7 @@ public:
     }
 
     DialectRegistry registry;
-    registry.insert<func::FuncDialect, tops::TopsDialect>();
+    registry.insert<func::FuncDialect, tops::TopsDialect, quant::QuantizationDialect>();
     context_ = std::make_unique<MLIRContext>(registry);
 
     module_ = parseSourceFile(filename, context_.get());

@@ -63,6 +63,8 @@ gdb --args python /work/python/tools/model_runner.py --input resnet18_in_f32.npz
 
 * install内容很多，后期再整理一下
 
+* 当return的op类型被改动后，需要手写代码把FuncOp的类型同步，不然出错；应该有自动的方法。待优化（如ImportCalibrationTablePass)
+
 * mlir近期Verifier.cpp加入了一个OpTrait::IsTerminator的判断，会触发assert，目前现象来看像是mlir自身的bug。先删掉这个判断，不会照成任何影响。后期再升级llvm，再看会不会触发这个问题。
 
 ## 一些思考

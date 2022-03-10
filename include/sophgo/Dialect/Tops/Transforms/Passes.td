@@ -15,14 +15,16 @@
 
 include "mlir/Pass/PassBase.td"
 
-def ImportCalibration : Pass<"import-calibration", "ModuleOp"> {
+def ImportCalibrationTable : Pass<"import-calibration-table", "ModuleOp"> {
   let summary = "Import calibration table by sophgo-opt";
-  let constructor = "mlir::tops::createImportCalibrationPass()";
+  let constructor = "mlir::tops::createImportCalibrationTablePass()";
   let options = [
-    Option<"calibrationTable", "calibration-table", "std::string", /*default=*/"",
+    Option<"tableFile", "file", "std::string", /*default=*/"",
            "calibration table file path">,
+    Option<"isAsymmetric", "asymmetric", "bool", /*default=*/"true",
+           "true for asymmetric quantization, or false for symmetric">,
   ];
-  let dependentDialects = ["tops::TopsDialect"];
+  let dependentDialects = ["tops::TopsDialect", "quant::QuantizationDialect"];
 }
 
 #endif

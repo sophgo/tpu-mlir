@@ -19,6 +19,6 @@ run_calibration.py resnet18.mlir \
 
 # import calibration
 sophgo-opt resnet18.mlir \
-    --import-calibration='calibration-table=resnet18_cali_table' \
+    --import-calibration-table='file=resnet18_cali_table asymmetric=true' \
     -o resnet18_cali.mlir
 popd

@@ -2,7 +2,7 @@
 
 This project provides compiler to transform NN model into sophgo graph with sophgo runtime support.
 
-Get more info from [sophgo](sophgo.com).
+Get more info from [sophgo](http://sophgo.com).
 
 ## Build
 
