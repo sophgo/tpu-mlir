@@ -20,6 +20,7 @@
 
 #include "sophgo/Dialect/Tops/Transforms/Passes.h"
 #include "sophgo/Dialect/Tops/IR/TopsOps.h"
+#include "sophgo/Support/Utils.h"
 #include "sophgo/Interfaces/InferenceInterface.h"
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/IR/Builders.h"
@@ -33,9 +34,6 @@
 #include <sstream>
 #include <fstream>
 #include <regex>
-#include <unordered_map>
-
-#define DEBUG_TYPE "import_calibration_table"
 
 using namespace llvm;
 
@@ -54,7 +52,12 @@ public:
   void runOnOperation() override {
     llvm::errs() << "import calibration table:" << this->tableFile
                  << ", is asymmetric " << this->isAsymmetric << "\n";
-
+    auto module = getOperation();
+    auto state = getMlirState(module);
+    if (state != "TOPS_F32") {
+      module.dump();
+      llvm_unreachable("mlir state should be TOPS_F32");
+    }
     std::map<std::string, cali_info> calibration_map;
     std::ifstream infile(this->tableFile);
     if (!infile) {
@@ -87,7 +90,7 @@ public:
       }
     }
 
-    for (auto func : getOperation().getOps<FuncOp>()) {
+    for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](Operation *op) {
         if (isa<mlir::InferenceInterface>(op) || isa<tops::InputOp>(op)) {
           auto name = op->getAttrOfType<StringAttr>("name").str();
@@ -117,6 +120,7 @@ public:
                                    llvm::ArrayRef<mlir::Type>{returns});
       func.setType(fnType);
     }
+    setMlirState(module, "TOPS_CALIBRATED");
   }
 };
 

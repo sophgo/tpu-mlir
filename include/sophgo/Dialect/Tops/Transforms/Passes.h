@@ -21,7 +21,7 @@ namespace mlir {
 namespace tops {
 
 std::unique_ptr<OperationPass<ModuleOp>> createImportCalibrationTablePass();
-
+std::unique_ptr<OperationPass<ModuleOp>> createQuantizePass();
 #define GEN_PASS_REGISTRATION
 #define GEN_PASS_CLASSES
 #include "sophgo/Dialect/Tops/Transforms/Passes.h.inc"

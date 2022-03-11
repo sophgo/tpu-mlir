@@ -12,7 +12,6 @@ source $DIR/docker.env
 
 CMD="
 $SUDO docker build \
-    --build-arg LOC="Asia/Shanghai" \
     -t $REPO/$IMAGE:$TAG_BASE \
     -f $DIR/Dockerfile_ubuntu-${BASE_IMAGE_VERSION} \
     .
