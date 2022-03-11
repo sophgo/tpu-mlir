@@ -5,7 +5,7 @@ LABEL maintainer pengchao.hu@sophgo.com
 COPY sources.list.aliyun /etc/apt/sources.list.aliyun
 
 RUN cp /etc/apt/sources.list /etc/apt/sources.list.origin; \
-    cp /etc/apt/sources.list.aliyun /etc/apt/sources.list; \
+    cp /etc/apt/sources.list.aliyun /etc/apt/sources.list;
 
 # ================== zoneinfo ==================
 RUN apt-get update \
@@ -47,28 +47,34 @@ RUN rm -rf /var/lib/apt/lists/*
 
 RUN pip3 install --upgrade pip; \
     pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple; \
-    pip3 config set global.index-url https://mirrors.aliyun.com/pypi/simple; \
+    pip3 config set global.index-url https://mirrors.aliyun.com/pypi/simple;
 
-RUN pip3 install --no-cache-dir --upgrade setuptools
+RUN pip3 install --no-cache-dir --upgrade pathlib setuptools
 RUN pip3 install --no-cache-dir \
-    Cython numpy scipy==1.4.1 scikit-image matplotlib \
+    Cython numpy scipy scikit-image matplotlib \
     wheel leveldb decorator networkx nose python-dateutil \
-    protobuf pyyaml Pillow six lmdb pathlib tqdm enum34 \
+    protobuf pyyaml Pillow six lmdb tqdm enum34 \
     termcolor opencv-python-headless argcomplete jupyterlab \
-    paramiko jedi==0.17.2 ipython torch==1.10.2 torchvision==0.11.2 \
-    onnx==1.10.2 onnxruntime==1.10.0 onnx-simplifier \
-    tensorflow==2.6.2 packaging==20.3 Jinja2==2.11.2 \
-    tf2onnx==1.9.3 pycocotools ply gitpython pybind11[global]
+    paramiko jedi ipython torch torchvision onnx onnxruntime \
+    onnx-simplifier tensorflow packaging Jinja2 \
+    tf2onnx pycocotools ply gitpython pybind11[global]
 
 #=================== Setup default python =========
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 0
 RUN update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 0
 
-# ================== Install repo v2.8 ==================
-ADD files/repo /usr/bin
-ADD files/agent.jar /root
+# COPY gosu /usr/local/bin/
+# COPY gosu.asc /usr/local/bin/
+# RUN set - x \
+#     && chmod +x /usr/local/bin/gosu \
+#     && gosu nobody true
+
+# COPY docker-entrypoint.sh /usr/local/bin/
+# RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+# ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
 # ================= Cleanup =================
 RUN rm -rf /tmp/*
 
 WORKDIR /work/
+CMD ["bash"]

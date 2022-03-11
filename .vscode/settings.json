@@ -65,7 +65,8 @@
         "new": "cpp",
         "shared_mutex": "cpp",
         "stdexcept": "cpp",
-        "thread": "cpp"
+        "thread": "cpp",
+        "variant": "cpp"
     },
     "files.autoSave": "afterDelay",
     "files.trimTrailingWhitespace": true,

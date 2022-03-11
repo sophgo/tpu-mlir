@@ -11,8 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef SOPHGO_INTERFACES_INFERENCEINTERFACE_H_
-#define SOPHGO_INTERFACES_INFERENCEINTERFACE_H_
+#pragma once
 
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinTypes.h"
@@ -28,4 +27,3 @@ namespace mlir {
 /// Include the ODS generated interface header files.
 #include "sophgo/Interfaces/InferenceInterface.h.inc"
 
-#endif // SOPHGO_INTERFACES_INFERENCEINTERFACE_H_

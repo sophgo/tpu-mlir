@@ -1,6 +1,7 @@
 
 #include "sophgo/ModuleInterpreter.h"
 #include "sophgo/Support/TensorFile.h"
+#include "sophgo/Support/Utils.h"
 #include "sophgo/Dialect/Tops/IR/TopsOps.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
@@ -23,9 +24,8 @@ ModuleInterpreter::~ModuleInterpreter() {
 }
 
 void ModuleInterpreter::allocate_resources() {
-  auto weight_file =
-      module->getAttrOfType<StringAttr>("mlir.weight_file").str();
-  auto wfile = openTensorFile(weight_file);
+  auto weight_file = getMlirWeightFile(module);
+  auto wfile = openTensorFile(weight_file.str());
   all_tensor_names.clear();
   value_map.clear();
   mem_map.clear();
