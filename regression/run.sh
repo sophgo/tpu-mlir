@@ -24,7 +24,7 @@ sophgo-opt resnet18.mlir \
 
 # quantize mlir
 sophgo-opt resnet18_cali.mlir \
-    --quantize="mode=INT8 asymmetric=false" \
+    --quantize="mode=INT8 asymmetric=false chip=bm1684" \
     -o resnet18_int8.mlir
 
 popd

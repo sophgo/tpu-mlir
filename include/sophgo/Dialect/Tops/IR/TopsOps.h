@@ -15,7 +15,8 @@
 #include "mlir/IR/OpImplementation.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 #include "sophgo/Interfaces/InferenceInterface.h"
-
+#include "sophgo/Interfaces/QuantizeInterface.h"
+#include "sophgo/Support/TensorFile.h"
 #include "sophgo/Dialect/Tops/IR/TopsOpsDialect.h.inc"
 #define GET_OP_CLASSES
 #include "sophgo/Dialect/Tops/IR/TopsOps.h.inc"

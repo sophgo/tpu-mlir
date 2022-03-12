@@ -1,5 +1,6 @@
 set(LLVM_OPTIONAL_SOURCES
   InferenceInterface.cpp
+  QuantizeInterface.cpp
   )
 
 function(add_mlir_interface_library name)
@@ -18,3 +19,4 @@ function(add_mlir_interface_library name)
 endfunction(add_mlir_interface_library)
 
 add_mlir_interface_library(InferenceInterface)
+add_mlir_interface_library(QuantizeInterface)

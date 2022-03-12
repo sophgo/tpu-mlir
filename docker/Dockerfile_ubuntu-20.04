@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     bison flex gettext indent meson libglib2.0-dev clang-format \
     libboost-all-dev libgflags-dev libgoogle-glog-dev libhdf5-serial-dev \
     libleveldb-dev liblmdb-dev libprotobuf-dev libsnappy-dev \
-    protobuf-compiler libopenblas-dev
+    protobuf-compiler libopenblas-dev libncurses5-dev
 
 # for 32bit arch
 RUN dpkg --add-architecture i386
