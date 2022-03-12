@@ -8,7 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "sophgo/Dialect/Tops/IR/TopsOps.h"
-
+#include "sophgo/Support/Utils.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/PatternMatch.h"
@@ -31,6 +31,7 @@ void TopsDialect::initialize() {
 #define GET_OP_LIST
 #include "sophgo/Dialect/Tops/IR/TopsOps.cpp.inc"
       >();
+  wFile = nullptr;
 }
 
 //===----------------------------------------------------------------------===//
@@ -162,3 +163,32 @@ void tops::MatMulOp::parseParam(int64_t &batch, int64_t &M, int64_t &K,
                         std::multiplies<int64_t>());
   }
 }
+
+template <typename T> std::shared_ptr<std::vector<T>> tops::WeightOp::read() {
+  auto op = getOperation();
+  auto dialect = op->getDialect();
+  auto topsDialect = llvm::cast<TopsDialect>(dialect);
+  if (topsDialect->wFile == nullptr) {
+    auto moduleOp = op->getParentOp();
+    while (moduleOp && !isa<mlir::ModuleOp>(moduleOp)) {
+      moduleOp = moduleOp->getParentOp();
+    }
+    if (!moduleOp) {
+      dump();
+      llvm_unreachable("can't get module op");
+    }
+    auto mOp = llvm::cast<ModuleOp>(moduleOp);
+    auto weight_file = mlir::getMlirWeightFile(mOp);
+    topsDialect->loadWeightFile(weight_file);
+  }
+  auto type = output().getType().cast<RankedTensorType>();
+  return topsDialect->wFile->readTensor<T>(name(), type);
+}
+
+template <typename T>
+LogicalResult tops::WeightOp::write(const std::vector<T> &) {
+  return success();
+}
+
+template std::shared_ptr<std::vector<float> > tops::WeightOp::read();
+template LogicalResult tops::WeightOp::write(const std::vector<float> &);

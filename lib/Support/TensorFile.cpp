@@ -26,45 +26,18 @@ using namespace mlir;
 namespace mlir {
 
 std::unique_ptr<TensorFile>
-openInputTensorFile(StringRef inputFilename, std::string *errorMessage) {
-  std::error_code error;
-  auto result = std::make_unique<TensorFile>(inputFilename, error, true, false);
-  if (error) {
-    if (errorMessage)
-      *errorMessage = "cannot open input tensor file '" + inputFilename.str() +
-                      "': " + error.message();
-    return nullptr;
-  }
-
-  return result;
+openInputTensorFile(StringRef inputFilename) {
+  return std::make_unique<TensorFile>(inputFilename, true, false);
 }
 
 std::unique_ptr<TensorFile>
-openOutputTensorFile(llvm::StringRef outputFilename, std::string *errorMessage) {
-  std::error_code error;
-  auto result = std::make_unique<TensorFile>(outputFilename, error, false, true);
-  if (error) {
-    if (errorMessage)
-      *errorMessage = "cannot open output tensor file '" + outputFilename.str() +
-                      "': " + error.message();
-    return nullptr;
-  }
-
-  return result;
+openOutputTensorFile(llvm::StringRef outputFilename) {
+  return std::make_unique<TensorFile>(outputFilename, false, true);
 }
 
 std::unique_ptr<TensorFile>
-openTensorFile(llvm::StringRef filename, std::string *errorMessage) {
-  std::error_code error;
-  auto result = std::make_unique<TensorFile>(filename, error, false);
-  if (error) {
-    if (errorMessage)
-      *errorMessage = "cannot open tensor file '" + filename.str() +
-                      "': " + error.message();
-    return nullptr;
-  }
-
-  return result;
+openTensorFile(llvm::StringRef filename) {
+  return std::make_unique<TensorFile>(filename, false);
 }
 
 } // namespace mlir
