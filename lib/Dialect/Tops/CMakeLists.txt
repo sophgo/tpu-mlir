@@ -10,6 +10,7 @@ add_mlir_library(SophgoTops
   MLIRTopsOpsIncGen
   MLIRTopsPassIncGen
   MLIRInferenceInterfaceIncGen
+  MLIRQuantizeInterfaceIncGen
 
   LINK_COMPONENTS
   Core

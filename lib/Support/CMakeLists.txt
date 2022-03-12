@@ -8,4 +8,5 @@ add_llvm_library(SophgoSupport
   MLIRSupport
   cnpy
   dnnl
+  z
 )
