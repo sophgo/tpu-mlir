@@ -8,6 +8,7 @@
 // pure C++ code
 // -------------
 #include "sophgo/Dialect/Tops/IR/TopsOps.h"
+#include "sophgo/Dialect/Tpu/IR/TpuOps.h"
 #include "sophgo/ModuleInterpreter.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/Dialect.h"
@@ -29,6 +30,7 @@
 #include "llvm/Support/SourceMgr.h"
 
 using namespace mlir;
+using namespace sophgo;
 
 typedef std::map<std::string, std::shared_ptr<std::vector<float>>> tensor_map_t;
 typedef std::map<std::string, std::vector<int64_t>> shape_map_t;
@@ -91,7 +93,7 @@ public:
     }
 
     DialectRegistry registry;
-    registry.insert<func::FuncDialect, tops::TopsDialect, quant::QuantizationDialect>();
+    registry.insert<func::FuncDialect, tops::TopsDialect, tpu::TpuDialect,quant::QuantizationDialect>();
     context_ = std::make_unique<MLIRContext>(registry);
 
     module_ = parseSourceFile(filename, context_.get());

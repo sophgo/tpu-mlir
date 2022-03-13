@@ -17,19 +17,19 @@ include "mlir/Pass/PassBase.td"
 
 def ImportCalibrationTable : Pass<"import-calibration-table", "ModuleOp"> {
   let summary = "Import calibration table by sophgo-opt";
-  let constructor = "mlir::tops::createImportCalibrationTablePass()";
+  let constructor = "createImportCalibrationTablePass()";
   let options = [
     Option<"tableFile", "file", "std::string", /*default=*/"",
            "calibration table file path">,
     Option<"isAsymmetric", "asymmetric", "bool", /*default=*/"true",
            "true for asymmetric quantization, or false for symmetric">,
   ];
-  let dependentDialects = ["tops::TopsDialect", "quant::QuantizationDialect"];
+  let dependentDialects = ["tops::TopsDialect", "mlir::quant::QuantizationDialect"];
 }
 
 def Quantize : Pass<"quantize", "ModuleOp"> {
   let summary = "quantize mlir by sophgo-opt";
-  let constructor = "mlir::tops::createQuantizePass()";
+  let constructor = "createQuantizePass()";
   let options = [
     Option<"mode", "mode", "std::string", /*default=*/"",
            "default quantization mode: INT8/BF16">,
@@ -38,7 +38,7 @@ def Quantize : Pass<"quantize", "ModuleOp"> {
     Option<"isAsymmetric", "asymmetric", "bool", /*default=*/"true",
            "true for asymmetric quantization, or false for symmetric">,
   ];
-  let dependentDialects = ["tops::TopsDialect", "quant::QuantizationDialect"];
+  let dependentDialects = ["TopsDialect", "mlir::quant::QuantizationDialect"];
 }
 
 #endif

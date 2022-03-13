@@ -8,12 +8,12 @@
 #include "mlir/Pass/Pass.h"
 
 using namespace mlir;
-using namespace mlir::tops;
+using namespace sophgo::tops;
 
-struct TopsFuseReshape : public OpRewritePattern<tops::ReshapeOp> {
+struct TopsFuseReshape : public OpRewritePattern<ReshapeOp> {
   using OpRewritePattern::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(tops::ReshapeOp op,
+  LogicalResult matchAndRewrite(ReshapeOp op,
                                 PatternRewriter &rewriter) const override {
     // TODO: support to convert batchnorm to scale
     return failure();
@@ -21,6 +21,6 @@ struct TopsFuseReshape : public OpRewritePattern<tops::ReshapeOp> {
 };
 
 void ReshapeOp::getCanonicalizationPatterns(RewritePatternSet &results,
-                                              MLIRContext *context) {
+                                            MLIRContext *context) {
   results.insert<TopsFuseReshape>(context);
 }

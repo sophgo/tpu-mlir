@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
   DialectRegistry registry;
   sophgo::registerAllDialects(registry);
 
-  return mlir::asMainReturnCode(mlir::MlirOptMain(
-      argc, argv, "Sophgo MLIR modular optimizer driver\n", registry,
+  return asMainReturnCode(MlirOptMain(
+      argc, argv, "Sophgo MLIR module optimizer driver\n", registry,
       /*preloadDialectsInContext=*/false));
 }

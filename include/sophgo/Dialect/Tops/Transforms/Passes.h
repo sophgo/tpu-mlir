@@ -17,7 +17,8 @@
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Quant/QuantOps.h"
 
-namespace mlir {
+using namespace mlir;
+namespace sophgo {
 namespace tops {
 
 std::unique_ptr<OperationPass<ModuleOp>> createImportCalibrationTablePass();

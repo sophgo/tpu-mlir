@@ -19,7 +19,7 @@ include "mlir/IR/OpBase.td"
 def QuantizeInterface : OpInterface<"QuantizeInterface"> {
   let description = [{
   }];
-  let cppNamespace = "::mlir";
+  let cppNamespace = "::sophgo";
   let methods = [
       InterfaceMethod<
         /*desc=*/[{

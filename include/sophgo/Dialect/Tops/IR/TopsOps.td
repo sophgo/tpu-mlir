@@ -15,7 +15,7 @@ include "sophgo/Interfaces/QuantizeInterface.td"
 def Tops_Dialect : Dialect {
   let name = "tops";
   let summary = "A tops dialect for the SOPHGO specification";
-  let cppNamespace = "::mlir::tops";
+  let cppNamespace = "::sophgo::tops";
   let extraClassDeclaration = [{
   void loadWeightFile(llvm::StringRef file) {
     wFile = std::make_unique<mlir::TensorFile>(file, false);
@@ -57,7 +57,7 @@ def Tops_WeightOp : Tops_Op<"Weight", [NoSideEffect]> {
     template<typename T>
     std::shared_ptr<std::vector<T>> read();
     template<typename T>
-    LogicalResult write(const std::vector<T>&);
+    mlir::LogicalResult write(const std::vector<T>&);
   }];
 }
 

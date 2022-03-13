@@ -37,8 +37,8 @@
 #include <unordered_map>
 
 using namespace llvm;
-
-namespace mlir {
+using namespace mlir;
+namespace sophgo {
 namespace tops {
 
 class QuantizePass
