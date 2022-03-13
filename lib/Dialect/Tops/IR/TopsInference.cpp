@@ -22,6 +22,8 @@
 #include "llvm/Support/Casting.h"
 #include "dnnl.hpp"
 #include "omp.h"
+
+using namespace sophgo;
 using namespace mlir;
 
 int omp_schedule(int count) {

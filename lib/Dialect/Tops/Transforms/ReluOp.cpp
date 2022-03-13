@@ -8,23 +8,21 @@
 #include "mlir/Pass/Pass.h"
 
 using namespace mlir;
-using namespace mlir::tops;
+using namespace sophgo::tops;
 
 static bool supportFuseRelu(Operation *op) {
-  if (matchPattern(op, m_Op<tops::ConvOp>()) ||
-      matchPattern(op, m_Op<tops::MaxPoolOp>()) ||
-      matchPattern(op, m_Op<tops::AvgPoolOp>()) ||
-      matchPattern(op, m_Op<tops::MatMulOp>()) ||
-      matchPattern(op, m_Op<tops::AddOp>())) {
+  if (matchPattern(op, m_Op<ConvOp>()) || matchPattern(op, m_Op<MaxPoolOp>()) ||
+      matchPattern(op, m_Op<AvgPoolOp>()) ||
+      matchPattern(op, m_Op<MatMulOp>()) || matchPattern(op, m_Op<AddOp>())) {
     return true;
   }
   return false;
 }
 
-struct TopsFuseRelu : public OpRewritePattern<tops::ReluOp> {
+struct TopsFuseRelu : public OpRewritePattern<ReluOp> {
   using OpRewritePattern::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(tops::ReluOp op,
+  LogicalResult matchAndRewrite(ReluOp op,
                                 PatternRewriter &rewriter) const override {
     auto formerOp = op.input().getDefiningOp();
     if (!formerOp->getResult(0).hasOneUse())
@@ -42,8 +40,7 @@ struct TopsFuseRelu : public OpRewritePattern<tops::ReluOp> {
   }
 };
 
-
 void ReluOp::getCanonicalizationPatterns(RewritePatternSet &results,
-                                              MLIRContext *context) {
+                                         MLIRContext *context) {
   results.insert<TopsFuseRelu>(context);
 }

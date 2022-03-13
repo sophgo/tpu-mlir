@@ -2,6 +2,7 @@
 #include "sophgo/ModuleInterpreter.h"
 #include "sophgo/Support/Utils.h"
 #include "sophgo/Dialect/Tops/IR/TopsOps.h"
+#include "sophgo/Dialect/Tpu/IR/TpuOps.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include <algorithm>
@@ -9,12 +10,14 @@
 #include <memory>
 #include <numeric>
 
-namespace mlir {
+using namespace mlir;
+
+namespace sophgo {
 
 ModuleInterpreter::~ModuleInterpreter() {
   for (auto func : module.getOps<FuncOp>()) {
     func.walk([&](Operation *op) {
-      if (auto infer_op = llvm::dyn_cast<mlir::InferenceInterface>(op)) {
+      if (auto infer_op = llvm::dyn_cast<InferenceInterface>(op)) {
         auto name = op->getAttrOfType<StringAttr>("name").str();
         infer_op.deinit(*inference_map[name]);
       }
@@ -59,7 +62,7 @@ void ModuleInterpreter::allocate_resources() {
     });
     // input output buffers for all ops
     func.walk([&](Operation *op) {
-      if (auto infer_op = llvm::dyn_cast<mlir::InferenceInterface>(op)) {
+      if (auto infer_op = llvm::dyn_cast<InferenceInterface>(op)) {
         auto name = op->getAttrOfType<StringAttr>("name").str();
         auto param = std::make_shared<InferenceParameter>();
         param->outputs.push_back(mem_map[name]->data());
@@ -92,7 +95,7 @@ void ModuleInterpreter::invoke() {
     // if (func.getName() != "main") {
     //   continue;
     // }
-    func.walk([&](mlir::InferenceInterface infer_op) {
+    func.walk([&](InferenceInterface infer_op) {
       auto name = infer_op->getAttrOfType<StringAttr>("name").str();
       if (failed(infer_op.inference(*inference_map[name]))) {
         infer_op.dump();

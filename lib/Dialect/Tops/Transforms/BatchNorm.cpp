@@ -8,12 +8,12 @@
 #include "mlir/Pass/Pass.h"
 
 using namespace mlir;
-using namespace mlir::tops;
+using namespace sophgo::tops;
 
-struct TopsFuseBatchNorm : public OpRewritePattern<tops::BatchNormOp> {
+struct TopsFuseBatchNorm : public OpRewritePattern<BatchNormOp> {
   using OpRewritePattern::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(tops::BatchNormOp op,
+  LogicalResult matchAndRewrite(BatchNormOp op,
                                 PatternRewriter &rewriter) const override {
     // TODO: support to convert batchnorm to scale
     return failure();

@@ -17,13 +17,13 @@
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Operation.h"
 
-namespace mlir {
-  struct InferenceParameter {
-    std::vector<float*> inputs;
-    std::vector<float*> outputs;
-    void * handle = nullptr;
-  };
-}
+namespace sophgo {
+struct InferenceParameter {
+  std::vector<float *> inputs;
+  std::vector<float *> outputs;
+  void *handle = nullptr;
+};
+} // namespace sophgo
+
 /// Include the ODS generated interface header files.
 #include "sophgo/Interfaces/InferenceInterface.h.inc"
-
