@@ -11,11 +11,9 @@
 
 #include "mlir/IR/Dialect.h"
 
-namespace mlir {
 namespace sophgo {
 
 void registerAllDialects(mlir::DialectRegistry &registry);
 void registerAllPasses();
 
-} // namespace torch
-} // namespace mlir
+}

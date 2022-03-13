@@ -8,10 +8,12 @@
 //===----------------------------------------------------------------------===//
 
 #include "sophgo/Dialect/Tops/IR/TopsOps.h"
+#include "sophgo/Dialect/Tpu/IR/TpuOps.h"
 #include "sophgo/Interfaces/QuantizeInterface.h"
 #include "sophgo/Support/DnnlConv.h"
 #include "sophgo/Support/DnnlPool.h"
 #include "sophgo/Support/DnnlMatMul.h"
+#include "sophgo/Support/Utils.h"
 
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
@@ -21,6 +23,8 @@
 #include "llvm/ADT/StringMap.h"
 #include "llvm/Support/Casting.h"
 #include "dnnl.hpp"
+
+using namespace sophgo;
 using namespace mlir;
 
 void tops::ConvOp::quantize_int8() {
@@ -29,9 +33,17 @@ void tops::ConvOp::quantize_int8() {
   bool is_dw, with_bias, relu;
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
              pl, pr, dh, dw, is_dw, with_bias, relu);
+  // auto filterOp = cast<tops::WeightOp>(filter().getDefiningOp());
+  // auto biasOp = cast<tops::WeightOp>(bias().getDefiningOp());
+  // auto filter = filterOp.read<float>();
+  // auto bias = biasOp.read<float>();
+  // auto type = output().getType().cast<RankedTensorType>();
+  // auto fmax = findMaxabs(filter->data(), filter->size());
+  // to be continue (pengchao.hu)
 }
 
 void tops::ReluOp::quantize_int8() {
+  llvm_unreachable("Unsupport now");
 }
 
 void tops::AddOp::quantize_int8() {

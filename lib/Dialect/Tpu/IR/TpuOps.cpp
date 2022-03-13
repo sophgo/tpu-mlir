@@ -7,7 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Dialect/Tops/IR/TopsOps.h"
+#include "sophgo/Dialect/Tpu/IR/TpuOps.h"
 #include "sophgo/Support/Utils.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
@@ -19,36 +19,34 @@
 #include <numeric>
 
 using namespace mlir;
-using namespace sophgo;
-using namespace sophgo::tops;
+using namespace sophgo::tpu;
 
 //===----------------------------------------------------------------------===//
 // Dialect initialize method.
 //===----------------------------------------------------------------------===//
-#include "sophgo/Dialect/Tops/IR/TopsOpsDialect.cpp.inc"
+#include "sophgo/Dialect/Tpu/IR/TpuOpsDialect.cpp.inc"
 
-void TopsDialect::initialize() {
+void TpuDialect::initialize() {
   addOperations<
 #define GET_OP_LIST
-#include "sophgo/Dialect/Tops/IR/TopsOps.cpp.inc"
+#include "sophgo/Dialect/Tpu/IR/TpuOps.cpp.inc"
       >();
-  wFile = nullptr;
 }
 
 //===----------------------------------------------------------------------===//
-// Tops Operator Definitions.
+// Tpu Operator Definitions.
 //===----------------------------------------------------------------------===//
 
 #define GET_OP_CLASSES
-#include "sophgo/Dialect/Tops/IR/TopsOps.cpp.inc"
+#include "sophgo/Dialect/Tpu/IR/TpuOps.cpp.inc"
 
 void ConvOp::parseParam(int64_t &n, int64_t &ic, int64_t &ih, int64_t &iw,
-                        int64_t &oc, int64_t &oh, int64_t &ow, int64_t &g,
-                        int64_t &kh, int64_t &kw, int64_t &ins_h,
-                        int64_t &ins_w, int64_t &sh, int64_t &sw, int64_t &pt,
-                        int64_t &pb, int64_t &pl, int64_t &pr, int64_t &dh,
-                        int64_t &dw, bool &is_dw, bool &with_bias,
-                        bool &do_relu) {
+                              int64_t &oc, int64_t &oh, int64_t &ow, int64_t &g,
+                              int64_t &kh, int64_t &kw, int64_t &ins_h,
+                              int64_t &ins_w, int64_t &sh, int64_t &sw,
+                              int64_t &pt, int64_t &pb, int64_t &pl,
+                              int64_t &pr, int64_t &dh, int64_t &dw,
+                              bool &is_dw, bool &with_bias, bool &do_relu) {
   auto i_s = input().getType().cast<RankedTensorType>().getShape();
   auto k_s = filter().getType().cast<RankedTensorType>().getShape();
   auto o_s = output().getType().cast<RankedTensorType>().getShape();
@@ -76,11 +74,12 @@ void ConvOp::parseParam(int64_t &n, int64_t &ic, int64_t &ih, int64_t &iw,
   return;
 }
 
-void MaxPoolOp::parseParam(int64_t &n, int64_t &c, int64_t &ih, int64_t &iw,
-                           int64_t &oh, int64_t &ow, int64_t &kh, int64_t &kw,
-                           int64_t &sh, int64_t &sw, int64_t &pt, int64_t &pb,
-                           int64_t &pl, int64_t &pr, int64_t &pad_value,
-                           bool &is_global, bool &count_include_pad) {
+void MaxPoolOp::parseParam(int64_t &n, int64_t &c, int64_t &ih,
+                                 int64_t &iw, int64_t &oh, int64_t &ow,
+                                 int64_t &kh, int64_t &kw, int64_t &sh,
+                                 int64_t &sw, int64_t &pt, int64_t &pb,
+                                 int64_t &pl, int64_t &pr, int64_t &pad_value,
+                                 bool &is_global, bool &count_include_pad) {
   auto i_s = input().getType().cast<RankedTensorType>().getShape();
   auto o_s = output().getType().cast<RankedTensorType>().getShape();
 
@@ -109,11 +108,12 @@ void MaxPoolOp::parseParam(int64_t &n, int64_t &c, int64_t &ih, int64_t &iw,
   count_include_pad = this->count_include_pad();
 }
 
-void AvgPoolOp::parseParam(int64_t &n, int64_t &c, int64_t &ih, int64_t &iw,
-                           int64_t &oh, int64_t &ow, int64_t &kh, int64_t &kw,
-                           int64_t &sh, int64_t &sw, int64_t &pt, int64_t &pb,
-                           int64_t &pl, int64_t &pr, int64_t &pad_value,
-                           bool &is_global, bool &count_include_pad) {
+void AvgPoolOp::parseParam(int64_t &n, int64_t &c, int64_t &ih,
+                                 int64_t &iw, int64_t &oh, int64_t &ow,
+                                 int64_t &kh, int64_t &kw, int64_t &sh,
+                                 int64_t &sw, int64_t &pt, int64_t &pb,
+                                 int64_t &pl, int64_t &pr, int64_t &pad_value,
+                                 bool &is_global, bool &count_include_pad) {
   auto i_s = input().getType().cast<RankedTensorType>().getShape();
   auto o_s = output().getType().cast<RankedTensorType>().getShape();
 
@@ -142,7 +142,8 @@ void AvgPoolOp::parseParam(int64_t &n, int64_t &c, int64_t &ih, int64_t &iw,
   count_include_pad = this->count_include_pad();
 }
 
-void MatMulOp::parseParam(int64_t &batch, int64_t &M, int64_t &K, int64_t &N) {
+void MatMulOp::parseParam(int64_t &batch, int64_t &M, int64_t &K,
+                                int64_t &N) {
   auto i_s = input().getType().cast<RankedTensorType>().getShape();
   auto r_s = right().getType().cast<RankedTensorType>().getShape();
   auto o_s = output().getType().cast<RankedTensorType>().getShape();
@@ -161,31 +162,3 @@ void MatMulOp::parseParam(int64_t &batch, int64_t &M, int64_t &K, int64_t &N) {
                         std::multiplies<int64_t>());
   }
 }
-
-template <typename T> std::shared_ptr<std::vector<T>> WeightOp::read() {
-  auto op = getOperation();
-  auto dialect = op->getDialect();
-  auto topsDialect = llvm::cast<TopsDialect>(dialect);
-  if (topsDialect->wFile == nullptr) {
-    auto moduleOp = op->getParentOp();
-    while (moduleOp && !isa<mlir::ModuleOp>(moduleOp)) {
-      moduleOp = moduleOp->getParentOp();
-    }
-    if (!moduleOp) {
-      dump();
-      llvm_unreachable("can't get module op");
-    }
-    auto mOp = llvm::cast<ModuleOp>(moduleOp);
-    auto weight_file = getMlirWeightFile(mOp);
-    topsDialect->loadWeightFile(weight_file);
-  }
-  auto type = output().getType().cast<RankedTensorType>();
-  return topsDialect->wFile->readTensor<T>(name(), type);
-}
-
-template <typename T> LogicalResult WeightOp::write(const std::vector<T> &) {
-  return success();
-}
-
-template std::shared_ptr<std::vector<float>> WeightOp::read();
-template LogicalResult WeightOp::write(const std::vector<float> &);

@@ -36,9 +36,10 @@
 #include <regex>
 
 using namespace llvm;
-
-namespace mlir {
+using namespace mlir;
+namespace sophgo {
 namespace tops {
+
 typedef struct {
   double threshold;
   double min;
@@ -92,7 +93,7 @@ public:
 
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](Operation *op) {
-        if (isa<mlir::InferenceInterface>(op) || isa<tops::InputOp>(op)) {
+        if (isa<sophgo::InferenceInterface>(op) || isa<InputOp>(op)) {
           auto name = op->getAttrOfType<StringAttr>("name").str();
           auto value = op->getResult(0);
           auto &info = calibration_map[name];
@@ -120,12 +121,14 @@ public:
                                    llvm::ArrayRef<mlir::Type>{returns});
       func.setType(fnType);
     }
-    setMlirState(module, "TOPS_CALIBRATED");
+    sophgo::setMlirState(module, "TOPS_CALIBRATED");
   }
 };
 
 std::unique_ptr<OperationPass<ModuleOp>> createImportCalibrationTablePass() {
   return std::make_unique<ImportCalibrationTablePass>();
 }
+
 } // namespace tops
-} // namespace mlir
+} // namespace sophgo
+

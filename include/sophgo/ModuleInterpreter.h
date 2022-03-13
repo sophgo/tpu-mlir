@@ -36,7 +36,8 @@
 
 #define DEBUG_TYPE "interpreter"
 
-namespace mlir {
+using namespace mlir;
+namespace sophgo {
 // Implementation class for module interpreter.
 class ModuleInterpreter {
 
