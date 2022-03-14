@@ -26,4 +26,4 @@ void registerAllPasses() {
   registerCanonicalizerPass();
   tops::registerTopsPasses();
 }
-}
+} // namespace sophgo

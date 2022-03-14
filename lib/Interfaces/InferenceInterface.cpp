@@ -10,9 +10,5 @@
 
 using namespace mlir;
 
-//===----------------------------------------------------------------------===//
-// SideEffect Interfaces
-//===----------------------------------------------------------------------===//
-
 /// Include the definitions of the side effect interfaces.
 #include "sophgo/Interfaces/InferenceInterface.cpp.inc"
