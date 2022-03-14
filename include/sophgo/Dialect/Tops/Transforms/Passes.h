@@ -13,6 +13,7 @@
 #pragma once
 
 #include "sophgo/Dialect/Tops/IR/TopsOps.h"
+#include "sophgo/Dialect/Tpu/IR/TpuOps.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Quant/QuantOps.h"

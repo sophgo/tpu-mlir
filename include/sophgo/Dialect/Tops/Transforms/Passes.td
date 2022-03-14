@@ -38,7 +38,7 @@ def Quantize : Pass<"quantize", "ModuleOp"> {
     Option<"isAsymmetric", "asymmetric", "bool", /*default=*/"true",
            "true for asymmetric quantization, or false for symmetric">,
   ];
-  let dependentDialects = ["TopsDialect", "mlir::quant::QuantizationDialect"];
+  let dependentDialects = ["TopsDialect", "::sophgo::tpu::TpuDialect", "mlir::quant::QuantizationDialect"];
 }
 
 #endif
