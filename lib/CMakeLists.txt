@@ -15,7 +15,6 @@ add_mlir_library(SophgoInitAll
   MLIRFunc
   MLIRQuant
   MLIRTransforms
-  MLIRInferenceInterface
   SophgoTops
   SophgoTpu
   SophgoSupport

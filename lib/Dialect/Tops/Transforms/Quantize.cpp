@@ -29,8 +29,10 @@
 #include "mlir/IR/Matchers.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Dialect/Quant/QuantTypes.h"
+#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Format.h"
+
 #include <sstream>
 #include <fstream>
 #include <regex>
@@ -41,24 +43,37 @@ using namespace mlir;
 namespace sophgo {
 namespace tops {
 
-class QuantizePass
-    : public QuantizeBase<QuantizePass> {
+struct QuantizationPattern : public RewritePattern {
+  QuantizationPattern(MLIRContext *context)
+      : RewritePattern(MatchAnyOpTypeTag(), 1, context) {}
+  LogicalResult matchAndRewrite(Operation *op,
+                                PatternRewriter &rewriter) const override {
+    auto quantize_op = dyn_cast<sophgo::QuantizeInterface>(op);
+    if (!quantize_op) {
+      return failure();
+    }
+    auto newValue = quantize_op.quantize_int8();
+    rewriter.replaceOp(op, {newValue});
+    return success();
+  }
+};
+
+class QuantizePass : public QuantizeBase<QuantizePass> {
 public:
   QuantizePass() {}
   void runOnOperation() override {
-    llvm::errs() << "default quantize mode:" << this->mode
-                 << ", is asymmetric " << this->isAsymmetric
-                 << ", chip :" << this->chip << "\n";
+    llvm::errs() << "default quantize mode:" << this->mode << ", is asymmetric "
+                 << this->isAsymmetric << ", chip :" << this->chip << "\n";
     auto module = getOperation();
     auto state = getMlirState(module);
     if (state != "TOPS_CALIBRATED" && mode != "INT8") {
       module.dump();
       llvm_unreachable("Mlir state not support quantize");
     }
-    for (auto func : getOperation().getOps<FuncOp>()) {
-      func.walk([&](Operation *op) {
-      });
-    }
+    auto ctx = module.getContext();
+    RewritePatternSet patterns(ctx);
+    patterns.insert<QuantizationPattern>(ctx);
+    applyPatternsAndFoldGreedily(module, std::move(patterns));
   }
 };
 
@@ -66,4 +81,4 @@ std::unique_ptr<OperationPass<ModuleOp>> createQuantizePass() {
   return std::make_unique<QuantizePass>();
 }
 } // namespace tops
-} // namespace mlir
+} // namespace sophgo

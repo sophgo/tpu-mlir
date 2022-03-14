@@ -27,38 +27,141 @@
 using namespace sophgo;
 using namespace mlir;
 
-void tops::ConvOp::quantize_int8() {
-  int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-      pl, pr, dh, dw;
-  bool is_dw, with_bias, relu;
-  parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-             pl, pr, dh, dw, is_dw, with_bias, relu);
+Value tops::ConvOp::quantize_int8() {
+  // int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
+  //     pl, pr, dh, dw;
+  // bool is_dw, with_bias, relu;
+  // parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt,
+  // pb,
+  //            pl, pr, dh, dw, is_dw, with_bias, relu);
   // auto filterOp = cast<tops::WeightOp>(filter().getDefiningOp());
   // auto biasOp = cast<tops::WeightOp>(bias().getDefiningOp());
   // auto filter = filterOp.read<float>();
   // auto bias = biasOp.read<float>();
   // auto type = output().getType().cast<RankedTensorType>();
   // auto fmax = findMaxabs(filter->data(), filter->size());
-  // to be continue (pengchao.hu)
+
+  auto op = getOperation();
+  OpBuilder builder(op);
+  std::vector<Value> operands;
+  const int nInputs = op->getNumOperands();
+  for (auto i = 0; i < nInputs; ++i) {
+    operands.push_back(op->getOperand(i));
+  }
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  auto newOp = builder.create<tpu::ConvOp>(
+      op->getLoc(), getResult().getType(), ArrayRef<Value>{operands},
+      ArrayRef<NamedAttribute>{attrs});
+  return newOp.getResult();
 }
 
-void tops::ReluOp::quantize_int8() {
-  llvm_unreachable("Unsupport now");
+Value tops::ReluOp::quantize_int8() {
+  auto op = getOperation();
+  OpBuilder builder(op);
+  std::vector<Value> operands;
+  const int nInputs = op->getNumOperands();
+  for (auto i = 0; i < nInputs; ++i) {
+    operands.push_back(op->getOperand(i));
+  }
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  auto newOp = builder.create<tpu::ReluOp>(
+      op->getLoc(), getResult().getType(), ArrayRef<Value>{operands},
+      ArrayRef<NamedAttribute>{attrs});
+  return newOp.getResult();
 }
 
-void tops::AddOp::quantize_int8() {
+Value tops::AddOp::quantize_int8() {
+  auto op = getOperation();
+  OpBuilder builder(op);
+  std::vector<Value> operands;
+  const int nInputs = op->getNumOperands();
+  for (auto i = 0; i < nInputs; ++i) {
+    operands.push_back(op->getOperand(i));
+  }
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  auto newOp = builder.create<tpu::AddOp>(
+      op->getLoc(), getResult().getType(), ArrayRef<Value>{operands},
+      ArrayRef<NamedAttribute>{attrs});
+  return newOp.getResult();
 }
 
-void tops::MaxPoolOp::quantize_int8() {
-
+Value tops::MaxPoolOp::quantize_int8() {
+  auto op = getOperation();
+  OpBuilder builder(op);
+  std::vector<Value> operands;
+  const int nInputs = op->getNumOperands();
+  for (auto i = 0; i < nInputs; ++i) {
+    operands.push_back(op->getOperand(i));
+  }
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  auto newOp = builder.create<tpu::MaxPoolOp>(
+      op->getLoc(), getResult().getType(), ArrayRef<Value>{operands},
+      ArrayRef<NamedAttribute>{attrs});
+  return newOp.getResult();
 }
 
-void tops::AvgPoolOp::quantize_int8() {
+Value tops::AvgPoolOp::quantize_int8() {
+  auto op = getOperation();
+  OpBuilder builder(op);
+  std::vector<Value> operands;
+  const int nInputs = op->getNumOperands();
+  for (auto i = 0; i < nInputs; ++i) {
+    operands.push_back(op->getOperand(i));
+  }
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  auto newOp = builder.create<tpu::AvgPoolOp>(
+      op->getLoc(), getResult().getType(), ArrayRef<Value>{operands},
+      ArrayRef<NamedAttribute>{attrs});
+  return newOp.getResult();
 }
 
-void tops::ReshapeOp::quantize_int8() {
+Value tops::ReshapeOp::quantize_int8() {
+  auto op = getOperation();
+  OpBuilder builder(op);
+  std::vector<Value> operands;
+  const int nInputs = op->getNumOperands();
+  for (auto i = 0; i < nInputs; ++i) {
+    operands.push_back(op->getOperand(i));
+  }
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  auto newOp = builder.create<tpu::ReshapeOp>(
+      op->getLoc(), getResult().getType(), ArrayRef<Value>{operands},
+      ArrayRef<NamedAttribute>{attrs});
+  return newOp.getResult();
 }
 
-void tops::MatMulOp::quantize_int8() {
+Value tops::MatMulOp::quantize_int8() {
+  auto op = getOperation();
+  OpBuilder builder(op);
+  std::vector<Value> operands;
+  const int nInputs = op->getNumOperands();
+  for (auto i = 0; i < nInputs; ++i) {
+    operands.push_back(op->getOperand(i));
+  }
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  auto newOp = builder.create<tpu::MatMulOp>(
+      op->getLoc(), getResult().getType(), ArrayRef<Value>{operands},
+      ArrayRef<NamedAttribute>{attrs});
+  return newOp.getResult();
 }
-

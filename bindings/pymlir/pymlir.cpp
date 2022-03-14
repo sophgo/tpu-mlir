@@ -93,7 +93,8 @@ public:
     }
 
     DialectRegistry registry;
-    registry.insert<func::FuncDialect, tops::TopsDialect, tpu::TpuDialect,quant::QuantizationDialect>();
+    registry.insert<func::FuncDialect, tops::TopsDialect, tpu::TpuDialect,
+                    quant::QuantizationDialect>();
     context_ = std::make_unique<MLIRContext>(registry);
 
     module_ = parseSourceFile(filename, context_.get());

@@ -22,6 +22,8 @@ add_mlir_library(SophgoTops
   MLIRFunc
   MLIRQuant
   MLIRSideEffectInterfaces
+  MLIRInferenceInterface
+  MLIRQuantizeInterface
   SophgoSupport
 )
 

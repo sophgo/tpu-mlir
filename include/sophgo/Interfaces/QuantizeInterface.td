@@ -24,7 +24,7 @@ def QuantizeInterface : OpInterface<"QuantizeInterface"> {
       InterfaceMethod<
         /*desc=*/[{
         }],
-        /*retType=*/"void",
+        /*retType=*/"mlir::Value",
         /*methodName=*/"quantize_int8",
         /*args=*/(ins)
       >,
