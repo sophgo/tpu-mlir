@@ -7,7 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Dialect/Tops/IR/TopsOps.h"
+#include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "sophgo/Dialect/Tpu/IR/TpuOps.h"
 #include "sophgo/Interfaces/QuantizeInterface.h"
 #include "sophgo/Support/DnnlConv.h"
@@ -50,7 +50,7 @@ static double getMin(Value v) {
 
 const double qmax8bit = 127.0;
 
-Value tops::ConvOp::quantize_int8() {
+Value top::ConvOp::quantize_int8() {
   auto op = getOperation();
   OpBuilder builder(op);
   std::vector<NamedAttribute> attrs;
@@ -59,7 +59,7 @@ Value tops::ConvOp::quantize_int8() {
   bool is_dw, with_bias, relu;
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
              pl, pr, dh, dw, is_dw, with_bias, relu);
-  auto filterOp = cast<tops::WeightOp>(filter().getDefiningOp());
+  auto filterOp = cast<top::WeightOp>(filter().getDefiningOp());
   auto filter_fp32 = filterOp.read<float>();
   auto th_input = getThreshold(input());
   auto th_output = getThreshold(output());
@@ -67,7 +67,7 @@ Value tops::ConvOp::quantize_int8() {
   int rshift = calRightShiftNum(filter_max, th_input, th_output, 8);
   rshift = std::max(rshift, 0);
   if (with_bias) {
-    auto biasOp = cast<tops::WeightOp>(bias().getDefiningOp());
+    auto biasOp = cast<top::WeightOp>(bias().getDefiningOp());
     auto bias_fp32 = biasOp.read<float>();
     float bias_scale = 1.0 * (1 << rshift) * qmax8bit / th_output;
     int bias_len = bias_fp32->size();
@@ -117,7 +117,7 @@ Value tops::ConvOp::quantize_int8() {
   return newOp.getResult();
 }
 
-Value tops::ReluOp::quantize_int8() {
+Value top::ReluOp::quantize_int8() {
   auto op = getOperation();
   OpBuilder builder(op);
   std::vector<Value> operands;
@@ -135,7 +135,7 @@ Value tops::ReluOp::quantize_int8() {
   return newOp.getResult();
 }
 
-Value tops::AddOp::quantize_int8() {
+Value top::AddOp::quantize_int8() {
   auto op = getOperation();
   OpBuilder builder(op);
   std::vector<Value> operands;
@@ -153,7 +153,7 @@ Value tops::AddOp::quantize_int8() {
   return newOp.getResult();
 }
 
-Value tops::MaxPoolOp::quantize_int8() {
+Value top::MaxPoolOp::quantize_int8() {
   auto op = getOperation();
   OpBuilder builder(op);
   std::vector<Value> operands;
@@ -171,7 +171,7 @@ Value tops::MaxPoolOp::quantize_int8() {
   return newOp.getResult();
 }
 
-Value tops::AvgPoolOp::quantize_int8() {
+Value top::AvgPoolOp::quantize_int8() {
   auto op = getOperation();
   OpBuilder builder(op);
   std::vector<Value> operands;
@@ -189,7 +189,7 @@ Value tops::AvgPoolOp::quantize_int8() {
   return newOp.getResult();
 }
 
-Value tops::ReshapeOp::quantize_int8() {
+Value top::ReshapeOp::quantize_int8() {
   auto op = getOperation();
   OpBuilder builder(op);
   std::vector<Value> operands;
@@ -207,7 +207,7 @@ Value tops::ReshapeOp::quantize_int8() {
   return newOp.getResult();
 }
 
-Value tops::MatMulOp::quantize_int8() {
+Value top::MatMulOp::quantize_int8() {
   auto op = getOperation();
   OpBuilder builder(op);
   std::vector<Value> operands;

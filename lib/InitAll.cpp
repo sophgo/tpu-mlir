@@ -8,9 +8,9 @@
 //===----------------------------------------------------------------------===//
 
 #include "sophgo/InitAll.h"
-#include "sophgo/Dialect/Tops/IR/TopsOps.h"
+#include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "sophgo/Dialect/Tpu/IR/TpuOps.h"
-#include "sophgo/Dialect/Tops/Transforms/Passes.h"
+#include "sophgo/Dialect/Top/Transforms/Passes.h"
 #include "mlir/Transforms/Passes.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Quant/QuantOps.h"
@@ -18,12 +18,12 @@
 
 namespace sophgo {
 void registerAllDialects(mlir::DialectRegistry &registry) {
-  registry.insert<mlir::func::FuncDialect, tops::TopsDialect, tpu::TpuDialect,
+  registry.insert<mlir::func::FuncDialect, top::TopDialect, tpu::TpuDialect,
                   mlir::quant::QuantizationDialect>();
 }
 
 void registerAllPasses() {
   registerCanonicalizerPass();
-  tops::registerTopsPasses();
+  top::registerTopPasses();
 }
 } // namespace sophgo

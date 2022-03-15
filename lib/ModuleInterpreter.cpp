@@ -1,7 +1,7 @@
 
 #include "sophgo/ModuleInterpreter.h"
 #include "sophgo/Support/Utils.h"
-#include "sophgo/Dialect/Tops/IR/TopsOps.h"
+#include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "sophgo/Dialect/Tpu/IR/TpuOps.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
@@ -35,7 +35,7 @@ void ModuleInterpreter::allocate_resources() {
     // }
     // alloce buffer for all value
     func.walk([&](Operation *op) {
-      if (op == func.getOperation() || isa<tops::NoneOp>(op)) {
+      if (op == func.getOperation() || isa<top::NoneOp>(op)) {
         // self
       } else if (isa<func::ReturnOp>(op)) {
         for (auto v : op->getOperands()) {
@@ -49,13 +49,13 @@ void ModuleInterpreter::allocate_resources() {
         auto count = type.getNumElements();
         auto name = op->getAttrOfType<StringAttr>("name").str();
         value_map[name] = result;
-        if (auto wOp = llvm::dyn_cast<tops::WeightOp>(op)) {
+        if (auto wOp = llvm::dyn_cast<top::WeightOp>(op)) {
           mem_map[name] =wOp.read<float>();
         } else {
           mem_map[name] = std::make_shared<std::vector<float>>(count);
           all_tensor_names.push_back(name);
         }
-        if (isa<tops::InputOp>(op)) {
+        if (isa<top::InputOp>(op)) {
           input_names.push_back(name);
         }
       }

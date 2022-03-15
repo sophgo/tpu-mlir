@@ -7,7 +7,7 @@
 // -------------
 // pure C++ code
 // -------------
-#include "sophgo/Dialect/Tops/IR/TopsOps.h"
+#include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "sophgo/Dialect/Tpu/IR/TpuOps.h"
 #include "sophgo/ModuleInterpreter.h"
 #include "mlir/IR/MLIRContext.h"
@@ -93,7 +93,7 @@ public:
     }
 
     DialectRegistry registry;
-    registry.insert<func::FuncDialect, tops::TopsDialect, tpu::TpuDialect,
+    registry.insert<func::FuncDialect, top::TopDialect, tpu::TpuDialect,
                     quant::QuantizationDialect>();
     context_ = std::make_unique<MLIRContext>(registry);
 

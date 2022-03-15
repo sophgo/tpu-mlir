@@ -87,7 +87,7 @@ class OnnxConverter(BaseConverter):
     def __init__(self, model_name: str, onnx_file: str, input_shapes: list):
         super().__init__()
         self.model_name = model_name
-        self.weight_file = "{}_tops_weight.npz".format(model_name)
+        self.weight_file = "{}_top_weight.npz".format(model_name)
         self.model = None
         self.mlir = None
         self.load_onnx_model(onnx_file, input_shapes)

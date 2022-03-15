@@ -28,7 +28,7 @@ popd
 
 ## How to use toolchain
 
-#### transform model to mlir (tops)
+#### transform model to mlir (top)
 
 ``` shell
 model_transform.py \
