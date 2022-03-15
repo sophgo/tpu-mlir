@@ -13,7 +13,7 @@
 #include "sophgo/Support/DnnlConv.h"
 #include "sophgo/Support/DnnlPool.h"
 #include "sophgo/Support/DnnlMatMul.h"
-#include "sophgo/Support/Utils.h"
+#include "sophgo/Support/MathUtils.h"
 
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"

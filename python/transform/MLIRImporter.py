@@ -258,13 +258,13 @@ class MLIRImporter(object):
         if self.num_output > 1:
             output_txt = "({})".format(output_txt)
 
-        tpu_func = """
-            module attributes {{mlir.name = \"{name}\", mlir.weight_file= \"{weight_file}\", mlir.state=\"{state}\", mlir.chip=\"{chip}\"}} {{
+        main_func = """
+            module attributes {{top.name = \"{name}\", top.weight_file= \"{weight_file}\", top.state=\"{state}\", top.chip=\"{chip}\"}} {{
                 func @main({args}) -> {output} {{
                     %0 = \"top.None\"() : () -> none
             }}}}
         """.format(name = self.model_name,weight_file=self.weight_file, state=self.state, chip=self.chip, args=args_txt, output=output_txt)
-        self.mlir_module = Module.parse(tpu_func, self.ctx)
+        self.mlir_module = Module.parse(main_func, self.ctx)
         self.func = self.mlir_module.body.operations[0]
         self.entry_block = self.func.regions[0].blocks[0]
         self.insert_point = InsertionPoint(self.entry_block)
