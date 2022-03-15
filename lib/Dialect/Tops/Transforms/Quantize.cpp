@@ -74,6 +74,7 @@ public:
     RewritePatternSet patterns(ctx);
     patterns.insert<QuantizationPattern>(ctx);
     applyPatternsAndFoldGreedily(module, std::move(patterns));
+    setMlirWeightFile(module, "tpu_weight.npz");
   }
 };
 

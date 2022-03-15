@@ -167,25 +167,40 @@ template <typename T> std::shared_ptr<std::vector<T>> WeightOp::read() {
   auto dialect = op->getDialect();
   auto topsDialect = llvm::cast<TopsDialect>(dialect);
   if (topsDialect->wFile == nullptr) {
-    auto moduleOp = op->getParentOp();
-    while (moduleOp && !isa<mlir::ModuleOp>(moduleOp)) {
-      moduleOp = moduleOp->getParentOp();
-    }
-    if (!moduleOp) {
-      dump();
-      llvm_unreachable("can't get module op");
-    }
-    auto mOp = llvm::cast<ModuleOp>(moduleOp);
-    auto weight_file = getMlirWeightFile(mOp);
+    auto moduleOp = getModuleOp(op);
+    auto weight_file = getMlirWeightFile(moduleOp);
     topsDialect->loadWeightFile(weight_file);
   }
   auto type = output().getType().cast<RankedTensorType>();
   return topsDialect->wFile->readTensor<T>(name(), type);
 }
 
-template <typename T> LogicalResult WeightOp::write(const std::vector<T> &) {
-  return success();
+template <typename T>
+LogicalResult WeightOp::write(StringRef suffix, const std::vector<T> &data,
+                              RankedTensorType &new_type) {
+  auto op = getOperation();
+  auto dialect = op->getDialect();
+  auto topsDialect = llvm::cast<TopsDialect>(dialect);
+  if (topsDialect->wFile == nullptr) {
+    auto moduleOp = getModuleOp(op);
+    auto weight_file = getMlirWeightFile(moduleOp);
+    topsDialect->loadWeightFile(weight_file);
+  }
+  std::string new_name = name().str() + "_" + suffix.str();
+  op->setAttr("name", StringAttr::get(getContext(), new_name));
+  output().setType(new_type);
+  return topsDialect->wFile->addTensor(new_name, &data, new_type);
 }
 
 template std::shared_ptr<std::vector<float>> WeightOp::read();
-template LogicalResult WeightOp::write(const std::vector<float> &);
+template std::shared_ptr<std::vector<int8_t>> WeightOp::read();
+template std::shared_ptr<std::vector<int16_t>> WeightOp::read();
+template LogicalResult WeightOp::write(StringRef suffix,
+                                       const std::vector<float> &data,
+                                       RankedTensorType &type);
+template LogicalResult WeightOp::write(StringRef suffix,
+                                       const std::vector<int8_t> &data,
+                                       RankedTensorType &type);
+template LogicalResult WeightOp::write(StringRef suffix,
+                                       const std::vector<int16_t> &data,
+                                       RankedTensorType &type);

@@ -259,42 +259,21 @@ public:
     return success();
   }
 
-  int keep(bool incIndex = false, std::string *newName = nullptr) {
+  void save(const std::string& file="") {
     assert(!readOnly);
     if (cnt_add + cnt_del == 0) {
-      if (newName) {
-        *newName = filename;
-      }
-      return 0;
+      return;
     }
-    if (incIndex) {
-      auto fileInc = TensorFile::incrementName(filename);
-      auto first_element = map.begin();
-      cnpy::NpyArray &arr = first_element->second;
-      if (arr.shape.size() == 0) {
-        // first should be create somthing cuz cnpy save flow
-        llvm::StringRef name = first_element->first;
-        llvm::errs()
-            << name
-            << "save dummy for prevent open npz file under append mode fail\n";
-        (void)deleteTensor<float>(name);
-        std::vector<float> fake_data(1);
-        std::vector<int64_t> shape(1, 1);
-        (void)addTensor(name, fake_data.data(), shape);
-      }
+    if (!file.empty()) {
+      filename = file;
+    }
 
-      cnpy::npz_save_all(fileInc, map);
-      filename = fileInc;
-      if (newName) {
-        *newName = filename;
-      }
-    } else {
-      cnpy::npz_save_all(filename, map);
-    }
+    cnpy::npz_save_all(filename, map);
+
     int ret = cnt_add + cnt_del;
     cnt_add = 0;
     cnt_del = 0;
-    return ret;
+    return;
   }
 
 private:
