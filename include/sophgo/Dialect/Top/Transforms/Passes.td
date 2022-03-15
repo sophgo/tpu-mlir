@@ -10,8 +10,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef SOPHGO_DIALECT_TOPS_PASSES
-#define SOPHGO_DIALECT_TOPS_PASSES
+#ifndef SOPHGO_DIALECT_TOPPASSES
+#define SOPHGO_DIALECT_TOPPASSES
 
 include "mlir/Pass/PassBase.td"
 
@@ -24,7 +24,7 @@ def ImportCalibrationTable : Pass<"import-calibration-table", "ModuleOp"> {
     Option<"isAsymmetric", "asymmetric", "bool", /*default=*/"true",
            "true for asymmetric quantization, or false for symmetric">,
   ];
-  let dependentDialects = ["tops::TopsDialect", "mlir::quant::QuantizationDialect"];
+  let dependentDialects = ["top::TopDialect", "mlir::quant::QuantizationDialect"];
 }
 
 def Quantize : Pass<"quantize", "ModuleOp"> {
@@ -38,7 +38,7 @@ def Quantize : Pass<"quantize", "ModuleOp"> {
     Option<"isAsymmetric", "asymmetric", "bool", /*default=*/"true",
            "true for asymmetric quantization, or false for symmetric">,
   ];
-  let dependentDialects = ["TopsDialect", "::sophgo::tpu::TpuDialect", "mlir::quant::QuantizationDialect"];
+  let dependentDialects = ["TopDialect", "::sophgo::tpu::TpuDialect", "mlir::quant::QuantizationDialect"];
 }
 
 #endif

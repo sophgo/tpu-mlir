@@ -4,11 +4,11 @@ add_mlir_library(SophgoTpu
   ${_sources}
 
   ADDITIONAL_HEADER_DIRS
-  ${PROJECT_SOURCE_DIR}/include/sophgo/Dialect/Tops
+  ${PROJECT_SOURCE_DIR}/include/sophgo/Dialect/Top
   ${PROJECT_SOURCE_DIR}/include/sophgo/Dialect/Tpu
 
   DEPENDS
-  MLIRTopsOpsIncGen
+  MLIRTopOpsIncGen
   MLIRTpuOpsIncGen
   MLIRInferenceInterfaceIncGen
   MLIRQuantizeInterfaceIncGen

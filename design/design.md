@@ -25,9 +25,9 @@
 
 ``` mlir
 # 用INT32
-%4 = "tops.Conv"(%1, %2, %3) {kernel_shape = [3 : i32, 3 : i32], name = "output_Conv"}
+%4 = "top.Conv"(%1, %2, %3) {kernel_shape = [3 : i32, 3 : i32], name = "output_Conv"}
 # 用INT64
-%4 = "tops.Conv"(%1, %2, %3) {kernel_shape = [3, 3], name = "output_Conv"}
+%4 = "top.Conv"(%1, %2, %3) {kernel_shape = [3, 3], name = "output_Conv"}
 ```
 
 #### 调试方法
@@ -49,7 +49,7 @@ gdb --args python /work/python/tools/model_runner.py --input resnet18_in_f32.npz
 
 * sophgo-opt能否需要实现python版本？
 
-* tops的pass只有一个：Fuse Relu到conv和add，其他pass需要补充完整
+* top的pass只有一个：Fuse Relu到conv和add，其他pass需要补充完整
 
 * 目前shape还不支持动态shape和shape推导，后续支持
 
@@ -75,7 +75,7 @@ gdb --args python /work/python/tools/model_runner.py --input resnet18_in_f32.npz
 不用：
 如果由客户转，增加客户工作量；
 tosa定义的op还是太少，没有lrn、layernorm等等op；
-自己定义tops dialect，可以完全掌控
+自己定义top dialect，可以完全掌控
 
 #### caffe需要前端转吗？
 需要：
@@ -83,7 +83,7 @@ tosa定义的op还是太少，没有lrn、layernorm等等op；
 
 #### 开源后的亮点
 
-1 tops层和quant层采用oneDNN和omp推导结果，做验证
+1 top层和quant层采用oneDNN和omp推导结果，做验证
 2 工具全部用python，方便使用和维护
 3 可以随时更新到llvm最新版本
 

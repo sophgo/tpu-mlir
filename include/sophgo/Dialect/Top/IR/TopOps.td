@@ -1,21 +1,21 @@
 // =============================================================================
 //
-// Defines TOPS Dialect operations.
+// Defines TOP Dialect operations.
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef TOPS_OPS
-#define TOPS_OPS
+#ifndef TOP_OPS
+#define TOP_OPS
 
 include "mlir/IR/OpBase.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "sophgo/Interfaces/InferenceInterface.td"
 include "sophgo/Interfaces/QuantizeInterface.td"
 
-def Tops_Dialect : Dialect {
-  let name = "tops";
-  let summary = "A tops dialect for the SOPHGO specification";
-  let cppNamespace = "::sophgo::tops";
+def Top_Dialect : Dialect {
+  let name = "top";
+  let summary = "A topdialect for the SOPHGO specification";
+  let cppNamespace = "::sophgo::top";
   let extraClassDeclaration = [{
   void loadWeightFile(llvm::StringRef file) {
     wFile = std::make_unique<mlir::TensorFile>(file, false);
@@ -26,10 +26,10 @@ def Tops_Dialect : Dialect {
 
 def AnyTensorOrNone: AnyTypeOf<[AnyTensor, NoneType]>;
 
-class Tops_Op<string mnemonic, list<Trait> traits = []> :
-    Op<Tops_Dialect, mnemonic, traits> ;
+class Top_Op<string mnemonic, list<Trait> traits = []> :
+    Op<Top_Dialect, mnemonic, traits> ;
 
-def Tops_NoneOp : Tops_Op<"None", [NoSideEffect]> {
+def Top_NoneOp : Top_Op<"None", [NoSideEffect]> {
   let summary = "none operator";
 
   let description = [{
@@ -38,7 +38,7 @@ def Tops_NoneOp : Tops_Op<"None", [NoSideEffect]> {
   let results = (outs NoneType);
 }
 
-def Tops_WeightOp : Tops_Op<"Weight", [NoSideEffect]> {
+def Top_WeightOp : Top_Op<"Weight", [NoSideEffect]> {
   let summary = "load weight operator";
 
   let description = [{
@@ -63,7 +63,7 @@ def Tops_WeightOp : Tops_Op<"Weight", [NoSideEffect]> {
   }];
 }
 
-def Tops_InputOp: Tops_Op<"Input",[NoSideEffect]> {
+def Top_InputOp: Top_Op<"Input",[NoSideEffect]> {
   let summary = "Input operator";
 
   let description = [{
@@ -77,7 +77,7 @@ def Tops_InputOp: Tops_Op<"Input",[NoSideEffect]> {
   let results = (outs AnyTensor:$output);
 }
 
-def Tops_BatchNormOp: Tops_Op<"BatchNorm",[NoSideEffect]> {
+def Top_BatchNormOp: Top_Op<"BatchNorm",[NoSideEffect]> {
   let summary = "BatchNormalization operation";
   let description = [{
     Applies Batch Normalization over a 4D input (a mini-batch of 2D inputs
@@ -107,7 +107,7 @@ def Tops_BatchNormOp: Tops_Op<"BatchNorm",[NoSideEffect]> {
   let hasCanonicalizer = 1;
 }
 
-def Tops_ConvOp: Tops_Op<"Conv",[NoSideEffect,
+def Top_ConvOp: Top_Op<"Conv",[NoSideEffect,
   DeclareOpInterfaceMethods<InferenceInterface,["init","deinit"]>,
   DeclareOpInterfaceMethods<QuantizeInterface>]> {
   let summary = "convolution operator";
@@ -186,7 +186,7 @@ def Tops_ConvOp: Tops_Op<"Conv",[NoSideEffect,
   }];
 }
 
-class Tops_PoolOp <string mnemonic> : Tops_Op<mnemonic,
+class Top_PoolOp <string mnemonic> : Top_Op<mnemonic,
   [NoSideEffect,
   DeclareOpInterfaceMethods<InferenceInterface,["init","deinit"]>,
   DeclareOpInterfaceMethods<QuantizeInterface>]> {
@@ -218,10 +218,10 @@ class Tops_PoolOp <string mnemonic> : Tops_Op<mnemonic,
   }];
 }
 
-def Tops_AvgPoolOp:Tops_PoolOp<"AvgPool">;
-def Tops_MaxPoolOp:Tops_PoolOp<"MaxPool">;
+def Top_AvgPoolOp:Top_PoolOp<"AvgPool">;
+def Top_MaxPoolOp:Top_PoolOp<"MaxPool">;
 
-def Tops_AddOp: Tops_Op<"Add",[NoSideEffect,
+def Top_AddOp: Top_Op<"Add",[NoSideEffect,
   DeclareOpInterfaceMethods<InferenceInterface>,
   DeclareOpInterfaceMethods<QuantizeInterface>]> {
   let summary = "add operator";
@@ -241,7 +241,7 @@ def Tops_AddOp: Tops_Op<"Add",[NoSideEffect,
   let results = (outs AnyTensor:$output);
 }
 
-def Tops_MatMulOp: Tops_Op<"MatMul",[NoSideEffect,
+def Top_MatMulOp: Top_Op<"MatMul",[NoSideEffect,
   DeclareOpInterfaceMethods<InferenceInterface,["init","deinit"]>,
   DeclareOpInterfaceMethods<QuantizeInterface>]> {
   let summary = "matmul operator";
@@ -267,7 +267,7 @@ def Tops_MatMulOp: Tops_Op<"MatMul",[NoSideEffect,
   }];
 }
 
-def Tops_ReluOp: Tops_Op<"Relu",[NoSideEffect,
+def Top_ReluOp: Top_Op<"Relu",[NoSideEffect,
   DeclareOpInterfaceMethods<InferenceInterface>,
   DeclareOpInterfaceMethods<QuantizeInterface>]> {
   let summary = "Relu operator";
@@ -286,7 +286,7 @@ def Tops_ReluOp: Tops_Op<"Relu",[NoSideEffect,
   let hasCanonicalizer = 1;
 }
 
-def Tops_ReshapeOp:Tops_Op<"Reshape",[NoSideEffect,
+def Top_ReshapeOp:Top_Op<"Reshape",[NoSideEffect,
   DeclareOpInterfaceMethods<InferenceInterface>,
   DeclareOpInterfaceMethods<QuantizeInterface>]> {
   let summary = "Reshape operation";
@@ -302,4 +302,4 @@ def Tops_ReshapeOp:Tops_Op<"Reshape",[NoSideEffect,
   let results = (outs AnyTensor:$output);
   let hasCanonicalizer = 1;
 }
-#endif // Tops_OPS
+#endif // Top_OPS

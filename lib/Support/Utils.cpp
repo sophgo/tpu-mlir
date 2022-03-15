@@ -1,5 +1,5 @@
 #include "sophgo/Support/Utils.h"
-#include "sophgo/Dialect/Tops/IR/TopsOps.h"
+#include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/PatternMatch.h"
@@ -30,9 +30,9 @@ StringRef getMlirWeightFile(ModuleOp module) {
 
 void setMlirWeightFile(ModuleOp module, StringRef weight_file) {
   module->setAttr("mlir.weight_file", StringAttr::get(module.getContext(), weight_file));
-  auto dialect = module->getContext()->getLoadedDialect("tops");
-  auto tops_dialect = llvm::cast<tops::TopsDialect>(dialect);
-  tops_dialect->wFile->save(weight_file.str());
+  auto dialect = module->getContext()->getLoadedDialect("top");
+  auto top_dialect = llvm::cast<top::TopDialect>(dialect);
+  top_dialect->wFile->save(weight_file.str());
 }
 
 StringRef getMlirState(ModuleOp module) {

@@ -1,14 +1,14 @@
 file(GLOB _sources IR/*.cpp Transforms/*.cpp)
 
-add_mlir_library(SophgoTops
+add_mlir_library(SophgoTop
   ${_sources}
 
   ADDITIONAL_HEADER_DIRS
-  ${PROJECT_SOURCE_DIR}/include/sophgo/Dialect/Tops
+  ${PROJECT_SOURCE_DIR}/include/sophgo/Dialect/Top
 
   DEPENDS
-  MLIRTopsOpsIncGen
-  MLIRTopsPassIncGen
+  MLIRTopOpsIncGen
+  MLIRTopPassIncGen
   MLIRInferenceInterfaceIncGen
   MLIRQuantizeInterfaceIncGen
 

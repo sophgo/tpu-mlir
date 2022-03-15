@@ -1,4 +1,4 @@
-#include "sophgo/Dialect/Tops/IR/TopsOps.h"
+#include "sophgo/Dialect/Top/IR/TopOps.h"
 
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/IR/Builders.h"
@@ -8,9 +8,9 @@
 #include "mlir/Pass/Pass.h"
 
 using namespace mlir;
-using namespace sophgo::tops;
+using namespace sophgo::top;
 
-struct TopsFuseBatchNorm : public OpRewritePattern<BatchNormOp> {
+struct TopFuseBatchNorm : public OpRewritePattern<BatchNormOp> {
   using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(BatchNormOp op,
@@ -22,5 +22,5 @@ struct TopsFuseBatchNorm : public OpRewritePattern<BatchNormOp> {
 
 void BatchNormOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                               MLIRContext *context) {
-  results.insert<TopsFuseBatchNorm>(context);
+  results.insert<TopFuseBatchNorm>(context);
 }

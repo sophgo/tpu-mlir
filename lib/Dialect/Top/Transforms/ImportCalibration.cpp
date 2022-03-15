@@ -18,8 +18,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Dialect/Tops/Transforms/Passes.h"
-#include "sophgo/Dialect/Tops/IR/TopsOps.h"
+#include "sophgo/Dialect/Top/Transforms/Passes.h"
+#include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "sophgo/Support/Utils.h"
 #include "sophgo/Interfaces/InferenceInterface.h"
 #include "mlir/IR/BlockAndValueMapping.h"
@@ -38,7 +38,7 @@
 using namespace llvm;
 using namespace mlir;
 namespace sophgo {
-namespace tops {
+namespace top {
 
 typedef struct {
   double threshold;
@@ -55,9 +55,9 @@ public:
                  << ", is asymmetric " << this->isAsymmetric << "\n";
     auto module = getOperation();
     auto state = getMlirState(module);
-    if (state != "TOPS_F32") {
+    if (state != "TOP_F32") {
       module.dump();
-      llvm_unreachable("mlir state should be TOPS_F32");
+      llvm_unreachable("mlir state should be TOP_F32");
     }
     std::map<std::string, cali_info> calibration_map;
     std::ifstream infile(this->tableFile);
@@ -121,7 +121,7 @@ public:
                                    llvm::ArrayRef<mlir::Type>{returns});
       func.setType(fnType);
     }
-    sophgo::setMlirState(module, "TOPS_CALIBRATED");
+    sophgo::setMlirState(module, "TOP_CALIBRATED");
   }
 };
 
@@ -129,6 +129,6 @@ std::unique_ptr<OperationPass<ModuleOp>> createImportCalibrationTablePass() {
   return std::make_unique<ImportCalibrationTablePass>();
 }
 
-} // namespace tops
+} // namespace top
 } // namespace sophgo
 

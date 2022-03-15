@@ -7,7 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Dialect/Tops/IR/TopsOps.h"
+#include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "sophgo/Support/Utils.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
@@ -20,27 +20,27 @@
 
 using namespace mlir;
 using namespace sophgo;
-using namespace sophgo::tops;
+using namespace sophgo::top;
 
 //===----------------------------------------------------------------------===//
 // Dialect initialize method.
 //===----------------------------------------------------------------------===//
-#include "sophgo/Dialect/Tops/IR/TopsOpsDialect.cpp.inc"
+#include "sophgo/Dialect/Top/IR/TopOpsDialect.cpp.inc"
 
-void TopsDialect::initialize() {
+void TopDialect::initialize() {
   addOperations<
 #define GET_OP_LIST
-#include "sophgo/Dialect/Tops/IR/TopsOps.cpp.inc"
+#include "sophgo/Dialect/Top/IR/TopOps.cpp.inc"
       >();
   wFile = nullptr;
 }
 
 //===----------------------------------------------------------------------===//
-// Tops Operator Definitions.
+// Top Operator Definitions.
 //===----------------------------------------------------------------------===//
 
 #define GET_OP_CLASSES
-#include "sophgo/Dialect/Tops/IR/TopsOps.cpp.inc"
+#include "sophgo/Dialect/Top/IR/TopOps.cpp.inc"
 
 void ConvOp::parseParam(int64_t &n, int64_t &ic, int64_t &ih, int64_t &iw,
                         int64_t &oc, int64_t &oh, int64_t &ow, int64_t &g,
@@ -165,14 +165,14 @@ void MatMulOp::parseParam(int64_t &batch, int64_t &M, int64_t &K, int64_t &N) {
 template <typename T> std::shared_ptr<std::vector<T>> WeightOp::read() {
   auto op = getOperation();
   auto dialect = op->getDialect();
-  auto topsDialect = llvm::cast<TopsDialect>(dialect);
-  if (topsDialect->wFile == nullptr) {
+  auto topDialect = llvm::cast<TopDialect>(dialect);
+  if (topDialect->wFile == nullptr) {
     auto moduleOp = getModuleOp(op);
     auto weight_file = getMlirWeightFile(moduleOp);
-    topsDialect->loadWeightFile(weight_file);
+    topDialect->loadWeightFile(weight_file);
   }
   auto type = output().getType().cast<RankedTensorType>();
-  return topsDialect->wFile->readTensor<T>(name(), type);
+  return topDialect->wFile->readTensor<T>(name(), type);
 }
 
 template <typename T>
@@ -180,16 +180,16 @@ LogicalResult WeightOp::write(StringRef suffix, const std::vector<T> &data,
                               RankedTensorType &new_type) {
   auto op = getOperation();
   auto dialect = op->getDialect();
-  auto topsDialect = llvm::cast<TopsDialect>(dialect);
-  if (topsDialect->wFile == nullptr) {
+  auto topDialect = llvm::cast<TopDialect>(dialect);
+  if (topDialect->wFile == nullptr) {
     auto moduleOp = getModuleOp(op);
     auto weight_file = getMlirWeightFile(moduleOp);
-    topsDialect->loadWeightFile(weight_file);
+    topDialect->loadWeightFile(weight_file);
   }
   std::string new_name = name().str() + "_" + suffix.str();
   op->setAttr("name", StringAttr::get(getContext(), new_name));
   output().setType(new_type);
-  return topsDialect->wFile->addTensor(new_name, &data, new_type);
+  return topDialect->wFile->addTensor(new_name, &data, new_type);
 }
 
 template std::shared_ptr<std::vector<float>> WeightOp::read();

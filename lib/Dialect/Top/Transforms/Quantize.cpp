@@ -18,8 +18,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Dialect/Tops/Transforms/Passes.h"
-#include "sophgo/Dialect/Tops/IR/TopsOps.h"
+#include "sophgo/Dialect/Top/Transforms/Passes.h"
+#include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "sophgo/Interfaces/InferenceInterface.h"
 #include "sophgo/Support/Utils.h"
 #include "mlir/IR/BlockAndValueMapping.h"
@@ -41,7 +41,7 @@
 using namespace llvm;
 using namespace mlir;
 namespace sophgo {
-namespace tops {
+namespace top {
 
 struct QuantizationPattern : public RewritePattern {
   QuantizationPattern(MLIRContext *context)
@@ -66,7 +66,7 @@ public:
                  << this->isAsymmetric << ", chip :" << this->chip << "\n";
     auto module = getOperation();
     auto state = getMlirState(module);
-    if (state != "TOPS_CALIBRATED" && mode != "INT8") {
+    if (state != "TOP_CALIBRATED" && mode != "INT8") {
       module.dump();
       llvm_unreachable("Mlir state not support quantize");
     }
@@ -81,5 +81,5 @@ public:
 std::unique_ptr<OperationPass<ModuleOp>> createQuantizePass() {
   return std::make_unique<QuantizePass>();
 }
-} // namespace tops
+} // namespace top
 } // namespace sophgo

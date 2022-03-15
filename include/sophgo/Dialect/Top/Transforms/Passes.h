@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "sophgo/Dialect/Tops/IR/TopsOps.h"
+#include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "sophgo/Dialect/Tpu/IR/TpuOps.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
@@ -20,13 +20,13 @@
 
 using namespace mlir;
 namespace sophgo {
-namespace tops {
+namespace top {
 
 std::unique_ptr<OperationPass<ModuleOp>> createImportCalibrationTablePass();
 std::unique_ptr<OperationPass<ModuleOp>> createQuantizePass();
 #define GEN_PASS_REGISTRATION
 #define GEN_PASS_CLASSES
-#include "sophgo/Dialect/Tops/Transforms/Passes.h.inc"
+#include "sophgo/Dialect/Top/Transforms/Passes.h.inc"
 
-} // namespace tops
+} // namespace top
 } // namespace mlir

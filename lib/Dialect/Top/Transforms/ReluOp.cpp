@@ -1,4 +1,4 @@
-#include "sophgo/Dialect/Tops/IR/TopsOps.h"
+#include "sophgo/Dialect/Top/IR/TopOps.h"
 
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/IR/Builders.h"
@@ -8,7 +8,7 @@
 #include "mlir/Pass/Pass.h"
 
 using namespace mlir;
-using namespace sophgo::tops;
+using namespace sophgo::top;
 
 static bool supportFuseRelu(Operation *op) {
   if (matchPattern(op, m_Op<ConvOp>()) || matchPattern(op, m_Op<MaxPoolOp>()) ||
@@ -19,7 +19,7 @@ static bool supportFuseRelu(Operation *op) {
   return false;
 }
 
-struct TopsFuseRelu : public OpRewritePattern<ReluOp> {
+struct TopFuseRelu : public OpRewritePattern<ReluOp> {
   using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(ReluOp op,
@@ -42,5 +42,5 @@ struct TopsFuseRelu : public OpRewritePattern<ReluOp> {
 
 void ReluOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                          MLIRContext *context) {
-  results.insert<TopsFuseRelu>(context);
+  results.insert<TopFuseRelu>(context);
 }
