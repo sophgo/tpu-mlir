@@ -21,7 +21,7 @@
 #include "sophgo/Dialect/Top/Transforms/Passes.h"
 #include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "sophgo/Interfaces/InferenceInterface.h"
-#include "sophgo/Support/Utils.h"
+#include "sophgo/Support/MathUtils.h"
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinTypes.h"
