@@ -1,4 +1,4 @@
-#include "sophgo/Dialect/Tops/IR/TopsOps.h"
+#include "sophgo/Dialect/Top/IR/TopOps.h"
 
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/IR/Builders.h"
@@ -8,9 +8,9 @@
 #include "mlir/Pass/Pass.h"
 
 using namespace mlir;
-using namespace sophgo::tops;
+using namespace sophgo::top;
 
-struct TopsFuseReshape : public OpRewritePattern<ReshapeOp> {
+struct TopFuseReshape : public OpRewritePattern<ReshapeOp> {
   using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(ReshapeOp op,
@@ -22,5 +22,5 @@ struct TopsFuseReshape : public OpRewritePattern<ReshapeOp> {
 
 void ReshapeOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                             MLIRContext *context) {
-  results.insert<TopsFuseReshape>(context);
+  results.insert<TopFuseReshape>(context);
 }

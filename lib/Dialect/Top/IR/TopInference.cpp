@@ -7,7 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Dialect/Tops/IR/TopsOps.h"
+#include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "sophgo/Interfaces/InferenceInterface.h"
 #include "sophgo/Support/DnnlConv.h"
 #include "sophgo/Support/DnnlPool.h"
@@ -37,7 +37,7 @@ template <typename T> static void relu(T *src, T *dst, size_t size) {
   }
 }
 
-LogicalResult tops::ConvOp::init(InferenceParameter &p) {
+LogicalResult top::ConvOp::init(InferenceParameter &p) {
   auto conv = new dnnl::Conv();
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
@@ -50,7 +50,7 @@ LogicalResult tops::ConvOp::init(InferenceParameter &p) {
   return success();
 }
 
-void tops::ConvOp::deinit(InferenceParameter &p) {
+void top::ConvOp::deinit(InferenceParameter &p) {
   if (p.handle != nullptr) {
     auto conv = (dnnl::Conv *)p.handle;
     delete conv;
@@ -58,7 +58,7 @@ void tops::ConvOp::deinit(InferenceParameter &p) {
   }
 }
 
-LogicalResult tops::ConvOp::inference(InferenceParameter &p) {
+LogicalResult top::ConvOp::inference(InferenceParameter &p) {
   if (p.handle == nullptr) {
     return failure();
   }
@@ -72,13 +72,13 @@ LogicalResult tops::ConvOp::inference(InferenceParameter &p) {
   return success();
 }
 
-LogicalResult tops::ReluOp::inference(InferenceParameter &p) {
+LogicalResult top::ReluOp::inference(InferenceParameter &p) {
   auto num_elem = input().getType().cast<RankedTensorType>().getNumElements();
   relu(p.inputs[0], p.outputs[0], num_elem);
   return success();
 }
 
-LogicalResult tops::AddOp::inference(InferenceParameter &p) {
+LogicalResult top::AddOp::inference(InferenceParameter &p) {
   auto num_elem = output().getType().cast<RankedTensorType>().getNumElements();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
   for (int64_t i = 0; i < num_elem; i++) {
@@ -95,7 +95,7 @@ LogicalResult tops::AddOp::inference(InferenceParameter &p) {
   return success();
 }
 
-LogicalResult tops::MaxPoolOp::init(InferenceParameter &p) {
+LogicalResult top::MaxPoolOp::init(InferenceParameter &p) {
   auto pooling = new dnnl::Pooling();
   int64_t n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value;
   bool is_global, count_include_pad;
@@ -107,7 +107,7 @@ LogicalResult tops::MaxPoolOp::init(InferenceParameter &p) {
   return success();
 }
 
-void tops::MaxPoolOp::deinit(InferenceParameter &p) {
+void top::MaxPoolOp::deinit(InferenceParameter &p) {
   if (p.handle != nullptr) {
     auto pooling = (dnnl::Pooling *)p.handle;
     delete pooling;
@@ -116,7 +116,7 @@ void tops::MaxPoolOp::deinit(InferenceParameter &p) {
   return;
 }
 
-LogicalResult tops::MaxPoolOp::inference(InferenceParameter &p) {
+LogicalResult top::MaxPoolOp::inference(InferenceParameter &p) {
   if (p.handle == nullptr) {
     return failure();
   }
@@ -130,7 +130,7 @@ LogicalResult tops::MaxPoolOp::inference(InferenceParameter &p) {
   return success();
 }
 
-LogicalResult tops::AvgPoolOp::init(InferenceParameter &p) {
+LogicalResult top::AvgPoolOp::init(InferenceParameter &p) {
   auto pooling = new dnnl::Pooling();
   int64_t n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value;
   bool is_global, count_include_pad;
@@ -142,7 +142,7 @@ LogicalResult tops::AvgPoolOp::init(InferenceParameter &p) {
   return success();
 }
 
-void tops::AvgPoolOp::deinit(InferenceParameter &p) {
+void top::AvgPoolOp::deinit(InferenceParameter &p) {
   if (p.handle != nullptr) {
     auto pooling = (dnnl::Pooling *)p.handle;
     delete pooling;
@@ -151,7 +151,7 @@ void tops::AvgPoolOp::deinit(InferenceParameter &p) {
   return;
 }
 
-LogicalResult tops::AvgPoolOp::inference(InferenceParameter &p) {
+LogicalResult top::AvgPoolOp::inference(InferenceParameter &p) {
   if (p.handle == nullptr) {
     return failure();
   }
@@ -165,7 +165,7 @@ LogicalResult tops::AvgPoolOp::inference(InferenceParameter &p) {
   return success();
 }
 
-LogicalResult tops::ReshapeOp::inference(InferenceParameter &p) {
+LogicalResult top::ReshapeOp::inference(InferenceParameter &p) {
   auto num_elem = output().getType().cast<RankedTensorType>().getNumElements();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
   for (int64_t i = 0; i < num_elem; i++) {
@@ -174,7 +174,7 @@ LogicalResult tops::ReshapeOp::inference(InferenceParameter &p) {
   return success();
 }
 
-LogicalResult tops::MatMulOp::init(InferenceParameter &p) {
+LogicalResult top::MatMulOp::init(InferenceParameter &p) {
   auto matmul = new dnnl::MatMul();
   int64_t batch, M, K, N;
   parseParam(batch, M, K, N);
@@ -184,7 +184,7 @@ LogicalResult tops::MatMulOp::init(InferenceParameter &p) {
   return success();
 }
 
-void tops::MatMulOp::deinit(InferenceParameter &p) {
+void top::MatMulOp::deinit(InferenceParameter &p) {
   if (p.handle != nullptr) {
     auto matmul = (dnnl::MatMul *)p.handle;
     delete matmul;
@@ -193,7 +193,7 @@ void tops::MatMulOp::deinit(InferenceParameter &p) {
   return;
 }
 
-LogicalResult tops::MatMulOp::inference(InferenceParameter &p) {
+LogicalResult top::MatMulOp::inference(InferenceParameter &p) {
   if (p.handle == nullptr) {
     return failure();
   }

@@ -17,7 +17,7 @@
 #include "sophgo/Interfaces/InferenceInterface.h"
 #include "sophgo/Interfaces/QuantizeInterface.h"
 #include "sophgo/Support/TensorFile.h"
-#include "sophgo/Dialect/Tops/IR/TopsOpsDialect.h.inc"
+#include "sophgo/Dialect/Top/IR/TopOpsDialect.h.inc"
 #define GET_OP_CLASSES
-#include "sophgo/Dialect/Tops/IR/TopsOps.h.inc"
+#include "sophgo/Dialect/Top/IR/TopOps.h.inc"
 
