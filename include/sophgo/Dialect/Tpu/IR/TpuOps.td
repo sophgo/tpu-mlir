@@ -38,6 +38,8 @@ def Tpu_ConvOp: Tpu_Op<"Conv",[NoSideEffect]> {
     OptionalAttr<I64ArrayAttr>:$dilations,
     OptionalAttr<I64ArrayAttr>:$inserts,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    //quant param
+    DefaultValuedAttr<I64Attr, "0">:$rshift,
     StrAttr:$name
   );
 

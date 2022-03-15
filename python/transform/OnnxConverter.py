@@ -173,7 +173,8 @@ class OnnxConverter(BaseConverter):
         for _name in self.output_names:
             output_shapes.append(self.getShape(_name))
         # init importer
-        self.mlir = MLIRImporter(input_shapes, output_shapes, self.weight_file)
+        self.mlir = MLIRImporter(input_shapes, output_shapes, self.model_name)
+        self.weight_file = self.mlir.weight_file
 
     def generate_mlir(self, mlir_file:str):
         """convert all to mlir"""

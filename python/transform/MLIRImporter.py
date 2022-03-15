@@ -13,6 +13,10 @@ class Tops:
     ReshapeOp = 'tops.Reshape'
     ReluOp = 'tops.Relu'
 
+def get_weight_file(model_name:str, state:str, chip:str):
+    name = "{}_{}_{}_weight.npz".format(model_name, state, chip)
+    return name.lower()
+
 
 def checkType(obj, type):
     if not isinstance(obj, type):
@@ -23,15 +27,18 @@ class MLIRImporter(object):
     def __init__(self,
                  input_shapes: list,
                  output_shapes: list,
-                 weight_file: str,
+                 model_name: str,
                  input_types: list = [],
                  output_types: list = []):
         """
             input_shape: List[List], put module input shape. ex: [[1, 3, 224, 224]]
             output_shape: List, put module output shape. ex: [1, 1000]
         """
-        assert (len(weight_file) > 0)
-        self.weight_file = weight_file
+        assert (len(model_name) > 0)
+        self.model_name = model_name
+        self.state = "TOPS_F32"
+        self.chip = "ALL"
+        self.weight_file = get_weight_file(self.model_name, self.state, self.chip)
         self.ctx = Context()
         self.ctx.allow_unregistered_dialects = True
         self.loc = Location.unknown(self.ctx)
@@ -252,11 +259,11 @@ class MLIRImporter(object):
             output_txt = "({})".format(output_txt)
 
         tpu_func = """
-            module attributes {{mlir.weight_file= \"{weight_file}\", mlir.state=\"TOPS_F32\", mlir.chip=\"ALL\"}} {{
+            module attributes {{mlir.name = \"{name}\", mlir.weight_file= \"{weight_file}\", mlir.state=\"{state}\", mlir.chip=\"{chip}\"}} {{
                 func @main({args}) -> {output} {{
                     %0 = \"tops.None\"() : () -> none
             }}}}
-        """.format(weight_file=self.weight_file, args=args_txt, output=output_txt)
+        """.format(name = self.model_name,weight_file=self.weight_file, state=self.state, chip=self.chip, args=args_txt, output=output_txt)
         self.mlir_module = Module.parse(tpu_func, self.ctx)
         self.func = self.mlir_module.body.operations[0]
         self.entry_block = self.func.regions[0].blocks[0]

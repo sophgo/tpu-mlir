@@ -57,7 +57,9 @@ def Tops_WeightOp : Tops_Op<"Weight", [NoSideEffect]> {
     template<typename T>
     std::shared_ptr<std::vector<T>> read();
     template<typename T>
-    mlir::LogicalResult write(const std::vector<T>&);
+    mlir::LogicalResult write(llvm::StringRef suffix,
+                              const std::vector<T>& new_data,
+                              mlir::RankedTensorType& new_type);
   }];
 }
 
