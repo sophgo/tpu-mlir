@@ -1,6 +1,7 @@
-#include "sophgo/Support/DnnlConv.h"
+#include "sophgo/Support/Dnnl/Conv.h"
 
 using namespace dnnl;
+using namespace sophgo;
 Conv::Conv() {
   eng = dnnl::engine(engine::kind::cpu, 0);
   eng_stream = dnnl::stream(eng);

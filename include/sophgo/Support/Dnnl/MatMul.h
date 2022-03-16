@@ -2,8 +2,8 @@
 #pragma once
 
 #include "oneapi/dnnl/dnnl.hpp"
-
-namespace dnnl {
+using namespace dnnl;
+namespace sophgo {
 class MatMul {
 public:
   MatMul();

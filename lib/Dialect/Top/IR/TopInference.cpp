@@ -9,9 +9,9 @@
 
 #include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "sophgo/Interfaces/InferenceInterface.h"
-#include "sophgo/Support/DnnlConv.h"
-#include "sophgo/Support/DnnlPool.h"
-#include "sophgo/Support/DnnlMatMul.h"
+#include "sophgo/Support/Dnnl/Conv.h"
+#include "sophgo/Support/Dnnl/Pool.h"
+#include "sophgo/Support/Dnnl/MatMul.h"
 
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
@@ -38,7 +38,7 @@ template <typename T> static void relu(T *src, T *dst, size_t size) {
 }
 
 LogicalResult top::ConvOp::init(InferenceParameter &p) {
-  auto conv = new dnnl::Conv();
+  auto conv = new Conv();
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
   bool is_dw, with_bias, relu;
@@ -52,7 +52,7 @@ LogicalResult top::ConvOp::init(InferenceParameter &p) {
 
 void top::ConvOp::deinit(InferenceParameter &p) {
   if (p.handle != nullptr) {
-    auto conv = (dnnl::Conv *)p.handle;
+    auto conv = (Conv *)p.handle;
     delete conv;
     p.handle = nullptr;
   }
@@ -62,7 +62,7 @@ LogicalResult top::ConvOp::inference(InferenceParameter &p) {
   if (p.handle == nullptr) {
     return failure();
   }
-  auto conv = (dnnl::Conv *)p.handle;
+  auto conv = (Conv *)p.handle;
   conv->run();
   if (do_relu()) {
     size_t num_elem =
@@ -96,7 +96,7 @@ LogicalResult top::AddOp::inference(InferenceParameter &p) {
 }
 
 LogicalResult top::MaxPoolOp::init(InferenceParameter &p) {
-  auto pooling = new dnnl::Pooling();
+  auto pooling = new Pooling();
   int64_t n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value;
   bool is_global, count_include_pad;
   parseParam(n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value,
@@ -109,7 +109,7 @@ LogicalResult top::MaxPoolOp::init(InferenceParameter &p) {
 
 void top::MaxPoolOp::deinit(InferenceParameter &p) {
   if (p.handle != nullptr) {
-    auto pooling = (dnnl::Pooling *)p.handle;
+    auto pooling = (Pooling *)p.handle;
     delete pooling;
     p.handle = nullptr;
   }
@@ -120,7 +120,7 @@ LogicalResult top::MaxPoolOp::inference(InferenceParameter &p) {
   if (p.handle == nullptr) {
     return failure();
   }
-  auto pooling = (dnnl::Pooling *)p.handle;
+  auto pooling = (Pooling *)p.handle;
   pooling->run();
   if (do_relu()) {
     size_t num_elem =
@@ -131,7 +131,7 @@ LogicalResult top::MaxPoolOp::inference(InferenceParameter &p) {
 }
 
 LogicalResult top::AvgPoolOp::init(InferenceParameter &p) {
-  auto pooling = new dnnl::Pooling();
+  auto pooling = new Pooling();
   int64_t n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value;
   bool is_global, count_include_pad;
   parseParam(n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value,
@@ -144,7 +144,7 @@ LogicalResult top::AvgPoolOp::init(InferenceParameter &p) {
 
 void top::AvgPoolOp::deinit(InferenceParameter &p) {
   if (p.handle != nullptr) {
-    auto pooling = (dnnl::Pooling *)p.handle;
+    auto pooling = (Pooling *)p.handle;
     delete pooling;
     p.handle = nullptr;
   }
@@ -155,7 +155,7 @@ LogicalResult top::AvgPoolOp::inference(InferenceParameter &p) {
   if (p.handle == nullptr) {
     return failure();
   }
-  auto pooling = (dnnl::Pooling *)p.handle;
+  auto pooling = (Pooling *)p.handle;
   pooling->run();
   if (do_relu()) {
     size_t num_elem =
@@ -175,7 +175,7 @@ LogicalResult top::ReshapeOp::inference(InferenceParameter &p) {
 }
 
 LogicalResult top::MatMulOp::init(InferenceParameter &p) {
-  auto matmul = new dnnl::MatMul();
+  auto matmul = new MatMul();
   int64_t batch, M, K, N;
   parseParam(batch, M, K, N);
   matmul->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], batch, M,
@@ -186,7 +186,7 @@ LogicalResult top::MatMulOp::init(InferenceParameter &p) {
 
 void top::MatMulOp::deinit(InferenceParameter &p) {
   if (p.handle != nullptr) {
-    auto matmul = (dnnl::MatMul *)p.handle;
+    auto matmul = (MatMul *)p.handle;
     delete matmul;
     p.handle = nullptr;
   }
@@ -197,7 +197,7 @@ LogicalResult top::MatMulOp::inference(InferenceParameter &p) {
   if (p.handle == nullptr) {
     return failure();
   }
-  auto matmul = (dnnl::MatMul *)p.handle;
+  auto matmul = (MatMul *)p.handle;
   matmul->run();
   return success();
 }

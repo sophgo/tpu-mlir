@@ -1,7 +1,9 @@
 
-#include "sophgo/Support/DnnlPool.h"
+#include "sophgo/Support/Dnnl/Pool.h"
 
 using namespace dnnl;
+using namespace sophgo;
+
 Pooling::Pooling() {
   eng = dnnl::engine(engine::kind::cpu, 0);
   eng_stream = dnnl::stream(eng);

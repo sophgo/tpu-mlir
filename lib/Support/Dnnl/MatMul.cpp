@@ -1,9 +1,10 @@
-#include "sophgo/Support/DnnlMatMul.h"
+#include "sophgo/Support/Dnnl/MatMul.h"
 
 using namespace dnnl;
 using tag = memory::format_tag;
 using dt = memory::data_type;
 
+namespace sophgo {
 MatMul::MatMul() {
   eng = dnnl::engine(engine::kind::cpu, 0);
   engine_stream = dnnl::stream(eng);
@@ -53,4 +54,6 @@ void MatMul::setup(float *left, float *right, float *bias, float *output,
 void MatMul::run() {
   primitive.execute(engine_stream, matmul_args);
   engine_stream.wait();
+}
+
 }

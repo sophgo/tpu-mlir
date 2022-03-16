@@ -1,10 +1,9 @@
 add_subdirectory(Interfaces)
-add_subdirectory(Support)
 add_subdirectory(Dialect)
+add_subdirectory(Support)
 
 add_mlir_library(SophgoInitAll
   InitAll.cpp
-  ModuleInterpreter.cpp
 
   LINK_COMPONENTS
   Core
@@ -15,6 +14,7 @@ add_mlir_library(SophgoInitAll
   MLIRFunc
   MLIRQuant
   MLIRTransforms
+  MLIRInferenceInterface
   SophgoTop
   SophgoTpu
   SophgoSupport
