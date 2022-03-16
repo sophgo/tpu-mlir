@@ -21,7 +21,7 @@
 #include "sophgo/Dialect/Top/Transforms/Passes.h"
 #include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "sophgo/Support/MathUtils.h"
-#include "sophgo/Support/ModuleHelper.h"
+#include "sophgo/Support/Helper/Module.h"
 #include "sophgo/Interfaces/InferenceInterface.h"
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/IR/Builders.h"
@@ -38,6 +38,7 @@
 
 using namespace llvm;
 using namespace mlir;
+using namespace sophgo::helper;
 namespace sophgo {
 namespace top {
 
@@ -55,8 +56,7 @@ public:
     llvm::errs() << "import calibration table:" << this->tableFile
                  << ", is asymmetric " << this->isAsymmetric << "\n";
     auto module = getOperation();
-    auto state = getMlirState(module);
-    if (state != sophgo::STATE_TOP_F32) {
+    if (!Module::isState(module, Module::State::TOP_F32)) {
       module.dump();
       llvm_unreachable("wrong mlir state");
     }
@@ -110,7 +110,8 @@ public:
       std::vector<mlir::Type> arguments;
       std::vector<mlir::Type> returns;
       Block &entryBlock = func.front();
-      auto returnOp = dyn_cast<func::ReturnOp>(entryBlock.back()).getOperation();
+      auto returnOp =
+          dyn_cast<func::ReturnOp>(entryBlock.back()).getOperation();
       for (uint32_t i = 0; i < entryBlock.getNumArguments(); ++i) {
         arguments.push_back(entryBlock.getArgument(i).getType());
       }
@@ -118,11 +119,12 @@ public:
         returns.push_back(returnOp->getOperand(i).getType());
       }
       Builder builder(&getContext());
-      auto fnType = builder.getFunctionType(llvm::ArrayRef<mlir::Type>{arguments},
-                                   llvm::ArrayRef<mlir::Type>{returns});
+      auto fnType =
+          builder.getFunctionType(llvm::ArrayRef<mlir::Type>{arguments},
+                                  llvm::ArrayRef<mlir::Type>{returns});
       func.setType(fnType);
     }
-    sophgo::setMlirState(module, sophgo::STATE_TOP_CALIBRATED);
+    Module::setState(module, Module::State::TOP_CALIBRATED);
   }
 };
 
@@ -132,4 +134,3 @@ std::unique_ptr<OperationPass<ModuleOp>> createImportCalibrationTablePass() {
 
 } // namespace top
 } // namespace sophgo
-

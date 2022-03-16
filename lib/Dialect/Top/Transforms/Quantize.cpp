@@ -22,7 +22,7 @@
 #include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "sophgo/Interfaces/InferenceInterface.h"
 #include "sophgo/Support/MathUtils.h"
-#include "sophgo/Support/ModuleHelper.h"
+#include "sophgo/Support/Helper/Module.h"
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinTypes.h"
@@ -41,6 +41,7 @@
 
 using namespace llvm;
 using namespace mlir;
+using namespace sophgo::helper;
 namespace sophgo {
 namespace top {
 
@@ -66,8 +67,8 @@ public:
     llvm::errs() << "default quantize mode:" << this->mode << ", is asymmetric "
                  << this->isAsymmetric << ", chip :" << this->chip << "\n";
     auto module = getOperation();
-    auto state = sophgo::getMlirState(module);
-    if (state != "TOP_CALIBRATED" && mode != "INT8") {
+    auto state = Module::getState(module);
+    if (state != Module::State::TOP_F32 && mode != "INT8") {
       module.dump();
       llvm_unreachable("Mlir state not support quantize");
     }
@@ -75,7 +76,8 @@ public:
     RewritePatternSet patterns(ctx);
     patterns.insert<QuantizationPattern>(ctx);
     applyPatternsAndFoldGreedily(module, std::move(patterns));
-    sophgo::setMlirWeightFile(module, "tpu_weight.npz");
+    Module::setWeightFile(module, "tpu_weight.npz");
+    Module::setState(module, Module::State::TPU_QUANTIZED);
   }
 };
 

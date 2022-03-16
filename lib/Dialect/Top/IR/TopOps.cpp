@@ -8,7 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "sophgo/Dialect/Top/IR/TopOps.h"
-#include "sophgo/Support/ModuleHelper.h"
+#include "sophgo/Support/Helper/Module.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/PatternMatch.h"
@@ -21,6 +21,7 @@
 using namespace mlir;
 using namespace sophgo;
 using namespace sophgo::top;
+using namespace sophgo::helper;
 
 //===----------------------------------------------------------------------===//
 // Dialect initialize method.
@@ -167,8 +168,8 @@ template <typename T> std::shared_ptr<std::vector<T>> WeightOp::read() {
   auto dialect = op->getDialect();
   auto topDialect = llvm::cast<TopDialect>(dialect);
   if (topDialect->wFile == nullptr) {
-    auto moduleOp = getModuleOp(op);
-    auto weight_file = getMlirWeightFile(moduleOp);
+    auto moduleOp = Module::getModuleOp(op);
+    auto weight_file = Module::getWeightFile(moduleOp);
     topDialect->loadWeightFile(weight_file);
   }
   auto type = output().getType().cast<RankedTensorType>();
@@ -182,8 +183,8 @@ LogicalResult WeightOp::write(StringRef suffix, const std::vector<T> &data,
   auto dialect = op->getDialect();
   auto topDialect = llvm::cast<TopDialect>(dialect);
   if (topDialect->wFile == nullptr) {
-    auto moduleOp = getModuleOp(op);
-    auto weight_file = getMlirWeightFile(moduleOp);
+    auto moduleOp = Module::getModuleOp(op);
+    auto weight_file = Module::getWeightFile(moduleOp);
     topDialect->loadWeightFile(weight_file);
   }
   std::string new_name = name().str() + "_" + suffix.str();
