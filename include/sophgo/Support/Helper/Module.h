@@ -23,14 +23,41 @@ struct Module {
     static constexpr llvm::StringRef TPU_QUANTIZED = "TPU_QUANTIED";
   };
 
+  struct Chip {
+    static constexpr llvm::StringRef ALL = "ALL";
+    static constexpr llvm::StringRef BM1684 = "BM1684";
+    static constexpr llvm::StringRef BM1686 = "BM1686";
+  };
+
   static ModuleOp getModuleOp(Operation *op);
-  static llvm::StringRef getWeightFile(ModuleOp module);
-  static void setWeightFile(ModuleOp module, llvm::StringRef weight_file);
-  static llvm::StringRef getState(ModuleOp module);
-  static void setState(ModuleOp module, llvm::StringRef state);
-  static bool isState(ModuleOp module, llvm::StringRef state);
-  static llvm::StringRef getChip(ModuleOp module);
-  static void setChip(ModuleOp module, llvm::StringRef chip);
+  static void updateModuleTypes(ModuleOp module);
+  static std::string genWeightFileName(ModuleOp module);
+
+  static inline llvm::StringRef getName(ModuleOp module) {
+    return module->getAttrOfType<StringAttr>(Attr::NAME);
+  }
+  static inline llvm::StringRef getChip(ModuleOp module) {
+    return module->getAttrOfType<StringAttr>(Attr::CHIP);
+  }
+  static inline void setChip(ModuleOp module, StringRef chip) {
+    module->setAttr(Attr::CHIP, StringAttr::get(module.getContext(), chip));
+  }
+  static inline StringRef getWeightFile(ModuleOp module) {
+    return module->getAttrOfType<StringAttr>(Attr::WEIGHT_FILE);
+  }
+  static inline void setWeightFile(ModuleOp module, StringRef weight_file) {
+    module->setAttr(Attr::WEIGHT_FILE,
+                    StringAttr::get(module.getContext(), weight_file));
+  }
+  static inline StringRef getState(ModuleOp module) {
+    return module->getAttrOfType<StringAttr>(Attr::STATE);
+  }
+  static inline void setState(ModuleOp module, StringRef state) {
+    module->setAttr(Attr::STATE, StringAttr::get(module.getContext(), state));
+  }
+  static inline bool isState(ModuleOp module, llvm::StringRef state) {
+    return state == getState(module);
+  }
 };
 } // namespace helper
 } // namespace sophgo

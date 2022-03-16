@@ -41,6 +41,12 @@ def Quantize : Pass<"quantize", "ModuleOp"> {
   let dependentDialects = ["TopDialect", "::sophgo::tpu::TpuDialect", "mlir::quant::QuantizationDialect"];
 }
 
+def SaveWeight : Pass<"save-weight", "ModuleOp"> {
+  let summary = "save weight by sophgo-opt";
+  let constructor = "createSaveWeightPass()";
+  let dependentDialects = ["TopDialect"];
+}
+
 #endif
 
 

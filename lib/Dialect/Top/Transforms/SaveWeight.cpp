@@ -37,8 +37,7 @@
 
 #include <sstream>
 #include <fstream>
-#include <regex>
-#include <unordered_map>
+#include <set>
 
 using namespace llvm;
 using namespace mlir;
@@ -46,43 +45,45 @@ using namespace sophgo::helper;
 namespace sophgo {
 namespace top {
 
-struct QuantizationPattern : public RewritePattern {
-  QuantizationPattern(MLIRContext *context)
-      : RewritePattern(MatchAnyOpTypeTag(), 1, context) {}
-  LogicalResult matchAndRewrite(Operation *op,
-                                PatternRewriter &rewriter) const override {
-    auto quantize_op = dyn_cast<sophgo::QuantizeInterface>(op);
-    if (!quantize_op) {
-      return failure();
-    }
-    auto newValue = quantize_op.quantize_int8();
-    rewriter.replaceOp(op, {newValue});
-    return success();
-  }
-};
-
-class QuantizePass : public QuantizeBase<QuantizePass> {
+class SaveWeightPass : public SaveWeightBase<SaveWeightPass> {
 public:
-  QuantizePass() {}
+  SaveWeightPass() {}
   void runOnOperation() override {
-    llvm::errs() << "default quantize mode:" << this->mode << ", is asymmetric "
-                 << this->isAsymmetric << ", chip :" << this->chip << "\n";
     auto module = getOperation();
-    auto state = Module::getState(module);
-    if (state != Module::State::TOP_CALIBRATED || mode != Quant::Type::INT8) {
-      module.dump();
-      llvm_unreachable("Mlir state not support quantize");
+    auto dialect = module->getContext()->getLoadedDialect("top");
+    auto top_dialect = llvm::cast<top::TopDialect>(dialect);
+    if (top_dialect->wFile == nullptr) {
+      return;
     }
-    auto ctx = module.getContext();
-    RewritePatternSet patterns(ctx);
-    patterns.insert<QuantizationPattern>(ctx);
-    applyPatternsAndFoldGreedily(module, std::move(patterns));
-    Module::setState(module, Module::State::TPU_QUANTIZED);
+    if (top_dialect->wFile->changed() == false) {
+      return;
+    }
+    std::set<StringRef> weight_names;
+    for (auto func : module.getOps<FuncOp>()) {
+      func.walk([&](top::WeightOp op) { weight_names.insert(op.name()); });
+    }
+    std::set<StringRef> npz_names;
+    top_dialect->wFile->getAllNames(npz_names);
+    std::set<StringRef> dif_names;
+    for (auto name : npz_names) {
+      if (weight_names.find(name) == weight_names.end()) {
+        dif_names.insert(name);
+      }
+    }
+    for (auto &name : dif_names) {
+      top_dialect->wFile->deleteTensor(name);
+    }
+    if (top_dialect->wFile->changed() == false) {
+      return;
+    }
+    auto file_name = Module::genWeightFileName(module);
+    top_dialect->wFile->save(file_name);
+    Module::setWeightFile(module, file_name);
   }
 };
 
-std::unique_ptr<OperationPass<ModuleOp>> createQuantizePass() {
-  return std::make_unique<QuantizePass>();
+std::unique_ptr<OperationPass<ModuleOp>> createSaveWeightPass() {
+  return std::make_unique<SaveWeightPass>();
 }
 } // namespace top
 } // namespace sophgo
