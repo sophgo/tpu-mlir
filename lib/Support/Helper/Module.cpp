@@ -2,6 +2,7 @@
 #include "sophgo/Support/Helper/Module.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/IR/TypeUtilities.h"
 #include "mlir/Support/LLVM.h"
@@ -21,6 +22,10 @@ constexpr llvm::StringRef Module::State::TOP_CALIBRATED;
 constexpr llvm::StringRef Module::State::TOP_QUANTIZED;
 constexpr llvm::StringRef Module::State::TPU_QUANTIZED;
 
+constexpr llvm::StringRef Module::Chip::ALL;
+constexpr llvm::StringRef Module::Chip::BM1684;
+constexpr llvm::StringRef Module::Chip::BM1686;
+
 ModuleOp Module::getModuleOp(Operation *op) {
   auto moduleOp = op->getParentOp();
   while (moduleOp && !isa<mlir::ModuleOp>(moduleOp)) {
@@ -34,37 +39,38 @@ ModuleOp Module::getModuleOp(Operation *op) {
   return mOp;
 }
 
-StringRef Module::getWeightFile(ModuleOp module) {
-  return module->getAttrOfType<StringAttr>(Attr::WEIGHT_FILE);
+void Module::updateModuleTypes(ModuleOp module) {
+  auto ctx = module.getContext();
+  Builder builder(ctx);
+  // sync ReturnOp type to function type
+  for (auto func : module.getOps<FuncOp>()) {
+    // alter the function type to match the real type
+    // of InputOp and ReturnOp
+    std::vector<mlir::Type> arguments;
+    std::vector<mlir::Type> returns;
+    Block &entryBlock = func.front();
+    auto returnOp = dyn_cast<func::ReturnOp>(entryBlock.back()).getOperation();
+    for (uint32_t i = 0; i < entryBlock.getNumArguments(); ++i) {
+      arguments.push_back(entryBlock.getArgument(i).getType());
+    }
+    for (uint32_t i = 0; i < returnOp->getNumOperands(); ++i) {
+      returns.push_back(returnOp->getOperand(i).getType());
+    }
+    auto fnType = builder.getFunctionType(llvm::ArrayRef<mlir::Type>{arguments},
+                                          llvm::ArrayRef<mlir::Type>{returns});
+    func.setType(fnType);
+  }
 }
 
-void Module::setWeightFile(ModuleOp module, StringRef weight_file) {
-  module->setAttr(Attr::WEIGHT_FILE,
-                  StringAttr::get(module.getContext(), weight_file));
-  auto dialect = module->getContext()->getLoadedDialect("top");
-  auto top_dialect = llvm::cast<top::TopDialect>(dialect);
-  top_dialect->wFile->save(weight_file.str());
+std::string Module::genWeightFileName(ModuleOp module) {
+  auto name = getName(module);
+  auto state = getState(module);
+  auto chip = getChip(module);
+  std::string weight_file_name = name.lower() + std::string("_") +
+                                 state.lower() + std::string("_") +
+                                 chip.lower() + "_weight.npz";
+  return weight_file_name;
 }
 
-StringRef Module::getState(ModuleOp module) {
-  return module->getAttrOfType<StringAttr>(Attr::STATE);
-}
-
-void Module::setState(ModuleOp module, StringRef state) {
-  module->setAttr(Attr::STATE, StringAttr::get(module.getContext(), state));
-}
-
-bool Module::isState(ModuleOp module, llvm::StringRef state) {
-  auto _state = getState(module);
-  return _state == state;
-}
-
-StringRef Module::getChip(ModuleOp module) {
-  return module->getAttrOfType<StringAttr>(Attr::CHIP);
-}
-
-void Module::setChip(ModuleOp module, StringRef chip) {
-  module->setAttr(Attr::CHIP, StringAttr::get(module.getContext(), chip));
-}
-} // namespace help
+} // namespace helper
 } // namespace sophgo

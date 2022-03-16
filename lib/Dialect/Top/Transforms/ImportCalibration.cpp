@@ -105,25 +105,8 @@ public:
           value.setType(new_type);
         }
       });
-      // alter the function type to match the real type
-      // of InputOp and ReturnOp
-      std::vector<mlir::Type> arguments;
-      std::vector<mlir::Type> returns;
-      Block &entryBlock = func.front();
-      auto returnOp =
-          dyn_cast<func::ReturnOp>(entryBlock.back()).getOperation();
-      for (uint32_t i = 0; i < entryBlock.getNumArguments(); ++i) {
-        arguments.push_back(entryBlock.getArgument(i).getType());
-      }
-      for (uint32_t i = 0; i < returnOp->getNumOperands(); ++i) {
-        returns.push_back(returnOp->getOperand(i).getType());
-      }
-      Builder builder(&getContext());
-      auto fnType =
-          builder.getFunctionType(llvm::ArrayRef<mlir::Type>{arguments},
-                                  llvm::ArrayRef<mlir::Type>{returns});
-      func.setType(fnType);
     }
+    Module::updateModuleTypes(module);
     Module::setState(module, Module::State::TOP_CALIBRATED);
   }
 };

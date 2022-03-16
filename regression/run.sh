@@ -20,11 +20,13 @@ run_calibration.py resnet18.mlir \
 # import calibration
 sophgo-opt resnet18.mlir \
     --import-calibration-table='file=resnet18_cali_table asymmetric=false' \
+    --save-weight \
     -o resnet18_cali.mlir
 
 # quantize mlir
 sophgo-opt resnet18_cali.mlir \
     --quantize="mode=INT8 asymmetric=false chip=bm1684" \
+    --save-weight \
     -o resnet18_int8.mlir
 
 popd

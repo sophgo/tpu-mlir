@@ -39,6 +39,7 @@
 #include <ctime>
 #include <atomic>
 #include <fstream>
+#include <set>
 
 #include <iomanip>
 template <typename T> static std::string int_to_hex(T i) {
@@ -101,32 +102,6 @@ public:
   }
 
   ~TensorFile() {}
-
-  static std::string generateName(llvm::StringRef base, int index) {
-    srand(time(0));
-    uint32_t unique = (uint32_t)random();
-    uint32_t pid = getpid();
-    std::string name = base.str() + "_" + std::to_string(index) + "_" +
-                       int_to_hex<uint16_t>(pid) +
-                       int_to_hex<uint32_t>(unique) + ".npz";
-    return name;
-  }
-
-  static std::string incrementName(llvm::StringRef name) {
-    auto stem = llvm::sys::path::stem(name);
-    SmallVector<StringRef, 100> ss;
-    stem.split(ss, '_');
-    std::string base;
-    for (unsigned i = 0, e = ss.size(); i < e; ++i) {
-      if (i < e - 2)
-        base += ss[i];
-    }
-    unsigned long long index = 0;
-    ss[ss.size() - 2].consumeInteger(0, index);
-    // llvm::errs() << " index : " << index << "\n";
-    // llvm::errs() << " base  : " << base << "\n";
-    return generateName(base, index + 1);
-  }
 
   /// add a new tensor to file
   /// if the name is already used, return failure()
@@ -221,7 +196,7 @@ public:
 
   /// delete a tensor from file
   /// if the name is not found, return failure()
-  template <typename T> LogicalResult deleteTensor(llvm::StringRef name) {
+  LogicalResult deleteTensor(const llvm::StringRef name) {
     assert(!readOnly);
     if (readOnly)
       return failure();
@@ -233,6 +208,12 @@ public:
     map.erase(it);
     cnt_del++;
     return success();
+  }
+
+  void getAllNames(std::set<StringRef> &names) {
+    for (auto &name : map) {
+      names.insert(name.first);
+    }
   }
 
   /// read all tensor from file
@@ -259,7 +240,9 @@ public:
     return success();
   }
 
-  void save(const std::string& file="") {
+  bool changed() { return cnt_add + cnt_del > 0; }
+
+  void save(const std::string &file = "") {
     assert(!readOnly);
     if (cnt_add + cnt_del == 0) {
       return;

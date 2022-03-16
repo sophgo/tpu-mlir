@@ -24,6 +24,7 @@ namespace top {
 
 std::unique_ptr<OperationPass<ModuleOp>> createImportCalibrationTablePass();
 std::unique_ptr<OperationPass<ModuleOp>> createQuantizePass();
+std::unique_ptr<OperationPass<ModuleOp>> createSaveWeightPass();
 #define GEN_PASS_REGISTRATION
 #define GEN_PASS_CLASSES
 #include "sophgo/Dialect/Top/Transforms/Passes.h.inc"

@@ -10,7 +10,7 @@ def checkReturnValue(ret, func: str):
 
 
 def mlir_opt(mlirfile, opt_mlirfile):
-    ret = subprocess.run(["sophgo-opt", "--canonicalize", mlirfile, "-o", opt_mlirfile])
+    ret = subprocess.run(["sophgo-opt", "--canonicalize", "--save-weight", mlirfile, "-o", opt_mlirfile])
     checkReturnValue(ret, "sophgo-opt")
     return ret.returncode
 
