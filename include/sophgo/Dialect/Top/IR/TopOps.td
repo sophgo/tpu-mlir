@@ -17,11 +17,6 @@ def Top_Dialect : Dialect {
   let summary = "A topdialect for the SOPHGO specification";
   let cppNamespace = "::sophgo::top";
   let extraClassDeclaration = [{
-  static constexpr llvm::StringRef kModelNameAttrName = "top.model_name";
-  static constexpr llvm::StringRef kStateAttrName = "top.state";
-  static constexpr llvm::StringRef kChipAttrName = "top.chip";
-  static constexpr llvm::StringRef kWeightFileAttrName = "top.weight_file";
-
   void loadWeightFile(llvm::StringRef file) {
     wFile = std::make_unique<mlir::TensorFile>(file, false);
   }

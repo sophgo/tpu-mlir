@@ -10,9 +10,9 @@
 #include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "sophgo/Dialect/Tpu/IR/TpuOps.h"
 #include "sophgo/Interfaces/QuantizeInterface.h"
-#include "sophgo/Support/DnnlConv.h"
-#include "sophgo/Support/DnnlPool.h"
-#include "sophgo/Support/DnnlMatMul.h"
+#include "sophgo/Support/Dnnl/Conv.h"
+#include "sophgo/Support/Dnnl/Pool.h"
+#include "sophgo/Support/Dnnl/MatMul.h"
 #include "sophgo/Support/MathUtils.h"
 
 #include "mlir/IR/Builders.h"

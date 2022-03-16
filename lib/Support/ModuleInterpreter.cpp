@@ -1,5 +1,5 @@
 
-#include "sophgo/ModuleInterpreter.h"
+#include "sophgo/Support/ModuleInterpreter.h"
 #include "sophgo/Support/MathUtils.h"
 #include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "sophgo/Dialect/Tpu/IR/TpuOps.h"

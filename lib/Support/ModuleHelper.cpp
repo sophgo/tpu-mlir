@@ -1,4 +1,5 @@
 #include "sophgo/Dialect/Top/IR/TopOps.h"
+#include "sophgo/Support/ModuleHelper.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/PatternMatch.h"
@@ -24,12 +25,11 @@ ModuleOp getModuleOp(Operation *op) {
 }
 
 StringRef getMlirWeightFile(ModuleOp module) {
-  return module->getAttrOfType<StringAttr>(
-      top::TopDialect::kWeightFileAttrName);
+  return module->getAttrOfType<StringAttr>(kWeightFileAttrName);
 }
 
 void setMlirWeightFile(ModuleOp module, StringRef weight_file) {
-  module->setAttr(top::TopDialect::kWeightFileAttrName,
+  module->setAttr(kWeightFileAttrName,
                   StringAttr::get(module.getContext(), weight_file));
   auto dialect = module->getContext()->getLoadedDialect("top");
   auto top_dialect = llvm::cast<top::TopDialect>(dialect);
@@ -37,19 +37,18 @@ void setMlirWeightFile(ModuleOp module, StringRef weight_file) {
 }
 
 StringRef getMlirState(ModuleOp module) {
-  return module->getAttrOfType<StringAttr>(top::TopDialect::kStateAttrName);
+  return module->getAttrOfType<StringAttr>(kStateAttrName);
 }
 
 void setMlirState(ModuleOp module, StringRef state) {
-  module->setAttr(top::TopDialect::kStateAttrName,
-                  StringAttr::get(module.getContext(), state));
+  module->setAttr(kStateAttrName, StringAttr::get(module.getContext(), state));
 }
 
 StringRef getMlirChip(ModuleOp module) {
-  return module->getAttrOfType<StringAttr>(top::TopDialect::kChipAttrName);
+  return module->getAttrOfType<StringAttr>(kChipAttrName);
 }
+
 void setMlirChip(ModuleOp module, StringRef chip) {
-  module->setAttr(top::TopDialect::kChipAttrName,
-                  StringAttr::get(module.getContext(), chip));
+  module->setAttr(kChipAttrName, StringAttr::get(module.getContext(), chip));
 }
-}
+} // namespace sophgo

@@ -22,6 +22,7 @@
 #include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "sophgo/Interfaces/InferenceInterface.h"
 #include "sophgo/Support/MathUtils.h"
+#include "sophgo/Support/ModuleHelper.h"
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinTypes.h"
@@ -65,7 +66,7 @@ public:
     llvm::errs() << "default quantize mode:" << this->mode << ", is asymmetric "
                  << this->isAsymmetric << ", chip :" << this->chip << "\n";
     auto module = getOperation();
-    auto state = getMlirState(module);
+    auto state = sophgo::getMlirState(module);
     if (state != "TOP_CALIBRATED" && mode != "INT8") {
       module.dump();
       llvm_unreachable("Mlir state not support quantize");
@@ -74,7 +75,7 @@ public:
     RewritePatternSet patterns(ctx);
     patterns.insert<QuantizationPattern>(ctx);
     applyPatternsAndFoldGreedily(module, std::move(patterns));
-    setMlirWeightFile(module, "tpu_weight.npz");
+    sophgo::setMlirWeightFile(module, "tpu_weight.npz");
   }
 };
 

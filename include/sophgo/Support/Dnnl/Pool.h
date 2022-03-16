@@ -3,7 +3,8 @@
 
 #include "oneapi/dnnl/dnnl.hpp"
 
-namespace dnnl {
+using namespace dnnl;
+namespace sophgo {
 class Pooling {
 public:
   Pooling();
