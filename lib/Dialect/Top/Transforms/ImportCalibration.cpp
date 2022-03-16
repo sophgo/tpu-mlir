@@ -21,6 +21,7 @@
 #include "sophgo/Dialect/Top/Transforms/Passes.h"
 #include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "sophgo/Support/MathUtils.h"
+#include "sophgo/Support/ModuleHelper.h"
 #include "sophgo/Interfaces/InferenceInterface.h"
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/IR/Builders.h"
@@ -55,9 +56,9 @@ public:
                  << ", is asymmetric " << this->isAsymmetric << "\n";
     auto module = getOperation();
     auto state = getMlirState(module);
-    if (state != "TOP_F32") {
+    if (state != sophgo::STATE_TOP_F32) {
       module.dump();
-      llvm_unreachable("mlir state should be TOP_F32");
+      llvm_unreachable("wrong mlir state");
     }
     std::map<std::string, cali_info> calibration_map;
     std::ifstream infile(this->tableFile);
@@ -121,7 +122,7 @@ public:
                                    llvm::ArrayRef<mlir::Type>{returns});
       func.setType(fnType);
     }
-    sophgo::setMlirState(module, "TOP_CALIBRATED");
+    sophgo::setMlirState(module, sophgo::STATE_TOP_CALIBRATED);
   }
 };
 

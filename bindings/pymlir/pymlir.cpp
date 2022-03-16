@@ -9,7 +9,7 @@
 // -------------
 #include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "sophgo/Dialect/Tpu/IR/TpuOps.h"
-#include "sophgo/ModuleInterpreter.h"
+#include "sophgo/Support/ModuleInterpreter.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/Dialect.h"
 #include "mlir/IR/BuiltinOps.h"

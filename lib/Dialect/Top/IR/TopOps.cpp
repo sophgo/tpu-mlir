@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "sophgo/Dialect/Top/IR/TopOps.h"
+#include "sophgo/Support/ModuleHelper.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/PatternMatch.h"
@@ -25,11 +26,6 @@ using namespace sophgo::top;
 // Dialect initialize method.
 //===----------------------------------------------------------------------===//
 #include "sophgo/Dialect/Top/IR/TopOpsDialect.cpp.inc"
-
-constexpr llvm::StringRef TopDialect::kModelNameAttrName;
-constexpr llvm::StringRef TopDialect::kStateAttrName;
-constexpr llvm::StringRef TopDialect::kChipAttrName;
-constexpr llvm::StringRef TopDialect::kWeightFileAttrName;
 
 void TopDialect::initialize() {
   addOperations<
