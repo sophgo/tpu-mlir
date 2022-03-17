@@ -69,6 +69,8 @@ gdb --args python /work/python/tools/model_runner.py --input resnet18_in_f32.npz
 
 * mlir近期Verifier.cpp加入了一个OpTrait::IsTerminator的判断，会触发assert，目前现象来看像是mlir自身的bug。先删掉这个判断，不会照成任何影响。后期再升级llvm，再看会不会触发这个问题。
 
+* ufw的bm1684的average pooling的量化实现有点迷，强行thx==thy，且mulipier和rshift用查表得到，后续看backend的实现，看是否可以优化
+
 ## 一些思考
 
 #### 是否第一层用TOSA Dialect ?

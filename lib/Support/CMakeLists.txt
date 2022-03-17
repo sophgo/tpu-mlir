@@ -6,6 +6,8 @@ add_llvm_library(SophgoSupport
   LINK_LIBS PUBLIC
   MLIRIR
   MLIRSupport
+  MLIRQuant
+  MLIRQuantUtils
   MLIRInferenceInterface
   cnpy
   dnnl
