@@ -54,7 +54,7 @@ void ConvOp::parseParam(int64_t &n, int64_t &ic, int64_t &ih, int64_t &iw,
   auto k_s = filter().getType().cast<RankedTensorType>().getShape();
   auto o_s = output().getType().cast<RankedTensorType>().getShape();
   do_relu = this->do_relu();
-  with_bias = !bias().getType().isa<mlir::NoneType>();
+  with_bias = !bias().getType().isa<NoneType>();
   n = i_s[0];
   ic = i_s[1];
   ih = i_s[2];
@@ -177,31 +177,36 @@ template <typename T> std::shared_ptr<std::vector<T>> WeightOp::read() {
 }
 
 template <typename T>
-LogicalResult WeightOp::write(StringRef suffix, const std::vector<T> &data,
-                              RankedTensorType &new_type) {
-  auto op = getOperation();
-  auto dialect = op->getDialect();
+Value WeightOp::create(Operation *OwnerOp, llvm::StringRef suffix,
+                       const std::vector<T> &data, RankedTensorType &type) {
+  auto ctx = OwnerOp->getContext();
+  OpBuilder builder(ctx);
+  builder.setInsertionPoint(OwnerOp);
+  auto dialect = ctx->getLoadedDialect("top");
   auto topDialect = llvm::cast<TopDialect>(dialect);
   if (topDialect->wFile == nullptr) {
-    auto moduleOp = Module::getModuleOp(op);
+    auto moduleOp = Module::getModuleOp(OwnerOp);
     auto weight_file = Module::getWeightFile(moduleOp);
     topDialect->loadWeightFile(weight_file);
   }
-  std::string new_name = name().str() + "_" + suffix.str();
-  op->setAttr("name", StringAttr::get(getContext(), new_name));
-  output().setType(new_type);
-  return topDialect->wFile->addTensor(new_name, &data, new_type);
+  std::string op_name = OwnerOp->getAttr("name").cast<StringAttr>().str();
+  std::string new_name = op_name + "_" + suffix.str();
+  auto ret = topDialect->wFile->addTensor(new_name, &data, type);
+  assert(succeeded(ret));
+  auto nameAttr = builder.getStringAttr(new_name);
+  auto newOp = builder.create<top::WeightOp>(OwnerOp->getLoc(), type, nameAttr);
+  return newOp.getResult();
 }
 
 template std::shared_ptr<std::vector<float>> WeightOp::read();
 template std::shared_ptr<std::vector<int8_t>> WeightOp::read();
 template std::shared_ptr<std::vector<int16_t>> WeightOp::read();
-template LogicalResult WeightOp::write(StringRef suffix,
-                                       const std::vector<float> &data,
-                                       RankedTensorType &type);
-template LogicalResult WeightOp::write(StringRef suffix,
-                                       const std::vector<int8_t> &data,
-                                       RankedTensorType &type);
-template LogicalResult WeightOp::write(StringRef suffix,
-                                       const std::vector<int16_t> &data,
-                                       RankedTensorType &type);
+template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
+                                const std::vector<float> &data,
+                                RankedTensorType &type);
+template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
+                                const std::vector<int16_t> &data,
+                                RankedTensorType &type);
+template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
+                                const std::vector<int8_t> &data,
+                                RankedTensorType &type);

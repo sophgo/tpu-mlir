@@ -54,12 +54,13 @@ def Top_WeightOp : Top_Op<"Weight", [NoSideEffect]> {
 
   let results = (outs AnyTensor:$output);
   let extraClassDeclaration = [{
-    template<typename T>
-    std::shared_ptr<std::vector<T>> read();
-    template<typename T>
-    mlir::LogicalResult write(llvm::StringRef suffix,
-                              const std::vector<T>& new_data,
-                              mlir::RankedTensorType& new_type);
+  template<typename T>
+  std::shared_ptr<std::vector<T>> read();
+  template<typename T>
+  static mlir::Value create(mlir::Operation * OwnerOp,
+                            llvm::StringRef suffix,
+                            const std::vector<T>& data,
+                            mlir::RankedTensorType& type);
   }];
 }
 
