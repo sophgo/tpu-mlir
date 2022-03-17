@@ -96,7 +96,9 @@ def Tpu_AddOp: Tpu_Op<"Add",[NoSideEffect]> {
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    OptionalAttr<F32ArrayAttr>:$coeff,
+    OptionalAttr<F64ArrayAttr>:$coeff,
+    // quant param
+    I64ArrayAttr:$rshifts,
     StrAttr:$name
   );
 
@@ -123,7 +125,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul",[NoSideEffect]> {
   let results = (outs AnyTensor:$output);
   let extraClassDeclaration = [{
     void parseParam(
-      int64_t &batch, int64_t &M, int64_t &K, int64_t &N);
+      int64_t &batch, int64_t &M, int64_t &K, int64_t &N, bool &with_bias);
   }];
 }
 

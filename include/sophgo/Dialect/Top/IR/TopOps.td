@@ -235,7 +235,7 @@ def Top_AddOp: Top_Op<"Add",[NoSideEffect,
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    OptionalAttr<F32ArrayAttr>:$coeff,
+    OptionalAttr<F64ArrayAttr>:$coeff,
     StrAttr:$name
   );
 
@@ -264,7 +264,7 @@ def Top_MatMulOp: Top_Op<"MatMul",[NoSideEffect,
   let results = (outs AnyTensor:$output);
   let extraClassDeclaration = [{
     void parseParam(
-      int64_t &batch, int64_t &M, int64_t &K, int64_t &N);
+      int64_t &batch, int64_t &M, int64_t &K, int64_t &N, bool &with_bias);
   }];
 }
 

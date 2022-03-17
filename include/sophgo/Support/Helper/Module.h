@@ -40,7 +40,7 @@ struct Module {
     return module->getAttrOfType<StringAttr>(Attr::CHIP);
   }
   static inline void setChip(ModuleOp module, StringRef chip) {
-    module->setAttr(Attr::CHIP, StringAttr::get(module.getContext(), chip));
+    module->setAttr(Attr::CHIP, StringAttr::get(module.getContext(), chip.lower()));
   }
   static inline StringRef getWeightFile(ModuleOp module) {
     return module->getAttrOfType<StringAttr>(Attr::WEIGHT_FILE);
