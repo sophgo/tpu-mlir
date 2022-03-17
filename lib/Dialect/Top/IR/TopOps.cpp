@@ -143,10 +143,11 @@ void AvgPoolOp::parseParam(int64_t &n, int64_t &c, int64_t &ih, int64_t &iw,
   count_include_pad = this->count_include_pad();
 }
 
-void MatMulOp::parseParam(int64_t &batch, int64_t &M, int64_t &K, int64_t &N) {
+void MatMulOp::parseParam(int64_t &batch, int64_t &M, int64_t &K, int64_t &N, bool &with_bias) {
   auto i_s = input().getType().cast<RankedTensorType>().getShape();
   auto r_s = right().getType().cast<RankedTensorType>().getShape();
   auto o_s = output().getType().cast<RankedTensorType>().getShape();
+  with_bias = !bias().getType().isa<mlir::NoneType>();
   auto r_dims = r_s.size();
   auto i_dims = i_s.size();
   N = r_s[r_dims - 1];

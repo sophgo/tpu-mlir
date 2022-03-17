@@ -177,7 +177,8 @@ LogicalResult top::ReshapeOp::inference(InferenceParameter &p) {
 LogicalResult top::MatMulOp::init(InferenceParameter &p) {
   auto matmul = new MatMul();
   int64_t batch, M, K, N;
-  parseParam(batch, M, K, N);
+  bool with_bias;
+  parseParam(batch, M, K, N, with_bias);
   matmul->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], batch, M,
                 K, N, do_relu());
   p.handle = (void *)matmul;

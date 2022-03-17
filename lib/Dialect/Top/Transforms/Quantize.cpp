@@ -55,7 +55,7 @@ struct QuantizationPattern : public RewritePattern {
     if (!quantize_op) {
       return failure();
     }
-    auto newValue = quantize_op.quantize_int8();
+    auto newValue = quantize_op.quantize_int8_bm1684();
     rewriter.replaceOp(op, {newValue});
     return success();
   }
@@ -77,7 +77,9 @@ public:
     RewritePatternSet patterns(ctx);
     patterns.insert<QuantizationPattern>(ctx);
     applyPatternsAndFoldGreedily(module, std::move(patterns));
+    Module::updateModuleTypes(module);
     Module::setState(module, Module::State::TPU_QUANTIZED);
+    Module::setChip(module, this->chip);
   }
 };
 
