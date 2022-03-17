@@ -50,6 +50,21 @@ public:
   SaveWeightPass() {}
   void runOnOperation() override {
     auto module = getOperation();
+    // check name conflict
+    std::set<StringRef> all_names;
+    for (auto func : module.getOps<FuncOp>()) {
+      func.walk([&](Operation* op) {
+        if (op->hasAttr("name")) {
+          auto name = op->getAttr("name").cast<StringAttr>().getValue();
+          if (all_names.find(name) != all_names.end()) {
+            op->dump();
+            llvm_unreachable("op name conflict");
+          }
+          all_names.insert(name);
+        }
+      });
+    }
+    // weight remove unused in npz
     auto dialect = module->getContext()->getLoadedDialect("top");
     auto top_dialect = llvm::cast<top::TopDialect>(dialect);
     if (top_dialect->wFile == nullptr) {
