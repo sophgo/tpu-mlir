@@ -46,6 +46,110 @@ using namespace sophgo::helper;
 namespace sophgo {
 namespace top {
 
+static void castOpToInt8(Value v, bool asymmetric = false) {
+  if (!Quant::isQuantizedType<quant::CalibratedQuantizedType>(v)) {
+    return;
+  }
+  auto ctx = v.getContext();
+  OpBuilder builder(ctx);
+  std::vector<Value> operands;
+  operands.push_back(v);
+  std::vector<NamedAttribute> attrs;
+  auto op = v.getDefiningOp();
+  builder.setInsertionPointAfter(op);
+  std::string name = op->getAttr("name").cast<StringAttr>().getValue().str();
+  attrs.push_back(
+      builder.getNamedAttr("name", builder.getStringAttr(name + "_to_int8")));
+  auto castOp = builder.create<tpu::CastOp>(op->getLoc(), v.getType(),
+                                            ArrayRef<Value>{operands},
+                                            ArrayRef<NamedAttribute>{attrs});
+  Quant::setQuantInt8Type(castOp.output(), asymmetric);
+  v.replaceAllUsesExcept(castOp.output(), castOp);
+}
+
+static void castOpToExpress(Value v, bool asymmetric = false) {
+  if (!Quant::isQuantizedType<quant::UniformQuantizedType>(v)) {
+    return;
+  }
+  auto ctx = v.getContext();
+  OpBuilder builder(ctx);
+  std::vector<Value> operands;
+  operands.push_back(v);
+  std::vector<NamedAttribute> attrs;
+  auto op = v.getDefiningOp();
+  builder.setInsertionPointAfter(op);
+  std::string name = op->getAttr("name").cast<StringAttr>().getValue().str();
+  std::string qname = name + "_quantized";
+  op->setAttr("name", builder.getStringAttr(qname));
+  attrs.push_back(
+      builder.getNamedAttr("name", builder.getStringAttr(name)));
+  auto castOp = builder.create<tpu::CastOp>(op->getLoc(), v.getType(),
+                                            ArrayRef<Value>{operands},
+                                            ArrayRef<NamedAttribute>{attrs});
+  Quant::setQuantExpressType(castOp.output());
+  v.replaceAllUsesExcept(castOp.output(), castOp);
+}
+
+template <typename TyOp>
+struct ForwardCalibartion : public OpRewritePattern<TyOp> {
+  using OpRewritePattern<TyOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(TyOp op,
+                                PatternRewriter &rewriter) const override {
+    Value in = op.input();
+    Value out = op.output();
+    if (!Quant::isQuantizedType<quant::CalibratedQuantizedType>(in)) {
+      return failure();
+    }
+    if (!Quant::isQuantizedType<quant::CalibratedQuantizedType>(out)) {
+      return failure();
+    }
+    auto in_qtype = Quant::getQuantizedType<quant::CalibratedQuantizedType>(in);
+    auto out_qtype =
+        Quant::getQuantizedType<quant::CalibratedQuantizedType>(out);
+    if (in_qtype.getMax() == out_qtype.getMax() &&
+        in_qtype.getMin() == out_qtype.getMin()) {
+      return failure();
+    }
+    auto out_type = out.getType().cast<RankedTensorType>();
+    auto new_type = RankedTensorType::get(out_type.getShape(), in_qtype);
+    out.setType(new_type);
+    return success();
+  }
+};
+
+template <typename TyOp>
+struct BackwardCalibartion : public OpRewritePattern<TyOp> {
+  using OpRewritePattern<TyOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(TyOp op,
+                                PatternRewriter &rewriter) const override {
+    Value in = op->getOperand(0);
+    Value out = op.output();
+    if (!Quant::isQuantizedType<quant::CalibratedQuantizedType>(in)) {
+      return failure();
+    }
+    if (!Quant::isQuantizedType<quant::CalibratedQuantizedType>(out)) {
+      return failure();
+    }
+    if (in.hasOneUse() == false) {
+      return failure();
+    }
+
+    auto in_qtype = Quant::getQuantizedType<quant::CalibratedQuantizedType>(in);
+    auto out_qtype =
+        Quant::getQuantizedType<quant::CalibratedQuantizedType>(out);
+    if (in_qtype.getMax() == out_qtype.getMax() &&
+        in_qtype.getMin() == out_qtype.getMin()) {
+      return failure();
+    }
+    auto in_type = in.getType().cast<RankedTensorType>();
+    auto new_type = RankedTensorType::get(in_type.getShape(), out_qtype);
+    in.setType(new_type);
+    return success();
+  }
+};
+
 struct QuantizationPattern : public RewritePattern {
   QuantizationPattern(MLIRContext *context)
       : RewritePattern(MatchAnyOpTypeTag(), 1, context) {}
@@ -75,8 +179,27 @@ public:
     }
     auto ctx = module.getContext();
     RewritePatternSet patterns(ctx);
-    patterns.insert<QuantizationPattern>(ctx);
+    patterns.add<BackwardCalibartion<top::ReluOp>,
+                 BackwardCalibartion<top::MaxPoolOp>>(ctx);
     applyPatternsAndFoldGreedily(module, std::move(patterns));
+    patterns.clear();
+    patterns.add<ForwardCalibartion<top::ReluOp>,
+                 ForwardCalibartion<top::MaxPoolOp>,
+                 ForwardCalibartion<top::AvgPoolOp>>(ctx);
+    applyPatternsAndFoldGreedily(module, std::move(patterns));
+    patterns.clear();
+    patterns.add<QuantizationPattern>(ctx);
+    applyPatternsAndFoldGreedily(module, std::move(patterns));
+    for (auto func : module.getOps<FuncOp>()) {
+      func.walk([&](InputOp op) { castOpToInt8(op); });
+    }
+    for (auto func : module.getOps<FuncOp>()) {
+      func.walk([&](func::ReturnOp op) {
+        for (auto opd:op.getOperands()) {
+          castOpToExpress(opd);
+        }
+      });
+    }
     Module::updateModuleTypes(module);
     Module::setState(module, Module::State::TPU_QUANTIZED);
     Module::setChip(module, this->chip);

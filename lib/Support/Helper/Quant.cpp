@@ -16,6 +16,10 @@ constexpr llvm::StringRef Quant::Type::BF16;
 constexpr llvm::StringRef Quant::Type::FP16;
 constexpr llvm::StringRef Quant::Type::FP32;
 
+template bool Quant::isQuantizedType<quant::CalibratedQuantizedType>(Value v);
+template quant::CalibratedQuantizedType
+Quant::getQuantizedType<quant::CalibratedQuantizedType>(Value v);
+
 void Quant::setQuantInt8Type(Value v, bool asymmetric) {
   auto type = v.getType().cast<RankedTensorType>();
   auto ctx = v.getContext();
@@ -36,6 +40,17 @@ void Quant::setQuantInt8Type(Value v, bool asymmetric) {
     auto new_type = RankedTensorType::get(type.getShape(), uniform_type);
     v.setType(new_type);
   }
+}
+
+void Quant::setQuantExpressType(Value v) {
+  if (!isUniformQuantized(v)) {
+    return;
+  }
+  auto type = v.getType().cast<RankedTensorType>();
+  auto expresstype =
+      type.getElementType().cast<quant::QuantizedType>().getExpressedType();
+  auto new_type = RankedTensorType::get(type.getShape(), expresstype);
+  v.setType(new_type);
 }
 
 } // namespace helper
