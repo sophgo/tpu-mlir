@@ -157,4 +157,16 @@ def Tpu_ReshapeOp:Tpu_Op<"Reshape",[NoSideEffect]> {
   );
   let results = (outs AnyTensor:$output);
 }
+
+def Tpu_CastOp:Tpu_Op<"Cast",[NoSideEffect]> {
+  let summary = "Cast operation";
+  let description = [{
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    StrAttr:$name
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 #endif // TPU_OPS

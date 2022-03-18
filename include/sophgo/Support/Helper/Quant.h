@@ -16,28 +16,40 @@ struct Quant {
     static constexpr llvm::StringRef FP16 = "FP16";
     static constexpr llvm::StringRef FP32 = "FP32";
   };
-  template <typename T>
-  static inline T getQuantType(Value v) {
-    return v.getType().cast<RankedTensorType>().getElementType().cast<T>();
+
+  template<typename QType>
+  static  bool isQuantizedType(Value v) {
+    return v.getType().cast<RankedTensorType>().getElementType().isa<QType>();
+  }
+
+  template<typename QType>
+  static  QType getQuantizedType(Value v) {
+    return v.getType().cast<RankedTensorType>().getElementType().cast<QType>();
+  }
+
+  static inline bool isUniformQuantized(Value v) {
+    return isQuantizedType<quant::UniformQuantizedType>(v) ||
+           isQuantizedType<quant::UniformQuantizedPerAxisType>(v);
   }
 
   static inline double getThreshold(Value v) {
-    auto type = getQuantType<quant::CalibratedQuantizedType>(v);
+    auto type = getQuantizedType<quant::CalibratedQuantizedType>(v);
     assert(type.getMax() == -type.getMin());
     return type.getMax();
   }
 
   static inline double getMax(Value v) {
-    auto type = getQuantType<quant::CalibratedQuantizedType>(v);
+    auto type = getQuantizedType<quant::CalibratedQuantizedType>(v);
     return type.getMax();
   }
 
   static inline double getMin(Value v) {
-    auto type = getQuantType<quant::CalibratedQuantizedType>(v);
+    auto type = getQuantizedType<quant::CalibratedQuantizedType>(v);
     return type.getMin();
   }
 
   static void setQuantInt8Type(Value v, bool asymmetric = false);
+  static void setQuantExpressType(Value v);
 };
 } // namespace helper
 } // namespace sophgo

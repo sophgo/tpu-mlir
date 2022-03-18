@@ -1,4 +1,4 @@
-module attributes {mlir.state = "TOP_F32", mlir.weight_file = "resnet18_top_weight.npz"} {
+module attributes {module.chip = "ALL", module.name = "resnet18", module.state = "TOP_F32", module.weight_file = "resnet18_top_f32_all_weight.npz"} {
   func @main(%arg0: tensor<1x3x224x224xf32>) -> tensor<1x1000xf32> {
     %0 = "top.Input"(%arg0) {name = "input"} : (tensor<1x3x224x224xf32>) -> tensor<1x3x224x224xf32>
     %1 = "top.Weight"() {name = "194"} : () -> tensor<64x3x7x7xf32>
