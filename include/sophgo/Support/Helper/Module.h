@@ -21,6 +21,7 @@ struct Module {
     static constexpr llvm::StringRef TOP_CALIBRATED = "TOP_CALIBRATED";
     static constexpr llvm::StringRef TOP_QUANTIZED = "TOP_QUANTIED";
     static constexpr llvm::StringRef TPU_QUANTIZED = "TPU_QUANTIED";
+    static constexpr llvm::StringRef TPU_WEIGHT_REORDERD = "TPU_WEIGHT_REORDERD";
   };
 
   struct Chip {

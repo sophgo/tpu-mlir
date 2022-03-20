@@ -9,6 +9,7 @@
 
 include "mlir/IR/OpBase.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
+include "sophgo/Interfaces/WeightReorderInterface.td"
 
 def AnyTensorOrNone: AnyTypeOf<[AnyTensor, NoneType]>;
 
@@ -21,7 +22,8 @@ def Tpu_Dialect : Dialect {
 class Tpu_Op<string mnemonic, list<Trait> traits = []> :
     Op<Tpu_Dialect, mnemonic, traits> ;
 
-def Tpu_ConvOp: Tpu_Op<"Conv",[NoSideEffect]> {
+def Tpu_ConvOp: Tpu_Op<"Conv",[NoSideEffect,
+    DeclareOpInterfaceMethods<WeightReorderInterface>]> {
   let summary = "convolution operator";
 
   let description = [{

@@ -29,4 +29,10 @@ sophgo-opt resnet18_cali.mlir \
     --save-weight \
     -o resnet18_int8.mlir
 
+# tpu weight reorder
+sophgo-opt resnet18_int8.mlir \
+    --weight-reorder \
+    --save-weight \
+    -o resnet18_int8_order.mlir
+
 popd
