@@ -1,4 +1,4 @@
-file(GLOB _sources IR/*.cpp)
+file(GLOB _sources IR/*.cpp Transforms/*.cpp WeightReorder/*.cpp)
 
 add_mlir_library(SophgoTpu
   ${_sources}
@@ -10,6 +10,7 @@ add_mlir_library(SophgoTpu
   DEPENDS
   MLIRTopOpsIncGen
   MLIRTpuOpsIncGen
+  MLIRTpuPassIncGen
   MLIRInferenceInterfaceIncGen
   MLIRQuantizeInterfaceIncGen
 

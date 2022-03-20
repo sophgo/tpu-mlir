@@ -1,2 +1,3 @@
 add_mlir_interface(InferenceInterface)
 add_mlir_interface(QuantizeInterface)
+add_mlir_interface(WeightReorderInterface)

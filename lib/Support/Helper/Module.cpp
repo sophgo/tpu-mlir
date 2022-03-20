@@ -21,6 +21,7 @@ constexpr llvm::StringRef Module::State::TOP_F32;
 constexpr llvm::StringRef Module::State::TOP_CALIBRATED;
 constexpr llvm::StringRef Module::State::TOP_QUANTIZED;
 constexpr llvm::StringRef Module::State::TPU_QUANTIZED;
+constexpr llvm::StringRef Module::State::TPU_WEIGHT_REORDERD;
 
 constexpr llvm::StringRef Module::Chip::ALL;
 constexpr llvm::StringRef Module::Chip::BM1684;
