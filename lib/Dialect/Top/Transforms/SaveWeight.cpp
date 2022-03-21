@@ -55,12 +55,16 @@ public:
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](Operation* op) {
         if (op->hasAttr("name")) {
-          auto name = op->getAttr("name").cast<StringAttr>().getValue();
-          if (all_names.find(name) != all_names.end()) {
-            op->dump();
-            llvm_unreachable("op name conflict");
+          if (op->getUses().empty()) {
+            op->erase();
+          } else {
+            auto name = op->getAttr("name").cast<StringAttr>().getValue();
+            if (all_names.find(name) != all_names.end()) {
+              op->dump();
+              llvm_unreachable("op name conflict");
+            }
+            all_names.insert(name);
           }
-          all_names.insert(name);
         }
       });
     }

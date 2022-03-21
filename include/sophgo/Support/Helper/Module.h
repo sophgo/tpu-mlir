@@ -30,6 +30,7 @@ struct Module {
     static constexpr llvm::StringRef BM1686 = "BM1686";
   };
 
+  static top::NoneOp getNoneOp(Operation *op);
   static ModuleOp getModuleOp(Operation *op);
   static void updateModuleTypes(ModuleOp module);
   static std::string genWeightFileName(ModuleOp module);

@@ -33,6 +33,6 @@ sophgo-opt resnet18_cali.mlir \
 sophgo-opt resnet18_int8.mlir \
     --weight-reorder \
     --save-weight \
-    -o resnet18_int8_order.mlir
+    -o resnet18_int8_reorder.mlir
 
 popd
