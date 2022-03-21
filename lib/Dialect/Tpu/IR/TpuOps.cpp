@@ -41,12 +41,12 @@ void TpuDialect::initialize() {
 #include "sophgo/Dialect/Tpu/IR/TpuOps.cpp.inc"
 
 void ConvOp::parseParam(int64_t &n, int64_t &ic, int64_t &ih, int64_t &iw,
-                              int64_t &oc, int64_t &oh, int64_t &ow, int64_t &g,
-                              int64_t &kh, int64_t &kw, int64_t &ins_h,
-                              int64_t &ins_w, int64_t &sh, int64_t &sw,
-                              int64_t &pt, int64_t &pb, int64_t &pl,
-                              int64_t &pr, int64_t &dh, int64_t &dw,
-                              bool &is_dw, bool &with_bias, bool &do_relu) {
+                        int64_t &oc, int64_t &oh, int64_t &ow, int64_t &g,
+                        int64_t &kh, int64_t &kw, int64_t &ins_h,
+                        int64_t &ins_w, int64_t &sh, int64_t &sw, int64_t &pt,
+                        int64_t &pb, int64_t &pl, int64_t &pr, int64_t &dh,
+                        int64_t &dw, bool &is_dw, bool &with_bias,
+                        bool &do_relu) {
   auto i_s = input().getType().cast<RankedTensorType>().getShape();
   auto k_s = filter().getType().cast<RankedTensorType>().getShape();
   auto o_s = output().getType().cast<RankedTensorType>().getShape();
@@ -70,16 +70,15 @@ void ConvOp::parseParam(int64_t &n, int64_t &ic, int64_t &ih, int64_t &iw,
   dh = dilations().getValue()[0].cast<IntegerAttr>().getInt();
   dw = dilations().getValue()[1].cast<IntegerAttr>().getInt();
   g = group();
-  is_dw = (oc == ic && oc == g);
+  is_dw = (oc == ic && oc == g && g > 1);
   return;
 }
 
-void MaxPoolOp::parseParam(int64_t &n, int64_t &c, int64_t &ih,
-                                 int64_t &iw, int64_t &oh, int64_t &ow,
-                                 int64_t &kh, int64_t &kw, int64_t &sh,
-                                 int64_t &sw, int64_t &pt, int64_t &pb,
-                                 int64_t &pl, int64_t &pr, int64_t &pad_value,
-                                 bool &is_global, bool &count_include_pad) {
+void MaxPoolOp::parseParam(int64_t &n, int64_t &c, int64_t &ih, int64_t &iw,
+                           int64_t &oh, int64_t &ow, int64_t &kh, int64_t &kw,
+                           int64_t &sh, int64_t &sw, int64_t &pt, int64_t &pb,
+                           int64_t &pl, int64_t &pr, int64_t &pad_value,
+                           bool &is_global, bool &count_include_pad) {
   auto i_s = input().getType().cast<RankedTensorType>().getShape();
   auto o_s = output().getType().cast<RankedTensorType>().getShape();
 
@@ -108,12 +107,11 @@ void MaxPoolOp::parseParam(int64_t &n, int64_t &c, int64_t &ih,
   count_include_pad = this->count_include_pad();
 }
 
-void AvgPoolOp::parseParam(int64_t &n, int64_t &c, int64_t &ih,
-                                 int64_t &iw, int64_t &oh, int64_t &ow,
-                                 int64_t &kh, int64_t &kw, int64_t &sh,
-                                 int64_t &sw, int64_t &pt, int64_t &pb,
-                                 int64_t &pl, int64_t &pr, int64_t &pad_value,
-                                 bool &is_global, bool &count_include_pad) {
+void AvgPoolOp::parseParam(int64_t &n, int64_t &c, int64_t &ih, int64_t &iw,
+                           int64_t &oh, int64_t &ow, int64_t &kh, int64_t &kw,
+                           int64_t &sh, int64_t &sw, int64_t &pt, int64_t &pb,
+                           int64_t &pl, int64_t &pr, int64_t &pad_value,
+                           bool &is_global, bool &count_include_pad) {
   auto i_s = input().getType().cast<RankedTensorType>().getShape();
   auto o_s = output().getType().cast<RankedTensorType>().getShape();
 
@@ -142,8 +140,8 @@ void AvgPoolOp::parseParam(int64_t &n, int64_t &c, int64_t &ih,
   count_include_pad = this->count_include_pad();
 }
 
-void MatMulOp::parseParam(int64_t &batch, int64_t &M, int64_t &K,
-                          int64_t &N, bool &with_bias) {
+void MatMulOp::parseParam(int64_t &batch, int64_t &M, int64_t &K, int64_t &N,
+                          bool &with_bias) {
   auto i_s = input().getType().cast<RankedTensorType>().getShape();
   auto r_s = right().getType().cast<RankedTensorType>().getShape();
   auto o_s = output().getType().cast<RankedTensorType>().getShape();

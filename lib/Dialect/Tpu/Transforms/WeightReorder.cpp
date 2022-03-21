@@ -51,7 +51,8 @@ public:
   void runOnOperation() override {
     auto module = getOperation();
     for (auto func : module.getOps<FuncOp>()) {
-      func.walk([&](Operation* op) {
+      func.walk([&](WeightReorderInterface op) {
+        op.weight_reorder_int8_bm1684();
       });
     }
     Module::setState(module, Module::State::TPU_WEIGHT_REORDERD);

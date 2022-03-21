@@ -12,7 +12,7 @@ add_mlir_library(SophgoTpu
   MLIRTpuOpsIncGen
   MLIRTpuPassIncGen
   MLIRInferenceInterfaceIncGen
-  MLIRQuantizeInterfaceIncGen
+  MLIRWeightReorderInterfaceIncGen
 
   LINK_COMPONENTS
   Core
@@ -24,6 +24,8 @@ add_mlir_library(SophgoTpu
   MLIRFunc
   MLIRQuant
   MLIRSideEffectInterfaces
+  MLIRInferenceInterface
+  MLIRWeightReorderInterface
   SophgoSupport
 )
 
