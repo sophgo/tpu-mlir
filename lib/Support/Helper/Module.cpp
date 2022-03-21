@@ -27,7 +27,27 @@ constexpr llvm::StringRef Module::Chip::ALL;
 constexpr llvm::StringRef Module::Chip::BM1684;
 constexpr llvm::StringRef Module::Chip::BM1686;
 
+top::NoneOp Module::getNoneOp(Operation *op) {
+  assert(op != nullptr);
+  if (auto noneOp = dyn_cast<top::NoneOp>(op)) {
+    return noneOp;
+  }
+  auto funcOp = cast<mlir::FuncOp>(op->getParentOp());
+  auto &block = funcOp.front();
+  auto &topOp = block.front();
+  if (auto noneOp = dyn_cast<top::NoneOp>(topOp)) {
+    return noneOp;
+  }
+  auto ctx = op->getContext();
+  auto builder = OpBuilder(ctx);
+  builder.setInsertionPointToStart(&block);
+  auto NoneOp =
+      builder.create<top::NoneOp>(op->getLoc(), builder.getNoneType());
+  return NoneOp;
+}
+
 ModuleOp Module::getModuleOp(Operation *op) {
+  assert(op != nullptr);
   auto moduleOp = op->getParentOp();
   while (moduleOp && !isa<mlir::ModuleOp>(moduleOp)) {
     moduleOp = moduleOp->getParentOp();
