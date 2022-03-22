@@ -1,6 +1,7 @@
 add_subdirectory(Interfaces)
 add_subdirectory(Dialect)
 add_subdirectory(Support)
+add_subdirectory(Backend)
 
 add_mlir_library(SophgoInitAll
   InitAll.cpp
