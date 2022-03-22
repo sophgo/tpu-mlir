@@ -30,6 +30,8 @@
 %4 = "top.Conv"(%1, %2, %3) {kernel_shape = [3, 3], name = "output_Conv"}
 ```
 
+* 为了可读性，头文件尽量不用宏定义成员或方法，源文件可以用
+
 #### 调试方法
 ``` shell
 gdb --args python /work/python/tools/model_runner.py --input resnet18_in_f32.npz --model resnet18_opt.mlir --output resnet18_out.npz
@@ -94,3 +96,7 @@ tosa定义的op还是太少，没有lrn、layernorm等等op；
 预处理事情比较多，先不做预处理的考虑，假定用户的输入是预处理后的数据；
 后续时间充足再考虑预处理的事情，边端芯片还是需要的，用户从vpss出来后就需要直接导入到模型，
 预处理只能有tpu完成。
+
+#### backend库是动态加载还是静态加载？
+
+1684和1686的库的函数名都是重复的，静态加载会有符号冲突。所以cv18xx和bm16xx都用动态加载
