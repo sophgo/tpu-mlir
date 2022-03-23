@@ -4,6 +4,7 @@ import numpy as np
 import argparse
 from transform.OnnxConverter import OnnxConverter
 from transform.BaseConverter import BaseConverter
+from transform.TFLiteConverter import TFLiteConverter
 from utils.mlir_shell import *
 from tools.model_runner import mlir_inference, onnx_inference
 import pymlir
@@ -72,6 +73,17 @@ class OnnxModelTransformTool(ModelTransformTool):
     def model_inference(self, inputs: dict):
         return onnx_inference(inputs, self.converter.onnx_file)
 
+class TFLiteModelTransformTool(ModelTransformTool):
+    def __init__(self, model_name, model_def, input_shapes: list = []):
+        super().__init__(model_name)
+        self.model_def = model_def
+        self.input_shapes = input_shapes
+        self.converter = TFLiteConverter(
+            self.model_name, self.model_def, self.input_shapes
+        )
+    def model_inference(self, inputs: dict):
+        raise Exception("Not implement!")
+
 
 def str2shape(v):
     _shape = eval(v)
@@ -97,7 +109,12 @@ if __name__ == '__main__':
     print("SOPHGO Toolchain {}".format(pymlir.module().version))
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name", required=True, help="model name")
-    parser.add_argument("--model_type", required=True, choices=['onnx'], help="model_type")
+    parser.add_argument(
+        "--model_type",
+        required=True,
+        choices=["onnx", "tflite"],
+        help="model_type",
+    )
     parser.add_argument("--model_def", required=True, help="model definition file.")
     parser.add_argument("--model_data", help="caffemodel, only for caffe model")
     parser.add_argument("--input_shapes",
@@ -120,6 +137,8 @@ if __name__ == '__main__':
     tool = None
     if args.model_type == 'onnx':
         tool = OnnxModelTransformTool(args.model_name, args.model_def, args.input_shapes)
+    if args.model_type == 'tflite':
+        tool = TFLiteModelTransformTool(args.model_name, args.model_def, args.input_shapes)
     else:
         # TODO: support more AI model types
         raise RuntimeError("unsupport model type:{}".format(args.model_type))
