@@ -1,4 +1,4 @@
-file(GLOB _sources IR/*.cpp Transforms/*.cpp WeightReorder/*.cpp)
+file(GLOB _sources IR/*.cpp Transforms/*.cpp)
 
 add_mlir_library(SophgoTpu
   ${_sources}
@@ -13,6 +13,7 @@ add_mlir_library(SophgoTpu
   MLIRTpuPassIncGen
   MLIRInferenceInterfaceIncGen
   MLIRWeightReorderInterfaceIncGen
+  MLIRCodegenInterfaceIncGen
 
   LINK_COMPONENTS
   Core
@@ -26,6 +27,8 @@ add_mlir_library(SophgoTpu
   MLIRSideEffectInterfaces
   MLIRInferenceInterface
   MLIRWeightReorderInterface
+  MLIRCodegenInterface
   SophgoSupport
+  SophgoBackend
 )
 

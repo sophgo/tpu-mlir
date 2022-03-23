@@ -10,6 +10,7 @@
 include "mlir/IR/OpBase.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "sophgo/Interfaces/WeightReorderInterface.td"
+include "sophgo/Interfaces/CodegenInterface.td"
 
 def AnyTensorOrNone: AnyTypeOf<[AnyTensor, NoneType]>;
 
@@ -23,7 +24,8 @@ class Tpu_Op<string mnemonic, list<Trait> traits = []> :
     Op<Tpu_Dialect, mnemonic, traits> ;
 
 def Tpu_ConvOp: Tpu_Op<"Conv",[NoSideEffect,
-    DeclareOpInterfaceMethods<WeightReorderInterface>]> {
+    DeclareOpInterfaceMethods<WeightReorderInterface>,
+    DeclareOpInterfaceMethods<CodegenInterface>]> {
   let summary = "convolution operator";
 
   let description = [{
@@ -42,6 +44,7 @@ def Tpu_ConvOp: Tpu_Op<"Conv",[NoSideEffect,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     //quant param
     DefaultValuedAttr<I64Attr, "0">:$rshift,
+    DefaultValuedAttr<I64Attr, "0">:$addr,
     StrAttr:$name
   );
 
@@ -54,8 +57,8 @@ def Tpu_ConvOp: Tpu_Op<"Conv",[NoSideEffect,
   }];
 }
 
-class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,
-  [NoSideEffect]> {
+class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,[NoSideEffect,
+  DeclareOpInterfaceMethods<CodegenInterface>]> {
   let summary = "pool operator";
 
   let description = [{
@@ -71,6 +74,7 @@ class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,
     DefaultValuedAttr<I64Attr, "0">:$pad_value,
     DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<I64Attr, "0">:$addr,
     StrAttr:$name
   );
 
@@ -87,7 +91,8 @@ class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,
 def Tpu_AvgPoolOp:Tpu_PoolOp<"AvgPool">;
 def Tpu_MaxPoolOp:Tpu_PoolOp<"MaxPool">;
 
-def Tpu_AddOp: Tpu_Op<"Add",[NoSideEffect]> {
+def Tpu_AddOp: Tpu_Op<"Add",[NoSideEffect,
+  DeclareOpInterfaceMethods<CodegenInterface>]> {
   let summary = "add operator";
 
   let description = [{
@@ -101,13 +106,15 @@ def Tpu_AddOp: Tpu_Op<"Add",[NoSideEffect]> {
     OptionalAttr<F64ArrayAttr>:$coeff,
     // quant param
     I64ArrayAttr:$rshifts,
+    DefaultValuedAttr<I64Attr, "0">:$addr,
     StrAttr:$name
   );
 
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_MatMulOp: Tpu_Op<"MatMul",[NoSideEffect]> {
+def Tpu_MatMulOp: Tpu_Op<"MatMul",[NoSideEffect,
+  DeclareOpInterfaceMethods<CodegenInterface>]> {
   let summary = "matmul operator";
 
   let description = [{
@@ -121,6 +128,8 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul",[NoSideEffect]> {
     AnyTensor:$right,
     AnyTensorOrNone:$bias,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<I64Attr, "0">:$addr,
+    I64Attr:$rshift,
     StrAttr:$name
   );
 
@@ -146,7 +155,8 @@ def Tpu_ReluOp: Tpu_Op<"Relu",[NoSideEffect]> {
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_ReshapeOp:Tpu_Op<"Reshape",[NoSideEffect]> {
+def Tpu_ReshapeOp:Tpu_Op<"Reshape",[NoSideEffect,
+  DeclareOpInterfaceMethods<CodegenInterface>]> {
   let summary = "Reshape operation";
   let description = [{
     Returns a tensor with the same type/values as the input, with a new shape
@@ -155,6 +165,7 @@ def Tpu_ReshapeOp:Tpu_Op<"Reshape",[NoSideEffect]> {
   }];
   let arguments = (ins
     AnyTensor:$input,
+    DefaultValuedAttr<I64Attr, "0">:$addr,
     StrAttr:$name
   );
   let results = (outs AnyTensor:$output);

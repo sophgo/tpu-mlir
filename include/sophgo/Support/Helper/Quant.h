@@ -12,6 +12,7 @@ namespace helper {
 struct Quant {
   struct Type {
     static constexpr llvm::StringRef INT8 = "INT8";
+    static constexpr llvm::StringRef UINT8 = "UINT8";
     static constexpr llvm::StringRef BF16 = "BF16";
     static constexpr llvm::StringRef FP16 = "FP16";
     static constexpr llvm::StringRef FP32 = "FP32";

@@ -34,6 +34,8 @@ struct Module {
   static ModuleOp getModuleOp(Operation *op);
   static void updateModuleTypes(ModuleOp module);
   static std::string genWeightFileName(ModuleOp module);
+  static int64_t getAddress(Value v);
+  static void getNCHW(Value v, int64_t&n, int64_t&c, int64_t&h, int64_t&w, bool left_align = true);
 
   static inline llvm::StringRef getName(ModuleOp module) {
     return module->getAttrOfType<StringAttr>(Attr::NAME);
