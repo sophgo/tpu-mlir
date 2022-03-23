@@ -21,6 +21,12 @@ def WeightReorder : Pass<"weight-reorder", "ModuleOp"> {
   let dependentDialects = ["TpuDialect"];
 }
 
+def Codegen : Pass<"codegen", "ModuleOp"> {
+  let summary = "codegen in tpu by sophgo-opt";
+  let constructor = "createCodegenPass()";
+  let dependentDialects = ["TpuDialect"];
+}
+
 #endif
 
 

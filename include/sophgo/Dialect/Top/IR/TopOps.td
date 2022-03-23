@@ -49,7 +49,8 @@ def Top_WeightOp : Top_Op<"Weight", [NoSideEffect]> {
   }];
 
   let arguments = (ins
-    StrAttr:$name
+    StrAttr:$name,
+    DefaultValuedAttr<I64Attr, "0">:$addr
   );
 
   let results = (outs AnyTensor:$output);

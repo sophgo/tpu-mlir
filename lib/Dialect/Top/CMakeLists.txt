@@ -1,4 +1,4 @@
-file(GLOB _sources IR/*.cpp Transforms/*.cpp Quantization/*.cpp)
+file(GLOB _sources IR/*.cpp Transforms/*.cpp)
 
 add_mlir_library(SophgoTop
   ${_sources}
