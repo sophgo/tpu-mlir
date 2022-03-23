@@ -93,5 +93,71 @@ std::string Module::genWeightFileName(ModuleOp module) {
   return weight_file_name;
 }
 
+int64_t Module::getAddress(Value v) {
+  auto op = v.getDefiningOp();
+  if (!op->hasAttr("addr")) {
+    v.dump();
+    llvm_unreachable("Value has no addr attribute");
+  }
+  return op->getAttr("addr").cast<IntegerAttr>().getSInt();
+}
+
+static void getNCHW_align_right(llvm::ArrayRef<int64_t> &shape, int64_t &n,
+                                int64_t &c, int64_t &h, int64_t &w) {
+  int num_dims = shape.size();
+  n = 1, c = 1, h = 1, w = 1;
+  if (num_dims > 0) {
+    w = shape[num_dims - 1];
+  }
+  if (num_dims > 1) {
+    h = shape[num_dims - 2];
+  }
+  if (num_dims > 2) {
+    c = shape[num_dims - 3];
+  }
+  if (num_dims > 3) {
+    n = shape[num_dims - 4];
+  }
+  for (int i = 4; i < num_dims; i++) {
+    n *= shape[num_dims - i - 1];
+  }
+}
+
+static void getNCHW_align_left(llvm::ArrayRef<int64_t> shape, int64_t &n,
+                               int64_t &c, int64_t &h, int64_t &w) {
+  int num_dims = shape.size();
+  n = 1, c = 1, h = 1, w = 1;
+  if (num_dims >= 4) {
+    n = std::accumulate(shape.begin(), shape.begin() + num_dims - 3, 1,
+                        std::multiplies<int64_t>());
+    c = shape[num_dims - 3];
+    h = shape[num_dims - 2];
+    w = shape[num_dims - 1];
+  } else if (num_dims == 3) {
+    n = shape[num_dims - 3];
+    c = shape[num_dims - 2];
+    h = shape[num_dims - 1];
+  } else if (num_dims == 2) {
+    n = shape[num_dims - 2];
+    c = shape[num_dims - 1];
+  } else if (num_dims == 1) {
+    n = shape[num_dims - 1];
+  } else if (num_dims == 0) {
+    // scalar
+  } else {
+    llvm_unreachable("unsupported shape size");
+  }
+}
+
+void Module::getNCHW(Value v, int64_t &n, int64_t &c, int64_t &h, int64_t &w,
+                     bool align_left) {
+  auto shape = v.getType().cast<RankedTensorType>().getShape();
+  if (align_left) {
+    getNCHW_align_left(shape, n, c, h, w);
+  } else {
+    getNCHW_align_right(shape, n, c, h, w);
+  }
+}
+
 } // namespace helper
 } // namespace sophgo
