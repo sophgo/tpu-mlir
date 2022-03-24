@@ -30,10 +30,10 @@ using namespace sophgo::helper;
 
 void tpu::ConvOp::weight_reorder_int8_bm1684() {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-      pl, pr, dh, dw;
+      pl, pr, dh, dw, idt, wdt, bdt, odt, rshift;
   bool is_dw, with_bias, relu;
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-             pl, pr, dh, dw, is_dw, with_bias, relu);
+             pl, pr, dh, dw, is_dw, with_bias, relu, idt, wdt, bdt, odt, rshift);
   auto filterOp = cast<top::WeightOp>(filter().getDefiningOp());
   auto filter_int8 = filterOp.read<int8_t>();
   int new_size = oc * (ALIGN(ic, 4)) * kh * kw;

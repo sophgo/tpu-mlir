@@ -16,6 +16,9 @@
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Operation.h"
+#include "omp.h"
+
+int omp_schedule(int count);
 
 namespace sophgo {
 struct InferenceParameter {

@@ -9,7 +9,7 @@ public:
   void setup(float *input, float *weight, float *bias, float *output, int n,
              int ic, int ih, int iw, int oc, int oh, int ow, int kh, int kw,
              int sh, int sw, int dh, int dw, int pt, int pb, int pl, int pr,
-             int g);
+             int g, int idt, int wdt, int bdt, int odt, int rshift, bool do_relu);
 
   void run();
 
