@@ -190,6 +190,9 @@ BM1684::BM1684() {
   CAST_FUNCTION(nodechip_pad_fix8b_local);
   CAST_FUNCTION(nodechip_concat_local_v2);
   CAST_FUNCTION(nodechip_concat_fix8b_local_v2);
+  CAST_FUNCTION(nodechip_const_binary);
+  CAST_FUNCTION(nodechip_global_int2float);
+  CAST_FUNCTION(nodechip_float2int8_v2);
 
   // setup
   dl_cmodel_init(0, CMODEL_GLOBAL_MEM_SIZE);

@@ -27,6 +27,12 @@ def Codegen : Pass<"codegen", "ModuleOp"> {
   let dependentDialects = ["TpuDialect"];
 }
 
+def AddressAsign : Pass<"address-asign", "ModuleOp"> {
+  let summary = "assign address in tpu by sophgo-opt";
+  let constructor = "createAddressAsignPass()";
+  let dependentDialects = ["TpuDialect"];
+}
+
 #endif
 
 

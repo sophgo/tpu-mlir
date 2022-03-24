@@ -29,12 +29,19 @@ sophgo-opt resnet18_cali.mlir \
     --save-weight \
     -o resnet18_int8.mlir
 
+model_runner.py --model resnet18_int8.mlir --input dataset/resnet18_in_f32.npz --dump_all_tensors --output resnet18_int8_outputs.npz
+#npz_tool.py compare resnet18_int8_outputs.npz resnet18_ref_outputs.npz -v
+
 # tpu weight reorder
 sophgo-opt resnet18_int8.mlir \
     --weight-reorder \
     --save-weight \
     -o resnet18_int8_reorder.mlir
 
-model_runner.py --model resnet18_int8_reorder.mlir --input dataset/resnet18_in_f32.npz --dump_all_tensors --output resnet18_int8_outputs.npz
-#npz_tool.py compare resnet18_int8_outputs.npz resnet18_ref_outputs.npz
+# tpu address asign
+sophgo-opt resnet18_int8_reorder.mlir \
+    --address-asign \
+    --save-weight \
+    -o resnet18_int8_addr.mlir
+
 popd
