@@ -73,6 +73,7 @@ def Top_InputOp: Top_Op<"Input",[NoSideEffect]> {
 
   let arguments = (
     ins AnyTensor:$input,
+    DefaultValuedAttr<I64Attr, "0">:$addr,
     StrAttr:$name
   );
 

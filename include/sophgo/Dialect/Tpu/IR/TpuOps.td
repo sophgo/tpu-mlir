@@ -179,7 +179,8 @@ def Tpu_ReshapeOp:Tpu_Op<"Reshape",[NoSideEffect,
 }
 
 def Tpu_CastOp:Tpu_Op<"Cast",[NoSideEffect,
-  DeclareOpInterfaceMethods<InferenceInterface>]>{
+  DeclareOpInterfaceMethods<InferenceInterface>,
+  DeclareOpInterfaceMethods<CodegenInterface>]> {
   let summary = "Cast operation";
   let description = [{
   }];
