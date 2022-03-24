@@ -12,16 +12,23 @@ Pooling::Pooling() {
 void Pooling::setup(float *input, float *output, int n, int c, int ih, int iw,
                     int oh, int ow, int kh, int kw, int sh, int sw, int pt,
                     int pb, int pl, int pr, bool is_avg, bool count_include_pad,
-                    int pad_value) {
+                    int pad_value, int dt) {
+  memory::data_type idt_d = memory::data_type::f32;
+  memory::data_type odt_d = memory::data_type::f32;
+  if (1 == dt) {
+    idt_d = memory::data_type::s8;
+    odt_d = memory::data_type::s8;
+  }
+
   memory::dims src_shape = {n, c, ih, iw};
   memory::dims dst_shape = {n, c, oh, ow};
   memory::dims strides = {sh, sw};
   memory::dims kernel = {kh, kw};
   memory::dims padding_tl = {pt, pl};
   memory::dims padding_br = {pb, pr};
-  auto src_md = memory::desc({src_shape}, memory::data_type::f32,
+  auto src_md = memory::desc({src_shape}, idt_d,
                              memory::format_tag::nchw);
-  auto dst_md = memory::desc({dst_shape}, memory::data_type::f32,
+  auto dst_md = memory::desc({dst_shape}, odt_d,
                              memory::format_tag::nchw);
   auto pool_avg_algo = count_include_pad
                            ? algorithm::pooling_avg_include_padding
