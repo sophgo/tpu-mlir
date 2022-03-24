@@ -10,5 +10,8 @@
 
 using namespace mlir;
 
+int omp_schedule(int count) {
+  return (count + omp_get_num_threads() - 1) / omp_get_num_threads();
+}
 /// Include the definitions of the side effect interfaces.
 #include "sophgo/Interfaces/InferenceInterface.cpp.inc"

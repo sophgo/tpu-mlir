@@ -11,6 +11,7 @@ include "mlir/IR/OpBase.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "sophgo/Interfaces/WeightReorderInterface.td"
 include "sophgo/Interfaces/CodegenInterface.td"
+include "sophgo/Interfaces/InferenceInterface.td"
 
 def AnyTensorOrNone: AnyTypeOf<[AnyTensor, NoneType]>;
 
@@ -24,6 +25,7 @@ class Tpu_Op<string mnemonic, list<Trait> traits = []> :
     Op<Tpu_Dialect, mnemonic, traits> ;
 
 def Tpu_ConvOp: Tpu_Op<"Conv",[NoSideEffect,
+  DeclareOpInterfaceMethods<InferenceInterface,["init","deinit"]>,
     DeclareOpInterfaceMethods<WeightReorderInterface>,
     DeclareOpInterfaceMethods<CodegenInterface>]> {
   let summary = "convolution operator";
@@ -53,11 +55,13 @@ def Tpu_ConvOp: Tpu_Op<"Conv",[NoSideEffect,
     void parseParam(int64_t &n, int64_t &ic, int64_t &ih, int64_t &iw, int64_t &oc,
                     int64_t &oh, int64_t &ow, int64_t &g, int64_t &kh, int64_t &kw, int64_t &ins_h,
                     int64_t &ins_w, int64_t &sh, int64_t &sw, int64_t &pt, int64_t &pb, int64_t &pl,
-                    int64_t &pr, int64_t &dh, int64_t &dw, bool &is_dw, bool &with_bias, bool &do_relu);
+                    int64_t &pr, int64_t &dh, int64_t &dw, bool &is_dw, bool &with_bias, bool &do_relu,
+                    int64_t &idt, int64_t &wdt, int64_t &bdt, int64_t &odt, int64_t &rshift);
   }];
 }
 
 class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,[NoSideEffect,
+  DeclareOpInterfaceMethods<InferenceInterface,["init","deinit"]>,
   DeclareOpInterfaceMethods<CodegenInterface>]> {
   let summary = "pool operator";
 
@@ -84,7 +88,7 @@ class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,[NoSideEffect,
       int64_t &n, int64_t &c, int64_t &ih, int64_t &iw, int64_t &oh, int64_t &ow,
       int64_t &kh, int64_t &kw, int64_t &sh, int64_t &sw, int64_t &pt, int64_t &pb,
       int64_t &pl, int64_t &pr, int64_t &pad_value,
-      bool &is_global, bool &count_include_pad);
+      bool &is_global, bool &count_include_pad, int64_t &dt);
   }];
 }
 
@@ -92,6 +96,7 @@ def Tpu_AvgPoolOp:Tpu_PoolOp<"AvgPool">;
 def Tpu_MaxPoolOp:Tpu_PoolOp<"MaxPool">;
 
 def Tpu_AddOp: Tpu_Op<"Add",[NoSideEffect,
+  DeclareOpInterfaceMethods<InferenceInterface>,
   DeclareOpInterfaceMethods<CodegenInterface>]> {
   let summary = "add operator";
 
@@ -114,6 +119,7 @@ def Tpu_AddOp: Tpu_Op<"Add",[NoSideEffect,
 }
 
 def Tpu_MatMulOp: Tpu_Op<"MatMul",[NoSideEffect,
+  DeclareOpInterfaceMethods<InferenceInterface,["init","deinit"]>,
   DeclareOpInterfaceMethods<CodegenInterface>]> {
   let summary = "matmul operator";
 
@@ -136,11 +142,13 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul",[NoSideEffect,
   let results = (outs AnyTensor:$output);
   let extraClassDeclaration = [{
     void parseParam(
-      int64_t &batch, int64_t &M, int64_t &K, int64_t &N, bool &with_bias);
+      int64_t &batch, int64_t &M, int64_t &K, int64_t &N, bool &with_bias,
+      int64_t &ldt, int64_t &rdt, int64_t &bdt, int64_t &odt, int64_t &rshift);
   }];
 }
 
-def Tpu_ReluOp: Tpu_Op<"Relu",[NoSideEffect]> {
+def Tpu_ReluOp: Tpu_Op<"Relu",[NoSideEffect,
+  DeclareOpInterfaceMethods<InferenceInterface>]>{
   let summary = "Relu operator";
 
   let description = [{
@@ -156,6 +164,7 @@ def Tpu_ReluOp: Tpu_Op<"Relu",[NoSideEffect]> {
 }
 
 def Tpu_ReshapeOp:Tpu_Op<"Reshape",[NoSideEffect,
+  DeclareOpInterfaceMethods<InferenceInterface>,
   DeclareOpInterfaceMethods<CodegenInterface>]> {
   let summary = "Reshape operation";
   let description = [{
@@ -171,7 +180,8 @@ def Tpu_ReshapeOp:Tpu_Op<"Reshape",[NoSideEffect,
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_CastOp:Tpu_Op<"Cast",[NoSideEffect]> {
+def Tpu_CastOp:Tpu_Op<"Cast",[NoSideEffect,
+  DeclareOpInterfaceMethods<InferenceInterface>]>{
   let summary = "Cast operation";
   let description = [{
   }];

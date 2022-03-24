@@ -1,6 +1,4 @@
-
 #pragma once
-
 #include "oneapi/dnnl/dnnl.hpp"
 using namespace dnnl;
 namespace sophgo {
@@ -9,14 +7,15 @@ public:
   MatMul();
 
   void setup(float *left, float *right, float *bias, float *output,
-             int64_t batch, int64_t M, int64_t K, int64_t N, bool do_relu);
+             int64_t batch, int64_t M, int64_t K, int64_t N, bool do_relu,
+             int64_t ldt, int64_t rdt, int64_t bdt, int64_t odt, int64_t rshift);
 
   void run();
 
 private:
   engine eng;
   stream engine_stream;
-  matmul primitive;
-  std::unordered_map<int, memory> matmul_args;
+  std::vector<primitive> net;
+  std::vector<std::unordered_map<int, memory>> net_args;
 };
 } // namespace dnnl

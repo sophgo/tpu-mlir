@@ -9,10 +9,34 @@
 #include <functional>
 #include <memory>
 #include <numeric>
+#include "sophgo/Support/Helper/Quant.h"
 
 using namespace mlir;
 
 namespace sophgo {
+
+std::shared_ptr<std::vector<float>> read_weights_to_float(Type dtype, Operation *op)
+{
+  auto wOp = llvm::dyn_cast<top::WeightOp>(op);
+  std::shared_ptr<std::vector<float>> data_fp32;
+  if(dtype.isInteger(8)) {
+    std::shared_ptr<std::vector<int8_t>> data_int8 = wOp.read<int8_t>();
+    data_fp32 = std::make_shared<std::vector<float>>(data_int8->size());
+    for (size_t i = 0; i < data_int8->size(); i++) {
+      (*data_fp32)[i] = (*data_int8)[i];
+    }
+  } else if(dtype.isF32()) {
+    data_fp32 = wOp.read<float>();
+  } else if(dtype.isInteger(16)) {
+    std::shared_ptr<std::vector<int16_t>> data_int16 = wOp.read<int16_t>();
+    data_fp32 = std::make_shared<std::vector<float>>(data_int16->size());
+    for (size_t i = 0; i < data_int16->size(); i++) {
+      (*data_fp32)[i] = (*data_int16)[i];
+    }
+  }
+
+  return data_fp32;
+}
 
 ModuleInterpreter::~ModuleInterpreter() {
   for (auto func : module.getOps<FuncOp>()) {
@@ -50,7 +74,7 @@ void ModuleInterpreter::allocate_resources() {
         auto name = op->getAttrOfType<StringAttr>("name").str();
         value_map[name] = result;
         if (auto wOp = llvm::dyn_cast<top::WeightOp>(op)) {
-          mem_map[name] =wOp.read<float>();
+          mem_map[name] =read_weights_to_float(type.getElementType(), op);
         } else {
           mem_map[name] = std::make_shared<std::vector<float>>(count);
           all_tensor_names.push_back(name);
@@ -60,6 +84,8 @@ void ModuleInterpreter::allocate_resources() {
         }
       }
     });
+
+    llvm::errs() << "fill InferenceParameter\n";
     // input output buffers for all ops
     func.walk([&](Operation *op) {
       if (auto infer_op = llvm::dyn_cast<InferenceInterface>(op)) {
