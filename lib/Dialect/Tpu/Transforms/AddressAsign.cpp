@@ -23,6 +23,7 @@
 #include "sophgo/Support/MathUtils.h"
 #include "sophgo/Support/Helper/Module.h"
 #include "sophgo/Support/Helper/Quant.h"
+#include "sophgo/Backend/BM1684.h"
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinTypes.h"
@@ -41,24 +42,51 @@
 using namespace llvm;
 using namespace mlir;
 using namespace sophgo::helper;
+using namespace sophgo::backend;
 namespace sophgo {
 namespace tpu {
 
-class CodegenPass : public CodegenBase<CodegenPass> {
+#define ALIGN(x, a) ((((x) + (a)-1) / (a)) * (a))
+
+class AddressAsignPass : public AddressAsignBase<AddressAsignPass> {
 public:
-  CodegenPass() {}
+  AddressAsignPass() {}
   void runOnOperation() override {
     auto module = getOperation();
+    int64_t addr = 0;
+    int64_t alignment = 0;
+    if (Module::getChip(module) == Module::Chip::BM1684) {
+      addr = BM1684::CTX_START_ADDR;
+      alignment = BM1684::ALIGNMENT;
+    } else {
+      llvm_unreachable("chip not support now");
+    }
+    Builder builder(module.getContext());
+    // asign weight first
     for (auto func : module.getOps<FuncOp>()) {
-      func.walk([&](CodegenInterface op) {
-        op.codegen_int8_bm1684();
+      func.walk([&](top::WeightOp op) {
+        op->setAttr("addr", builder.getI64IntegerAttr(addr));
+        int64_t bytes = Module::getBytes(op.output());
+        addr += ALIGN(bytes, alignment);
+      });
+    }
+    // asign activation
+    for (auto func : module.getOps<FuncOp>()) {
+      func.walk([&](Operation *op) {
+        if (isa<FuncOp>(op) || isa<top::NoneOp>(op) ||
+            isa<func::ReturnOp>(op)) {
+        } else {
+          op->setAttr("addr", builder.getI64IntegerAttr(addr));
+          int64_t bytes = Module::getBytes(op->getResult(0));
+          addr += ALIGN(bytes, alignment);
+        }
       });
     }
   }
 };
 
-std::unique_ptr<OperationPass<ModuleOp>> createCodegenPass() {
-  return std::make_unique<CodegenPass>();
+std::unique_ptr<OperationPass<ModuleOp>> createAddressAsignPass() {
+  return std::make_unique<AddressAsignPass>();
 }
-} // namespace top
+} // namespace tpu
 } // namespace sophgo

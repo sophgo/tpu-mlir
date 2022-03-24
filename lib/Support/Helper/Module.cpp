@@ -1,5 +1,6 @@
 #include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "sophgo/Support/Helper/Module.h"
+#include "sophgo/Support/Helper/Quant.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
@@ -100,6 +101,21 @@ int64_t Module::getAddress(Value v) {
     llvm_unreachable("Value has no addr attribute");
   }
   return op->getAttr("addr").cast<IntegerAttr>().getSInt();
+}
+
+size_t Module::getBytes(Value v) {
+  auto type = v.getType().cast<RankedTensorType>();
+  auto elm_count = type.getNumElements();
+  auto etype = type.getElementType();
+  int elm_bytes = 0;
+  if (auto qType = etype.dyn_cast<quant::CalibratedQuantizedType>()) {
+    elm_bytes = qType.getExpressedType().getIntOrFloatBitWidth() / 8;
+  } else if (auto qType = etype.dyn_cast<quant::UniformQuantizedType>()) {
+    elm_bytes = qType.getStorageType().getIntOrFloatBitWidth() / 8;
+  } else {
+    elm_bytes = etype.getIntOrFloatBitWidth() / 8;
+  }
+  return elm_count * elm_bytes;
 }
 
 static void getNCHW_align_right(llvm::ArrayRef<int64_t> &shape, int64_t &n,

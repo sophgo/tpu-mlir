@@ -29,12 +29,6 @@ using namespace sophgo::backend;
 
 #define ALIGN(x, a) ((((x) + (a)-1) / (a)) * (a))
 
-typedef enum {
-  STORE_MODE_1N = 0,
-  STORE_MODE_2N = 1,
-  STORE_MODE_4N = 2,
-} STORE_MODE_T;
-
 void tpu::ConvOp::codegen_int8_bm1684() {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
@@ -79,19 +73,15 @@ void tpu::MatMulOp::codegen_int8_bm1684() {
   int64_t batch, M, K, N;
   bool with_bias;
   parseParam(batch, M, K, N, with_bias);
-  int res_16b = 0;
-  int out_sign = 1;
-  int opd0_sign = 1;
-  int opd1_sign = 1;
   int using_bias = with_bias ? 1 : 0;
-  int bias_sign = 1;
-  int if_relu = do_relu();
+  int if_relu = do_relu() ? 1 : 0;
+  int if_right_active = isa<top::WeightOp>(right().getDefiningOp()) ? 0 : 1;
   FcQParams quant_param{0, 0, 0, 0, 0};
   BM1684::instance().dl_nodechip_fc_fix8b_forward_parallel(
       Module::getAddress(input()), Module::getAddress(right()),
       with_bias ? Module::getAddress(bias()) : 0, Module::getAddress(output()),
-      0, M, K, N, 0, using_bias, 1, 1, 1, rshift(), 0, do_relu() ? 1 : 0, 1,
-      isa<top::WeightOp>(right().getDefiningOp()) ? 0 : 1, 1, 0, FcPerLayerShift, &quant_param,
+      0, M, K, N, 0, using_bias, 1, 1, 1, rshift(), 0, if_relu, 1,
+      if_right_active, 1, 0, FcPerLayerShift, &quant_param,
       BM1684::instance().get_cmd_id_node());
 }
 
@@ -169,4 +159,38 @@ void tpu::AddOp::codegen_int8_bm1684() {
       do_relu() ? 1 : 0,                   // int    do_relu(),
       BM1684::instance().get_cmd_id_node() // CMD_ID_NODE *id_node
   );
+}
+
+void tpu::CastOp::codegen_int8_bm1684() {
+  bool qInput = Quant::isUniformQuantized(input());
+  bool qOutput = Quant::isUniformQuantized(output());
+  int64_t n, c, h, w;
+  Module::getNCHW(output(), n, c, h, w);
+  if (qInput && !qOutput) {
+    // int8 => fp32
+    auto scale = Quant::getQuantizedType<quant::UniformQuantizedType>(input())
+                     .getScale();
+    BM1684::instance().dl_nodechip_global_int2float(
+        Module::getAddress(input()), Module::getAddress(output()), n, c, h, w,
+        1, STORAGE_MODE_4N_INT8, BM1684::instance().get_cmd_id_node());
+    BM1684::instance().dl_nodechip_const_binary(
+        Module::getAddress(output()), n * c * h * w, scale,
+        Module::getAddress(output()), BM_BINARY_MUL, 0, 0, 0,
+        BM1684::instance().get_cmd_id_node(), 0);
+  } else if (qOutput && !qInput) {
+    // fp32 => int8
+    auto scale = Quant::getQuantizedType<quant::UniformQuantizedType>(output())
+                     .getScale();
+    BM1684::instance().dl_nodechip_const_binary(
+        Module::getAddress(input()), n * c * h * w, scale,
+        Module::getAddress(input()), BM_BINARY_DIV, 0, 0, 0,
+        BM1684::instance().get_cmd_id_node(), 0);
+    BM1684::instance().dl_nodechip_float2int8_v2(
+        Module::getAddress(input()), Module::getAddress(output()), n, c, h, w,
+        1, STORAGE_MODE_4N_INT8, ROUND_INF,
+        BM1684::instance().get_cmd_id_node());
+  } else {
+    dump();
+    llvm_unreachable("CastOp type error");
+  }
 }

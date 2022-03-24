@@ -36,6 +36,7 @@ struct Module {
   static std::string genWeightFileName(ModuleOp module);
   static int64_t getAddress(Value v);
   static void getNCHW(Value v, int64_t&n, int64_t&c, int64_t&h, int64_t&w, bool left_align = true);
+  static size_t getBytes(Value v);
 
   static inline llvm::StringRef getName(ModuleOp module) {
     return module->getAttrOfType<StringAttr>(Attr::NAME);
@@ -44,7 +45,7 @@ struct Module {
     return module->getAttrOfType<StringAttr>(Attr::CHIP);
   }
   static inline void setChip(ModuleOp module, StringRef chip) {
-    module->setAttr(Attr::CHIP, StringAttr::get(module.getContext(), chip.lower()));
+    module->setAttr(Attr::CHIP, StringAttr::get(module.getContext(), chip.upper()));
   }
   static inline StringRef getWeightFile(ModuleOp module) {
     return module->getAttrOfType<StringAttr>(Attr::WEIGHT_FILE);
