@@ -37,16 +37,16 @@ typedef enum {
 
 void tpu::ConvOp::codegen_int8_bm1684() {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-      pl, pr, dh, dw, idt, wdt, bdt, odt, rshift;
+      pl, pr, dh, dw;
   bool is_dw, with_bias, relu;
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-             pl, pr, dh, dw, is_dw, with_bias, relu, idt, wdt, bdt, odt, rshift);
+             pl, pr, dh, dw, is_dw, with_bias, relu);
   if (is_dw) {
     BM1684::instance().dl_nodechip_depthwise_fix8b_forward_parallel(
         Module::getAddress(input()), Module::getAddress(output()),
         Module::getAddress(filter()),
         with_bias ? Module::getAddress(bias()) : 0, n, ic, ih, iw, kh, kw, pt,
-        pb, pl, pr, sh, sw, ins_h, ins_w, rshift, with_bias ? 1 : 0, 0, 1, 1,
+        pb, pl, pr, sh, sw, ins_h, ins_w, rshift(), with_bias ? 1 : 0, 0, 1, 1,
         1, 1, relu ? 1 : 0, BM1684::instance().get_cmd_id_node());
   } else {
     auto weight_addr = Module::getAddress(filter());
@@ -56,7 +56,7 @@ void tpu::ConvOp::codegen_int8_bm1684() {
         Module::getAddress(filter()),
         with_bias ? Module::getAddress(bias()) : 0, n, ic, ih, iw, g, oc, kh,
         kw, dh, dw, pt, pb, pl, pr, sh, sw, with_bias ? 1 : 0, 0, relu ? 1 : 0,
-        0, 1, 0, 0, rshift, 1, 1, 1, 3, 0, 0, 0, 0, 0,
+        0, 1, 0, 0, rshift(), 1, 1, 1, 3, 0, 0, 0, 0, 0,
         BM1684::instance().get_cmd_id_node());
   }
 }
@@ -76,9 +76,9 @@ typedef struct {
 } FcQParams;
 
 void tpu::MatMulOp::codegen_int8_bm1684() {
-  int64_t batch, M, K, N, ldt, rdt, bdt, odt, rshift;
+  int64_t batch, M, K, N;
   bool with_bias;
-  parseParam(batch, M, K, N, with_bias, ldt, rdt, bdt, odt, rshift);
+  parseParam(batch, M, K, N, with_bias);
   int res_16b = 0;
   int out_sign = 1;
   int opd0_sign = 1;
@@ -90,16 +90,16 @@ void tpu::MatMulOp::codegen_int8_bm1684() {
   BM1684::instance().dl_nodechip_fc_fix8b_forward_parallel(
       Module::getAddress(input()), Module::getAddress(right()),
       with_bias ? Module::getAddress(bias()) : 0, Module::getAddress(output()),
-      0, M, K, N, 0, using_bias, 1, 1, 1, rshift, 0, do_relu() ? 1 : 0, 1,
+      0, M, K, N, 0, using_bias, 1, 1, 1, rshift(), 0, do_relu() ? 1 : 0, 1,
       isa<top::WeightOp>(right().getDefiningOp()) ? 0 : 1, 1, 0, FcPerLayerShift, &quant_param,
       BM1684::instance().get_cmd_id_node());
 }
 
 void tpu::AvgPoolOp::codegen_int8_bm1684() {
-  int64_t n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value, dt;
+  int64_t n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value;
   bool is_global, count_include_pad;
   parseParam(n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value,
-             is_global, count_include_pad, dt);
+             is_global, count_include_pad);
   BM1684::instance().dl_nodechip_pooling_fix8b_forward_parallel_with_data_split(
       Module::getAddress(input()), Module::getAddress(output()), n, c, ih, iw,
       kh, kw, pt, pb, pl, pr, sh, sw, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1,
@@ -107,10 +107,10 @@ void tpu::AvgPoolOp::codegen_int8_bm1684() {
 }
 
 void tpu::MaxPoolOp::codegen_int8_bm1684() {
-  int64_t n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value, dt;
+  int64_t n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value;
   bool is_global, count_include_pad;
   parseParam(n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value,
-             is_global, count_include_pad, dt);
+             is_global, count_include_pad);
   BM1684::instance().dl_nodechip_pooling_fix8b_forward_parallel_with_data_split(
       Module::getAddress(input()), Module::getAddress(output()), n, c, ih, iw,
       kh, kw, pt, pb, pl, pr, sh, sw, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1,
