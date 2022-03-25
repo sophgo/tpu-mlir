@@ -155,7 +155,23 @@ ModuleInterpreter::getTensor(const std::string &name) {
     llvm::errs() << "Can't find op name: " << name << "\n";
     llvm_unreachable("Error, setTensor failed");
   }
-  return it->second;
+
+  auto it2 = value_map.find(name);
+  if (it2 == value_map.end()) {
+    llvm::errs() << "Can't find op name: " << name << "\n";
+    llvm_unreachable("Error, setTensor failed");
+  }
+
+  auto dtype = it2->second.getType().cast<RankedTensorType>().getElementType();
+  if(dtype.isa<quant::UniformQuantizedType>()) {
+    auto scale = dtype.cast<quant::UniformQuantizedType>().getScale();
+    for (size_t i = 0; i < it->second->size(); i++) {
+      (*it->second)[i] = (*(it->second))[i]*scale;
+    }
+    return it->second;
+  } else {
+    return it->second;
+  }
 }
 
 llvm::ArrayRef<int64_t>

@@ -9,7 +9,11 @@ public:
   void setup(float *input, float *weight, float *bias, float *output, int n,
              int ic, int ih, int iw, int oc, int oh, int ow, int kh, int kw,
              int sh, int sw, int dh, int dw, int pt, int pb, int pl, int pr,
-             int g, int idt, int wdt, int bdt, int odt, int rshift, bool do_relu);
+             int g, bool do_relu, int rshift = 0,
+             memory::data_type idt = memory::data_type::f32,
+             memory::data_type wdt = memory::data_type::f32,
+             memory::data_type bdt = memory::data_type::f32,
+             memory::data_type odt = memory::data_type::f32);
 
   void run();
 

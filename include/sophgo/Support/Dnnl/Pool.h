@@ -11,7 +11,7 @@ public:
 
   void setup(float *input, float*output, int n, int c, int ih, int iw, int oh, int ow, int kh, int kw,
              int sh, int sw, int pt, int pb, int pl, int pr, bool is_avg,
-             bool count_include_pad, int pad_value = 0, int dt = 0);
+             bool count_include_pad, int pad_value = 0, memory::data_type dt = memory::data_type::f32);
 
   void run();
 

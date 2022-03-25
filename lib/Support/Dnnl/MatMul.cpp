@@ -12,39 +12,27 @@ MatMul::MatMul() {
 
 void MatMul::setup(float *left, float *right, float *bias, float *output,
                    int64_t batch, int64_t M, int64_t K, int64_t N,
-                   bool do_relu, int64_t ldt, int64_t rdt, int64_t bdt, int64_t odt, int64_t rshift) {
+                   bool do_relu, int64_t rshift, memory::data_type ldt,
+                   memory::data_type rdt,
+                   memory::data_type bdt,
+                   memory::data_type odt) {
   //printf("MatMul ldt:%ld, rdt:%ld, bdt:%ld, odt:%ld, rshift:%ld\n", ldt, rdt, bdt, odt, rshift);
   memory::dims src_dims = {batch, M, K};
   memory::dims weights_dims = {batch, K, N};
   memory::dims bias_dims = {1, 1, N};
   memory::dims dst_dims = {batch, M, N};
 
-  memory::data_type ldt_d = memory::data_type::f32;
-  if (1 == ldt)
-    ldt_d = memory::data_type::s8;
-
-  memory::data_type rdt_d = memory::data_type::f32;
-  if (1 == rdt)
-    rdt_d = memory::data_type::s8;
-
-  memory::data_type bdt_d = memory::data_type::f32;
-  if (2 == bdt)
-    bdt_d = memory::data_type::s32;
-
-  memory::data_type odt_d = memory::data_type::f32;
-  if (1 == odt)
-    odt_d = memory::data_type::s32;
   net.clear();
   net_args.clear();
-  auto src_md = memory::desc(src_dims, ldt_d, tag::abc);
-  auto weights_md = memory::desc(weights_dims, rdt_d, tag::abc);
-  auto bias_md = memory::desc(bias_dims, bdt_d, tag::abc);
-  auto dst_md = memory::desc(dst_dims, odt_d, tag::abc);
+  auto src_md = memory::desc(src_dims, ldt, tag::abc);
+  auto weights_md = memory::desc(weights_dims, rdt, tag::abc);
+  auto bias_md = memory::desc(bias_dims, bdt, tag::abc);
+  auto dst_md = memory::desc(dst_dims, odt, tag::abc);
   auto matmul_d = matmul::desc(src_md, weights_md, bias_md, dst_md);
   post_ops ops;
   matmul::primitive_desc matmul_pd;
   primitive_attr matmul_attr;
-  if (1 == odt) {
+  if (memory::data_type::s32 == odt) {
     float scale = 1;
     for (int i = 0; i < abs(rshift); i++) {
       if (rshift > 0) {
@@ -83,26 +71,29 @@ void MatMul::setup(float *left, float *right, float *bias, float *output,
 
   auto src_float_memory = memory({{src_dims}, memory::data_type::f32, memory::format_tag::abc}, eng, left);
   auto prim_src_memory = src_float_memory;
-  if (1 == ldt) {
-    auto prim_src_memory = memory(matmul_pd.src_desc(), eng);
+  if (matmul_pd.src_desc() != src_float_memory.get_desc()) {
+    prim_src_memory = memory(matmul_pd.src_desc(), eng);
     net.push_back(reorder(src_float_memory, prim_src_memory));
     net_args.push_back({{DNNL_ARG_FROM, src_float_memory}, {DNNL_ARG_TO, prim_src_memory}});
   }
 
   auto weights_float_memory = memory({{weights_dims}, memory::data_type::f32, memory::format_tag::abc}, eng, right);
   auto prim_weights_memory = weights_float_memory;
-  if (1 == bdt) {
-    auto prim_weights_memory = memory(matmul_pd.weights_desc(), eng);
+  if (matmul_pd.weights_desc() != weights_float_memory.get_desc()) {
+    prim_weights_memory = memory(matmul_pd.weights_desc(), eng);
     net.push_back(reorder(weights_float_memory, prim_weights_memory));
     net_args.push_back({{DNNL_ARG_FROM, weights_float_memory}, {DNNL_ARG_TO, prim_weights_memory}});
   }
 
-  auto bias_float_memory = memory({{bias_dims}, memory::data_type::f32, memory::format_tag::abc}, eng, bias);
-  auto prim_bias_memory = bias_float_memory;
-  if (1 == bdt) {
-    auto prim_bias_memory = memory(matmul_pd.bias_desc(), eng);
-    net.push_back(reorder(bias_float_memory, prim_bias_memory));
-    net_args.push_back({{DNNL_ARG_FROM, bias_float_memory}, {DNNL_ARG_TO, prim_bias_memory}});
+  auto prim_bias_memory = memory();
+  if (bias != nullptr) {
+    auto bias_float_memory = memory({{bias_dims}, memory::data_type::f32, memory::format_tag::abc}, eng, bias);
+    prim_bias_memory = bias_float_memory;
+    if (matmul_pd.bias_desc() != bias_float_memory.get_desc()) {
+      prim_bias_memory = memory(matmul_pd.bias_desc(), eng);
+      net.push_back(reorder(bias_float_memory, prim_bias_memory));
+      net_args.push_back({{DNNL_ARG_FROM, bias_float_memory}, {DNNL_ARG_TO, prim_bias_memory}});
+    }
   }
 
   auto prim_dst_memory = memory(matmul_pd.dst_desc(), eng);

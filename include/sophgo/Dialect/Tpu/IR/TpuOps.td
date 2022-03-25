@@ -110,6 +110,7 @@ def Tpu_AddOp: Tpu_Op<"Add",[NoSideEffect,
     OptionalAttr<F64ArrayAttr>:$coeff,
     // quant param
     I64ArrayAttr:$rshifts,
+    I64ArrayAttr:$multipliers,
     DefaultValuedAttr<I64Attr, "0">:$addr,
     StrAttr:$name
   );

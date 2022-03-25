@@ -10,8 +10,8 @@ Conv::Conv() {
 void Conv::setup(float *input, float *weight, float *bias, float *output, int n,
                  int ic, int ih, int iw, int oc, int oh, int ow, int kh, int kw,
                  int sh, int sw, int dh, int dw, int pt, int pb, int pl, int pr,
-                 int g, int idt, int wdt, int bdt, int odt, int rshift, bool do_relu) {
-  //printf("Conv idt:%d, wdt:%d, bdt:%d, odt:%d, rshift:%d\n", idt, wdt, bdt, odt, rshift);
+                 int g, bool do_relu, int rshift, memory::data_type idt,
+                 memory::data_type wdt, memory::data_type bdt, memory::data_type odt) {
   src_shape = {n, ic, ih, iw};
   dst_shape = {n, oc, oh, ow};
   memory::dims filter_shape = (g != 1) ? memory::dims{g, oc / g, ic / g, kh, kw}
@@ -23,28 +23,12 @@ void Conv::setup(float *input, float *weight, float *bias, float *output, int n,
   memory::dims padding_r = {pb, pr};
   memory::dims dilation = {dh - 1, dw - 1};
 
-  memory::data_type idt_d = memory::data_type::f32;
-  if (1 == idt)
-    idt_d = memory::data_type::s8;
-
-  memory::data_type wdt_d = memory::data_type::f32;
-  if (1 == wdt)
-    wdt_d = memory::data_type::s8;
-
-  memory::data_type bdt_d = memory::data_type::f32;
-  if (2 == bdt)
-    bdt_d = memory::data_type::s32;
-
-  memory::data_type odt_d = memory::data_type::f32;
-  if (1 == odt)
-    odt_d = memory::data_type::s32;
-
   net.clear();
   net_args.clear();
-  auto src_md = memory::desc({src_shape}, idt_d, memory::format_tag::any);
-  auto filter_md = memory::desc({filter_shape}, wdt_d, memory::format_tag::any);
-  auto bias_md = memory::desc({bias_shape}, bdt_d, memory::format_tag::any);
-  auto dst_md = memory::desc({dst_shape}, odt_d,memory::format_tag::any);
+  auto src_md = memory::desc({src_shape}, idt, memory::format_tag::any);
+  auto filter_md = memory::desc({filter_shape}, wdt, memory::format_tag::any);
+  auto bias_md = memory::desc({bias_shape}, bdt, memory::format_tag::any);
+  auto dst_md = memory::desc({dst_shape}, odt,memory::format_tag::any);
 
   auto conv_desc = convolution_forward::desc(
       prop_kind::forward_inference, algorithm::convolution_direct, src_md,
@@ -52,7 +36,7 @@ void Conv::setup(float *input, float *weight, float *bias, float *output, int n,
 
   post_ops ops;
   primitive_attr conv_attr;
-  if (1 == odt) {
+  if (memory::data_type::s32 == odt) {
     float scale = 1;
     std::vector<float> conv_scales(oc);
     for (int i = 0; i < abs(rshift); i++) {
@@ -99,14 +83,17 @@ void Conv::setup(float *input, float *weight, float *bias, float *output, int n,
         .execute(eng_stream, filter_memory, prim_filter_memory);
   }
 
-  auto bias_memory = memory(
-      {{bias_shape}, memory::data_type::f32, memory::format_tag::x}, eng, bias);
-  auto prim_bias_memory = bias_memory;
-  if (conv_prim_desc.bias_desc() != bias_memory.get_desc()) {
-    prim_bias_memory = memory(conv_prim_desc.bias_desc(), eng);
-    net.push_back(reorder(bias_memory, prim_bias_memory));
-    net_args.push_back(
-        {{DNNL_ARG_FROM, bias_memory}, {DNNL_ARG_TO, prim_bias_memory}});
+  auto prim_bias_memory = memory();
+  if (bias != nullptr) {
+    auto bias_memory = memory(
+        {{bias_shape}, memory::data_type::f32, memory::format_tag::x}, eng, bias);
+    prim_bias_memory = bias_memory;
+    if (conv_prim_desc.bias_desc() != bias_memory.get_desc()) {
+      prim_bias_memory = memory(conv_prim_desc.bias_desc(), eng);
+      net.push_back(reorder(bias_memory, prim_bias_memory));
+      net_args.push_back(
+          {{DNNL_ARG_FROM, bias_memory}, {DNNL_ARG_TO, prim_bias_memory}});
+    }
   }
 
   auto src_memory =
@@ -122,10 +109,16 @@ void Conv::setup(float *input, float *weight, float *bias, float *output, int n,
 
   auto prim_dst_memory = memory(conv_prim_desc.dst_desc(), eng);
   net.push_back(convolution_forward(conv_prim_desc));
-  net_args.push_back({{DNNL_ARG_SRC, prim_src_memory},
-                      {DNNL_ARG_WEIGHTS, prim_filter_memory},
-                      {DNNL_ARG_BIAS, prim_bias_memory},
-                      {DNNL_ARG_DST, prim_dst_memory}});
+  if (bias != nullptr) {
+    net_args.push_back({{DNNL_ARG_SRC, prim_src_memory},
+                        {DNNL_ARG_WEIGHTS, prim_filter_memory},
+                        {DNNL_ARG_BIAS, prim_bias_memory},
+                        {DNNL_ARG_DST, prim_dst_memory}});
+  } else {
+    net_args.push_back({{DNNL_ARG_SRC, prim_src_memory},
+                        {DNNL_ARG_WEIGHTS, prim_filter_memory},
+                        {DNNL_ARG_DST, prim_dst_memory}});
+  }
   // reorder or copy the output
   auto dst_memory =
       memory({{dst_shape}, memory::data_type::f32, memory::format_tag::nchw},

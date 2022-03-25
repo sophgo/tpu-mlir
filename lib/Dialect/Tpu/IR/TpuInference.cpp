@@ -36,30 +36,28 @@ template <typename T> static void relu(T *src, T *dst, size_t size) {
 LogicalResult tpu::ConvOp::init(InferenceParameter &p) {
   auto conv = new Conv();
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-      pl, pr, dh, dw, idt = 0, wdt = 0, bdt = -1, odt = 0;
+      pl, pr, dh, dw;
   bool is_dw, with_bias, relu;
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
              pl, pr, dh, dw, is_dw, with_bias, relu);
 
+  memory::data_type idt, wdt, bdt, odt;
+  idt = wdt = bdt = odt = memory::data_type::f32;
   if(input().getType().cast<RankedTensorType>().getElementType().isa<quant::UniformQuantizedType>()){
-    idt = 1;
+    idt = memory::data_type::s8;
   }
   if(filter().getType().cast<RankedTensorType>().getElementType().isInteger(8)){
-    wdt = 1;
+    wdt = memory::data_type::s8;
   }
   if(output().getType().cast<RankedTensorType>().getElementType().isa<quant::UniformQuantizedType>()) {
-    odt = 1;
+    odt = memory::data_type::s32;
   }
-
-  if (with_bias) {
-    bdt = 0;
-    if (bias().getType().cast<RankedTensorType>().getElementType().isInteger(16)) {
-      bdt = 2;
-    }
+  if (with_bias && bias().getType().cast<RankedTensorType>().getElementType().isInteger(16)) {
+    bdt = memory::data_type::s32;
   }
 
   conv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], n, ic, ih, //fixme p.inputs[2] maybe null???
-              iw, oc, oh, ow, kh, kw, sh, sw, dh, dw, pt, pb, pl, pr, g, idt, wdt, bdt, odt, rshift(), do_relu());
+              iw, oc, oh, ow, kh, kw, sh, sw, dh, dw, pt, pb, pl, pr, g, do_relu(), rshift(), idt, wdt, bdt, odt);
   p.handle = (void *)conv;
   return success();
 }
@@ -100,23 +98,30 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
     for (auto in : p.inputs) {
       if (in != nullptr) {
         int rshift = rshifts().getValue()[idx].cast<IntegerAttr>().getInt();
-        p.outputs[0][i] += (int32_t)(in[i])>>rshift;
+        int multiplier = multipliers().getValue()[idx].cast<IntegerAttr>().getInt();
+        p.outputs[0][i] += (int32_t)(in[i]*multiplier)>>rshift;
       }
       idx++;
     }
+    p.outputs[0][i] = p.outputs[0][i] > 127?127:p.outputs[0][i]<-128?-128:p.outputs[0][i];
   }
   if (do_relu()) {
     relu(p.outputs[0], p.outputs[0], num_elem);
+  }
+  //llvm::errs() << "AddOp inference:" << this->name() << "\n";
+  for (int i = 0; i < 5; i++) {
+    //printf("%d, %f+%f = %f\n", i, p.inputs[0][i], p.inputs[1][i], p.outputs[0][i]);
   }
   return success();
 }
 
 LogicalResult tpu::MaxPoolOp::init(InferenceParameter &p) {
   auto pooling = new Pooling();
-  int64_t n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value, dt = 0;
+  int64_t n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value;
   bool is_global, count_include_pad;
+  memory::data_type dt = memory::data_type::f32;
   if(input().getType().cast<RankedTensorType>().getElementType().isa<quant::UniformQuantizedType>()){
-    dt = 1;
+    dt = memory::data_type::s8;
   }
   parseParam(n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value,
              is_global, count_include_pad);
@@ -151,10 +156,11 @@ LogicalResult tpu::MaxPoolOp::inference(InferenceParameter &p) {
 
 LogicalResult tpu::AvgPoolOp::init(InferenceParameter &p) {
   auto pooling = new Pooling();
-  int64_t n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value, dt = 0;
+  int64_t n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value;
   bool is_global, count_include_pad;
+  memory::data_type dt = memory::data_type::f32;
   if(input().getType().cast<RankedTensorType>().getElementType().isa<quant::UniformQuantizedType>()){
-    dt = 1;
+    dt = memory::data_type::s8;
   }
   parseParam(n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value,
              is_global, count_include_pad);
@@ -184,6 +190,10 @@ LogicalResult tpu::AvgPoolOp::inference(InferenceParameter &p) {
         output().getType().cast<RankedTensorType>().getNumElements();
     relu(p.outputs[0], p.outputs[0], num_elem);
   }
+  //llvm::errs() << "AvgPoolOp inference:" << this->name() << "\n";
+  for (int i = 0; i < 5; i++) {
+    //printf("%d  %f -> %f\n", i, p.inputs[0][i], p.outputs[0][i]);
+  }
   return success();
 }
 
@@ -198,30 +208,26 @@ LogicalResult tpu::ReshapeOp::inference(InferenceParameter &p) {
 
 LogicalResult tpu::MatMulOp::init(InferenceParameter &p) {
   auto matmul = new MatMul();
-  int64_t batch, M, K, N, ldt = 0, rdt = 0, bdt = -1, odt = 0;
+  int64_t batch, M, K, N;
   bool with_bias;
   parseParam(batch, M, K, N, with_bias);
+  memory::data_type ldt, rdt, bdt, odt;
+  ldt = rdt = bdt = odt = memory::data_type::f32;
   if(input().getType().cast<RankedTensorType>().getElementType().isa<quant::UniformQuantizedType>()){
-    ldt = 1;
+    ldt = memory::data_type::s8;
   }
-
   if(right().getType().cast<RankedTensorType>().getElementType().isInteger(8)){
-    rdt = 1;
+    rdt = memory::data_type::s8;
   }
-
   if(output().getType().cast<RankedTensorType>().getElementType().isa<quant::UniformQuantizedType>()) {
-    odt = 1;
+    odt = memory::data_type::s32;
   }
-
-  if (with_bias) {
-    bdt = 0;
-    if (bias().getType().cast<RankedTensorType>().getElementType().isInteger(16)) {
-      bdt = 2;
-    }
+  if (with_bias && bias().getType().cast<RankedTensorType>().getElementType().isInteger(16)) {
+    bdt = memory::data_type::s32;
   }
 
   matmul->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], batch, M,
-                K, N, do_relu(), ldt, rdt, bdt, odt, rshift());
+                K, N, do_relu(), rshift(), ldt, rdt, bdt, odt);
   p.handle = (void *)matmul;
   return success();
 }
@@ -241,6 +247,10 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
   }
   auto matmul = (MatMul *)p.handle;
   matmul->run();
+  //llvm::errs() << "MatMulOp inference:" << this->name() << "\n";
+  for (int i = 0; i < 5; i++) {
+    //printf("%d  %f x %d +%f = %f\n", i, p.inputs[0][i], (int8_t)p.inputs[1][i], p.inputs[2][i], p.outputs[0][i]);
+  }
   return success();
 }
 
