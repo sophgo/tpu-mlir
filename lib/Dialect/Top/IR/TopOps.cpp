@@ -143,7 +143,8 @@ void AvgPoolOp::parseParam(int64_t &n, int64_t &c, int64_t &ih, int64_t &iw,
   count_include_pad = this->count_include_pad();
 }
 
-void MatMulOp::parseParam(int64_t &batch, int64_t &M, int64_t &K, int64_t &N, bool &with_bias) {
+void MatMulOp::parseParam(int64_t &batch, int64_t &M, int64_t &K, int64_t &N,
+                          bool &with_bias) {
   auto i_s = input().getType().cast<RankedTensorType>().getShape();
   auto r_s = right().getType().cast<RankedTensorType>().getShape();
   auto o_s = output().getType().cast<RankedTensorType>().getShape();
@@ -175,6 +176,47 @@ template <typename T> std::shared_ptr<std::vector<T>> WeightOp::read() {
   }
   auto type = output().getType().cast<RankedTensorType>();
   return topDialect->wFile->readTensor<T>(name(), type);
+}
+
+std::shared_ptr<std::vector<float>> WeightOp::read_as_float() {
+  auto type = getType().cast<RankedTensorType>();
+  auto dtype = type.getElementType();
+  if (dtype.isInteger(8)) {
+    auto data_i8 = read<int8_t>();
+    return std::make_shared<std::vector<float>>(data_i8->begin(),
+                                                data_i8->end());
+  } else if (dtype.isF32()) {
+    return read<float>();
+  } else if (dtype.isInteger(16)) {
+    auto data_i16 = read<int16_t>();
+    return std::make_shared<std::vector<float>>(data_i16->begin(),
+                                                data_i16->end());
+  }
+  dump();
+  llvm_unreachable("weight data not support read now");
+  return nullptr;
+}
+std::shared_ptr<std::vector<int8_t>> WeightOp::read_as_byte() {
+  auto type = getType().cast<RankedTensorType>();
+  auto dtype = type.getElementType();
+  if (dtype.isInteger(8)) {
+    return read<int8_t>();
+  } else if (dtype.isF32()) {
+    auto data_f32 = read<float>();
+    auto bytes = data_f32->size() * sizeof(float);
+    auto data_i8 = std::make_shared<std::vector<int8_t>>(bytes);
+    memcpy(data_i8->data(), data_f32->data(), bytes);
+    return data_i8;
+  } else if (dtype.isInteger(16)) {
+    auto data_i16 = read<int16_t>();
+    auto bytes = data_i16->size() * sizeof(int16_t);
+    auto data_i8 = std::make_shared<std::vector<int8_t>>(bytes);
+    memcpy(data_i8->data(), data_i16->data(), bytes);
+    return data_i8;
+  }
+  dump();
+  llvm_unreachable("weight data not support read now");
+  return nullptr;
 }
 
 template <typename T>
