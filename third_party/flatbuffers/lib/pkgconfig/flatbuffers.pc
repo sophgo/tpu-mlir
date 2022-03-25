@@ -1,0 +1,9 @@
+libdir=/work/flatbuffers/build/install/lib
+includedir=/work/flatbuffers/build/install/include
+
+Name: FlatBuffers
+Description: Memory Efficient Serialization Library
+Version: 2.0.6
+
+Libs: -L${libdir} -lflatbuffers
+Cflags: -I${includedir}

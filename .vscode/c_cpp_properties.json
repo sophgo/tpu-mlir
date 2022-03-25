@@ -6,7 +6,8 @@
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/build/include",
                 "${workspaceFolder}/third_party/llvm/include",
-                "${workspaceFolder}/third_party/oneDNN/include"
+                "${workspaceFolder}/third_party/oneDNN/include",
+                "${workspaceFolder}/third_party/flatbuffers/include"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",

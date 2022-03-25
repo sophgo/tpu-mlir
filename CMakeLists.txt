@@ -57,6 +57,12 @@ link_directories(${DNNL_PATH}/lib)
 #-------------------------------------------------------------------------------
 set(CNPY_PATH ${PROJECT_SOURCE_DIR}/third_party/cnpy)
 include_directories(${CNPY_PATH})
+#-------------------------------------------------------------------------------
+# flatbuffers Configuration
+#-------------------------------------------------------------------------------
+set(FLATBUFFERS_PATH ${PROJECT_SOURCE_DIR}/third_party/flatbuffers)
+include_directories(${FLATBUFFERS_PATH}/include)
+link_directories(${FLATBUFFERS_PATH}/lib)
 
 OPTION (USE_OpenMP "Use OpenMP" ON)
 IF(USE_OpenMP)

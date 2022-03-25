@@ -30,5 +30,6 @@ add_mlir_library(SophgoTpu
   MLIRCodegenInterface
   SophgoSupport
   SophgoBackend
+  SophgoBuilder
 )
 
