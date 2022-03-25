@@ -1,5 +1,5 @@
 #pragma once
-
+#include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"

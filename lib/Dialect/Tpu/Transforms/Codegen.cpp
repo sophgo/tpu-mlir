@@ -23,6 +23,8 @@
 #include "sophgo/Support/MathUtils.h"
 #include "sophgo/Support/Helper/Module.h"
 #include "sophgo/Support/Helper/Quant.h"
+#include "sophgo/Backend/BM1684.h"
+#include "sophgo/Builder/bmodel.hpp"
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinTypes.h"
@@ -40,6 +42,7 @@
 
 using namespace llvm;
 using namespace mlir;
+using namespace sophgo::backend;
 using namespace sophgo::helper;
 namespace sophgo {
 namespace tpu {
@@ -50,15 +53,22 @@ public:
   void runOnOperation() override {
     auto module = getOperation();
     for (auto func : module.getOps<FuncOp>()) {
-      func.walk([&](CodegenInterface op) {
-        op.codegen_int8_bm1684();
+      func.walk([&](top::WeightOp op) {
+        // store data to gmem
+        BM1684::instance().value_s2d(op.output(), op.read_as_byte()->data());
       });
     }
+    for (auto func : module.getOps<FuncOp>()) {
+      func.walk([&](CodegenInterface op) { op.codegen_int8_bm1684(); });
+    }
+    auto model_gen = std::make_shared<bmodel::ModelGen>();
+    // add chip name
+    model_gen->AddChip(Module::getChip(module).str());
   }
 };
 
 std::unique_ptr<OperationPass<ModuleOp>> createCodegenPass() {
   return std::make_unique<CodegenPass>();
 }
-} // namespace top
+} // namespace tpu
 } // namespace sophgo
