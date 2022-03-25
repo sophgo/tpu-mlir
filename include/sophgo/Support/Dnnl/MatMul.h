@@ -8,7 +8,10 @@ public:
 
   void setup(float *left, float *right, float *bias, float *output,
              int64_t batch, int64_t M, int64_t K, int64_t N, bool do_relu,
-             int64_t ldt, int64_t rdt, int64_t bdt, int64_t odt, int64_t rshift);
+             int64_t rshift = 0, memory::data_type ldt = memory::data_type::f32,
+             memory::data_type rdt = memory::data_type::f32,
+             memory::data_type bdt = memory::data_type::f32,
+             memory::data_type odt = memory::data_type::f32);
 
   void run();
 

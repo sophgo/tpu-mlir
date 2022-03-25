@@ -123,6 +123,7 @@ Value top::AddOp::quantize_int8_bm1684() {
   std::vector<Value> operands;
   const int nInputs = op->getNumOperands();
   std::vector<int64_t> rshift_v(nInputs);
+  std::vector<int64_t> multiplier_v(nInputs);
   std::vector<double> coeff_v(nInputs, 1.0);
   auto th_output = Quant::getThreshold(output());
 
@@ -138,11 +139,19 @@ Value top::AddOp::quantize_int8_bm1684() {
     auto th_input = Quant::getThreshold(input);
     rshift_v[i] =
         calRightShiftNumUseCblas(coeff_v[i], th_input, th_output, BITS_INT8);
+    float scale = 1.0 * (1 << rshift_v[i]) * th_input / th_output;
+    int8_t multiplier_int8 = 0;
+    float coeff = coeff_v[i];
+    quantizeToInt8(&coeff, &multiplier_int8, 1, scale);
+    multiplier_v[i] = multiplier_int8;
   }
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
+
+  attrs.push_back(
+      builder.getNamedAttr("multipliers", builder.getI64ArrayAttr(multiplier_v)));
   attrs.push_back(
       builder.getNamedAttr("rshifts", builder.getI64ArrayAttr(rshift_v)));
   auto newOp = builder.create<tpu::AddOp>(op->getLoc(), output().getType(),

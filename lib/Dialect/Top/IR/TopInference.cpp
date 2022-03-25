@@ -36,13 +36,12 @@ template <typename T> static void relu(T *src, T *dst, size_t size) {
 LogicalResult top::ConvOp::init(InferenceParameter &p) {
   auto conv = new Conv();
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-      pl, pr, dh, dw, idt, wdt, bdt, odt, rshift;
+      pl, pr, dh, dw;
   bool is_dw, with_bias, relu;
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
              pl, pr, dh, dw, is_dw, with_bias, relu);
-  idt = wdt = bdt = odt = rshift = 0;
   conv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], n, ic, ih,
-              iw, oc, oh, ow, kh, kw, sh, sw, dh, dw, pt, pb, pl, pr, g, idt, wdt, bdt, odt, rshift, do_relu());
+              iw, oc, oh, ow, kh, kw, sh, sw, dh, dw, pt, pb, pl, pr, g, do_relu());
   p.handle = (void *)conv;
   return success();
 }
@@ -61,11 +60,6 @@ LogicalResult top::ConvOp::inference(InferenceParameter &p) {
   }
   auto conv = (Conv *)p.handle;
   conv->run();
-  /*if (do_relu()) {
-    size_t num_elem =
-        output().getType().cast<RankedTensorType>().getNumElements();
-    relu(p.outputs[0], p.outputs[0], num_elem);
-  }*/
   return success();
 }
 
@@ -173,12 +167,11 @@ LogicalResult top::ReshapeOp::inference(InferenceParameter &p) {
 
 LogicalResult top::MatMulOp::init(InferenceParameter &p) {
   auto matmul = new MatMul();
-  int64_t batch, M, K, N, ldt, rdt, bdt, odt, rshift;
+  int64_t batch, M, K, N;
   bool with_bias;
   parseParam(batch, M, K, N, with_bias);
-  ldt = rdt = bdt = odt = rshift = 0;
   matmul->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], batch, M,
-                K, N, do_relu(), ldt, rdt, bdt, odt, rshift);
+                K, N, do_relu());
   p.handle = (void *)matmul;
   return success();
 }
