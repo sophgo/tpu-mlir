@@ -1,6 +1,9 @@
 #pragma once
 
 #include "llvm/Support/DynamicLibrary.h"
+#include "mlir/IR/BuiltinTypes.h"
+#include "mlir/IR/Matchers.h"
+#include "mlir/IR/OpDefinition.h"
 
 struct cmd_id_node;
 typedef struct cmd_id_node CMD_ID_NODE;
@@ -42,6 +45,13 @@ typedef enum {
 #define BM_BINARY_DIV 3
 #define BM_BINARY_MAX 4
 
+typedef struct bmcompiler_mem_info {
+    uint64_t addr;
+    uint64_t size;
+    uint64_t offset;
+} bm_mem_desc_t;
+typedef struct bmcompiler_mem_info bm_device_mem_t;
+
 typedef int (*cmodel_init)(int node_idx, unsigned long long global_mem_size);
 typedef void (*cmodel_deinit)(int node_idx);
 typedef void * (*create_cmd_id_node)();
@@ -53,6 +63,7 @@ typedef void (*allow_store_cmd)();
 typedef void (*forbid_store_cmd)();
 typedef void (*use_atomic_cmodel)();
 typedef void (*forbid_atomic_cmodel)();
+typedef void *(*get_global_memaddr)(int node_idx);
 typedef void (*tensor_align_move_gen_cmd)(int local_mem_start_addr, int local_mem_idx, uint64_t sys_mem_start_addr, int src_N, int src_C, int src_H, int src_W, int src_format, int direction, int transpose, CMD_ID_NODE *pid_node);
 typedef void (*general_matrix_move_gen_cmd)(int local_mem_start_addr, int local_mem_idx, uint64_t sys_mem_start_addr, int sec_size, int row_num, int col_num, uint32_t row_stride, int src_format, int direction, int transpose, int result_add, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_conv_forward_local)(int bottom_local_offset, int weight_local_offset, int bias_local_offset, int top_local_offset, int imm_local_offset, int *bottom_dim, int *top_dim, int groups, int kh, int kw, int dh, int dw, int up_pad_h, int down_pad_h, int left_pad_w, int right_pad_w, int stride_h, int stride_w, int using_bias, int result_add, int if_relu, float relu_upper_limit, int unused_ht_for_input_tensor, int unused_hb_for_input_tensor, int unused_wl_for_input_tensor, int unused_wr_for_input_tensor, void *id_node);
@@ -222,11 +233,18 @@ public:
     static BM1684 inst;
     return inst;
   }
-  CMD_ID_NODE * get_cmd_id_node() { return (CMD_ID_NODE*)cmdid_node; }
-  void reset_cmd_id_node();
-  void set_command_issue_flag(bool value);
+  CMD_ID_NODE *get_cmd_id_node() { return (CMD_ID_NODE *)cmdid_node; }
   template <typename FPtrTy> FPtrTy CastToFPtr(const char *symbolName);
-  // functions
+
+  void *get_gmem_addr(uint64_t addr);
+  void *get_gmem_addr(const bm_device_mem_t &mem);
+  void bm_memcpy_s2d(const bm_device_mem_t &dst, void *src);
+  void bm_memcpy_d2s(void *dst, const bm_device_mem_t &src);
+  void value_s2d(mlir::Value v, void *src);
+  void value_d2s(mlir::Value v, void *dst);
+  // -------------------------------------------------------------------
+  // functions from nodechip
+  // -------------------------------------------------------------------
   cmodel_init dl_cmodel_init;
   cmodel_deinit dl_cmodel_deinit;
   create_cmd_id_node dl_create_cmd_id_node;
@@ -238,6 +256,7 @@ public:
   forbid_store_cmd dl_forbid_store_cmd;
   use_atomic_cmodel dl_use_atomic_cmodel;
   forbid_atomic_cmodel dl_forbid_atomic_cmodel;
+  get_global_memaddr dl_get_global_memaddr;
   tensor_align_move_gen_cmd dl_tensor_align_move_gen_cmd;
   general_matrix_move_gen_cmd dl_general_matrix_move_gen_cmd;
   nodechip_conv_forward_local dl_nodechip_conv_forward_local;
@@ -406,6 +425,10 @@ public:
 
 protected:
   BM1684();
+  void reset_cmd_id_node();
+  void set_command_issue_flag(bool value);
+
+protected:
   void *cmdid_node;
   bool really_issue_command;
   llvm::sys::DynamicLibrary DL;

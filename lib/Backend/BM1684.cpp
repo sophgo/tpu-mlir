@@ -1,11 +1,13 @@
 #include "sophgo/Backend/BM1684.h"
+#include "sophgo/Support/Helper/Module.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Format.h"
 
 using namespace sophgo::backend;
+using namespace sophgo::helper;
+using namespace mlir;
 
-template <typename FPtrTy>
-FPtrTy BM1684::CastToFPtr(const char *symbolName) {
+template <typename FPtrTy> FPtrTy BM1684::CastToFPtr(const char *symbolName) {
   assert(DL.isValid());
   auto fPtr = DL.getAddressOfSymbol(symbolName);
   if (fPtr == nullptr) {
@@ -15,11 +17,51 @@ FPtrTy BM1684::CastToFPtr(const char *symbolName) {
   return reinterpret_cast<FPtrTy>(fPtr);
 }
 
+void *BM1684::get_gmem_addr(uint64_t addr) {
+  auto start = static_cast<char *>(this->dl_get_global_memaddr(0));
+  return start + addr - GLOBAL_MEM_START;
+}
+
+void *BM1684::get_gmem_addr(const bm_device_mem_t &mem) {
+  auto start = static_cast<char *>(this->dl_get_global_memaddr(0));
+  return start + mem.offset;
+}
+
+void BM1684::bm_memcpy_s2d(const bm_device_mem_t &dst, void *src) {
+  memcpy(get_gmem_addr(dst), src, dst.size);
+}
+
+void BM1684::bm_memcpy_d2s(void *dst, const bm_device_mem_t &src) {
+  memcpy(dst, get_gmem_addr(src), src.size);
+}
+
+void BM1684::value_s2d(Value v, void *src) {
+  auto op = v.getDefiningOp();
+  if (op->hasAttr("addr") == false) {
+    v.dump();
+    llvm_unreachable("Value has no addr");
+  }
+  auto addr = op->getAttr("addr").cast<IntegerAttr>().getInt();
+  auto bytes = Module::getBytes(v);
+  memcpy(get_gmem_addr(addr), src, bytes);
+}
+void BM1684::value_d2s(Value v, void *dst) {
+  auto op = v.getDefiningOp();
+  if (op->hasAttr("addr") == false) {
+    v.dump();
+    llvm_unreachable("Value has no addr");
+  }
+  auto addr = op->getAttr("addr").cast<IntegerAttr>().getInt();
+  auto bytes = Module::getBytes(v);
+  memcpy(dst, get_gmem_addr(addr), bytes);
+}
+
 #define CAST_FUNCTION(name) dl_##name = CastToFPtr<name>(#name)
 
 BM1684::BM1684() {
   std::string Err;
-  DL = llvm::sys::DynamicLibrary::getPermanentLibrary("libbackend_1684.so", &Err);
+  DL = llvm::sys::DynamicLibrary::getPermanentLibrary("libbackend_1684.so",
+                                                      &Err);
   if (DL.isValid() == false) {
     llvm_unreachable(Err.c_str());
   }
@@ -34,6 +76,7 @@ BM1684::BM1684() {
   CAST_FUNCTION(forbid_store_cmd);
   CAST_FUNCTION(use_atomic_cmodel);
   CAST_FUNCTION(forbid_atomic_cmodel);
+  CAST_FUNCTION(get_global_memaddr);
   CAST_FUNCTION(tensor_align_move_gen_cmd);
   CAST_FUNCTION(general_matrix_move_gen_cmd);
   CAST_FUNCTION(nodechip_conv_forward_local);
@@ -206,13 +249,11 @@ BM1684::~BM1684() {
   dl_cmodel_deinit(0);
 }
 
-void BM1684::reset_cmd_id_node() {
-  dl_reset_cmd_id(cmdid_node);
-}
+void BM1684::reset_cmd_id_node() { dl_reset_cmd_id(cmdid_node); }
 
 void BM1684::set_command_issue_flag(bool value) {
   really_issue_command = value;
-  if(really_issue_command) {
+  if (really_issue_command) {
     dl_allow_store_cmd();
     dl_use_atomic_cmodel();
   } else {
