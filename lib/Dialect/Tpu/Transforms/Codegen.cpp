@@ -52,6 +52,7 @@ public:
   CodegenPass() {}
   void runOnOperation() override {
     auto module = getOperation();
+    auto chip = Module::getChip(module);
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](top::WeightOp op) {
         // store data to gmem
@@ -59,11 +60,17 @@ public:
       });
     }
     for (auto func : module.getOps<FuncOp>()) {
-      func.walk([&](CodegenInterface op) { op.codegen_int8_bm1684(); });
+      func.walk([&](CodegenInterface op) {
+        if (chip == Module::Chip::BM1684) {
+          op.codegen_int8_bm1684();
+        } else if (chip == Module::Chip::BM1686) {
+          op.codegen_int8_bm1686();
+        }
+      });
     }
     auto model_gen = std::make_shared<bmodel::ModelGen>();
     // add chip name
-    model_gen->AddChip(Module::getChip(module).str());
+    model_gen->AddChip(chip.str());
   }
 };
 
