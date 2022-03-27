@@ -38,7 +38,7 @@
 #include <sstream>
 #include <fstream>
 #include <regex>
-#include <unordered_map>
+#include <map>
 
 using namespace llvm;
 using namespace mlir;
@@ -159,7 +159,14 @@ struct QuantizationPattern : public RewritePattern {
     if (!quantize_op) {
       return failure();
     }
-    auto newValue = quantize_op.quantize_int8_bm1684();
+    auto module = Module::getModuleOp(op);
+    auto chip = Module::getChip(module);
+    Value newValue;
+    if (chip == Module::Chip::BM1684) {
+      newValue = quantize_op.quantize_int8_bm1684();
+    } else if (chip == Module::Chip::BM1686) {
+      newValue = quantize_op.quantize_int8_bm1686();
+    }
     rewriter.replaceOp(op, {newValue});
     return success();
   }
@@ -177,6 +184,7 @@ public:
       module.dump();
       llvm_unreachable("Mlir state not support quantize");
     }
+    Module::setChip(module, this->chip);
     auto ctx = module.getContext();
     RewritePatternSet patterns(ctx);
     patterns.add<BackwardCalibartion<top::ReluOp>,
@@ -202,7 +210,6 @@ public:
     }
     Module::updateModuleTypes(module);
     Module::setState(module, Module::State::TPU_QUANTIZED);
-    Module::setChip(module, this->chip);
   }
 };
 
