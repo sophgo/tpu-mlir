@@ -27,6 +27,14 @@ def CodegenInterface : OpInterface<"CodegenInterface"> {
         /*methodName=*/"codegen_int8_bm1684",
         /*args=*/(ins)
       >,
+      InterfaceMethod<
+        /*desc=*/[{}],
+        /*retType=*/"void",
+        /*methodName=*/"codegen_int8_bm1686",
+        /*args=*/(ins),
+        [{}],
+        [{llvm_unreachable("not support now");}]
+      >,
   ];
 }
 #endif // SOPHGO_CODEGENINTERFACE
