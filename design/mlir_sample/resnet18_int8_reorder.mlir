@@ -1,4 +1,4 @@
-module attributes {module.chip = "bm1684", module.name = "resnet18", module.state = "TPU_WEIGHT_REORDERD", module.weight_file = "resnet18_tpu_weight_reorderd_bm1684_weight.npz"} {
+module attributes {module.chip = "bm1684", module.name = "resnet18", module.state = "TPU_REORDERED", module.weight_file = "resnet18_tpu_weight_reorderd_bm1684_weight.npz"} {
   func @main(%arg0: tensor<1x3x224x224xf32>) -> tensor<1x1000xf32> {
     %0 = "top.Input"(%arg0) {name = "input"} : (tensor<1x3x224x224xf32>) -> tensor<1x3x224x224x!quant.calibrated<f32<-2.6412898999999999:2.6412898999999999>>>
     %1 = "tpu.Cast"(%0) {name = "input_to_int8"} : (tensor<1x3x224x224x!quant.calibrated<f32<-2.6412898999999999:2.6412898999999999>>>) -> tensor<1x3x224x224x!quant.uniform<i8:f32, 0.020797558267716534>>

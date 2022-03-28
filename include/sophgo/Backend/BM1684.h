@@ -45,6 +45,25 @@ typedef enum {
 #define BM_BINARY_DIV 3
 #define BM_BINARY_MAX 4
 
+#define SUBNET_MODE_TPU 0
+#define SUBNET_MODE_CPU 1
+#define SUBNET_MODE_MERGE 2
+#define SUBNET_MODE_SWITCH 3
+
+typedef enum {
+  DTYPE_FP32 = 0,
+  DTYPE_FP16 = 1,
+  DTYPE_INT8 = 2,
+  DTYPE_UINT8 = 3,
+  DTYPE_INT16 = 4,
+  DTYPE_UINT16 = 5,
+  DTYPE_INT32 = 6,
+  DTYPE_UINT32 = 7,
+  DTYPE_BFP16 = 8,
+  DTYPE_UNKNOWN = -1,
+} DATA_TYPE_T;
+typedef DATA_TYPE_T bm_data_type_t;
+
 typedef struct bmcompiler_mem_info {
     uint64_t addr;
     uint64_t size;
@@ -64,6 +83,8 @@ typedef void (*forbid_store_cmd)();
 typedef void (*use_atomic_cmodel)();
 typedef void (*forbid_atomic_cmodel)();
 typedef void *(*get_global_memaddr)(int node_idx);
+typedef void (*set_cmd_buffer_ptr)(void *gdma_buffer_ptr, void *bdc_buffer_ptr);
+typedef void (*set_total_id_ptr)(uint32_t *gdma_total_id_ptr, uint32_t *bdc_total_id_ptr, void *cmdid_node, void *gdma_group_id_ptr, void *bdc_group_id_ptr, int *cmdid_groupnum);
 typedef void (*tensor_align_move_gen_cmd)(int local_mem_start_addr, int local_mem_idx, uint64_t sys_mem_start_addr, int src_N, int src_C, int src_H, int src_W, int src_format, int direction, int transpose, CMD_ID_NODE *pid_node);
 typedef void (*general_matrix_move_gen_cmd)(int local_mem_start_addr, int local_mem_idx, uint64_t sys_mem_start_addr, int sec_size, int row_num, int col_num, uint32_t row_stride, int src_format, int direction, int transpose, int result_add, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_conv_forward_local)(int bottom_local_offset, int weight_local_offset, int bias_local_offset, int top_local_offset, int imm_local_offset, int *bottom_dim, int *top_dim, int groups, int kh, int kw, int dh, int dw, int up_pad_h, int down_pad_h, int left_pad_w, int right_pad_w, int stride_h, int stride_w, int using_bias, int result_add, int if_relu, float relu_upper_limit, int unused_ht_for_input_tensor, int unused_hb_for_input_tensor, int unused_wl_for_input_tensor, int unused_wr_for_input_tensor, void *id_node);
@@ -119,7 +140,6 @@ typedef void (*nodechip_index_select_fix8b)(uint64_t input_global_addr, uint64_t
 typedef void (*nodechip_psroipooling_forward_with_datasplit)(int nodechip_idx, uint64_t ifmap_offset_global, uint64_t ofmap_offset_global, uint64_t rois_offset_global, uint64_t arm_reserved_global_offset, int input_n, int input_c, int input_h, int input_w, int output_dim, int group_size, int roi_num, float spatial_scale, CMD_ID_NODE *id_node);
 typedef void (*nodechip_psroipooling_fix8b_forward_with_datasplit)(int nodechip_idx, uint64_t ifmap_offset_global, uint64_t ofmap_offset_global, uint64_t rois_offset_global, uint64_t arm_reserved_global_offset, int input_n, int input_c, int input_h, int input_w, int output_dim, int group_size, int roi_num, float spatial_scale, int input_sign, int output_sign, CMD_ID_NODE *id_node);
 typedef void (*nodechip_roi_pooling_forward)(uint64_t ifmap_offset_global, uint64_t ofmap_offset_global, uint64_t rois_offset_global, uint64_t arm_reserved_global_offset, int input_n, int input_c, int input_h, int input_w, int pooled_h, int pooled_w, int roi_num, float spatial_scale, CMD_ID_NODE *id_node);
-typedef void (*nodechip_roi_pooling_forward_fix8b)(uint64_t ifmap_offset_global, uint64_t ofmap_offset_global, uint64_t rois_offset_global, uint64_t arm_reserved_global_offset, int input_n, int input_c, int input_h, int input_w, int pooled_h, int pooled_w, int roi_num, float spatial_scale, int data_sign, CMD_ID_NODE *id_node);
 typedef void (*nodechip_crop)(uint64_t bottom_global_offset, uint64_t top_global_offset, int *offset, int *topshape, int *bottomshape, CMD_ID_NODE *id_node);
 typedef void (*nodechip_crop_fix8b)(uint64_t bottom_global_offset, uint64_t top_global_offset, int *offset, int *topshape, int *bottomshape, CMD_ID_NODE *id_node);
 typedef void (*nodechip_upsample_forward_parallel_with_data_split)(uint64_t ifmap_offset_global, uint64_t ofmap_offset_global, int input_n, int input_c, int input_h, int input_w, int size, int if_relu, CMD_ID_NODE *pid_node);
@@ -211,8 +231,6 @@ typedef void (*nodechip_pytorch_lstm)(uint64_t xGlobalAddr, uint64_t h0GlobalAdd
 typedef void (*nodechip_matrix_band_part)(uint64_t input_global_offset, uint64_t output_global_offset, const int *shape, int dim, int lower, int upper, CMD_ID_NODE *id_node);
 typedef void (*nodechip_global_memcpy_ex)(uint64_t src_addr, uint64_t dst_addr, int block_num, int src_stride, int dst_stride, int src_dtype, int dst_dtype, int block_size, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_lut_local_v2)(int index_local_offset, int table_l2_offset, int imm_local_offset, int output_local_offset, int *index_shape, int index_dim, int bottom_stmode, int top_dtype, int top_stmode, void *pid_node);
-typedef void (*nodechip_eltwise_binary_ex_forward_local)(uint32_t input_A_local_addr, uint32_t input_B_hi8_local_addr, uint32_t input_B_lo8_local_addr, uint32_t output_local_addr, uint32_t imm_buffer_local_offset, uint32_t *shape, int input_A_sign, int input_B_sign, int input_A_rshift_num, void *pid_node);
-typedef void (*nodechip_eltwise_binary_ex_forward)(uint64_t input_A_glb_addr, uint64_t input_B_hi8_glb_addr, uint64_t input_B_lo8_glb_addr, uint64_t output_glb_addr, uint32_t *shape, int input_A_sign, int input_B_sign, int input_A_rshift_num, void *pid_node);
 typedef void (*nodechip_serial_number_gen)(uint64_t global_addr, uint32_t local_addr, uint32_t local_buffer, int save_in_global, int save_as_float, int C, int HW, void *pid_node);
 typedef void (*nodechip_pad_fix8b)(uint64_t bottom_global_offset, uint64_t top_global_offset, bool input_is_4N, uint64_t input_1N_global_offset, bool output_is_4N, uint64_t output_1N_global_offset, int bottom_n, int bottom_c, int bottom_h, int bottom_w, int (*paddings)[2], char pad_val, int pad_op, void *pid_node);
 typedef void (*nodechip_pad)(uint64_t bottom_global_offset, uint64_t top_global_offset, int bottom_n, int bottom_c, int bottom_h, int bottom_w, int (*paddings)[2], float pad_val, int pad_op, void *pid_node);
@@ -224,11 +242,12 @@ typedef void (*nodechip_const_binary)(uint64_t bottom_global_addr, uint64_t leng
 typedef void (*nodechip_global_int2float)(uint64_t bottom_global_offset, uint64_t top_global_offset, int input_n, int input_c, int input_h, int input_w, int sign_unsign, TENSOR_STORAGE_MODE mode, CMD_ID_NODE* id_node);
 typedef void (*nodechip_float2int8_v2)(uint64_t A_global_offset, uint64_t R_global_offset, int input_n, int input_c, int input_h, int input_w, int sign_unsign, TENSOR_STORAGE_MODE stmode, ROUND_MODE round_mode, CMD_ID_NODE* id_node);
 
+#define ALIGN(x, a) ((((x) + (a)-1) / (a)) * (a))
+
 namespace sophgo {
 namespace backend {
 class BM1684 {
 public:
-  ~BM1684();
   static BM1684 &instance() {
     static BM1684 inst;
     return inst;
@@ -242,6 +261,9 @@ public:
   void bm_memcpy_d2s(void *dst, const bm_device_mem_t &src);
   void value_s2d(mlir::Value v, void *src);
   void value_d2s(mlir::Value v, void *dst);
+  void init();
+  void deinit();
+  static bm_data_type_t getType(mlir::Type type);
   // -------------------------------------------------------------------
   // functions from nodechip
   // -------------------------------------------------------------------
@@ -257,6 +279,8 @@ public:
   use_atomic_cmodel dl_use_atomic_cmodel;
   forbid_atomic_cmodel dl_forbid_atomic_cmodel;
   get_global_memaddr dl_get_global_memaddr;
+  set_cmd_buffer_ptr dl_set_cmd_buffer_ptr;
+  set_total_id_ptr dl_set_total_id_ptr;
   tensor_align_move_gen_cmd dl_tensor_align_move_gen_cmd;
   general_matrix_move_gen_cmd dl_general_matrix_move_gen_cmd;
   nodechip_conv_forward_local dl_nodechip_conv_forward_local;
@@ -312,7 +336,6 @@ public:
   nodechip_psroipooling_forward_with_datasplit dl_nodechip_psroipooling_forward_with_datasplit;
   nodechip_psroipooling_fix8b_forward_with_datasplit dl_nodechip_psroipooling_fix8b_forward_with_datasplit;
   nodechip_roi_pooling_forward dl_nodechip_roi_pooling_forward;
-  nodechip_roi_pooling_forward_fix8b dl_nodechip_roi_pooling_forward_fix8b;
   nodechip_crop dl_nodechip_crop;
   nodechip_crop_fix8b dl_nodechip_crop_fix8b;
   nodechip_upsample_forward_parallel_with_data_split dl_nodechip_upsample_forward_parallel_with_data_split;
@@ -404,8 +427,6 @@ public:
   nodechip_matrix_band_part dl_nodechip_matrix_band_part;
   nodechip_global_memcpy_ex dl_nodechip_global_memcpy_ex;
   nodechip_lut_local_v2 dl_nodechip_lut_local_v2;
-  nodechip_eltwise_binary_ex_forward_local dl_nodechip_eltwise_binary_ex_forward_local;
-  nodechip_eltwise_binary_ex_forward dl_nodechip_eltwise_binary_ex_forward;
   nodechip_serial_number_gen dl_nodechip_serial_number_gen;
   nodechip_pad_fix8b dl_nodechip_pad_fix8b;
   nodechip_pad dl_nodechip_pad;
@@ -422,9 +443,22 @@ public:
   static const int64_t GLOBAL_MEM_START = 0x100000000;
   static const int64_t CTX_START_ADDR = GLOBAL_MEM_START + 0x5000000 + 0x100000;
   static const int64_t ALIGNMENT = 0x1000;
+  static const int64_t BDC_CMD_ALIGNED_BIT = 7;
+  static const int64_t BDC_CMD_ALIGNED_NUM = (1 << BDC_CMD_ALIGNED_BIT)/sizeof(uint32_t);
+  static const int64_t GDMA_CMD_ALIGNED_BIT = 7;
+  static const int64_t GDMA_CMD_ALIGNED_NUM = (1 << GDMA_CMD_ALIGNED_BIT)/sizeof(uint32_t);
+
+  std::shared_ptr<std::vector<uint32_t>> bdc_buffer;
+  std::shared_ptr<std::vector<uint32_t>> gdma_buffer;
+  uint32_t gdma_total_id;
+  uint32_t bdc_total_id;
+  std::vector<uint32_t> gdma_group_id;
+  std::vector<uint32_t> bdc_group_id;
+  int cmdid_groupnum;
 
 protected:
   BM1684();
+  ~BM1684();
   void reset_cmd_id_node();
   void set_command_issue_flag(bool value);
 
