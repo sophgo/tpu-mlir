@@ -11,7 +11,7 @@ template <typename FPtrTy> FPtrTy BM1684::CastToFPtr(const char *symbolName) {
   assert(DL.isValid());
   auto fPtr = DL.getAddressOfSymbol(symbolName);
   if (fPtr == nullptr) {
-    llvm::errs() << "can't find symbol: " << symbolName;
+    llvm::errs() << "can't find symbol: " << symbolName << "\n";
     llvm_unreachable(symbolName);
   }
   return reinterpret_cast<FPtrTy>(fPtr);
@@ -56,6 +56,68 @@ void BM1684::value_d2s(Value v, void *dst) {
   memcpy(dst, get_gmem_addr(addr), bytes);
 }
 
+void BM1684::init() {
+  // setup
+  dl_cmodel_init(0, CMODEL_GLOBAL_MEM_SIZE);
+  cmdid_node = dl_create_cmd_id_node();
+  dl_reset_cmd_id(cmdid_node);
+  set_command_issue_flag(true);
+  bdc_buffer = std::make_shared<std::vector<uint32_t>>(0x1000000);
+  gdma_buffer = std::make_shared<std::vector<uint32_t>>(0x1000000);
+  gdma_group_id.clear();
+  gdma_group_id.push_back(0);
+  bdc_group_id.clear();
+  bdc_group_id.push_back(0);
+  cmdid_groupnum = 1;
+  dl_set_cmd_buffer_ptr((void *)gdma_buffer->data(),
+                        (void *)bdc_buffer->data());
+  dl_set_total_id_ptr(&gdma_total_id, &bdc_total_id, cmdid_node,
+                      (void *)&gdma_group_id, (void *)&bdc_group_id,
+                      &cmdid_groupnum);
+}
+
+void BM1684::deinit() {
+  if (DL.isValid()) {
+    if (cmdid_node != nullptr) {
+      dl_destroy_cmd_id_node(cmdid_node);
+    }
+    dl_cmodel_deinit(0);
+  }
+}
+
+bm_data_type_t BM1684::getType(mlir::Type type) {
+  if (type.isF32()) {
+    return DTYPE_FP32;
+  }
+  if (type.isBF16()) {
+    return DTYPE_BFP16;
+  }
+  if (type.isF16()) {
+    return DTYPE_FP16;
+  }
+  if (type.isSignedInteger(8)) {
+    return DTYPE_INT8;
+  }
+  if (type.isSignedInteger(16)) {
+    return DTYPE_INT16;
+  }
+  if (type.isSignedInteger(32)) {
+    return DTYPE_INT32;
+  }
+  if (type.isUnsignedInteger(8)) {
+    return DTYPE_UINT8;
+  }
+  if (type.isUnsignedInteger(16)) {
+    return DTYPE_UINT16;
+  }
+  if (type.isUnsignedInteger(32)) {
+    return DTYPE_UINT32;
+  }
+  type.dump();
+  llvm_unreachable("unknow type");
+  return DTYPE_FP32;
+}
+
 #define CAST_FUNCTION(name) dl_##name = CastToFPtr<name>(#name)
 
 BM1684::BM1684() {
@@ -77,6 +139,8 @@ BM1684::BM1684() {
   CAST_FUNCTION(use_atomic_cmodel);
   CAST_FUNCTION(forbid_atomic_cmodel);
   CAST_FUNCTION(get_global_memaddr);
+  CAST_FUNCTION(set_cmd_buffer_ptr);
+  CAST_FUNCTION(set_total_id_ptr);
   CAST_FUNCTION(tensor_align_move_gen_cmd);
   CAST_FUNCTION(general_matrix_move_gen_cmd);
   CAST_FUNCTION(nodechip_conv_forward_local);
@@ -132,7 +196,6 @@ BM1684::BM1684() {
   CAST_FUNCTION(nodechip_psroipooling_forward_with_datasplit);
   CAST_FUNCTION(nodechip_psroipooling_fix8b_forward_with_datasplit);
   CAST_FUNCTION(nodechip_roi_pooling_forward);
-  CAST_FUNCTION(nodechip_roi_pooling_forward_fix8b);
   CAST_FUNCTION(nodechip_crop);
   CAST_FUNCTION(nodechip_crop_fix8b);
   CAST_FUNCTION(nodechip_upsample_forward_parallel_with_data_split);
@@ -224,8 +287,6 @@ BM1684::BM1684() {
   CAST_FUNCTION(nodechip_matrix_band_part);
   CAST_FUNCTION(nodechip_global_memcpy_ex);
   CAST_FUNCTION(nodechip_lut_local_v2);
-  CAST_FUNCTION(nodechip_eltwise_binary_ex_forward_local);
-  CAST_FUNCTION(nodechip_eltwise_binary_ex_forward);
   CAST_FUNCTION(nodechip_serial_number_gen);
   CAST_FUNCTION(nodechip_pad_fix8b);
   CAST_FUNCTION(nodechip_pad);
@@ -236,17 +297,9 @@ BM1684::BM1684() {
   CAST_FUNCTION(nodechip_const_binary);
   CAST_FUNCTION(nodechip_global_int2float);
   CAST_FUNCTION(nodechip_float2int8_v2);
-
-  // setup
-  dl_cmodel_init(0, CMODEL_GLOBAL_MEM_SIZE);
-  cmdid_node = dl_create_cmd_id_node();
-  dl_reset_cmd_id(cmdid_node);
-  set_command_issue_flag(true);
 }
 
 BM1684::~BM1684() {
-  dl_destroy_cmd_id_node(cmdid_node);
-  dl_cmodel_deinit(0);
 }
 
 void BM1684::reset_cmd_id_node() { dl_reset_cmd_id(cmdid_node); }

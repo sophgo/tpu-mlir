@@ -58,7 +58,7 @@ def Top_WeightOp : Top_Op<"Weight", [NoSideEffect]> {
   template<typename T>
   std::shared_ptr<std::vector<T>> read();
   std::shared_ptr<std::vector<float>> read_as_float();
-  std::shared_ptr<std::vector<int8_t>> read_as_byte();
+  std::shared_ptr<std::vector<uint8_t>> read_as_byte();
   template<typename T>
   static mlir::Value create(mlir::Operation * OwnerOp,
                             llvm::StringRef suffix,

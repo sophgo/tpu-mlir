@@ -1,17 +1,20 @@
 #!/bin/bash
 set -ex
+
+INPUT=../resnet18_in_f32_b4.npz
 mkdir -p tmp
 pushd tmp
 model_transform.py \
     --model_type onnx \
     --model_name resnet18 \
+    --input_shapes [[4,3,224,224]] \
     --model_def  ../resnet18.onnx \
-    --input ../resnet18_in_f32.npz \
+    --input $INPUT \
     --mlir resnet18.mlir
 
 # do calibration
 mkdir -p dataset
-cp ../resnet18_in_f32.npz dataset/
+cp $INPUT dataset/
 run_calibration.py resnet18.mlir \
     --dataset dataset \
     --input_num 1 \
@@ -29,7 +32,7 @@ sophgo-opt resnet18_cali.mlir \
     --save-weight \
     -o resnet18_int8.mlir
 
-model_runner.py --model resnet18_int8.mlir --input dataset/resnet18_in_f32.npz --dump_all_tensors --output resnet18_int8_outputs.npz
+model_runner.py --model resnet18_int8.mlir --input $INPUT --dump_all_tensors --output resnet18_int8_outputs.npz
 #npz_tool.py compare resnet18_int8_outputs.npz resnet18_ref_outputs.npz -v
 
 # tpu weight reorder
@@ -43,5 +46,7 @@ sophgo-opt resnet18_int8_reorder.mlir \
     --address-asign \
     --save-weight \
     -o resnet18_int8_addr.mlir
+
+sophgo-opt resnet18_int8_addr.mlir --codegen > /dev/null
 
 popd

@@ -58,7 +58,7 @@ public:
           if (op->getUses().empty()) {
             op->erase();
           } else {
-            auto name = op->getAttr("name").cast<StringAttr>().getValue();
+            auto name = Module::getName(op);
             if (all_names.find(name) != all_names.end()) {
               op->dump();
               llvm_unreachable("op name conflict");

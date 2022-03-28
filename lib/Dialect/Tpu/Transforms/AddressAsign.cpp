@@ -46,23 +46,26 @@ using namespace sophgo::backend;
 namespace sophgo {
 namespace tpu {
 
-#define ALIGN(x, a) ((((x) + (a)-1) / (a)) * (a))
-
 class AddressAsignPass : public AddressAsignBase<AddressAsignPass> {
 public:
   AddressAsignPass() {}
   void runOnOperation() override {
     auto module = getOperation();
-    int64_t addr = 0;
+    auto state = Module::getState(module);
+    if (state != Module::State::TPU_REORDERED) {
+      llvm_unreachable("module should be reordered");
+    }
+    int64_t start_addr = 0;
     int64_t alignment = 0;
     if (Module::getChip(module) == Module::Chip::BM1684) {
-      addr = BM1684::CTX_START_ADDR;
+      start_addr = BM1684::CTX_START_ADDR;
       alignment = BM1684::ALIGNMENT;
     } else {
       llvm_unreachable("chip not support now");
     }
     Builder builder(module.getContext());
     // asign weight first
+    auto addr = start_addr;
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](top::WeightOp op) {
         op->setAttr("addr", builder.getI64IntegerAttr(addr));
@@ -70,7 +73,10 @@ public:
         addr += ALIGN(bytes, alignment);
       });
     }
+    Module::setCoeffAddr(module, start_addr);
+    Module::setCoeffSize(module, addr - start_addr);
     // asign activation
+    start_addr = addr;
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](Operation *op) {
         if (isa<FuncOp>(op) || isa<top::NoneOp>(op) ||
@@ -82,6 +88,9 @@ public:
         }
       });
     }
+    Module::setNeuronAddr(module, start_addr);
+    Module::setNeuronSize(module, addr - start_addr);
+    Module::setState(module, Module::State::TPU_ADDRESSED);
   }
 };
 

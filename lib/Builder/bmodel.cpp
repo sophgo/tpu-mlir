@@ -769,11 +769,14 @@ bmodel::bmodel_mem_info_t ModelCtx::get_bmodel_mem_info()
       for(size_t stage_idx=0; stage_idx < stage_num; stage_idx++){
         auto param = net_params->Get(0);
         auto subnets = param->sub_net();
+        auto num_subnets = subnets == nullptr ? 0 : subnets->size();
         uint64_t neuron_size = param->ctx_size();
         if (neuron_size > max_neuron_size) {
           max_neuron_size = neuron_size;
         }
-        if(subnets->size()>1) multi_subnet = true;;
+        if(num_subnets >1) {
+          multi_subnet = true;
+        }
 
         auto device_coeff_mem = param->coeff_mem();
         if(device_coeff_mem){
@@ -784,7 +787,7 @@ bmodel::bmodel_mem_info_t ModelCtx::get_bmodel_mem_info()
             }
         }
 
-        for(size_t subnet_idx=0; subnet_idx< subnets->size(); subnet_idx++){
+        for(size_t subnet_idx=0; subnet_idx< num_subnets; subnet_idx++){
             auto subnet = subnets->Get(subnet_idx);
             if(subnet->subnet_mode() == 1) { // cpu subnet
                 auto cpu_param = subnet->cpu_param()->Get(0);

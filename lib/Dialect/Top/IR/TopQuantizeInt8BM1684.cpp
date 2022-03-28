@@ -143,15 +143,13 @@ Value top::AddOp::quantize_int8_bm1684() {
     int8_t multiplier_int8 = 0;
     float coeff = coeff_v[i];
     quantizeToInt8(&coeff, &multiplier_int8, 1, scale);
-    multiplier_v[i] = multiplier_int8;
+    coeff_v[i] = (double)multiplier_int8;
   }
   std::vector<NamedAttribute> attrs;
-  for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
-  }
-
+  attrs.push_back(builder.getNamedAttr("name", nameAttr()));
+  attrs.push_back(builder.getNamedAttr("do_relu", do_reluAttr()));
   attrs.push_back(
-      builder.getNamedAttr("multipliers", builder.getI64ArrayAttr(multiplier_v)));
+      builder.getNamedAttr("coeff", builder.getF64ArrayAttr(coeff_v)));
   attrs.push_back(
       builder.getNamedAttr("rshifts", builder.getI64ArrayAttr(rshift_v)));
   auto newOp = builder.create<tpu::AddOp>(op->getLoc(), output().getType(),

@@ -14,6 +14,10 @@ struct Module {
     static constexpr llvm::StringRef STATE = "module.state";
     static constexpr llvm::StringRef CHIP = "module.chip";
     static constexpr llvm::StringRef WEIGHT_FILE = "module.weight_file";
+    static constexpr llvm::StringRef COEFF_ADDR = "module.coeff_addr";
+    static constexpr llvm::StringRef COEFF_SIZE = "module.coeff_size";
+    static constexpr llvm::StringRef NEURON_ADDR = "module.neuron_addr";
+    static constexpr llvm::StringRef NEURON_SIZE = "module.neuron_size";
   };
 
   struct State {
@@ -21,7 +25,8 @@ struct Module {
     static constexpr llvm::StringRef TOP_CALIBRATED = "TOP_CALIBRATED";
     static constexpr llvm::StringRef TOP_QUANTIZED = "TOP_QUANTIED";
     static constexpr llvm::StringRef TPU_QUANTIZED = "TPU_QUANTIED";
-    static constexpr llvm::StringRef TPU_WEIGHT_REORDERD = "TPU_WEIGHT_REORDERD";
+    static constexpr llvm::StringRef TPU_REORDERED = "TPU_REORDERED";
+    static constexpr llvm::StringRef TPU_ADDRESSED = "TPU_ADDRESSED";
   };
 
   struct Chip {
@@ -35,27 +40,66 @@ struct Module {
   static void updateModuleTypes(ModuleOp module);
   static std::string genWeightFileName(ModuleOp module);
   static int64_t getAddress(Value v);
-  static void getNCHW(Value v, int64_t&n, int64_t&c, int64_t&h, int64_t&w, bool left_align = true);
+  static void getNCHW(Value v, int64_t &n, int64_t &c, int64_t &h, int64_t &w,
+                      bool left_align = true);
   static size_t getBytes(Value v);
+  static Type getType(Value v); // storage type
+  static llvm::ArrayRef<int64_t> getShape(Value v);
 
   static inline llvm::StringRef getName(ModuleOp module) {
-    return module->getAttrOfType<StringAttr>(Attr::NAME);
+    return module->getAttrOfType<StringAttr>(Attr::NAME).getValue();
+  }
+  static inline llvm::StringRef getName(Operation *op) {
+    if (auto module = dyn_cast<ModuleOp>(op)) {
+      return getName(module);
+    }
+    assert(op->hasAttr("name"));
+    return op->getAttrOfType<StringAttr>("name").getValue();
+  }
+  static inline int64_t getCoeffSize(ModuleOp module) {
+    return module->getAttrOfType<IntegerAttr>(Attr::COEFF_SIZE).getInt();
+  }
+  static inline void setCoeffSize(ModuleOp module, int64_t size) {
+    module->setAttr(Attr::COEFF_SIZE,
+                    Builder(module.getContext()).getI64IntegerAttr(size));
+  }
+  static inline int64_t getCoeffAddr(ModuleOp module) {
+    return module->getAttrOfType<IntegerAttr>(Attr::COEFF_ADDR).getInt();
+  }
+  static inline void setCoeffAddr(ModuleOp module, int64_t addr) {
+    module->setAttr(Attr::COEFF_ADDR,
+                    Builder(module.getContext()).getI64IntegerAttr(addr));
+  }
+  static inline int64_t getNeuronSize(ModuleOp module) {
+    return module->getAttrOfType<IntegerAttr>(Attr::NEURON_SIZE).getInt();
+  }
+  static inline void setNeuronSize(ModuleOp module, int64_t size) {
+    module->setAttr(Attr::NEURON_SIZE,
+                    Builder(module.getContext()).getI64IntegerAttr(size));
+  }
+  static inline int64_t getNeuronAddr(ModuleOp module) {
+    return module->getAttrOfType<IntegerAttr>(Attr::NEURON_ADDR).getInt();
+  }
+  static inline void setNeuronAddr(ModuleOp module, int64_t addr) {
+    module->setAttr(Attr::NEURON_ADDR,
+                    Builder(module.getContext()).getI64IntegerAttr(addr));
   }
   static inline llvm::StringRef getChip(ModuleOp module) {
-    return module->getAttrOfType<StringAttr>(Attr::CHIP);
+    return module->getAttrOfType<StringAttr>(Attr::CHIP).getValue();
   }
   static inline void setChip(ModuleOp module, StringRef chip) {
-    module->setAttr(Attr::CHIP, StringAttr::get(module.getContext(), chip.upper()));
+    module->setAttr(Attr::CHIP,
+                    StringAttr::get(module.getContext(), chip.upper()));
   }
   static inline StringRef getWeightFile(ModuleOp module) {
-    return module->getAttrOfType<StringAttr>(Attr::WEIGHT_FILE);
+    return module->getAttrOfType<StringAttr>(Attr::WEIGHT_FILE).getValue();
   }
   static inline void setWeightFile(ModuleOp module, StringRef weight_file) {
     module->setAttr(Attr::WEIGHT_FILE,
                     StringAttr::get(module.getContext(), weight_file));
   }
   static inline StringRef getState(ModuleOp module) {
-    return module->getAttrOfType<StringAttr>(Attr::STATE);
+    return module->getAttrOfType<StringAttr>(Attr::STATE).getValue();
   }
   static inline void setState(ModuleOp module, StringRef state) {
     module->setAttr(Attr::STATE, StringAttr::get(module.getContext(), state));

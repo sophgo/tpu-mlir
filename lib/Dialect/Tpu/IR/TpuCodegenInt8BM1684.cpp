@@ -27,8 +27,6 @@ using namespace sophgo;
 using namespace sophgo::helper;
 using namespace sophgo::backend;
 
-#define ALIGN(x, a) ((((x) + (a)-1) / (a)) * (a))
-
 void tpu::ConvOp::codegen_int8_bm1684() {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
@@ -116,9 +114,14 @@ void tpu::ReshapeOp::codegen_int8_bm1684() {
   int64_t in, ic, ih, iw, on, oc, oh, ow;
   Module::getNCHW(input(), in, ic, ih, iw);
   Module::getNCHW(output(), on, oc, oh, ow);
-  BM1684::instance().dl_nodechip_reshape_fix8b(
-      in_addr, out_addr, in, ic, ih, iw, on, oc, oh, ow, STORE_MODE_4N,
-      STORE_MODE_4N, BM1684::instance().get_cmd_id_node());
+  if (on != in) {
+    llvm_unreachable("not support now");
+  } else {
+    int total_num = ALIGN(on, 4) * oc * oh * ow;
+    BM1684::instance().dl_nodechip_global_memcpy_ex(
+        in_addr, out_addr, 1, total_num, total_num, DTYPE_FP32, DTYPE_FP32,
+        total_num, BM1684::instance().get_cmd_id_node());
+  }
 }
 
 void tpu::AddOp::codegen_int8_bm1684() {
@@ -150,8 +153,8 @@ void tpu::AddOp::codegen_int8_bm1684() {
       h,                                   // int    tensor_h,
       w,                                   // int    tensor_w,
       op_code,                             // int    op_code,
-      coeff_v[0],                          // int    scale_A,
-      coeff_v[1],                          // int    scale_B,
+      (int8_t)coeff_v[0],                  // int    scale_A,
+      (int8_t)coeff_v[1],                  // int    scale_B,
       1,                                   // int    sign_A,
       1,                                   // int    sign_B,
       rshift_v[0],                         // int    rshift_A,

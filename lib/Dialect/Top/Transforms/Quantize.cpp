@@ -57,7 +57,7 @@ static void castOpToInt8(Value v, bool asymmetric = false) {
   std::vector<NamedAttribute> attrs;
   auto op = v.getDefiningOp();
   builder.setInsertionPointAfter(op);
-  std::string name = op->getAttr("name").cast<StringAttr>().getValue().str();
+  std::string name = Module::getName(op).str();
   attrs.push_back(
       builder.getNamedAttr("name", builder.getStringAttr(name + "_to_int8")));
   auto castOp = builder.create<tpu::CastOp>(op->getLoc(), v.getType(),
@@ -78,7 +78,7 @@ static void castOpToExpress(Value v, bool asymmetric = false) {
   std::vector<NamedAttribute> attrs;
   auto op = v.getDefiningOp();
   builder.setInsertionPointAfter(op);
-  std::string name = op->getAttr("name").cast<StringAttr>().getValue().str();
+  std::string name = Module::getName(op).str();
   std::string qname = name + "_quantized";
   op->setAttr("name", builder.getStringAttr(qname));
   attrs.push_back(

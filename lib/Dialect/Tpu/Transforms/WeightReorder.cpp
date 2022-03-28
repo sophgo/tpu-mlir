@@ -50,12 +50,16 @@ public:
   WeightReorderPass() {}
   void runOnOperation() override {
     auto module = getOperation();
+    auto state = Module::getState(module);
+    if (state != Module::State::TPU_QUANTIZED) {
+      llvm_unreachable("module should be tpu quantized");
+    }
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](WeightReorderInterface op) {
         op.weight_reorder_int8_bm1684();
       });
     }
-    Module::setState(module, Module::State::TPU_WEIGHT_REORDERD);
+    Module::setState(module, Module::State::TPU_REORDERED);
   }
 };
 

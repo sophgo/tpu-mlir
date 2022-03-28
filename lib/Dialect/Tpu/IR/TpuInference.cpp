@@ -98,7 +98,7 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
     for (auto in : p.inputs) {
       if (in != nullptr) {
         int rshift = rshifts().getValue()[idx].cast<IntegerAttr>().getInt();
-        int multiplier = multipliers().getValue()[idx].cast<IntegerAttr>().getInt();
+        int multiplier = (int8_t)coeff().getValue()[idx].cast<FloatAttr>().getValueAsDouble();
         p.outputs[0][i] += (int32_t)(in[i]*multiplier)>>rshift;
       }
       idx++;
