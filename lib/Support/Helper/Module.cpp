@@ -17,12 +17,17 @@ constexpr llvm::StringRef Module::Attr::NAME;
 constexpr llvm::StringRef Module::Attr::STATE;
 constexpr llvm::StringRef Module::Attr::CHIP;
 constexpr llvm::StringRef Module::Attr::WEIGHT_FILE;
+constexpr llvm::StringRef Module::Attr::COEFF_ADDR;
+constexpr llvm::StringRef Module::Attr::COEFF_SIZE;
+constexpr llvm::StringRef Module::Attr::NEURON_ADDR;
+constexpr llvm::StringRef Module::Attr::NEURON_SIZE;
 
 constexpr llvm::StringRef Module::State::TOP_F32;
 constexpr llvm::StringRef Module::State::TOP_CALIBRATED;
 constexpr llvm::StringRef Module::State::TOP_QUANTIZED;
 constexpr llvm::StringRef Module::State::TPU_QUANTIZED;
-constexpr llvm::StringRef Module::State::TPU_WEIGHT_REORDERD;
+constexpr llvm::StringRef Module::State::TPU_REORDERED;
+constexpr llvm::StringRef Module::State::TPU_ADDRESSED;
 
 constexpr llvm::StringRef Module::Chip::ALL;
 constexpr llvm::StringRef Module::Chip::BM1684;
@@ -100,22 +105,31 @@ int64_t Module::getAddress(Value v) {
     v.dump();
     llvm_unreachable("Value has no addr attribute");
   }
-  return op->getAttr("addr").cast<IntegerAttr>().getSInt();
+  return op->getAttr("addr").cast<IntegerAttr>().getInt();
 }
 
 size_t Module::getBytes(Value v) {
   auto type = v.getType().cast<RankedTensorType>();
   auto elm_count = type.getNumElements();
-  auto etype = type.getElementType();
-  int elm_bytes = 0;
-  if (auto qType = etype.dyn_cast<quant::CalibratedQuantizedType>()) {
-    elm_bytes = qType.getExpressedType().getIntOrFloatBitWidth() / 8;
-  } else if (auto qType = etype.dyn_cast<quant::UniformQuantizedType>()) {
-    elm_bytes = qType.getStorageType().getIntOrFloatBitWidth() / 8;
-  } else {
-    elm_bytes = etype.getIntOrFloatBitWidth() / 8;
-  }
+  auto etype = getType(v);
+  int elm_bytes = etype.getIntOrFloatBitWidth() / 8;
   return elm_count * elm_bytes;
+}
+
+llvm::ArrayRef<int64_t> Module::getShape(Value v) {
+  auto type = v.getType().cast<RankedTensorType>();
+  return type.getShape();
+}
+
+Type Module::getType(Value v) {
+  auto type = v.getType().cast<RankedTensorType>();
+  auto etype = type.getElementType();
+  if (auto qType = etype.dyn_cast<quant::CalibratedQuantizedType>()) {
+    return qType.getExpressedType();
+  } else if (auto qType = etype.dyn_cast<quant::UniformQuantizedType>()) {
+    return qType.getStorageType();
+  }
+  return etype;
 }
 
 static void getNCHW_align_right(llvm::ArrayRef<int64_t> &shape, int64_t &n,

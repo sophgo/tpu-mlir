@@ -73,6 +73,8 @@ gdb --args python /work/python/tools/model_runner.py --input resnet18_in_f32.npz
 
 * ufw的bm1684的average pooling的量化实现有点迷，强行thx==thy，且mulipier和rshift用查表得到，后续看backend的实现，看是否可以优化
 
+* 目前1684用batch 4验证，避免在4N存储的细节上花费太多时间；后续需要补上4N的逻辑
+
 ## 一些思考
 
 #### 是否第一层用TOSA Dialect ?

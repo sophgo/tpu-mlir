@@ -196,23 +196,23 @@ std::shared_ptr<std::vector<float>> WeightOp::read_as_float() {
   llvm_unreachable("weight data not support read now");
   return nullptr;
 }
-std::shared_ptr<std::vector<int8_t>> WeightOp::read_as_byte() {
+std::shared_ptr<std::vector<uint8_t>> WeightOp::read_as_byte() {
   auto type = getType().cast<RankedTensorType>();
   auto dtype = type.getElementType();
   if (dtype.isInteger(8)) {
-    return read<int8_t>();
+    return read<uint8_t>();
   } else if (dtype.isF32()) {
     auto data_f32 = read<float>();
     auto bytes = data_f32->size() * sizeof(float);
-    auto data_i8 = std::make_shared<std::vector<int8_t>>(bytes);
-    memcpy(data_i8->data(), data_f32->data(), bytes);
-    return data_i8;
+    auto data_u8 = std::make_shared<std::vector<uint8_t>>(bytes);
+    memcpy(data_u8->data(), data_f32->data(), bytes);
+    return data_u8;
   } else if (dtype.isInteger(16)) {
     auto data_i16 = read<int16_t>();
     auto bytes = data_i16->size() * sizeof(int16_t);
-    auto data_i8 = std::make_shared<std::vector<int8_t>>(bytes);
-    memcpy(data_i8->data(), data_i16->data(), bytes);
-    return data_i8;
+    auto data_u8 = std::make_shared<std::vector<uint8_t>>(bytes);
+    memcpy(data_u8->data(), data_i16->data(), bytes);
+    return data_u8;
   }
   dump();
   llvm_unreachable("weight data not support read now");
@@ -232,7 +232,7 @@ Value WeightOp::create(Operation *OwnerOp, llvm::StringRef suffix,
     auto weight_file = Module::getWeightFile(moduleOp);
     topDialect->loadWeightFile(weight_file);
   }
-  std::string op_name = OwnerOp->getAttr("name").cast<StringAttr>().str();
+  std::string op_name = Module::getName(OwnerOp).str();
   std::string new_name = op_name + "_" + suffix.str();
   auto ret = topDialect->wFile->addTensor(new_name, &data, type);
   assert(succeeded(ret));
