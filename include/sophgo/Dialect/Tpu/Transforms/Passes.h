@@ -23,8 +23,8 @@ namespace sophgo {
 namespace tpu {
 
 std::unique_ptr<OperationPass<ModuleOp>> createWeightReorderPass();
-std::unique_ptr<OperationPass<ModuleOp>> createCodegenPass();
 std::unique_ptr<OperationPass<ModuleOp>> createAddressAsignPass();
+std::unique_ptr<OperationPass<ModuleOp>> createCodegenPass();
 
 #define GEN_PASS_REGISTRATION
 #define GEN_PASS_CLASSES

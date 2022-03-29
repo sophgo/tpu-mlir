@@ -64,13 +64,13 @@ LogicalResult top::ConvOp::inference(InferenceParameter &p) {
 }
 
 LogicalResult top::ReluOp::inference(InferenceParameter &p) {
-  auto num_elem = input().getType().cast<RankedTensorType>().getNumElements();
+  auto num_elem = input().getType().cast<ShapedType>().getNumElements();
   relu(p.inputs[0], p.outputs[0], num_elem);
   return success();
 }
 
 LogicalResult top::AddOp::inference(InferenceParameter &p) {
-  auto num_elem = output().getType().cast<RankedTensorType>().getNumElements();
+  auto num_elem = output().getType().cast<ShapedType>().getNumElements();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
   for (int64_t i = 0; i < num_elem; i++) {
     p.outputs[0][i] = 0;
@@ -115,7 +115,7 @@ LogicalResult top::MaxPoolOp::inference(InferenceParameter &p) {
   pooling->run();
   if (do_relu()) {
     size_t num_elem =
-        output().getType().cast<RankedTensorType>().getNumElements();
+        output().getType().cast<ShapedType>().getNumElements();
     relu(p.outputs[0], p.outputs[0], num_elem);
   }
   return success();
@@ -150,14 +150,14 @@ LogicalResult top::AvgPoolOp::inference(InferenceParameter &p) {
   pooling->run();
   if (do_relu()) {
     size_t num_elem =
-        output().getType().cast<RankedTensorType>().getNumElements();
+        output().getType().cast<ShapedType>().getNumElements();
     relu(p.outputs[0], p.outputs[0], num_elem);
   }
   return success();
 }
 
 LogicalResult top::ReshapeOp::inference(InferenceParameter &p) {
-  auto num_elem = output().getType().cast<RankedTensorType>().getNumElements();
+  auto num_elem = output().getType().cast<ShapedType>().getNumElements();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
   for (int64_t i = 0; i < num_elem; i++) {
     p.outputs[0][i] = p.inputs[0][i];

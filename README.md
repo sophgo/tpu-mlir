@@ -6,10 +6,18 @@ Get more info from [sophgo](http://sophgo.com).
 
 ## start docker
 
-```
-# myname1234 just a example, you can set your own name
-docker run --privileged --name myname1234 -v $PWD:/work -it sophgo/sophgo_dev:1.0-ubuntu-20.04
-```
+* pull docker image from dockerhub
+
+    ``` shell
+    docker pull sophgo/sophgo_dev:1.1-ubuntu-20.04
+    ```
+
+* create a container, and run
+
+    ``` shell
+    # myname1234 just a example, you can set your own name
+    docker run --privileged --name myname1234 -v $PWD:/work -it sophgo/sophgo_dev:1.1-ubuntu-20.04
+    ```
 
 ## Build
 

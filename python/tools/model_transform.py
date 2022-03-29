@@ -137,7 +137,7 @@ if __name__ == '__main__':
     tool = None
     if args.model_type == 'onnx':
         tool = OnnxModelTransformTool(args.model_name, args.model_def, args.input_shapes)
-    if args.model_type == 'tflite':
+    elif args.model_type == 'tflite':
         tool = TFLiteModelTransformTool(args.model_name, args.model_def, args.input_shapes)
     else:
         # TODO: support more AI model types

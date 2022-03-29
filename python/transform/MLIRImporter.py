@@ -13,6 +13,10 @@ class Top:
     ReshapeOp = 'top.Reshape'
     ReluOp = 'top.Relu'
 
+class State:
+    TOP_F32 = 'TOP_F32'
+    TOP_QUANTIZED = 'TOP_QUANTIZED'
+
 def get_weight_file(model_name:str, state:str, chip:str):
     name = "{}_{}_{}_weight.npz".format(model_name, state, chip)
     return name.lower()
@@ -29,14 +33,15 @@ class MLIRImporter(object):
                  output_shapes: list,
                  model_name: str,
                  input_types: list = [],
-                 output_types: list = []):
+                 output_types: list = [],
+                 state: str = State.TOP_F32):
         """
             input_shape: List[List], put module input shape. ex: [[1, 3, 224, 224]]
             output_shape: List, put module output shape. ex: [1, 1000]
         """
         assert (len(model_name) > 0)
         self.model_name = model_name
-        self.state = "TOP_F32"
+        self.state = state
         self.chip = "ALL"
         self.weight_file = get_weight_file(self.model_name, self.state, self.chip)
         self.ctx = Context()
