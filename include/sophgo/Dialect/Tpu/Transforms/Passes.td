@@ -21,16 +21,20 @@ def WeightReorder : Pass<"weight-reorder", "ModuleOp"> {
   let dependentDialects = ["TpuDialect"];
 }
 
-def Codegen : Pass<"codegen", "ModuleOp"> {
-  let summary = "codegen in tpu by sophgo-opt";
-  let constructor = "createCodegenPass()";
-  let dependentDialects = ["TpuDialect"];
-}
-
 def AddressAsign : Pass<"address-asign", "ModuleOp"> {
   let summary = "assign address in tpu by sophgo-opt";
   let constructor = "createAddressAsignPass()";
   let dependentDialects = ["TpuDialect"];
+}
+
+def Codegen : Pass<"codegen", "ModuleOp"> {
+  let summary = "codegen in tpu by sophgo-opt";
+  let constructor = "createCodegenPass()";
+  let dependentDialects = ["TpuDialect"];
+  let options = [
+    Option<"model_file", "model_file", "std::string", /*default=*/"",
+           "save to model file">,
+  ];
 }
 
 #endif

@@ -109,7 +109,7 @@ int64_t Module::getAddress(Value v) {
 }
 
 size_t Module::getBytes(Value v) {
-  auto type = v.getType().cast<RankedTensorType>();
+  auto type = v.getType().cast<ShapedType>();
   auto elm_count = type.getNumElements();
   auto etype = getType(v);
   int elm_bytes = etype.getIntOrFloatBitWidth() / 8;
@@ -117,12 +117,12 @@ size_t Module::getBytes(Value v) {
 }
 
 llvm::ArrayRef<int64_t> Module::getShape(Value v) {
-  auto type = v.getType().cast<RankedTensorType>();
+  auto type = v.getType().cast<ShapedType>();
   return type.getShape();
 }
 
 Type Module::getType(Value v) {
-  auto type = v.getType().cast<RankedTensorType>();
+  auto type = v.getType().cast<ShapedType>();
   auto etype = type.getElementType();
   if (auto qType = etype.dyn_cast<quant::CalibratedQuantizedType>()) {
     return qType.getExpressedType();
@@ -181,7 +181,7 @@ static void getNCHW_align_left(llvm::ArrayRef<int64_t> shape, int64_t &n,
 
 void Module::getNCHW(Value v, int64_t &n, int64_t &c, int64_t &h, int64_t &w,
                      bool align_left) {
-  auto shape = v.getType().cast<RankedTensorType>().getShape();
+  auto shape = v.getType().cast<ShapedType>().getShape();
   if (align_left) {
     getNCHW_align_left(shape, n, c, h, w);
   } else {

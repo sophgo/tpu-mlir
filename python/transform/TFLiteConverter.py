@@ -1,10 +1,9 @@
 from typing import Union, Iterable
-from .MLIRImporter import MLIRImporter
-from .MLIRImporter import Top
+from .MLIRImporter import MLIRImporter,Top,State
 from .BaseConverter import BaseConverter
 from mlir.ir import *
 import mlir.dialects.quant as quant
-
+import numpy as np
 
 def _indent(sOrIt_: Union[str, Iterable], numSpaces: int) -> str:
     """Indent string"""
@@ -76,8 +75,6 @@ class TFLiteReader:
         ctx = self
 
         class Tensor:
-            import numpy as np
-
             TFLType2Np = {
                 "FLOAT32": np.float32,
                 "INT8": np.int8,
@@ -202,7 +199,6 @@ class TFLiteConverter(BaseConverter):
         super().__init__()
         self.model_name = model_name
         self.tflie = TFLiteReader(tflite_file)
-        self.weight_file = "{}_top_weight.npz".format(model_name)
         self.graph = next(self.tflie.subgraph)
         for x in self.graph.inputs:
             self.__nhwc2nchw(x)
@@ -218,7 +214,9 @@ class TFLiteConverter(BaseConverter):
             output_types=[
                 self.TFLType2MLIRImporterTypeStr[x.type] for x in self.graph.outputs
             ],
+            state = State.TOP_QUANTIZED
         )
+        self.weight_file = self.mlir.weight_file
         self.constant = {}
         self.type_to_mlir = self.type2mlir(self.mlir.ctx)
         self.BuiltinOptionsToAttributes = {
@@ -483,8 +481,6 @@ class TFLiteConverter(BaseConverter):
         return [vals_map[x] for x in subgraph.outputs]
 
     def generate_mlir(self, mlir_file: str):
-        import numpy as np
-
         return_op = self.convert_subgraph(self.graph)
         self.mlir.create_return_op(return_op)
         mlir_txt = self.mlir.print_module()

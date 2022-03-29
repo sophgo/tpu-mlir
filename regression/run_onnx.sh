@@ -47,6 +47,6 @@ sophgo-opt resnet18_int8_reorder.mlir \
     --save-weight \
     -o resnet18_int8_addr.mlir
 
-sophgo-opt resnet18_int8_addr.mlir --codegen > /dev/null
+sophgo-opt resnet18_int8_addr.mlir --codegen="model_file=resnet18_int8.bmodel" > /dev/null
 
 popd

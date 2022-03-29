@@ -36,22 +36,12 @@ void BM1684::bm_memcpy_d2s(void *dst, const bm_device_mem_t &src) {
 }
 
 void BM1684::value_s2d(Value v, void *src) {
-  auto op = v.getDefiningOp();
-  if (op->hasAttr("addr") == false) {
-    v.dump();
-    llvm_unreachable("Value has no addr");
-  }
-  auto addr = op->getAttr("addr").cast<IntegerAttr>().getInt();
+  auto addr = Module::getAddress(v);
   auto bytes = Module::getBytes(v);
   memcpy(get_gmem_addr(addr), src, bytes);
 }
 void BM1684::value_d2s(Value v, void *dst) {
-  auto op = v.getDefiningOp();
-  if (op->hasAttr("addr") == false) {
-    v.dump();
-    llvm_unreachable("Value has no addr");
-  }
-  auto addr = op->getAttr("addr").cast<IntegerAttr>().getInt();
+  auto addr = Module::getAddress(v);
   auto bytes = Module::getBytes(v);
   memcpy(dst, get_gmem_addr(addr), bytes);
 }
