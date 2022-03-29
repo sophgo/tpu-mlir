@@ -80,7 +80,7 @@ public:
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](Operation *op) {
         if (isa<FuncOp>(op) || isa<top::NoneOp>(op) ||
-            isa<func::ReturnOp>(op)) {
+            isa<func::ReturnOp>(op) || isa<top::WeightOp>(op)) {
         } else {
           op->setAttr("addr", builder.getI64IntegerAttr(addr));
           int64_t bytes = Module::getBytes(op->getResult(0));

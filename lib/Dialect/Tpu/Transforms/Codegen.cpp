@@ -238,8 +238,10 @@ public:
     npb.add_cmd_group(cmd_group);
     model_gen->AddNet(Module::getName(module).str(), npb.Finish());
     model_gen->Finish();
-    std::string filename =
-        Module::getName(module).str() + "_int8_bm1684.bmodel";
+    std::string filename = this->model_file;
+    if (filename.empty()) {
+      filename = Module::getName(module).str() + "_int8_bm1684.bmodel";
+    }
     model_gen->Save(filename);
     BM1684::instance().deinit();
   }

@@ -28,7 +28,8 @@ popd
 
 # simple test
 pushd regression
-./run.sh
+./run_onnx.sh
+./run_tflite.sh
 popd
 
 # Clean up some files for release build
