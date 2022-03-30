@@ -46,58 +46,21 @@ using namespace sophgo::backend;
 namespace sophgo {
 namespace tpu {
 
-class AddressAsignPass : public AddressAsignBase<AddressAsignPass> {
+class SubnetDividePass : public SubnetDivideBase<SubnetDividePass> {
 public:
-  AddressAsignPass() {}
+  SubnetDividePass() {}
   void runOnOperation() override {
     auto module = getOperation();
     auto state = Module::getState(module);
-    if (state != Module::State::TPU_DIVIDED) {
+    if (state != Module::State::TPU_REORDERED) {
       llvm_unreachable("module should be reordered");
     }
-    int64_t start_addr = 0;
-    int64_t alignment = 0;
-    if (Module::getChip(module) == Module::Chip::BM1684) {
-      start_addr = BM1684::CTX_START_ADDR;
-      alignment = BM1684::ALIGNMENT;
-    } else {
-      llvm_unreachable("chip not support now");
-    }
-    Builder builder(module.getContext());
-    // asign weight first
-    auto addr = start_addr;
-    for (auto func : module.getOps<FuncOp>()) {
-      func.walk([&](top::WeightOp op) {
-        Module::setAddress(op.output(), addr);
-        int64_t bytes = Module::getBytes(op.output());
-        addr += ALIGN(bytes, alignment);
-      });
-    }
-    Module::setCoeffAddr(module, start_addr);
-    Module::setCoeffSize(module, addr - start_addr);
-    // asign activation
-    start_addr = addr;
-    for (auto func : module.getOps<FuncOp>()) {
-      func.walk([&](Operation *op) {
-        if (isa<FuncOp>(op) || isa<top::NoneOp>(op) ||
-            isa<func::ReturnOp>(op) || isa<top::WeightOp>(op)) {
-        } else {
-          auto output = op->getResult(0);
-          Module::setAddress(output, addr);
-          int64_t bytes = Module::getBytes(output);
-          addr += ALIGN(bytes, alignment);
-        }
-      });
-    }
-    Module::setNeuronAddr(module, start_addr);
-    Module::setNeuronSize(module, addr - start_addr);
-    Module::updateModuleTypes(module);
-    Module::setState(module, Module::State::TPU_ADDRESSED);
+    Module::setState(module, Module::State::TPU_DIVIDED);
   }
 };
 
-std::unique_ptr<OperationPass<ModuleOp>> createAddressAsignPass() {
-  return std::make_unique<AddressAsignPass>();
+std::unique_ptr<OperationPass<ModuleOp>> createSubnetDividePass() {
+  return std::make_unique<SubnetDividePass>();
 }
 } // namespace tpu
 } // namespace sophgo

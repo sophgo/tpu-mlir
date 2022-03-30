@@ -24,7 +24,8 @@ def Top_Dialect : Dialect {
   }];
 }
 
-def AnyTensorOrNone: AnyTypeOf<[AnyTensor, NoneType]>;
+def AnyTenor: AnyTypeOf<[AnyRankedTensor]>;
+def AnyTensorOrNone: AnyTypeOf<[AnyRankedTensor, NoneType]>;
 
 class Top_Op<string mnemonic, list<Trait> traits = []> :
     Op<Top_Dialect, mnemonic, traits> ;
@@ -49,8 +50,7 @@ def Top_WeightOp : Top_Op<"Weight", [NoSideEffect]> {
   }];
 
   let arguments = (ins
-    StrAttr:$name,
-    DefaultValuedAttr<I64Attr, "0">:$addr
+    StrAttr:$name
   );
 
   let results = (outs AnyTensor:$output);
@@ -75,7 +75,6 @@ def Top_InputOp: Top_Op<"Input",[NoSideEffect]> {
 
   let arguments = (
     ins AnyTensor:$input,
-    DefaultValuedAttr<I64Attr, "0">:$addr,
     StrAttr:$name
   );
 
