@@ -21,6 +21,12 @@ def WeightReorder : Pass<"weight-reorder", "ModuleOp"> {
   let dependentDialects = ["TpuDialect"];
 }
 
+def SubnetDivide : Pass<"subnet-divide", "ModuleOp"> {
+  let summary = "subnet divide in tpu by sophgo-opt";
+  let constructor = "createSubnetDividePass()";
+  let dependentDialects = ["TpuDialect"];
+}
+
 def AddressAsign : Pass<"address-asign", "ModuleOp"> {
   let summary = "assign address in tpu by sophgo-opt";
   let constructor = "createAddressAsignPass()";

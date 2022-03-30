@@ -13,13 +13,14 @@ include "sophgo/Interfaces/WeightReorderInterface.td"
 include "sophgo/Interfaces/CodegenInterface.td"
 include "sophgo/Interfaces/InferenceInterface.td"
 
-def AnyTensorOrNone: AnyTypeOf<[AnyTensor, NoneType]>;
-
 def Tpu_Dialect : Dialect {
   let name = "tpu";
   let summary = "A tpu dialect for the SOPHGO AI chips";
   let cppNamespace = "::sophgo::tpu";
 }
+
+def AnyTenor: AnyTypeOf<[AnyRankedTensor]>;
+def AnyTensorOrNone: AnyTypeOf<[AnyRankedTensor, NoneType]>;
 
 class Tpu_Op<string mnemonic, list<Trait> traits = []> :
     Op<Tpu_Dialect, mnemonic, traits> ;
@@ -46,7 +47,6 @@ def Tpu_ConvOp: Tpu_Op<"Conv",[NoSideEffect,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     //quant param
     DefaultValuedAttr<I64Attr, "0">:$rshift,
-    DefaultValuedAttr<I64Attr, "0">:$addr,
     StrAttr:$name
   );
 
@@ -77,7 +77,6 @@ class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,[NoSideEffect,
     DefaultValuedAttr<I64Attr, "0">:$pad_value,
     DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<I64Attr, "0">:$addr,
     StrAttr:$name
   );
 
@@ -110,7 +109,6 @@ def Tpu_AddOp: Tpu_Op<"Add",[NoSideEffect,
     OptionalAttr<F64ArrayAttr>:$coeff,
     // quant param
     I64ArrayAttr:$rshifts,
-    DefaultValuedAttr<I64Attr, "0">:$addr,
     StrAttr:$name
   );
 
@@ -133,7 +131,6 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul",[NoSideEffect,
     AnyTensor:$right,
     AnyTensorOrNone:$bias,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<I64Attr, "0">:$addr,
     I64Attr:$rshift,
     StrAttr:$name
   );
@@ -172,7 +169,6 @@ def Tpu_ReshapeOp:Tpu_Op<"Reshape",[NoSideEffect,
   }];
   let arguments = (ins
     AnyTensor:$input,
-    DefaultValuedAttr<I64Attr, "0">:$addr,
     StrAttr:$name
   );
   let results = (outs AnyTensor:$output);

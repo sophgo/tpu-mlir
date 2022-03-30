@@ -27,6 +27,7 @@ constexpr llvm::StringRef Module::State::TOP_CALIBRATED;
 constexpr llvm::StringRef Module::State::TOP_QUANTIZED;
 constexpr llvm::StringRef Module::State::TPU_QUANTIZED;
 constexpr llvm::StringRef Module::State::TPU_REORDERED;
+constexpr llvm::StringRef Module::State::TPU_DIVIDED;
 constexpr llvm::StringRef Module::State::TPU_ADDRESSED;
 
 constexpr llvm::StringRef Module::Chip::ALL;
@@ -100,12 +101,18 @@ std::string Module::genWeightFileName(ModuleOp module) {
 }
 
 int64_t Module::getAddress(Value v) {
-  auto op = v.getDefiningOp();
-  if (!op->hasAttr("addr")) {
-    v.dump();
-    llvm_unreachable("Value has no addr attribute");
-  }
-  return op->getAttr("addr").cast<IntegerAttr>().getInt();
+  auto attr = v.getType().cast<RankedTensorType>().getEncoding();
+  assert(attr.isa<IntegerAttr>());
+  return attr.cast<IntegerAttr>().getInt();
+}
+
+void Module::setAddress(Value v, int64_t addr) {
+  auto type = v.getType().cast<RankedTensorType>();
+  Builder builder(v.getContext());
+  auto addrAttr = builder.getI64IntegerAttr(addr);
+  auto new_type =
+      RankedTensorType::get(type.getShape(), type.getElementType(), addrAttr);
+  v.setType(new_type);
 }
 
 size_t Module::getBytes(Value v) {

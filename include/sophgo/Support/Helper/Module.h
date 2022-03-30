@@ -26,6 +26,7 @@ struct Module {
     static constexpr llvm::StringRef TOP_QUANTIZED = "TOP_QUANTIED";
     static constexpr llvm::StringRef TPU_QUANTIZED = "TPU_QUANTIED";
     static constexpr llvm::StringRef TPU_REORDERED = "TPU_REORDERED";
+    static constexpr llvm::StringRef TPU_DIVIDED = "TPU_DIVIDED";
     static constexpr llvm::StringRef TPU_ADDRESSED = "TPU_ADDRESSED";
   };
 
@@ -40,6 +41,7 @@ struct Module {
   static void updateModuleTypes(ModuleOp module);
   static std::string genWeightFileName(ModuleOp module);
   static int64_t getAddress(Value v);
+  static void setAddress(Value v, int64_t addr);
   static void getNCHW(Value v, int64_t &n, int64_t &c, int64_t &h, int64_t &w,
                       bool left_align = true);
   static size_t getBytes(Value v);

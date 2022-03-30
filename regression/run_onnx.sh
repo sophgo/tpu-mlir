@@ -41,12 +41,19 @@ sophgo-opt resnet18_int8.mlir \
     --save-weight \
     -o resnet18_int8_reorder.mlir
 
-# tpu address asign
+# tpu divide to subnets
 sophgo-opt resnet18_int8_reorder.mlir \
+    --subnet-divide \
+    --save-weight \
+    -o resnet18_int8_divide.mlir
+
+# tpu address asign
+sophgo-opt resnet18_int8_divide.mlir \
     --address-asign \
     --save-weight \
     -o resnet18_int8_addr.mlir
 
-sophgo-opt resnet18_int8_addr.mlir --codegen="model_file=resnet18_int8.bmodel" > /dev/null
+sophgo-opt resnet18_int8_addr.mlir \
+    --codegen="model_file=resnet18_int8.bmodel" > /dev/null
 
 popd
