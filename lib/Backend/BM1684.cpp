@@ -50,25 +50,35 @@ void BM1684::init() {
   // setup
   dl_cmodel_init(0, CMODEL_GLOBAL_MEM_SIZE);
   cmdid_node = dl_create_cmd_id_node();
-  dl_reset_cmd_id(cmdid_node);
-  set_command_issue_flag(true);
+  bdc_node = dl_create_cmd_id_node();
+  gdma_node = dl_create_cmd_id_node();
   bdc_buffer = std::make_shared<std::vector<uint32_t>>(0x1000000);
   gdma_buffer = std::make_shared<std::vector<uint32_t>>(0x1000000);
-  gdma_group_id.clear();
-  gdma_group_id.push_back(0);
-  bdc_group_id.clear();
-  bdc_group_id.push_back(0);
-  cmdid_groupnum = 1;
   dl_set_cmd_buffer_ptr((void *)gdma_buffer->data(),
                         (void *)bdc_buffer->data());
   dl_set_total_id_ptr(&gdma_total_id, &bdc_total_id, cmdid_node,
                       (void *)&gdma_group_id, (void *)&bdc_group_id,
                       &cmdid_groupnum);
+  dl_forbid_atomic_cmodel(); // TODO:(no compare)
+}
+
+void BM1684::reset() {
+  dl_reset_cmd_id(cmdid_node);
+  dl_reset_cmd_id(bdc_node);
+  dl_reset_cmd_id(gdma_node);
+  set_command_issue_flag(true);
+  gdma_group_id.clear();
+  gdma_group_id.push_back(0);
+  bdc_group_id.clear();
+  bdc_group_id.push_back(0);
+  cmdid_groupnum = 1;
 }
 
 void BM1684::deinit() {
   if (DL.isValid()) {
     if (cmdid_node != nullptr) {
+      dl_destroy_cmd_id_node(gdma_node);
+      dl_destroy_cmd_id_node(bdc_node);
       dl_destroy_cmd_id_node(cmdid_node);
     }
     dl_cmodel_deinit(0);
@@ -85,13 +95,13 @@ bm_data_type_t BM1684::getType(mlir::Type type) {
   if (type.isF16()) {
     return DTYPE_FP16;
   }
-  if (type.isSignedInteger(8)) {
+  if (type.isSignedInteger(8) || type.isSignlessInteger(8)) {
     return DTYPE_INT8;
   }
-  if (type.isSignedInteger(16)) {
+  if (type.isSignedInteger(16) || type.isSignlessInteger(16)) {
     return DTYPE_INT16;
   }
-  if (type.isSignedInteger(32)) {
+  if (type.isSignedInteger(32) || type.isSignlessInteger(32)) {
     return DTYPE_INT32;
   }
   if (type.isUnsignedInteger(8)) {
@@ -291,8 +301,6 @@ BM1684::BM1684() {
 
 BM1684::~BM1684() {
 }
-
-void BM1684::reset_cmd_id_node() { dl_reset_cmd_id(cmdid_node); }
 
 void BM1684::set_command_issue_flag(bool value) {
   really_issue_command = value;

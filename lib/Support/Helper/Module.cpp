@@ -39,7 +39,12 @@ top::NoneOp Module::getNoneOp(Operation *op) {
   if (auto noneOp = dyn_cast<top::NoneOp>(op)) {
     return noneOp;
   }
-  auto funcOp = cast<mlir::FuncOp>(op->getParentOp());
+  FuncOp funcOp;
+  if (isa<mlir::FuncOp>(op)) {
+    funcOp = cast<mlir::FuncOp>(op);
+  } else {
+    funcOp = cast<mlir::FuncOp>(op->getParentOp());
+  }
   auto &block = funcOp.front();
   auto &topOp = block.front();
   if (auto noneOp = dyn_cast<top::NoneOp>(topOp)) {
@@ -70,24 +75,57 @@ ModuleOp Module::getModuleOp(Operation *op) {
 void Module::updateModuleTypes(ModuleOp module) {
   auto ctx = module.getContext();
   Builder builder(ctx);
-  // sync ReturnOp type to function type
+  // update callee func's return types
   for (auto func : module.getOps<FuncOp>()) {
-    // alter the function type to match the real type
-    // of InputOp and ReturnOp
-    std::vector<mlir::Type> arguments;
+    if (func.getName() == "main") {
+      continue;
+    }
     std::vector<mlir::Type> returns;
     Block &entryBlock = func.front();
     auto returnOp = dyn_cast<func::ReturnOp>(entryBlock.back()).getOperation();
-    for (uint32_t i = 0; i < entryBlock.getNumArguments(); ++i) {
-      arguments.push_back(entryBlock.getArgument(i).getType());
-    }
     for (uint32_t i = 0; i < returnOp->getNumOperands(); ++i) {
       returns.push_back(returnOp->getOperand(i).getType());
     }
-    auto fnType = builder.getFunctionType(llvm::ArrayRef<mlir::Type>{arguments},
+    auto fnType = builder.getFunctionType(func.getType().getInputs(),
                                           llvm::ArrayRef<mlir::Type>{returns});
     func.setType(fnType);
+    auto callee = getCallOp(module, func);
+    if (callee) {
+      for (auto it : llvm::zip(callee.getResults(), returns)) {
+        std::get<0>(it).setType(std::get<1>(it));
+      }
+    }
   }
+  // update callee arg types
+  for (auto func : module.getOps<FuncOp>()) {
+    if (func.getName() == "main") {
+      continue;
+    }
+    auto callee = getCallOp(module, func);
+    if (!callee) {
+      continue;
+    }
+    std::vector<mlir::Type> arguments;
+    for (auto it :
+         llvm::zip(callee.getOperandTypes(), func.front().getArguments())) {
+      arguments.push_back(std::get<0>(it));
+      std::get<1>(it).setType(std::get<0>(it));
+    }
+    auto fnType = builder.getFunctionType(llvm::ArrayRef<mlir::Type>(arguments),
+                                          func.getResultTypes());
+    func.setType(fnType);
+  }
+  // update main op return types
+  auto mainFunc = getMainFuncOp(module);
+  Block &entryBlock = mainFunc.front();
+  auto returnOp = dyn_cast<func::ReturnOp>(entryBlock.back()).getOperation();
+  std::vector<mlir::Type> returns;
+  for (uint32_t i = 0; i < returnOp->getNumOperands(); ++i) {
+    returns.push_back(returnOp->getOperand(i).getType());
+  }
+  auto fnType = builder.getFunctionType(mainFunc.getArgumentTypes(),
+                                        llvm::ArrayRef<mlir::Type>{returns});
+  mainFunc.setType(fnType);
 }
 
 std::string Module::genWeightFileName(ModuleOp module) {
@@ -116,20 +154,20 @@ void Module::setAddress(Value v, int64_t addr) {
 }
 
 size_t Module::getBytes(Value v) {
-  auto type = v.getType().cast<ShapedType>();
+  auto type = v.getType().cast<RankedTensorType>();
   auto elm_count = type.getNumElements();
-  auto etype = getType(v);
+  auto etype = getStorageType(v);
   int elm_bytes = etype.getIntOrFloatBitWidth() / 8;
   return elm_count * elm_bytes;
 }
 
 llvm::ArrayRef<int64_t> Module::getShape(Value v) {
-  auto type = v.getType().cast<ShapedType>();
+  auto type = v.getType().cast<RankedTensorType>();
   return type.getShape();
 }
 
-Type Module::getType(Value v) {
-  auto type = v.getType().cast<ShapedType>();
+Type Module::getStorageType(Value v) {
+  auto type = v.getType().cast<RankedTensorType>();
   auto etype = type.getElementType();
   if (auto qType = etype.dyn_cast<quant::CalibratedQuantizedType>()) {
     return qType.getExpressedType();
@@ -188,12 +226,75 @@ static void getNCHW_align_left(llvm::ArrayRef<int64_t> shape, int64_t &n,
 
 void Module::getNCHW(Value v, int64_t &n, int64_t &c, int64_t &h, int64_t &w,
                      bool align_left) {
-  auto shape = v.getType().cast<ShapedType>().getShape();
+  auto shape = v.getType().cast<RankedTensorType>().getShape();
   if (align_left) {
     getNCHW_align_left(shape, n, c, h, w);
   } else {
     getNCHW_align_right(shape, n, c, h, w);
   }
+}
+
+FuncOp Module::getFuncOp(ModuleOp module, StringRef func_name) {
+  for (auto func : module.getOps<FuncOp>()) {
+    if (func.getName() == func_name) {
+      return func;
+    }
+  }
+  llvm::errs() << "Can't find FuncOp:" << func_name << "\n";
+  llvm_unreachable("Error getFuncOp !!\n");
+  return nullptr;
+}
+
+func::CallOp Module::getCallOp(ModuleOp module, FuncOp func) {
+  auto mainFunc = getMainFuncOp(module);
+  func::CallOp call = nullptr;
+  mainFunc.walk([&](func::CallOp op) {
+    if (!call && op.getCallee() == func.getName()) {
+      call = op;
+    }
+  });
+  return call;
+}
+
+void Module::getInputsOutputs(ModuleOp module, std::vector<Value> &inputs,
+                              std::vector<Value> &outputs) {
+  auto main_func = Module::getMainFuncOp(module);
+  main_func.walk([&](top::InputOp op) { inputs.push_back(op.output()); });
+  main_func.walk([&](func::ReturnOp op) {
+    for (auto out : op.getOperands()) {
+      auto result = out.cast<OpResult>();
+      auto call_op = result.getDefiningOp<func::CallOp>();
+      auto func_op = getFuncOp(module, call_op.getCallee());
+      auto return_op = dyn_cast<func::ReturnOp>(func_op.front().back());
+      assert(return_op);
+      outputs.push_back(return_op.getOperand(result.getResultNumber()));
+    }
+  });
+}
+
+void Module::getInputsOutputs(func::CallOp call, std::vector<Value> &inputs,
+                              std::vector<Value> &outputs) {
+  auto module = getModuleOp(call);
+  for (auto opd : call.getOperands()) {
+    auto result = opd.cast<OpResult>();
+    auto op = result.getDefiningOp();
+    if (isa<top::InputOp>(op)) {
+      inputs.push_back(opd);
+    } else if (auto call_ = dyn_cast<func::CallOp>(op)) {
+      auto func_op = getFuncOp(module, call_.getCallee());
+      auto return_op = dyn_cast<func::ReturnOp>(func_op.front().back());
+      assert(return_op);
+      inputs.push_back(return_op.getOperand(result.getResultNumber()));
+    } else {
+      llvm_unreachable("input is illegal");
+    }
+  }
+  auto func = getFuncOp(module, call.getCallee());
+  func.walk([&](func::ReturnOp op) {
+    for (auto output : op.getOperands()) {
+      outputs.push_back(output);
+    }
+  });
 }
 
 } // namespace helper

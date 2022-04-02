@@ -3,6 +3,7 @@
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 
 using namespace mlir;
 
@@ -45,9 +46,13 @@ struct Module {
   static void getNCHW(Value v, int64_t &n, int64_t &c, int64_t &h, int64_t &w,
                       bool left_align = true);
   static size_t getBytes(Value v);
-  static Type getType(Value v); // storage type
+  static Type getStorageType(Value v); // storage type
   static llvm::ArrayRef<int64_t> getShape(Value v);
-
+  static inline FuncOp getMainFuncOp(ModuleOp module) {
+    return getFuncOp(module, "main");
+  }
+  static FuncOp getFuncOp(ModuleOp module, StringRef func_name);
+  static func::CallOp getCallOp(ModuleOp module, FuncOp func);
   static inline llvm::StringRef getName(ModuleOp module) {
     return module->getAttrOfType<StringAttr>(Attr::NAME).getValue();
   }
@@ -58,6 +63,10 @@ struct Module {
     assert(op->hasAttr("name"));
     return op->getAttrOfType<StringAttr>("name").getValue();
   }
+  static void getInputsOutputs(ModuleOp module, std::vector<Value> &inputs,
+                               std::vector<Value> &outputs);
+  static void getInputsOutputs(func::CallOp call, std::vector<Value> &inputs,
+                               std::vector<Value> &outputs);
   static inline int64_t getCoeffSize(ModuleOp module) {
     return module->getAttrOfType<IntegerAttr>(Attr::COEFF_SIZE).getInt();
   }

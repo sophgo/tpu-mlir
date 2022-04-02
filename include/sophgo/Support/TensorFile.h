@@ -188,7 +188,7 @@ public:
 
   template <typename T>
   std::unique_ptr<std::vector<T>> readTensor(llvm::StringRef name,
-                                             ShapedType &type) {
+                                             RankedTensorType &type) {
     assert(check_type<T>(type.getElementType()) == true);
     auto count = type.getNumElements();
     auto data = std::make_unique<std::vector<T>>(count);

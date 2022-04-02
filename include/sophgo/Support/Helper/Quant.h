@@ -20,12 +20,12 @@ struct Quant {
 
   template<typename QType>
   static  bool isQuantizedType(Value v) {
-    return v.getType().cast<ShapedType>().getElementType().isa<QType>();
+    return v.getType().cast<RankedTensorType>().getElementType().isa<QType>();
   }
 
   template<typename QType>
   static  QType getQuantizedType(Value v) {
-    return v.getType().cast<ShapedType>().getElementType().cast<QType>();
+    return v.getType().cast<RankedTensorType>().getElementType().cast<QType>();
   }
 
   static inline bool isUniformQuantized(Value v) {

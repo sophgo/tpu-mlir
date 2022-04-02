@@ -50,6 +50,10 @@ typedef enum {
 #define SUBNET_MODE_MERGE 2
 #define SUBNET_MODE_SWITCH 3
 
+#define MEM_TYPE_TPU (1 << 0)
+#define MEM_TYPE_CPU (1 << 1)
+#define MEM_TYPE_ALL (MEM_TYPE_TPU | MEM_TYPE_CPU)
+
 typedef enum {
   DTYPE_FP32 = 0,
   DTYPE_FP16 = 1,
@@ -262,6 +266,7 @@ public:
   void value_s2d(mlir::Value v, void *src);
   void value_d2s(mlir::Value v, void *dst);
   void init();
+  void reset();
   void deinit();
   static bm_data_type_t getType(mlir::Type type);
   // -------------------------------------------------------------------
@@ -459,11 +464,12 @@ public:
 protected:
   BM1684();
   ~BM1684();
-  void reset_cmd_id_node();
   void set_command_issue_flag(bool value);
 
 protected:
   void *cmdid_node;
+  void *bdc_node;
+  void *gdma_node;
   bool really_issue_command;
   llvm::sys::DynamicLibrary DL;
 };
