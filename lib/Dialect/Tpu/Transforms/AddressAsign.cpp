@@ -80,7 +80,8 @@ public:
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](Operation *op) {
         if (isa<FuncOp>(op) || isa<top::NoneOp>(op) ||
-            isa<func::ReturnOp>(op) || isa<top::WeightOp>(op)) {
+            isa<func::ReturnOp>(op) || isa<top::WeightOp>(op) ||
+            isa<func::CallOp>(op)) {
         } else {
           auto output = op->getResult(0);
           Module::setAddress(output, addr);
