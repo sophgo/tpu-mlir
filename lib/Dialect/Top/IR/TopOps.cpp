@@ -9,6 +9,7 @@
 
 #include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "sophgo/Support/Helper/Module.h"
+#include "sophgo/Support/Helper/Quant.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/PatternMatch.h"
@@ -187,10 +188,18 @@ std::shared_ptr<std::vector<float>> WeightOp::read_as_float() {
                                                 data_i8->end());
   } else if (dtype.isF32()) {
     return read<float>();
+  } else if (Quant::isUniformQuantized(output())) {
+    auto data_i8 = read<int8_t>();
+    return std::make_shared<std::vector<float>>(data_i8->begin(),
+                                                data_i8->end());
   } else if (dtype.isInteger(16)) {
     auto data_i16 = read<int16_t>();
     return std::make_shared<std::vector<float>>(data_i16->begin(),
                                                 data_i16->end());
+  } else if (dtype.isInteger(32)) {
+    auto data_i32 = read<int32_t>();
+    return std::make_shared<std::vector<float>>(data_i32->begin(),
+                                                data_i32->end());
   }
   dump();
   llvm_unreachable("weight data not support read now");
@@ -244,6 +253,8 @@ Value WeightOp::create(Operation *OwnerOp, llvm::StringRef suffix,
 template std::shared_ptr<std::vector<float>> WeightOp::read();
 template std::shared_ptr<std::vector<int8_t>> WeightOp::read();
 template std::shared_ptr<std::vector<int16_t>> WeightOp::read();
+template std::shared_ptr<std::vector<uint8_t>> WeightOp::read();
+template std::shared_ptr<std::vector<int32_t>> WeightOp::read();
 template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
                                 const std::vector<float> &data,
                                 RankedTensorType &type);
@@ -252,4 +263,10 @@ template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
                                 RankedTensorType &type);
 template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
                                 const std::vector<int8_t> &data,
+                                RankedTensorType &type);
+template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
+                                const std::vector<uint8_t> &data,
+                                RankedTensorType &type);
+template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
+                                const std::vector<int32_t> &data,
                                 RankedTensorType &type);

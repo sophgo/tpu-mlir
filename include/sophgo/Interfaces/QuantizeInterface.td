@@ -33,12 +33,7 @@ def QuantizeInterface : OpInterface<"QuantizeInterface"> {
         }],
         /*retType=*/"mlir::Value",
         /*methodName=*/"quantize_int8_bm1686",
-        /*args=*/(ins),
-        [{}],
-        [{
-          llvm_unreachable("not support now");
-          return nullptr;
-        }]
+        /*args=*/(ins)
       >,
       InterfaceMethod<
         /*desc=*/[{

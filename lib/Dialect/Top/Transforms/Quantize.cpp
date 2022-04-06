@@ -46,16 +46,23 @@ using namespace sophgo::helper;
 namespace sophgo {
 namespace top {
 
-static void castOpToInt8(Value v, bool asymmetric = false) {
+static void castOpToInt8(Value v) {
   if (!Quant::isQuantizedType<quant::CalibratedQuantizedType>(v)) {
     return;
   }
+
   auto ctx = v.getContext();
   OpBuilder builder(ctx);
   std::vector<Value> operands;
   operands.push_back(v);
   std::vector<NamedAttribute> attrs;
   auto op = v.getDefiningOp();
+  auto module = Module::getModuleOp(op);
+  auto chip = Module::getChip(module);
+  bool asymmetric = false;
+  if (chip == Module::Chip::BM1686) {
+    asymmetric = true;
+  }
   builder.setInsertionPointAfter(op);
   std::string name = Module::getName(op).str();
   attrs.push_back(
