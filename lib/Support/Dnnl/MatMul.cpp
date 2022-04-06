@@ -12,7 +12,7 @@ MatMul::MatMul() {
 
 void MatMul::setup(float *left, float *right, float *bias, float *output,
                    int64_t batch, int64_t M, int64_t K, int64_t N,
-                   bool do_relu, int64_t rshift, memory::data_type ldt,
+                   bool do_relu, int64_t rshift, int64_t multipler, memory::data_type ldt,
                    memory::data_type rdt,
                    memory::data_type bdt,
                    memory::data_type odt) {
@@ -33,7 +33,7 @@ void MatMul::setup(float *left, float *right, float *bias, float *output,
   matmul::primitive_desc matmul_pd;
   primitive_attr matmul_attr;
   if (memory::data_type::s32 == odt) {
-    float scale = 1;
+    float scale = multipler > 0?multipler:1;
     for (int i = 0; i < abs(rshift); i++) {
       if (rshift > 0) {
         scale /= 2;
@@ -43,15 +43,17 @@ void MatMul::setup(float *left, float *right, float *bias, float *output,
     }
     std::vector<float> fc_scales = {scale};
     matmul_attr.set_output_scales(0, fc_scales);
-
     const float ops_scale = 1.f;
+    float ops_alpha = 0.f; //relu negative slope
+    float ops_beta = 0.f;
     if (do_relu) {
-      const float ops_alpha = 0.f; // relu negative slope
-      const float ops_beta = 0.f;
       ops.append_eltwise(ops_scale, algorithm::eltwise_relu, ops_alpha, ops_beta);
+      ops_alpha = 0;
+      ops_beta = 255;
+    } else {
+      ops_alpha = -128;
+      ops_beta = 127;
     }
-    const float ops_alpha = -128;
-    const float ops_beta = 127;
     ops.append_eltwise(ops_scale, algorithm::eltwise_clip, ops_alpha, ops_beta);
     ops.append_eltwise(ops_scale, algorithm::eltwise_round, 0, 0);
     matmul_attr.set_post_ops(ops);

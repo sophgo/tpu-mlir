@@ -566,10 +566,14 @@ template void npz_add_array<float>(npz_t &, std::string,
         const std::vector<float> &);
 template void npz_add_array<int8_t>(npz_t &, std::string,
         const std::vector<int8_t> &);
+template void npz_add_array<uint8_t>(npz_t &, std::string,
+        const std::vector<uint8_t> &);
 template void npz_add_array<int16_t>(npz_t &, std::string,
         const std::vector<int16_t> &);
 template void npz_add_array<uint16_t>(npz_t &, std::string,
         const std::vector<uint16_t> &);
+template void npz_add_array<int32_t>(npz_t &, std::string,
+        const std::vector<int32_t> &);
 
 void npz_save_all(std::string zipname, npz_t &map) {
     for (auto it = map.begin(); it != map.end(); it++) {
@@ -580,11 +584,13 @@ void npz_save_all(std::string zipname, npz_t &map) {
             assert(arr.word_size = sizeof(float));
             npz_save<float>(zipname, it->first, it->second, mode);
         } else if (arr.type == 'i') {
-            // support int8/int16 only
+            // support int8/int16/int32 only
             if (arr.word_size == sizeof(int8_t)) {
                 npz_save<int8_t>(zipname, it->first, it->second, mode);
             } else if (arr.word_size == sizeof(int16_t)) {
                 npz_save<int16_t>(zipname, it->first, it->second, mode);
+            } else if (arr.word_size == sizeof(int32_t)) {
+                npz_save<int32_t>(zipname, it->first, it->second, mode);
             } else {
                 assert(0);
             }

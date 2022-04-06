@@ -46,7 +46,8 @@ def Tpu_ConvOp: Tpu_Op<"Conv",[NoSideEffect,
     OptionalAttr<I64ArrayAttr>:$inserts,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     //quant param
-    DefaultValuedAttr<I64Attr, "0">:$rshift,
+    I64ArrayAttr:$rshift,
+    OptionalAttr<I64ArrayAttr>:$multipler,
     StrAttr:$name
   );
 
@@ -132,6 +133,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul",[NoSideEffect,
     AnyTensorOrNone:$bias,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     I64Attr:$rshift,
+    DefaultValuedAttr<I64Attr, "0">:$multipler,
     StrAttr:$name
   );
 

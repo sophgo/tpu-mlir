@@ -69,6 +69,10 @@ Value top::ConvOp::quantize_int8_bm1684() {
       rightShiftDec--;
     }
   }
+  std::vector<int64_t> rshift_v;
+  rshift_v.push_back(rshift);
+  std::vector<int64_t> multipler_v;
+  multipler_v.push_back(1);
   float scale = 1.0 * (1 << rshift) * th_input / th_output;
   auto filter_int8 = std::make_shared<std::vector<int8_t>>(filter_f32->size());
   quantizeToInt8(filter_f32->data(), filter_int8->data(), filter_f32->size(),
@@ -90,7 +94,7 @@ Value top::ConvOp::quantize_int8_bm1684() {
     attrs.push_back(attr);
   }
   attrs.push_back(
-      builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
+      builder.getNamedAttr("rshift", builder.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v})));
   auto newOp = builder.create<tpu::ConvOp>(op->getLoc(), output().getType(),
                                            ArrayRef<Value>{operands},
                                            ArrayRef<NamedAttribute>{attrs});

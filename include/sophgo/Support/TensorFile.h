@@ -28,6 +28,7 @@
 #include "mlir/Support/LLVM.h"
 #include "mlir/Support/LogicalResult.h"
 #include "mlir/IR/BuiltinTypes.h"
+#include "mlir/Dialect/Quant/QuantTypes.h"
 #include "llvm/ADT/Twine.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Format.h"
@@ -51,6 +52,10 @@ template <typename T> static std::string int_to_hex(T i) {
 namespace mlir {
 
 template <typename T> static bool check_type(Type eltType) {
+  if (eltType.isa<quant::UniformQuantizedPerAxisType>()) {
+    eltType = eltType.cast<quant::UniformQuantizedPerAxisType>().getStorageType();
+  }
+
   bool same;
   if (eltType.isBF16()) {
     // we use uint16_t to represent BF16 (same as tensorflow)
@@ -63,7 +68,7 @@ template <typename T> static bool check_type(Type eltType) {
     same =
         (std::is_same<T, int16_t>::value || std::is_same<T, uint16_t>::value);
   } else if (eltType.isInteger(32)) {
-    same = std::is_same<T, uint32_t>::value;
+    same = (std::is_same<T, int32_t>::value || std::is_same<T, uint32_t>::value);
   } else {
     // eltType.isF16()
     // eltType.isF64()

@@ -10,8 +10,9 @@ Conv::Conv() {
 void Conv::setup(float *input, float *weight, float *bias, float *output, int n,
                  int ic, int ih, int iw, int oc, int oh, int ow, int kh, int kw,
                  int sh, int sw, int dh, int dw, int pt, int pb, int pl, int pr,
-                 int g, bool do_relu, int rshift, memory::data_type idt,
-                 memory::data_type wdt, memory::data_type bdt, memory::data_type odt) {
+                 int g, bool do_relu, int* rshift, int* multipler, memory::data_type idt,
+                 memory::data_type wdt, memory::data_type bdt, memory::data_type odt, bool per_channel) {
+  //printf("Conv para:%d,%d,%d,%d,%d\n", idt, wdt, bdt, odt, per_channel);
   src_shape = {n, ic, ih, iw};
   dst_shape = {n, oc, oh, ow};
   memory::dims filter_shape = (g != 1) ? memory::dims{g, oc / g, ic / g, kh, kw}
@@ -37,26 +38,47 @@ void Conv::setup(float *input, float *weight, float *bias, float *output, int n,
   post_ops ops;
   primitive_attr conv_attr;
   if (memory::data_type::s32 == odt) {
-    float scale = 1;
     std::vector<float> conv_scales(oc);
-    for (int i = 0; i < abs(rshift); i++) {
-      if (rshift > 0) {
-        scale /= 2;
-      } else if (rshift < 0) {
-        scale *= 2;
+    if (per_channel) {
+      for (int o = 0; o < oc; o++) {
+          float scale = multipler[o];
+          for (int i = 0; i < abs(rshift[o]); i++) {
+            if (rshift > 0) {
+              scale /= 2;
+            } else if (rshift < 0) {
+              scale *= 2;
+            }
+          }
+          conv_scales.push_back(scale);
       }
+    } else {
+      float scale = 1;
+      if (multipler) {
+        scale = multipler[0];
+      }
+
+      for (int i = 0; i < abs(rshift[0]); i++) {
+        if (rshift > 0) {
+          scale /= 2;
+        } else if (rshift < 0) {
+          scale *= 2;
+        }
+      }
+      std::fill(conv_scales.begin(), conv_scales.end(), scale);
     }
-    std::fill(conv_scales.begin(), conv_scales.end(), scale);
-    conv_attr.set_output_scales(2, conv_scales);
 
     const float ops_scale = 1.f;
+    conv_attr.set_output_scales(2, conv_scales);
+    float ops_alpha = 0.f; // relu negative slope
+    float ops_beta = 0.f;
     if (do_relu) {
-      const float ops_alpha = 0.f; // relu negative slope
-      const float ops_beta = 0.f;
       ops.append_eltwise(ops_scale, algorithm::eltwise_relu, ops_alpha, ops_beta);
+      ops_alpha = 0; // relu negative slope
+      ops_beta = 255;
+    } else {
+      ops_alpha = -128;
+      ops_beta = 127;
     }
-    const float ops_alpha = -128;
-    const float ops_beta = 127;
     ops.append_eltwise(ops_scale, algorithm::eltwise_clip, ops_alpha, ops_beta);
     ops.append_eltwise(ops_scale, algorithm::eltwise_round, 0, 0);
     conv_attr.set_post_ops(ops);

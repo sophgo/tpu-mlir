@@ -35,6 +35,21 @@ sophgo-opt resnet18_cali.mlir \
 model_runner.py --model resnet18_int8.mlir --input $INPUT --dump_all_tensors --output resnet18_int8_outputs.npz
 #npz_tool.py compare resnet18_int8_outputs.npz resnet18_ref_outputs.npz -v
 
+# import calibration for 1686 asymmetric
+sophgo-opt resnet18.mlir \
+    --import-calibration-table='file=resnet18_cali_table asymmetric=true' \
+    --save-weight \
+    -o resnet18_cali_1686.mlir
+
+# quantize mlir for 1686 asymmetric
+sophgo-opt resnet18_cali_1686.mlir \
+    --quantize="mode=INT8 asymmetric=true chip=bm1686" \
+    --save-weight \
+    -o resnet18_int8_1686.mlir
+
+model_runner.py --model resnet18_int8_1686.mlir --input $INPUT --dump_all_tensors --output resnet18_int8_1686_outputs.npz
+
+
 # tpu weight reorder
 sophgo-opt resnet18_int8.mlir \
     --weight-reorder \

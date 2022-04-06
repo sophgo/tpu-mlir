@@ -20,15 +20,24 @@ template bool Quant::isQuantizedType<quant::CalibratedQuantizedType>(Value v);
 template quant::CalibratedQuantizedType
 Quant::getQuantizedType<quant::CalibratedQuantizedType>(Value v);
 
-void Quant::setQuantInt8Type(Value v, bool asymmetric) {
+void Quant::setQuantInt8Type(Value v, bool asymmetric, bool sighType) {
   auto type = v.getType().cast<RankedTensorType>();
   auto ctx = v.getContext();
   auto cali_type = type.getElementType().cast<quant::CalibratedQuantizedType>();
   auto max = cali_type.getMax();
   auto min = cali_type.getMin();
   if (asymmetric) {
-    auto uniform_type = quant::fakeQuantAttrsToType(
-        v.getLoc(), 8, min, max, false, cali_type.getExpressedType(), true);
+    double scale = (max - min)/(127 - (-128));
+    int64_t zeropoint = std::round(-min * scale) - 127;
+    auto uniform_type = quant::UniformQuantizedType();
+    if (sighType) {
+      uniform_type = quant::UniformQuantizedType::get(
+          quant::QuantizationFlags::Signed, IntegerType::get(ctx, 8),
+          cali_type.getExpressedType(), scale, zeropoint, -128, 127);
+    } else {
+      uniform_type = quant::UniformQuantizedType::get(0, IntegerType::get(ctx, 8),
+          cali_type.getExpressedType(), scale, zeropoint, 0, 255);
+    }
     auto new_type = RankedTensorType::get(type.getShape(), uniform_type);
     v.setType(new_type);
   } else {
@@ -40,6 +49,17 @@ void Quant::setQuantInt8Type(Value v, bool asymmetric) {
     auto new_type = RankedTensorType::get(type.getShape(), uniform_type);
     v.setType(new_type);
   }
+}
+
+void Quant::setQuantWeightInt8PerChannelType(Value v, ArrayRef<double> scales, ArrayRef<int64_t> zeroPoints,
+      int32_t quantizedDimension, mlir::FloatType exptype) {
+  auto type = v.getType().cast<RankedTensorType>();
+  auto ctx = v.getContext();
+  auto per_channel_int8_type = quant::UniformQuantizedPerAxisType::get(
+      quant::QuantizationFlags::Signed, IntegerType::get(ctx, 8),
+      exptype, scales, zeroPoints, quantizedDimension, -128, 127);
+  auto new_type = RankedTensorType::get(type.getShape(), per_channel_int8_type);
+  v.setType(new_type);
 }
 
 void Quant::setQuantExpressType(Value v) {

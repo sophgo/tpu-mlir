@@ -49,7 +49,9 @@ struct Quant {
     return type.getMin();
   }
 
-  static void setQuantInt8Type(Value v, bool asymmetric = false);
+
+  static void setQuantInt8Type(Value v, bool asymmetric = false, bool sighType = false);
+  static void setQuantWeightInt8PerChannelType(Value v, ArrayRef<double> scales, ArrayRef<int64_t> zeroPoints, int32_t quantizedDimension, mlir::FloatType exptype);
   static void setQuantExpressType(Value v);
 };
 } // namespace helper
