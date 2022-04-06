@@ -26,10 +26,13 @@
 using namespace sophgo;
 using namespace mlir;
 
-template <typename T> static void relu(T *src, T *dst, size_t size) {
+template <typename T> static void relu(T *src, T *dst, size_t size, bool bint8 = false) {
 #pragma omp parallel for schedule(static, omp_schedule(size))
   for (size_t i = 0; i < size; ++i) {
     dst[i] = src[i] > 0 ? src[i] : 0;
+    if (bint8) {
+      dst[i]  = dst[i]  > 255?255:dst[i] <0?0:dst[i];
+    }
   }
 }
 
@@ -46,18 +49,46 @@ LogicalResult tpu::ConvOp::init(InferenceParameter &p) {
   if(input().getType().cast<RankedTensorType>().getElementType().isa<quant::UniformQuantizedType>()){
     idt = memory::data_type::s8;
   }
-  if(filter().getType().cast<RankedTensorType>().getElementType().isInteger(8)){
+  if(filter().getType().cast<RankedTensorType>().getElementType().isa<quant::UniformQuantizedPerAxisType>() ||
+    filter().getType().cast<RankedTensorType>().getElementType().isInteger(8)){
     wdt = memory::data_type::s8;
   }
   if(output().getType().cast<RankedTensorType>().getElementType().isa<quant::UniformQuantizedType>()) {
     odt = memory::data_type::s32;
   }
-  if (with_bias && bias().getType().cast<RankedTensorType>().getElementType().isInteger(16)) {
+  auto bdtype = bias().getType().cast<RankedTensorType>().getElementType();
+  if (with_bias && (bdtype.isInteger(16) || bdtype.isInteger(32))) {
     bdt = memory::data_type::s32;
   }
 
+  /*auto module = Module::getModuleOp(this);
+  if (Module::getChip(module) == Module::Chip::BM1686) {
+    newValue = quantize_op.quantize_int8_bm1686();
+  }*/
+
+  int* p_rshift = nullptr;
+  int* p_multipler = nullptr;
+  std::vector<int> rshift_v;
+  std::vector<int> multipler_v;
+  bool per_channel = false;
+  int size = multipler().hasValue()?multipler().getValue().size():0;
+  if (size >1) {
+    per_channel = true;
+  }
+  if (size > 0) {
+    for (size_t i = 0; i < oc; i++) {
+      rshift_v.push_back(rshift().getValue()[i].cast<IntegerAttr>().getInt());
+      multipler_v.push_back(multipler().getValue()[i].cast<IntegerAttr>().getInt());
+    }
+    p_rshift = rshift_v.data();
+    p_multipler = multipler_v.data();
+  } else {
+    rshift_v.push_back(rshift().getValue()[0].cast<IntegerAttr>().getInt());
+    p_rshift = rshift_v.data();
+  }
+
   conv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], n, ic, ih, //fixme p.inputs[2] maybe null???
-              iw, oc, oh, ow, kh, kw, sh, sw, dh, dw, pt, pb, pl, pr, g, do_relu(), rshift(), idt, wdt, bdt, odt);
+              iw, oc, oh, ow, kh, kw, sh, sw, dh, dw, pt, pb, pl, pr, g, do_relu(), p_rshift, p_multipler, idt, wdt, bdt, odt, per_channel);
   p.handle = (void *)conv;
   return success();
 }
@@ -77,7 +108,7 @@ LogicalResult tpu::ConvOp::inference(InferenceParameter &p) {
   auto conv = (Conv *)p.handle;
   conv->run();
   //llvm::errs() << "ConvOp inference:" << this->name() << "\n";
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 5; i++) {
     //printf("%d  %f x %d +%f = %f\n", i, p.inputs[0][i], (int8_t)p.inputs[1][i], p.inputs[2][i], p.outputs[0][i]);
   }
   return success();
@@ -85,12 +116,15 @@ LogicalResult tpu::ConvOp::inference(InferenceParameter &p) {
 
 LogicalResult tpu::ReluOp::inference(InferenceParameter &p) {
   auto num_elem = input().getType().cast<RankedTensorType>().getNumElements();
-  relu(p.inputs[0], p.outputs[0], num_elem);
+  relu(p.inputs[0], p.outputs[0], num_elem, \
+    input().getType().cast<RankedTensorType>().getElementType().isa<quant::UniformQuantizedType>());
   return success();
 }
 
 LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
   auto num_elem = output().getType().cast<RankedTensorType>().getNumElements();
+  auto dtype = output().getType().cast<RankedTensorType>().getElementType();
+  auto zp = dtype.cast<quant::UniformQuantizedType>().getZeroPoint();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
   for (int64_t i = 0; i < num_elem; i++) {
     p.outputs[0][i] = 0;
@@ -103,10 +137,12 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
       }
       idx++;
     }
-    p.outputs[0][i] = p.outputs[0][i] > 127?127:p.outputs[0][i]<-128?-128:p.outputs[0][i];
-  }
-  if (do_relu()) {
-    relu(p.outputs[0], p.outputs[0], num_elem);
+
+    if (do_relu()) { //relu输出
+      p.outputs[0][i] = p.outputs[0][i] > 255?255:p.outputs[0][i]<0?0:p.outputs[0][i];
+    } else {
+      p.outputs[0][i] = p.outputs[0][i] > 127?127:p.outputs[0][i]<-128?-128:p.outputs[0][i];
+    }
   }
   //llvm::errs() << "AddOp inference:" << this->name() << "\n";
   for (int i = 0; i < 5; i++) {
@@ -149,7 +185,8 @@ LogicalResult tpu::MaxPoolOp::inference(InferenceParameter &p) {
   if (do_relu()) {
     size_t num_elem =
         output().getType().cast<RankedTensorType>().getNumElements();
-    relu(p.outputs[0], p.outputs[0], num_elem);
+    relu(p.outputs[0], p.outputs[0], num_elem, \
+      input().getType().cast<RankedTensorType>().getElementType().isa<quant::UniformQuantizedType>());
   }
   return success();
 }
@@ -188,7 +225,8 @@ LogicalResult tpu::AvgPoolOp::inference(InferenceParameter &p) {
   if (do_relu()) {
     size_t num_elem =
         output().getType().cast<RankedTensorType>().getNumElements();
-    relu(p.outputs[0], p.outputs[0], num_elem);
+    relu(p.outputs[0], p.outputs[0], num_elem, \
+      input().getType().cast<RankedTensorType>().getElementType().isa<quant::UniformQuantizedType>());
   }
   //llvm::errs() << "AvgPoolOp inference:" << this->name() << "\n";
   for (int i = 0; i < 5; i++) {
@@ -227,7 +265,7 @@ LogicalResult tpu::MatMulOp::init(InferenceParameter &p) {
   }
 
   matmul->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], batch, M,
-                K, N, do_relu(), rshift(), ldt, rdt, bdt, odt);
+                K, N, do_relu(), rshift(), multipler(), ldt, rdt, bdt, odt);
   p.handle = (void *)matmul;
   return success();
 }

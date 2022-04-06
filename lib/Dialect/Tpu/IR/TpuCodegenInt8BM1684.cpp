@@ -38,7 +38,7 @@ void tpu::ConvOp::codegen_int8_bm1684() {
         Module::getAddress(input()), Module::getAddress(output()),
         Module::getAddress(filter()),
         with_bias ? Module::getAddress(bias()) : 0, n, ic, ih, iw, kh, kw, pt,
-        pb, pl, pr, sh, sw, ins_h, ins_w, rshift(), with_bias ? 1 : 0, 0, 1, 1,
+        pb, pl, pr, sh, sw, ins_h, ins_w, rshift().getValue()[0].cast<IntegerAttr>().getInt(), with_bias ? 1 : 0, 0, 1, 1,
         1, 1, relu ? 1 : 0, BM1684::instance().get_cmd_id_node());
   } else {
     auto weight_addr = Module::getAddress(filter());
@@ -48,7 +48,7 @@ void tpu::ConvOp::codegen_int8_bm1684() {
         Module::getAddress(filter()),
         with_bias ? Module::getAddress(bias()) : 0, n, ic, ih, iw, g, oc, kh,
         kw, dh, dw, pt, pb, pl, pr, sh, sw, with_bias ? 1 : 0, 0, relu ? 1 : 0,
-        0, 1, 0, 0, rshift(), 1, 1, 1, 3, 0, 0, 0, 0, 0,
+        0, 1, 0, 0, rshift().getValue()[0].cast<IntegerAttr>().getInt(), 1, 1, 1, 3, 0, 0, 0, 0, 0,
         BM1684::instance().get_cmd_id_node());
   }
 }
