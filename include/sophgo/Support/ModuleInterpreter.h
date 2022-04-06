@@ -43,10 +43,10 @@ class ModuleInterpreter {
 
 public:
   // Interpret the given MLIR module expressed in MLIR TPU IR dialect
-  explicit ModuleInterpreter(ModuleOp module) : module(module) {}
+  explicit ModuleInterpreter(ModuleOp module);
   virtual ~ModuleInterpreter();
   void allocate_resources();
-  void invoke();
+  void invoke(bool express_type = true);
   void setTensor(const std::string &name, const void *data, size_t size);
   std::shared_ptr<std::vector<float>> getTensor(const std::string &name);
   llvm::ArrayRef<int64_t> getTensorShape(const std::string &name);
@@ -58,6 +58,7 @@ public:
 
 private:
   ModuleOp module;
+  llvm::StringRef state;
   std::map<std::string, mlir::Value> value_map;
   std::map<std::string, std::shared_ptr<InferenceParameter>> inference_map;
   std::map<std::string, std::shared_ptr<std::vector<float>>> mem_map;

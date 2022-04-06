@@ -20,22 +20,56 @@ run_calibration.py resnet18.mlir \
     --input_num 1 \
     -o resnet18_cali_table
 
+#########################
+# BM1684
+#########################
 # import calibration
 sophgo-opt resnet18.mlir \
     --import-calibration-table='file=resnet18_cali_table asymmetric=false' \
     --save-weight \
-    -o resnet18_cali.mlir
+    -o resnet18_cali_1684.mlir
 
 # quantize mlir
-sophgo-opt resnet18_cali.mlir \
+sophgo-opt resnet18_cali_1684.mlir \
     --quantize="mode=INT8 asymmetric=false chip=bm1684" \
     --save-weight \
-    -o resnet18_int8.mlir
+    -o resnet18_int8_1684.mlir
 
-model_runner.py --model resnet18_int8.mlir --input $INPUT --dump_all_tensors --output resnet18_int8_outputs.npz
-#npz_tool.py compare resnet18_int8_outputs.npz resnet18_ref_outputs.npz -v
+model_runner.py \
+    --model resnet18_int8_1684.mlir \
+    --input $INPUT \
+    --dump_all_tensors \
+    --output resnet18_int8_outputs_1684.npz
 
-# import calibration for 1686 asymmetric
+npz_tool.py compare \
+    resnet18_int8_outputs_1684.npz \
+    resnet18_ref_outputs.npz \
+    --tolerance 0.85,0.42 -v
+
+# tpu weight reorder
+sophgo-opt resnet18_int8_1684.mlir \
+    --weight-reorder \
+    --save-weight \
+    -o resnet18_int8_reorder_1684.mlir
+
+# tpu divide to subnets
+sophgo-opt resnet18_int8_reorder_1684.mlir \
+    --subnet-divide \
+    --save-weight \
+    -o resnet18_int8_divide_1684.mlir
+
+# tpu address asign
+sophgo-opt resnet18_int8_divide_1684.mlir \
+    --address-asign \
+    --save-weight \
+    -o resnet18_int8_addr_1684.mlir
+
+sophgo-opt resnet18_int8_addr_1684.mlir \
+    --codegen="model_file=resnet18_int8_1684.bmodel" > /dev/null
+
+#########################
+# BM1686
+#########################
 sophgo-opt resnet18.mlir \
     --import-calibration-table='file=resnet18_cali_table asymmetric=true' \
     --save-weight \
@@ -47,28 +81,15 @@ sophgo-opt resnet18_cali_1686.mlir \
     --save-weight \
     -o resnet18_int8_1686.mlir
 
-model_runner.py --model resnet18_int8_1686.mlir --input $INPUT --dump_all_tensors --output resnet18_int8_1686_outputs.npz
+model_runner.py \
+    --model resnet18_int8_1686.mlir \
+    --input $INPUT \
+    --dump_all_tensors \
+    --output resnet18_int8_outputs_1686.npz
 
-
-# tpu weight reorder
-sophgo-opt resnet18_int8.mlir \
-    --weight-reorder \
-    --save-weight \
-    -o resnet18_int8_reorder.mlir
-
-# tpu divide to subnets
-sophgo-opt resnet18_int8_reorder.mlir \
-    --subnet-divide \
-    --save-weight \
-    -o resnet18_int8_divide.mlir
-
-# tpu address asign
-sophgo-opt resnet18_int8_divide.mlir \
-    --address-asign \
-    --save-weight \
-    -o resnet18_int8_addr.mlir
-
-sophgo-opt resnet18_int8_addr.mlir \
-    --codegen="model_file=resnet18_int8.bmodel" > /dev/null
+# npz_tool.py compare \
+#     resnet18_int8_outputs_1686.npz \
+#     resnet18_ref_outputs.npz \
+#     --tolerance 0.85,0.42 -v
 
 popd

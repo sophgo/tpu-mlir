@@ -200,7 +200,8 @@ public:
     patterns.clear();
     patterns.add<ForwardCalibartion<top::ReluOp>,
                  ForwardCalibartion<top::MaxPoolOp>,
-                 ForwardCalibartion<top::AvgPoolOp>>(ctx);
+                 ForwardCalibartion<top::AvgPoolOp>,
+                 ForwardCalibartion<top::ReshapeOp>>(ctx);
     applyPatternsAndFoldGreedily(module, std::move(patterns));
     patterns.clear();
     patterns.add<QuantizationPattern>(ctx);
