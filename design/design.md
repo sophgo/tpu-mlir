@@ -21,7 +21,7 @@
   * operation的资源申请与forward过程分离；
   * interpet能用oneDNN的，用oneDNN；不能用oneDNN的，尽量用OMP
 
-* mlir默认整型是INT64，默认浮点型是F64. attribute的类型尽量保持一致.好处如下：
+* mlir默认整型是INT64，默认浮点型是F64。 attribute的类型尽量用默认类型。好处如下：
 
 ``` mlir
 # 用INT32
@@ -30,7 +30,7 @@
 %4 = "top.Conv"(%1, %2, %3) {kernel_shape = [3, 3], name = "output_Conv"}
 ```
 
-* 为了可读性，头文件尽量不用宏定义成员或方法，源文件可以用
+* 为了可读性，头文件尽量不用宏定义成员或方法，源文件可以用宏定义
 
 #### 调试方法
 ``` shell
