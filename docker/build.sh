@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#docker pull ubuntu:20.04
+#docker pull ubuntu:18.04
 
 SUDO=sudo
 if [ "$(id -u)" == "0" ]; then

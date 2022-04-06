@@ -1,11 +1,11 @@
-FROM ubuntu:20.04
+FROM ubuntu:18.04
 LABEL maintainer pengchao.hu@sophgo.com
 
 # ================== select apt source ==================
-COPY sources-20.04.list /etc/apt/sources-20.04.list
+COPY sources-18.04.list /etc/apt/sources-18.04.list
 
 RUN cp /etc/apt/sources.list /etc/apt/sources.list.origin; \
-    cp /etc/apt/sources-20.04.list /etc/apt/sources.list;
+    cp /etc/apt/sources-18.04.list /etc/apt/sources.list;
 
 # ================== zoneinfo ==================
 RUN apt-get update \
@@ -35,12 +35,17 @@ RUN apt-get install -y --no-install-recommends \
 
 # for cmake
 RUN apt-get install -y --no-install-recommends \
-    apt-transport-https ca-certificates gnupg \
+    apt-transport-https \
+    ca-certificates \
+    gnupg \
     software-properties-common
 RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -
-RUN apt-add-repository 'deb https://apt.kitware.com/ubuntu/ focal main'
+RUN apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
 RUN apt-get update && apt-get install -y --no-install-recommends \
     cmake-data cmake
+
+# restore source again
+COPY sources-18.04.list /etc/apt/sources.list
 
 # cleanup
 RUN rm -rf /var/lib/apt/lists/*
@@ -49,13 +54,15 @@ RUN pip3 install --upgrade pip; \
     pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple; \
     pip3 config set global.index-url https://mirrors.aliyun.com/pypi/simple;
 
-RUN pip3 install --no-cache-dir --upgrade pathlib setuptools
+RUN pip3 install --no-cache-dir --upgrade setuptools
 RUN pip3 install --no-cache-dir \
     Cython numpy scipy scikit-image matplotlib \
     wheel leveldb decorator networkx nose python-dateutil \
-    protobuf pyyaml Pillow six lmdb tqdm enum34 \
+    protobuf pyyaml Pillow six lmdb pathlib tqdm enum34 \
     termcolor opencv-python-headless argcomplete jupyterlab \
-    paramiko jedi ipython torch torchvision onnx onnxruntime \
+    paramiko jedi ipython
+RUN pip3 install --no-cache-dir \
+    torch torchvision onnx onnxruntime \
     onnx-simplifier tensorflow packaging Jinja2 \
     tf2onnx pycocotools ply gitpython pybind11[global]
 

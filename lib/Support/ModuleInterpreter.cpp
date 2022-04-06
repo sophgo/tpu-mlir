@@ -3,17 +3,26 @@
 #include "sophgo/Support/MathUtils.h"
 #include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "sophgo/Dialect/Tpu/IR/TpuOps.h"
+#include "sophgo/Support/Helper/Quant.h"
+#include "sophgo/Support/Helper/Module.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include <algorithm>
 #include <functional>
 #include <memory>
 #include <numeric>
-#include "sophgo/Support/Helper/Quant.h"
 
 using namespace mlir;
+using namespace sophgo::helper;
 
 namespace sophgo {
+ModuleInterpreter::ModuleInterpreter(ModuleOp module) : module(module) {
+  state = Module::getState(module);
+  if (state != Module::State::TOP_F32 &&
+      state != Module::State::TPU_QUANTIZED) {
+    llvm_unreachable("mlir state not support");
+  }
+}
 
 ModuleInterpreter::~ModuleInterpreter() {
   for (auto func : module.getOps<FuncOp>()) {
@@ -93,11 +102,8 @@ void ModuleInterpreter::allocate_resources() {
   }
 }
 
-void ModuleInterpreter::invoke() {
+void ModuleInterpreter::invoke(bool express_type) {
   for (auto func : module.getOps<mlir::FuncOp>()) {
-    // if (func.getName() != "main") {
-    //   continue;
-    // }
     func.walk([&](InferenceInterface infer_op) {
       auto name = infer_op->getAttrOfType<StringAttr>("name").str();
       if (failed(infer_op.inference(*inference_map[name]))) {
@@ -105,6 +111,19 @@ void ModuleInterpreter::invoke() {
         llvm_unreachable("invoke failed!!");
       }
     });
+  }
+  if (express_type && state == Module::State::TPU_QUANTIZED) {
+    for (auto &name : all_tensor_names) {
+      auto mem = mem_map.at(name);
+      auto value = value_map.at(name);
+      if (Quant::isUniformQuantized(value)) {
+        auto qtype =
+            Quant::getQuantizedType<quant::UniformQuantizedType>(value);
+        for (auto &data : *mem) {
+          data = (data - qtype.getZeroPoint()) * qtype.getScale();
+        }
+      }
+    }
   }
 }
 
@@ -132,23 +151,7 @@ ModuleInterpreter::getTensor(const std::string &name) {
     llvm::errs() << "Can't find op name: " << name << "\n";
     llvm_unreachable("Error, setTensor failed");
   }
-
-  auto it2 = value_map.find(name);
-  if (it2 == value_map.end()) {
-    llvm::errs() << "Can't find op name: " << name << "\n";
-    llvm_unreachable("Error, setTensor failed");
-  }
-
-  auto dtype = it2->second.getType().cast<RankedTensorType>().getElementType();
-  if(dtype.isa<quant::UniformQuantizedType>()) {
-    auto scale = dtype.cast<quant::UniformQuantizedType>().getScale();
-    for (size_t i = 0; i < it->second->size(); i++) {
-      (*it->second)[i] = (*(it->second))[i]*scale;
-    }
-    return it->second;
-  } else {
-    return it->second;
-  }
+  return it->second;
 }
 
 llvm::ArrayRef<int64_t>
@@ -161,4 +164,4 @@ ModuleInterpreter::getTensorShape(const std::string &name) {
   return it->second.getType().cast<RankedTensorType>().getShape();
 }
 
-} // namespace mlir
+} // namespace sophgo
