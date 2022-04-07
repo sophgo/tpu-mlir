@@ -1,5 +1,5 @@
-libdir=/work/flatbuffers/build/install/lib
-includedir=/work/flatbuffers/build/install/include
+libdir=/work/third-party/flatbuffers/build/install/lib
+includedir=/work/third-party/flatbuffers/build/install/include
 
 Name: FlatBuffers
 Description: Memory Efficient Serialization Library

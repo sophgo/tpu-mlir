@@ -86,7 +86,7 @@ void Module::updateModuleTypes(ModuleOp module) {
     for (uint32_t i = 0; i < returnOp->getNumOperands(); ++i) {
       returns.push_back(returnOp->getOperand(i).getType());
     }
-    auto fnType = builder.getFunctionType(func.getType().getInputs(),
+    auto fnType = builder.getFunctionType(func.getArgumentTypes(),
                                           llvm::ArrayRef<mlir::Type>{returns});
     func.setType(fnType);
     auto callee = getCallOp(module, func);

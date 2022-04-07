@@ -1,64 +1,66 @@
 FROM ubuntu:18.04
 LABEL maintainer pengchao.hu@sophgo.com
 
-# ================== select apt source ==================
-COPY sources-18.04.list /etc/apt/sources-18.04.list
-
-RUN cp /etc/apt/sources.list /etc/apt/sources.list.origin; \
-    cp /etc/apt/sources-18.04.list /etc/apt/sources.list;
+# ================== select apt source and update ==================
+COPY sources-18.04.list /etc/apt/sources.list
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    apt-transport-https \
+    ca-certificates \
+    gnupg \
+    software-properties-common
 
 # ================== zoneinfo ==================
-RUN apt-get update \
-    &&  DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata
 
 RUN TZ=Asia/Shanghai \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
     && echo $TZ > /etc/timezone \
     && dpkg-reconfigure -f noninteractive tzdata
 
-# ================== apt install ==================
+# ================= install python ==============
+RUN apt-get install -y --no-install-recommends \
+    build-essential gdb ninja-build automake autoconf libtool zlib1g-dev \
+    libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev \
+    vim wget curl git parallel ssh-client unzip zip tree libncurses5-dev \
+    python3.7-dev python3.7-distutils
+RUN wget https://bootstrap.pypa.io/get-pip.py
+RUN python3.7 get-pip.py
+
+RUN rm -rf /var/lib/apt/lists/* && rm get-pip.py
+RUN pip3 install --upgrade pip;
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.7 0
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 0
+RUN update-alternatives --install /usr/bin/pip pip /usr/local/bin/pip3.7 0
+
+# ================== cmake install ===============
+RUN echo deb https://apt.kitware.com/ubuntu/ bionic main > /etc/apt/sources.list
+RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential gdb ninja-build automake autoconf libtool \
-    vim wget curl git parallel ssh-client unzip zip tree python3-dev \
-    python3-pip jq default-jre rsync device-tree-compiler libssl-dev \
+    cmake-data=3.16.5-0kitware1 \
+    cmake=3.16.5-0kitware1
+# restore source again
+COPY sources-18.04.list /etc/apt/sources.list
+
+# ================== apt install ==================
+RUN dpkg --add-architecture i386 && apt-get update
+RUN apt-get install -y --no-install-recommends \
+    jq default-jre rsync device-tree-compiler \
     ssh bc slib cpio squashfs-tools fakeroot pkg-config autopoint \
     bison flex gettext indent meson libglib2.0-dev clang-format \
     libboost-all-dev libgflags-dev libgoogle-glog-dev libhdf5-serial-dev \
     libleveldb-dev liblmdb-dev libprotobuf-dev libsnappy-dev \
-    protobuf-compiler libopenblas-dev libncurses5-dev
+    protobuf-compiler libopenblas-dev
 
 # for 32bit arch
-RUN dpkg --add-architecture i386
-RUN apt-get update
 RUN apt-get install -y --no-install-recommends \
     libc6:i386 libncurses5:i386 libstdc++6:i386
 
-# for cmake
-RUN apt-get install -y --no-install-recommends \
-    apt-transport-https \
-    ca-certificates \
-    gnupg \
-    software-properties-common
-RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | apt-key add -
-RUN apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main'
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    cmake-data cmake
-
-# restore source again
-COPY sources-18.04.list /etc/apt/sources.list
-
-# cleanup
-RUN rm -rf /var/lib/apt/lists/*
-
-RUN pip3 install --upgrade pip; \
-    pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple; \
-    pip3 config set global.index-url https://mirrors.aliyun.com/pypi/simple;
-
+# ================== pip install ==================
 RUN pip3 install --no-cache-dir --upgrade setuptools
 RUN pip3 install --no-cache-dir \
     Cython numpy scipy scikit-image matplotlib \
     wheel leveldb decorator networkx nose python-dateutil \
-    protobuf pyyaml Pillow six lmdb pathlib tqdm enum34 \
+    protobuf pyyaml Pillow six lmdb tqdm enum34 \
     termcolor opencv-python-headless argcomplete jupyterlab \
     paramiko jedi ipython
 RUN pip3 install --no-cache-dir \
@@ -66,22 +68,10 @@ RUN pip3 install --no-cache-dir \
     onnx-simplifier tensorflow packaging Jinja2 \
     tf2onnx pycocotools ply gitpython pybind11[global]
 
-#=================== Setup default python =========
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 0
-RUN update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 0
-
-# COPY gosu /usr/local/bin/
-# COPY gosu.asc /usr/local/bin/
-# RUN set - x \
-#     && chmod +x /usr/local/bin/gosu \
-#     && gosu nobody true
-
-# COPY docker-entrypoint.sh /usr/local/bin/
-# RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-# ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
-
 # ================= Cleanup =================
 RUN rm -rf /tmp/*
+RUN pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple; \
+    pip3 config set global.index-url https://mirrors.aliyun.com/pypi/simple;
 
 WORKDIR /work/
 CMD ["bash"]
