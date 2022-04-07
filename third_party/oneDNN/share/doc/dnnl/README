@@ -7,7 +7,7 @@ includes basic building blocks for neural networks optimized
 for Intel(R) Architecture Processors, Intel Processor Graphics, and 
 Xe Architecture graphics.
 
-This package contains oneDNN v2.5.0 (48d956c10ec6cacf338e6a812c1ae1e3087b920c).
+This package contains oneDNN v2.6.0 (9636c49abf376d2144dace1c58247148a16960ab).
 
 You can find information about the latest version and release notes
 at the oneDNN Github (https://github.com/oneapi-src/oneDNN/releases).
@@ -15,10 +15,10 @@ at the oneDNN Github (https://github.com/oneapi-src/oneDNN/releases).
 Documentation
 -------------
 
-* Developer guide (https://oneapi-src.github.io/oneDNN/v2.5)
+* Developer guide (https://oneapi-src.github.io/oneDNN/v2.6)
   explains the programming model, supported functionality, and implementation
   details, and includes annotated examples.
-* API reference (https://oneapi-src.github.io/oneDNN/v2.5/modules.html)
+* API reference (https://oneapi-src.github.io/oneDNN/v2.6/modules.html)
 provides a comprehensive reference of the library API.
 
 System Requirements
@@ -127,6 +127,7 @@ Boost Software License, Version 1.0:
 MIT License:
 * Intel Graphics Compute Runtime for oneAPI Level Zero and OpenCL Driver (https://github.com/intel/compute-runtime)
 * Intel Graphics Compiler (https://github.com/intel/intel-graphics-compiler)
+* oneAPI Level Zero (https://github.com/oneapi-src/level-zero)
 
 This third party software, even if included with the distribution of
 the Intel software, may be governed by separate license terms, including

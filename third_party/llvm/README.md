@@ -1,9 +1,9 @@
 ## clone and build llvm
 
 ``` shell
-# 2022-04-06 12:04:19
+# 2022-04-07 11:00
 git clone https://github.com/llvm/llvm-project.git
-cd llvm-project && git checkout 368129229455997cd20c8ec84cb5f36019346b9a && cd ..
+cd llvm-project && git checkout f2796a5d444998ea73f02f433ed34b7c09e0f7d5 && cd ..
 mkdir -p llvm-project/build
 cd llvm-project/build
 cmake -G Ninja ../llvm \

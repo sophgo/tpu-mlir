@@ -1,8 +1,8 @@
-def MemoryOrderKindseq_cst : I32EnumAttrCase<"seq_cst", 0>;
-def MemoryOrderKindacq_rel : I32EnumAttrCase<"acq_rel", 1>;
-def MemoryOrderKindacquire : I32EnumAttrCase<"acquire", 2>;
-def MemoryOrderKindrelease : I32EnumAttrCase<"release", 3>;
-def MemoryOrderKindrelaxed : I32EnumAttrCase<"relaxed", 4>;
+def MemoryOrderKindseq_cst : I32EnumAttrCase<"Seq_cst", 0, "seq_cst">;
+def MemoryOrderKindacq_rel : I32EnumAttrCase<"Acq_rel", 1, "acq_rel">;
+def MemoryOrderKindacquire : I32EnumAttrCase<"Acquire", 2, "acquire">;
+def MemoryOrderKindrelease : I32EnumAttrCase<"Release", 3, "release">;
+def MemoryOrderKindrelaxed : I32EnumAttrCase<"Relaxed", 4, "relaxed">;
 def MemoryOrderKind: I32EnumAttr<
   "ClauseMemoryOrderKind",
   "MemoryOrderKind Clause",
@@ -11,7 +11,7 @@ def MemoryOrderKind: I32EnumAttr<
     let genSpecializedAttr = 0;
 }
 def MemoryOrderKindAttr : EnumAttr<OpenMP_Dialect, MemoryOrderKind, "memoryorderkind">;
-def OrderKindconcurrent : I32EnumAttrCase<"concurrent", 1>;
+def OrderKindconcurrent : I32EnumAttrCase<"Concurrent", 1, "concurrent">;
 def OrderKind: I32EnumAttr<
   "ClauseOrderKind",
   "OrderKind Clause",
@@ -20,10 +20,10 @@ def OrderKind: I32EnumAttr<
     let genSpecializedAttr = 0;
 }
 def OrderKindAttr : EnumAttr<OpenMP_Dialect, OrderKind, "orderkind">;
-def ProcBindKindprimary : I32EnumAttrCase<"primary", 0>;
-def ProcBindKindmaster : I32EnumAttrCase<"master", 1>;
-def ProcBindKindclose : I32EnumAttrCase<"close", 2>;
-def ProcBindKindspread : I32EnumAttrCase<"spread", 3>;
+def ProcBindKindprimary : I32EnumAttrCase<"Primary", 0, "primary">;
+def ProcBindKindmaster : I32EnumAttrCase<"Master", 1, "master">;
+def ProcBindKindclose : I32EnumAttrCase<"Close", 2, "close">;
+def ProcBindKindspread : I32EnumAttrCase<"Spread", 3, "spread">;
 def ProcBindKind: I32EnumAttr<
   "ClauseProcBindKind",
   "ProcBindKind Clause",
@@ -32,15 +32,15 @@ def ProcBindKind: I32EnumAttr<
     let genSpecializedAttr = 0;
 }
 def ProcBindKindAttr : EnumAttr<OpenMP_Dialect, ProcBindKind, "procbindkind">;
-def ScheduleKindStatic : I32EnumAttrCase<"Static", 0>;
-def ScheduleKindDynamic : I32EnumAttrCase<"Dynamic", 1>;
-def ScheduleKindGuided : I32EnumAttrCase<"Guided", 2>;
-def ScheduleKindAuto : I32EnumAttrCase<"Auto", 3>;
-def ScheduleKindRuntime : I32EnumAttrCase<"Runtime", 4>;
+def ScheduleKindstatic : I32EnumAttrCase<"Static", 0, "static">;
+def ScheduleKinddynamic : I32EnumAttrCase<"Dynamic", 1, "dynamic">;
+def ScheduleKindguided : I32EnumAttrCase<"Guided", 2, "guided">;
+def ScheduleKindauto : I32EnumAttrCase<"Auto", 3, "auto">;
+def ScheduleKindruntime : I32EnumAttrCase<"Runtime", 4, "runtime">;
 def ScheduleKind: I32EnumAttr<
   "ClauseScheduleKind",
   "ScheduleKind Clause",
-  [ScheduleKindStatic,ScheduleKindDynamic,ScheduleKindGuided,ScheduleKindAuto,ScheduleKindRuntime]> {
+  [ScheduleKindstatic,ScheduleKinddynamic,ScheduleKindguided,ScheduleKindauto,ScheduleKindruntime]> {
     let cppNamespace = "::mlir::omp";
     let genSpecializedAttr = 0;
 }

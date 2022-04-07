@@ -97,9 +97,6 @@
 /* Define to 1 if you have the <sysexits.h> header file. */
 #define HAVE_SYSEXITS_H 1
 
-/* Define to 1 to enable the experimental new pass manager by default */
-#define LLVM_ENABLE_NEW_PASS_MANAGER 1
-
 /* Define if the xar_open() function is supported on this platform. */
 /* #undef LLVM_HAVE_LIBXAR */
 
@@ -111,5 +108,9 @@
 
 /* Define if building LLVM with LLVM_FORCE_USE_OLD_TOOLCHAIN_LIBS */
 /* #undef LLVM_FORCE_USE_OLD_TOOLCHAIN */
+
+/* Define if llvm_unreachable should be optimized with undefined behavior
+ * in non assert builds */
+#define LLVM_UNREACHABLE_OPTIMIZE 1
 
 #endif

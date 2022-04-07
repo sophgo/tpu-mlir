@@ -23,13 +23,13 @@
 #define DNNL_VERSION_MAJOR 2
 
 /// Minor version
-#define DNNL_VERSION_MINOR 5
+#define DNNL_VERSION_MINOR 6
 
 /// Patch version
 #define DNNL_VERSION_PATCH 0
 
 /// Git commit hash
-#define DNNL_VERSION_HASH  "48d956c10ec6cacf338e6a812c1ae1e3087b920c"
+#define DNNL_VERSION_HASH  "9636c49abf376d2144dace1c58247148a16960ab"
 
 // clang-format on
 

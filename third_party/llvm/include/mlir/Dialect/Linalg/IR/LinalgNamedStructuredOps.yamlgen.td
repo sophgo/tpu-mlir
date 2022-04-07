@@ -1,5 +1,127 @@
 
 //===----------------------------------------------------------------------===//
+// Op definition for CopyOp
+//===----------------------------------------------------------------------===//
+
+def CopyOp : LinalgStructuredBase_Op<"copy", !listconcat([AttrSizedOperandSegments],
+  /*extraInterfaces=*/[])> {
+    
+  let summary = [{ Copies the tensor elementwise. }];
+  let description = [{
+    Numeric casting is performed on the input operand, promoting it to the same
+data type as the accumulator/output.
+  }];
+
+    let arguments = (ins
+      Variadic<AnyType>:$inputs,
+      Variadic<AnyShaped>:$outputs,
+DefaultValuedAttr<TypeFnAttr, "TypeFn::cast_signed">:$cast
+    );
+    let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
+    let regions = (region AnyRegion:$region);
+
+    let skipDefaultBuilders = 1;
+    let builders = [
+      OpBuilder<
+      (ins "ValueRange":$inputs, "ValueRange":$outputs,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        $_state.addOperands(inputs);
+        $_state.addOperands(outputs);
+        SmallVector<Type> resultTensorTypes;
+        copy_if(outputs.getTypes(),
+                std::back_inserter(resultTensorTypes),
+                [](Type type) { return type.isa<RankedTensorType>(); });
+        $_state.addTypes(resultTensorTypes);
+        $_state.addAttribute(
+          "operand_segment_sizes",
+          $_builder.getI32VectorAttr({
+            static_cast<int32_t>(inputs.size()),
+            static_cast<int32_t>(outputs.size())}));
+        $_state.addAttributes(attributes);
+        createAndFillStructuredOpRegion<CopyOp>(
+          $_builder,
+          $_state,
+          TypeRange(inputs),
+          TypeRange(outputs));
+      }]>,
+      OpBuilder<
+      (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
+            "ValueRange":$outputs,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        $_state.addOperands(inputs);
+        $_state.addOperands(outputs);
+        $_state.addTypes(resultTensorTypes);
+        $_state.addAttributes(attributes);
+        $_state.addAttribute(
+          "operand_segment_sizes",
+          $_builder.getI32VectorAttr({
+            static_cast<int32_t>(inputs.size()),
+            static_cast<int32_t>(outputs.size())}));
+        createAndFillStructuredOpRegion<CopyOp>(
+          $_builder,
+          $_state,
+          TypeRange(inputs),
+          TypeRange(outputs));
+      }]>,
+      OpBuilder<
+      (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        $_state.addOperands(operands);
+        $_state.addAttributes(attributes);
+        $_state.addTypes(resultTensorTypes);
+        (void)$_state.addRegion();
+      }]>
+      
+  , OpBuilder<
+  (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
+       "ValueRange":$outputs, "Attribute":$cast,
+       CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+  [{
+    $_state.addOperands(inputs);
+    $_state.addOperands(outputs);
+    $_state.addTypes(resultTensorTypes);
+    $_state.addAttribute("cast", cast);
+    $_state.addAttributes(attributes);
+    $_state.addAttribute(
+      "operand_segment_sizes",
+      $_builder.getI32VectorAttr({
+        static_cast<int32_t>(inputs.size()),
+        static_cast<int32_t>(outputs.size())}));
+    createAndFillStructuredOpRegion<CopyOp>(
+      $_builder,
+      $_state,
+      TypeRange(inputs),
+      TypeRange(outputs));
+  }]>
+
+    ];
+    let hasCustomAssemblyFormat = 1;
+    let hasFolder = 1;
+    
+
+    let extraClassDeclaration = structuredOpsBaseDecls # [{
+      // Auto-generated.
+      ArrayAttr iterator_types();
+      ArrayAttr indexing_maps();
+      static void regionBuilder(ImplicitLocOpBuilder &b,
+                                Block &block, ArrayRef<NamedAttribute> attrs);
+      static std::function<void(ImplicitLocOpBuilder &,
+                                Block &, ArrayRef<NamedAttribute>)>
+      getRegionBuilder() {
+        return regionBuilder;
+      }
+
+      // Generic methods.
+      static unsigned getNumRegionArgs();
+      std::string getLibraryCallName();
+      
+    }];
+}
+
+//===----------------------------------------------------------------------===//
 // Op definition for ElemwiseUnaryOp
 //===----------------------------------------------------------------------===//
 
@@ -102,6 +224,7 @@ $_state.addAttribute("cast", cast);
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -225,6 +348,7 @@ $_state.addAttribute("cast", cast);
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -346,6 +470,7 @@ DefaultValuedAttr<TypeFnAttr, "TypeFn::cast_signed">:$cast
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -444,6 +569,7 @@ them to the same data type as the accumulator/output.
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -544,6 +670,7 @@ matmul.
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -647,6 +774,7 @@ def Mmt4DOp : LinalgStructuredBase_Op<"mmt4d", !listconcat([AttrSizedOperandSegm
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -745,6 +873,7 @@ them to the same data type as the accumulator/output.
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -845,6 +974,7 @@ matmul.
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -943,6 +1073,7 @@ them to the same data type as the accumulator/output.
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -1041,6 +1172,7 @@ them to the same data type as the accumulator/output.
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -1139,6 +1271,7 @@ them to the same data type as the accumulator/output.
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -1237,6 +1370,7 @@ them to the same data type as the accumulator/output.
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -1335,6 +1469,7 @@ them to the same data type as the accumulator/output.
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -1433,6 +1568,7 @@ them to the same data type as the accumulator/output.
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -1531,6 +1667,7 @@ them to the same data type as the accumulator/output.
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -1654,6 +1791,7 @@ $_state.addAttribute("dilations", dilations);
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -1784,6 +1922,7 @@ $_state.addAttribute("dilations", dilations);
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -1915,6 +2054,7 @@ $_state.addAttribute("dilations", dilations);
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -2045,6 +2185,7 @@ $_state.addAttribute("dilations", dilations);
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -2171,6 +2312,7 @@ $_state.addAttribute("dilations", dilations);
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -2298,6 +2440,7 @@ $_state.addAttribute("dilations", dilations);
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -2425,6 +2568,7 @@ $_state.addAttribute("dilations", dilations);
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -2551,6 +2695,7 @@ $_state.addAttribute("dilations", dilations);
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -2677,6 +2822,7 @@ $_state.addAttribute("dilations", dilations);
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -2803,6 +2949,7 @@ $_state.addAttribute("dilations", dilations);
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -2929,6 +3076,7 @@ $_state.addAttribute("dilations", dilations);
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -3055,6 +3203,7 @@ $_state.addAttribute("dilations", dilations);
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -3181,6 +3330,7 @@ $_state.addAttribute("dilations", dilations);
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -3307,6 +3457,7 @@ $_state.addAttribute("dilations", dilations);
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -3433,6 +3584,7 @@ $_state.addAttribute("dilations", dilations);
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -3559,6 +3711,7 @@ $_state.addAttribute("dilations", dilations);
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -3685,6 +3838,7 @@ $_state.addAttribute("dilations", dilations);
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -3811,6 +3965,7 @@ $_state.addAttribute("dilations", dilations);
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -3937,6 +4092,7 @@ $_state.addAttribute("dilations", dilations);
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -3961,11 +4117,11 @@ $_state.addAttribute("dilations", dilations);
 }
 
 //===----------------------------------------------------------------------===//
-// Op definition for FillTensorOp
+// Op definition for FillOp
 //===----------------------------------------------------------------------===//
 
-def FillTensorOp : LinalgStructuredBase_Op<"fill_tensor", !listconcat([AttrSizedOperandSegments],
-  /*extraInterfaces=*/[])> {
+def FillOp : LinalgStructuredBase_Op<"fill", !listconcat([AttrSizedOperandSegments],
+  /*extraInterfaces=*/[LinalgFillOpInterface])> {
     
   let summary = [{ Fills the output tensor with the given value. }];
   let description = [{
@@ -4000,7 +4156,7 @@ the value operand, promoting it to the same data type as the output.
             static_cast<int32_t>(inputs.size()),
             static_cast<int32_t>(outputs.size())}));
         $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<FillTensorOp>(
+        createAndFillStructuredOpRegion<FillOp>(
           $_builder,
           $_state,
           TypeRange(inputs),
@@ -4020,7 +4176,7 @@ the value operand, promoting it to the same data type as the output.
           $_builder.getI32VectorAttr({
             static_cast<int32_t>(inputs.size()),
             static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<FillTensorOp>(
+        createAndFillStructuredOpRegion<FillOp>(
           $_builder,
           $_state,
           TypeRange(inputs),
@@ -4039,6 +4195,8 @@ the value operand, promoting it to the same data type as the output.
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
+    let hasCanonicalizer = 1;
+
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
@@ -4142,104 +4300,7 @@ the range of the generated random numbers.
     ];
     let hasCustomAssemblyFormat = 1;
     let hasFolder = 1;
-
-    let extraClassDeclaration = structuredOpsBaseDecls # [{
-      // Auto-generated.
-      ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
-      static void regionBuilder(ImplicitLocOpBuilder &b,
-                                Block &block, ArrayRef<NamedAttribute> attrs);
-      static std::function<void(ImplicitLocOpBuilder &,
-                                Block &, ArrayRef<NamedAttribute>)>
-      getRegionBuilder() {
-        return regionBuilder;
-      }
-
-      // Generic methods.
-      static unsigned getNumRegionArgs();
-      std::string getLibraryCallName();
-      
-    }];
-}
-
-//===----------------------------------------------------------------------===//
-// Op definition for SoftPlus2DOp
-//===----------------------------------------------------------------------===//
-
-def SoftPlus2DOp : LinalgStructuredBase_Op<"soft_plus_2d", !listconcat([AttrSizedOperandSegments],
-  /*extraInterfaces=*/[])> {
     
-  let summary = [{ Implements the soft plus operator. }];
-  let description = [{
-    Numeric casting is performed on the input operand, promoting it to the same
-data type as the accumulator/output.
-  }];
-
-    let arguments = (ins
-      Variadic<AnyType>:$inputs,
-      Variadic<AnyShaped>:$outputs
-    );
-    let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
-    let regions = (region AnyRegion:$region);
-
-    let skipDefaultBuilders = 1;
-    let builders = [
-      OpBuilder<
-      (ins "ValueRange":$inputs, "ValueRange":$outputs,
-            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
-      [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<SoftPlus2DOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
-      }]>,
-      OpBuilder<
-      (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
-            "ValueRange":$outputs,
-            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
-      [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<SoftPlus2DOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
-      }]>,
-      OpBuilder<
-      (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
-            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
-      [{
-        $_state.addOperands(operands);
-        $_state.addAttributes(attributes);
-        $_state.addTypes(resultTensorTypes);
-        (void)$_state.addRegion();
-      }]>
-      
-    ];
-    let hasCustomAssemblyFormat = 1;
-    let hasFolder = 1;
 
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.

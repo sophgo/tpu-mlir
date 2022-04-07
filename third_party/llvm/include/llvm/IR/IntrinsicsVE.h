@@ -13,14 +13,19 @@ namespace llvm {
 namespace Intrinsic {
 enum VEIntrinsics : unsigned {
 // Enum values for intrinsics
-    ve_vl_andm_MMM = 8153,                            // llvm.ve.vl.andm.MMM
+    ve_vl_andm_MMM = 8193,                            // llvm.ve.vl.andm.MMM
     ve_vl_andm_mmm,                            // llvm.ve.vl.andm.mmm
     ve_vl_eqvm_MMM,                            // llvm.ve.vl.eqvm.MMM
     ve_vl_eqvm_mmm,                            // llvm.ve.vl.eqvm.mmm
     ve_vl_extract_vm512l,                      // llvm.ve.vl.extract.vm512l
     ve_vl_extract_vm512u,                      // llvm.ve.vl.extract.vm512u
+    ve_vl_fencec_s,                            // llvm.ve.vl.fencec.s
+    ve_vl_fencei,                              // llvm.ve.vl.fencei
+    ve_vl_fencem_s,                            // llvm.ve.vl.fencem.s
+    ve_vl_fidcr_sss,                           // llvm.ve.vl.fidcr.sss
     ve_vl_insert_vm512l,                       // llvm.ve.vl.insert.vm512l
     ve_vl_insert_vm512u,                       // llvm.ve.vl.insert.vm512u
+    ve_vl_lcr_sss,                             // llvm.ve.vl.lcr.sss
     ve_vl_lsv_vvss,                            // llvm.ve.vl.lsv.vvss
     ve_vl_lvm_MMss,                            // llvm.ve.vl.lvm.MMss
     ve_vl_lvm_mmss,                            // llvm.ve.vl.lvm.mmss
@@ -60,6 +65,15 @@ enum VEIntrinsics : unsigned {
     ve_vl_pvbrd_vsMvl,                         // llvm.ve.vl.pvbrd.vsMvl
     ve_vl_pvbrd_vsl,                           // llvm.ve.vl.pvbrd.vsl
     ve_vl_pvbrd_vsvl,                          // llvm.ve.vl.pvbrd.vsvl
+    ve_vl_pvbrv_vvMvl,                         // llvm.ve.vl.pvbrv.vvMvl
+    ve_vl_pvbrv_vvl,                           // llvm.ve.vl.pvbrv.vvl
+    ve_vl_pvbrv_vvvl,                          // llvm.ve.vl.pvbrv.vvvl
+    ve_vl_pvbrvlo_vvl,                         // llvm.ve.vl.pvbrvlo.vvl
+    ve_vl_pvbrvlo_vvmvl,                       // llvm.ve.vl.pvbrvlo.vvmvl
+    ve_vl_pvbrvlo_vvvl,                        // llvm.ve.vl.pvbrvlo.vvvl
+    ve_vl_pvbrvup_vvl,                         // llvm.ve.vl.pvbrvup.vvl
+    ve_vl_pvbrvup_vvmvl,                       // llvm.ve.vl.pvbrvup.vvmvl
+    ve_vl_pvbrvup_vvvl,                        // llvm.ve.vl.pvbrvup.vvvl
     ve_vl_pvcmps_vsvMvl,                       // llvm.ve.vl.pvcmps.vsvMvl
     ve_vl_pvcmps_vsvl,                         // llvm.ve.vl.pvcmps.vsvl
     ve_vl_pvcmps_vsvvl,                        // llvm.ve.vl.pvcmps.vsvvl
@@ -328,6 +342,15 @@ enum VEIntrinsics : unsigned {
     ve_vl_pvfsub_vvvMvl,                       // llvm.ve.vl.pvfsub.vvvMvl
     ve_vl_pvfsub_vvvl,                         // llvm.ve.vl.pvfsub.vvvl
     ve_vl_pvfsub_vvvvl,                        // llvm.ve.vl.pvfsub.vvvvl
+    ve_vl_pvldz_vvMvl,                         // llvm.ve.vl.pvldz.vvMvl
+    ve_vl_pvldz_vvl,                           // llvm.ve.vl.pvldz.vvl
+    ve_vl_pvldz_vvvl,                          // llvm.ve.vl.pvldz.vvvl
+    ve_vl_pvldzlo_vvl,                         // llvm.ve.vl.pvldzlo.vvl
+    ve_vl_pvldzlo_vvmvl,                       // llvm.ve.vl.pvldzlo.vvmvl
+    ve_vl_pvldzlo_vvvl,                        // llvm.ve.vl.pvldzlo.vvvl
+    ve_vl_pvldzup_vvl,                         // llvm.ve.vl.pvldzup.vvl
+    ve_vl_pvldzup_vvmvl,                       // llvm.ve.vl.pvldzup.vvmvl
+    ve_vl_pvldzup_vvvl,                        // llvm.ve.vl.pvldzup.vvvl
     ve_vl_pvmaxs_vsvMvl,                       // llvm.ve.vl.pvmaxs.vsvMvl
     ve_vl_pvmaxs_vsvl,                         // llvm.ve.vl.pvmaxs.vsvl
     ve_vl_pvmaxs_vsvvl,                        // llvm.ve.vl.pvmaxs.vsvvl
@@ -346,6 +369,15 @@ enum VEIntrinsics : unsigned {
     ve_vl_pvor_vvvMvl,                         // llvm.ve.vl.pvor.vvvMvl
     ve_vl_pvor_vvvl,                           // llvm.ve.vl.pvor.vvvl
     ve_vl_pvor_vvvvl,                          // llvm.ve.vl.pvor.vvvvl
+    ve_vl_pvpcnt_vvMvl,                        // llvm.ve.vl.pvpcnt.vvMvl
+    ve_vl_pvpcnt_vvl,                          // llvm.ve.vl.pvpcnt.vvl
+    ve_vl_pvpcnt_vvvl,                         // llvm.ve.vl.pvpcnt.vvvl
+    ve_vl_pvpcntlo_vvl,                        // llvm.ve.vl.pvpcntlo.vvl
+    ve_vl_pvpcntlo_vvmvl,                      // llvm.ve.vl.pvpcntlo.vvmvl
+    ve_vl_pvpcntlo_vvvl,                       // llvm.ve.vl.pvpcntlo.vvvl
+    ve_vl_pvpcntup_vvl,                        // llvm.ve.vl.pvpcntup.vvl
+    ve_vl_pvpcntup_vvmvl,                      // llvm.ve.vl.pvpcntup.vvmvl
+    ve_vl_pvpcntup_vvvl,                       // llvm.ve.vl.pvpcntup.vvvl
     ve_vl_pvrcp_vvl,                           // llvm.ve.vl.pvrcp.vvl
     ve_vl_pvrcp_vvvl,                          // llvm.ve.vl.pvrcp.vvvl
     ve_vl_pvrsqrt_vvl,                         // llvm.ve.vl.pvrsqrt.vvl
@@ -400,10 +432,12 @@ enum VEIntrinsics : unsigned {
     ve_vl_pvxor_vvvMvl,                        // llvm.ve.vl.pvxor.vvvMvl
     ve_vl_pvxor_vvvl,                          // llvm.ve.vl.pvxor.vvvl
     ve_vl_pvxor_vvvvl,                         // llvm.ve.vl.pvxor.vvvvl
+    ve_vl_scr_sss,                             // llvm.ve.vl.scr.sss
     ve_vl_svm_sMs,                             // llvm.ve.vl.svm.sMs
     ve_vl_svm_sms,                             // llvm.ve.vl.svm.sms
     ve_vl_svob,                                // llvm.ve.vl.svob
     ve_vl_tovm_sml,                            // llvm.ve.vl.tovm.sml
+    ve_vl_tscr_ssss,                           // llvm.ve.vl.tscr.ssss
     ve_vl_vaddsl_vsvl,                         // llvm.ve.vl.vaddsl.vsvl
     ve_vl_vaddsl_vsvmvl,                       // llvm.ve.vl.vaddsl.vsvmvl
     ve_vl_vaddsl_vsvvl,                        // llvm.ve.vl.vaddsl.vsvvl
@@ -452,6 +486,9 @@ enum VEIntrinsics : unsigned {
     ve_vl_vbrdw_vsl,                           // llvm.ve.vl.vbrdw.vsl
     ve_vl_vbrdw_vsmvl,                         // llvm.ve.vl.vbrdw.vsmvl
     ve_vl_vbrdw_vsvl,                          // llvm.ve.vl.vbrdw.vsvl
+    ve_vl_vbrv_vvl,                            // llvm.ve.vl.vbrv.vvl
+    ve_vl_vbrv_vvmvl,                          // llvm.ve.vl.vbrv.vvmvl
+    ve_vl_vbrv_vvvl,                           // llvm.ve.vl.vbrv.vvvl
     ve_vl_vcmpsl_vsvl,                         // llvm.ve.vl.vcmpsl.vsvl
     ve_vl_vcmpsl_vsvmvl,                       // llvm.ve.vl.vcmpsl.vsvmvl
     ve_vl_vcmpsl_vsvvl,                        // llvm.ve.vl.vcmpsl.vsvvl
@@ -933,6 +970,9 @@ enum VEIntrinsics : unsigned {
     ve_vl_vldu2dnc_vssvl,                      // llvm.ve.vl.vldu2dnc.vssvl
     ve_vl_vldunc_vssl,                         // llvm.ve.vl.vldunc.vssl
     ve_vl_vldunc_vssvl,                        // llvm.ve.vl.vldunc.vssvl
+    ve_vl_vldz_vvl,                            // llvm.ve.vl.vldz.vvl
+    ve_vl_vldz_vvmvl,                          // llvm.ve.vl.vldz.vvmvl
+    ve_vl_vldz_vvvl,                           // llvm.ve.vl.vldz.vvvl
     ve_vl_vmaxsl_vsvl,                         // llvm.ve.vl.vmaxsl.vsvl
     ve_vl_vmaxsl_vsvmvl,                       // llvm.ve.vl.vmaxsl.vsvmvl
     ve_vl_vmaxsl_vsvvl,                        // llvm.ve.vl.vmaxsl.vsvvl
@@ -1020,6 +1060,9 @@ enum VEIntrinsics : unsigned {
     ve_vl_vor_vvvl,                            // llvm.ve.vl.vor.vvvl
     ve_vl_vor_vvvmvl,                          // llvm.ve.vl.vor.vvvmvl
     ve_vl_vor_vvvvl,                           // llvm.ve.vl.vor.vvvvl
+    ve_vl_vpcnt_vvl,                           // llvm.ve.vl.vpcnt.vvl
+    ve_vl_vpcnt_vvmvl,                         // llvm.ve.vl.vpcnt.vvmvl
+    ve_vl_vpcnt_vvvl,                          // llvm.ve.vl.vpcnt.vvvl
     ve_vl_vrand_vvl,                           // llvm.ve.vl.vrand.vvl
     ve_vl_vrand_vvml,                          // llvm.ve.vl.vrand.vvml
     ve_vl_vrcpd_vvl,                           // llvm.ve.vl.vrcpd.vvl

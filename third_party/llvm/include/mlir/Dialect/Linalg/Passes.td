@@ -43,9 +43,9 @@ def LinalgComprehensiveModuleBufferize :
     Option<"printConflicts", "print-conflicts", "bool",
             /*default=*/"false",
            "Annotates IR with RaW conflicts. Requires test-analysis-only.">,
-    Option<"allowReturnMemref", "allow-return-memref", "bool",
+    Option<"allowReturnAllocs", "allow-return-allocs", "bool",
             /*default=*/"false",
-           "Allows the return of memrefs (for testing purposes only)">,
+           "Allows returning/yielding new allocations from a block.">,
     Option<"allowUnknownOps", "allow-unknown-ops", "bool",
            /*default=*/"false",
            "Allows unknown (not bufferizable) ops in the input IR.">,
@@ -194,7 +194,7 @@ def LinalgTiling : Pass<"linalg-tile", "FuncOp"> {
   ];
   let options = [
     ListOption<"tileSizes", "tile-sizes", "int64_t", "Tile sizes",
-               "llvm::cl::ZeroOrMore, llvm::cl::MiscFlags::CommaSeparated">,
+               "llvm::cl::ZeroOrMore">,
     Option<"loopType", "loop-type", "std::string", /*default=*/"\"for\"",
            "Specify the type of loops to generate: for, parallel">
   ];

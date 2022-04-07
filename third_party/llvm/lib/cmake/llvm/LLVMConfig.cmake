@@ -126,7 +126,7 @@ set_property(GLOBAL PROPERTY LLVMBUILD_LIB_DEPS_LLVMExegesisX86 )
 set_property(GLOBAL PROPERTY LLVMBUILD_LIB_DEPS_LLVMExegesis )
 set_property(GLOBAL PROPERTY LLVMBUILD_LIB_DEPS_Remarks )
 
-set(TARGET_TRIPLE "x86_64-unknown-linux-gnu")
+set(LLVM_TARGET_TRIPLE "x86_64-unknown-linux-gnu")
 
 set(LLVM_HOST_TRIPLE "x86_64-unknown-linux-gnu")
 
@@ -177,8 +177,6 @@ set(LLVM_ENABLE_PIC ON)
 
 set(LLVM_BUILD_32_BITS OFF)
 
-set(LLVM_ENABLE_NEW_PASS_MANAGER TRUE)
-
 if (NOT "-lpthread" STREQUAL "")
   set(LLVM_PTHREAD_LIB "-lpthread")
 endif()
@@ -217,7 +215,7 @@ set(LLVM_HAVE_OPT_VIEWER_MODULES 0)
 set(LLVM_CONFIGURATION_TYPES )
 set(LLVM_ENABLE_SHARED_LIBS OFF)
 
-set(LLVM_DEFAULT_EXTERNAL_LIT "/work/llvm-project/build/./bin/llvm-lit")
+set(LLVM_DEFAULT_EXTERNAL_LIT "/work/third-party/llvm-project/build/./bin/llvm-lit")
 set(LLVM_LIT_ARGS "-sv")
 
 set(LLVM_HAVE_LIBXAR "")

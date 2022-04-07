@@ -322,14 +322,8 @@ class TraitBase {
 protected:
   /// Return the ultimate Operation being worked on.
   Operation *getOperation() {
-    // We have to cast up to the trait type, then to the concrete type, then to
-    // the BaseState class in explicit hops because the concrete type will
-    // multiply derive from the (content free) TraitBase class, and we need to
-    // be able to disambiguate the path for the C++ compiler.
-    auto *trait = static_cast<TraitType<ConcreteType> *>(this);
-    auto *concrete = static_cast<ConcreteType *>(trait);
-    auto *base = static_cast<OpState *>(concrete);
-    return base->getOperation();
+    auto *concrete = static_cast<ConcreteType *>(this);
+    return concrete->getOperation();
   }
 };
 
@@ -920,7 +914,7 @@ struct SingleBlockImplicitTerminator {
     /// The type of the operation used as the implicit terminator type.
     using ImplicitTerminatorOpT = TerminatorOpType;
 
-    static LogicalResult verifyTrait(Operation *op) {
+    static LogicalResult verifyRegionTrait(Operation *op) {
       if (failed(Base::verifyTrait(op)))
         return failure();
       for (unsigned i = 0, e = op->getNumRegions(); i < e; ++i) {
@@ -1218,7 +1212,7 @@ template <typename ConcreteType>
 class IsIsolatedFromAbove
     : public TraitBase<ConcreteType, IsIsolatedFromAbove> {
 public:
-  static LogicalResult verifyTrait(Operation *op) {
+  static LogicalResult verifyRegionTrait(Operation *op) {
     return impl::verifyIsIsolatedFromAbove(op);
   }
 };
@@ -1262,7 +1256,7 @@ struct HasParent {
   class Impl : public TraitBase<ConcreteType, Impl> {
   public:
     static LogicalResult verifyTrait(Operation *op) {
-      if (llvm::isa<ParentOpTypes...>(op->getParentOp()))
+      if (llvm::isa_and_nonnull<ParentOpTypes...>(op->getParentOp()))
         return success();
 
       return op->emitOpError()
@@ -1617,6 +1611,7 @@ static LogicalResult verifyTraits(Operation *op) {
 template <typename... Ts>
 static LogicalResult verifyRegionTraitsImpl(Operation *op,
                                             std::tuple<Ts...> *) {
+  (void)op;
   LogicalResult result = success();
   (void)std::initializer_list<int>{
       (result = succeeded(result) ? Ts::verifyRegionTrait(op) : failure(),

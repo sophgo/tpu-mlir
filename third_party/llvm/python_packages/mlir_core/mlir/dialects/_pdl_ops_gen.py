@@ -26,14 +26,13 @@ class ApplyNativeConstraintOp(_ods_ir.OpView):
 
   _ODS_REGIONS = (0, True)
 
-  def __init__(self, name, args, constParams, *, loc=None, ip=None):
+  def __init__(self, name, args, *, loc=None, ip=None):
     operands = []
     results = []
     attributes = {}
     regions = None
     operands.extend(_get_op_results_or_values(args))
     attributes["name"] = name
-    if constParams is not None: attributes["constParams"] = constParams
     _ods_successors = None
     super().__init__(self.build_generic(
       attributes=attributes, results=results, operands=operands,
@@ -61,14 +60,13 @@ class ApplyNativeRewriteOp(_ods_ir.OpView):
 
   _ODS_REGIONS = (0, True)
 
-  def __init__(self, results_, name, args, constParams, *, loc=None, ip=None):
+  def __init__(self, results_, name, args, *, loc=None, ip=None):
     operands = []
     results = []
     attributes = {}
     regions = None
     operands.extend(_get_op_results_or_values(args))
     attributes["name"] = name
-    if constParams is not None: attributes["constParams"] = constParams
     results.extend(results_)
     _ods_successors = None
     super().__init__(self.build_generic(
@@ -468,7 +466,7 @@ class RewriteOp(_ods_ir.OpView):
 
   _ODS_REGIONS = (1, True)
 
-  def __init__(self, root, name, externalArgs, externalConstParams, *, loc=None, ip=None):
+  def __init__(self, root, name, externalArgs, *, loc=None, ip=None):
     operands = []
     results = []
     attributes = {}
@@ -476,7 +474,6 @@ class RewriteOp(_ods_ir.OpView):
     operands.append(_get_op_result_or_value(root) if root is not None else None)
     operands.append(_get_op_results_or_values(externalArgs))
     if name is not None: attributes["name"] = name
-    if externalConstParams is not None: attributes["externalConstParams"] = externalConstParams
     _ods_successors = None
     super().__init__(self.build_generic(
       attributes=attributes, results=results, operands=operands,

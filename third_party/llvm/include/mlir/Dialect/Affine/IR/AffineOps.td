@@ -344,7 +344,7 @@ def AffineForOp : Affine_Op<"for",
   let hasCanonicalizer = 1;
   let hasCustomAssemblyFormat = 1;
   let hasFolder = 1;
-  let hasVerifier = 1;
+  let hasRegionVerifier = 1;
 }
 
 def AffineIfOp : Affine_Op<"if",
@@ -493,6 +493,9 @@ class AffineLoadOpBase<string mnemonic, list<Trait> traits = []> :
     }
 
     static StringRef getMapAttrName() { return "map"; }
+
+    // TODO: Remove once prefixing is flipped.
+    operand_range getIndices() { return indices(); }
   }];
 }
 
@@ -856,6 +859,9 @@ class AffineStoreOpBase<string mnemonic, list<Trait> traits = []> :
     }
 
     static StringRef getMapAttrName() { return "map"; }
+
+    // TODO: Remove once prefixing is flipped.
+    operand_range getIndices() { return indices(); }
   }];
 }
 

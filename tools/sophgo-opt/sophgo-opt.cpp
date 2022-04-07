@@ -23,8 +23,7 @@
 
 #include "mlir/InitAllDialects.h"
 #include "mlir/InitAllPasses.h"
-#include "mlir/Support/MlirOptMain.h"
-
+#include "mlir/Tools/mlir-opt/MlirOptMain.h"
 using namespace mlir;
 
 int main(int argc, char **argv) {
@@ -33,7 +32,7 @@ int main(int argc, char **argv) {
   DialectRegistry registry;
   sophgo::registerAllDialects(registry);
 
-  return asMainReturnCode(MlirOptMain(
-      argc, argv, "Sophgo MLIR module optimizer driver\n", registry,
-      /*preloadDialectsInContext=*/false));
+  return asMainReturnCode(
+      MlirOptMain(argc, argv, "Sophgo MLIR module optimizer driver\n", registry,
+                  /*preloadDialectsInContext=*/false));
 }

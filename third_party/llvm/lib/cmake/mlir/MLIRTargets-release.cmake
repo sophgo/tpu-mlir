@@ -125,6 +125,16 @@ set_target_properties(MLIRControlFlowToSPIRV PROPERTIES
 list(APPEND _IMPORT_CHECK_TARGETS MLIRControlFlowToSPIRV )
 list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRControlFlowToSPIRV "${_IMPORT_PREFIX}/lib/libMLIRControlFlowToSPIRV.a" )
 
+# Import target "MLIRFuncToLLVM" for configuration "Release"
+set_property(TARGET MLIRFuncToLLVM APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+set_target_properties(MLIRFuncToLLVM PROPERTIES
+  IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "CXX"
+  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libMLIRFuncToLLVM.a"
+  )
+
+list(APPEND _IMPORT_CHECK_TARGETS MLIRFuncToLLVM )
+list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRFuncToLLVM "${_IMPORT_PREFIX}/lib/libMLIRFuncToLLVM.a" )
+
 # Import target "MLIRFuncToSPIRV" for configuration "Release"
 set_property(TARGET MLIRFuncToSPIRV APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(MLIRFuncToSPIRV PROPERTIES
@@ -385,16 +395,6 @@ set_target_properties(MLIRSPIRVToLLVM PROPERTIES
 list(APPEND _IMPORT_CHECK_TARGETS MLIRSPIRVToLLVM )
 list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRSPIRVToLLVM "${_IMPORT_PREFIX}/lib/libMLIRSPIRVToLLVM.a" )
 
-# Import target "MLIRStandardToLLVM" for configuration "Release"
-set_property(TARGET MLIRStandardToLLVM APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
-set_target_properties(MLIRStandardToLLVM PROPERTIES
-  IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "CXX"
-  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libMLIRStandardToLLVM.a"
-  )
-
-list(APPEND _IMPORT_CHECK_TARGETS MLIRStandardToLLVM )
-list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRStandardToLLVM "${_IMPORT_PREFIX}/lib/libMLIRStandardToLLVM.a" )
-
 # Import target "MLIRTensorToSPIRV" for configuration "Release"
 set_property(TARGET MLIRTensorToSPIRV APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(MLIRTensorToSPIRV PROPERTIES
@@ -404,6 +404,16 @@ set_target_properties(MLIRTensorToSPIRV PROPERTIES
 
 list(APPEND _IMPORT_CHECK_TARGETS MLIRTensorToSPIRV )
 list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRTensorToSPIRV "${_IMPORT_PREFIX}/lib/libMLIRTensorToSPIRV.a" )
+
+# Import target "MLIRTosaToArith" for configuration "Release"
+set_property(TARGET MLIRTosaToArith APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+set_target_properties(MLIRTosaToArith PROPERTIES
+  IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "CXX"
+  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libMLIRTosaToArith.a"
+  )
+
+list(APPEND _IMPORT_CHECK_TARGETS MLIRTosaToArith )
+list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRTosaToArith "${_IMPORT_PREFIX}/lib/libMLIRTosaToArith.a" )
 
 # Import target "MLIRTosaToLinalg" for configuration "Release"
 set_property(TARGET MLIRTosaToLinalg APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
@@ -425,15 +435,15 @@ set_target_properties(MLIRTosaToSCF PROPERTIES
 list(APPEND _IMPORT_CHECK_TARGETS MLIRTosaToSCF )
 list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRTosaToSCF "${_IMPORT_PREFIX}/lib/libMLIRTosaToSCF.a" )
 
-# Import target "MLIRTosaToStandard" for configuration "Release"
-set_property(TARGET MLIRTosaToStandard APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
-set_target_properties(MLIRTosaToStandard PROPERTIES
+# Import target "MLIRTosaToTensor" for configuration "Release"
+set_property(TARGET MLIRTosaToTensor APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+set_target_properties(MLIRTosaToTensor PROPERTIES
   IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "CXX"
-  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libMLIRTosaToStandard.a"
+  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libMLIRTosaToTensor.a"
   )
 
-list(APPEND _IMPORT_CHECK_TARGETS MLIRTosaToStandard )
-list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRTosaToStandard "${_IMPORT_PREFIX}/lib/libMLIRTosaToStandard.a" )
+list(APPEND _IMPORT_CHECK_TARGETS MLIRTosaToTensor )
+list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRTosaToTensor "${_IMPORT_PREFIX}/lib/libMLIRTosaToTensor.a" )
 
 # Import target "MLIRVectorToROCDL" for configuration "Release"
 set_property(TARGET MLIRVectorToROCDL APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
@@ -734,16 +744,6 @@ set_target_properties(MLIRLinalgAnalysis PROPERTIES
 
 list(APPEND _IMPORT_CHECK_TARGETS MLIRLinalgAnalysis )
 list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRLinalgAnalysis "${_IMPORT_PREFIX}/lib/libMLIRLinalgAnalysis.a" )
-
-# Import target "MLIRAffineBufferizableOpInterfaceImpl" for configuration "Release"
-set_property(TARGET MLIRAffineBufferizableOpInterfaceImpl APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
-set_target_properties(MLIRAffineBufferizableOpInterfaceImpl PROPERTIES
-  IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "CXX"
-  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libMLIRAffineBufferizableOpInterfaceImpl.a"
-  )
-
-list(APPEND _IMPORT_CHECK_TARGETS MLIRAffineBufferizableOpInterfaceImpl )
-list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRAffineBufferizableOpInterfaceImpl "${_IMPORT_PREFIX}/lib/libMLIRAffineBufferizableOpInterfaceImpl.a" )
 
 # Import target "MLIRModuleBufferization" for configuration "Release"
 set_property(TARGET MLIRModuleBufferization APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
@@ -1405,16 +1405,6 @@ set_target_properties(MLIRSupport PROPERTIES
 list(APPEND _IMPORT_CHECK_TARGETS MLIRSupport )
 list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRSupport "${_IMPORT_PREFIX}/lib/libMLIRSupport.a" )
 
-# Import target "MLIROptLib" for configuration "Release"
-set_property(TARGET MLIROptLib APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
-set_target_properties(MLIROptLib PROPERTIES
-  IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "CXX"
-  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libMLIROptLib.a"
-  )
-
-list(APPEND _IMPORT_CHECK_TARGETS MLIROptLib )
-list(APPEND _IMPORT_CHECK_FILES_FOR_MLIROptLib "${_IMPORT_PREFIX}/lib/libMLIROptLib.a" )
-
 # Import target "MLIRTableGen" for configuration "Release"
 set_property(TARGET MLIRTableGen APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(MLIRTableGen PROPERTIES
@@ -1595,6 +1585,16 @@ set_target_properties(MLIRTargetLLVMIRImport PROPERTIES
 list(APPEND _IMPORT_CHECK_TARGETS MLIRTargetLLVMIRImport )
 list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRTargetLLVMIRImport "${_IMPORT_PREFIX}/lib/libMLIRTargetLLVMIRImport.a" )
 
+# Import target "MLIRLspServerSupportLib" for configuration "Release"
+set_property(TARGET MLIRLspServerSupportLib APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+set_target_properties(MLIRLspServerSupportLib PROPERTIES
+  IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "CXX"
+  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libMLIRLspServerSupportLib.a"
+  )
+
+list(APPEND _IMPORT_CHECK_TARGETS MLIRLspServerSupportLib )
+list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRLspServerSupportLib "${_IMPORT_PREFIX}/lib/libMLIRLspServerSupportLib.a" )
+
 # Import target "MLIRLspServerLib" for configuration "Release"
 set_property(TARGET MLIRLspServerLib APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(MLIRLspServerLib PROPERTIES
@@ -1605,6 +1605,16 @@ set_target_properties(MLIRLspServerLib PROPERTIES
 list(APPEND _IMPORT_CHECK_TARGETS MLIRLspServerLib )
 list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRLspServerLib "${_IMPORT_PREFIX}/lib/libMLIRLspServerLib.a" )
 
+# Import target "MLIROptLib" for configuration "Release"
+set_property(TARGET MLIROptLib APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+set_target_properties(MLIROptLib PROPERTIES
+  IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "CXX"
+  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libMLIROptLib.a"
+  )
+
+list(APPEND _IMPORT_CHECK_TARGETS MLIROptLib )
+list(APPEND _IMPORT_CHECK_FILES_FOR_MLIROptLib "${_IMPORT_PREFIX}/lib/libMLIROptLib.a" )
+
 # Import target "MLIRReduceLib" for configuration "Release"
 set_property(TARGET MLIRReduceLib APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(MLIRReduceLib PROPERTIES
@@ -1614,6 +1624,16 @@ set_target_properties(MLIRReduceLib PROPERTIES
 
 list(APPEND _IMPORT_CHECK_TARGETS MLIRReduceLib )
 list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRReduceLib "${_IMPORT_PREFIX}/lib/libMLIRReduceLib.a" )
+
+# Import target "MLIRTranslateLib" for configuration "Release"
+set_property(TARGET MLIRTranslateLib APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+set_target_properties(MLIRTranslateLib PROPERTIES
+  IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "CXX"
+  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libMLIRTranslateLib.a"
+  )
+
+list(APPEND _IMPORT_CHECK_TARGETS MLIRTranslateLib )
+list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRTranslateLib "${_IMPORT_PREFIX}/lib/libMLIRTranslateLib.a" )
 
 # Import target "MLIRPDLLAST" for configuration "Release"
 set_property(TARGET MLIRPDLLAST APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
@@ -1664,16 +1684,6 @@ set_target_properties(MLIRTransforms PROPERTIES
 
 list(APPEND _IMPORT_CHECK_TARGETS MLIRTransforms )
 list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRTransforms "${_IMPORT_PREFIX}/lib/libMLIRTransforms.a" )
-
-# Import target "MLIRTranslation" for configuration "Release"
-set_property(TARGET MLIRTranslation APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
-set_target_properties(MLIRTranslation PROPERTIES
-  IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "CXX"
-  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libMLIRTranslation.a"
-  )
-
-list(APPEND _IMPORT_CHECK_TARGETS MLIRTranslation )
-list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRTranslation "${_IMPORT_PREFIX}/lib/libMLIRTranslation.a" )
 
 # Import target "MLIRExecutionEngine" for configuration "Release"
 set_property(TARGET MLIRExecutionEngine APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
@@ -1764,6 +1774,26 @@ set_target_properties(obj.MLIRCAPIAsync PROPERTIES
 
 list(APPEND _IMPORT_CHECK_TARGETS obj.MLIRCAPIAsync )
 list(APPEND _IMPORT_CHECK_FILES_FOR_obj.MLIRCAPIAsync "${_IMPORT_PREFIX}/lib/objects-Release/obj.MLIRCAPIAsync/Async.cpp.o;${_IMPORT_PREFIX}/lib/objects-Release/obj.MLIRCAPIAsync/AsyncPasses.cpp.o" )
+
+# Import target "MLIRCAPIControlFlow" for configuration "Release"
+set_property(TARGET MLIRCAPIControlFlow APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+set_target_properties(MLIRCAPIControlFlow PROPERTIES
+  IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "CXX"
+  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libMLIRCAPIControlFlow.a"
+  )
+
+list(APPEND _IMPORT_CHECK_TARGETS MLIRCAPIControlFlow )
+list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRCAPIControlFlow "${_IMPORT_PREFIX}/lib/libMLIRCAPIControlFlow.a" )
+
+# Import target "obj.MLIRCAPIControlFlow" for configuration "Release"
+set_property(TARGET obj.MLIRCAPIControlFlow APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+set_target_properties(obj.MLIRCAPIControlFlow PROPERTIES
+  IMPORTED_COMMON_LANGUAGE_RUNTIME_RELEASE ""
+  IMPORTED_OBJECTS_RELEASE "${_IMPORT_PREFIX}/lib/objects-Release/obj.MLIRCAPIControlFlow/ControlFlow.cpp.o"
+  )
+
+list(APPEND _IMPORT_CHECK_TARGETS obj.MLIRCAPIControlFlow )
+list(APPEND _IMPORT_CHECK_FILES_FOR_obj.MLIRCAPIControlFlow "${_IMPORT_PREFIX}/lib/objects-Release/obj.MLIRCAPIControlFlow/ControlFlow.cpp.o" )
 
 # Import target "MLIRCAPIGPU" for configuration "Release"
 set_property(TARGET MLIRCAPIGPU APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
@@ -2095,15 +2125,15 @@ set_target_properties(MLIRTestAnalysis PROPERTIES
 list(APPEND _IMPORT_CHECK_TARGETS MLIRTestAnalysis )
 list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRTestAnalysis "${_IMPORT_PREFIX}/lib/libMLIRTestAnalysis.a" )
 
-# Import target "MLIRTestStandardToLLVM" for configuration "Release"
-set_property(TARGET MLIRTestStandardToLLVM APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
-set_target_properties(MLIRTestStandardToLLVM PROPERTIES
+# Import target "MLIRTestFuncToLLVM" for configuration "Release"
+set_property(TARGET MLIRTestFuncToLLVM APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+set_target_properties(MLIRTestFuncToLLVM PROPERTIES
   IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "CXX"
-  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libMLIRTestStandardToLLVM.a"
+  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libMLIRTestFuncToLLVM.a"
   )
 
-list(APPEND _IMPORT_CHECK_TARGETS MLIRTestStandardToLLVM )
-list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRTestStandardToLLVM "${_IMPORT_PREFIX}/lib/libMLIRTestStandardToLLVM.a" )
+list(APPEND _IMPORT_CHECK_TARGETS MLIRTestFuncToLLVM )
+list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRTestFuncToLLVM "${_IMPORT_PREFIX}/lib/libMLIRTestFuncToLLVM.a" )
 
 # Import target "MLIRAffineTransformsTestPasses" for configuration "Release"
 set_property(TARGET MLIRAffineTransformsTestPasses APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)

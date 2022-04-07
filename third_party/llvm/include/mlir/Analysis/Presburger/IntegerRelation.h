@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef MLIR_ANALYSIS_PRESBURGER_INTEGERPOLYHEDRON_H
-#define MLIR_ANALYSIS_PRESBURGER_INTEGERPOLYHEDRON_H
+#ifndef MLIR_ANALYSIS_PRESBURGER_INTEGERRELATION_H
+#define MLIR_ANALYSIS_PRESBURGER_INTEGERRELATION_H
 
 #include "mlir/Analysis/Presburger/Fraction.h"
 #include "mlir/Analysis/Presburger/Matrix.h"
@@ -24,7 +24,7 @@
 namespace mlir {
 namespace presburger {
 
-/// An IntegerRelation is a PresburgerLocalSpace subject to affine constraints.
+/// An IntegerRelation is a PresburgerSpace subject to affine constraints.
 /// Affine constraints can be inequalities or equalities in the form:
 ///
 /// Inequality: c_0*x_0 + c_1*x_1 + .... + c_{n-1}*x_{n-1} + c_n >= 0
@@ -42,7 +42,7 @@ namespace presburger {
 ///
 /// Since IntegerRelation makes a distinction between dimensions, IdKind::Range
 /// and IdKind::Domain should be used to refer to dimension identifiers.
-class IntegerRelation : public PresburgerLocalSpace {
+class IntegerRelation : public PresburgerSpace {
 public:
   /// All derived classes of IntegerRelation.
   enum class Kind {
@@ -57,9 +57,8 @@ public:
   /// of constraints and identifiers.
   IntegerRelation(unsigned numReservedInequalities,
                   unsigned numReservedEqualities, unsigned numReservedCols,
-                  unsigned numDomain, unsigned numRange, unsigned numSymbols,
-                  unsigned numLocals)
-      : PresburgerLocalSpace(numDomain, numRange, numSymbols, numLocals),
+                  const PresburgerSpace &space)
+      : PresburgerSpace(space),
         equalities(0, getNumIds() + 1, numReservedEqualities, numReservedCols),
         inequalities(0, getNumIds() + 1, numReservedInequalities,
                      numReservedCols) {
@@ -67,20 +66,15 @@ public:
   }
 
   /// Constructs a relation with the specified number of dimensions and symbols.
-  IntegerRelation(unsigned numDomain = 0, unsigned numRange = 0,
-                  unsigned numSymbols = 0, unsigned numLocals = 0)
+  explicit IntegerRelation(const PresburgerSpace &space)
       : IntegerRelation(/*numReservedInequalities=*/0,
                         /*numReservedEqualities=*/0,
-                        /*numReservedCols=*/numDomain + numRange + numSymbols +
-                            numLocals + 1,
-                        numDomain, numRange, numSymbols, numLocals) {}
+                        /*numReservedCols=*/space.getNumIds() + 1, space) {}
 
   /// Return a system with no constraints, i.e., one which is satisfied by all
   /// points.
-  static IntegerRelation getUniverse(unsigned numDomain = 0,
-                                     unsigned numRange = 0,
-                                     unsigned numSymbols = 0) {
-    return IntegerRelation(numDomain, numRange, numSymbols);
+  static IntegerRelation getUniverse(const PresburgerSpace &space) {
+    return IntegerRelation(space);
   }
 
   /// Return the kind of this IntegerRelation.
@@ -94,6 +88,10 @@ public:
   /// Appends constraints from `other` into `this`. This is equivalent to an
   /// intersection with no simplification of any sort attempted.
   void append(const IntegerRelation &other);
+
+  /// Return the intersection of the two sets.
+  /// If there are locals, they will be merged.
+  IntegerRelation intersect(IntegerRelation other) const;
 
   /// Return whether `this` and `other` are equal. This is integer-exact
   /// and somewhat expensive, since it uses the integer emptiness check
@@ -144,6 +142,30 @@ public:
     return inequalities.getRow(idx);
   }
 
+  /// The struct CountsSnapshot stores the count of each IdKind, and also of
+  /// each constraint type. getCounts() returns a CountsSnapshot object
+  /// describing the current state of the IntegerRelation. truncate() truncates
+  /// all ids of each IdKind and all constraints of both kinds beyond the counts
+  /// in the specified CountsSnapshot object. This can be used to achieve
+  /// rudimentary rollback support. As long as none of the existing constraints
+  /// or ids are disturbed, and only additional ids or constraints are added,
+  /// this addition can be rolled back using truncate.
+  struct CountsSnapshot {
+  public:
+    CountsSnapshot(const PresburgerSpace &space, unsigned numIneqs,
+                   unsigned numEqs)
+        : space(space), numIneqs(numIneqs), numEqs(numEqs) {}
+    const PresburgerSpace &getSpace() const { return space; };
+    unsigned getNumIneqs() const { return numIneqs; }
+    unsigned getNumEqs() const { return numEqs; }
+
+  private:
+    PresburgerSpace space;
+    unsigned numIneqs, numEqs;
+  };
+  CountsSnapshot getCounts() const;
+  void truncate(const CountsSnapshot &counts);
+
   /// Insert `num` identifiers of the specified kind at position `pos`.
   /// Positions are relative to the kind of identifier. The coefficient columns
   /// corresponding to the added identifiers are initialized to zero. Return the
@@ -171,7 +193,7 @@ public:
   /// within the specified range) from the system. The specified location is
   /// relative to the first identifier of the specified kind.
   void removeId(IdKind kind, unsigned pos);
-  void removeIdRange(IdKind kind, unsigned idStart, unsigned idLimit);
+  void removeIdRange(IdKind kind, unsigned idStart, unsigned idLimit) override;
 
   /// Removes the specified identifier from the system.
   void removeId(unsigned pos);
@@ -257,11 +279,12 @@ public:
   Optional<uint64_t> computeVolume() const;
 
   /// Returns true if the given point satisfies the constraints, or false
-  /// otherwise.
-  ///
-  /// Note: currently, if the relation contains local ids, the values of
-  /// the local ids must also be provided.
+  /// otherwise. Takes the values of all ids including locals.
   bool containsPoint(ArrayRef<int64_t> point) const;
+  /// Given the values of non-local ids, return a satisfying assignment to the
+  /// local if one exists, or an empty optional otherwise.
+  Optional<SmallVector<int64_t, 8>>
+  containsPointNoLocal(ArrayRef<int64_t> point) const;
 
   /// Find equality and pairs of inequality contraints identified by their
   /// position indices, using which an explicit representation for each local
@@ -386,9 +409,16 @@ public:
   /// O(VC) time.
   void removeRedundantConstraints();
 
-  /// Converts identifiers in the column range [idStart, idLimit) to local
-  /// variables.
-  void convertDimToLocal(unsigned dimStart, unsigned dimLimit);
+  void removeDuplicateDivs();
+
+  /// Converts identifiers of kind srcKind in the range [idStart, idLimit) to
+  /// variables of kind dstKind and placed after all the other variables of kind
+  /// dstKind. The internal ordering among the moved variables is preserved.
+  void convertIdKind(IdKind srcKind, unsigned idStart, unsigned idLimit,
+                     IdKind dstKind);
+  void convertToLocal(IdKind kind, unsigned idStart, unsigned idLimit) {
+    convertIdKind(kind, idStart, idLimit, IdKind::Local);
+  }
 
   /// Adds additional local ids to the sets such that they both have the union
   /// of the local ids in each set, without changing the set of points that
@@ -406,21 +436,6 @@ public:
   void dump() const;
 
 protected:
-  /// Constructs a set reserving memory for the specified number
-  /// of constraints and identifiers. This constructor should not be used
-  /// directly to create a relation and should only be used to create Sets.
-  /// Internally this constructs a relation with with no domain and a
-  /// space with no distinction between domain and range identifiers.
-  IntegerRelation(unsigned numReservedInequalities,
-                  unsigned numReservedEqualities, unsigned numReservedCols,
-                  unsigned numDims, unsigned numSymbols, unsigned numLocals)
-      : PresburgerLocalSpace(numDims, numSymbols, numLocals),
-        equalities(0, getNumIds() + 1, numReservedEqualities, numReservedCols),
-        inequalities(0, getNumIds() + 1, numReservedInequalities,
-                     numReservedCols) {
-    assert(numReservedCols >= getNumIds() + 1);
-  }
-
   /// Checks all rows of equality/inequality constraints for trivial
   /// contradictions (for example: 1 == 0, 0 >= 1), which may have surfaced
   /// after elimination. Returns true if an invalid constraint is found;
@@ -495,7 +510,12 @@ protected:
   /// Removes identifiers in the column range [idStart, idLimit), and copies any
   /// remaining valid data into place, updates member variables, and resizes
   /// arrays as needed.
-  void removeIdRange(unsigned idStart, unsigned idLimit) override;
+  void removeIdRange(unsigned idStart, unsigned idLimit);
+
+  using PresburgerSpace::truncateIdKind;
+  /// Truncate the ids to the number in the space of the specified
+  /// CountsSnapshot.
+  void truncateIdKind(IdKind kind, const CountsSnapshot &counts);
 
   /// A parameter that controls detection of an unrealistic number of
   /// constraints. If the number of constraints is this many times the number of
@@ -516,7 +536,8 @@ protected:
   Matrix inequalities;
 };
 
-/// An IntegerPolyhedron is a PresburgerLocalSpace subject to affine
+struct SymbolicLexMin;
+/// An IntegerPolyhedron is a PresburgerSpace subject to affine
 /// constraints. Affine constraints can be inequalities or equalities in the
 /// form:
 ///
@@ -538,24 +559,24 @@ public:
   /// of constraints and identifiers.
   IntegerPolyhedron(unsigned numReservedInequalities,
                     unsigned numReservedEqualities, unsigned numReservedCols,
-                    unsigned numDims, unsigned numSymbols, unsigned numLocals)
+                    const PresburgerSpace &space)
       : IntegerRelation(numReservedInequalities, numReservedEqualities,
-                        numReservedCols, numDims, numSymbols, numLocals) {}
+                        numReservedCols, space) {
+    assert(space.getNumDomainIds() == 0 &&
+           "Number of domain id's should be zero in Set kind space.");
+  }
 
-  /// Constructs a relation with the specified number of dimensions and symbols.
-  IntegerPolyhedron(unsigned numDims = 0, unsigned numSymbols = 0,
-                    unsigned numLocals = 0)
+  /// Constructs a relation with the specified number of dimensions and
+  /// symbols.
+  explicit IntegerPolyhedron(const PresburgerSpace &space)
       : IntegerPolyhedron(/*numReservedInequalities=*/0,
                           /*numReservedEqualities=*/0,
-                          /*numReservedCols=*/numDims + numSymbols + numLocals +
-                              1,
-                          numDims, numSymbols, numLocals) {}
+                          /*numReservedCols=*/space.getNumIds() + 1, space) {}
 
   /// Return a system with no constraints, i.e., one which is satisfied by all
   /// points.
-  static IntegerPolyhedron getUniverse(unsigned numDims = 0,
-                                       unsigned numSymbols = 0) {
-    return IntegerPolyhedron(numDims, numSymbols);
+  static IntegerPolyhedron getUniverse(const PresburgerSpace &space) {
+    return IntegerPolyhedron(space);
   }
 
   /// Return the kind of this IntegerRelation.
@@ -567,9 +588,37 @@ public:
 
   // Clones this object.
   std::unique_ptr<IntegerPolyhedron> clone() const;
+
+  /// Insert `num` identifiers of the specified kind at position `pos`.
+  /// Positions are relative to the kind of identifier. Return the absolute
+  /// column position (i.e., not relative to the kind of identifier) of the
+  /// first added identifier.
+  unsigned insertId(IdKind kind, unsigned pos, unsigned num = 1) override;
+
+  /// Compute the symbolic integer lexmin of the polyhedron.
+  /// This finds, for every assignment to the symbols, the lexicographically
+  /// minimum value attained by the dimensions. For example, the symbolic lexmin
+  /// of the set
+  ///
+  /// (x, y)[a, b, c] : (a <= x, b <= x, x <= c)
+  ///
+  /// can be written as
+  ///
+  /// x = a if b <= a, a <= c
+  /// x = b if a <  b, b <= c
+  ///
+  /// This function is stored in the `lexmin` function in the result.
+  /// Some assignments to the symbols might make the set empty.
+  /// Such points are not part of the function's domain.
+  /// In the above example, this happens when max(a, b) > c.
+  ///
+  /// For some values of the symbols, the lexmin may be unbounded.
+  /// `SymbolicLexMin` stores these parts of the symbolic domain in a separate
+  /// `PresburgerSet`, `unboundedDomain`.
+  SymbolicLexMin findSymbolicIntegerLexMin() const;
 };
 
 } // namespace presburger
 } // namespace mlir
 
-#endif // MLIR_ANALYSIS_PRESBURGER_INTEGERPOLYHEDRON_H
+#endif // MLIR_ANALYSIS_PRESBURGER_INTEGERRELATION_H

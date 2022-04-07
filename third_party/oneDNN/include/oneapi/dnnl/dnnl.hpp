@@ -557,6 +557,8 @@ enum class algorithm {
     eltwise_bounded_relu = dnnl_eltwise_bounded_relu,
     /// Elementwise: soft_relu
     eltwise_soft_relu = dnnl_eltwise_soft_relu,
+    /// Elementwise: soft_relu version 2
+    eltwise_soft_relu_v2 = dnnl_eltwise_soft_relu_v2,
     /// Elementwise: logsigmoid
     eltwise_logsigmoid = dnnl_eltwise_logsigmoid,
     /// Elementwise: mish
@@ -1233,6 +1235,8 @@ struct memory : public handle<dnnl_memory_t> {
         bf16 = dnnl_bf16,
         /// [32-bit/single-precision floating point](https://en.wikipedia.org/wiki/Single-precision_floating-point_format).
         f32 = dnnl_f32,
+        //// [64-bit/double-precision floating point](https://en.wikipedia.org/wiki/Double-precision_floating-point_format).
+        f64 = dnnl_f64,
         /// 32-bit signed integer.
         s32 = dnnl_s32,
         /// 8-bit signed integer.
@@ -2439,6 +2443,14 @@ struct memory : public handle<dnnl_memory_t> {
         AB16a32b = dnnl_AB16a32b,
         ABcde16a16b2a = dnnl_ABcde16a16b2a,
         aBCdef16b16c2b = dnnl_aBCdef16b16c2b,
+        Acedb16a = dnnl_Acedb16a,
+        aBdfec16b = dnnl_aBdfec16b,
+        Odwhi16o = dnnl_Odwhi16o,
+        gOdwhi16o = dnnl_gOdwhi16o,
+        abdEC64e2c = dnnl_abdEC64e2c,
+        abdEC64e4c = dnnl_abdEC64e4c,
+        ldgOI64o2i = abdEC64e2c,
+        ldgOI64o4i = abdEC64e4c,
     };
 
     /// A memory descriptor.

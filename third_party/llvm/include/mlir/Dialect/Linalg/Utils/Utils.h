@@ -32,19 +32,6 @@ class LinalgDependenceGraph;
 /// `[0, permutation.size())`.
 bool isPermutation(ArrayRef<int64_t> permutation);
 
-/// Apply the permutation defined by `permutation` to `inVec`.
-/// Element `i` in `inVec` is mapped to location `j = permutation[i]`.
-/// E.g.: for an input vector `inVec = ['a', 'b', 'c']` and a permutation vector
-/// `permutation = [2, 0, 1]`, this function leaves `inVec = ['c', 'a', 'b']`.
-template <typename T, unsigned N>
-void applyPermutationToVector(SmallVector<T, N> &inVec,
-                              ArrayRef<int64_t> permutation) {
-  SmallVector<T, N> auxVec(inVec.size());
-  for (const auto &en : enumerate(permutation))
-    auxVec[en.index()] = inVec[en.value()];
-  inVec = auxVec;
-}
-
 /// Helper function that creates a memref::DimOp or tensor::DimOp depending on
 /// the type of `source`.
 Value createOrFoldDimOp(OpBuilder &b, Location loc, Value source, int64_t dim);
@@ -179,16 +166,21 @@ SmallVector<Value> computeTileSizes(OpBuilder &b, Location loc, ValueRange ivs,
 
 /// Creates an extract_slice/subview op for a single `valueToTile` with
 /// `builder`. This new operation extracts a tile of `valueToTile`, starting
-/// at offsets `lbs` and with sizes `subShapeSizes`.
+/// at offsets `lbs` and with sizes `subShapeSizes`. `omitPartialTileCheck`
+/// controls whether to omit the partial/boundary tile condition check in cases
+/// where we statically know that it is unnecessary.
 Value makeTiledShape(OpBuilder &builder, Location loc, Value valueToTile,
                      ValueRange tileSizes, AffineMap map, ValueRange lbs,
-                     ValueRange ubs, ValueRange subShapeSizes);
+                     ValueRange ubs, ValueRange subShapeSizes,
+                     bool omitPartialTileCheck);
 
 /// Creates extract_slice/subview ops for all `valuesToTile` of the given
 /// `linalgOp` with `builder`, assuming `linalgOp` is being fused into a loop
 /// nest for tiling with the given induction variables `ivs` and tile sizes
 /// `tileSizes`. `sizeBounds` are the iteration space bounds for *all* the
-/// implicit loops in `linalgOp`.
+/// implicit loops in `linalgOp`. `omitPartialTileCheck` controls whether to
+/// omit the partial/boundary tile condition check in cases where we statically
+/// know that it is unnecessary.
 ///
 /// Note that a constant zero in `tileSizes` means no tiling at that implicit
 /// loop. The number of non-zero values in `tileSizes` should be equal to the
@@ -197,7 +189,8 @@ SmallVector<Value, 4> makeTiledShapes(OpBuilder &builder, Location loc,
                                       LinalgOp linalgOp,
                                       ArrayRef<Value> valuesToTile,
                                       ValueRange ivs, ValueRange tileSizes,
-                                      ArrayRef<Value> sizeBounds);
+                                      ArrayRef<Value> sizeBounds,
+                                      bool omitPartialTileCheck);
 
 /// Add the tile loop induction variables `ivs` to the IndexOp results found in
 /// the body of the `tiledOp` to account for the tile offset.
@@ -397,7 +390,7 @@ private:
 FailureOr<TileLoopNest> tileConsumerAndFuseProducers(
     OpBuilder &b, LinalgOp consumerOp, ArrayRef<int64_t> tileSizes,
     ArrayRef<int64_t> tileInterchange,
-    Optional<LinalgLoopDistributionOptions> tileDistribution);
+    const Optional<LinalgLoopDistributionOptions> &tileDistribution);
 
 //===----------------------------------------------------------------------===//
 // Generic op region utilities

@@ -14,9 +14,9 @@
 #define LLVM_CODEGEN_MACHINEBASICBLOCK_H
 
 #include "llvm/ADT/GraphTraits.h"
+#include "llvm/ADT/SparseBitVector.h"
 #include "llvm/ADT/ilist.h"
 #include "llvm/ADT/iterator_range.h"
-#include "llvm/ADT/SparseBitVector.h"
 #include "llvm/CodeGen/MachineInstr.h"
 #include "llvm/CodeGen/MachineInstrBundleIterator.h"
 #include "llvm/IR/DebugLoc.h"
@@ -24,7 +24,6 @@
 #include "llvm/Support/BranchProbability.h"
 #include <cassert>
 #include <cstdint>
-#include <functional>
 #include <iterator>
 #include <string>
 #include <vector>
@@ -110,10 +109,10 @@ public:
 private:
   using Instructions = ilist<MachineInstr, ilist_sentinel_tracking<true>>;
 
-  Instructions Insts;
   const BasicBlock *BB;
   int Number;
   MachineFunction *xParent;
+  Instructions Insts;
 
   /// Keep track of the predecessor / successor basic blocks.
   std::vector<MachineBasicBlock *> Predecessors;

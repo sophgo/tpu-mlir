@@ -13,7 +13,7 @@ namespace llvm {
 namespace Intrinsic {
 enum HEXAGONIntrinsics : unsigned {
 // Enum values for intrinsics
-    hexagon_A2_abs = 2478,                            // llvm.hexagon.A2.abs
+    hexagon_A2_abs = 2505,                            // llvm.hexagon.A2.abs
     hexagon_A2_absp,                           // llvm.hexagon.A2.absp
     hexagon_A2_abssat,                         // llvm.hexagon.A2.abssat
     hexagon_A2_add,                            // llvm.hexagon.A2.add
@@ -1978,6 +1978,7 @@ enum HEXAGONIntrinsics : unsigned {
     hexagon_circ_sth,                          // llvm.hexagon.circ.sth
     hexagon_circ_sthhi,                        // llvm.hexagon.circ.sthhi
     hexagon_circ_stw,                          // llvm.hexagon.circ.stw
+    hexagon_instrprof_custom,                  // llvm.hexagon.instrprof.custom
     hexagon_prefetch,                          // llvm.hexagon.prefetch
     hexagon_vmemcpy,                           // llvm.hexagon.vmemcpy
     hexagon_vmemset,                           // llvm.hexagon.vmemset

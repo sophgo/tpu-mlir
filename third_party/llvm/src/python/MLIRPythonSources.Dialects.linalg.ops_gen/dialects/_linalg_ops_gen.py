@@ -441,6 +441,38 @@ class Conv3DOp(_ods_ir.OpView):
 
 @_ods_cext.register_operation(_Dialect)
 @_ods_extend_opview_class(_ods_ext_module)
+class CopyOp(_ods_ir.OpView):
+  OPERATION_NAME = "linalg.copy"
+
+  _ODS_OPERAND_SEGMENTS = [-1,-1,]
+
+  _ODS_REGIONS = (1, True)
+
+  @builtins.property
+  def inputs(self):
+    operand_range = _ods_segmented_accessor(
+         self.operation.operands,
+         self.operation.attributes["operand_segment_sizes"], 0)
+    return operand_range
+
+  @builtins.property
+  def outputs(self):
+    operand_range = _ods_segmented_accessor(
+         self.operation.operands,
+         self.operation.attributes["operand_segment_sizes"], 1)
+    return operand_range
+
+  @builtins.property
+  def result_tensors(self):
+    _ods_variadic_group_length = len(self.operation.results) - 1 + 1
+    return self.operation.results[0:0 + _ods_variadic_group_length]
+
+  @builtins.property
+  def region(self):
+    return self.regions[0]
+
+@_ods_cext.register_operation(_Dialect)
+@_ods_extend_opview_class(_ods_ext_module)
 class DepthwiseConv1DNwcWcOp(_ods_ir.OpView):
   OPERATION_NAME = "linalg.depthwise_conv_1d_nwc_wc"
 
@@ -800,42 +832,6 @@ class ElemwiseUnaryOp(_ods_ir.OpView):
 class FillOp(_ods_ir.OpView):
   OPERATION_NAME = "linalg.fill"
 
-  _ODS_REGIONS = (1, True)
-
-  def __init__(self, result, value, output, *, loc=None, ip=None):
-    operands = []
-    results = []
-    attributes = {}
-    regions = None
-    operands.append(_get_op_result_or_value(value))
-    operands.append(_get_op_result_or_value(output))
-    if result is not None: results.append(result)
-    _ods_successors = None
-    super().__init__(self.build_generic(
-      attributes=attributes, results=results, operands=operands,
-      successors=_ods_successors, regions=regions, loc=loc, ip=ip))
-
-  @builtins.property
-  def value(self):
-    return self.operation.operands[0]
-
-  @builtins.property
-  def output(self):
-    return self.operation.operands[1]
-
-  @builtins.property
-  def result(self):
-    return None if len(self.operation.results) < 1 else self.operation.results[0]
-
-  @builtins.property
-  def region(self):
-    return self.regions[0]
-
-@_ods_cext.register_operation(_Dialect)
-@_ods_extend_opview_class(_ods_ext_module)
-class FillRng2DOp(_ods_ir.OpView):
-  OPERATION_NAME = "linalg.fill_rng_2d"
-
   _ODS_OPERAND_SEGMENTS = [-1,-1,]
 
   _ODS_REGIONS = (1, True)
@@ -865,8 +861,8 @@ class FillRng2DOp(_ods_ir.OpView):
 
 @_ods_cext.register_operation(_Dialect)
 @_ods_extend_opview_class(_ods_ext_module)
-class FillTensorOp(_ods_ir.OpView):
-  OPERATION_NAME = "linalg.fill_tensor"
+class FillRng2DOp(_ods_ir.OpView):
+  OPERATION_NAME = "linalg.fill_rng_2d"
 
   _ODS_OPERAND_SEGMENTS = [-1,-1,]
 
@@ -1700,38 +1696,6 @@ class QuantizedBatchMatmulOp(_ods_ir.OpView):
 @_ods_extend_opview_class(_ods_ext_module)
 class QuantizedMatmulOp(_ods_ir.OpView):
   OPERATION_NAME = "linalg.quantized_matmul"
-
-  _ODS_OPERAND_SEGMENTS = [-1,-1,]
-
-  _ODS_REGIONS = (1, True)
-
-  @builtins.property
-  def inputs(self):
-    operand_range = _ods_segmented_accessor(
-         self.operation.operands,
-         self.operation.attributes["operand_segment_sizes"], 0)
-    return operand_range
-
-  @builtins.property
-  def outputs(self):
-    operand_range = _ods_segmented_accessor(
-         self.operation.operands,
-         self.operation.attributes["operand_segment_sizes"], 1)
-    return operand_range
-
-  @builtins.property
-  def result_tensors(self):
-    _ods_variadic_group_length = len(self.operation.results) - 1 + 1
-    return self.operation.results[0:0 + _ods_variadic_group_length]
-
-  @builtins.property
-  def region(self):
-    return self.regions[0]
-
-@_ods_cext.register_operation(_Dialect)
-@_ods_extend_opview_class(_ods_ext_module)
-class SoftPlus2DOp(_ods_ir.OpView):
-  OPERATION_NAME = "linalg.soft_plus_2d"
 
   _ODS_OPERAND_SEGMENTS = [-1,-1,]
 

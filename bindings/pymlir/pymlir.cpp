@@ -14,9 +14,9 @@
 #include "mlir/IR/Dialect.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/BuiltinTypes.h"
-#include "mlir/Parser.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Pass/PassManager.h"
+#include "mlir/Parser/Parser.h"
 #include "mlir/Support/FileUtilities.h"
 #include "mlir/Transforms/Passes.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
@@ -97,7 +97,7 @@ public:
                     quant::QuantizationDialect>();
     context_ = std::make_unique<MLIRContext>(registry);
 
-    module_ = parseSourceFile(filename, context_.get());
+    module_ = parseSourceFile<ModuleOp>(filename, context_.get());
     assert(module_);
     if (interpreter_) {
       interpreter_.reset();

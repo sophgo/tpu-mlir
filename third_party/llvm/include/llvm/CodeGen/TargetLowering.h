@@ -25,7 +25,7 @@
 #include "llvm/ADT/APInt.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/DenseMap.h"
-#include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/STLArrayExtras.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/CodeGen/DAGCombine.h"
@@ -256,6 +256,11 @@ public:
     MaskedIntrinsic,  // Use a target-specific intrinsic for the LL/SC loop.
     BitTestIntrinsic, // Use a target-specific intrinsic for special bit
                       // operations; used by X86.
+    Expand,           // Generic expansion in terms of other atomic operations.
+
+    // Rewrite to a non-atomic form for use in a known non-preemptible
+    // environment.
+    NotAtomic
   };
 
   /// Enum that specifies when a multiplication should be expanded.
@@ -2020,12 +2025,6 @@ public:
   // be unnecessarily held, except if clrex, inserted by this hook, is executed.
   virtual void emitAtomicCmpXchgNoStoreLLBalance(IRBuilderBase &Builder) const {}
 
-  /// Returns true if the given (atomic) store should be expanded by the
-  /// IR-level AtomicExpand pass into an "atomic xchg" which ignores its input.
-  virtual bool shouldExpandAtomicStoreInIR(StoreInst *SI) const {
-    return false;
-  }
-
   /// Returns true if arguments should be sign-extended in lib calls.
   virtual bool shouldSignExtendTypeInLibCall(EVT Type, bool IsSigned) const {
     return IsSigned;
@@ -2039,6 +2038,13 @@ public:
   /// Returns how the given (atomic) load should be expanded by the
   /// IR-level AtomicExpand pass.
   virtual AtomicExpansionKind shouldExpandAtomicLoadInIR(LoadInst *LI) const {
+    return AtomicExpansionKind::None;
+  }
+
+  /// Returns how the given (atomic) store should be expanded by the IR-level
+  /// AtomicExpand pass into. For instance AtomicExpansionKind::Expand will try
+  /// to use an atomicrmw xchg.
+  virtual AtomicExpansionKind shouldExpandAtomicStoreInIR(StoreInst *SI) const {
     return AtomicExpansionKind::None;
   }
 
@@ -2341,6 +2347,11 @@ protected:
   void setTargetDAGCombine(ISD::NodeType NT) {
     assert(unsigned(NT >> 3) < array_lengthof(TargetDAGCombineArray));
     TargetDAGCombineArray[NT >> 3] |= 1 << (NT&7);
+  }
+
+  void setTargetDAGCombine(ArrayRef<ISD::NodeType> NTs) {
+    for (auto NT : NTs)
+      setTargetDAGCombine(NT);
   }
 
   /// Set the target's minimum function alignment.
@@ -3563,6 +3574,14 @@ public:
   bool SimplifyDemandedVectorElts(SDValue Op, const APInt &DemandedElts,
                                   DAGCombinerInfo &DCI) const;
 
+  /// Return true if the target supports simplifying demanded vector elements by
+  /// converting them to undefs.
+  virtual bool
+  shouldSimplifyDemandedVectorElts(SDValue Op,
+                                   const TargetLoweringOpt &TLO) const {
+    return true;
+  }
+
   /// Determine which of the bits specified in Mask are known to be either zero
   /// or one and return them in the KnownZero/KnownOne bitsets. The DemandedElts
   /// argument allows us to only collect the known bits that are shared by the
@@ -4467,6 +4486,13 @@ public:
                                   bool &UseOneConstNR, bool Reciprocal) const {
     return SDValue();
   }
+
+  /// Try to convert the fminnum/fmaxnum to a compare/select sequence. This is
+  /// required for correctness since InstCombine might have canonicalized a
+  /// fcmp+select sequence to a FMINNUM/FMAXNUM intrinsic.  If we were to fall
+  /// through to the default expansion/soften to libcall, we might introduce a
+  /// link-time dependency on libm into a file that originally did not have one.
+  SDValue createSelectForFMINNUM_FMAXNUM(SDNode *Node, SelectionDAG &DAG) const;
 
   /// Return a reciprocal estimate value for the input operand.
   /// \p Enabled is a ReciprocalEstimate enum with value either 'Unspecified' or
