@@ -30,8 +30,7 @@ struct TopFusePad : public OpRewritePattern<PadOp> {
     auto nextOp = *op->getUsers().begin();
     auto paddings = op->getAttr("paddings").dyn_cast<ArrayAttr>();
 
-    if (isa<ConvOp>(nextOp) || isa<MaxPoolOp>(nextOp) ||
-        isa<AvgPoolOp>(nextOp)) {
+    if (isa<ConvOp, MaxPoolOp, AvgPoolOp>(nextOp)) {
 
       for (auto &pad : llvm::make_range(
                paddings.begin(),
