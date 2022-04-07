@@ -7,7 +7,6 @@ endif()
 execute_process(
   COMMAND ${FLATBUFFERS_PATH}/bin/flatc
   -o ${CMAKE_CURRENT_SOURCE_DIR} --python ${CMAKE_CURRENT_SOURCE_DIR}/tflite_schema.fbs
-  ERROR_QUIET
 )
 
 # fix tflite model
