@@ -73,4 +73,4 @@ public:
   };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::LinalgDialect)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::LinalgDialect)

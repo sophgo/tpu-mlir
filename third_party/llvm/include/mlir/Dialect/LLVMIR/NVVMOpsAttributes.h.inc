@@ -16,10 +16,28 @@ class AsmPrinter;
 } // namespace mlir
 namespace mlir {
 namespace NVVM {
+class MMAB1OpAttr;
 class MMAFragAttr;
+class MMAIntOverflowAttr;
 class MMALayoutAttr;
 class MMATypesAttr;
 class ShflKindAttr;
+namespace detail {
+struct MMAB1OpAttrStorage;
+} // namespace detail
+class MMAB1OpAttr : public ::mlir::Attribute::AttrBase<MMAB1OpAttr, ::mlir::Attribute, detail::MMAB1OpAttrStorage> {
+public:
+  using Base::Base;
+public:
+  static MMAB1OpAttr get(::mlir::MLIRContext *context, ::mlir::NVVM::MMAB1Op value);
+  static constexpr ::llvm::StringLiteral getMnemonic() {
+    return {"mma_b1op"};
+  }
+
+  static ::mlir::Attribute parse(::mlir::AsmParser &odsParser, ::mlir::Type odsType);
+  void print(::mlir::AsmPrinter &odsPrinter) const;
+  ::mlir::NVVM::MMAB1Op getValue() const;
+};
 namespace detail {
 struct MMAFragAttrStorage;
 } // namespace detail
@@ -35,6 +53,22 @@ public:
   static ::mlir::Attribute parse(::mlir::AsmParser &odsParser, ::mlir::Type odsType);
   void print(::mlir::AsmPrinter &odsPrinter) const;
   ::mlir::NVVM::MMAFrag getValue() const;
+};
+namespace detail {
+struct MMAIntOverflowAttrStorage;
+} // namespace detail
+class MMAIntOverflowAttr : public ::mlir::Attribute::AttrBase<MMAIntOverflowAttr, ::mlir::Attribute, detail::MMAIntOverflowAttrStorage> {
+public:
+  using Base::Base;
+public:
+  static MMAIntOverflowAttr get(::mlir::MLIRContext *context, ::mlir::NVVM::MMAIntOverflow value);
+  static constexpr ::llvm::StringLiteral getMnemonic() {
+    return {"mma_int_overflow"};
+  }
+
+  static ::mlir::Attribute parse(::mlir::AsmParser &odsParser, ::mlir::Type odsType);
+  void print(::mlir::AsmPrinter &odsPrinter) const;
+  ::mlir::NVVM::MMAIntOverflow getValue() const;
 };
 namespace detail {
 struct MMALayoutAttrStorage;
@@ -86,10 +120,12 @@ public:
 };
 } // namespace NVVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::MMAFragAttr)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::MMALayoutAttr)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::MMATypesAttr)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::ShflKindAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::MMAB1OpAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::MMAFragAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::MMAIntOverflowAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::MMALayoutAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::MMATypesAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::ShflKindAttr)
 
 #endif  // GET_ATTRDEF_CLASSES
 

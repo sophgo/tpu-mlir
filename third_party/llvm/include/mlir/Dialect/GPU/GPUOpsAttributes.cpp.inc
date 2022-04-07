@@ -126,7 +126,7 @@ void AllReduceOperationAttr::print(::mlir::AsmPrinter &odsPrinter) const {
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::AllReduceOperationAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::AllReduceOperationAttr)
 namespace mlir {
 namespace gpu {
 namespace detail {
@@ -190,7 +190,7 @@ void DimensionAttr::print(::mlir::AsmPrinter &odsPrinter) const {
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::DimensionAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::DimensionAttr)
 namespace mlir {
 namespace gpu {
 namespace detail {
@@ -254,7 +254,7 @@ void ShuffleModeAttr::print(::mlir::AsmPrinter &odsPrinter) const {
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::ShuffleModeAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::ShuffleModeAttr)
 namespace mlir {
 namespace gpu {
 namespace detail {
@@ -318,7 +318,7 @@ void MMAElementwiseOpAttr::print(::mlir::AsmPrinter &odsPrinter) const {
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::MMAElementwiseOpAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::MMAElementwiseOpAttr)
 namespace mlir {
 namespace gpu {
 

@@ -27,6 +27,15 @@ Value mlir::linalg::ConvolutionOpInterface::image() {
 Value mlir::linalg::ConvolutionOpInterface::filter() {
       return getImpl()->filter(getImpl(), getOperation());
   }
+Value mlir::linalg::FillOpInterface::value() {
+      return getImpl()->value(getImpl(), getOperation());
+  }
+Value mlir::linalg::FillOpInterface::output() {
+      return getImpl()->output(getImpl(), getOperation());
+  }
+Value mlir::linalg::FillOpInterface::result() {
+      return getImpl()->result(getImpl(), getOperation());
+  }
 unsigned mlir::linalg::LinalgOp::getNumParallelLoops() {
       return getImpl()->getNumParallelLoops(getImpl(), getOperation());
   }
@@ -200,4 +209,7 @@ Operation *mlir::linalg::LinalgOp::cloneWithoutRegions(OpBuilder & b, Location l
   }
 std::function<void(ImplicitLocOpBuilder &, Block &, ArrayRef<NamedAttribute>)> mlir::linalg::LinalgOp::getRegionBuilder() {
       return getImpl()->getRegionBuilder();
+  }
+bool mlir::linalg::LinalgOp::hasOnlyProjectedPermutations() {
+      return getImpl()->hasOnlyProjectedPermutations(getImpl(), getOperation());
   }

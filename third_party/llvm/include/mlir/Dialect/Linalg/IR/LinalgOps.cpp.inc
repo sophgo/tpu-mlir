@@ -66,7 +66,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_LinalgOps0(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_LinalgOps1(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); })))) {
+  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); })))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: 64-bit integer array attribute";
   }
@@ -314,7 +314,7 @@ void IndexOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace linalg
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::linalg::IndexOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::linalg::IndexOp)
 
 namespace mlir {
 namespace linalg {
@@ -380,7 +380,7 @@ std::pair<unsigned, unsigned> InitTensorOpAdaptor::getODSOperandIndexAndLength(u
     if (!tblgen_static_sizes)
       return emitError(loc, "'linalg.init_tensor' op ""requires attribute 'static_sizes'");
 
-    if (tblgen_static_sizes && !(((tblgen_static_sizes.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_sizes.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))))
+    if (tblgen_static_sizes && !(((tblgen_static_sizes.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_sizes.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
       return emitError(loc, "'linalg.init_tensor' op ""attribute 'static_sizes' failed to satisfy constraint: 64-bit integer array attribute");
   }
   return ::mlir::success();
@@ -523,7 +523,7 @@ void InitTensorOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
 }
 
 ::mlir::ParseResult InitTensorOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> sizesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> sizesOperands;
   ::llvm::SMLoc sizesOperandsLoc;
   (void)sizesOperandsLoc;
   ::mlir::ArrayAttr static_sizesAttr;
@@ -573,7 +573,7 @@ void InitTensorOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effec
 
 } // namespace linalg
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::linalg::InitTensorOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::linalg::InitTensorOp)
 
 namespace mlir {
 namespace linalg {
@@ -709,7 +709,7 @@ void YieldOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace linalg
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::linalg::YieldOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::linalg::YieldOp)
 
 
 #endif  // GET_OP_CLASSES

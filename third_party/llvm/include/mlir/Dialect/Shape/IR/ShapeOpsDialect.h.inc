@@ -50,4 +50,4 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::ShapeDialect)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::ShapeDialect)

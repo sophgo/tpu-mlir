@@ -171,10 +171,28 @@ if (auto op = dyn_cast<::mlir::NVVM::LaneIdOp>(opInst)) {
     (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
   return success();
 }
+if (auto op = dyn_cast<::mlir::NVVM::LdMatrixOp>(opInst)) {
+
+      auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+      auto intId = getLdMatrixIntrinsicId(op.layout(), op.num());
+      moduleTranslation.mapValue(op.res()) = createIntrinsicCall(builder, intId, operands, {operands[0]->getType()});
+  
+  return success();
+}
 if (auto op = dyn_cast<::mlir::NVVM::MmaOp>(opInst)) {
 
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    auto intId = mlir::NVVM::MmaOp::getIntrinsicID(
+        op.shape().m().getInt(), op.shape().n().getInt(), op.shape().k().getInt(), 
+        op.b1Op(), op.intOverflowBehavior(),
+        op.layoutA(), op.layoutB(),
+        op.multiplicandAPtxType().getValue(), 
+        op.multiplicandBPtxType().getValue(),
+        op.accumPtxType(), 
+        op.resultPtxType());
+
     moduleTranslation.mapValue(op.res()) = createIntrinsicCall(
-        builder, llvm::Intrinsic::nvvm_mma_m8n8k4_row_col_f32_f32, moduleTranslation.lookupValues(op.args()));
+      builder, intId, operands);
   
   return success();
 }

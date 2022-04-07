@@ -2297,6 +2297,129 @@ namespace omp {
 
   static OmpClauseSet requiredClauses_OMPD_masked {
   };
+
+  // Sets for parallel loop
+
+  static OmpClauseSet allowedClauses_OMPD_parallel_loop {
+    llvm::omp::Clause::OMPC_allocate,
+    llvm::omp::Clause::OMPC_copyin,
+    llvm::omp::Clause::OMPC_firstprivate,
+    llvm::omp::Clause::OMPC_lastprivate,
+    llvm::omp::Clause::OMPC_private,
+    llvm::omp::Clause::OMPC_reduction,
+    llvm::omp::Clause::OMPC_shared,
+  };
+
+  static OmpClauseSet allowedOnceClauses_OMPD_parallel_loop {
+    llvm::omp::Clause::OMPC_bind,
+    llvm::omp::Clause::OMPC_collapse,
+    llvm::omp::Clause::OMPC_default,
+    llvm::omp::Clause::OMPC_if,
+    llvm::omp::Clause::OMPC_num_threads,
+    llvm::omp::Clause::OMPC_order,
+    llvm::omp::Clause::OMPC_proc_bind,
+  };
+
+  static OmpClauseSet allowedExclusiveClauses_OMPD_parallel_loop {
+  };
+
+  static OmpClauseSet requiredClauses_OMPD_parallel_loop {
+  };
+
+  // Sets for target parallel loop
+
+  static OmpClauseSet allowedClauses_OMPD_target_parallel_loop {
+    llvm::omp::Clause::OMPC_allocate,
+    llvm::omp::Clause::OMPC_copyin,
+    llvm::omp::Clause::OMPC_depend,
+    llvm::omp::Clause::OMPC_device,
+    llvm::omp::Clause::OMPC_firstprivate,
+    llvm::omp::Clause::OMPC_is_device_ptr,
+    llvm::omp::Clause::OMPC_lastprivate,
+    llvm::omp::Clause::OMPC_map,
+    llvm::omp::Clause::OMPC_private,
+    llvm::omp::Clause::OMPC_reduction,
+    llvm::omp::Clause::OMPC_shared,
+    llvm::omp::Clause::OMPC_uses_allocators,
+  };
+
+  static OmpClauseSet allowedOnceClauses_OMPD_target_parallel_loop {
+    llvm::omp::Clause::OMPC_bind,
+    llvm::omp::Clause::OMPC_collapse,
+    llvm::omp::Clause::OMPC_default,
+    llvm::omp::Clause::OMPC_defaultmap,
+    llvm::omp::Clause::OMPC_if,
+    llvm::omp::Clause::OMPC_nowait,
+    llvm::omp::Clause::OMPC_num_threads,
+    llvm::omp::Clause::OMPC_order,
+    llvm::omp::Clause::OMPC_proc_bind,
+  };
+
+  static OmpClauseSet allowedExclusiveClauses_OMPD_target_parallel_loop {
+  };
+
+  static OmpClauseSet requiredClauses_OMPD_target_parallel_loop {
+  };
+
+  // Sets for target teams loop
+
+  static OmpClauseSet allowedClauses_OMPD_target_teams_loop {
+    llvm::omp::Clause::OMPC_allocate,
+    llvm::omp::Clause::OMPC_depend,
+    llvm::omp::Clause::OMPC_defaultmap,
+    llvm::omp::Clause::OMPC_device,
+    llvm::omp::Clause::OMPC_firstprivate,
+    llvm::omp::Clause::OMPC_is_device_ptr,
+    llvm::omp::Clause::OMPC_lastprivate,
+    llvm::omp::Clause::OMPC_map,
+    llvm::omp::Clause::OMPC_private,
+    llvm::omp::Clause::OMPC_reduction,
+    llvm::omp::Clause::OMPC_shared,
+    llvm::omp::Clause::OMPC_uses_allocators,
+  };
+
+  static OmpClauseSet allowedOnceClauses_OMPD_target_teams_loop {
+    llvm::omp::Clause::OMPC_bind,
+    llvm::omp::Clause::OMPC_collapse,
+    llvm::omp::Clause::OMPC_default,
+    llvm::omp::Clause::OMPC_if,
+    llvm::omp::Clause::OMPC_nowait,
+    llvm::omp::Clause::OMPC_num_teams,
+    llvm::omp::Clause::OMPC_order,
+    llvm::omp::Clause::OMPC_thread_limit,
+  };
+
+  static OmpClauseSet allowedExclusiveClauses_OMPD_target_teams_loop {
+  };
+
+  static OmpClauseSet requiredClauses_OMPD_target_teams_loop {
+  };
+
+  // Sets for teams loop
+
+  static OmpClauseSet allowedClauses_OMPD_teams_loop {
+    llvm::omp::Clause::OMPC_allocate,
+    llvm::omp::Clause::OMPC_firstprivate,
+    llvm::omp::Clause::OMPC_lastprivate,
+    llvm::omp::Clause::OMPC_private,
+    llvm::omp::Clause::OMPC_reduction,
+    llvm::omp::Clause::OMPC_shared,
+  };
+
+  static OmpClauseSet allowedOnceClauses_OMPD_teams_loop {
+    llvm::omp::Clause::OMPC_bind,
+    llvm::omp::Clause::OMPC_collapse,
+    llvm::omp::Clause::OMPC_default,
+    llvm::omp::Clause::OMPC_num_teams,
+    llvm::omp::Clause::OMPC_order,
+    llvm::omp::Clause::OMPC_thread_limit,
+  };
+
+  static OmpClauseSet allowedExclusiveClauses_OMPD_teams_loop {
+  };
+
+  static OmpClauseSet requiredClauses_OMPD_teams_loop {
+  };
 } // namespace omp
 } // namespace llvm
 
@@ -3072,6 +3195,38 @@ namespace omp {
       llvm::omp::allowedOnceClauses_OMPD_masked,
       llvm::omp::allowedExclusiveClauses_OMPD_masked,
       llvm::omp::requiredClauses_OMPD_masked,
+    }
+  },
+  {llvm::omp::Directive::OMPD_parallel_loop,
+    {
+      llvm::omp::allowedClauses_OMPD_parallel_loop,
+      llvm::omp::allowedOnceClauses_OMPD_parallel_loop,
+      llvm::omp::allowedExclusiveClauses_OMPD_parallel_loop,
+      llvm::omp::requiredClauses_OMPD_parallel_loop,
+    }
+  },
+  {llvm::omp::Directive::OMPD_target_parallel_loop,
+    {
+      llvm::omp::allowedClauses_OMPD_target_parallel_loop,
+      llvm::omp::allowedOnceClauses_OMPD_target_parallel_loop,
+      llvm::omp::allowedExclusiveClauses_OMPD_target_parallel_loop,
+      llvm::omp::requiredClauses_OMPD_target_parallel_loop,
+    }
+  },
+  {llvm::omp::Directive::OMPD_target_teams_loop,
+    {
+      llvm::omp::allowedClauses_OMPD_target_teams_loop,
+      llvm::omp::allowedOnceClauses_OMPD_target_teams_loop,
+      llvm::omp::allowedExclusiveClauses_OMPD_target_teams_loop,
+      llvm::omp::requiredClauses_OMPD_target_teams_loop,
+    }
+  },
+  {llvm::omp::Directive::OMPD_teams_loop,
+    {
+      llvm::omp::allowedClauses_OMPD_teams_loop,
+      llvm::omp::allowedOnceClauses_OMPD_teams_loop,
+      llvm::omp::allowedExclusiveClauses_OMPD_teams_loop,
+      llvm::omp::requiredClauses_OMPD_teams_loop,
     }
   },
 }
@@ -4207,6 +4362,10 @@ Directive llvm::omp::getOpenMPDirectiveKind(llvm::StringRef Str) {
     .Case("interop",OMPD_interop)
     .Case("loop",OMPD_loop)
     .Case("masked",OMPD_masked)
+    .Case("parallel loop",OMPD_parallel_loop)
+    .Case("target parallel loop",OMPD_target_parallel_loop)
+    .Case("target teams loop",OMPD_target_teams_loop)
+    .Case("teams loop",OMPD_teams_loop)
     .Default(OMPD_unknown);
 }
 
@@ -4404,6 +4563,14 @@ llvm::StringRef llvm::omp::getOpenMPDirectiveName(Directive Kind) {
       return "loop";
     case OMPD_masked:
       return "masked";
+    case OMPD_parallel_loop:
+      return "parallel loop";
+    case OMPD_target_parallel_loop:
+      return "target parallel loop";
+    case OMPD_target_teams_loop:
+      return "target teams loop";
+    case OMPD_teams_loop:
+      return "teams loop";
   }
   llvm_unreachable("Invalid OpenMP Directive kind");
 }
@@ -4775,29 +4942,29 @@ llvm::StringRef llvm::omp::getOpenMPProcBindKindName(llvm::omp::ProcBindKind x) 
 
 ScheduleKind llvm::omp::getScheduleKind(llvm::StringRef Str) {
   return llvm::StringSwitch<ScheduleKind>(Str)
-    .Case("Static",OMP_SCHEDULE_Static)
-    .Case("Dynamic",OMP_SCHEDULE_Dynamic)
-    .Case("Guided",OMP_SCHEDULE_Guided)
-    .Case("Auto",OMP_SCHEDULE_Auto)
-    .Case("Runtime",OMP_SCHEDULE_Runtime)
-    .Case("Default",OMP_SCHEDULE_Default)
+    .Case("static",OMP_SCHEDULE_Static)
+    .Case("dynamic",OMP_SCHEDULE_Dynamic)
+    .Case("guided",OMP_SCHEDULE_Guided)
+    .Case("auto",OMP_SCHEDULE_Auto)
+    .Case("runtime",OMP_SCHEDULE_Runtime)
+    .Case("default",OMP_SCHEDULE_Default)
     .Default(OMP_SCHEDULE_Default);
 }
 
 llvm::StringRef llvm::omp::getOpenMPScheduleKindName(llvm::omp::ScheduleKind x) {
   switch (x) {
     case OMP_SCHEDULE_Static:
-      return "Static";
+      return "static";
     case OMP_SCHEDULE_Dynamic:
-      return "Dynamic";
+      return "dynamic";
     case OMP_SCHEDULE_Guided:
-      return "Guided";
+      return "guided";
     case OMP_SCHEDULE_Auto:
-      return "Auto";
+      return "auto";
     case OMP_SCHEDULE_Runtime:
-      return "Runtime";
+      return "runtime";
     case OMP_SCHEDULE_Default:
-      return "Default";
+      return "default";
   }
   llvm_unreachable("Invalid OpenMP ScheduleKind kind");
 }
@@ -7226,6 +7393,164 @@ bool llvm::omp::isAllowedClauseForDirective(Directive D, Clause C, unsigned Vers
     case OMPD_masked:
       switch (C) {
         case OMPC_filter:
+          return 1 <= Version && 2147483647 >= Version;
+        default:
+          return false;
+      }
+      break;
+    case OMPD_parallel_loop:
+      switch (C) {
+        case OMPC_allocate:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_copyin:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_firstprivate:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_lastprivate:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_private:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_reduction:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_shared:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_bind:
+          return 50 <= Version && 2147483647 >= Version;
+        case OMPC_collapse:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_default:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_if:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_num_threads:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_order:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_proc_bind:
+          return 1 <= Version && 2147483647 >= Version;
+        default:
+          return false;
+      }
+      break;
+    case OMPD_target_parallel_loop:
+      switch (C) {
+        case OMPC_allocate:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_copyin:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_depend:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_device:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_firstprivate:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_is_device_ptr:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_lastprivate:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_map:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_private:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_reduction:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_shared:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_uses_allocators:
+          return 50 <= Version && 2147483647 >= Version;
+        case OMPC_bind:
+          return 50 <= Version && 2147483647 >= Version;
+        case OMPC_collapse:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_default:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_defaultmap:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_if:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_nowait:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_num_threads:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_order:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_proc_bind:
+          return 1 <= Version && 2147483647 >= Version;
+        default:
+          return false;
+      }
+      break;
+    case OMPD_target_teams_loop:
+      switch (C) {
+        case OMPC_allocate:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_depend:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_defaultmap:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_device:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_firstprivate:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_is_device_ptr:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_lastprivate:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_map:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_private:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_reduction:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_shared:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_uses_allocators:
+          return 50 <= Version && 2147483647 >= Version;
+        case OMPC_bind:
+          return 50 <= Version && 2147483647 >= Version;
+        case OMPC_collapse:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_default:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_if:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_nowait:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_num_teams:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_order:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_thread_limit:
+          return 1 <= Version && 2147483647 >= Version;
+        default:
+          return false;
+      }
+      break;
+    case OMPD_teams_loop:
+      switch (C) {
+        case OMPC_allocate:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_firstprivate:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_lastprivate:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_private:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_reduction:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_shared:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_bind:
+          return 50 <= Version && 2147483647 >= Version;
+        case OMPC_collapse:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_default:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_num_teams:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_order:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_thread_limit:
           return 1 <= Version && 2147483647 >= Version;
         default:
           return false;

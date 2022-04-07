@@ -199,7 +199,7 @@ public:
 };
 } // namespace arm_sve
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedAddFIntrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedAddFIntrOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -263,7 +263,7 @@ public:
 };
 } // namespace arm_sve
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedAddFOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedAddFOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -316,7 +316,7 @@ public:
 };
 } // namespace arm_sve
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedAddIIntrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedAddIIntrOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -380,7 +380,7 @@ public:
 };
 } // namespace arm_sve
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedAddIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedAddIOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -433,7 +433,7 @@ public:
 };
 } // namespace arm_sve
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedDivFIntrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedDivFIntrOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -497,7 +497,7 @@ public:
 };
 } // namespace arm_sve
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedDivFOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedDivFOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -550,7 +550,7 @@ public:
 };
 } // namespace arm_sve
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedMulFIntrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedMulFIntrOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -614,7 +614,7 @@ public:
 };
 } // namespace arm_sve
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedMulFOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedMulFOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -667,7 +667,7 @@ public:
 };
 } // namespace arm_sve
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedMulIIntrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedMulIIntrOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -731,7 +731,7 @@ public:
 };
 } // namespace arm_sve
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedMulIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedMulIOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -784,7 +784,7 @@ public:
 };
 } // namespace arm_sve
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedSDivIIntrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedSDivIIntrOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -848,7 +848,7 @@ public:
 };
 } // namespace arm_sve
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedSDivIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedSDivIOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -901,7 +901,7 @@ public:
 };
 } // namespace arm_sve
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedSubFIntrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedSubFIntrOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -965,7 +965,7 @@ public:
 };
 } // namespace arm_sve
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedSubFOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedSubFOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -1018,7 +1018,7 @@ public:
 };
 } // namespace arm_sve
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedSubIIntrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedSubIIntrOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -1082,7 +1082,7 @@ public:
 };
 } // namespace arm_sve
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedSubIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedSubIOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -1135,7 +1135,7 @@ public:
 };
 } // namespace arm_sve
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedUDivIIntrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedUDivIIntrOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -1199,7 +1199,7 @@ public:
 };
 } // namespace arm_sve
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedUDivIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedUDivIOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -1252,7 +1252,7 @@ public:
 };
 } // namespace arm_sve
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::SdotIntrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::SdotIntrOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -1317,7 +1317,7 @@ public:
 };
 } // namespace arm_sve
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::SdotOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::SdotOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -1370,7 +1370,7 @@ public:
 };
 } // namespace arm_sve
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::SmmlaIntrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::SmmlaIntrOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -1435,7 +1435,7 @@ public:
 };
 } // namespace arm_sve
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::SmmlaOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::SmmlaOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -1488,7 +1488,7 @@ public:
 };
 } // namespace arm_sve
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::UdotIntrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::UdotIntrOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -1553,7 +1553,7 @@ public:
 };
 } // namespace arm_sve
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::UdotOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::UdotOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -1606,7 +1606,7 @@ public:
 };
 } // namespace arm_sve
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::UmmlaIntrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::UmmlaIntrOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -1671,7 +1671,7 @@ public:
 };
 } // namespace arm_sve
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::UmmlaOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::UmmlaOp)
 
 
 #endif  // GET_OP_CLASSES

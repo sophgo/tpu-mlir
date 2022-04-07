@@ -6,12 +6,12 @@
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class BufferDeallocationBase : public ::mlir::OperationPass<FuncOp> {
+class BufferDeallocationBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = BufferDeallocationBase;
 
-  BufferDeallocationBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  BufferDeallocationBase(const BufferDeallocationBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  BufferDeallocationBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  BufferDeallocationBase(const BufferDeallocationBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -42,6 +42,11 @@ public:
     
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(BufferDeallocationBase<DerivedT>)
+
 protected:
 };
 
@@ -50,12 +55,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class BufferHoistingBase : public ::mlir::OperationPass<FuncOp> {
+class BufferHoistingBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = BufferHoistingBase;
 
-  BufferHoistingBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  BufferHoistingBase(const BufferHoistingBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  BufferHoistingBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  BufferHoistingBase(const BufferHoistingBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -86,6 +91,11 @@ public:
     
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(BufferHoistingBase<DerivedT>)
+
 protected:
 };
 
@@ -94,12 +104,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class BufferLoopHoistingBase : public ::mlir::OperationPass<FuncOp> {
+class BufferLoopHoistingBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = BufferLoopHoistingBase;
 
-  BufferLoopHoistingBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  BufferLoopHoistingBase(const BufferLoopHoistingBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  BufferLoopHoistingBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  BufferLoopHoistingBase(const BufferLoopHoistingBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -129,6 +139,11 @@ public:
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
     
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(BufferLoopHoistingBase<DerivedT>)
 
 protected:
 };
@@ -176,6 +191,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(BufferResultsToOutParamsBase<DerivedT>)
+
 protected:
 };
 
@@ -184,12 +204,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class FinalizingBufferizeBase : public ::mlir::OperationPass<FuncOp> {
+class FinalizingBufferizeBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = FinalizingBufferizeBase;
 
-  FinalizingBufferizeBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  FinalizingBufferizeBase(const FinalizingBufferizeBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  FinalizingBufferizeBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  FinalizingBufferizeBase(const FinalizingBufferizeBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -219,6 +239,11 @@ public:
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
     
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(FinalizingBufferizeBase<DerivedT>)
 
 protected:
 };
@@ -264,12 +289,17 @@ public:
     
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(OneShotBufferizeBase<DerivedT>)
+
 protected:
-  ::mlir::Pass::Option<bool> allowReturnMemref{*this, "allow-return-memref", ::llvm::cl::desc("Allows the return of memrefs (for testing purposes only)"), ::llvm::cl::init(false)};
+  ::mlir::Pass::Option<bool> allowReturnAllocs{*this, "allow-return-allocs", ::llvm::cl::desc("Allows returning/yielding new allocations from a block."), ::llvm::cl::init(false)};
   ::mlir::Pass::Option<bool> allowUnknownOps{*this, "allow-unknown-ops", ::llvm::cl::desc("Allows unknown (not bufferizable) ops in the input IR."), ::llvm::cl::init(false)};
   ::mlir::Pass::Option<unsigned> analysisFuzzerSeed{*this, "analysis-fuzzer-seed", ::llvm::cl::desc("Test only: Analyze ops in random order with a given seed (fuzzer)"), ::llvm::cl::init(0)};
   ::mlir::Pass::Option<bool> createDeallocs{*this, "create-deallocs", ::llvm::cl::desc("Specify if buffers should be deallocated. For compatibility with core bufferization passes."), ::llvm::cl::init(true)};
-  ::mlir::Pass::ListOption<std::string> dialectFilter{*this, "dialect-filter", ::llvm::cl::desc("Restrict bufferization to ops from these dialects."), llvm::cl::MiscFlags::CommaSeparated};
+  ::mlir::Pass::ListOption<std::string> dialectFilter{*this, "dialect-filter", ::llvm::cl::desc("Restrict bufferization to ops from these dialects.")};
   ::mlir::Pass::Option<bool> fullyDynamicLayoutMaps{*this, "fully-dynamic-layout-maps", ::llvm::cl::desc("Generate MemRef types with dynamic offset+strides by default."), ::llvm::cl::init(true)};
   ::mlir::Pass::Option<bool> testAnalysisOnly{*this, "test-analysis-only", ::llvm::cl::desc("Test only: Only run inplaceability analysis and annotate IR"), ::llvm::cl::init(false)};
   ::mlir::Pass::Option<bool> printConflicts{*this, "print-conflicts", ::llvm::cl::desc("Test only: Annotate IR with RaW conflicts. Requires test-analysis-only."), ::llvm::cl::init(false)};
@@ -280,12 +310,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class PromoteBuffersToStackBase : public ::mlir::OperationPass<FuncOp> {
+class PromoteBuffersToStackBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = PromoteBuffersToStackBase;
 
-  PromoteBuffersToStackBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  PromoteBuffersToStackBase(const PromoteBuffersToStackBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  PromoteBuffersToStackBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  PromoteBuffersToStackBase(const PromoteBuffersToStackBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -315,6 +345,11 @@ public:
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
     
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(PromoteBuffersToStackBase<DerivedT>)
 
 protected:
   ::mlir::Pass::Option<unsigned> maxAllocSizeInBytes{*this, "max-alloc-size-in-bytes", ::llvm::cl::desc("Maximal size in bytes to promote allocations to stack."), ::llvm::cl::init(1024)};

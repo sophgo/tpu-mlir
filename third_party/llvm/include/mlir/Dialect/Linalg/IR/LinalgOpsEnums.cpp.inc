@@ -81,6 +81,10 @@ namespace linalg {
   switch (val) {
     case UnaryFn::exp: return "exp";
     case UnaryFn::log: return "log";
+    case UnaryFn::abs: return "abs";
+    case UnaryFn::ceil: return "ceil";
+    case UnaryFn::floor: return "floor";
+    case UnaryFn::negf: return "negf";
   }
   return "";
 }
@@ -89,12 +93,20 @@ namespace linalg {
   return ::llvm::StringSwitch<::llvm::Optional<UnaryFn>>(str)
       .Case("exp", UnaryFn::exp)
       .Case("log", UnaryFn::log)
+      .Case("abs", UnaryFn::abs)
+      .Case("ceil", UnaryFn::ceil)
+      .Case("floor", UnaryFn::floor)
+      .Case("negf", UnaryFn::negf)
       .Default(::llvm::None);
 }
 ::llvm::Optional<UnaryFn> symbolizeUnaryFn(uint32_t value) {
   switch (value) {
   case 0: return UnaryFn::exp;
   case 1: return UnaryFn::log;
+  case 2: return UnaryFn::abs;
+  case 3: return UnaryFn::ceil;
+  case 4: return UnaryFn::floor;
+  case 5: return UnaryFn::negf;
   default: return ::llvm::None;
   }
 }

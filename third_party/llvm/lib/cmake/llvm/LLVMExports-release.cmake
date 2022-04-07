@@ -18,7 +18,7 @@ list(APPEND _IMPORT_CHECK_FILES_FOR_LLVMDemangle "${_IMPORT_PREFIX}/lib/libLLVMD
 # Import target "LLVMSupport" for configuration "Release"
 set_property(TARGET LLVMSupport APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(LLVMSupport PROPERTIES
-  IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "C;CXX"
+  IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "ASM;C;CXX"
   IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libLLVMSupport.a"
   )
 
@@ -894,6 +894,15 @@ set_target_properties(mlir-pdll PROPERTIES
 
 list(APPEND _IMPORT_CHECK_TARGETS mlir-pdll )
 list(APPEND _IMPORT_CHECK_FILES_FOR_mlir-pdll "${_IMPORT_PREFIX}/bin/mlir-pdll" )
+
+# Import target "mlir-pdll-lsp-server" for configuration "Release"
+set_property(TARGET mlir-pdll-lsp-server APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+set_target_properties(mlir-pdll-lsp-server PROPERTIES
+  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/bin/mlir-pdll-lsp-server"
+  )
+
+list(APPEND _IMPORT_CHECK_TARGETS mlir-pdll-lsp-server )
+list(APPEND _IMPORT_CHECK_FILES_FOR_mlir-pdll-lsp-server "${_IMPORT_PREFIX}/bin/mlir-pdll-lsp-server" )
 
 # Import target "mlir-reduce" for configuration "Release"
 set_property(TARGET mlir-reduce APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)

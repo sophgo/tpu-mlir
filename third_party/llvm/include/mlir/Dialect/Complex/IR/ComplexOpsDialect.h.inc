@@ -36,4 +36,4 @@ public:
 };
 } // namespace complex
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::ComplexDialect)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::ComplexDialect)

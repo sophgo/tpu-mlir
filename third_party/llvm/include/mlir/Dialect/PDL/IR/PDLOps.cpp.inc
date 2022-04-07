@@ -137,15 +137,6 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_PDLOps0(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_PDLOps1(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !((attr.isa<::mlir::ArrayAttr>()))) {
-    return op->emitOpError("attribute '") << attrName
-        << "' failed to satisfy constraint: array attribute";
-  }
-  return ::mlir::success();
-}
-
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_PDLOps2(
-    ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((true))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: any attribute";
@@ -153,16 +144,16 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_PDLOps2(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_PDLOps3(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_PDLOps2(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return (attr.isa<::mlir::StringAttr>()); })))) {
+  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && ((attr.isa<::mlir::StringAttr>())); })))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: string array attribute";
   }
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_PDLOps4(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_PDLOps3(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(16)))) && ((!attr.cast<::mlir::IntegerAttr>().getValue().isNegative())))) {
     return op->emitOpError("attribute '") << attrName
@@ -171,7 +162,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_PDLOps4(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_PDLOps5(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_PDLOps4(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !(((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32))))) {
     return op->emitOpError("attribute '") << attrName
@@ -180,7 +171,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_PDLOps5(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_PDLOps6(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_PDLOps5(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !(((attr.isa<::mlir::TypeAttr>())) && ((attr.cast<::mlir::TypeAttr>().getValue().isa<::mlir::Type>())))) {
     return op->emitOpError("attribute '") << attrName
@@ -189,9 +180,9 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_PDLOps6(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_PDLOps7(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_PDLOps6(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::TypeAttr>())) && ((attr.cast<::mlir::TypeAttr>().getValue().isa<::mlir::Type>())); })))) {
+  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::TypeAttr>())) && ((attr.cast<::mlir::TypeAttr>().getValue().isa<::mlir::Type>()))); })))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: type array attribute";
   }
@@ -279,17 +270,6 @@ std::pair<unsigned, unsigned> ApplyNativeConstraintOpAdaptor::getODSOperandIndex
   return attr.getValue();
 }
 
-::mlir::ArrayAttr ApplyNativeConstraintOpAdaptor::constParamsAttr() {
-  assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("constParams").dyn_cast_or_null<::mlir::ArrayAttr>();
-  return attr;
-}
-
-::llvm::Optional< ::mlir::ArrayAttr > ApplyNativeConstraintOpAdaptor::constParams() {
-  auto attr = constParamsAttr();
-  return attr ? ::llvm::Optional< ::mlir::ArrayAttr >(attr) : (::llvm::None);
-}
-
 ::mlir::LogicalResult ApplyNativeConstraintOpAdaptor::verify(::mlir::Location loc) {
   {
     auto tblgen_name = odsAttrs.get("name");
@@ -298,11 +278,6 @@ std::pair<unsigned, unsigned> ApplyNativeConstraintOpAdaptor::getODSOperandIndex
 
     if (tblgen_name && !((tblgen_name.isa<::mlir::StringAttr>())))
       return emitError(loc, "'pdl.apply_native_constraint' op ""attribute 'name' failed to satisfy constraint: string attribute");
-  }
-  {
-    auto tblgen_constParams = odsAttrs.get("constParams");
-    if (tblgen_constParams && !((tblgen_constParams.isa<::mlir::ArrayAttr>())))
-      return emitError(loc, "'pdl.apply_native_constraint' op ""attribute 'constParams' failed to satisfy constraint: array attribute");
   }
   return ::mlir::success();
 }
@@ -360,65 +335,30 @@ std::pair<unsigned, unsigned> ApplyNativeConstraintOp::getODSResultIndexAndLengt
   return attr.getValue();
 }
 
-::mlir::ArrayAttr ApplyNativeConstraintOp::constParamsAttr() {
-  return (*this)->getAttr(constParamsAttrName()).dyn_cast_or_null<::mlir::ArrayAttr>();
-}
-
-::llvm::Optional< ::mlir::ArrayAttr > ApplyNativeConstraintOp::constParams() {
-  auto attr = constParamsAttr();
-  return attr ? ::llvm::Optional< ::mlir::ArrayAttr >(attr) : (::llvm::None);
-}
-
 void ApplyNativeConstraintOp::nameAttr(::mlir::StringAttr attr) {
   (*this)->setAttr(nameAttrName(), attr);
 }
 
-void ApplyNativeConstraintOp::constParamsAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(constParamsAttrName(), attr);
-}
-
-::mlir::Attribute ApplyNativeConstraintOp::removeConstParamsAttr() {
-  return (*this)->removeAttr(constParamsAttrName());
-}
-
-void ApplyNativeConstraintOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, StringRef name, ValueRange args, ArrayRef<Attribute> params) {
-      build(odsBuilder, odsState, odsBuilder.getStringAttr(name), args,
-            params.empty() ? ArrayAttr() : odsBuilder.getArrayAttr(params));
-    
-}
-
-void ApplyNativeConstraintOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::StringAttr name, ::mlir::ValueRange args, /*optional*/::mlir::ArrayAttr constParams) {
+void ApplyNativeConstraintOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::StringAttr name, ::mlir::ValueRange args) {
   odsState.addOperands(args);
   odsState.addAttribute(nameAttrName(odsState.name), name);
-  if (constParams) {
-  odsState.addAttribute(constParamsAttrName(odsState.name), constParams);
-  }
 }
 
-void ApplyNativeConstraintOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::StringAttr name, ::mlir::ValueRange args, /*optional*/::mlir::ArrayAttr constParams) {
+void ApplyNativeConstraintOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::StringAttr name, ::mlir::ValueRange args) {
   odsState.addOperands(args);
   odsState.addAttribute(nameAttrName(odsState.name), name);
-  if (constParams) {
-  odsState.addAttribute(constParamsAttrName(odsState.name), constParams);
-  }
   assert(resultTypes.size() == 0u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
 
-void ApplyNativeConstraintOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::llvm::StringRef name, ::mlir::ValueRange args, /*optional*/::mlir::ArrayAttr constParams) {
+void ApplyNativeConstraintOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::llvm::StringRef name, ::mlir::ValueRange args) {
   odsState.addOperands(args);
   odsState.addAttribute(nameAttrName(odsState.name), odsBuilder.getStringAttr(name));
-  if (constParams) {
-  odsState.addAttribute(constParamsAttrName(odsState.name), constParams);
-  }
 }
 
-void ApplyNativeConstraintOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::llvm::StringRef name, ::mlir::ValueRange args, /*optional*/::mlir::ArrayAttr constParams) {
+void ApplyNativeConstraintOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::llvm::StringRef name, ::mlir::ValueRange args) {
   odsState.addOperands(args);
   odsState.addAttribute(nameAttrName(odsState.name), odsBuilder.getStringAttr(name));
-  if (constParams) {
-  odsState.addAttribute(constParamsAttrName(odsState.name), constParams);
-  }
   assert(resultTypes.size() == 0u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -437,11 +377,6 @@ void ApplyNativeConstraintOp::build(::mlir::OpBuilder &, ::mlir::OperationState 
       return emitOpError("requires attribute 'name'");
 
     if (::mlir::failed(__mlir_ods_local_attr_constraint_PDLOps0(*this, tblgen_name, "name")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_constParams = (*this)->getAttr(constParamsAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_PDLOps1(*this, tblgen_constParams, "constParams")))
       return ::mlir::failure();
   }
   {
@@ -464,8 +399,7 @@ void ApplyNativeConstraintOp::build(::mlir::OpBuilder &, ::mlir::OperationState 
 
 ::mlir::ParseResult ApplyNativeConstraintOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::StringAttr nameAttr;
-  ::mlir::ArrayAttr constParamsAttr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> argsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
   ::llvm::SMLoc argsOperandsLoc;
   (void)argsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> argsTypes;
@@ -473,15 +407,6 @@ void ApplyNativeConstraintOp::build(::mlir::OpBuilder &, ::mlir::OperationState 
   if (parser.parseCustomAttributeWithFallback(nameAttr, parser.getBuilder().getType<::mlir::NoneType>(), "name",
           result.attributes)) {
     return ::mlir::failure();
-  }
-
-  {
-    ::mlir::OptionalParseResult parseResult =
-      parser.parseOptionalAttribute(constParamsAttr, parser.getBuilder().getType<::mlir::NoneType>(), "constParams", result.attributes);
-    if (parseResult.hasValue() && failed(*parseResult))
-      return ::mlir::failure();
-  }
-  if (constParamsAttr) {
   }
   if (parser.parseLParen())
     return ::mlir::failure();
@@ -506,22 +431,18 @@ void ApplyNativeConstraintOp::build(::mlir::OpBuilder &, ::mlir::OperationState 
 void ApplyNativeConstraintOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
   _odsPrinter.printAttributeWithoutType(nameAttr());
-  if ((*this)->getAttr("constParams")) {
-  _odsPrinter << ' ';
-  _odsPrinter.printAttributeWithoutType(constParamsAttr());
-  }
   _odsPrinter << "(";
   _odsPrinter << args();
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   _odsPrinter << args().getTypes();
   _odsPrinter << ")";
-  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"name", "constParams"});
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"name"});
 }
 
 } // namespace pdl
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::ApplyNativeConstraintOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::ApplyNativeConstraintOp)
 
 namespace mlir {
 namespace pdl {
@@ -581,17 +502,6 @@ std::pair<unsigned, unsigned> ApplyNativeRewriteOpAdaptor::getODSOperandIndexAnd
   return attr.getValue();
 }
 
-::mlir::ArrayAttr ApplyNativeRewriteOpAdaptor::constParamsAttr() {
-  assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("constParams").dyn_cast_or_null<::mlir::ArrayAttr>();
-  return attr;
-}
-
-::llvm::Optional< ::mlir::ArrayAttr > ApplyNativeRewriteOpAdaptor::constParams() {
-  auto attr = constParamsAttr();
-  return attr ? ::llvm::Optional< ::mlir::ArrayAttr >(attr) : (::llvm::None);
-}
-
 ::mlir::LogicalResult ApplyNativeRewriteOpAdaptor::verify(::mlir::Location loc) {
   {
     auto tblgen_name = odsAttrs.get("name");
@@ -600,11 +510,6 @@ std::pair<unsigned, unsigned> ApplyNativeRewriteOpAdaptor::getODSOperandIndexAnd
 
     if (tblgen_name && !((tblgen_name.isa<::mlir::StringAttr>())))
       return emitError(loc, "'pdl.apply_native_rewrite' op ""attribute 'name' failed to satisfy constraint: string attribute");
-  }
-  {
-    auto tblgen_constParams = odsAttrs.get("constParams");
-    if (tblgen_constParams && !((tblgen_constParams.isa<::mlir::ArrayAttr>())))
-      return emitError(loc, "'pdl.apply_native_rewrite' op ""attribute 'constParams' failed to satisfy constraint: array attribute");
   }
   return ::mlir::success();
 }
@@ -680,42 +585,19 @@ std::pair<unsigned, unsigned> ApplyNativeRewriteOp::getODSResultIndexAndLength(u
   return attr.getValue();
 }
 
-::mlir::ArrayAttr ApplyNativeRewriteOp::constParamsAttr() {
-  return (*this)->getAttr(constParamsAttrName()).dyn_cast_or_null<::mlir::ArrayAttr>();
-}
-
-::llvm::Optional< ::mlir::ArrayAttr > ApplyNativeRewriteOp::constParams() {
-  auto attr = constParamsAttr();
-  return attr ? ::llvm::Optional< ::mlir::ArrayAttr >(attr) : (::llvm::None);
-}
-
 void ApplyNativeRewriteOp::nameAttr(::mlir::StringAttr attr) {
   (*this)->setAttr(nameAttrName(), attr);
 }
 
-void ApplyNativeRewriteOp::constParamsAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(constParamsAttrName(), attr);
-}
-
-::mlir::Attribute ApplyNativeRewriteOp::removeConstParamsAttr() {
-  return (*this)->removeAttr(constParamsAttrName());
-}
-
-void ApplyNativeRewriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange results, ::mlir::StringAttr name, ::mlir::ValueRange args, /*optional*/::mlir::ArrayAttr constParams) {
+void ApplyNativeRewriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange results, ::mlir::StringAttr name, ::mlir::ValueRange args) {
   odsState.addOperands(args);
   odsState.addAttribute(nameAttrName(odsState.name), name);
-  if (constParams) {
-  odsState.addAttribute(constParamsAttrName(odsState.name), constParams);
-  }
   odsState.addTypes(results);
 }
 
-void ApplyNativeRewriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange results, ::llvm::StringRef name, ::mlir::ValueRange args, /*optional*/::mlir::ArrayAttr constParams) {
+void ApplyNativeRewriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange results, ::llvm::StringRef name, ::mlir::ValueRange args) {
   odsState.addOperands(args);
   odsState.addAttribute(nameAttrName(odsState.name), odsBuilder.getStringAttr(name));
-  if (constParams) {
-  odsState.addAttribute(constParamsAttrName(odsState.name), constParams);
-  }
   odsState.addTypes(results);
 }
 
@@ -732,11 +614,6 @@ void ApplyNativeRewriteOp::build(::mlir::OpBuilder &, ::mlir::OperationState &od
       return emitOpError("requires attribute 'name'");
 
     if (::mlir::failed(__mlir_ods_local_attr_constraint_PDLOps0(*this, tblgen_name, "name")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_constParams = (*this)->getAttr(constParamsAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_PDLOps1(*this, tblgen_constParams, "constParams")))
       return ::mlir::failure();
   }
   {
@@ -768,8 +645,7 @@ void ApplyNativeRewriteOp::build(::mlir::OpBuilder &, ::mlir::OperationState &od
 
 ::mlir::ParseResult ApplyNativeRewriteOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::StringAttr nameAttr;
-  ::mlir::ArrayAttr constParamsAttr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> argsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
   ::llvm::SMLoc argsOperandsLoc;
   (void)argsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> argsTypes;
@@ -778,15 +654,6 @@ void ApplyNativeRewriteOp::build(::mlir::OpBuilder &, ::mlir::OperationState &od
   if (parser.parseCustomAttributeWithFallback(nameAttr, parser.getBuilder().getType<::mlir::NoneType>(), "name",
           result.attributes)) {
     return ::mlir::failure();
-  }
-
-  {
-    ::mlir::OptionalParseResult parseResult =
-      parser.parseOptionalAttribute(constParamsAttr, parser.getBuilder().getType<::mlir::NoneType>(), "constParams", result.attributes);
-    if (parseResult.hasValue() && failed(*parseResult))
-      return ::mlir::failure();
-  }
-  if (constParamsAttr) {
   }
   if (succeeded(parser.parseOptionalLParen())) {
 
@@ -817,10 +684,6 @@ void ApplyNativeRewriteOp::build(::mlir::OpBuilder &, ::mlir::OperationState &od
 void ApplyNativeRewriteOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
   _odsPrinter.printAttributeWithoutType(nameAttr());
-  if ((*this)->getAttr("constParams")) {
-  _odsPrinter << ' ';
-  _odsPrinter.printAttributeWithoutType(constParamsAttr());
-  }
   if (!args().empty()) {
   _odsPrinter << "(";
   _odsPrinter << args();
@@ -834,12 +697,12 @@ void ApplyNativeRewriteOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
   _odsPrinter << results().getTypes();
   }
-  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"name", "constParams"});
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"name"});
 }
 
 } // namespace pdl
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::ApplyNativeRewriteOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::ApplyNativeRewriteOp)
 
 namespace mlir {
 namespace pdl {
@@ -1015,7 +878,7 @@ void AttributeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 ::mlir::LogicalResult AttributeOp::verifyInvariantsImpl() {
   {
     auto tblgen_value = (*this)->getAttr(valueAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_PDLOps2(*this, tblgen_value, "value")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_PDLOps1(*this, tblgen_value, "value")))
       return ::mlir::failure();
   }
   {
@@ -1051,7 +914,7 @@ void AttributeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 }
 
 ::mlir::ParseResult AttributeOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> typeOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> typeOperands;
   ::llvm::SMLoc typeOperandsLoc;
   (void)typeOperandsLoc;
   ::mlir::Attribute valueAttr;
@@ -1059,7 +922,7 @@ void AttributeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 
   {
     typeOperandsLoc = parser.getCurrentLocation();
-    ::mlir::OpAsmParser::OperandType operand;
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
     if (parseResult.hasValue()) {
@@ -1104,7 +967,7 @@ void AttributeOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace pdl
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::AttributeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::AttributeOp)
 
 namespace mlir {
 namespace pdl {
@@ -1209,8 +1072,8 @@ void EraseOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 ::mlir::ParseResult EraseOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operationRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operationOperands(operationRawOperands);  ::llvm::SMLoc operationOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operationRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operationOperands(operationRawOperands);  ::llvm::SMLoc operationOperandsLoc;
   (void)operationOperandsLoc;
 
   operationOperandsLoc = parser.getCurrentLocation();
@@ -1232,7 +1095,7 @@ void EraseOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace pdl
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::EraseOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::EraseOp)
 
 namespace mlir {
 namespace pdl {
@@ -1394,14 +1257,14 @@ void OperandOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 }
 
 ::mlir::ParseResult OperandOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> typeOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> typeOperands;
   ::llvm::SMLoc typeOperandsLoc;
   (void)typeOperandsLoc;
   if (succeeded(parser.parseOptionalColon())) {
 
   {
     typeOperandsLoc = parser.getCurrentLocation();
-    ::mlir::OpAsmParser::OperandType operand;
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
     if (parseResult.hasValue()) {
@@ -1433,7 +1296,7 @@ void OperandOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace pdl
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::OperandOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::OperandOp)
 
 namespace mlir {
 namespace pdl {
@@ -1596,14 +1459,14 @@ void OperandsOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::ParseResult OperandsOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> typeOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> typeOperands;
   ::llvm::SMLoc typeOperandsLoc;
   (void)typeOperandsLoc;
   if (succeeded(parser.parseOptionalColon())) {
 
   {
     typeOperandsLoc = parser.getCurrentLocation();
-    ::mlir::OpAsmParser::OperandType operand;
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
     if (parseResult.hasValue()) {
@@ -1635,7 +1498,7 @@ void OperandsOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace pdl
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::OperandsOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::OperandsOp)
 
 namespace mlir {
 namespace pdl {
@@ -1731,7 +1594,7 @@ std::pair<unsigned, unsigned> OperationOpAdaptor::getODSOperandIndexAndLength(un
     if (!tblgen_attributeNames)
       return emitError(loc, "'pdl.operation' op ""requires attribute 'attributeNames'");
 
-    if (tblgen_attributeNames && !(((tblgen_attributeNames.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_attributeNames.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return (attr.isa<::mlir::StringAttr>()); }))))
+    if (tblgen_attributeNames && !(((tblgen_attributeNames.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_attributeNames.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && ((attr.isa<::mlir::StringAttr>())); }))))
       return emitError(loc, "'pdl.operation' op ""attribute 'attributeNames' failed to satisfy constraint: string array attribute");
   }
   return ::mlir::success();
@@ -1892,7 +1755,7 @@ void OperationOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
     if (!tblgen_attributeNames)
       return emitOpError("requires attribute 'attributeNames'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_PDLOps3(*this, tblgen_attributeNames, "attributeNames")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_PDLOps2(*this, tblgen_attributeNames, "attributeNames")))
       return ::mlir::failure();
   }
   {
@@ -1936,15 +1799,15 @@ void OperationOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 
 ::mlir::ParseResult OperationOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::StringAttr nameAttr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> operandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> operandsOperands;
   ::llvm::SMLoc operandsOperandsLoc;
   (void)operandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> operandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> attributesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> attributesOperands;
   ::llvm::SMLoc attributesOperandsLoc;
   (void)attributesOperandsLoc;
   ::mlir::ArrayAttr attributeNamesAttr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> typesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> typesOperands;
   ::llvm::SMLoc typesOperandsLoc;
   (void)typesOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> typesTypes;
@@ -2035,7 +1898,7 @@ void OperationOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace pdl
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::OperationOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::OperationOp)
 
 namespace mlir {
 namespace pdl {
@@ -2219,7 +2082,7 @@ void PatternOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
     if (!tblgen_benefit)
       return emitOpError("requires attribute 'benefit'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_PDLOps4(*this, tblgen_benefit, "benefit")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_PDLOps3(*this, tblgen_benefit, "benefit")))
       return ::mlir::failure();
   }
   {
@@ -2238,9 +2101,7 @@ void PatternOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 }
 
 ::mlir::LogicalResult PatternOp::verifyInvariants() {
-  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
-    return ::mlir::success();
-  return ::mlir::failure();
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult PatternOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -2294,7 +2155,7 @@ void PatternOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace pdl
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::PatternOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::PatternOp)
 
 namespace mlir {
 namespace pdl {
@@ -2496,14 +2357,14 @@ void ReplaceOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 }
 
 ::mlir::ParseResult ReplaceOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operationRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operationOperands(operationRawOperands);  ::llvm::SMLoc operationOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operationRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operationOperands(operationRawOperands);  ::llvm::SMLoc operationOperandsLoc;
   (void)operationOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> replValuesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> replValuesOperands;
   ::llvm::SMLoc replValuesOperandsLoc;
   (void)replValuesOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> replValuesTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> replOperationOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> replOperationOperands;
   ::llvm::SMLoc replOperationOperandsLoc;
   (void)replOperationOperandsLoc;
 
@@ -2528,7 +2389,7 @@ void ReplaceOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 
   {
     replOperationOperandsLoc = parser.getCurrentLocation();
-    ::mlir::OpAsmParser::OperandType operand;
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
     if (parseResult.hasValue()) {
@@ -2574,7 +2435,7 @@ void ReplaceOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace pdl
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::ReplaceOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::ReplaceOp)
 
 namespace mlir {
 namespace pdl {
@@ -2719,7 +2580,7 @@ void ResultOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
     if (!tblgen_index)
       return emitOpError("requires attribute 'index'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_PDLOps5(*this, tblgen_index, "index")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_PDLOps4(*this, tblgen_index, "index")))
       return ::mlir::failure();
   }
   {
@@ -2749,8 +2610,8 @@ void ResultOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 
 ::mlir::ParseResult ResultOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::IntegerAttr indexAttr;
-  ::mlir::OpAsmParser::OperandType parentRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> parentOperands(parentRawOperands);  ::llvm::SMLoc parentOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand parentRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> parentOperands(parentRawOperands);  ::llvm::SMLoc parentOperandsLoc;
   (void)parentOperandsLoc;
 
   if (parser.parseCustomAttributeWithFallback(indexAttr, parser.getBuilder().getIntegerType(32), "index",
@@ -2787,7 +2648,7 @@ void ResultOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace pdl
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::ResultOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::ResultOp)
 
 namespace mlir {
 namespace pdl {
@@ -2921,7 +2782,7 @@ void ResultsOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 ::mlir::LogicalResult ResultsOp::verifyInvariantsImpl() {
   {
     auto tblgen_index = (*this)->getAttr(indexAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_PDLOps5(*this, tblgen_index, "index")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_PDLOps4(*this, tblgen_index, "index")))
       return ::mlir::failure();
   }
   {
@@ -2953,8 +2814,8 @@ void ResultsOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 
 ::mlir::ParseResult ResultsOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::IntegerAttr indexAttr;
-  ::mlir::OpAsmParser::OperandType parentRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> parentOperands(parentRawOperands);  ::llvm::SMLoc parentOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand parentRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> parentOperands(parentRawOperands);  ::llvm::SMLoc parentOperandsLoc;
   (void)parentOperandsLoc;
   ::mlir::Type valRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> valTypes(valRawTypes);
@@ -3004,7 +2865,7 @@ void ResultsOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace pdl
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::ResultsOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::ResultsOp)
 
 namespace mlir {
 namespace pdl {
@@ -3065,17 +2926,6 @@ std::pair<unsigned, unsigned> RewriteOpAdaptor::getODSOperandIndexAndLength(unsi
   return attr ? ::llvm::Optional< ::llvm::StringRef >(attr.getValue()) : (::llvm::None);
 }
 
-::mlir::ArrayAttr RewriteOpAdaptor::externalConstParamsAttr() {
-  assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("externalConstParams").dyn_cast_or_null<::mlir::ArrayAttr>();
-  return attr;
-}
-
-::llvm::Optional< ::mlir::ArrayAttr > RewriteOpAdaptor::externalConstParams() {
-  auto attr = externalConstParamsAttr();
-  return attr ? ::llvm::Optional< ::mlir::ArrayAttr >(attr) : (::llvm::None);
-}
-
 ::mlir::RegionRange RewriteOpAdaptor::getRegions() {
   return odsRegions;
 }
@@ -3099,11 +2949,6 @@ std::pair<unsigned, unsigned> RewriteOpAdaptor::getODSOperandIndexAndLength(unsi
     auto tblgen_name = odsAttrs.get("name");
     if (tblgen_name && !((tblgen_name.isa<::mlir::StringAttr>())))
       return emitError(loc, "'pdl.rewrite' op ""attribute 'name' failed to satisfy constraint: string attribute");
-  }
-  {
-    auto tblgen_externalConstParams = odsAttrs.get("externalConstParams");
-    if (tblgen_externalConstParams && !((tblgen_externalConstParams.isa<::mlir::ArrayAttr>())))
-      return emitError(loc, "'pdl.rewrite' op ""attribute 'externalConstParams' failed to satisfy constraint: array attribute");
   }
   return ::mlir::success();
 }
@@ -3172,55 +3017,32 @@ std::pair<unsigned, unsigned> RewriteOp::getODSResultIndexAndLength(unsigned ind
   return attr ? ::llvm::Optional< ::llvm::StringRef >(attr.getValue()) : (::llvm::None);
 }
 
-::mlir::ArrayAttr RewriteOp::externalConstParamsAttr() {
-  return (*this)->getAttr(externalConstParamsAttrName()).dyn_cast_or_null<::mlir::ArrayAttr>();
-}
-
-::llvm::Optional< ::mlir::ArrayAttr > RewriteOp::externalConstParams() {
-  auto attr = externalConstParamsAttr();
-  return attr ? ::llvm::Optional< ::mlir::ArrayAttr >(attr) : (::llvm::None);
-}
-
 void RewriteOp::nameAttr(::mlir::StringAttr attr) {
   (*this)->setAttr(nameAttrName(), attr);
-}
-
-void RewriteOp::externalConstParamsAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(externalConstParamsAttrName(), attr);
 }
 
 ::mlir::Attribute RewriteOp::removeNameAttr() {
   return (*this)->removeAttr(nameAttrName());
 }
 
-::mlir::Attribute RewriteOp::removeExternalConstParamsAttr() {
-  return (*this)->removeAttr(externalConstParamsAttrName());
-}
-
-void RewriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, /*optional*/::mlir::Value root, /*optional*/::mlir::StringAttr name, ::mlir::ValueRange externalArgs, /*optional*/::mlir::ArrayAttr externalConstParams) {
+void RewriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, /*optional*/::mlir::Value root, /*optional*/::mlir::StringAttr name, ::mlir::ValueRange externalArgs) {
   if (root)
     odsState.addOperands(root);
   odsState.addOperands(externalArgs);
   odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(root ? 1 : 0), static_cast<int32_t>(externalArgs.size())}));
   if (name) {
   odsState.addAttribute(nameAttrName(odsState.name), name);
-  }
-  if (externalConstParams) {
-  odsState.addAttribute(externalConstParamsAttrName(odsState.name), externalConstParams);
   }
   (void)odsState.addRegion();
 }
 
-void RewriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, /*optional*/::mlir::Value root, /*optional*/::mlir::StringAttr name, ::mlir::ValueRange externalArgs, /*optional*/::mlir::ArrayAttr externalConstParams) {
+void RewriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, /*optional*/::mlir::Value root, /*optional*/::mlir::StringAttr name, ::mlir::ValueRange externalArgs) {
   if (root)
     odsState.addOperands(root);
   odsState.addOperands(externalArgs);
   odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(root ? 1 : 0), static_cast<int32_t>(externalArgs.size())}));
   if (name) {
   odsState.addAttribute(nameAttrName(odsState.name), name);
-  }
-  if (externalConstParams) {
-  odsState.addAttribute(externalConstParamsAttrName(odsState.name), externalConstParams);
   }
   (void)odsState.addRegion();
   assert(resultTypes.size() == 0u && "mismatched number of results");
@@ -3250,11 +3072,6 @@ void RewriteOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
     {
     auto tblgen_name = (*this)->getAttr(nameAttrName());
     if (::mlir::failed(__mlir_ods_local_attr_constraint_PDLOps0(*this, tblgen_name, "name")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_externalConstParams = (*this)->getAttr(externalConstParamsAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_PDLOps1(*this, tblgen_externalConstParams, "externalConstParams")))
       return ::mlir::failure();
   }
   {
@@ -3288,18 +3105,15 @@ void RewriteOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 }
 
 ::mlir::LogicalResult RewriteOp::verifyInvariants() {
-  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
-    return ::mlir::success();
-  return ::mlir::failure();
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult RewriteOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> rootOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> rootOperands;
   ::llvm::SMLoc rootOperandsLoc;
   (void)rootOperandsLoc;
   ::mlir::StringAttr nameAttr;
-  ::mlir::ArrayAttr externalConstParamsAttr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> externalArgsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> externalArgsOperands;
   ::llvm::SMLoc externalArgsOperandsLoc;
   (void)externalArgsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> externalArgsTypes;
@@ -3307,7 +3121,7 @@ void RewriteOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 
   {
     rootOperandsLoc = parser.getCurrentLocation();
-    ::mlir::OpAsmParser::OperandType operand;
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
     if (parseResult.hasValue()) {
@@ -3323,15 +3137,6 @@ void RewriteOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   if (parser.parseCustomAttributeWithFallback(nameAttr, parser.getBuilder().getType<::mlir::NoneType>(), "name",
           result.attributes)) {
     return ::mlir::failure();
-  }
-
-  {
-    ::mlir::OptionalParseResult parseResult =
-      parser.parseOptionalAttribute(externalConstParamsAttr, parser.getBuilder().getType<::mlir::NoneType>(), "externalConstParams", result.attributes);
-    if (parseResult.hasValue() && failed(*parseResult))
-      return ::mlir::failure();
-  }
-  if (externalConstParamsAttr) {
   }
   if (succeeded(parser.parseOptionalLParen())) {
 
@@ -3379,10 +3184,6 @@ void RewriteOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << "with";
   _odsPrinter << ' ';
   _odsPrinter.printAttributeWithoutType(nameAttr());
-  if ((*this)->getAttr("externalConstParams")) {
-  _odsPrinter << ' ';
-  _odsPrinter.printAttributeWithoutType(externalConstParamsAttr());
-  }
   if (!externalArgs().empty()) {
   _odsPrinter << "(";
   _odsPrinter << externalArgs();
@@ -3396,12 +3197,12 @@ void RewriteOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
   _odsPrinter.printRegion(body());
   }
-  _odsPrinter.printOptionalAttrDictWithKeyword((*this)->getAttrs(), /*elidedAttrs=*/{"operand_segment_sizes", "name", "externalConstParams"});
+  _odsPrinter.printOptionalAttrDictWithKeyword((*this)->getAttrs(), /*elidedAttrs=*/{"operand_segment_sizes", "name"});
 }
 
 } // namespace pdl
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::RewriteOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::RewriteOp)
 
 namespace mlir {
 namespace pdl {
@@ -3519,7 +3320,7 @@ void TypeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 ::mlir::LogicalResult TypeOp::verifyInvariantsImpl() {
   {
     auto tblgen_type = (*this)->getAttr(typeAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_PDLOps6(*this, tblgen_type, "type")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_PDLOps5(*this, tblgen_type, "type")))
       return ::mlir::failure();
   }
   {
@@ -3567,7 +3368,7 @@ void TypeOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace pdl
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::TypeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::TypeOp)
 
 namespace mlir {
 namespace pdl {
@@ -3612,7 +3413,7 @@ std::pair<unsigned, unsigned> TypesOpAdaptor::getODSOperandIndexAndLength(unsign
 ::mlir::LogicalResult TypesOpAdaptor::verify(::mlir::Location loc) {
   {
     auto tblgen_types = odsAttrs.get("types");
-    if (tblgen_types && !(((tblgen_types.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_types.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::TypeAttr>())) && ((attr.cast<::mlir::TypeAttr>().getValue().isa<::mlir::Type>())); }))))
+    if (tblgen_types && !(((tblgen_types.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_types.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::TypeAttr>())) && ((attr.cast<::mlir::TypeAttr>().getValue().isa<::mlir::Type>()))); }))))
       return emitError(loc, "'pdl.types' op ""attribute 'types' failed to satisfy constraint: type array attribute");
   }
   return ::mlir::success();
@@ -3685,7 +3486,7 @@ void TypesOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 ::mlir::LogicalResult TypesOp::verifyInvariantsImpl() {
   {
     auto tblgen_types = (*this)->getAttr(typesAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_PDLOps7(*this, tblgen_types, "types")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_PDLOps6(*this, tblgen_types, "types")))
       return ::mlir::failure();
   }
   {
@@ -3733,7 +3534,7 @@ void TypesOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace pdl
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::TypesOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::TypesOp)
 
 
 #endif  // GET_OP_CLASSES

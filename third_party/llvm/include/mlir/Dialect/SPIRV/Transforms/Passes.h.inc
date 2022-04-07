@@ -2,6 +2,55 @@
 #ifdef GEN_PASS_CLASSES
 
 //===----------------------------------------------------------------------===//
+// SPIRVCanonicalizeGLSL
+//===----------------------------------------------------------------------===//
+
+template <typename DerivedT>
+class SPIRVCanonicalizeGLSLBase : public ::mlir::OperationPass<> {
+public:
+  using Base = SPIRVCanonicalizeGLSLBase;
+
+  SPIRVCanonicalizeGLSLBase() : ::mlir::OperationPass<>(::mlir::TypeID::get<DerivedT>()) {}
+  SPIRVCanonicalizeGLSLBase(const SPIRVCanonicalizeGLSLBase &other) : ::mlir::OperationPass<>(other) {}
+
+  /// Returns the command-line argument attached to this pass.
+  static constexpr ::llvm::StringLiteral getArgumentName() {
+    return ::llvm::StringLiteral("spirv-canonicalize-glsl");
+  }
+  ::llvm::StringRef getArgument() const override { return "spirv-canonicalize-glsl"; }
+
+  ::llvm::StringRef getDescription() const override { return "Run canonicalization involving GLSL ops"; }
+
+  /// Returns the derived pass name.
+  static constexpr ::llvm::StringLiteral getPassName() {
+    return ::llvm::StringLiteral("SPIRVCanonicalizeGLSL");
+  }
+  ::llvm::StringRef getName() const override { return "SPIRVCanonicalizeGLSL"; }
+
+  /// Support isa/dyn_cast functionality for the derived pass class.
+  static bool classof(const ::mlir::Pass *pass) {
+    return pass->getTypeID() == ::mlir::TypeID::get<DerivedT>();
+  }
+
+  /// A clone method to create a copy of this pass.
+  std::unique_ptr<::mlir::Pass> clonePass() const override {
+    return std::make_unique<DerivedT>(*static_cast<const DerivedT *>(this));
+  }
+
+  /// Return the dialect that must be loaded in the context before this pass.
+  void getDependentDialects(::mlir::DialectRegistry &registry) const override {
+    
+  }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(SPIRVCanonicalizeGLSLBase<DerivedT>)
+
+protected:
+};
+
+//===----------------------------------------------------------------------===//
 // SPIRVCompositeTypeLayout
 //===----------------------------------------------------------------------===//
 
@@ -41,6 +90,11 @@ public:
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
     
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(SPIRVCompositeTypeLayoutBase<DerivedT>)
 
 protected:
 };
@@ -86,6 +140,11 @@ public:
     
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(SPIRVLowerABIAttributesBase<DerivedT>)
+
 protected:
 };
 
@@ -129,6 +188,11 @@ public:
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
     
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(SPIRVRewriteInsertsPassBase<DerivedT>)
 
 protected:
 };
@@ -174,6 +238,11 @@ public:
     
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(SPIRVUnifyAliasedResourcePassBase<DerivedT>)
+
 protected:
 };
 
@@ -218,11 +287,26 @@ public:
     
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(SPIRVUpdateVCEBase<DerivedT>)
+
 protected:
 };
 #undef GEN_PASS_CLASSES
 #endif // GEN_PASS_CLASSES
 #ifdef GEN_PASS_REGISTRATION
+
+//===----------------------------------------------------------------------===//
+// SPIRVCanonicalizeGLSL Registration
+//===----------------------------------------------------------------------===//
+
+inline void registerSPIRVCanonicalizeGLSLPass() {
+  ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
+    return mlir::spirv::createCanonicalizeGLSLPass();
+  });
+}
 
 //===----------------------------------------------------------------------===//
 // SPIRVCompositeTypeLayout Registration
@@ -279,6 +363,7 @@ inline void registerSPIRVUpdateVCEPass() {
 //===----------------------------------------------------------------------===//
 
 inline void registerSPIRVPasses() {
+  registerSPIRVCanonicalizeGLSLPass();
   registerSPIRVCompositeTypeLayoutPass();
   registerSPIRVLowerABIAttributesPass();
   registerSPIRVRewriteInsertsPassPass();

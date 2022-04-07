@@ -120,12 +120,12 @@ public:
 };
 } // namespace omp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::ClauseDependAttr)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::ClauseMemoryOrderKindAttr)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::ClauseOrderKindAttr)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::ClauseProcBindKindAttr)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::ClauseScheduleKindAttr)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::ScheduleModifierAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::ClauseDependAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::ClauseMemoryOrderKindAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::ClauseOrderKindAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::ClauseProcBindKindAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::ClauseScheduleKindAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::ScheduleModifierAttr)
 
 #endif  // GET_ATTRDEF_CLASSES
 

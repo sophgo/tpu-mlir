@@ -21,6 +21,84 @@ class _Dialect(_ods_ir.Dialect):
 
 @_ods_cext.register_operation(_Dialect)
 @_ods_extend_opview_class(_ods_ext_module)
+class BinaryOp(_ods_ir.OpView):
+  OPERATION_NAME = "sparse_tensor.binary"
+
+  _ODS_REGIONS = (3, True)
+
+  def __init__(self, output, x, y, left_identity, right_identity, *, loc=None, ip=None):
+    operands = []
+    results = []
+    attributes = {}
+    regions = None
+    operands.append(_get_op_result_or_value(x))
+    operands.append(_get_op_result_or_value(y))
+    if bool(left_identity): attributes["left_identity"] = _ods_ir.UnitAttr.get(
+      _ods_get_default_loc_context(loc))
+    if bool(right_identity): attributes["right_identity"] = _ods_ir.UnitAttr.get(
+      _ods_get_default_loc_context(loc))
+    results.append(output)
+    _ods_successors = None
+    super().__init__(self.build_generic(
+      attributes=attributes, results=results, operands=operands,
+      successors=_ods_successors, regions=regions, loc=loc, ip=ip))
+
+  @builtins.property
+  def x(self):
+    return self.operation.operands[0]
+
+  @builtins.property
+  def y(self):
+    return self.operation.operands[1]
+
+  @builtins.property
+  def left_identity(self):
+    return "left_identity" in self.operation.attributes
+
+  @left_identity.setter
+  def left_identity(self, value):
+    if bool(value):
+      self.operation.attributes["left_identity"] = _ods_ir.UnitAttr.get()
+    elif "left_identity" in self.operation.attributes:
+      del self.operation.attributes["left_identity"]
+
+  @left_identity.deleter
+  def left_identity(self):
+    del self.operation.attributes["left_identity"]
+
+  @builtins.property
+  def right_identity(self):
+    return "right_identity" in self.operation.attributes
+
+  @right_identity.setter
+  def right_identity(self, value):
+    if bool(value):
+      self.operation.attributes["right_identity"] = _ods_ir.UnitAttr.get()
+    elif "right_identity" in self.operation.attributes:
+      del self.operation.attributes["right_identity"]
+
+  @right_identity.deleter
+  def right_identity(self):
+    del self.operation.attributes["right_identity"]
+
+  @builtins.property
+  def output(self):
+    return self.operation.results[0]
+
+  @builtins.property
+  def overlapRegion(self):
+    return self.regions[0]
+
+  @builtins.property
+  def leftRegion(self):
+    return self.regions[1]
+
+  @builtins.property
+  def rightRegion(self):
+    return self.regions[2]
+
+@_ods_cext.register_operation(_Dialect)
+@_ods_extend_opview_class(_ods_ext_module)
 class CompressOp(_ods_ir.OpView):
   OPERATION_NAME = "sparse_tensor.compress"
 
@@ -405,3 +483,60 @@ class ToValuesOp(_ods_ir.OpView):
   @builtins.property
   def result(self):
     return self.operation.results[0]
+
+@_ods_cext.register_operation(_Dialect)
+@_ods_extend_opview_class(_ods_ext_module)
+class UnaryOp(_ods_ir.OpView):
+  OPERATION_NAME = "sparse_tensor.unary"
+
+  _ODS_REGIONS = (2, True)
+
+  def __init__(self, output, x, *, loc=None, ip=None):
+    operands = []
+    results = []
+    attributes = {}
+    regions = None
+    operands.append(_get_op_result_or_value(x))
+    results.append(output)
+    _ods_successors = None
+    super().__init__(self.build_generic(
+      attributes=attributes, results=results, operands=operands,
+      successors=_ods_successors, regions=regions, loc=loc, ip=ip))
+
+  @builtins.property
+  def x(self):
+    return self.operation.operands[0]
+
+  @builtins.property
+  def output(self):
+    return self.operation.results[0]
+
+  @builtins.property
+  def presentRegion(self):
+    return self.regions[0]
+
+  @builtins.property
+  def absentRegion(self):
+    return self.regions[1]
+
+@_ods_cext.register_operation(_Dialect)
+@_ods_extend_opview_class(_ods_ext_module)
+class YieldOp(_ods_ir.OpView):
+  OPERATION_NAME = "sparse_tensor.yield"
+
+  _ODS_REGIONS = (0, True)
+
+  def __init__(self, result, *, loc=None, ip=None):
+    operands = []
+    results = []
+    attributes = {}
+    regions = None
+    operands.append(_get_op_result_or_value(result))
+    _ods_successors = None
+    super().__init__(self.build_generic(
+      attributes=attributes, results=results, operands=operands,
+      successors=_ods_successors, regions=regions, loc=loc, ip=ip))
+
+  @builtins.property
+  def result(self):
+    return self.operation.operands[0]

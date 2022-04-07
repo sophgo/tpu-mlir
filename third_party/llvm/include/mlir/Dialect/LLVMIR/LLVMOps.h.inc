@@ -575,6 +575,11 @@ class StackSaveOp;
 } // namespace mlir
 namespace mlir {
 namespace LLVM {
+class StepVectorOp;
+} // namespace LLVM
+} // namespace mlir
+namespace mlir {
+namespace LLVM {
 class StoreOp;
 } // namespace LLVM
 } // namespace mlir
@@ -641,6 +646,96 @@ class UndefOp;
 namespace mlir {
 namespace LLVM {
 class UnreachableOp;
+} // namespace LLVM
+} // namespace mlir
+namespace mlir {
+namespace LLVM {
+class VPAShrOp;
+} // namespace LLVM
+} // namespace mlir
+namespace mlir {
+namespace LLVM {
+class VPAddOp;
+} // namespace LLVM
+} // namespace mlir
+namespace mlir {
+namespace LLVM {
+class VPAndOp;
+} // namespace LLVM
+} // namespace mlir
+namespace mlir {
+namespace LLVM {
+class VPFAddOp;
+} // namespace LLVM
+} // namespace mlir
+namespace mlir {
+namespace LLVM {
+class VPFDivOp;
+} // namespace LLVM
+} // namespace mlir
+namespace mlir {
+namespace LLVM {
+class VPFMulOp;
+} // namespace LLVM
+} // namespace mlir
+namespace mlir {
+namespace LLVM {
+class VPFRemOp;
+} // namespace LLVM
+} // namespace mlir
+namespace mlir {
+namespace LLVM {
+class VPFSubOp;
+} // namespace LLVM
+} // namespace mlir
+namespace mlir {
+namespace LLVM {
+class VPLShrOp;
+} // namespace LLVM
+} // namespace mlir
+namespace mlir {
+namespace LLVM {
+class VPMulOp;
+} // namespace LLVM
+} // namespace mlir
+namespace mlir {
+namespace LLVM {
+class VPOrOp;
+} // namespace LLVM
+} // namespace mlir
+namespace mlir {
+namespace LLVM {
+class VPSDivOp;
+} // namespace LLVM
+} // namespace mlir
+namespace mlir {
+namespace LLVM {
+class VPSRemOp;
+} // namespace LLVM
+} // namespace mlir
+namespace mlir {
+namespace LLVM {
+class VPShlOp;
+} // namespace LLVM
+} // namespace mlir
+namespace mlir {
+namespace LLVM {
+class VPSubOp;
+} // namespace LLVM
+} // namespace mlir
+namespace mlir {
+namespace LLVM {
+class VPUDivOp;
+} // namespace LLVM
+} // namespace mlir
+namespace mlir {
+namespace LLVM {
+class VPURemOp;
+} // namespace LLVM
+} // namespace mlir
+namespace mlir {
+namespace LLVM {
+class VPXorOp;
 } // namespace LLVM
 } // namespace mlir
 namespace mlir {
@@ -816,7 +911,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::AShrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::AShrOp)
 
 namespace mlir {
 namespace LLVM {
@@ -896,7 +991,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::AccessGroupMetadataOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::AccessGroupMetadataOp)
 
 namespace mlir {
 namespace LLVM {
@@ -961,7 +1056,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::AddOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::AddOp)
 
 namespace mlir {
 namespace LLVM {
@@ -1022,7 +1117,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::AddrSpaceCastOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::AddrSpaceCastOp)
 
 namespace mlir {
 namespace LLVM {
@@ -1113,7 +1208,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::AddressOfOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::AddressOfOp)
 
 namespace mlir {
 namespace LLVM {
@@ -1207,7 +1302,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::AliasScopeDomainMetadataOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::AliasScopeDomainMetadataOp)
 
 namespace mlir {
 namespace LLVM {
@@ -1314,7 +1409,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::AliasScopeMetadataOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::AliasScopeMetadataOp)
 
 namespace mlir {
 namespace LLVM {
@@ -1399,7 +1494,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::AllocaOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::AllocaOp)
 
 namespace mlir {
 namespace LLVM {
@@ -1464,7 +1559,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::AndOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::AndOp)
 
 namespace mlir {
 namespace LLVM {
@@ -1519,7 +1614,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::AssumeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::AssumeOp)
 
 namespace mlir {
 namespace LLVM {
@@ -1623,7 +1718,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::AtomicCmpXchgOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::AtomicCmpXchgOp)
 
 namespace mlir {
 namespace LLVM {
@@ -1724,7 +1819,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::AtomicRMWOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::AtomicRMWOp)
 
 namespace mlir {
 namespace LLVM {
@@ -1783,7 +1878,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::BitReverseOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::BitReverseOp)
 
 namespace mlir {
 namespace LLVM {
@@ -1844,7 +1939,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::BitcastOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::BitcastOp)
 
 namespace mlir {
 namespace LLVM {
@@ -1905,7 +2000,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::BrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::BrOp)
 
 namespace mlir {
 namespace LLVM {
@@ -2001,7 +2096,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CallOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CallOp)
 
 namespace mlir {
 namespace LLVM {
@@ -2104,7 +2199,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CondBrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CondBrOp)
 
 namespace mlir {
 namespace LLVM {
@@ -2187,7 +2282,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::ConstantOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::ConstantOp)
 
 namespace mlir {
 namespace LLVM {
@@ -2249,7 +2344,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CopySignOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CopySignOp)
 
 namespace mlir {
 namespace LLVM {
@@ -2304,7 +2399,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroAlignOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroAlignOp)
 
 namespace mlir {
 namespace LLVM {
@@ -2365,7 +2460,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroBeginOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroBeginOp)
 
 namespace mlir {
 namespace LLVM {
@@ -2426,7 +2521,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroEndOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroEndOp)
 
 namespace mlir {
 namespace LLVM {
@@ -2487,7 +2582,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroFreeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroFreeOp)
 
 namespace mlir {
 namespace LLVM {
@@ -2554,7 +2649,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroIdOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroIdOp)
 
 namespace mlir {
 namespace LLVM {
@@ -2611,7 +2706,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroResumeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroResumeOp)
 
 namespace mlir {
 namespace LLVM {
@@ -2669,7 +2764,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroSaveOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroSaveOp)
 
 namespace mlir {
 namespace LLVM {
@@ -2724,7 +2819,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroSizeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroSizeOp)
 
 namespace mlir {
 namespace LLVM {
@@ -2785,7 +2880,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroSuspendOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroSuspendOp)
 
 namespace mlir {
 namespace LLVM {
@@ -2844,7 +2939,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CosOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CosOp)
 
 namespace mlir {
 namespace LLVM {
@@ -2904,7 +2999,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CountLeadingZerosOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CountLeadingZerosOp)
 
 namespace mlir {
 namespace LLVM {
@@ -2964,7 +3059,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CountTrailingZerosOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CountTrailingZerosOp)
 
 namespace mlir {
 namespace LLVM {
@@ -3023,7 +3118,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CtPopOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CtPopOp)
 
 namespace mlir {
 namespace LLVM {
@@ -3081,7 +3176,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::EhTypeidForOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::EhTypeidForOp)
 
 namespace mlir {
 namespace LLVM {
@@ -3140,7 +3235,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::Exp2Op)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::Exp2Op)
 
 namespace mlir {
 namespace LLVM {
@@ -3199,7 +3294,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::ExpOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::ExpOp)
 
 namespace mlir {
 namespace LLVM {
@@ -3263,7 +3358,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::ExtractElementOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::ExtractElementOp)
 
 namespace mlir {
 namespace LLVM {
@@ -3349,7 +3444,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::ExtractValueOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::ExtractValueOp)
 
 namespace mlir {
 namespace LLVM {
@@ -3408,7 +3503,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FAbsOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FAbsOp)
 
 namespace mlir {
 namespace LLVM {
@@ -3499,7 +3594,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FAddOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FAddOp)
 
 namespace mlir {
 namespace LLVM {
@@ -3558,7 +3653,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FCeilOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FCeilOp)
 
 namespace mlir {
 namespace LLVM {
@@ -3659,7 +3754,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FCmpOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FCmpOp)
 
 namespace mlir {
 namespace LLVM {
@@ -3750,7 +3845,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FDivOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FDivOp)
 
 namespace mlir {
 namespace LLVM {
@@ -3809,7 +3904,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FFloorOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FFloorOp)
 
 namespace mlir {
 namespace LLVM {
@@ -3874,7 +3969,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FMAOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FMAOp)
 
 namespace mlir {
 namespace LLVM {
@@ -3939,7 +4034,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FMulAddOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FMulAddOp)
 
 namespace mlir {
 namespace LLVM {
@@ -4030,7 +4125,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FMulOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FMulOp)
 
 namespace mlir {
 namespace LLVM {
@@ -4118,7 +4213,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FNegOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FNegOp)
 
 namespace mlir {
 namespace LLVM {
@@ -4178,7 +4273,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FPExtOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FPExtOp)
 
 namespace mlir {
 namespace LLVM {
@@ -4238,7 +4333,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FPToSIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FPToSIOp)
 
 namespace mlir {
 namespace LLVM {
@@ -4298,7 +4393,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FPToUIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FPToUIOp)
 
 namespace mlir {
 namespace LLVM {
@@ -4358,7 +4453,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FPTruncOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FPTruncOp)
 
 namespace mlir {
 namespace LLVM {
@@ -4449,7 +4544,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FRemOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FRemOp)
 
 namespace mlir {
 namespace LLVM {
@@ -4540,7 +4635,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FSubOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FSubOp)
 
 namespace mlir {
 namespace LLVM {
@@ -4636,7 +4731,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FenceOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FenceOp)
 
 namespace mlir {
 namespace LLVM {
@@ -4697,7 +4792,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FreezeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FreezeOp)
 
 namespace mlir {
 namespace LLVM {
@@ -4785,7 +4880,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::GEPOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::GEPOp)
 
 namespace mlir {
 namespace LLVM {
@@ -4847,7 +4942,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::GetActiveLaneMaskOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::GetActiveLaneMaskOp)
 
 namespace mlir {
 namespace LLVM {
@@ -4940,7 +5035,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::GlobalCtorsOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::GlobalCtorsOp)
 
 namespace mlir {
 namespace LLVM {
@@ -5033,7 +5128,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::GlobalDtorsOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::GlobalDtorsOp)
 
 namespace mlir {
 namespace LLVM {
@@ -5227,6 +5322,7 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult verify();
+  ::mlir::LogicalResult verifyRegions();
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
     return getAttributeNameForIndex((*this)->getName(), index);
@@ -5261,7 +5357,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::GlobalOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::GlobalOp)
 
 namespace mlir {
 namespace LLVM {
@@ -5350,7 +5446,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::ICmpOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::ICmpOp)
 
 namespace mlir {
 namespace LLVM {
@@ -5506,7 +5602,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::InlineAsmOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::InlineAsmOp)
 
 namespace mlir {
 namespace LLVM {
@@ -5573,7 +5669,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::InsertElementOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::InsertElementOp)
 
 namespace mlir {
 namespace LLVM {
@@ -5661,7 +5757,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::InsertValueOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::InsertValueOp)
 
 namespace mlir {
 namespace LLVM {
@@ -5721,7 +5817,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::IntToPtrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::IntToPtrOp)
 
 namespace mlir {
 namespace LLVM {
@@ -5822,7 +5918,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::InvokeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::InvokeOp)
 
 namespace mlir {
 namespace LLVM {
@@ -5841,6 +5937,8 @@ public:
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::TypeAttr getFunctionTypeAttr();
+  ::mlir::LLVM::LLVMFunctionType getFunctionType();
   ::mlir::LLVM::LinkageAttr getLinkageAttr();
   ::mlir::LLVM::Linkage getLinkage();
   ::mlir::UnitAttr getDsoLocalAttr();
@@ -5866,48 +5964,56 @@ public:
   using Adaptor = LLVMFuncOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("linkage"), ::llvm::StringRef("dso_local"), ::llvm::StringRef("personality"), ::llvm::StringRef("garbageCollector"), ::llvm::StringRef("passthrough")};
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("function_type"), ::llvm::StringRef("linkage"), ::llvm::StringRef("dso_local"), ::llvm::StringRef("personality"), ::llvm::StringRef("garbageCollector"), ::llvm::StringRef("passthrough")};
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr getLinkageAttrName() {
+  ::mlir::StringAttr getFunctionTypeAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr getLinkageAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getFunctionTypeAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr getDsoLocalAttrName() {
+  ::mlir::StringAttr getLinkageAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr getDsoLocalAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getLinkageAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
   }
 
-  ::mlir::StringAttr getPersonalityAttrName() {
+  ::mlir::StringAttr getDsoLocalAttrName() {
     return getAttributeNameForIndex(2);
   }
 
-  static ::mlir::StringAttr getPersonalityAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getDsoLocalAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 2);
   }
 
-  ::mlir::StringAttr getGarbageCollectorAttrName() {
+  ::mlir::StringAttr getPersonalityAttrName() {
     return getAttributeNameForIndex(3);
   }
 
-  static ::mlir::StringAttr getGarbageCollectorAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getPersonalityAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 3);
   }
 
-  ::mlir::StringAttr getPassthroughAttrName() {
+  ::mlir::StringAttr getGarbageCollectorAttrName() {
     return getAttributeNameForIndex(4);
   }
 
-  static ::mlir::StringAttr getPassthroughAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getGarbageCollectorAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 4);
+  }
+
+  ::mlir::StringAttr getPassthroughAttrName() {
+    return getAttributeNameForIndex(5);
+  }
+
+  static ::mlir::StringAttr getPassthroughAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 5);
   }
 
   static constexpr ::llvm::StringLiteral getOperationName() {
@@ -5919,6 +6025,8 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Region &getBody();
+  ::mlir::TypeAttr getFunctionTypeAttr();
+  ::mlir::LLVM::LLVMFunctionType getFunctionType();
   ::mlir::LLVM::LinkageAttr getLinkageAttr();
   ::mlir::LLVM::Linkage getLinkage();
   ::mlir::UnitAttr getDsoLocalAttr();
@@ -5929,6 +6037,7 @@ public:
   ::llvm::Optional< ::llvm::StringRef > getGarbageCollector();
   ::mlir::ArrayAttr getPassthroughAttr();
   ::llvm::Optional< ::mlir::ArrayAttr > getPassthrough();
+  void setFunctionTypeAttr(::mlir::TypeAttr attr);
   void setLinkageAttr(::mlir::LLVM::LinkageAttr attr);
   void setDsoLocalAttr(::mlir::UnitAttr attr);
   void setPersonalityAttr(::mlir::FlatSymbolRefAttr attr);
@@ -5944,13 +6053,14 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult verify();
+  ::mlir::LogicalResult verifyRegions();
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
     return getAttributeNameForIndex((*this)->getName(), index);
   }
 
   static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
-    assert(index < 5 && "invalid attribute index");
+    assert(index < 6 && "invalid attribute index");
     return name.getRegisteredInfo()->getAttributeNames()[index];
   }
 
@@ -5959,25 +6069,17 @@ public:
   // to match the signature of the function.
   Block *addEntryBlock();
 
-  LLVMFunctionType getType() {
-    return getTypeAttr().getValue().cast<LLVMFunctionType>();
-  }
-  bool isVarArg() { return getType().isVarArg(); }
+  bool isVarArg() { return getFunctionType().isVarArg(); }
 
   /// Returns the argument types of this function.
-  ArrayRef<Type> getArgumentTypes() { return getType().getParams(); }
+  ArrayRef<Type> getArgumentTypes() { return getFunctionType().getParams(); }
 
   /// Returns the result types of this function.
-  ArrayRef<Type> getResultTypes() { return getType().getReturnTypes(); }
-
-  /// Hook for FunctionOpInterface, called after verifying that the 'type'
-  /// attribute is present.  This can check for preconditions of the
-  /// getNumArguments hook not failing.
-  LogicalResult verifyType();
+  ArrayRef<Type> getResultTypes() { return getFunctionType().getReturnTypes(); }
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::LLVMFuncOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::LLVMFuncOp)
 
 namespace mlir {
 namespace LLVM {
@@ -6042,7 +6144,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::LShrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::LShrOp)
 
 namespace mlir {
 namespace LLVM {
@@ -6126,7 +6228,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::LandingpadOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::LandingpadOp)
 
 namespace mlir {
 namespace LLVM {
@@ -6285,7 +6387,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::LoadOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::LoadOp)
 
 namespace mlir {
 namespace LLVM {
@@ -6344,7 +6446,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::Log10Op)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::Log10Op)
 
 namespace mlir {
 namespace LLVM {
@@ -6403,7 +6505,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::Log2Op)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::Log2Op)
 
 namespace mlir {
 namespace LLVM {
@@ -6462,7 +6564,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::LogOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::LogOp)
 
 namespace mlir {
 namespace LLVM {
@@ -6553,7 +6655,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MaskedLoadOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MaskedLoadOp)
 
 namespace mlir {
 namespace LLVM {
@@ -6644,7 +6746,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MaskedStoreOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MaskedStoreOp)
 
 namespace mlir {
 namespace LLVM {
@@ -6758,7 +6860,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MatrixColumnMajorLoadOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MatrixColumnMajorLoadOp)
 
 namespace mlir {
 namespace LLVM {
@@ -6875,7 +6977,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MatrixColumnMajorStoreOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MatrixColumnMajorStoreOp)
 
 namespace mlir {
 namespace LLVM {
@@ -6989,7 +7091,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MatrixMultiplyOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MatrixMultiplyOp)
 
 namespace mlir {
 namespace LLVM {
@@ -7087,7 +7189,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MatrixTransposeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MatrixTransposeOp)
 
 namespace mlir {
 namespace LLVM {
@@ -7149,7 +7251,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MaxNumOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MaxNumOp)
 
 namespace mlir {
 namespace LLVM {
@@ -7211,7 +7313,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MaximumOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MaximumOp)
 
 namespace mlir {
 namespace LLVM {
@@ -7240,7 +7342,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class MemcpyInlineOp : public ::mlir::Op<MemcpyInlineOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<4>::Impl, ::mlir::OpTrait::OpInvariants> {
+class MemcpyInlineOp : public ::mlir::Op<MemcpyInlineOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<4>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -7271,11 +7373,12 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MemcpyInlineOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MemcpyInlineOp)
 
 namespace mlir {
 namespace LLVM {
@@ -7304,7 +7407,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class MemcpyOp : public ::mlir::Op<MemcpyOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<4>::Impl, ::mlir::OpTrait::OpInvariants> {
+class MemcpyOp : public ::mlir::Op<MemcpyOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<4>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -7335,11 +7438,12 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MemcpyOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MemcpyOp)
 
 namespace mlir {
 namespace LLVM {
@@ -7368,7 +7472,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class MemmoveOp : public ::mlir::Op<MemmoveOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<4>::Impl, ::mlir::OpTrait::OpInvariants> {
+class MemmoveOp : public ::mlir::Op<MemmoveOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<4>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -7399,11 +7503,12 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MemmoveOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MemmoveOp)
 
 namespace mlir {
 namespace LLVM {
@@ -7432,7 +7537,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class MemsetOp : public ::mlir::Op<MemsetOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<4>::Impl, ::mlir::OpTrait::OpInvariants> {
+class MemsetOp : public ::mlir::Op<MemsetOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<4>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -7463,11 +7568,12 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MemsetOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MemsetOp)
 
 namespace mlir {
 namespace LLVM {
@@ -7550,7 +7656,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MetadataOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MetadataOp)
 
 namespace mlir {
 namespace LLVM {
@@ -7612,7 +7718,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MinNumOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MinNumOp)
 
 namespace mlir {
 namespace LLVM {
@@ -7674,7 +7780,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MinimumOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MinimumOp)
 
 namespace mlir {
 namespace LLVM {
@@ -7739,7 +7845,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MulOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::MulOp)
 
 namespace mlir {
 namespace LLVM {
@@ -7796,7 +7902,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::NullOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::NullOp)
 
 namespace mlir {
 namespace LLVM {
@@ -7861,7 +7967,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::OrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::OrOp)
 
 namespace mlir {
 namespace LLVM {
@@ -7921,7 +8027,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::PowIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::PowIOp)
 
 namespace mlir {
 namespace LLVM {
@@ -7983,7 +8089,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::PowOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::PowOp)
 
 namespace mlir {
 namespace LLVM {
@@ -8047,7 +8153,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::Prefetch)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::Prefetch)
 
 namespace mlir {
 namespace LLVM {
@@ -8107,7 +8213,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::PtrToIntOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::PtrToIntOp)
 
 namespace mlir {
 namespace LLVM {
@@ -8165,7 +8271,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::ResumeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::ResumeOp)
 
 namespace mlir {
 namespace LLVM {
@@ -8223,7 +8329,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::ReturnOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::ReturnOp)
 
 namespace mlir {
 namespace LLVM {
@@ -8276,7 +8382,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::SAddWithOverflowOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::SAddWithOverflowOp)
 
 namespace mlir {
 namespace LLVM {
@@ -8341,7 +8447,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::SDivOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::SDivOp)
 
 namespace mlir {
 namespace LLVM {
@@ -8401,7 +8507,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::SExtOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::SExtOp)
 
 namespace mlir {
 namespace LLVM {
@@ -8461,7 +8567,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::SIToFPOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::SIToFPOp)
 
 namespace mlir {
 namespace LLVM {
@@ -8523,7 +8629,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::SMaxOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::SMaxOp)
 
 namespace mlir {
 namespace LLVM {
@@ -8585,7 +8691,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::SMinOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::SMinOp)
 
 namespace mlir {
 namespace LLVM {
@@ -8638,7 +8744,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::SMulWithOverflowOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::SMulWithOverflowOp)
 
 namespace mlir {
 namespace LLVM {
@@ -8703,7 +8809,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::SRemOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::SRemOp)
 
 namespace mlir {
 namespace LLVM {
@@ -8756,7 +8862,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::SSubWithOverflowOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::SSubWithOverflowOp)
 
 namespace mlir {
 namespace LLVM {
@@ -8824,7 +8930,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::SelectOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::SelectOp)
 
 namespace mlir {
 namespace LLVM {
@@ -8889,7 +8995,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::ShlOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::ShlOp)
 
 namespace mlir {
 namespace LLVM {
@@ -8977,7 +9083,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::ShuffleVectorOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::ShuffleVectorOp)
 
 namespace mlir {
 namespace LLVM {
@@ -9036,7 +9142,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::SinOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::SinOp)
 
 namespace mlir {
 namespace LLVM {
@@ -9095,7 +9201,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::SqrtOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::SqrtOp)
 
 namespace mlir {
 namespace LLVM {
@@ -9152,7 +9258,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::StackRestoreOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::StackRestoreOp)
 
 namespace mlir {
 namespace LLVM {
@@ -9207,7 +9313,63 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::StackSaveOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::StackSaveOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::StepVectorOp declarations
+//===----------------------------------------------------------------------===//
+
+class StepVectorOpAdaptor {
+public:
+  StepVectorOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  StepVectorOpAdaptor(StepVectorOp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class StepVectorOp : public ::mlir::Op<StepVectorOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = StepVectorOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    return {};
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("llvm.intr.experimental.stepvector");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Value getRes();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
+  void print(::mlir::OpAsmPrinter &_odsPrinter);
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+public:
+};
+} // namespace LLVM
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::StepVectorOp)
 
 namespace mlir {
 namespace LLVM {
@@ -9367,7 +9529,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::StoreOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::StoreOp)
 
 namespace mlir {
 namespace LLVM {
@@ -9432,7 +9594,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::SubOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::SubOp)
 
 namespace mlir {
 namespace LLVM {
@@ -9572,7 +9734,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::SwitchOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::SwitchOp)
 
 namespace mlir {
 namespace LLVM {
@@ -9632,7 +9794,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::TruncOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::TruncOp)
 
 namespace mlir {
 namespace LLVM {
@@ -9685,7 +9847,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::UAddWithOverflowOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::UAddWithOverflowOp)
 
 namespace mlir {
 namespace LLVM {
@@ -9750,7 +9912,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::UDivOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::UDivOp)
 
 namespace mlir {
 namespace LLVM {
@@ -9810,7 +9972,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::UIToFPOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::UIToFPOp)
 
 namespace mlir {
 namespace LLVM {
@@ -9872,7 +10034,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::UMaxOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::UMaxOp)
 
 namespace mlir {
 namespace LLVM {
@@ -9934,7 +10096,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::UMinOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::UMinOp)
 
 namespace mlir {
 namespace LLVM {
@@ -9987,7 +10149,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::UMulWithOverflowOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::UMulWithOverflowOp)
 
 namespace mlir {
 namespace LLVM {
@@ -10052,7 +10214,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::URemOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::URemOp)
 
 namespace mlir {
 namespace LLVM {
@@ -10105,7 +10267,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::USubWithOverflowOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::USubWithOverflowOp)
 
 namespace mlir {
 namespace LLVM {
@@ -10162,7 +10324,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::UndefOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::UndefOp)
 
 namespace mlir {
 namespace LLVM {
@@ -10216,7 +10378,1195 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::UnreachableOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::UnreachableOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPAShrOp declarations
+//===----------------------------------------------------------------------===//
+
+class VPAShrOpAdaptor {
+public:
+  VPAShrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  VPAShrOpAdaptor(VPAShrOp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class VPAShrOp : public ::mlir::Op<VPAShrOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<4>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = VPAShrOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    return {};
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("llvm.intr.vp.ashr");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::MutableOperandRange getLhsMutable();
+  ::mlir::MutableOperandRange getRhsMutable();
+  ::mlir::MutableOperandRange getMaskMutable();
+  ::mlir::MutableOperandRange getEvlMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Value getRes();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+public:
+};
+} // namespace LLVM
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPAShrOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPAddOp declarations
+//===----------------------------------------------------------------------===//
+
+class VPAddOpAdaptor {
+public:
+  VPAddOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  VPAddOpAdaptor(VPAddOp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class VPAddOp : public ::mlir::Op<VPAddOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<4>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = VPAddOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    return {};
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("llvm.intr.vp.add");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::MutableOperandRange getLhsMutable();
+  ::mlir::MutableOperandRange getRhsMutable();
+  ::mlir::MutableOperandRange getMaskMutable();
+  ::mlir::MutableOperandRange getEvlMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Value getRes();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+public:
+};
+} // namespace LLVM
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPAddOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPAndOp declarations
+//===----------------------------------------------------------------------===//
+
+class VPAndOpAdaptor {
+public:
+  VPAndOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  VPAndOpAdaptor(VPAndOp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class VPAndOp : public ::mlir::Op<VPAndOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<4>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = VPAndOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    return {};
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("llvm.intr.vp.and");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::MutableOperandRange getLhsMutable();
+  ::mlir::MutableOperandRange getRhsMutable();
+  ::mlir::MutableOperandRange getMaskMutable();
+  ::mlir::MutableOperandRange getEvlMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Value getRes();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+public:
+};
+} // namespace LLVM
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPAndOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPFAddOp declarations
+//===----------------------------------------------------------------------===//
+
+class VPFAddOpAdaptor {
+public:
+  VPFAddOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  VPFAddOpAdaptor(VPFAddOp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class VPFAddOp : public ::mlir::Op<VPFAddOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<4>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = VPFAddOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    return {};
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("llvm.intr.vp.fadd");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::MutableOperandRange getLhsMutable();
+  ::mlir::MutableOperandRange getRhsMutable();
+  ::mlir::MutableOperandRange getMaskMutable();
+  ::mlir::MutableOperandRange getEvlMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Value getRes();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+public:
+};
+} // namespace LLVM
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPFAddOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPFDivOp declarations
+//===----------------------------------------------------------------------===//
+
+class VPFDivOpAdaptor {
+public:
+  VPFDivOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  VPFDivOpAdaptor(VPFDivOp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class VPFDivOp : public ::mlir::Op<VPFDivOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<4>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = VPFDivOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    return {};
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("llvm.intr.vp.fdiv");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::MutableOperandRange getLhsMutable();
+  ::mlir::MutableOperandRange getRhsMutable();
+  ::mlir::MutableOperandRange getMaskMutable();
+  ::mlir::MutableOperandRange getEvlMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Value getRes();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+public:
+};
+} // namespace LLVM
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPFDivOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPFMulOp declarations
+//===----------------------------------------------------------------------===//
+
+class VPFMulOpAdaptor {
+public:
+  VPFMulOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  VPFMulOpAdaptor(VPFMulOp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class VPFMulOp : public ::mlir::Op<VPFMulOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<4>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = VPFMulOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    return {};
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("llvm.intr.vp.fmul");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::MutableOperandRange getLhsMutable();
+  ::mlir::MutableOperandRange getRhsMutable();
+  ::mlir::MutableOperandRange getMaskMutable();
+  ::mlir::MutableOperandRange getEvlMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Value getRes();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+public:
+};
+} // namespace LLVM
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPFMulOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPFRemOp declarations
+//===----------------------------------------------------------------------===//
+
+class VPFRemOpAdaptor {
+public:
+  VPFRemOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  VPFRemOpAdaptor(VPFRemOp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class VPFRemOp : public ::mlir::Op<VPFRemOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<4>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = VPFRemOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    return {};
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("llvm.intr.vp.frem");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::MutableOperandRange getLhsMutable();
+  ::mlir::MutableOperandRange getRhsMutable();
+  ::mlir::MutableOperandRange getMaskMutable();
+  ::mlir::MutableOperandRange getEvlMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Value getRes();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+public:
+};
+} // namespace LLVM
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPFRemOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPFSubOp declarations
+//===----------------------------------------------------------------------===//
+
+class VPFSubOpAdaptor {
+public:
+  VPFSubOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  VPFSubOpAdaptor(VPFSubOp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class VPFSubOp : public ::mlir::Op<VPFSubOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<4>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = VPFSubOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    return {};
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("llvm.intr.vp.fsub");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::MutableOperandRange getLhsMutable();
+  ::mlir::MutableOperandRange getRhsMutable();
+  ::mlir::MutableOperandRange getMaskMutable();
+  ::mlir::MutableOperandRange getEvlMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Value getRes();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+public:
+};
+} // namespace LLVM
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPFSubOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPLShrOp declarations
+//===----------------------------------------------------------------------===//
+
+class VPLShrOpAdaptor {
+public:
+  VPLShrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  VPLShrOpAdaptor(VPLShrOp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class VPLShrOp : public ::mlir::Op<VPLShrOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<4>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = VPLShrOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    return {};
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("llvm.intr.vp.lshr");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::MutableOperandRange getLhsMutable();
+  ::mlir::MutableOperandRange getRhsMutable();
+  ::mlir::MutableOperandRange getMaskMutable();
+  ::mlir::MutableOperandRange getEvlMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Value getRes();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+public:
+};
+} // namespace LLVM
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPLShrOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPMulOp declarations
+//===----------------------------------------------------------------------===//
+
+class VPMulOpAdaptor {
+public:
+  VPMulOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  VPMulOpAdaptor(VPMulOp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class VPMulOp : public ::mlir::Op<VPMulOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<4>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = VPMulOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    return {};
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("llvm.intr.vp.mul");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::MutableOperandRange getLhsMutable();
+  ::mlir::MutableOperandRange getRhsMutable();
+  ::mlir::MutableOperandRange getMaskMutable();
+  ::mlir::MutableOperandRange getEvlMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Value getRes();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+public:
+};
+} // namespace LLVM
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPMulOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPOrOp declarations
+//===----------------------------------------------------------------------===//
+
+class VPOrOpAdaptor {
+public:
+  VPOrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  VPOrOpAdaptor(VPOrOp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class VPOrOp : public ::mlir::Op<VPOrOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<4>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = VPOrOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    return {};
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("llvm.intr.vp.or");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::MutableOperandRange getLhsMutable();
+  ::mlir::MutableOperandRange getRhsMutable();
+  ::mlir::MutableOperandRange getMaskMutable();
+  ::mlir::MutableOperandRange getEvlMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Value getRes();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+public:
+};
+} // namespace LLVM
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPOrOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPSDivOp declarations
+//===----------------------------------------------------------------------===//
+
+class VPSDivOpAdaptor {
+public:
+  VPSDivOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  VPSDivOpAdaptor(VPSDivOp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class VPSDivOp : public ::mlir::Op<VPSDivOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<4>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = VPSDivOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    return {};
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("llvm.intr.vp.sdiv");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::MutableOperandRange getLhsMutable();
+  ::mlir::MutableOperandRange getRhsMutable();
+  ::mlir::MutableOperandRange getMaskMutable();
+  ::mlir::MutableOperandRange getEvlMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Value getRes();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+public:
+};
+} // namespace LLVM
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPSDivOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPSRemOp declarations
+//===----------------------------------------------------------------------===//
+
+class VPSRemOpAdaptor {
+public:
+  VPSRemOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  VPSRemOpAdaptor(VPSRemOp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class VPSRemOp : public ::mlir::Op<VPSRemOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<4>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = VPSRemOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    return {};
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("llvm.intr.vp.srem");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::MutableOperandRange getLhsMutable();
+  ::mlir::MutableOperandRange getRhsMutable();
+  ::mlir::MutableOperandRange getMaskMutable();
+  ::mlir::MutableOperandRange getEvlMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Value getRes();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+public:
+};
+} // namespace LLVM
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPSRemOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPShlOp declarations
+//===----------------------------------------------------------------------===//
+
+class VPShlOpAdaptor {
+public:
+  VPShlOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  VPShlOpAdaptor(VPShlOp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class VPShlOp : public ::mlir::Op<VPShlOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<4>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = VPShlOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    return {};
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("llvm.intr.vp.shl");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::MutableOperandRange getLhsMutable();
+  ::mlir::MutableOperandRange getRhsMutable();
+  ::mlir::MutableOperandRange getMaskMutable();
+  ::mlir::MutableOperandRange getEvlMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Value getRes();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+public:
+};
+} // namespace LLVM
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPShlOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPSubOp declarations
+//===----------------------------------------------------------------------===//
+
+class VPSubOpAdaptor {
+public:
+  VPSubOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  VPSubOpAdaptor(VPSubOp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class VPSubOp : public ::mlir::Op<VPSubOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<4>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = VPSubOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    return {};
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("llvm.intr.vp.sub");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::MutableOperandRange getLhsMutable();
+  ::mlir::MutableOperandRange getRhsMutable();
+  ::mlir::MutableOperandRange getMaskMutable();
+  ::mlir::MutableOperandRange getEvlMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Value getRes();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+public:
+};
+} // namespace LLVM
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPSubOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPUDivOp declarations
+//===----------------------------------------------------------------------===//
+
+class VPUDivOpAdaptor {
+public:
+  VPUDivOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  VPUDivOpAdaptor(VPUDivOp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class VPUDivOp : public ::mlir::Op<VPUDivOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<4>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = VPUDivOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    return {};
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("llvm.intr.vp.udiv");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::MutableOperandRange getLhsMutable();
+  ::mlir::MutableOperandRange getRhsMutable();
+  ::mlir::MutableOperandRange getMaskMutable();
+  ::mlir::MutableOperandRange getEvlMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Value getRes();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+public:
+};
+} // namespace LLVM
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPUDivOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPURemOp declarations
+//===----------------------------------------------------------------------===//
+
+class VPURemOpAdaptor {
+public:
+  VPURemOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  VPURemOpAdaptor(VPURemOp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class VPURemOp : public ::mlir::Op<VPURemOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<4>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = VPURemOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    return {};
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("llvm.intr.vp.urem");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::MutableOperandRange getLhsMutable();
+  ::mlir::MutableOperandRange getRhsMutable();
+  ::mlir::MutableOperandRange getMaskMutable();
+  ::mlir::MutableOperandRange getEvlMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Value getRes();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+public:
+};
+} // namespace LLVM
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPURemOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPXorOp declarations
+//===----------------------------------------------------------------------===//
+
+class VPXorOpAdaptor {
+public:
+  VPXorOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  VPXorOpAdaptor(VPXorOp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class VPXorOp : public ::mlir::Op<VPXorOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<4>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = VPXorOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    return {};
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("llvm.intr.vp.xor");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::Value getMask();
+  ::mlir::Value getEvl();
+  ::mlir::MutableOperandRange getLhsMutable();
+  ::mlir::MutableOperandRange getRhsMutable();
+  ::mlir::MutableOperandRange getMaskMutable();
+  ::mlir::MutableOperandRange getEvlMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Value getRes();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+public:
+};
+} // namespace LLVM
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPXorOp)
 
 namespace mlir {
 namespace LLVM {
@@ -10281,7 +11631,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::XOrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::XOrOp)
 
 namespace mlir {
 namespace LLVM {
@@ -10341,7 +11691,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::ZExtOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::ZExtOp)
 
 namespace mlir {
 namespace LLVM {
@@ -10393,7 +11743,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::masked_compressstore)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::masked_compressstore)
 
 namespace mlir {
 namespace LLVM {
@@ -10446,7 +11796,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::masked_expandload)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::masked_expandload)
 
 namespace mlir {
 namespace LLVM {
@@ -10537,7 +11887,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::masked_gather)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::masked_gather)
 
 namespace mlir {
 namespace LLVM {
@@ -10628,7 +11978,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::masked_scatter)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::masked_scatter)
 
 namespace mlir {
 namespace LLVM {
@@ -10682,7 +12032,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_add)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_add)
 
 namespace mlir {
 namespace LLVM {
@@ -10736,7 +12086,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_and)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_and)
 
 namespace mlir {
 namespace LLVM {
@@ -10816,7 +12166,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_fadd)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_fadd)
 
 namespace mlir {
 namespace LLVM {
@@ -10870,7 +12220,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_fmax)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_fmax)
 
 namespace mlir {
 namespace LLVM {
@@ -10924,7 +12274,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_fmin)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_fmin)
 
 namespace mlir {
 namespace LLVM {
@@ -11004,7 +12354,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_fmul)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_fmul)
 
 namespace mlir {
 namespace LLVM {
@@ -11058,7 +12408,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_mul)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_mul)
 
 namespace mlir {
 namespace LLVM {
@@ -11112,7 +12462,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_or)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_or)
 
 namespace mlir {
 namespace LLVM {
@@ -11166,7 +12516,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_smax)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_smax)
 
 namespace mlir {
 namespace LLVM {
@@ -11220,7 +12570,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_smin)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_smin)
 
 namespace mlir {
 namespace LLVM {
@@ -11274,7 +12624,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_umax)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_umax)
 
 namespace mlir {
 namespace LLVM {
@@ -11328,7 +12678,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_umin)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_umin)
 
 namespace mlir {
 namespace LLVM {
@@ -11382,7 +12732,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_xor)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_xor)
 
 namespace mlir {
 namespace LLVM {
@@ -11435,7 +12785,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::vscale)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::vscale)
 
 
 #endif  // GET_OP_CLASSES

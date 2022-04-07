@@ -34,4 +34,4 @@ public:
                                          ::mlir::Location loc) override;
 };
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::AffineDialect)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::AffineDialect)

@@ -6,7 +6,7 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
-DEFINE_EXPLICIT_TYPE_ID(::mlir::bufferization::BufferizationDialect)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::bufferization::BufferizationDialect)
 namespace mlir {
 namespace bufferization {
 

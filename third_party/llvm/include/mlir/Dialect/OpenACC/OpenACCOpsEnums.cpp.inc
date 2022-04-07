@@ -10,22 +10,22 @@ namespace mlir {
 namespace acc {
 ::llvm::StringRef stringifyClauseDefaultValue(ClauseDefaultValue val) {
   switch (val) {
-    case ClauseDefaultValue::present: return "present";
-    case ClauseDefaultValue::none: return "none";
+    case ClauseDefaultValue::Present: return "present";
+    case ClauseDefaultValue::None: return "none";
   }
   return "";
 }
 
 ::llvm::Optional<ClauseDefaultValue> symbolizeClauseDefaultValue(::llvm::StringRef str) {
   return ::llvm::StringSwitch<::llvm::Optional<ClauseDefaultValue>>(str)
-      .Case("present", ClauseDefaultValue::present)
-      .Case("none", ClauseDefaultValue::none)
+      .Case("present", ClauseDefaultValue::Present)
+      .Case("none", ClauseDefaultValue::None)
       .Default(::llvm::None);
 }
 ::llvm::Optional<ClauseDefaultValue> symbolizeClauseDefaultValue(uint32_t value) {
   switch (value) {
-  case 0: return ClauseDefaultValue::present;
-  case 1: return ClauseDefaultValue::none;
+  case 0: return ClauseDefaultValue::Present;
+  case 1: return ClauseDefaultValue::None;
   default: return ::llvm::None;
   }
 }

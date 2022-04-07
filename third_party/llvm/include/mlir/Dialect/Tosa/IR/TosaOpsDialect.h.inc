@@ -36,4 +36,4 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::TosaDialect)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::TosaDialect)

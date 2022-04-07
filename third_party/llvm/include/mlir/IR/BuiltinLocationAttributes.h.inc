@@ -129,12 +129,12 @@ public:
   static UnknownLoc get(MLIRContext *context);
 };
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::CallSiteLoc)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::FileLineColLoc)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::FusedLoc)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::NameLoc)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::OpaqueLoc)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::UnknownLoc)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::CallSiteLoc)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::FileLineColLoc)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::FusedLoc)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NameLoc)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::OpaqueLoc)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::UnknownLoc)
 
 #endif  // GET_ATTRDEF_CLASSES
 

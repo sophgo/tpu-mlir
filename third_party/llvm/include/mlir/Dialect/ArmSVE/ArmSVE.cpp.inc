@@ -277,7 +277,7 @@ void ScalableMaskedAddFIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState
 
 } // namespace arm_sve
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedAddFIntrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedAddFIntrOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -444,14 +444,14 @@ void ScalableMaskedAddFOp::build(::mlir::OpBuilder &, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult ScalableMaskedAddFOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType maskRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> maskOperands(maskRawOperands);  ::llvm::SMLoc maskOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand maskRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> maskOperands(maskRawOperands);  ::llvm::SMLoc maskOperandsLoc;
   (void)maskOperandsLoc;
-  ::mlir::OpAsmParser::OperandType src1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> src1Operands(src1RawOperands);  ::llvm::SMLoc src1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand src1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> src1Operands(src1RawOperands);  ::llvm::SMLoc src1OperandsLoc;
   (void)src1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType src2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> src2Operands(src2RawOperands);  ::llvm::SMLoc src2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand src2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> src2Operands(src2RawOperands);  ::llvm::SMLoc src2OperandsLoc;
   (void)src2OperandsLoc;
   ::mlir::Type maskRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> maskTypes(maskRawTypes);
@@ -535,7 +535,7 @@ void ScalableMaskedAddFOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace arm_sve
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedAddFOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedAddFOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -657,7 +657,7 @@ void ScalableMaskedAddIIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState
 
 } // namespace arm_sve
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedAddIIntrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedAddIIntrOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -824,14 +824,14 @@ void ScalableMaskedAddIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult ScalableMaskedAddIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType maskRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> maskOperands(maskRawOperands);  ::llvm::SMLoc maskOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand maskRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> maskOperands(maskRawOperands);  ::llvm::SMLoc maskOperandsLoc;
   (void)maskOperandsLoc;
-  ::mlir::OpAsmParser::OperandType src1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> src1Operands(src1RawOperands);  ::llvm::SMLoc src1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand src1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> src1Operands(src1RawOperands);  ::llvm::SMLoc src1OperandsLoc;
   (void)src1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType src2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> src2Operands(src2RawOperands);  ::llvm::SMLoc src2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand src2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> src2Operands(src2RawOperands);  ::llvm::SMLoc src2OperandsLoc;
   (void)src2OperandsLoc;
   ::mlir::Type maskRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> maskTypes(maskRawTypes);
@@ -915,7 +915,7 @@ void ScalableMaskedAddIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace arm_sve
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedAddIOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedAddIOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -1037,7 +1037,7 @@ void ScalableMaskedDivFIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState
 
 } // namespace arm_sve
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedDivFIntrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedDivFIntrOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -1204,14 +1204,14 @@ void ScalableMaskedDivFOp::build(::mlir::OpBuilder &, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult ScalableMaskedDivFOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType maskRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> maskOperands(maskRawOperands);  ::llvm::SMLoc maskOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand maskRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> maskOperands(maskRawOperands);  ::llvm::SMLoc maskOperandsLoc;
   (void)maskOperandsLoc;
-  ::mlir::OpAsmParser::OperandType src1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> src1Operands(src1RawOperands);  ::llvm::SMLoc src1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand src1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> src1Operands(src1RawOperands);  ::llvm::SMLoc src1OperandsLoc;
   (void)src1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType src2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> src2Operands(src2RawOperands);  ::llvm::SMLoc src2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand src2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> src2Operands(src2RawOperands);  ::llvm::SMLoc src2OperandsLoc;
   (void)src2OperandsLoc;
   ::mlir::Type maskRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> maskTypes(maskRawTypes);
@@ -1295,7 +1295,7 @@ void ScalableMaskedDivFOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace arm_sve
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedDivFOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedDivFOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -1417,7 +1417,7 @@ void ScalableMaskedMulFIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState
 
 } // namespace arm_sve
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedMulFIntrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedMulFIntrOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -1584,14 +1584,14 @@ void ScalableMaskedMulFOp::build(::mlir::OpBuilder &, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult ScalableMaskedMulFOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType maskRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> maskOperands(maskRawOperands);  ::llvm::SMLoc maskOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand maskRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> maskOperands(maskRawOperands);  ::llvm::SMLoc maskOperandsLoc;
   (void)maskOperandsLoc;
-  ::mlir::OpAsmParser::OperandType src1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> src1Operands(src1RawOperands);  ::llvm::SMLoc src1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand src1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> src1Operands(src1RawOperands);  ::llvm::SMLoc src1OperandsLoc;
   (void)src1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType src2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> src2Operands(src2RawOperands);  ::llvm::SMLoc src2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand src2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> src2Operands(src2RawOperands);  ::llvm::SMLoc src2OperandsLoc;
   (void)src2OperandsLoc;
   ::mlir::Type maskRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> maskTypes(maskRawTypes);
@@ -1675,7 +1675,7 @@ void ScalableMaskedMulFOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace arm_sve
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedMulFOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedMulFOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -1797,7 +1797,7 @@ void ScalableMaskedMulIIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState
 
 } // namespace arm_sve
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedMulIIntrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedMulIIntrOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -1964,14 +1964,14 @@ void ScalableMaskedMulIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult ScalableMaskedMulIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType maskRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> maskOperands(maskRawOperands);  ::llvm::SMLoc maskOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand maskRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> maskOperands(maskRawOperands);  ::llvm::SMLoc maskOperandsLoc;
   (void)maskOperandsLoc;
-  ::mlir::OpAsmParser::OperandType src1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> src1Operands(src1RawOperands);  ::llvm::SMLoc src1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand src1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> src1Operands(src1RawOperands);  ::llvm::SMLoc src1OperandsLoc;
   (void)src1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType src2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> src2Operands(src2RawOperands);  ::llvm::SMLoc src2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand src2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> src2Operands(src2RawOperands);  ::llvm::SMLoc src2OperandsLoc;
   (void)src2OperandsLoc;
   ::mlir::Type maskRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> maskTypes(maskRawTypes);
@@ -2055,7 +2055,7 @@ void ScalableMaskedMulIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace arm_sve
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedMulIOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedMulIOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -2177,7 +2177,7 @@ void ScalableMaskedSDivIIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationStat
 
 } // namespace arm_sve
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedSDivIIntrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedSDivIIntrOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -2344,14 +2344,14 @@ void ScalableMaskedSDivIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
 }
 
 ::mlir::ParseResult ScalableMaskedSDivIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType maskRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> maskOperands(maskRawOperands);  ::llvm::SMLoc maskOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand maskRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> maskOperands(maskRawOperands);  ::llvm::SMLoc maskOperandsLoc;
   (void)maskOperandsLoc;
-  ::mlir::OpAsmParser::OperandType src1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> src1Operands(src1RawOperands);  ::llvm::SMLoc src1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand src1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> src1Operands(src1RawOperands);  ::llvm::SMLoc src1OperandsLoc;
   (void)src1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType src2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> src2Operands(src2RawOperands);  ::llvm::SMLoc src2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand src2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> src2Operands(src2RawOperands);  ::llvm::SMLoc src2OperandsLoc;
   (void)src2OperandsLoc;
   ::mlir::Type maskRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> maskTypes(maskRawTypes);
@@ -2435,7 +2435,7 @@ void ScalableMaskedSDivIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace arm_sve
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedSDivIOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedSDivIOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -2557,7 +2557,7 @@ void ScalableMaskedSubFIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState
 
 } // namespace arm_sve
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedSubFIntrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedSubFIntrOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -2724,14 +2724,14 @@ void ScalableMaskedSubFOp::build(::mlir::OpBuilder &, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult ScalableMaskedSubFOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType maskRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> maskOperands(maskRawOperands);  ::llvm::SMLoc maskOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand maskRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> maskOperands(maskRawOperands);  ::llvm::SMLoc maskOperandsLoc;
   (void)maskOperandsLoc;
-  ::mlir::OpAsmParser::OperandType src1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> src1Operands(src1RawOperands);  ::llvm::SMLoc src1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand src1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> src1Operands(src1RawOperands);  ::llvm::SMLoc src1OperandsLoc;
   (void)src1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType src2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> src2Operands(src2RawOperands);  ::llvm::SMLoc src2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand src2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> src2Operands(src2RawOperands);  ::llvm::SMLoc src2OperandsLoc;
   (void)src2OperandsLoc;
   ::mlir::Type maskRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> maskTypes(maskRawTypes);
@@ -2815,7 +2815,7 @@ void ScalableMaskedSubFOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace arm_sve
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedSubFOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedSubFOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -2937,7 +2937,7 @@ void ScalableMaskedSubIIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState
 
 } // namespace arm_sve
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedSubIIntrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedSubIIntrOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -3104,14 +3104,14 @@ void ScalableMaskedSubIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult ScalableMaskedSubIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType maskRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> maskOperands(maskRawOperands);  ::llvm::SMLoc maskOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand maskRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> maskOperands(maskRawOperands);  ::llvm::SMLoc maskOperandsLoc;
   (void)maskOperandsLoc;
-  ::mlir::OpAsmParser::OperandType src1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> src1Operands(src1RawOperands);  ::llvm::SMLoc src1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand src1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> src1Operands(src1RawOperands);  ::llvm::SMLoc src1OperandsLoc;
   (void)src1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType src2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> src2Operands(src2RawOperands);  ::llvm::SMLoc src2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand src2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> src2Operands(src2RawOperands);  ::llvm::SMLoc src2OperandsLoc;
   (void)src2OperandsLoc;
   ::mlir::Type maskRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> maskTypes(maskRawTypes);
@@ -3195,7 +3195,7 @@ void ScalableMaskedSubIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace arm_sve
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedSubIOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedSubIOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -3317,7 +3317,7 @@ void ScalableMaskedUDivIIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationStat
 
 } // namespace arm_sve
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedUDivIIntrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedUDivIIntrOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -3484,14 +3484,14 @@ void ScalableMaskedUDivIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
 }
 
 ::mlir::ParseResult ScalableMaskedUDivIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType maskRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> maskOperands(maskRawOperands);  ::llvm::SMLoc maskOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand maskRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> maskOperands(maskRawOperands);  ::llvm::SMLoc maskOperandsLoc;
   (void)maskOperandsLoc;
-  ::mlir::OpAsmParser::OperandType src1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> src1Operands(src1RawOperands);  ::llvm::SMLoc src1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand src1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> src1Operands(src1RawOperands);  ::llvm::SMLoc src1OperandsLoc;
   (void)src1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType src2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> src2Operands(src2RawOperands);  ::llvm::SMLoc src2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand src2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> src2Operands(src2RawOperands);  ::llvm::SMLoc src2OperandsLoc;
   (void)src2OperandsLoc;
   ::mlir::Type maskRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> maskTypes(maskRawTypes);
@@ -3575,7 +3575,7 @@ void ScalableMaskedUDivIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace arm_sve
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedUDivIOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ScalableMaskedUDivIOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -3697,7 +3697,7 @@ void SdotIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 
 } // namespace arm_sve
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::SdotIntrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::SdotIntrOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -3864,14 +3864,14 @@ void SdotOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 }
 
 ::mlir::ParseResult SdotOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType accRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> accOperands(accRawOperands);  ::llvm::SMLoc accOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand accRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> accOperands(accRawOperands);  ::llvm::SMLoc accOperandsLoc;
   (void)accOperandsLoc;
-  ::mlir::OpAsmParser::OperandType src1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> src1Operands(src1RawOperands);  ::llvm::SMLoc src1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand src1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> src1Operands(src1RawOperands);  ::llvm::SMLoc src1OperandsLoc;
   (void)src1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType src2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> src2Operands(src2RawOperands);  ::llvm::SMLoc src2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand src2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> src2Operands(src2RawOperands);  ::llvm::SMLoc src2OperandsLoc;
   (void)src2OperandsLoc;
   ::mlir::Type src1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> src1Types(src1RawTypes);
@@ -3958,7 +3958,7 @@ void SdotOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace arm_sve
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::SdotOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::SdotOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -4080,7 +4080,7 @@ void SmmlaIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 
 } // namespace arm_sve
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::SmmlaIntrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::SmmlaIntrOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -4247,14 +4247,14 @@ void SmmlaOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 ::mlir::ParseResult SmmlaOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType accRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> accOperands(accRawOperands);  ::llvm::SMLoc accOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand accRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> accOperands(accRawOperands);  ::llvm::SMLoc accOperandsLoc;
   (void)accOperandsLoc;
-  ::mlir::OpAsmParser::OperandType src1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> src1Operands(src1RawOperands);  ::llvm::SMLoc src1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand src1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> src1Operands(src1RawOperands);  ::llvm::SMLoc src1OperandsLoc;
   (void)src1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType src2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> src2Operands(src2RawOperands);  ::llvm::SMLoc src2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand src2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> src2Operands(src2RawOperands);  ::llvm::SMLoc src2OperandsLoc;
   (void)src2OperandsLoc;
   ::mlir::Type src1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> src1Types(src1RawTypes);
@@ -4341,7 +4341,7 @@ void SmmlaOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace arm_sve
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::SmmlaOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::SmmlaOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -4463,7 +4463,7 @@ void UdotIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 
 } // namespace arm_sve
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::UdotIntrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::UdotIntrOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -4630,14 +4630,14 @@ void UdotOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 }
 
 ::mlir::ParseResult UdotOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType accRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> accOperands(accRawOperands);  ::llvm::SMLoc accOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand accRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> accOperands(accRawOperands);  ::llvm::SMLoc accOperandsLoc;
   (void)accOperandsLoc;
-  ::mlir::OpAsmParser::OperandType src1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> src1Operands(src1RawOperands);  ::llvm::SMLoc src1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand src1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> src1Operands(src1RawOperands);  ::llvm::SMLoc src1OperandsLoc;
   (void)src1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType src2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> src2Operands(src2RawOperands);  ::llvm::SMLoc src2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand src2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> src2Operands(src2RawOperands);  ::llvm::SMLoc src2OperandsLoc;
   (void)src2OperandsLoc;
   ::mlir::Type src1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> src1Types(src1RawTypes);
@@ -4724,7 +4724,7 @@ void UdotOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace arm_sve
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::UdotOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::UdotOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -4846,7 +4846,7 @@ void UmmlaIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 
 } // namespace arm_sve
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::UmmlaIntrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::UmmlaIntrOp)
 
 namespace mlir {
 namespace arm_sve {
@@ -5013,14 +5013,14 @@ void UmmlaOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 ::mlir::ParseResult UmmlaOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType accRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> accOperands(accRawOperands);  ::llvm::SMLoc accOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand accRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> accOperands(accRawOperands);  ::llvm::SMLoc accOperandsLoc;
   (void)accOperandsLoc;
-  ::mlir::OpAsmParser::OperandType src1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> src1Operands(src1RawOperands);  ::llvm::SMLoc src1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand src1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> src1Operands(src1RawOperands);  ::llvm::SMLoc src1OperandsLoc;
   (void)src1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType src2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> src2Operands(src2RawOperands);  ::llvm::SMLoc src2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand src2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> src2Operands(src2RawOperands);  ::llvm::SMLoc src2OperandsLoc;
   (void)src2OperandsLoc;
   ::mlir::Type src1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> src1Types(src1RawTypes);
@@ -5107,7 +5107,7 @@ void UmmlaOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace arm_sve
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::UmmlaOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::UmmlaOp)
 
 
 #endif  // GET_OP_CLASSES

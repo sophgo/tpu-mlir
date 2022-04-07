@@ -6,7 +6,7 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
-DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::PDLInterpDialect)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::PDLInterpDialect)
 namespace mlir {
 namespace pdl_interp {
 

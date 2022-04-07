@@ -13,7 +13,7 @@ struct LoopLikeOpInterfaceInterfaceTraits {
   struct Concept {
     bool (*isDefinedOutsideOfLoop)(const Concept *impl, ::mlir::Operation *, ::mlir::Value );
     ::mlir::Region &(*getLoopBody)(const Concept *impl, ::mlir::Operation *);
-    ::mlir::LogicalResult (*moveOutOfLoop)(const Concept *impl, ::mlir::Operation *, ::mlir::ArrayRef<::mlir::Operation *>);
+    void (*moveOutOfLoop)(const Concept *impl, ::mlir::Operation *, ::mlir::Operation *);
     ::mlir::Optional<::mlir::Value> (*getSingleInductionVar)(const Concept *impl, ::mlir::Operation *);
     ::mlir::Optional<::mlir::OpFoldResult> (*getSingleLowerBound)(const Concept *impl, ::mlir::Operation *);
     ::mlir::Optional<::mlir::OpFoldResult> (*getSingleStep)(const Concept *impl, ::mlir::Operation *);
@@ -26,7 +26,7 @@ struct LoopLikeOpInterfaceInterfaceTraits {
 
     static inline bool isDefinedOutsideOfLoop(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Value  value);
     static inline ::mlir::Region &getLoopBody(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline ::mlir::LogicalResult moveOutOfLoop(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::ArrayRef<::mlir::Operation *> ops);
+    static inline void moveOutOfLoop(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Operation * op);
     static inline ::mlir::Optional<::mlir::Value> getSingleInductionVar(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline ::mlir::Optional<::mlir::OpFoldResult> getSingleLowerBound(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline ::mlir::Optional<::mlir::OpFoldResult> getSingleStep(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
@@ -39,7 +39,7 @@ struct LoopLikeOpInterfaceInterfaceTraits {
 
     static inline bool isDefinedOutsideOfLoop(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Value  value);
     static inline ::mlir::Region &getLoopBody(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline ::mlir::LogicalResult moveOutOfLoop(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::ArrayRef<::mlir::Operation *> ops);
+    static inline void moveOutOfLoop(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Operation * op);
     static inline ::mlir::Optional<::mlir::Value> getSingleInductionVar(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline ::mlir::Optional<::mlir::OpFoldResult> getSingleLowerBound(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline ::mlir::Optional<::mlir::OpFoldResult> getSingleStep(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
@@ -47,6 +47,8 @@ struct LoopLikeOpInterfaceInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    bool isDefinedOutsideOfLoop(::mlir::Operation *tablegen_opaque_val, ::mlir::Value value) const;
+    void moveOutOfLoop(::mlir::Operation *tablegen_opaque_val, ::mlir::Operation *op) const;
     ::mlir::Optional<::mlir::Value> getSingleInductionVar(::mlir::Operation *tablegen_opaque_val) const;
     ::mlir::Optional<::mlir::OpFoldResult> getSingleLowerBound(::mlir::Operation *tablegen_opaque_val) const;
     ::mlir::Optional<::mlir::OpFoldResult> getSingleStep(::mlir::Operation *tablegen_opaque_val) const;
@@ -62,7 +64,7 @@ public:
   struct Trait : public detail::LoopLikeOpInterfaceTrait<ConcreteOp> {};
   bool isDefinedOutsideOfLoop(::mlir::Value  value);
   ::mlir::Region &getLoopBody();
-  ::mlir::LogicalResult moveOutOfLoop(::mlir::ArrayRef<::mlir::Operation *> ops);
+  void moveOutOfLoop(::mlir::Operation * op);
   ::mlir::Optional<::mlir::Value> getSingleInductionVar();
   ::mlir::Optional<::mlir::OpFoldResult> getSingleLowerBound();
   ::mlir::Optional<::mlir::OpFoldResult> getSingleStep();
@@ -70,6 +72,12 @@ public:
 namespace detail {
   template <typename ConcreteOp>
   struct LoopLikeOpInterfaceTrait : public ::mlir::OpInterface<LoopLikeOpInterface, detail::LoopLikeOpInterfaceInterfaceTraits>::Trait<ConcreteOp> {
+    bool isDefinedOutsideOfLoop(::mlir::Value  value) {
+      return value.getParentRegion()->isProperAncestor(&(*static_cast<ConcreteOp *>(this)).getLoopBody());
+    }
+    void moveOutOfLoop(::mlir::Operation * op) {
+      op->moveBefore((*static_cast<ConcreteOp *>(this)));
+    }
     ::mlir::Optional<::mlir::Value> getSingleInductionVar() {
       return llvm::None;
     }
@@ -90,8 +98,8 @@ template<typename ConcreteOp>
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getLoopBody();
 }
 template<typename ConcreteOp>
-::mlir::LogicalResult detail::LoopLikeOpInterfaceInterfaceTraits::Model<ConcreteOp>::moveOutOfLoop(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::ArrayRef<::mlir::Operation *> ops) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).moveOutOfLoop(ops);
+void detail::LoopLikeOpInterfaceInterfaceTraits::Model<ConcreteOp>::moveOutOfLoop(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Operation * op) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).moveOutOfLoop(op);
 }
 template<typename ConcreteOp>
 ::mlir::Optional<::mlir::Value> detail::LoopLikeOpInterfaceInterfaceTraits::Model<ConcreteOp>::getSingleInductionVar(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
@@ -114,8 +122,8 @@ template<typename ConcreteOp>
   return static_cast<const ConcreteOp *>(impl)->getLoopBody(tablegen_opaque_val);
 }
 template<typename ConcreteOp>
-::mlir::LogicalResult detail::LoopLikeOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::moveOutOfLoop(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::ArrayRef<::mlir::Operation *> ops) {
-  return static_cast<const ConcreteOp *>(impl)->moveOutOfLoop(tablegen_opaque_val, ops);
+void detail::LoopLikeOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::moveOutOfLoop(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Operation * op) {
+  return static_cast<const ConcreteOp *>(impl)->moveOutOfLoop(tablegen_opaque_val, op);
 }
 template<typename ConcreteOp>
 ::mlir::Optional<::mlir::Value> detail::LoopLikeOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getSingleInductionVar(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
@@ -128,6 +136,14 @@ template<typename ConcreteOp>
 template<typename ConcreteOp>
 ::mlir::Optional<::mlir::OpFoldResult> detail::LoopLikeOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getSingleStep(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return static_cast<const ConcreteOp *>(impl)->getSingleStep(tablegen_opaque_val);
+}
+template<typename ConcreteModel, typename ConcreteOp>
+bool detail::LoopLikeOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::isDefinedOutsideOfLoop(::mlir::Operation *tablegen_opaque_val, ::mlir::Value value) const {
+return value.getParentRegion()->isProperAncestor(&(llvm::cast<ConcreteOp>(tablegen_opaque_val)).getLoopBody());
+}
+template<typename ConcreteModel, typename ConcreteOp>
+void detail::LoopLikeOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::moveOutOfLoop(::mlir::Operation *tablegen_opaque_val, ::mlir::Operation *op) const {
+op->moveBefore((llvm::cast<ConcreteOp>(tablegen_opaque_val)));
 }
 template<typename ConcreteModel, typename ConcreteOp>
 ::mlir::Optional<::mlir::Value> detail::LoopLikeOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getSingleInductionVar(::mlir::Operation *tablegen_opaque_val) const {

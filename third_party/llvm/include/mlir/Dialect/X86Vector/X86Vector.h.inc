@@ -157,7 +157,7 @@ public:
 };
 } // namespace x86vector
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::DotIntrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::DotIntrOp)
 
 namespace mlir {
 namespace x86vector {
@@ -221,7 +221,7 @@ public:
 };
 } // namespace x86vector
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::DotOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::DotOp)
 
 namespace mlir {
 namespace x86vector {
@@ -287,7 +287,7 @@ public:
 };
 } // namespace x86vector
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskCompressIntrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskCompressIntrOp)
 
 namespace mlir {
 namespace x86vector {
@@ -381,7 +381,7 @@ public:
 };
 } // namespace x86vector
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskCompressOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskCompressOp)
 
 namespace mlir {
 namespace x86vector {
@@ -455,7 +455,7 @@ public:
 };
 } // namespace x86vector
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskRndScaleOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskRndScaleOp)
 
 namespace mlir {
 namespace x86vector {
@@ -527,7 +527,7 @@ public:
 };
 } // namespace x86vector
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskRndScalePDIntrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskRndScalePDIntrOp)
 
 namespace mlir {
 namespace x86vector {
@@ -599,7 +599,7 @@ public:
 };
 } // namespace x86vector
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskRndScalePSIntrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskRndScalePSIntrOp)
 
 namespace mlir {
 namespace x86vector {
@@ -673,7 +673,7 @@ public:
 };
 } // namespace x86vector
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskScaleFOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskScaleFOp)
 
 namespace mlir {
 namespace x86vector {
@@ -745,7 +745,7 @@ public:
 };
 } // namespace x86vector
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskScaleFPDIntrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskScaleFPDIntrOp)
 
 namespace mlir {
 namespace x86vector {
@@ -817,7 +817,7 @@ public:
 };
 } // namespace x86vector
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskScaleFPSIntrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskScaleFPSIntrOp)
 
 namespace mlir {
 namespace x86vector {
@@ -876,7 +876,7 @@ public:
 };
 } // namespace x86vector
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::RsqrtIntrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::RsqrtIntrOp)
 
 namespace mlir {
 namespace x86vector {
@@ -937,7 +937,7 @@ public:
 };
 } // namespace x86vector
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::RsqrtOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::RsqrtOp)
 
 namespace mlir {
 namespace x86vector {
@@ -997,7 +997,7 @@ public:
 };
 } // namespace x86vector
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::Vp2IntersectDIntrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::Vp2IntersectDIntrOp)
 
 namespace mlir {
 namespace x86vector {
@@ -1061,7 +1061,7 @@ public:
 };
 } // namespace x86vector
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::Vp2IntersectOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::Vp2IntersectOp)
 
 namespace mlir {
 namespace x86vector {
@@ -1121,7 +1121,7 @@ public:
 };
 } // namespace x86vector
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::Vp2IntersectQIntrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::Vp2IntersectQIntrOp)
 
 
 #endif  // GET_OP_CLASSES

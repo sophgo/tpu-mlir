@@ -35,4 +35,4 @@ public:
 };
 } // namespace acc
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::acc::OpenACCDialect)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::acc::OpenACCDialect)

@@ -51,6 +51,12 @@ public:
         ::mlir::Operation *op, unsigned regionIndex, unsigned argIndex,
         ::mlir::NamedAttribute attribute) override;
 
+    /// Provides a hook for verifying dialect attributes attached to the given
+    /// op's region result.
+    ::mlir::LogicalResult verifyRegionResultAttribute(
+        ::mlir::Operation *op, unsigned regionIndex, unsigned resultIndex,
+        ::mlir::NamedAttribute attribute) override;
+
     /// Name of the data layout attributes.
     static StringRef getDataLayoutAttrName() { return "llvm.data_layout"; }
     static StringRef getAlignAttrName() { return "llvm.align"; }
@@ -61,6 +67,11 @@ public:
     static StringRef getParallelAccessAttrName() { return "parallel_access"; }
     static StringRef getLoopOptionsAttrName() { return "options"; }
     static StringRef getAccessGroupsAttrName() { return "access_groups"; }
+    static StringRef getStructAttrsAttrName() { return "llvm.struct_attrs"; }
+
+    /// Verifies if the attribute is a well-formed value for "llvm.struct_attrs"
+    static LogicalResult verifyStructAttr(
+        Operation *op, Attribute attr, Type annotatedType);
 
     /// Verifies if the given string is a well-formed data layout descriptor.
     /// Uses `reportError` to report errors.
@@ -72,4 +83,4 @@ public:
   };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::LLVMDialect)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::LLVMDialect)

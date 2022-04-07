@@ -6,7 +6,7 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::TosaDialect)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::TosaDialect)
 namespace mlir {
 namespace tosa {
 

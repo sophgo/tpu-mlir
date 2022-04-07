@@ -82,27 +82,27 @@ namespace mlir {
 namespace async {
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::CoroHandleType)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::CoroHandleType)
 namespace mlir {
 namespace async {
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::CoroIdType)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::CoroIdType)
 namespace mlir {
 namespace async {
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::CoroStateType)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::CoroStateType)
 namespace mlir {
 namespace async {
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::GroupType)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::GroupType)
 namespace mlir {
 namespace async {
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::TokenType)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::TokenType)
 namespace mlir {
 namespace async {
 namespace detail {
@@ -136,7 +136,7 @@ Type ValueType::getValueType() const {
 
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::ValueType)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::ValueType)
 namespace mlir {
 namespace async {
 

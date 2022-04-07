@@ -20,6 +20,11 @@ class AddressOfOp;
 } // namespace mlir
 namespace mlir {
 namespace spirv {
+class AssumeTrueKHROp;
+} // namespace spirv
+} // namespace mlir
+namespace mlir {
+namespace spirv {
 class AtomicAndOp;
 } // namespace spirv
 } // namespace mlir
@@ -980,6 +985,11 @@ class VectorShuffleOp;
 } // namespace mlir
 namespace mlir {
 namespace spirv {
+class VectorTimesScalarOp;
+} // namespace spirv
+} // namespace mlir
+namespace mlir {
+namespace spirv {
 class YieldOp;
 } // namespace spirv
 } // namespace mlir
@@ -1060,7 +1070,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AccessChainOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AccessChainOp)
 
 namespace mlir {
 namespace spirv {
@@ -1149,7 +1159,68 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AddressOfOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AddressOfOp)
+
+namespace mlir {
+namespace spirv {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::spirv::AssumeTrueKHROp declarations
+//===----------------------------------------------------------------------===//
+
+class AssumeTrueKHROpAdaptor {
+public:
+  AssumeTrueKHROpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  AssumeTrueKHROpAdaptor(AssumeTrueKHROp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::Value condition();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class AssumeTrueKHROp : public ::mlir::Op<AssumeTrueKHROp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = AssumeTrueKHROpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    return {};
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("spv.AssumeTrueKHR");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Value condition();
+  ::mlir::MutableOperandRange conditionMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value condition);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value condition);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
+  ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
+  ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
+  ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
+  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
+  void print(::mlir::OpAsmPrinter &_odsPrinter);
+public:
+};
+} // namespace spirv
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AssumeTrueKHROp)
 
 namespace mlir {
 namespace spirv {
@@ -1255,7 +1326,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicAndOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicAndOp)
 
 namespace mlir {
 namespace spirv {
@@ -1376,7 +1447,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicCompareExchangeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicCompareExchangeOp)
 
 namespace mlir {
 namespace spirv {
@@ -1497,7 +1568,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicCompareExchangeWeakOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicCompareExchangeWeakOp)
 
 namespace mlir {
 namespace spirv {
@@ -1602,7 +1673,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicExchangeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicExchangeOp)
 
 namespace mlir {
 namespace spirv {
@@ -1707,7 +1778,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicFAddEXTOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicFAddEXTOp)
 
 namespace mlir {
 namespace spirv {
@@ -1813,7 +1884,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicIAddOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicIAddOp)
 
 namespace mlir {
 namespace spirv {
@@ -1915,7 +1986,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicIDecrementOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicIDecrementOp)
 
 namespace mlir {
 namespace spirv {
@@ -2017,7 +2088,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicIIncrementOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicIIncrementOp)
 
 namespace mlir {
 namespace spirv {
@@ -2123,7 +2194,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicISubOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicISubOp)
 
 namespace mlir {
 namespace spirv {
@@ -2229,7 +2300,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicOrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicOrOp)
 
 namespace mlir {
 namespace spirv {
@@ -2335,7 +2406,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicSMaxOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicSMaxOp)
 
 namespace mlir {
 namespace spirv {
@@ -2441,7 +2512,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicSMinOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicSMinOp)
 
 namespace mlir {
 namespace spirv {
@@ -2547,7 +2618,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicUMaxOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicUMaxOp)
 
 namespace mlir {
 namespace spirv {
@@ -2653,7 +2724,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicUMinOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicUMinOp)
 
 namespace mlir {
 namespace spirv {
@@ -2759,7 +2830,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicXorOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicXorOp)
 
 namespace mlir {
 namespace spirv {
@@ -2824,7 +2895,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::BitCountOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::BitCountOp)
 
 namespace mlir {
 namespace spirv {
@@ -2899,7 +2970,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::BitFieldInsertOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::BitFieldInsertOp)
 
 namespace mlir {
 namespace spirv {
@@ -2971,7 +3042,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::BitFieldSExtractOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::BitFieldSExtractOp)
 
 namespace mlir {
 namespace spirv {
@@ -3043,7 +3114,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::BitFieldUExtractOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::BitFieldUExtractOp)
 
 namespace mlir {
 namespace spirv {
@@ -3108,7 +3179,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::BitReverseOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::BitReverseOp)
 
 namespace mlir {
 namespace spirv {
@@ -3173,7 +3244,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::BitcastOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::BitcastOp)
 
 namespace mlir {
 namespace spirv {
@@ -3241,7 +3312,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::BitwiseAndOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::BitwiseAndOp)
 
 namespace mlir {
 namespace spirv {
@@ -3309,7 +3380,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::BitwiseOrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::BitwiseOrOp)
 
 namespace mlir {
 namespace spirv {
@@ -3377,7 +3448,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::BitwiseXorOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::BitwiseXorOp)
 
 namespace mlir {
 namespace spirv {
@@ -3522,7 +3593,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::BranchConditionalOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::BranchConditionalOp)
 
 namespace mlir {
 namespace spirv {
@@ -3589,7 +3660,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::BranchOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::BranchOp)
 
 namespace mlir {
 namespace spirv {
@@ -3652,7 +3723,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::CompositeConstructOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::CompositeConstructOp)
 
 namespace mlir {
 namespace spirv {
@@ -3742,7 +3813,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::CompositeExtractOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::CompositeExtractOp)
 
 namespace mlir {
 namespace spirv {
@@ -3834,7 +3905,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::CompositeInsertOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::CompositeInsertOp)
 
 namespace mlir {
 namespace spirv {
@@ -3930,7 +4001,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ConstantOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ConstantOp)
 
 namespace mlir {
 namespace spirv {
@@ -4041,7 +4112,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ControlBarrierOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ControlBarrierOp)
 
 namespace mlir {
 namespace spirv {
@@ -4105,7 +4176,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ConvertFToSOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ConvertFToSOp)
 
 namespace mlir {
 namespace spirv {
@@ -4169,7 +4240,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ConvertFToUOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ConvertFToUOp)
 
 namespace mlir {
 namespace spirv {
@@ -4233,7 +4304,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ConvertSToFOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ConvertSToFOp)
 
 namespace mlir {
 namespace spirv {
@@ -4297,7 +4368,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ConvertUToFOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ConvertUToFOp)
 
 namespace mlir {
 namespace spirv {
@@ -4387,7 +4458,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::CooperativeMatrixLengthNVOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::CooperativeMatrixLengthNVOp)
 
 namespace mlir {
 namespace spirv {
@@ -4481,7 +4552,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::CooperativeMatrixLoadNVOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::CooperativeMatrixLoadNVOp)
 
 namespace mlir {
 namespace spirv {
@@ -4554,7 +4625,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::CooperativeMatrixMulAddNVOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::CooperativeMatrixMulAddNVOp)
 
 namespace mlir {
 namespace spirv {
@@ -4650,7 +4721,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::CooperativeMatrixStoreNVOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::CooperativeMatrixStoreNVOp)
 
 namespace mlir {
 namespace spirv {
@@ -4782,7 +4853,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::CopyMemoryOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::CopyMemoryOp)
 
 namespace mlir {
 namespace spirv {
@@ -4894,7 +4965,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::EntryPointOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::EntryPointOp)
 
 namespace mlir {
 namespace spirv {
@@ -5005,7 +5076,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ExecutionModeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ExecutionModeOp)
 
 namespace mlir {
 namespace spirv {
@@ -5073,7 +5144,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FAddOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FAddOp)
 
 namespace mlir {
 namespace spirv {
@@ -5137,7 +5208,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FConvertOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FConvertOp)
 
 namespace mlir {
 namespace spirv {
@@ -5205,7 +5276,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FDivOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FDivOp)
 
 namespace mlir {
 namespace spirv {
@@ -5273,7 +5344,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FModOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FModOp)
 
 namespace mlir {
 namespace spirv {
@@ -5341,7 +5412,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FMulOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FMulOp)
 
 namespace mlir {
 namespace spirv {
@@ -5406,7 +5477,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FNegateOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FNegateOp)
 
 namespace mlir {
 namespace spirv {
@@ -5473,7 +5544,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FOrdEqualOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FOrdEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -5540,7 +5611,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FOrdGreaterThanEqualOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FOrdGreaterThanEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -5607,7 +5678,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FOrdGreaterThanOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FOrdGreaterThanOp)
 
 namespace mlir {
 namespace spirv {
@@ -5674,7 +5745,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FOrdLessThanEqualOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FOrdLessThanEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -5741,7 +5812,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FOrdLessThanOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FOrdLessThanOp)
 
 namespace mlir {
 namespace spirv {
@@ -5808,7 +5879,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FOrdNotEqualOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FOrdNotEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -5876,7 +5947,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FRemOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FRemOp)
 
 namespace mlir {
 namespace spirv {
@@ -5944,7 +6015,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FSubOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FSubOp)
 
 namespace mlir {
 namespace spirv {
@@ -6011,7 +6082,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FUnordEqualOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FUnordEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -6078,7 +6149,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FUnordGreaterThanEqualOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FUnordGreaterThanEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -6145,7 +6216,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FUnordGreaterThanOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FUnordGreaterThanOp)
 
 namespace mlir {
 namespace spirv {
@@ -6212,7 +6283,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FUnordLessThanEqualOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FUnordLessThanEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -6279,7 +6350,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FUnordLessThanOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FUnordLessThanOp)
 
 namespace mlir {
 namespace spirv {
@@ -6346,7 +6417,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FUnordNotEqualOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FUnordNotEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -6365,8 +6436,8 @@ public:
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::TypeAttr typeAttr();
-  ::mlir::Type type();
+  ::mlir::TypeAttr function_typeAttr();
+  ::mlir::FunctionType function_type();
   ::mlir::StringAttr sym_nameAttr();
   ::llvm::StringRef sym_name();
   ::mlir::spirv::FunctionControlAttr function_controlAttr();
@@ -6386,15 +6457,15 @@ public:
   using Adaptor = FuncOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("type"), ::llvm::StringRef("sym_name"), ::llvm::StringRef("function_control")};
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("function_type"), ::llvm::StringRef("sym_name"), ::llvm::StringRef("function_control")};
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr typeAttrName() {
+  ::mlir::StringAttr function_typeAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr typeAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr function_typeAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
@@ -6423,20 +6494,20 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Region &body();
-  ::mlir::TypeAttr typeAttr();
-  ::mlir::Type type();
+  ::mlir::TypeAttr function_typeAttr();
+  ::mlir::FunctionType function_type();
   ::mlir::StringAttr sym_nameAttr();
   ::llvm::StringRef sym_name();
   ::mlir::spirv::FunctionControlAttr function_controlAttr();
   ::mlir::spirv::FunctionControl function_control();
-  void typeAttr(::mlir::TypeAttr attr);
+  void function_typeAttr(::mlir::TypeAttr attr);
   void sym_nameAttr(::mlir::StringAttr attr);
   void function_controlAttr(::mlir::spirv::FunctionControlAttr attr);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, StringRef name, FunctionType type, spirv::FunctionControl control = spirv::FunctionControl::None, ArrayRef<NamedAttribute> attrs = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeAttr type, ::mlir::StringAttr sym_name, ::mlir::spirv::FunctionControlAttr function_control);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::TypeAttr type, ::mlir::StringAttr sym_name, ::mlir::spirv::FunctionControlAttr function_control);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type type, ::llvm::StringRef sym_name, ::mlir::spirv::FunctionControl function_control);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Type type, ::llvm::StringRef sym_name, ::mlir::spirv::FunctionControl function_control);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeAttr function_type, ::mlir::StringAttr sym_name, ::mlir::spirv::FunctionControlAttr function_control);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::TypeAttr function_type, ::mlir::StringAttr sym_name, ::mlir::spirv::FunctionControlAttr function_control);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::FunctionType function_type, ::llvm::StringRef sym_name, ::mlir::spirv::FunctionControl function_control);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::FunctionType function_type, ::llvm::StringRef sym_name, ::mlir::spirv::FunctionControl function_control);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
@@ -6460,16 +6531,14 @@ private:
 
 public:
   /// Returns the type of this function.
-  /// FIXME: We should drive this via the ODS `type` param.
-  FunctionType getType() { 
-    return getTypeAttr().getValue().cast<FunctionType>();
-  }
+  /// FIXME: Remove when SPIRV uses prefixed accessors.
+  FunctionType getFunctionType() { return function_type(); }
 
   /// Returns the argument types of this function.
-  ArrayRef<Type> getArgumentTypes() { return getType().getInputs(); }
+  ArrayRef<Type> getArgumentTypes() { return getFunctionType().getInputs(); }
 
   /// Returns the result types of this function.
-  ArrayRef<Type> getResultTypes() { return getType().getResults(); }
+  ArrayRef<Type> getResultTypes() { return getFunctionType().getResults(); }
 
   /// Hook for FunctionOpInterface, called after verifying that the 'type'
   /// attribute is present and checks if it holds a function type. Ensures
@@ -6483,7 +6552,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FuncOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FuncOp)
 
 namespace mlir {
 namespace spirv {
@@ -6574,7 +6643,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FunctionCallOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::FunctionCallOp)
 
 namespace mlir {
 namespace spirv {
@@ -6639,7 +6708,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLAcosOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLAcosOp)
 
 namespace mlir {
 namespace spirv {
@@ -6704,7 +6773,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLAsinOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLAsinOp)
 
 namespace mlir {
 namespace spirv {
@@ -6769,7 +6838,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLAtanOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLAtanOp)
 
 namespace mlir {
 namespace spirv {
@@ -6834,7 +6903,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLCeilOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLCeilOp)
 
 namespace mlir {
 namespace spirv {
@@ -6899,7 +6968,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLCosOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLCosOp)
 
 namespace mlir {
 namespace spirv {
@@ -6964,7 +7033,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLCoshOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLCoshOp)
 
 namespace mlir {
 namespace spirv {
@@ -7029,7 +7098,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLExpOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLExpOp)
 
 namespace mlir {
 namespace spirv {
@@ -7094,7 +7163,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFAbsOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFAbsOp)
 
 namespace mlir {
 namespace spirv {
@@ -7163,7 +7232,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFClampOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFClampOp)
 
 namespace mlir {
 namespace spirv {
@@ -7231,7 +7300,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFMaxOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFMaxOp)
 
 namespace mlir {
 namespace spirv {
@@ -7299,7 +7368,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFMinOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFMinOp)
 
 namespace mlir {
 namespace spirv {
@@ -7371,7 +7440,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFMixOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFMixOp)
 
 namespace mlir {
 namespace spirv {
@@ -7436,7 +7505,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFSignOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFSignOp)
 
 namespace mlir {
 namespace spirv {
@@ -7501,7 +7570,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFloorOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFloorOp)
 
 namespace mlir {
 namespace spirv {
@@ -7570,7 +7639,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFmaOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFmaOp)
 
 namespace mlir {
 namespace spirv {
@@ -7634,7 +7703,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFrexpStructOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFrexpStructOp)
 
 namespace mlir {
 namespace spirv {
@@ -7699,7 +7768,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLInverseSqrtOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLInverseSqrtOp)
 
 namespace mlir {
 namespace spirv {
@@ -7769,7 +7838,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLLdexpOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLLdexpOp)
 
 namespace mlir {
 namespace spirv {
@@ -7834,7 +7903,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLLogOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLLogOp)
 
 namespace mlir {
 namespace spirv {
@@ -7902,7 +7971,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLPowOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLPowOp)
 
 namespace mlir {
 namespace spirv {
@@ -7967,7 +8036,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLRoundOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLRoundOp)
 
 namespace mlir {
 namespace spirv {
@@ -8032,7 +8101,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSAbsOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSAbsOp)
 
 namespace mlir {
 namespace spirv {
@@ -8101,7 +8170,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSClampOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSClampOp)
 
 namespace mlir {
 namespace spirv {
@@ -8169,7 +8238,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSMaxOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSMaxOp)
 
 namespace mlir {
 namespace spirv {
@@ -8237,7 +8306,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSMinOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSMinOp)
 
 namespace mlir {
 namespace spirv {
@@ -8302,7 +8371,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSSignOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSSignOp)
 
 namespace mlir {
 namespace spirv {
@@ -8367,7 +8436,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSinOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSinOp)
 
 namespace mlir {
 namespace spirv {
@@ -8432,7 +8501,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSinhOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSinhOp)
 
 namespace mlir {
 namespace spirv {
@@ -8497,7 +8566,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSqrtOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSqrtOp)
 
 namespace mlir {
 namespace spirv {
@@ -8562,7 +8631,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLTanOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLTanOp)
 
 namespace mlir {
 namespace spirv {
@@ -8627,7 +8696,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLTanhOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLTanhOp)
 
 namespace mlir {
 namespace spirv {
@@ -8696,7 +8765,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLUClampOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLUClampOp)
 
 namespace mlir {
 namespace spirv {
@@ -8764,7 +8833,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLUMaxOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLUMaxOp)
 
 namespace mlir {
 namespace spirv {
@@ -8832,7 +8901,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLUMinOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLUMinOp)
 
 namespace mlir {
 namespace spirv {
@@ -9008,7 +9077,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GlobalVariableOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GlobalVariableOp)
 
 namespace mlir {
 namespace spirv {
@@ -9105,7 +9174,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupBroadcastOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupBroadcastOp)
 
 namespace mlir {
 namespace spirv {
@@ -9194,7 +9263,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformBallotOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformBallotOp)
 
 namespace mlir {
 namespace spirv {
@@ -9291,7 +9360,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformBroadcastOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformBroadcastOp)
 
 namespace mlir {
 namespace spirv {
@@ -9381,7 +9450,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformElectOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformElectOp)
 
 namespace mlir {
 namespace spirv {
@@ -9486,7 +9555,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformFAddOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformFAddOp)
 
 namespace mlir {
 namespace spirv {
@@ -9591,7 +9660,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformFMaxOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformFMaxOp)
 
 namespace mlir {
 namespace spirv {
@@ -9696,7 +9765,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformFMinOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformFMinOp)
 
 namespace mlir {
 namespace spirv {
@@ -9801,7 +9870,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformFMulOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformFMulOp)
 
 namespace mlir {
 namespace spirv {
@@ -9906,7 +9975,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformIAddOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformIAddOp)
 
 namespace mlir {
 namespace spirv {
@@ -10011,7 +10080,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformIMulOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformIMulOp)
 
 namespace mlir {
 namespace spirv {
@@ -10116,7 +10185,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformSMaxOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformSMaxOp)
 
 namespace mlir {
 namespace spirv {
@@ -10221,7 +10290,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformSMinOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformSMinOp)
 
 namespace mlir {
 namespace spirv {
@@ -10326,7 +10395,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformUMaxOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformUMaxOp)
 
 namespace mlir {
 namespace spirv {
@@ -10431,7 +10500,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformUMinOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformUMinOp)
 
 namespace mlir {
 namespace spirv {
@@ -10500,7 +10569,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::IAddOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::IAddOp)
 
 namespace mlir {
 namespace spirv {
@@ -10567,7 +10636,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::IEqualOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::IEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -10636,7 +10705,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::IMulOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::IMulOp)
 
 namespace mlir {
 namespace spirv {
@@ -10703,7 +10772,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::INotEqualOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::INotEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -10772,7 +10841,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ISubOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ISubOp)
 
 namespace mlir {
 namespace spirv {
@@ -10870,7 +10939,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ImageDrefGatherOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ImageDrefGatherOp)
 
 namespace mlir {
 namespace spirv {
@@ -10933,7 +11002,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ImageOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ImageOp)
 
 namespace mlir {
 namespace spirv {
@@ -10997,7 +11066,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ImageQuerySizeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ImageQuerySizeOp)
 
 namespace mlir {
 namespace spirv {
@@ -11068,7 +11137,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::InBoundsPtrAccessChainOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::InBoundsPtrAccessChainOp)
 
 namespace mlir {
 namespace spirv {
@@ -11132,7 +11201,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::IsInfOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::IsInfOp)
 
 namespace mlir {
 namespace spirv {
@@ -11196,7 +11265,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::IsNanOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::IsNanOp)
 
 namespace mlir {
 namespace spirv {
@@ -11299,7 +11368,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::LoadOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::LoadOp)
 
 namespace mlir {
 namespace spirv {
@@ -11367,7 +11436,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::LogicalAndOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::LogicalAndOp)
 
 namespace mlir {
 namespace spirv {
@@ -11434,7 +11503,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::LogicalEqualOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::LogicalEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -11501,7 +11570,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::LogicalNotEqualOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::LogicalNotEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -11566,7 +11635,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::LogicalNotOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::LogicalNotOp)
 
 namespace mlir {
 namespace spirv {
@@ -11634,7 +11703,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::LogicalOrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::LogicalOrOp)
 
 namespace mlir {
 namespace spirv {
@@ -11704,7 +11773,7 @@ public:
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  ::mlir::LogicalResult verify();
+  ::mlir::LogicalResult verifyRegions();
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
@@ -11738,7 +11807,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::LoopOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::LoopOp)
 
 namespace mlir {
 namespace spirv {
@@ -11805,7 +11874,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::MatrixTimesMatrixOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::MatrixTimesMatrixOp)
 
 namespace mlir {
 namespace spirv {
@@ -11872,7 +11941,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::MatrixTimesScalarOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::MatrixTimesScalarOp)
 
 namespace mlir {
 namespace spirv {
@@ -11970,7 +12039,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::MemoryBarrierOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::MemoryBarrierOp)
 
 namespace mlir {
 namespace spirv {
@@ -12030,7 +12099,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::MergeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::MergeOp)
 
 namespace mlir {
 namespace spirv {
@@ -12135,7 +12204,7 @@ public:
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  ::mlir::LogicalResult verify();
+  ::mlir::LogicalResult verifyRegions();
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
@@ -12159,7 +12228,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ModuleOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ModuleOp)
 
 namespace mlir {
 namespace spirv {
@@ -12224,7 +12293,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::NotOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::NotOp)
 
 namespace mlir {
 namespace spirv {
@@ -12289,7 +12358,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLCeilOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLCeilOp)
 
 namespace mlir {
 namespace spirv {
@@ -12354,7 +12423,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLCosOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLCosOp)
 
 namespace mlir {
 namespace spirv {
@@ -12419,7 +12488,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLErfOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLErfOp)
 
 namespace mlir {
 namespace spirv {
@@ -12484,7 +12553,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLExpOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLExpOp)
 
 namespace mlir {
 namespace spirv {
@@ -12549,7 +12618,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLFAbsOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLFAbsOp)
 
 namespace mlir {
 namespace spirv {
@@ -12614,7 +12683,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLFloorOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLFloorOp)
 
 namespace mlir {
 namespace spirv {
@@ -12685,7 +12754,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLFmaOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLFmaOp)
 
 namespace mlir {
 namespace spirv {
@@ -12750,7 +12819,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLLogOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLLogOp)
 
 namespace mlir {
 namespace spirv {
@@ -12818,7 +12887,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLPowOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLPowOp)
 
 namespace mlir {
 namespace spirv {
@@ -12883,7 +12952,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLRsqrtOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLRsqrtOp)
 
 namespace mlir {
 namespace spirv {
@@ -12948,7 +13017,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLSAbsOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLSAbsOp)
 
 namespace mlir {
 namespace spirv {
@@ -13013,7 +13082,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLSinOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLSinOp)
 
 namespace mlir {
 namespace spirv {
@@ -13078,7 +13147,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLSqrtOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLSqrtOp)
 
 namespace mlir {
 namespace spirv {
@@ -13143,7 +13212,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLTanhOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLTanhOp)
 
 namespace mlir {
 namespace spirv {
@@ -13210,7 +13279,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::OrderedOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::OrderedOp)
 
 namespace mlir {
 namespace spirv {
@@ -13281,7 +13350,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::PtrAccessChainOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::PtrAccessChainOp)
 
 namespace mlir {
 namespace spirv {
@@ -13368,7 +13437,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ReferenceOfOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ReferenceOfOp)
 
 namespace mlir {
 namespace spirv {
@@ -13428,7 +13497,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ReturnOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ReturnOp)
 
 namespace mlir {
 namespace spirv {
@@ -13491,7 +13560,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ReturnValueOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ReturnValueOp)
 
 namespace mlir {
 namespace spirv {
@@ -13555,7 +13624,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SConvertOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SConvertOp)
 
 namespace mlir {
 namespace spirv {
@@ -13623,7 +13692,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SDivOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SDivOp)
 
 namespace mlir {
 namespace spirv {
@@ -13690,7 +13759,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SGreaterThanEqualOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SGreaterThanEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -13757,7 +13826,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SGreaterThanOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SGreaterThanOp)
 
 namespace mlir {
 namespace spirv {
@@ -13824,7 +13893,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SLessThanEqualOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SLessThanEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -13891,7 +13960,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SLessThanOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SLessThanOp)
 
 namespace mlir {
 namespace spirv {
@@ -13959,7 +14028,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SModOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SModOp)
 
 namespace mlir {
 namespace spirv {
@@ -14024,7 +14093,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SNegateOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SNegateOp)
 
 namespace mlir {
 namespace spirv {
@@ -14092,7 +14161,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SRemOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SRemOp)
 
 namespace mlir {
 namespace spirv {
@@ -14165,7 +14234,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SelectOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SelectOp)
 
 namespace mlir {
 namespace spirv {
@@ -14234,7 +14303,7 @@ public:
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  ::mlir::LogicalResult verify();
+  ::mlir::LogicalResult verifyRegions();
   static void getCanonicalizationPatterns(::mlir::RewritePatternSet &results, ::mlir::MLIRContext *context);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
@@ -14270,7 +14339,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SelectionOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SelectionOp)
 
 namespace mlir {
 namespace spirv {
@@ -14340,7 +14409,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ShiftLeftLogicalOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ShiftLeftLogicalOp)
 
 namespace mlir {
 namespace spirv {
@@ -14410,7 +14479,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ShiftRightArithmeticOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ShiftRightArithmeticOp)
 
 namespace mlir {
 namespace spirv {
@@ -14480,7 +14549,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ShiftRightLogicalOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ShiftRightLogicalOp)
 
 namespace mlir {
 namespace spirv {
@@ -14591,7 +14660,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SpecConstantCompositeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SpecConstantCompositeOp)
 
 namespace mlir {
 namespace spirv {
@@ -14689,7 +14758,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SpecConstantOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SpecConstantOp)
 
 namespace mlir {
 namespace spirv {
@@ -14743,7 +14812,7 @@ public:
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  ::mlir::LogicalResult verify();
+  ::mlir::LogicalResult verifyRegions();
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
@@ -14753,7 +14822,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SpecConstantOperationOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SpecConstantOperationOp)
 
 namespace mlir {
 namespace spirv {
@@ -14858,7 +14927,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::StoreOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::StoreOp)
 
 namespace mlir {
 namespace spirv {
@@ -14920,7 +14989,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SubgroupBallotKHROp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SubgroupBallotKHROp)
 
 namespace mlir {
 namespace spirv {
@@ -14983,7 +15052,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SubgroupBlockReadINTELOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SubgroupBlockReadINTELOp)
 
 namespace mlir {
 namespace spirv {
@@ -15048,7 +15117,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SubgroupBlockWriteINTELOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SubgroupBlockWriteINTELOp)
 
 namespace mlir {
 namespace spirv {
@@ -15112,7 +15181,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::TransposeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::TransposeOp)
 
 namespace mlir {
 namespace spirv {
@@ -15176,7 +15245,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::UConvertOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::UConvertOp)
 
 namespace mlir {
 namespace spirv {
@@ -15244,7 +15313,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::UDivOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::UDivOp)
 
 namespace mlir {
 namespace spirv {
@@ -15311,7 +15380,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::UGreaterThanEqualOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::UGreaterThanEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -15378,7 +15447,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::UGreaterThanOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::UGreaterThanOp)
 
 namespace mlir {
 namespace spirv {
@@ -15445,7 +15514,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ULessThanEqualOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ULessThanEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -15512,7 +15581,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ULessThanOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::ULessThanOp)
 
 namespace mlir {
 namespace spirv {
@@ -15580,7 +15649,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::UModOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::UModOp)
 
 namespace mlir {
 namespace spirv {
@@ -15605,7 +15674,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class UndefOp : public ::mlir::Op<UndefOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class UndefOp : public ::mlir::Op<UndefOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -15635,11 +15704,12 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::UndefOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::UndefOp)
 
 namespace mlir {
 namespace spirv {
@@ -15706,7 +15776,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::UnorderedOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::UnorderedOp)
 
 namespace mlir {
 namespace spirv {
@@ -15765,7 +15835,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::UnreachableOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::UnreachableOp)
 
 namespace mlir {
 namespace spirv {
@@ -15854,7 +15924,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::VariableOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::VariableOp)
 
 namespace mlir {
 namespace spirv {
@@ -15920,7 +15990,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::VectorExtractDynamicOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::VectorExtractDynamicOp)
 
 namespace mlir {
 namespace spirv {
@@ -15992,7 +16062,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::VectorInsertDynamicOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::VectorInsertDynamicOp)
 
 namespace mlir {
 namespace spirv {
@@ -16083,7 +16153,74 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::VectorShuffleOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::VectorShuffleOp)
+
+namespace mlir {
+namespace spirv {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::spirv::VectorTimesScalarOp declarations
+//===----------------------------------------------------------------------===//
+
+class VectorTimesScalarOpAdaptor {
+public:
+  VectorTimesScalarOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  VectorTimesScalarOpAdaptor(VectorTimesScalarOp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::Value vector();
+  ::mlir::Value scalar();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class VectorTimesScalarOp : public ::mlir::Op<VectorTimesScalarOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::VectorType>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = VectorTimesScalarOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    return {};
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("spv.VectorTimesScalar");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Value vector();
+  ::mlir::Value scalar();
+  ::mlir::MutableOperandRange vectorMutable();
+  ::mlir::MutableOperandRange scalarMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Value result();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value vector, ::mlir::Value scalar);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value vector, ::mlir::Value scalar);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  ::mlir::LogicalResult verify();
+  ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
+  ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
+  ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
+  ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
+  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
+  void print(::mlir::OpAsmPrinter &_odsPrinter);
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+public:
+};
+} // namespace spirv
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::VectorTimesScalarOp)
 
 namespace mlir {
 namespace spirv {
@@ -16145,7 +16282,7 @@ public:
 };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::YieldOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::YieldOp)
 
 
 #endif  // GET_OP_CLASSES

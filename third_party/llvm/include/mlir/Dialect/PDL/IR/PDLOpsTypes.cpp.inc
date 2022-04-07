@@ -73,12 +73,12 @@ namespace mlir {
 namespace pdl {
 } // namespace pdl
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::AttributeType)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::AttributeType)
 namespace mlir {
 namespace pdl {
 } // namespace pdl
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::OperationType)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::OperationType)
 namespace mlir {
 namespace pdl {
 namespace detail {
@@ -116,17 +116,17 @@ Type RangeType::getElementType() const {
 
 } // namespace pdl
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::RangeType)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::RangeType)
 namespace mlir {
 namespace pdl {
 } // namespace pdl
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::TypeType)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::TypeType)
 namespace mlir {
 namespace pdl {
 } // namespace pdl
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::ValueType)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::ValueType)
 namespace mlir {
 namespace pdl {
 

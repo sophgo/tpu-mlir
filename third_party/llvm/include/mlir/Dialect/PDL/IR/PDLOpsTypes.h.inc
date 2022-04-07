@@ -78,11 +78,11 @@ public:
 };
 } // namespace pdl
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::AttributeType)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::OperationType)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::RangeType)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::TypeType)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::ValueType)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::AttributeType)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::OperationType)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::RangeType)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::TypeType)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::ValueType)
 
 #endif  // GET_TYPEDEF_CLASSES
 

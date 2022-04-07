@@ -134,7 +134,7 @@ public:
 };
 } // namespace amx
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tdpbf16ps)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tdpbf16ps)
 
 namespace mlir {
 namespace amx {
@@ -187,7 +187,7 @@ public:
 };
 } // namespace amx
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tdpbssd)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tdpbssd)
 
 namespace mlir {
 namespace amx {
@@ -240,7 +240,7 @@ public:
 };
 } // namespace amx
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tdpbsud)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tdpbsud)
 
 namespace mlir {
 namespace amx {
@@ -293,7 +293,7 @@ public:
 };
 } // namespace amx
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tdpbusd)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tdpbusd)
 
 namespace mlir {
 namespace amx {
@@ -346,7 +346,7 @@ public:
 };
 } // namespace amx
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tdpbuud)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tdpbuud)
 
 namespace mlir {
 namespace amx {
@@ -399,7 +399,7 @@ public:
 };
 } // namespace amx
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tileloadd64)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tileloadd64)
 
 namespace mlir {
 namespace amx {
@@ -451,7 +451,7 @@ public:
 };
 } // namespace amx
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tilestored64)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tilestored64)
 
 namespace mlir {
 namespace amx {
@@ -504,7 +504,7 @@ public:
 };
 } // namespace amx
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tilezero)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tilezero)
 
 namespace mlir {
 namespace amx {
@@ -573,7 +573,7 @@ public:
 };
 } // namespace amx
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::amx::TileLoadOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::amx::TileLoadOp)
 
 namespace mlir {
 namespace amx {
@@ -648,7 +648,7 @@ public:
 };
 } // namespace amx
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::amx::TileMulFOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::amx::TileMulFOp)
 
 namespace mlir {
 namespace amx {
@@ -764,7 +764,7 @@ public:
 };
 } // namespace amx
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::amx::TileMulIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::amx::TileMulIOp)
 
 namespace mlir {
 namespace amx {
@@ -835,7 +835,7 @@ public:
 };
 } // namespace amx
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::amx::TileStoreOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::amx::TileStoreOp)
 
 namespace mlir {
 namespace amx {
@@ -895,7 +895,7 @@ public:
 };
 } // namespace amx
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::amx::TileZeroOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::amx::TileZeroOp)
 
 
 #endif  // GET_OP_CLASSES

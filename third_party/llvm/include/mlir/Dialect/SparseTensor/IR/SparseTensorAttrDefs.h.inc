@@ -49,7 +49,7 @@ public:
 };
 } // namespace sparse_tensor
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::SparseTensorEncodingAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::SparseTensorEncodingAttr)
 
 #endif  // GET_ATTRDEF_CLASSES
 

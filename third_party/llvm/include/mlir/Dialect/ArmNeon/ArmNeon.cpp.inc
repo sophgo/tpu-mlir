@@ -219,11 +219,11 @@ void SMullOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 ::mlir::ParseResult SMullOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType aRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> aOperands(aRawOperands);  ::llvm::SMLoc aOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand aRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> aOperands(aRawOperands);  ::llvm::SMLoc aOperandsLoc;
   (void)aOperandsLoc;
-  ::mlir::OpAsmParser::OperandType bRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> bOperands(bRawOperands);  ::llvm::SMLoc bOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand bRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> bOperands(bRawOperands);  ::llvm::SMLoc bOperandsLoc;
   (void)bOperandsLoc;
   ::mlir::Type aRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> aTypes(aRawTypes);
@@ -299,7 +299,7 @@ void SMullOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace arm_neon
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_neon::SMullOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_neon::SMullOp)
 
 namespace mlir {
 namespace arm_neon {
@@ -474,14 +474,14 @@ void Sdot2dOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::ParseResult Sdot2dOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType aRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> aOperands(aRawOperands);  ::llvm::SMLoc aOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand aRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> aOperands(aRawOperands);  ::llvm::SMLoc aOperandsLoc;
   (void)aOperandsLoc;
-  ::mlir::OpAsmParser::OperandType bRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> bOperands(bRawOperands);  ::llvm::SMLoc bOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand bRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> bOperands(bRawOperands);  ::llvm::SMLoc bOperandsLoc;
   (void)bOperandsLoc;
-  ::mlir::OpAsmParser::OperandType cRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> cOperands(cRawOperands);  ::llvm::SMLoc cOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand cRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> cOperands(cRawOperands);  ::llvm::SMLoc cOperandsLoc;
   (void)cOperandsLoc;
   ::mlir::Type bRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> bTypes(bRawTypes);
@@ -588,7 +588,7 @@ void Sdot2dOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace arm_neon
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_neon::Sdot2dOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_neon::Sdot2dOp)
 
 namespace mlir {
 namespace arm_neon {
@@ -757,14 +757,14 @@ void SdotOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 }
 
 ::mlir::ParseResult SdotOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType aRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> aOperands(aRawOperands);  ::llvm::SMLoc aOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand aRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> aOperands(aRawOperands);  ::llvm::SMLoc aOperandsLoc;
   (void)aOperandsLoc;
-  ::mlir::OpAsmParser::OperandType bRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> bOperands(bRawOperands);  ::llvm::SMLoc bOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand bRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> bOperands(bRawOperands);  ::llvm::SMLoc bOperandsLoc;
   (void)bOperandsLoc;
-  ::mlir::OpAsmParser::OperandType cRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> cOperands(cRawOperands);  ::llvm::SMLoc cOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand cRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> cOperands(cRawOperands);  ::llvm::SMLoc cOperandsLoc;
   (void)cOperandsLoc;
   ::mlir::Type bRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> bTypes(bRawTypes);
@@ -871,7 +871,7 @@ void SdotOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace arm_neon
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_neon::SdotOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_neon::SdotOp)
 
 
 #endif  // GET_OP_CLASSES

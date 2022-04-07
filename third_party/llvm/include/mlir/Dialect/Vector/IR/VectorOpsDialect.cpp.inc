@@ -6,7 +6,7 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
-DEFINE_EXPLICIT_TYPE_ID(::mlir::vector::VectorDialect)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::vector::VectorDialect)
 namespace mlir {
 namespace vector {
 

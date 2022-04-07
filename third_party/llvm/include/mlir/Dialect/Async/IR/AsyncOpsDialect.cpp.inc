@@ -6,7 +6,7 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::AsyncDialect)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::AsyncDialect)
 namespace mlir {
 namespace async {
 

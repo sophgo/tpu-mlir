@@ -6,7 +6,7 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
-DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::OpenMPDialect)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::OpenMPDialect)
 namespace mlir {
 namespace omp {
 

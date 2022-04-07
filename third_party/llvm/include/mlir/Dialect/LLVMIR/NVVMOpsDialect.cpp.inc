@@ -6,7 +6,7 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
-DEFINE_EXPLICIT_TYPE_ID(::mlir::NVVM::NVVMDialect)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::NVVM::NVVMDialect)
 namespace mlir {
 namespace NVVM {
 

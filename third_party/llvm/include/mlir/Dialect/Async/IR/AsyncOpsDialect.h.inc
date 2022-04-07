@@ -40,4 +40,4 @@ public:
   };
 } // namespace async
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::AsyncDialect)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::AsyncDialect)

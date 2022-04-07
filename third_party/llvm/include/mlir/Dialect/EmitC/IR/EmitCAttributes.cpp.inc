@@ -67,7 +67,7 @@ OpaqueAttr OpaqueAttr::get(::mlir::MLIRContext *context, ::llvm::StringRef value
 
 } // namespace emitc
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::emitc::OpaqueAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::emitc::OpaqueAttr)
 namespace mlir {
 namespace emitc {
 

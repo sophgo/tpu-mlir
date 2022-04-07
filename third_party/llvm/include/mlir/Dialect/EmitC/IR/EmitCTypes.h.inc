@@ -53,8 +53,8 @@ public:
 };
 } // namespace emitc
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::emitc::OpaqueType)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::emitc::PointerType)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::emitc::OpaqueType)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::emitc::PointerType)
 
 #endif  // GET_TYPEDEF_CLASSES
 

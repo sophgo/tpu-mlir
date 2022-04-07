@@ -168,8 +168,8 @@ void CloneOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 ::mlir::ParseResult CloneOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType inputRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> inputOperands(inputRawOperands);  ::llvm::SMLoc inputOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand inputRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> inputOperands(inputRawOperands);  ::llvm::SMLoc inputOperandsLoc;
   (void)inputOperandsLoc;
   ::mlir::Type inputRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> inputTypes(inputRawTypes);
@@ -231,7 +231,7 @@ void CloneOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace bufferization
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::bufferization::CloneOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::bufferization::CloneOp)
 
 namespace mlir {
 namespace bufferization {
@@ -352,8 +352,8 @@ void ToMemrefOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::ParseResult ToMemrefOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType tensorRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> tensorOperands(tensorRawOperands);  ::llvm::SMLoc tensorOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand tensorRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> tensorOperands(tensorRawOperands);  ::llvm::SMLoc tensorOperandsLoc;
   (void)tensorOperandsLoc;
   ::mlir::Type memrefRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> memrefTypes(memrefRawTypes);
@@ -404,7 +404,7 @@ void ToMemrefOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace bufferization
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::bufferization::ToMemrefOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::bufferization::ToMemrefOp)
 
 namespace mlir {
 namespace bufferization {
@@ -531,8 +531,8 @@ void ToTensorOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::ParseResult ToTensorOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType memrefRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> memrefOperands(memrefRawOperands);  ::llvm::SMLoc memrefOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand memrefRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> memrefOperands(memrefRawOperands);  ::llvm::SMLoc memrefOperandsLoc;
   (void)memrefOperandsLoc;
   ::mlir::Type memrefRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> memrefTypes(memrefRawTypes);
@@ -585,7 +585,7 @@ void ToTensorOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace bufferization
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::bufferization::ToTensorOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::bufferization::ToTensorOp)
 
 
 #endif  // GET_OP_CLASSES

@@ -64,7 +64,7 @@ public:
 namespace detail {
   template <typename ConcreteOp>
   struct ContractionOpInterfaceTrait : public ::mlir::OpInterface<ContractionOpInterface, detail::ContractionOpInterfaceInterfaceTraits>::Trait<ConcreteOp> {
-    static ::mlir::LogicalResult verifyTrait(::mlir::Operation *op) {
+    static ::mlir::LogicalResult verifyRegionTrait(::mlir::Operation *op) {
       return detail::verifyContractionInterface(op);
     }
   };
@@ -198,6 +198,115 @@ return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getOperation()->getOperand(
 } // namespace mlir
 namespace mlir {
 namespace linalg {
+class FillOpInterface;
+namespace detail {
+struct FillOpInterfaceInterfaceTraits {
+  struct Concept {
+    Value (*value)(const Concept *impl, ::mlir::Operation *);
+    Value (*output)(const Concept *impl, ::mlir::Operation *);
+    Value (*result)(const Concept *impl, ::mlir::Operation *);
+  };
+  template<typename ConcreteOp>
+  class Model : public Concept {
+  public:
+    using Interface = ::mlir::linalg::FillOpInterface;
+    Model() : Concept{value, output, result} {}
+
+    static inline Value value(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline Value output(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline Value result(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+  };
+  template<typename ConcreteOp>
+  class FallbackModel : public Concept {
+  public:
+    using Interface = ::mlir::linalg::FillOpInterface;
+    FallbackModel() : Concept{value, output, result} {}
+
+    static inline Value value(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline Value output(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline Value result(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+  };
+  template<typename ConcreteModel, typename ConcreteOp>
+  class ExternalModel : public FallbackModel<ConcreteModel> {
+  public:
+    Value value(::mlir::Operation *tablegen_opaque_val) const;
+    Value output(::mlir::Operation *tablegen_opaque_val) const;
+    Value result(::mlir::Operation *tablegen_opaque_val) const;
+  };
+};template <typename ConcreteOp>
+struct FillOpInterfaceTrait;
+
+} // namespace detail
+class FillOpInterface : public ::mlir::OpInterface<FillOpInterface, detail::FillOpInterfaceInterfaceTraits> {
+public:
+  using ::mlir::OpInterface<FillOpInterface, detail::FillOpInterfaceInterfaceTraits>::OpInterface;
+  template <typename ConcreteOp>
+  struct Trait : public detail::FillOpInterfaceTrait<ConcreteOp> {};
+  Value value();
+  Value output();
+  Value result();
+};
+namespace detail {
+  template <typename ConcreteOp>
+  struct FillOpInterfaceTrait : public ::mlir::OpInterface<FillOpInterface, detail::FillOpInterfaceInterfaceTraits>::Trait<ConcreteOp> {
+    Value value() {
+      return (*static_cast<ConcreteOp *>(this)).getOperation()->getOperand(0);
+    }
+    Value output() {
+      return (*static_cast<ConcreteOp *>(this)).getOperation()->getOperand(1);
+    }
+    Value result() {
+      if ((*static_cast<ConcreteOp *>(this)).getOperation()->getResults().empty())
+          return nullptr;
+        return (*static_cast<ConcreteOp *>(this)).getOperation()->getResults().front();
+    }
+    static ::mlir::LogicalResult verifyTrait(::mlir::Operation *op) {
+      return detail::verifyFillInterface(op);
+    }
+  };
+}// namespace detail
+template<typename ConcreteOp>
+Value detail::FillOpInterfaceInterfaceTraits::Model<ConcreteOp>::value(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).value();
+}
+template<typename ConcreteOp>
+Value detail::FillOpInterfaceInterfaceTraits::Model<ConcreteOp>::output(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).output();
+}
+template<typename ConcreteOp>
+Value detail::FillOpInterfaceInterfaceTraits::Model<ConcreteOp>::result(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).result();
+}
+template<typename ConcreteOp>
+Value detail::FillOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::value(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->value(tablegen_opaque_val);
+}
+template<typename ConcreteOp>
+Value detail::FillOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::output(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->output(tablegen_opaque_val);
+}
+template<typename ConcreteOp>
+Value detail::FillOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::result(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->result(tablegen_opaque_val);
+}
+template<typename ConcreteModel, typename ConcreteOp>
+Value detail::FillOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::value(::mlir::Operation *tablegen_opaque_val) const {
+return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getOperation()->getOperand(0);
+}
+template<typename ConcreteModel, typename ConcreteOp>
+Value detail::FillOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::output(::mlir::Operation *tablegen_opaque_val) const {
+return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getOperation()->getOperand(1);
+}
+template<typename ConcreteModel, typename ConcreteOp>
+Value detail::FillOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::result(::mlir::Operation *tablegen_opaque_val) const {
+if ((llvm::cast<ConcreteOp>(tablegen_opaque_val)).getOperation()->getResults().empty())
+          return nullptr;
+        return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getOperation()->getResults().front();
+}
+} // namespace linalg
+} // namespace mlir
+namespace mlir {
+namespace linalg {
 class LinalgOp;
 namespace detail {
 struct LinalgOpInterfaceTraits {
@@ -260,12 +369,13 @@ struct LinalgOpInterfaceTraits {
     Operation *(*cloneWithMapper)(const Concept *impl, ::mlir::Operation *, OpBuilder &, Location, TypeRange, ValueRange, BlockAndValueMapping &);
     Operation *(*cloneWithoutRegions)(const Concept *impl, ::mlir::Operation *, OpBuilder &, Location, TypeRange, ValueRange);
     std::function<void(ImplicitLocOpBuilder &, Block &, ArrayRef<NamedAttribute>)> (*getRegionBuilder)();
+    bool (*hasOnlyProjectedPermutations)(const Concept *impl, ::mlir::Operation *);
   };
   template<typename ConcreteOp>
   class Model : public Concept {
   public:
     using Interface = ::mlir::linalg::LinalgOp;
-    Model() : Concept{getNumParallelLoops, getParallelDims, getNumReductionLoops, getReductionDims, getNumWindowLoops, getWindowDims, getNumLoops, hasSingleReductionLoop, inputs, getNumInputs, outputs, getNumOutputs, getNumInputsAndOutputs, getInputOperands, getInputOperand, getInputBufferOperands, getInputTensorOperands, getOutputOperands, getOutputOperand, setOutputOperand, getOutputBufferOperands, getOutputTensorOperands, getOutputBufferTypes, getOutputTensorTypes, getInputAndOutputOperands, payloadUsesValueFromOperand, isInputTensor, isOutputTensor, isInitTensor, getRank, getRegionOutputArgs, getShape, isScalar, getTiedBlockArgument, getTiedIndexingMap, getTiedIndexingMapForResult, getTiedOpResult, getTiedYieldValue, getBlock, iterator_types, hasDynamicIndexingMaps, verifyIndexingMapRequiredAttributes, indexing_maps, getIndexingMaps, hasDynamicShape, hasBufferSemantics, hasTensorSemantics, getLibraryCallName, hasIndexSemantics, getLoopsToShapesMap, getShapesToLoopsMap, getResultsPositionInLoopsToShapeMap, getStaticShape, getStaticLoopRanges, clone, cloneWithMapper, cloneWithoutRegions, getRegionBuilder} {}
+    Model() : Concept{getNumParallelLoops, getParallelDims, getNumReductionLoops, getReductionDims, getNumWindowLoops, getWindowDims, getNumLoops, hasSingleReductionLoop, inputs, getNumInputs, outputs, getNumOutputs, getNumInputsAndOutputs, getInputOperands, getInputOperand, getInputBufferOperands, getInputTensorOperands, getOutputOperands, getOutputOperand, setOutputOperand, getOutputBufferOperands, getOutputTensorOperands, getOutputBufferTypes, getOutputTensorTypes, getInputAndOutputOperands, payloadUsesValueFromOperand, isInputTensor, isOutputTensor, isInitTensor, getRank, getRegionOutputArgs, getShape, isScalar, getTiedBlockArgument, getTiedIndexingMap, getTiedIndexingMapForResult, getTiedOpResult, getTiedYieldValue, getBlock, iterator_types, hasDynamicIndexingMaps, verifyIndexingMapRequiredAttributes, indexing_maps, getIndexingMaps, hasDynamicShape, hasBufferSemantics, hasTensorSemantics, getLibraryCallName, hasIndexSemantics, getLoopsToShapesMap, getShapesToLoopsMap, getResultsPositionInLoopsToShapeMap, getStaticShape, getStaticLoopRanges, clone, cloneWithMapper, cloneWithoutRegions, getRegionBuilder, hasOnlyProjectedPermutations} {}
 
     static inline unsigned getNumParallelLoops(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline void getParallelDims(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, SmallVectorImpl<unsigned> & res);
@@ -325,12 +435,13 @@ struct LinalgOpInterfaceTraits {
     static inline Operation *cloneWithMapper(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands, BlockAndValueMapping & bvm);
     static inline Operation *cloneWithoutRegions(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands);
     static inline std::function<void(ImplicitLocOpBuilder &, Block &, ArrayRef<NamedAttribute>)> getRegionBuilder();
+    static inline bool hasOnlyProjectedPermutations(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
   };
   template<typename ConcreteOp>
   class FallbackModel : public Concept {
   public:
     using Interface = ::mlir::linalg::LinalgOp;
-    FallbackModel() : Concept{getNumParallelLoops, getParallelDims, getNumReductionLoops, getReductionDims, getNumWindowLoops, getWindowDims, getNumLoops, hasSingleReductionLoop, inputs, getNumInputs, outputs, getNumOutputs, getNumInputsAndOutputs, getInputOperands, getInputOperand, getInputBufferOperands, getInputTensorOperands, getOutputOperands, getOutputOperand, setOutputOperand, getOutputBufferOperands, getOutputTensorOperands, getOutputBufferTypes, getOutputTensorTypes, getInputAndOutputOperands, payloadUsesValueFromOperand, isInputTensor, isOutputTensor, isInitTensor, getRank, getRegionOutputArgs, getShape, isScalar, getTiedBlockArgument, getTiedIndexingMap, getTiedIndexingMapForResult, getTiedOpResult, getTiedYieldValue, getBlock, iterator_types, hasDynamicIndexingMaps, verifyIndexingMapRequiredAttributes, indexing_maps, getIndexingMaps, hasDynamicShape, hasBufferSemantics, hasTensorSemantics, getLibraryCallName, hasIndexSemantics, getLoopsToShapesMap, getShapesToLoopsMap, getResultsPositionInLoopsToShapeMap, getStaticShape, getStaticLoopRanges, clone, cloneWithMapper, cloneWithoutRegions, getRegionBuilder} {}
+    FallbackModel() : Concept{getNumParallelLoops, getParallelDims, getNumReductionLoops, getReductionDims, getNumWindowLoops, getWindowDims, getNumLoops, hasSingleReductionLoop, inputs, getNumInputs, outputs, getNumOutputs, getNumInputsAndOutputs, getInputOperands, getInputOperand, getInputBufferOperands, getInputTensorOperands, getOutputOperands, getOutputOperand, setOutputOperand, getOutputBufferOperands, getOutputTensorOperands, getOutputBufferTypes, getOutputTensorTypes, getInputAndOutputOperands, payloadUsesValueFromOperand, isInputTensor, isOutputTensor, isInitTensor, getRank, getRegionOutputArgs, getShape, isScalar, getTiedBlockArgument, getTiedIndexingMap, getTiedIndexingMapForResult, getTiedOpResult, getTiedYieldValue, getBlock, iterator_types, hasDynamicIndexingMaps, verifyIndexingMapRequiredAttributes, indexing_maps, getIndexingMaps, hasDynamicShape, hasBufferSemantics, hasTensorSemantics, getLibraryCallName, hasIndexSemantics, getLoopsToShapesMap, getShapesToLoopsMap, getResultsPositionInLoopsToShapeMap, getStaticShape, getStaticLoopRanges, clone, cloneWithMapper, cloneWithoutRegions, getRegionBuilder, hasOnlyProjectedPermutations} {}
 
     static inline unsigned getNumParallelLoops(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline void getParallelDims(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, SmallVectorImpl<unsigned> & res);
@@ -390,6 +501,7 @@ struct LinalgOpInterfaceTraits {
     static inline Operation *cloneWithMapper(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands, BlockAndValueMapping & bvm);
     static inline Operation *cloneWithoutRegions(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands);
     static inline std::function<void(ImplicitLocOpBuilder &, Block &, ArrayRef<NamedAttribute>)> getRegionBuilder();
+    static inline bool hasOnlyProjectedPermutations(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
   };
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
@@ -512,6 +624,7 @@ public:
   Operation *cloneWithMapper(OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands, BlockAndValueMapping & bvm);
   Operation *cloneWithoutRegions(OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands);
   std::function<void(ImplicitLocOpBuilder &, Block &, ArrayRef<NamedAttribute>)> getRegionBuilder();
+  bool hasOnlyProjectedPermutations();
 
     /// Return the flat list of all operand dimension sizes in the order they
     /// appear in the operands.
@@ -536,6 +649,9 @@ public:
     /// shape of the input operands where possible
     LogicalResult reifyResultShapes(OpBuilder &b,
         ReifiedRankedShapedTypeDims &reifiedReturnShapes);
+
+    // TODO: Remove once prefixing is flipped.
+    ArrayAttr getIteratorTypes() { return iterator_types(); }
 
     //========================================================================//
     // Helper functions to mutate the `operand_segment_sizes` attribute.
@@ -847,7 +963,7 @@ namespace detail {
           return {};
         return invertedMap.compose(viewSizes);
     }
-    static ::mlir::LogicalResult verifyTrait(::mlir::Operation *op) {
+    static ::mlir::LogicalResult verifyRegionTrait(::mlir::Operation *op) {
       return detail::verifyStructuredOpInterface(op);
     }
   };
@@ -1076,7 +1192,7 @@ Operation *detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::clone(const Conce
           (llvm::cast<ConcreteOp>(tablegen_opaque_val))->getAttrs());
         for (Region &r : (llvm::cast<ConcreteOp>(tablegen_opaque_val))->getRegions())
           r.cloneInto(state.addRegion(), bvm);
-        return b.createOperation(state);
+        return b.create(state);
 }
 template<typename ConcreteOp>
 Operation *detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::cloneWithMapper(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands, BlockAndValueMapping & bvm) {
@@ -1085,7 +1201,7 @@ Operation *detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::cloneWithMapper(c
           (llvm::cast<ConcreteOp>(tablegen_opaque_val))->getAttrs());
         for (Region &r : (llvm::cast<ConcreteOp>(tablegen_opaque_val))->getRegions())
           r.cloneInto(state.addRegion(), bvm);
-        return b.createOperation(state);
+        return b.create(state);
 }
 template<typename ConcreteOp>
 Operation *detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::cloneWithoutRegions(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands) {
@@ -1094,11 +1210,16 @@ Operation *detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::cloneWithoutRegio
           (llvm::cast<ConcreteOp>(tablegen_opaque_val))->getAttrs());
         for (size_t cnt = 0, e = (llvm::cast<ConcreteOp>(tablegen_opaque_val))->getNumRegions(); cnt < e; ++cnt)
           state.addRegion();
-        return b.createOperation(state);
+        return b.create(state);
 }
 template<typename ConcreteOp>
 std::function<void(ImplicitLocOpBuilder &, Block &, ArrayRef<NamedAttribute>)> detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getRegionBuilder() {
   return ConcreteOp::getRegionBuilder();
+}
+template<typename ConcreteOp>
+bool detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::hasOnlyProjectedPermutations(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return llvm::all_of((llvm::cast<ConcreteOp>(tablegen_opaque_val)).getIndexingMaps(),
+                            [](AffineMap map) { return map.isProjectedPermutation(); });
 }
 template<typename ConcreteOp>
 unsigned detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getNumParallelLoops(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
@@ -1331,6 +1452,10 @@ Operation *detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::cloneWith
 template<typename ConcreteOp>
 std::function<void(ImplicitLocOpBuilder &, Block &, ArrayRef<NamedAttribute>)> detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getRegionBuilder() {
   return ConcreteOp::getRegionBuilder();
+}
+template<typename ConcreteOp>
+bool detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::hasOnlyProjectedPermutations(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->hasOnlyProjectedPermutations(tablegen_opaque_val);
 }
 template<typename ConcreteModel, typename ConcreteOp>
 unsigned detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getNumParallelLoops(::mlir::Operation *tablegen_opaque_val) const {

@@ -89,7 +89,7 @@ unsigned SparseTensorEncodingAttr::getIndexBitWidth() const {
 
 } // namespace sparse_tensor
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::SparseTensorEncodingAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::SparseTensorEncodingAttr)
 namespace mlir {
 namespace sparse_tensor {
 

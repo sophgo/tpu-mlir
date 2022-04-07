@@ -46,6 +46,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertElementwiseToLinalgBase<DerivedT>)
+
 protected:
 };
 
@@ -98,6 +103,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LinalgBufferizeBase<DerivedT>)
+
 protected:
 };
 
@@ -142,10 +152,15 @@ public:
     
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LinalgComprehensiveModuleBufferizeBase<DerivedT>)
+
 protected:
   ::mlir::Pass::Option<bool> testAnalysisOnly{*this, "test-analysis-only", ::llvm::cl::desc("Only runs inplaceability analysis (for testing purposes only)"), ::llvm::cl::init(false)};
   ::mlir::Pass::Option<bool> printConflicts{*this, "print-conflicts", ::llvm::cl::desc("Annotates IR with RaW conflicts. Requires test-analysis-only."), ::llvm::cl::init(false)};
-  ::mlir::Pass::Option<bool> allowReturnMemref{*this, "allow-return-memref", ::llvm::cl::desc("Allows the return of memrefs (for testing purposes only)"), ::llvm::cl::init(false)};
+  ::mlir::Pass::Option<bool> allowReturnAllocs{*this, "allow-return-allocs", ::llvm::cl::desc("Allows returning/yielding new allocations from a block."), ::llvm::cl::init(false)};
   ::mlir::Pass::Option<bool> allowUnknownOps{*this, "allow-unknown-ops", ::llvm::cl::desc("Allows unknown (not bufferizable) ops in the input IR."), ::llvm::cl::init(false)};
   ::mlir::Pass::Option<bool> alwaysAliasingWithDest{*this, "always-aliasing-with-dest", ::llvm::cl::desc("Tensor OpResult cannot bufferize inplace OpOperands other than out or dest OpOperands (if the op has a notion of such operands)"), ::llvm::cl::init(true)};
   ::mlir::Pass::Option<bool> useAlloca{*this, "use-alloca", ::llvm::cl::desc("Use stack allocations for memrefs (for testing purposes only)"), ::llvm::cl::init(false)};
@@ -195,6 +210,11 @@ public:
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
     
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LinalgDetensorizeBase<DerivedT>)
 
 protected:
   ::mlir::Pass::Option<bool> aggressiveMode{*this, "aggressive-mode", ::llvm::cl::desc("Detensorize all ops that qualify for detensoring along with branch operands and basic-block arguments."), ::llvm::cl::init(false)};
@@ -247,6 +267,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LinalgElementwiseOpFusionBase<DerivedT>)
+
 protected:
   ::mlir::Pass::Option<bool> allowFoldingUnitDimReshapes{*this, "allow-folding-unit-dim-reshapes", ::llvm::cl::desc("Allow fusing linalg.tensor_reshape ops that performs unit dimension collapsing"), ::llvm::cl::init(false)};
 };
@@ -295,6 +320,11 @@ public:
   registry.insert<memref::MemRefDialect>();
 
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LinalgFoldReshapeOpsByLinearizationBase<DerivedT>)
 
 protected:
   ::mlir::Pass::Option<bool> allowFoldingUnitDimReshapes{*this, "allow-folding-unit-dim-reshapes", ::llvm::cl::desc("Allow fusing linalg.tensor_reshape ops that performs unit dimension collapsing"), ::llvm::cl::init(false)};
@@ -347,6 +377,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LinalgFoldUnitExtentDimsBase<DerivedT>)
+
 protected:
   ::mlir::Pass::Option<bool> foldOneTripLoopsOnly{*this, "fold-one-trip-loops-only", ::llvm::cl::desc("Only folds the one-trip loops from Linalg ops on tensors (for testing purposes only)"), ::llvm::cl::init(false)};
 };
@@ -394,6 +429,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LinalgGeneralizationBase<DerivedT>)
+
 protected:
 };
 
@@ -439,6 +479,11 @@ public:
   registry.insert<linalg::LinalgDialect>();
 
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LinalgInlineScalarOperandsBase<DerivedT>)
 
 protected:
 };
@@ -490,6 +535,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LinalgLowerToAffineLoopsBase<DerivedT>)
+
 protected:
 };
 
@@ -539,6 +589,11 @@ public:
   registry.insert<AffineDialect>();
 
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LinalgLowerToLoopsBase<DerivedT>)
 
 protected:
 };
@@ -592,6 +647,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LinalgLowerToParallelLoopsBase<DerivedT>)
+
 protected:
 };
 
@@ -640,6 +700,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LinalgNamedOpConversionBase<DerivedT>)
+
 protected:
 };
 
@@ -685,6 +750,11 @@ public:
   registry.insert<linalg::LinalgDialect>();
 
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LinalgPromotionBase<DerivedT>)
 
 protected:
   ::mlir::Pass::Option<bool> dynamicBuffers{*this, "test-promote-dynamic", ::llvm::cl::desc("Test generation of dynamic promoted buffers"), ::llvm::cl::init(false)};
@@ -734,6 +804,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LinalgStrategyDecomposePassBase<DerivedT>)
+
 protected:
   ::mlir::Pass::Option<std::string> anchorFuncName{*this, "anchor-func", ::llvm::cl::desc("Which func op is the anchor to latch on.")};
 };
@@ -781,6 +856,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LinalgStrategyEnablePassBase<DerivedT>)
+
 protected:
   ::mlir::Pass::Option<std::string> anchorFuncName{*this, "anchor-func", ::llvm::cl::desc("Which func op is the anchor to latch on.")};
 };
@@ -827,6 +907,11 @@ public:
   registry.insert<linalg::LinalgDialect>();
 
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LinalgStrategyGeneralizePassBase<DerivedT>)
 
 protected:
   ::mlir::Pass::Option<std::string> anchorFuncName{*this, "anchor-func", ::llvm::cl::desc("Which func op is the anchor to latch on.")};
@@ -876,6 +961,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LinalgStrategyInterchangePassBase<DerivedT>)
+
 protected:
   ::mlir::Pass::Option<std::string> anchorFuncName{*this, "anchor-func", ::llvm::cl::desc("Which func op is the anchor to latch on.")};
 };
@@ -923,6 +1013,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LinalgStrategyLowerVectorsPassBase<DerivedT>)
+
 protected:
   ::mlir::Pass::Option<std::string> anchorFuncName{*this, "anchor-func", ::llvm::cl::desc("Which func op is the anchor to latch on.")};
 };
@@ -969,6 +1064,11 @@ public:
   registry.insert<linalg::LinalgDialect>();
 
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LinalgStrategyPadPassBase<DerivedT>)
 
 protected:
   ::mlir::Pass::Option<std::string> anchorFuncName{*this, "anchor-func", ::llvm::cl::desc("Which func op is the anchor to latch on.")};
@@ -1018,6 +1118,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LinalgStrategyPromotePassBase<DerivedT>)
+
 protected:
   ::mlir::Pass::Option<std::string> anchorFuncName{*this, "anchor-func", ::llvm::cl::desc("Which func op is the anchor to latch on.")};
   ::mlir::Pass::Option<std::string> anchorOpName{*this, "anchor-op", ::llvm::cl::desc("Which linalg op within the func is the anchor to latch on.")};
@@ -1066,6 +1171,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LinalgStrategyRemoveMarkersPassBase<DerivedT>)
+
 protected:
   ::mlir::Pass::Option<std::string> anchorFuncName{*this, "anchor-func", ::llvm::cl::desc("Which func op is the anchor to latch on.")};
 };
@@ -1110,6 +1220,11 @@ public:
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
     
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LinalgStrategyTileAndFusePassBase<DerivedT>)
 
 protected:
   ::mlir::Pass::Option<std::string> anchorFuncName{*this, "anchor-func", ::llvm::cl::desc("Which func op is the anchor to latch on.")};
@@ -1159,6 +1274,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LinalgStrategyTilePassBase<DerivedT>)
+
 protected:
   ::mlir::Pass::Option<std::string> anchorFuncName{*this, "anchor-func", ::llvm::cl::desc("Which func op is the anchor to latch on.")};
   ::mlir::Pass::Option<std::string> anchorOpName{*this, "anchor-op", ::llvm::cl::desc("Which linalg op within the func is the anchor to latch on.")};
@@ -1206,6 +1326,11 @@ public:
   registry.insert<linalg::LinalgDialect>();
 
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LinalgStrategyVectorizePassBase<DerivedT>)
 
 protected:
   ::mlir::Pass::Option<std::string> anchorFuncName{*this, "anchor-func", ::llvm::cl::desc("Which func op is the anchor to latch on.")};
@@ -1262,8 +1387,13 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LinalgTilingBase<DerivedT>)
+
 protected:
-  ::mlir::Pass::ListOption<int64_t> tileSizes{*this, "tile-sizes", ::llvm::cl::desc("Tile sizes"), llvm::cl::ZeroOrMore, llvm::cl::MiscFlags::CommaSeparated};
+  ::mlir::Pass::ListOption<int64_t> tileSizes{*this, "tile-sizes", ::llvm::cl::desc("Tile sizes"), llvm::cl::ZeroOrMore};
   ::mlir::Pass::Option<std::string> loopType{*this, "loop-type", ::llvm::cl::desc("Specify the type of loops to generate: for, parallel"), ::llvm::cl::init("for")};
 };
 #undef GEN_PASS_CLASSES

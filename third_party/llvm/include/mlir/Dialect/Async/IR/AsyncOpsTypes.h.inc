@@ -85,12 +85,12 @@ public:
 };
 } // namespace async
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::CoroHandleType)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::CoroIdType)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::CoroStateType)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::GroupType)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::TokenType)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::ValueType)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::CoroHandleType)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::CoroIdType)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::CoroStateType)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::GroupType)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::TokenType)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::ValueType)
 
 #endif  // GET_TYPEDEF_CLASSES
 

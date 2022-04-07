@@ -46,6 +46,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(SCFBufferizeBase<DerivedT>)
+
 protected:
 };
 
@@ -96,6 +101,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(SCFForLoopCanonicalizationBase<DerivedT>)
+
 protected:
 };
 
@@ -142,6 +152,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(SCFForLoopPeelingBase<DerivedT>)
+
 protected:
   ::mlir::Pass::Option<bool> skipPartial{*this, "skip-partial", ::llvm::cl::desc("Do not peel loops inside of the last, partial iteration of another already peeled loop."), ::llvm::cl::init(true)};
 };
@@ -187,6 +202,11 @@ public:
     
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(SCFForLoopRangeFoldingBase<DerivedT>)
+
 protected:
 };
 
@@ -230,6 +250,11 @@ public:
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
     
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(SCFForLoopSpecializationBase<DerivedT>)
 
 protected:
 };
@@ -275,6 +300,11 @@ public:
     
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(SCFForToWhileLoopBase<DerivedT>)
+
 protected:
 };
 
@@ -319,10 +349,15 @@ public:
     
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(SCFParallelLoopCollapsingBase<DerivedT>)
+
 protected:
-  ::mlir::Pass::ListOption<unsigned> clCollapsedIndices0{*this, "collapsed-indices-0", ::llvm::cl::desc("Which loop indices to combine 0th loop index"), llvm::cl::MiscFlags::CommaSeparated};
-  ::mlir::Pass::ListOption<unsigned> clCollapsedIndices1{*this, "collapsed-indices-1", ::llvm::cl::desc("Which loop indices to combine into the position 1 loop index"), llvm::cl::MiscFlags::CommaSeparated};
-  ::mlir::Pass::ListOption<unsigned> clCollapsedIndices2{*this, "collapsed-indices-2", ::llvm::cl::desc("Which loop indices to combine into the position 2 loop index"), llvm::cl::MiscFlags::CommaSeparated};
+  ::mlir::Pass::ListOption<unsigned> clCollapsedIndices0{*this, "collapsed-indices-0", ::llvm::cl::desc("Which loop indices to combine 0th loop index")};
+  ::mlir::Pass::ListOption<unsigned> clCollapsedIndices1{*this, "collapsed-indices-1", ::llvm::cl::desc("Which loop indices to combine into the position 1 loop index")};
+  ::mlir::Pass::ListOption<unsigned> clCollapsedIndices2{*this, "collapsed-indices-2", ::llvm::cl::desc("Which loop indices to combine into the position 2 loop index")};
 };
 
 //===----------------------------------------------------------------------===//
@@ -365,6 +400,11 @@ public:
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
     
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(SCFParallelLoopFusionBase<DerivedT>)
 
 protected:
 };
@@ -409,6 +449,11 @@ public:
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
     
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(SCFParallelLoopSpecializationBase<DerivedT>)
 
 protected:
 };
@@ -456,8 +501,13 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(SCFParallelLoopTilingBase<DerivedT>)
+
 protected:
-  ::mlir::Pass::ListOption<int64_t> tileSizes{*this, "parallel-loop-tile-sizes", ::llvm::cl::desc("Factors to tile parallel loops by"), llvm::cl::ZeroOrMore, llvm::cl::MiscFlags::CommaSeparated};
+  ::mlir::Pass::ListOption<int64_t> tileSizes{*this, "parallel-loop-tile-sizes", ::llvm::cl::desc("Factors to tile parallel loops by"), llvm::cl::ZeroOrMore};
   ::mlir::Pass::Option<bool> noMinMaxBounds{*this, "no-min-max-bounds", ::llvm::cl::desc("Perform tiling with fixed upper bound with inbound check inside the internal loops"), ::llvm::cl::init(false)};
 };
 #undef GEN_PASS_CLASSES

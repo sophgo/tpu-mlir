@@ -29,4 +29,4 @@ public:
 };
 } // namespace scf
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::scf::SCFDialect)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::scf::SCFDialect)

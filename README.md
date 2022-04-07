@@ -9,7 +9,7 @@ Get more info from [sophgo](http://sophgo.com).
 * pull docker image from dockerhub
 
     ``` shell
-    docker pull sophgo/sophgo_dev:1.1-ubuntu-20.04
+    docker pull sophgo/sophgo_dev:1.1-ubuntu-18.04
     ```
 
 * create a container, and run

@@ -1794,6 +1794,7 @@ enum class Opcode : uint32_t {
   OpSMod = 139,
   OpFRem = 140,
   OpFMod = 141,
+  OpVectorTimesScalar = 142,
   OpMatrixTimesScalar = 143,
   OpMatrixTimesMatrix = 146,
   OpIsNan = 156,
@@ -1889,6 +1890,7 @@ enum class Opcode : uint32_t {
   OpCooperativeMatrixLengthNV = 5362,
   OpSubgroupBlockReadINTEL = 5575,
   OpSubgroupBlockWriteINTEL = 5576,
+  OpAssumeTrueKHR = 5630,
   OpAtomicFAddEXT = 6035,
 };
 
@@ -2408,20 +2410,21 @@ namespace spirv {
 // recognized SPIR-V vendor strings
 enum class Vendor : uint32_t {
   AMD = 0,
-  ARM = 1,
-  Imagination = 2,
-  Intel = 3,
-  NVIDIA = 4,
-  Qualcomm = 5,
-  SwiftShader = 6,
-  Unknown = 7,
+  Apple = 1,
+  ARM = 2,
+  Imagination = 3,
+  Intel = 4,
+  NVIDIA = 5,
+  Qualcomm = 6,
+  SwiftShader = 7,
+  Unknown = 255,
 };
 
 ::llvm::Optional<Vendor> symbolizeVendor(uint32_t);
 ::llvm::StringRef stringifyVendor(Vendor);
 ::llvm::Optional<Vendor> symbolizeVendor(::llvm::StringRef);
 inline constexpr unsigned getMaxEnumValForVendor() {
-  return 7;
+  return 255;
 }
 
 

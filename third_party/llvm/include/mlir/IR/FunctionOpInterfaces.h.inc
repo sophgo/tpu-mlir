@@ -46,6 +46,7 @@ struct FunctionOpInterfaceInterfaceTraits {
   public:
     ::mlir::Type cloneTypeWith(::mlir::Operation *tablegen_opaque_val, ::mlir::TypeRange inputs, ::mlir::TypeRange results) const;
     ::mlir::LogicalResult verifyBody(::mlir::Operation *tablegen_opaque_val) const;
+    ::mlir::LogicalResult verifyType(::mlir::Operation *tablegen_opaque_val) const;
   };
 };template <typename ConcreteOp>
 struct FunctionOpInterfaceTrait;
@@ -62,6 +63,14 @@ public:
   ::mlir::LogicalResult verifyBody();
   ::mlir::LogicalResult verifyType();
 
+    //===------------------------------------------------------------------===//
+    // Name
+    //===------------------------------------------------------------------===//
+
+    /// Return the name of the function.
+    StringRef getName() { return SymbolTable::getSymbolName(*this); }
+  
+
     /// Block list iterator types.
     using BlockListType = Region::BlockListType;
     using iterator = BlockListType::iterator;
@@ -70,7 +79,7 @@ public:
     /// Block argument iterator types.
     using BlockArgListType = Region::BlockArgListType;
     using args_iterator = BlockArgListType::iterator;
-
+    
     //===------------------------------------------------------------------===//
     // Body Handling
     //===------------------------------------------------------------------===//
@@ -170,13 +179,13 @@ public:
     }
 
     /// Return the attribute containing the type of this function.
-    TypeAttr getTypeAttr() {
+    TypeAttr getFunctionTypeAttr() {
       return this->getOperation()->template getAttrOfType<TypeAttr>(
           getTypeAttrName());
     }
 
     /// Return the type of this function.
-    Type getType() { return getTypeAttr().getValue(); }
+    Type getFunctionType() { return getFunctionTypeAttr().getValue(); }
 
     //===------------------------------------------------------------------===//
     // Argument and Result Handling
@@ -508,21 +517,62 @@ namespace detail {
   template <typename ConcreteOp>
   struct FunctionOpInterfaceTrait : public ::mlir::OpInterface<FunctionOpInterface, detail::FunctionOpInterfaceInterfaceTraits>::Trait<ConcreteOp> {
     ::mlir::Type cloneTypeWith(::mlir::TypeRange inputs, ::mlir::TypeRange results) {
-      return (*static_cast<ConcreteOp *>(this)).getType().clone(inputs, results);
+      return (*static_cast<ConcreteOp *>(this)).getFunctionType().clone(inputs, results);
     }
     ::mlir::LogicalResult verifyBody() {
       if ((*static_cast<ConcreteOp *>(this)).isExternal())
         return success();
-
-      unsigned numArguments = (*static_cast<ConcreteOp *>(this)).getNumArguments();
-      if ((*static_cast<ConcreteOp *>(this)).front().getNumArguments() != numArguments)
+      ArrayRef<Type> fnInputTypes = (*static_cast<ConcreteOp *>(this)).getArgumentTypes();
+      Block &entryBlock = (*static_cast<ConcreteOp *>(this)).front();
+    
+      unsigned numArguments = fnInputTypes.size();
+      if (entryBlock.getNumArguments() != numArguments)
         return (*static_cast<ConcreteOp *>(this)).emitOpError("entry block must have ")
               << numArguments << " arguments to match function signature";
+
+      for (unsigned i = 0, e = fnInputTypes.size(); i != e; ++i) {
+        Type argType = entryBlock.getArgument(i).getType();
+        if (fnInputTypes[i] != argType) {
+          return (*static_cast<ConcreteOp *>(this)).emitOpError("type of entry block argument #")
+                << i << '(' << argType
+                << ") must match the type of the corresponding argument in "
+                << "function signature(" << fnInputTypes[i] << ')';
+        }
+      }
+
+      return success();
+    }
+    ::mlir::LogicalResult verifyType() {
       return success();
     }
     static ::mlir::LogicalResult verifyTrait(::mlir::Operation *op) {
       return function_interface_impl::verifyTrait(cast<ConcreteOp>(op));
     }
+
+    //===------------------------------------------------------------------===//
+    // Builders
+    //===------------------------------------------------------------------===//
+
+    /// Build the function with the given name, attributes, and type. This
+    /// builder also inserts an entry block into the function body with the
+    /// given argument types.
+    static void buildWithEntryBlock(
+        OpBuilder &builder, OperationState &state, StringRef name, Type type,
+        ArrayRef<NamedAttribute> attrs, ArrayRef<Type> inputTypes) {
+      state.addAttribute(SymbolTable::getSymbolAttrName(),
+                        builder.getStringAttr(name));
+      state.addAttribute(function_interface_impl::getTypeAttrName(),
+                        TypeAttr::get(type));
+      state.attributes.append(attrs.begin(), attrs.end());
+
+      // Add the function body.
+      Region *bodyRegion = state.addRegion();
+      Block *body = new Block();
+      bodyRegion->push_back(body);
+      for (Type input : inputTypes)
+        body->addArgument(input, state.location);
+    } 
+  
 
     /// Block list iterator types.
     using BlockListType = Region::BlockListType;
@@ -532,7 +582,7 @@ namespace detail {
     /// Block argument iterator types.
     using BlockArgListType = Region::BlockArgListType;
     using args_iterator = BlockArgListType::iterator;
-
+    
     //===------------------------------------------------------------------===//
     // Body Handling
     //===------------------------------------------------------------------===//
@@ -632,13 +682,13 @@ namespace detail {
     }
 
     /// Return the attribute containing the type of this function.
-    TypeAttr getTypeAttr() {
+    TypeAttr getFunctionTypeAttr() {
       return this->getOperation()->template getAttrOfType<TypeAttr>(
           getTypeAttrName());
     }
 
     /// Return the type of this function.
-    Type getType() { return getTypeAttr().getValue(); }
+    Type getFunctionType() { return getFunctionTypeAttr().getValue(); }
 
     //===------------------------------------------------------------------===//
     // Argument and Result Handling
@@ -1010,17 +1060,34 @@ template<typename ConcreteOp>
 }
 template<typename ConcreteModel, typename ConcreteOp>
 ::mlir::Type detail::FunctionOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::cloneTypeWith(::mlir::Operation *tablegen_opaque_val, ::mlir::TypeRange inputs, ::mlir::TypeRange results) const {
-return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getType().clone(inputs, results);
+return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getFunctionType().clone(inputs, results);
 }
 template<typename ConcreteModel, typename ConcreteOp>
 ::mlir::LogicalResult detail::FunctionOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::verifyBody(::mlir::Operation *tablegen_opaque_val) const {
 if ((llvm::cast<ConcreteOp>(tablegen_opaque_val)).isExternal())
         return success();
-
-      unsigned numArguments = (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getNumArguments();
-      if ((llvm::cast<ConcreteOp>(tablegen_opaque_val)).front().getNumArguments() != numArguments)
+      ArrayRef<Type> fnInputTypes = (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getArgumentTypes();
+      Block &entryBlock = (llvm::cast<ConcreteOp>(tablegen_opaque_val)).front();
+    
+      unsigned numArguments = fnInputTypes.size();
+      if (entryBlock.getNumArguments() != numArguments)
         return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).emitOpError("entry block must have ")
               << numArguments << " arguments to match function signature";
+
+      for (unsigned i = 0, e = fnInputTypes.size(); i != e; ++i) {
+        Type argType = entryBlock.getArgument(i).getType();
+        if (fnInputTypes[i] != argType) {
+          return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).emitOpError("type of entry block argument #")
+                << i << '(' << argType
+                << ") must match the type of the corresponding argument in "
+                << "function signature(" << fnInputTypes[i] << ')';
+        }
+      }
+
       return success();
+}
+template<typename ConcreteModel, typename ConcreteOp>
+::mlir::LogicalResult detail::FunctionOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::verifyType(::mlir::Operation *tablegen_opaque_val) const {
+return success();
 }
 } // namespace mlir

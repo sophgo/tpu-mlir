@@ -126,7 +126,7 @@ public:
 };
 } // namespace emitc
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::emitc::ApplyOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::emitc::ApplyOp)
 
 namespace mlir {
 namespace emitc {
@@ -236,7 +236,7 @@ public:
 };
 } // namespace emitc
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::emitc::CallOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::emitc::CallOp)
 
 namespace mlir {
 namespace emitc {
@@ -314,7 +314,7 @@ public:
 };
 } // namespace emitc
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::emitc::ConstantOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::emitc::ConstantOp)
 
 namespace mlir {
 namespace emitc {
@@ -409,7 +409,7 @@ public:
 };
 } // namespace emitc
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::emitc::IncludeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::emitc::IncludeOp)
 
 namespace mlir {
 namespace emitc {
@@ -486,7 +486,7 @@ public:
 };
 } // namespace emitc
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::emitc::VariableOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::emitc::VariableOp)
 
 
 #endif  // GET_OP_CLASSES

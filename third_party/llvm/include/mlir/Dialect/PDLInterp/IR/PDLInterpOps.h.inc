@@ -105,6 +105,11 @@ class ForEachOp;
 } // namespace mlir
 namespace mlir {
 namespace pdl_interp {
+class FuncOp;
+} // namespace pdl_interp
+} // namespace mlir
+namespace mlir {
+namespace pdl_interp {
 class GetAttributeOp;
 } // namespace pdl_interp
 } // namespace mlir
@@ -224,12 +229,10 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::ValueRange args();
+  ::mlir::ValueRange getArgs();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::StringAttr nameAttr();
-  ::llvm::StringRef name();
-  ::mlir::ArrayAttr constParamsAttr();
-  ::llvm::Optional< ::mlir::ArrayAttr > constParams();
+  ::mlir::StringAttr getNameAttr();
+  ::llvm::StringRef getName();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -243,24 +246,16 @@ public:
   using Adaptor = ApplyConstraintOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("name"), ::llvm::StringRef("constParams")};
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("name")};
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr nameAttrName() {
+  ::mlir::StringAttr getNameAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr nameAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getNameAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
-  }
-
-  ::mlir::StringAttr constParamsAttrName() {
-    return getAttributeNameForIndex(1);
-  }
-
-  static ::mlir::StringAttr constParamsAttrName(::mlir::OperationName name) {
-    return getAttributeNameForIndex(name, 1);
   }
 
   static constexpr ::llvm::StringLiteral getOperationName() {
@@ -269,23 +264,19 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Operation::operand_range args();
-  ::mlir::MutableOperandRange argsMutable();
+  ::mlir::Operation::operand_range getArgs();
+  ::mlir::MutableOperandRange getArgsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Block *trueDest();
-  ::mlir::Block *falseDest();
-  ::mlir::StringAttr nameAttr();
-  ::llvm::StringRef name();
-  ::mlir::ArrayAttr constParamsAttr();
-  ::llvm::Optional< ::mlir::ArrayAttr > constParams();
-  void nameAttr(::mlir::StringAttr attr);
-  void constParamsAttr(::mlir::ArrayAttr attr);
-  ::mlir::Attribute removeConstParamsAttr();
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::StringAttr name, ::mlir::ValueRange args, /*optional*/::mlir::ArrayAttr constParams, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::StringAttr name, ::mlir::ValueRange args, /*optional*/::mlir::ArrayAttr constParams, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::llvm::StringRef name, ::mlir::ValueRange args, /*optional*/::mlir::ArrayAttr constParams, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::llvm::StringRef name, ::mlir::ValueRange args, /*optional*/::mlir::ArrayAttr constParams, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
+  ::mlir::Block *getTrueDest();
+  ::mlir::Block *getFalseDest();
+  ::mlir::StringAttr getNameAttr();
+  ::llvm::StringRef getName();
+  void setNameAttr(::mlir::StringAttr attr);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::StringAttr name, ::mlir::ValueRange args, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::StringAttr name, ::mlir::ValueRange args, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::llvm::StringRef name, ::mlir::ValueRange args, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::llvm::StringRef name, ::mlir::ValueRange args, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
@@ -297,7 +288,7 @@ private:
   }
 
   static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
-    assert(index < 2 && "invalid attribute index");
+    assert(index < 1 && "invalid attribute index");
     return name.getRegisteredInfo()->getAttributeNames()[index];
   }
 
@@ -305,7 +296,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::ApplyConstraintOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::ApplyConstraintOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -323,12 +314,10 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::ValueRange args();
+  ::mlir::ValueRange getArgs();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::StringAttr nameAttr();
-  ::llvm::StringRef name();
-  ::mlir::ArrayAttr constParamsAttr();
-  ::llvm::Optional< ::mlir::ArrayAttr > constParams();
+  ::mlir::StringAttr getNameAttr();
+  ::llvm::StringRef getName();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -342,24 +331,16 @@ public:
   using Adaptor = ApplyRewriteOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("name"), ::llvm::StringRef("constParams")};
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("name")};
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr nameAttrName() {
+  ::mlir::StringAttr getNameAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr nameAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getNameAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
-  }
-
-  ::mlir::StringAttr constParamsAttrName() {
-    return getAttributeNameForIndex(1);
-  }
-
-  static ::mlir::StringAttr constParamsAttrName(::mlir::OperationName name) {
-    return getAttributeNameForIndex(name, 1);
   }
 
   static constexpr ::llvm::StringLiteral getOperationName() {
@@ -368,20 +349,16 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Operation::operand_range args();
-  ::mlir::MutableOperandRange argsMutable();
+  ::mlir::Operation::operand_range getArgs();
+  ::mlir::MutableOperandRange getArgsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Operation::result_range results();
-  ::mlir::StringAttr nameAttr();
-  ::llvm::StringRef name();
-  ::mlir::ArrayAttr constParamsAttr();
-  ::llvm::Optional< ::mlir::ArrayAttr > constParams();
-  void nameAttr(::mlir::StringAttr attr);
-  void constParamsAttr(::mlir::ArrayAttr attr);
-  ::mlir::Attribute removeConstParamsAttr();
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange results, ::mlir::StringAttr name, ::mlir::ValueRange args, /*optional*/::mlir::ArrayAttr constParams);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange results, ::llvm::StringRef name, ::mlir::ValueRange args, /*optional*/::mlir::ArrayAttr constParams);
+  ::mlir::Operation::result_range getResults();
+  ::mlir::StringAttr getNameAttr();
+  ::llvm::StringRef getName();
+  void setNameAttr(::mlir::StringAttr attr);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange results, ::mlir::StringAttr name, ::mlir::ValueRange args);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange results, ::llvm::StringRef name, ::mlir::ValueRange args);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
@@ -393,7 +370,7 @@ private:
   }
 
   static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
-    assert(index < 2 && "invalid attribute index");
+    assert(index < 1 && "invalid attribute index");
     return name.getRegisteredInfo()->getAttributeNames()[index];
   }
 
@@ -401,7 +378,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::ApplyRewriteOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::ApplyRewriteOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -419,8 +396,8 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value lhs();
-  ::mlir::Value rhs();
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -444,14 +421,14 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value lhs();
-  ::mlir::Value rhs();
-  ::mlir::MutableOperandRange lhsMutable();
-  ::mlir::MutableOperandRange rhsMutable();
+  ::mlir::Value getLhs();
+  ::mlir::Value getRhs();
+  ::mlir::MutableOperandRange getLhsMutable();
+  ::mlir::MutableOperandRange getRhsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Block *trueDest();
-  ::mlir::Block *falseDest();
+  ::mlir::Block *getTrueDest();
+  ::mlir::Block *getFalseDest();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
@@ -464,7 +441,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::AreEqualOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::AreEqualOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -507,7 +484,7 @@ public:
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Block *dest();
+  ::mlir::Block *getDest();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Block *dest);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Block *dest);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
@@ -520,7 +497,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::BranchOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::BranchOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -538,10 +515,10 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value attribute();
+  ::mlir::Value getAttribute();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::Attribute constantValueAttr();
-  ::mlir::Attribute constantValue();
+  ::mlir::Attribute getConstantValueAttr();
+  ::mlir::Attribute getConstantValue();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -559,11 +536,11 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr constantValueAttrName() {
+  ::mlir::StringAttr getConstantValueAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr constantValueAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getConstantValueAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
@@ -573,15 +550,15 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value attribute();
-  ::mlir::MutableOperandRange attributeMutable();
+  ::mlir::Value getAttribute();
+  ::mlir::MutableOperandRange getAttributeMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Block *trueDest();
-  ::mlir::Block *falseDest();
-  ::mlir::Attribute constantValueAttr();
-  ::mlir::Attribute constantValue();
-  void constantValueAttr(::mlir::Attribute attr);
+  ::mlir::Block *getTrueDest();
+  ::mlir::Block *getFalseDest();
+  ::mlir::Attribute getConstantValueAttr();
+  ::mlir::Attribute getConstantValue();
+  void setConstantValueAttr(::mlir::Attribute attr);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value attribute, ::mlir::Attribute constantValue, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value attribute, ::mlir::Attribute constantValue, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
@@ -604,7 +581,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::CheckAttributeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::CheckAttributeOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -622,12 +599,12 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value operation();
+  ::mlir::Value getInputOp();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::IntegerAttr countAttr();
-  uint32_t count();
-  ::mlir::UnitAttr compareAtLeastAttr();
-  bool compareAtLeast();
+  ::mlir::IntegerAttr getCountAttr();
+  uint32_t getCount();
+  ::mlir::UnitAttr getCompareAtLeastAttr();
+  bool getCompareAtLeast();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -645,19 +622,19 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr countAttrName() {
+  ::mlir::StringAttr getCountAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr countAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getCountAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr compareAtLeastAttrName() {
+  ::mlir::StringAttr getCompareAtLeastAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr compareAtLeastAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getCompareAtLeastAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
   }
 
@@ -667,23 +644,23 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value operation();
-  ::mlir::MutableOperandRange operationMutable();
+  ::mlir::Value getInputOp();
+  ::mlir::MutableOperandRange getInputOpMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Block *trueDest();
-  ::mlir::Block *falseDest();
-  ::mlir::IntegerAttr countAttr();
-  uint32_t count();
-  ::mlir::UnitAttr compareAtLeastAttr();
-  bool compareAtLeast();
-  void countAttr(::mlir::IntegerAttr attr);
-  void compareAtLeastAttr(::mlir::UnitAttr attr);
+  ::mlir::Block *getTrueDest();
+  ::mlir::Block *getFalseDest();
+  ::mlir::IntegerAttr getCountAttr();
+  uint32_t getCount();
+  ::mlir::UnitAttr getCompareAtLeastAttr();
+  bool getCompareAtLeast();
+  void setCountAttr(::mlir::IntegerAttr attr);
+  void setCompareAtLeastAttr(::mlir::UnitAttr attr);
   ::mlir::Attribute removeCompareAtLeastAttr();
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operation, ::mlir::IntegerAttr count, /*optional*/::mlir::UnitAttr compareAtLeast, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operation, ::mlir::IntegerAttr count, /*optional*/::mlir::UnitAttr compareAtLeast, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operation, uint32_t count, /*optional*/bool compareAtLeast, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operation, uint32_t count, /*optional*/bool compareAtLeast, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value inputOp, ::mlir::IntegerAttr count, /*optional*/::mlir::UnitAttr compareAtLeast, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value inputOp, ::mlir::IntegerAttr count, /*optional*/::mlir::UnitAttr compareAtLeast, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value inputOp, uint32_t count, /*optional*/bool compareAtLeast, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value inputOp, uint32_t count, /*optional*/bool compareAtLeast, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
@@ -704,7 +681,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::CheckOperandCountOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::CheckOperandCountOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -722,10 +699,10 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value operation();
+  ::mlir::Value getInputOp();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::StringAttr nameAttr();
-  ::llvm::StringRef name();
+  ::mlir::StringAttr getNameAttr();
+  ::llvm::StringRef getName();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -743,11 +720,11 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr nameAttrName() {
+  ::mlir::StringAttr getNameAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr nameAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getNameAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
@@ -757,19 +734,19 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value operation();
-  ::mlir::MutableOperandRange operationMutable();
+  ::mlir::Value getInputOp();
+  ::mlir::MutableOperandRange getInputOpMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Block *trueDest();
-  ::mlir::Block *falseDest();
-  ::mlir::StringAttr nameAttr();
-  ::llvm::StringRef name();
-  void nameAttr(::mlir::StringAttr attr);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operation, ::mlir::StringAttr name, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operation, ::mlir::StringAttr name, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operation, ::llvm::StringRef name, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operation, ::llvm::StringRef name, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
+  ::mlir::Block *getTrueDest();
+  ::mlir::Block *getFalseDest();
+  ::mlir::StringAttr getNameAttr();
+  ::llvm::StringRef getName();
+  void setNameAttr(::mlir::StringAttr attr);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value inputOp, ::mlir::StringAttr name, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value inputOp, ::mlir::StringAttr name, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value inputOp, ::llvm::StringRef name, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value inputOp, ::llvm::StringRef name, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
@@ -790,7 +767,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::CheckOperationNameOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::CheckOperationNameOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -808,12 +785,12 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value operation();
+  ::mlir::Value getInputOp();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::IntegerAttr countAttr();
-  uint32_t count();
-  ::mlir::UnitAttr compareAtLeastAttr();
-  bool compareAtLeast();
+  ::mlir::IntegerAttr getCountAttr();
+  uint32_t getCount();
+  ::mlir::UnitAttr getCompareAtLeastAttr();
+  bool getCompareAtLeast();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -831,19 +808,19 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr countAttrName() {
+  ::mlir::StringAttr getCountAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr countAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getCountAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr compareAtLeastAttrName() {
+  ::mlir::StringAttr getCompareAtLeastAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr compareAtLeastAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getCompareAtLeastAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
   }
 
@@ -853,23 +830,23 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value operation();
-  ::mlir::MutableOperandRange operationMutable();
+  ::mlir::Value getInputOp();
+  ::mlir::MutableOperandRange getInputOpMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Block *trueDest();
-  ::mlir::Block *falseDest();
-  ::mlir::IntegerAttr countAttr();
-  uint32_t count();
-  ::mlir::UnitAttr compareAtLeastAttr();
-  bool compareAtLeast();
-  void countAttr(::mlir::IntegerAttr attr);
-  void compareAtLeastAttr(::mlir::UnitAttr attr);
+  ::mlir::Block *getTrueDest();
+  ::mlir::Block *getFalseDest();
+  ::mlir::IntegerAttr getCountAttr();
+  uint32_t getCount();
+  ::mlir::UnitAttr getCompareAtLeastAttr();
+  bool getCompareAtLeast();
+  void setCountAttr(::mlir::IntegerAttr attr);
+  void setCompareAtLeastAttr(::mlir::UnitAttr attr);
   ::mlir::Attribute removeCompareAtLeastAttr();
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operation, ::mlir::IntegerAttr count, /*optional*/::mlir::UnitAttr compareAtLeast, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operation, ::mlir::IntegerAttr count, /*optional*/::mlir::UnitAttr compareAtLeast, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operation, uint32_t count, /*optional*/bool compareAtLeast, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operation, uint32_t count, /*optional*/bool compareAtLeast, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value inputOp, ::mlir::IntegerAttr count, /*optional*/::mlir::UnitAttr compareAtLeast, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value inputOp, ::mlir::IntegerAttr count, /*optional*/::mlir::UnitAttr compareAtLeast, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value inputOp, uint32_t count, /*optional*/bool compareAtLeast, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value inputOp, uint32_t count, /*optional*/bool compareAtLeast, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
@@ -890,7 +867,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::CheckResultCountOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::CheckResultCountOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -908,10 +885,10 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value value();
+  ::mlir::Value getValue();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::TypeAttr typeAttr();
-  ::mlir::Type type();
+  ::mlir::TypeAttr getTypeAttr();
+  ::mlir::Type getType();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -929,11 +906,11 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr typeAttrName() {
+  ::mlir::StringAttr getTypeAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr typeAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getTypeAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
@@ -943,15 +920,15 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value value();
-  ::mlir::MutableOperandRange valueMutable();
+  ::mlir::Value getValue();
+  ::mlir::MutableOperandRange getValueMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Block *trueDest();
-  ::mlir::Block *falseDest();
-  ::mlir::TypeAttr typeAttr();
-  ::mlir::Type type();
-  void typeAttr(::mlir::TypeAttr attr);
+  ::mlir::Block *getTrueDest();
+  ::mlir::Block *getFalseDest();
+  ::mlir::TypeAttr getTypeAttr();
+  ::mlir::Type getType();
+  void setTypeAttr(::mlir::TypeAttr attr);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value value, ::mlir::TypeAttr type, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value value, ::mlir::TypeAttr type, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value value, ::mlir::Type type, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
@@ -976,7 +953,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::CheckTypeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::CheckTypeOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -994,10 +971,10 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value value();
+  ::mlir::Value getValue();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::ArrayAttr typesAttr();
-  ::mlir::ArrayAttr types();
+  ::mlir::ArrayAttr getTypesAttr();
+  ::mlir::ArrayAttr getTypes();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -1015,11 +992,11 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr typesAttrName() {
+  ::mlir::StringAttr getTypesAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr typesAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getTypesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
@@ -1029,15 +1006,15 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value value();
-  ::mlir::MutableOperandRange valueMutable();
+  ::mlir::Value getValue();
+  ::mlir::MutableOperandRange getValueMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Block *trueDest();
-  ::mlir::Block *falseDest();
-  ::mlir::ArrayAttr typesAttr();
-  ::mlir::ArrayAttr types();
-  void typesAttr(::mlir::ArrayAttr attr);
+  ::mlir::Block *getTrueDest();
+  ::mlir::Block *getFalseDest();
+  ::mlir::ArrayAttr getTypesAttr();
+  ::mlir::ArrayAttr getTypes();
+  void setTypesAttr(::mlir::ArrayAttr attr);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value value, ::mlir::ArrayAttr types, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value value, ::mlir::ArrayAttr types, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
@@ -1060,7 +1037,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::CheckTypesOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::CheckTypesOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -1115,7 +1092,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::ContinueOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::ContinueOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -1134,8 +1111,8 @@ public:
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::Attribute valueAttr();
-  ::mlir::Attribute value();
+  ::mlir::Attribute getValueAttr();
+  ::mlir::Attribute getValue();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -1153,11 +1130,11 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr valueAttrName() {
+  ::mlir::StringAttr getValueAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr valueAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getValueAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
@@ -1169,10 +1146,10 @@ public:
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value attribute();
-  ::mlir::Attribute valueAttr();
-  ::mlir::Attribute value();
-  void valueAttr(::mlir::Attribute attr);
+  ::mlir::Value getAttribute();
+  ::mlir::Attribute getValueAttr();
+  ::mlir::Attribute getValue();
+  void setValueAttr(::mlir::Attribute attr);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Attribute value);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type attribute, ::mlir::Attribute value);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Attribute value);
@@ -1196,7 +1173,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::CreateAttributeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::CreateAttributeOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -1214,14 +1191,14 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::ValueRange operands();
-  ::mlir::ValueRange attributes();
-  ::mlir::ValueRange types();
+  ::mlir::ValueRange getInputOperands();
+  ::mlir::ValueRange getInputAttributes();
+  ::mlir::ValueRange getInputResultTypes();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::StringAttr nameAttr();
-  ::llvm::StringRef name();
-  ::mlir::ArrayAttr attributeNamesAttr();
-  ::mlir::ArrayAttr attributeNames();
+  ::mlir::StringAttr getNameAttr();
+  ::llvm::StringRef getName();
+  ::mlir::ArrayAttr getInputAttributeNamesAttr();
+  ::mlir::ArrayAttr getInputAttributeNames();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -1235,31 +1212,31 @@ public:
   using Adaptor = CreateOperationOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("name"), ::llvm::StringRef("attributeNames"), ::llvm::StringRef("operand_segment_sizes")};
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("name"), ::llvm::StringRef("inputAttributeNames"), ::llvm::StringRef("operand_segment_sizes")};
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr nameAttrName() {
+  ::mlir::StringAttr getNameAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr nameAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getNameAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr attributeNamesAttrName() {
+  ::mlir::StringAttr getInputAttributeNamesAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr attributeNamesAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getInputAttributeNamesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
   }
 
-  ::mlir::StringAttr operand_segment_sizesAttrName() {
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
     return getAttributeNameForIndex(2);
   }
 
-  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 2);
   }
 
@@ -1269,26 +1246,26 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Operation::operand_range operands();
-  ::mlir::Operation::operand_range attributes();
-  ::mlir::Operation::operand_range types();
-  ::mlir::MutableOperandRange operandsMutable();
-  ::mlir::MutableOperandRange attributesMutable();
-  ::mlir::MutableOperandRange typesMutable();
+  ::mlir::Operation::operand_range getInputOperands();
+  ::mlir::Operation::operand_range getInputAttributes();
+  ::mlir::Operation::operand_range getInputResultTypes();
+  ::mlir::MutableOperandRange getInputOperandsMutable();
+  ::mlir::MutableOperandRange getInputAttributesMutable();
+  ::mlir::MutableOperandRange getInputResultTypesMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value operation();
-  ::mlir::StringAttr nameAttr();
-  ::llvm::StringRef name();
-  ::mlir::ArrayAttr attributeNamesAttr();
-  ::mlir::ArrayAttr attributeNames();
-  void nameAttr(::mlir::StringAttr attr);
-  void attributeNamesAttr(::mlir::ArrayAttr attr);
+  ::mlir::Value getResultOp();
+  ::mlir::StringAttr getNameAttr();
+  ::llvm::StringRef getName();
+  ::mlir::ArrayAttr getInputAttributeNamesAttr();
+  ::mlir::ArrayAttr getInputAttributeNames();
+  void setNameAttr(::mlir::StringAttr attr);
+  void setInputAttributeNamesAttr(::mlir::ArrayAttr attr);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, StringRef name, ValueRange types, ValueRange operands, ValueRange attributes, ArrayAttr attributeNames);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type operation, ::mlir::StringAttr name, ::mlir::ValueRange operands, ::mlir::ValueRange attributes, ::mlir::ArrayAttr attributeNames, ::mlir::ValueRange types);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::StringAttr name, ::mlir::ValueRange operands, ::mlir::ValueRange attributes, ::mlir::ArrayAttr attributeNames, ::mlir::ValueRange types);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type operation, ::llvm::StringRef name, ::mlir::ValueRange operands, ::mlir::ValueRange attributes, ::mlir::ArrayAttr attributeNames, ::mlir::ValueRange types);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::llvm::StringRef name, ::mlir::ValueRange operands, ::mlir::ValueRange attributes, ::mlir::ArrayAttr attributeNames, ::mlir::ValueRange types);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type resultOp, ::mlir::StringAttr name, ::mlir::ValueRange inputOperands, ::mlir::ValueRange inputAttributes, ::mlir::ArrayAttr inputAttributeNames, ::mlir::ValueRange inputResultTypes);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::StringAttr name, ::mlir::ValueRange inputOperands, ::mlir::ValueRange inputAttributes, ::mlir::ArrayAttr inputAttributeNames, ::mlir::ValueRange inputResultTypes);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type resultOp, ::llvm::StringRef name, ::mlir::ValueRange inputOperands, ::mlir::ValueRange inputAttributes, ::mlir::ArrayAttr inputAttributeNames, ::mlir::ValueRange inputResultTypes);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::llvm::StringRef name, ::mlir::ValueRange inputOperands, ::mlir::ValueRange inputAttributes, ::mlir::ArrayAttr inputAttributeNames, ::mlir::ValueRange inputResultTypes);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
@@ -1308,7 +1285,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::CreateOperationOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::CreateOperationOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -1327,8 +1304,8 @@ public:
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::TypeAttr valueAttr();
-  ::mlir::Type value();
+  ::mlir::TypeAttr getValueAttr();
+  ::mlir::Type getValue();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -1346,11 +1323,11 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr valueAttrName() {
+  ::mlir::StringAttr getValueAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr valueAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getValueAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
@@ -1362,10 +1339,10 @@ public:
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value result();
-  ::mlir::TypeAttr valueAttr();
-  ::mlir::Type value();
-  void valueAttr(::mlir::TypeAttr attr);
+  ::mlir::Value getResult();
+  ::mlir::TypeAttr getValueAttr();
+  ::mlir::Type getValue();
+  void setValueAttr(::mlir::TypeAttr attr);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeAttr type);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::TypeAttr value);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::TypeAttr value);
@@ -1391,7 +1368,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::CreateTypeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::CreateTypeOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -1410,8 +1387,8 @@ public:
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::ArrayAttr valueAttr();
-  ::mlir::ArrayAttr value();
+  ::mlir::ArrayAttr getValueAttr();
+  ::mlir::ArrayAttr getValue();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -1429,11 +1406,11 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr valueAttrName() {
+  ::mlir::StringAttr getValueAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr valueAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getValueAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
@@ -1445,10 +1422,10 @@ public:
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value result();
-  ::mlir::ArrayAttr valueAttr();
-  ::mlir::ArrayAttr value();
-  void valueAttr(::mlir::ArrayAttr attr);
+  ::mlir::Value getResult();
+  ::mlir::ArrayAttr getValueAttr();
+  ::mlir::ArrayAttr getValue();
+  void setValueAttr(::mlir::ArrayAttr attr);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ArrayAttr type);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::ArrayAttr value);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ArrayAttr value);
@@ -1472,7 +1449,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::CreateTypesOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::CreateTypesOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -1490,7 +1467,7 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value operation();
+  ::mlir::Value getInputOp();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -1514,12 +1491,12 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value operation();
-  ::mlir::MutableOperandRange operationMutable();
+  ::mlir::Value getInputOp();
+  ::mlir::MutableOperandRange getInputOpMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operation);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operation);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value inputOp);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value inputOp);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
@@ -1529,7 +1506,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::EraseOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::EraseOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -1547,10 +1524,10 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value range();
+  ::mlir::Value getRange();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::IntegerAttr indexAttr();
-  uint32_t index();
+  ::mlir::IntegerAttr getIndexAttr();
+  uint32_t getIndex();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -1568,11 +1545,11 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr indexAttrName() {
+  ::mlir::StringAttr getIndexAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr indexAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getIndexAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
@@ -1582,14 +1559,14 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value range();
-  ::mlir::MutableOperandRange rangeMutable();
+  ::mlir::Value getRange();
+  ::mlir::MutableOperandRange getRangeMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value result();
-  ::mlir::IntegerAttr indexAttr();
-  uint32_t index();
-  void indexAttr(::mlir::IntegerAttr attr);
+  ::mlir::Value getResult();
+  ::mlir::IntegerAttr getIndexAttr();
+  uint32_t getIndex();
+  void setIndexAttr(::mlir::IntegerAttr attr);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value range, unsigned index);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value range, ::mlir::IntegerAttr index);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value range, ::mlir::IntegerAttr index);
@@ -1615,7 +1592,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::ExtractOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::ExtractOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -1670,7 +1647,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::FinalizeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::FinalizeOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -1688,10 +1665,10 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value values();
+  ::mlir::Value getValues();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::RegionRange getRegions();
-  ::mlir::Region &region();
+  ::mlir::Region &getRegion();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -1714,12 +1691,12 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value values();
-  ::mlir::MutableOperandRange valuesMutable();
+  ::mlir::Value getValues();
+  ::mlir::MutableOperandRange getValuesMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Region &region();
-  ::mlir::Block *successor();
+  ::mlir::Region &getRegion();
+  ::mlir::Block *getSuccessor();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value range, Block *successor, bool initLoop);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value values, ::mlir::Block *successor);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value values, ::mlir::Block *successor);
@@ -1731,11 +1708,112 @@ public:
   ::mlir::LogicalResult verify();
 public:
   /// Returns the loop variable.
-  BlockArgument getLoopVariable() { return region().getArgument(0); }
+  BlockArgument getLoopVariable() { return getRegion().getArgument(0); }
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::ForEachOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::ForEachOp)
+
+namespace mlir {
+namespace pdl_interp {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::pdl_interp::FuncOp declarations
+//===----------------------------------------------------------------------===//
+
+class FuncOpAdaptor {
+public:
+  FuncOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  FuncOpAdaptor(FuncOp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::StringAttr getSymNameAttr();
+  ::llvm::StringRef getSymName();
+  ::mlir::TypeAttr getFunctionTypeAttr();
+  ::mlir::FunctionType getFunctionType();
+  ::mlir::RegionRange getRegions();
+  ::mlir::Region &getBody();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class FuncOp : public ::mlir::Op<FuncOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::FunctionOpInterface::Trait, ::mlir::OpTrait::IsIsolatedFromAbove, ::mlir::SymbolOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = FuncOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("sym_name"), ::llvm::StringRef("function_type")};
+    return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr getSymNameAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getSymNameAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
+  ::mlir::StringAttr getFunctionTypeAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getFunctionTypeAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("pdl_interp.func");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Region &getBody();
+  ::mlir::StringAttr getSymNameAttr();
+  ::llvm::StringRef getSymName();
+  ::mlir::TypeAttr getFunctionTypeAttr();
+  ::mlir::FunctionType getFunctionType();
+  void setSymNameAttr(::mlir::StringAttr attr);
+  void setFunctionTypeAttr(::mlir::TypeAttr attr);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, StringRef name, FunctionType type, ArrayRef<NamedAttribute> attrs = {});
+  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
+  void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+private:
+  ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
+    return getAttributeNameForIndex((*this)->getName(), index);
+  }
+
+  static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
+    assert(index < 2 && "invalid attribute index");
+    return name.getRegisteredInfo()->getAttributeNames()[index];
+  }
+
+public:
+  //===------------------------------------------------------------------===//
+  // FunctionOpInterface Methods
+  //===------------------------------------------------------------------===//
+
+  /// Returns the argument types of this function.
+  ArrayRef<Type> getArgumentTypes() { return getFunctionType().getInputs(); }
+
+  /// Returns the result types of this function.
+  ArrayRef<Type> getResultTypes() { return getFunctionType().getResults(); }
+};
+} // namespace pdl_interp
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::FuncOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -1753,10 +1831,10 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value operation();
+  ::mlir::Value getInputOp();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::StringAttr nameAttr();
-  ::llvm::StringRef name();
+  ::mlir::StringAttr getNameAttr();
+  ::llvm::StringRef getName();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -1774,11 +1852,11 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr nameAttrName() {
+  ::mlir::StringAttr getNameAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr nameAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getNameAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
@@ -1788,18 +1866,18 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value operation();
-  ::mlir::MutableOperandRange operationMutable();
+  ::mlir::Value getInputOp();
+  ::mlir::MutableOperandRange getInputOpMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value attribute();
-  ::mlir::StringAttr nameAttr();
-  ::llvm::StringRef name();
-  void nameAttr(::mlir::StringAttr attr);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type attribute, ::mlir::Value operation, ::mlir::StringAttr name);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operation, ::mlir::StringAttr name);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type attribute, ::mlir::Value operation, ::llvm::StringRef name);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operation, ::llvm::StringRef name);
+  ::mlir::Value getAttribute();
+  ::mlir::StringAttr getNameAttr();
+  ::llvm::StringRef getName();
+  void setNameAttr(::mlir::StringAttr attr);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type attribute, ::mlir::Value inputOp, ::mlir::StringAttr name);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value inputOp, ::mlir::StringAttr name);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type attribute, ::mlir::Value inputOp, ::llvm::StringRef name);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value inputOp, ::llvm::StringRef name);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
@@ -1820,7 +1898,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::GetAttributeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::GetAttributeOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -1838,7 +1916,7 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value value();
+  ::mlir::Value getValue();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -1862,11 +1940,11 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value value();
-  ::mlir::MutableOperandRange valueMutable();
+  ::mlir::Value getValue();
+  ::mlir::MutableOperandRange getValueMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value result();
+  ::mlir::Value getResult();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value value);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value value);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value value);
@@ -1880,7 +1958,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::GetAttributeTypeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::GetAttributeTypeOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -1898,7 +1976,7 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value value();
+  ::mlir::Value getValue();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -1922,12 +2000,12 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value value();
-  ::mlir::MutableOperandRange valueMutable();
+  ::mlir::Value getValue();
+  ::mlir::MutableOperandRange getValueMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value operation();
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type operation, ::mlir::Value value);
+  ::mlir::Value getInputOp();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type inputOp, ::mlir::Value value);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value value);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
@@ -1939,7 +2017,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::GetDefiningOpOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::GetDefiningOpOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -1957,10 +2035,10 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value operation();
+  ::mlir::Value getInputOp();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::IntegerAttr indexAttr();
-  uint32_t index();
+  ::mlir::IntegerAttr getIndexAttr();
+  uint32_t getIndex();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -1978,11 +2056,11 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr indexAttrName() {
+  ::mlir::StringAttr getIndexAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr indexAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getIndexAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
@@ -1992,18 +2070,18 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value operation();
-  ::mlir::MutableOperandRange operationMutable();
+  ::mlir::Value getInputOp();
+  ::mlir::MutableOperandRange getInputOpMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value value();
-  ::mlir::IntegerAttr indexAttr();
-  uint32_t index();
-  void indexAttr(::mlir::IntegerAttr attr);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type value, ::mlir::Value operation, ::mlir::IntegerAttr index);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operation, ::mlir::IntegerAttr index);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type value, ::mlir::Value operation, uint32_t index);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operation, uint32_t index);
+  ::mlir::Value getValue();
+  ::mlir::IntegerAttr getIndexAttr();
+  uint32_t getIndex();
+  void setIndexAttr(::mlir::IntegerAttr attr);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type value, ::mlir::Value inputOp, ::mlir::IntegerAttr index);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value inputOp, ::mlir::IntegerAttr index);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type value, ::mlir::Value inputOp, uint32_t index);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value inputOp, uint32_t index);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
@@ -2024,7 +2102,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::GetOperandOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::GetOperandOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -2042,10 +2120,10 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value operation();
+  ::mlir::Value getInputOp();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::IntegerAttr indexAttr();
-  ::llvm::Optional<uint32_t> index();
+  ::mlir::IntegerAttr getIndexAttr();
+  ::llvm::Optional<uint32_t> getIndex();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -2063,11 +2141,11 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr indexAttrName() {
+  ::mlir::StringAttr getIndexAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr indexAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getIndexAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
@@ -2077,18 +2155,18 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value operation();
-  ::mlir::MutableOperandRange operationMutable();
+  ::mlir::Value getInputOp();
+  ::mlir::MutableOperandRange getInputOpMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value value();
-  ::mlir::IntegerAttr indexAttr();
-  ::llvm::Optional<uint32_t> index();
-  void indexAttr(::mlir::IntegerAttr attr);
+  ::mlir::Value getValue();
+  ::mlir::IntegerAttr getIndexAttr();
+  ::llvm::Optional<uint32_t> getIndex();
+  void setIndexAttr(::mlir::IntegerAttr attr);
   ::mlir::Attribute removeIndexAttr();
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Type resultType, Value operation, Optional<unsigned> index);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type value, ::mlir::Value operation, /*optional*/::mlir::IntegerAttr index);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operation, /*optional*/::mlir::IntegerAttr index);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Type resultType, Value inputOp, Optional<unsigned> index);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type value, ::mlir::Value inputOp, /*optional*/::mlir::IntegerAttr index);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value inputOp, /*optional*/::mlir::IntegerAttr index);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
@@ -2109,7 +2187,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::GetOperandsOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::GetOperandsOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -2127,10 +2205,10 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value operation();
+  ::mlir::Value getInputOp();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::IntegerAttr indexAttr();
-  uint32_t index();
+  ::mlir::IntegerAttr getIndexAttr();
+  uint32_t getIndex();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -2148,11 +2226,11 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr indexAttrName() {
+  ::mlir::StringAttr getIndexAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr indexAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getIndexAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
@@ -2162,18 +2240,18 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value operation();
-  ::mlir::MutableOperandRange operationMutable();
+  ::mlir::Value getInputOp();
+  ::mlir::MutableOperandRange getInputOpMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value value();
-  ::mlir::IntegerAttr indexAttr();
-  uint32_t index();
-  void indexAttr(::mlir::IntegerAttr attr);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type value, ::mlir::Value operation, ::mlir::IntegerAttr index);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operation, ::mlir::IntegerAttr index);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type value, ::mlir::Value operation, uint32_t index);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operation, uint32_t index);
+  ::mlir::Value getValue();
+  ::mlir::IntegerAttr getIndexAttr();
+  uint32_t getIndex();
+  void setIndexAttr(::mlir::IntegerAttr attr);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type value, ::mlir::Value inputOp, ::mlir::IntegerAttr index);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value inputOp, ::mlir::IntegerAttr index);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type value, ::mlir::Value inputOp, uint32_t index);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value inputOp, uint32_t index);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
@@ -2194,7 +2272,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::GetResultOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::GetResultOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -2212,10 +2290,10 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value operation();
+  ::mlir::Value getInputOp();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::IntegerAttr indexAttr();
-  ::llvm::Optional<uint32_t> index();
+  ::mlir::IntegerAttr getIndexAttr();
+  ::llvm::Optional<uint32_t> getIndex();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -2233,11 +2311,11 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr indexAttrName() {
+  ::mlir::StringAttr getIndexAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr indexAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getIndexAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
@@ -2247,19 +2325,19 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value operation();
-  ::mlir::MutableOperandRange operationMutable();
+  ::mlir::Value getInputOp();
+  ::mlir::MutableOperandRange getInputOpMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value value();
-  ::mlir::IntegerAttr indexAttr();
-  ::llvm::Optional<uint32_t> index();
-  void indexAttr(::mlir::IntegerAttr attr);
+  ::mlir::Value getValue();
+  ::mlir::IntegerAttr getIndexAttr();
+  ::llvm::Optional<uint32_t> getIndex();
+  void setIndexAttr(::mlir::IntegerAttr attr);
   ::mlir::Attribute removeIndexAttr();
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Type resultType, Value operation, Optional<unsigned> index);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value operation);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type value, ::mlir::Value operation, /*optional*/::mlir::IntegerAttr index);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operation, /*optional*/::mlir::IntegerAttr index);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Type resultType, Value inputOp, Optional<unsigned> index);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value inputOp);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type value, ::mlir::Value inputOp, /*optional*/::mlir::IntegerAttr index);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value inputOp, /*optional*/::mlir::IntegerAttr index);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
@@ -2280,7 +2358,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::GetResultsOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::GetResultsOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -2298,7 +2376,7 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value value();
+  ::mlir::Value getValue();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -2322,11 +2400,11 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value value();
-  ::mlir::MutableOperandRange valueMutable();
+  ::mlir::Value getValue();
+  ::mlir::MutableOperandRange getValueMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value operations();
+  ::mlir::Value getOperations();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value value);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type operations, ::mlir::Value value);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value value);
@@ -2340,7 +2418,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::GetUsersOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::GetUsersOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -2358,7 +2436,7 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value value();
+  ::mlir::Value getValue();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -2382,11 +2460,11 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value value();
-  ::mlir::MutableOperandRange valueMutable();
+  ::mlir::Value getValue();
+  ::mlir::MutableOperandRange getValueMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value result();
+  ::mlir::Value getResult();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value value);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value value);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value value);
@@ -2400,7 +2478,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::GetValueTypeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::GetValueTypeOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -2443,9 +2521,9 @@ public:
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value type();
+  ::mlir::Value getResult();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type type);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
@@ -2456,7 +2534,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::InferredTypesOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::InferredTypesOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -2474,7 +2552,7 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value value();
+  ::mlir::Value getValue();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -2498,12 +2576,12 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value value();
-  ::mlir::MutableOperandRange valueMutable();
+  ::mlir::Value getValue();
+  ::mlir::MutableOperandRange getValueMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Block *trueDest();
-  ::mlir::Block *falseDest();
+  ::mlir::Block *getTrueDest();
+  ::mlir::Block *getFalseDest();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value value, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value value, ::mlir::Block *trueDest, ::mlir::Block *falseDest);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
@@ -2516,7 +2594,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::IsNotNullOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::IsNotNullOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -2534,17 +2612,17 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::ValueRange inputs();
-  ::mlir::ValueRange matchedOps();
+  ::mlir::ValueRange getInputs();
+  ::mlir::ValueRange getMatchedOps();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::SymbolRefAttr rewriterAttr();
-  ::mlir::SymbolRefAttr rewriter();
-  ::mlir::StringAttr rootKindAttr();
-  ::llvm::Optional< ::llvm::StringRef > rootKind();
-  ::mlir::ArrayAttr generatedOpsAttr();
-  ::llvm::Optional< ::mlir::ArrayAttr > generatedOps();
-  ::mlir::IntegerAttr benefitAttr();
-  uint16_t benefit();
+  ::mlir::SymbolRefAttr getRewriterAttr();
+  ::mlir::SymbolRefAttr getRewriter();
+  ::mlir::StringAttr getRootKindAttr();
+  ::llvm::Optional< ::llvm::StringRef > getRootKind();
+  ::mlir::ArrayAttr getGeneratedOpsAttr();
+  ::llvm::Optional< ::mlir::ArrayAttr > getGeneratedOps();
+  ::mlir::IntegerAttr getBenefitAttr();
+  uint16_t getBenefit();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -2562,43 +2640,43 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr rewriterAttrName() {
+  ::mlir::StringAttr getRewriterAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr rewriterAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getRewriterAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr rootKindAttrName() {
+  ::mlir::StringAttr getRootKindAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr rootKindAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getRootKindAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
   }
 
-  ::mlir::StringAttr generatedOpsAttrName() {
+  ::mlir::StringAttr getGeneratedOpsAttrName() {
     return getAttributeNameForIndex(2);
   }
 
-  static ::mlir::StringAttr generatedOpsAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getGeneratedOpsAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 2);
   }
 
-  ::mlir::StringAttr benefitAttrName() {
+  ::mlir::StringAttr getBenefitAttrName() {
     return getAttributeNameForIndex(3);
   }
 
-  static ::mlir::StringAttr benefitAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getBenefitAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 3);
   }
 
-  ::mlir::StringAttr operand_segment_sizesAttrName() {
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
     return getAttributeNameForIndex(4);
   }
 
-  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 4);
   }
 
@@ -2608,25 +2686,25 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Operation::operand_range inputs();
-  ::mlir::Operation::operand_range matchedOps();
-  ::mlir::MutableOperandRange inputsMutable();
-  ::mlir::MutableOperandRange matchedOpsMutable();
+  ::mlir::Operation::operand_range getInputs();
+  ::mlir::Operation::operand_range getMatchedOps();
+  ::mlir::MutableOperandRange getInputsMutable();
+  ::mlir::MutableOperandRange getMatchedOpsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Block *dest();
-  ::mlir::SymbolRefAttr rewriterAttr();
-  ::mlir::SymbolRefAttr rewriter();
-  ::mlir::StringAttr rootKindAttr();
-  ::llvm::Optional< ::llvm::StringRef > rootKind();
-  ::mlir::ArrayAttr generatedOpsAttr();
-  ::llvm::Optional< ::mlir::ArrayAttr > generatedOps();
-  ::mlir::IntegerAttr benefitAttr();
-  uint16_t benefit();
-  void rewriterAttr(::mlir::SymbolRefAttr attr);
-  void rootKindAttr(::mlir::StringAttr attr);
-  void generatedOpsAttr(::mlir::ArrayAttr attr);
-  void benefitAttr(::mlir::IntegerAttr attr);
+  ::mlir::Block *getDest();
+  ::mlir::SymbolRefAttr getRewriterAttr();
+  ::mlir::SymbolRefAttr getRewriter();
+  ::mlir::StringAttr getRootKindAttr();
+  ::llvm::Optional< ::llvm::StringRef > getRootKind();
+  ::mlir::ArrayAttr getGeneratedOpsAttr();
+  ::llvm::Optional< ::mlir::ArrayAttr > getGeneratedOps();
+  ::mlir::IntegerAttr getBenefitAttr();
+  uint16_t getBenefit();
+  void setRewriterAttr(::mlir::SymbolRefAttr attr);
+  void setRootKindAttr(::mlir::StringAttr attr);
+  void setGeneratedOpsAttr(::mlir::ArrayAttr attr);
+  void setBenefitAttr(::mlir::IntegerAttr attr);
   ::mlir::Attribute removeRootKindAttr();
   ::mlir::Attribute removeGeneratedOpsAttr();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange inputs, ::mlir::ValueRange matchedOps, ::mlir::SymbolRefAttr rewriter, /*optional*/::mlir::StringAttr rootKind, /*optional*/::mlir::ArrayAttr generatedOps, ::mlir::IntegerAttr benefit, ::mlir::Block *dest);
@@ -2652,7 +2730,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::RecordMatchOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::RecordMatchOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -2670,8 +2748,8 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value operation();
-  ::mlir::ValueRange replValues();
+  ::mlir::Value getInputOp();
+  ::mlir::ValueRange getReplValues();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -2695,14 +2773,14 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value operation();
-  ::mlir::Operation::operand_range replValues();
-  ::mlir::MutableOperandRange operationMutable();
-  ::mlir::MutableOperandRange replValuesMutable();
+  ::mlir::Value getInputOp();
+  ::mlir::Operation::operand_range getReplValues();
+  ::mlir::MutableOperandRange getInputOpMutable();
+  ::mlir::MutableOperandRange getReplValuesMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operation, ::mlir::ValueRange replValues);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operation, ::mlir::ValueRange replValues);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value inputOp, ::mlir::ValueRange replValues);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value inputOp, ::mlir::ValueRange replValues);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
@@ -2712,7 +2790,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::ReplaceOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::ReplaceOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -2730,10 +2808,10 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value attribute();
+  ::mlir::Value getAttribute();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::ArrayAttr caseValuesAttr();
-  ::mlir::ArrayAttr caseValues();
+  ::mlir::ArrayAttr getCaseValuesAttr();
+  ::mlir::ArrayAttr getCaseValues();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -2751,11 +2829,11 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr caseValuesAttrName() {
+  ::mlir::StringAttr getCaseValuesAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr caseValuesAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getCaseValuesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
@@ -2765,15 +2843,15 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value attribute();
-  ::mlir::MutableOperandRange attributeMutable();
+  ::mlir::Value getAttribute();
+  ::mlir::MutableOperandRange getAttributeMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Block *defaultDest();
-  ::mlir::SuccessorRange cases();
-  ::mlir::ArrayAttr caseValuesAttr();
-  ::mlir::ArrayAttr caseValues();
-  void caseValuesAttr(::mlir::ArrayAttr attr);
+  ::mlir::Block *getDefaultDest();
+  ::mlir::SuccessorRange getCases();
+  ::mlir::ArrayAttr getCaseValuesAttr();
+  ::mlir::ArrayAttr getCaseValues();
+  void setCaseValuesAttr(::mlir::ArrayAttr attr);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value attribute, ArrayRef<Attribute> caseValues, Block *defaultDest, BlockRange dests);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value attribute, ::mlir::ArrayAttr caseValues, ::mlir::Block *defaultDest, ::mlir::BlockRange cases);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value attribute, ::mlir::ArrayAttr caseValues, ::mlir::Block *defaultDest, ::mlir::BlockRange cases);
@@ -2798,7 +2876,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::SwitchAttributeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::SwitchAttributeOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -2816,10 +2894,10 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value operation();
+  ::mlir::Value getInputOp();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::DenseIntElementsAttr caseValuesAttr();
-  ::mlir::DenseIntElementsAttr caseValues();
+  ::mlir::DenseIntElementsAttr getCaseValuesAttr();
+  ::mlir::DenseIntElementsAttr getCaseValues();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -2837,11 +2915,11 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr caseValuesAttrName() {
+  ::mlir::StringAttr getCaseValuesAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr caseValuesAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getCaseValuesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
@@ -2851,18 +2929,18 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value operation();
-  ::mlir::MutableOperandRange operationMutable();
+  ::mlir::Value getInputOp();
+  ::mlir::MutableOperandRange getInputOpMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Block *defaultDest();
-  ::mlir::SuccessorRange cases();
-  ::mlir::DenseIntElementsAttr caseValuesAttr();
-  ::mlir::DenseIntElementsAttr caseValues();
-  void caseValuesAttr(::mlir::DenseIntElementsAttr attr);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value operation, ArrayRef<int32_t> counts, Block *defaultDest, BlockRange dests);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operation, ::mlir::DenseIntElementsAttr caseValues, ::mlir::Block *defaultDest, ::mlir::BlockRange cases);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operation, ::mlir::DenseIntElementsAttr caseValues, ::mlir::Block *defaultDest, ::mlir::BlockRange cases);
+  ::mlir::Block *getDefaultDest();
+  ::mlir::SuccessorRange getCases();
+  ::mlir::DenseIntElementsAttr getCaseValuesAttr();
+  ::mlir::DenseIntElementsAttr getCaseValues();
+  void setCaseValuesAttr(::mlir::DenseIntElementsAttr attr);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value inputOp, ArrayRef<int32_t> counts, Block *defaultDest, BlockRange dests);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value inputOp, ::mlir::DenseIntElementsAttr caseValues, ::mlir::Block *defaultDest, ::mlir::BlockRange cases);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value inputOp, ::mlir::DenseIntElementsAttr caseValues, ::mlir::Block *defaultDest, ::mlir::BlockRange cases);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
@@ -2884,7 +2962,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::SwitchOperandCountOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::SwitchOperandCountOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -2902,10 +2980,10 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value operation();
+  ::mlir::Value getInputOp();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::ArrayAttr caseValuesAttr();
-  ::mlir::ArrayAttr caseValues();
+  ::mlir::ArrayAttr getCaseValuesAttr();
+  ::mlir::ArrayAttr getCaseValues();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -2923,11 +3001,11 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr caseValuesAttrName() {
+  ::mlir::StringAttr getCaseValuesAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr caseValuesAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getCaseValuesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
@@ -2937,18 +3015,18 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value operation();
-  ::mlir::MutableOperandRange operationMutable();
+  ::mlir::Value getInputOp();
+  ::mlir::MutableOperandRange getInputOpMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Block *defaultDest();
-  ::mlir::SuccessorRange cases();
-  ::mlir::ArrayAttr caseValuesAttr();
-  ::mlir::ArrayAttr caseValues();
-  void caseValuesAttr(::mlir::ArrayAttr attr);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value operation, ArrayRef<OperationName> names, Block *defaultDest, BlockRange dests);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operation, ::mlir::ArrayAttr caseValues, ::mlir::Block *defaultDest, ::mlir::BlockRange cases);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operation, ::mlir::ArrayAttr caseValues, ::mlir::Block *defaultDest, ::mlir::BlockRange cases);
+  ::mlir::Block *getDefaultDest();
+  ::mlir::SuccessorRange getCases();
+  ::mlir::ArrayAttr getCaseValuesAttr();
+  ::mlir::ArrayAttr getCaseValues();
+  void setCaseValuesAttr(::mlir::ArrayAttr attr);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value inputOp, ArrayRef<OperationName> names, Block *defaultDest, BlockRange dests);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value inputOp, ::mlir::ArrayAttr caseValues, ::mlir::Block *defaultDest, ::mlir::BlockRange cases);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value inputOp, ::mlir::ArrayAttr caseValues, ::mlir::Block *defaultDest, ::mlir::BlockRange cases);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
@@ -2970,7 +3048,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::SwitchOperationNameOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::SwitchOperationNameOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -2988,10 +3066,10 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value operation();
+  ::mlir::Value getInputOp();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::DenseIntElementsAttr caseValuesAttr();
-  ::mlir::DenseIntElementsAttr caseValues();
+  ::mlir::DenseIntElementsAttr getCaseValuesAttr();
+  ::mlir::DenseIntElementsAttr getCaseValues();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -3009,11 +3087,11 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr caseValuesAttrName() {
+  ::mlir::StringAttr getCaseValuesAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr caseValuesAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getCaseValuesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
@@ -3023,18 +3101,18 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value operation();
-  ::mlir::MutableOperandRange operationMutable();
+  ::mlir::Value getInputOp();
+  ::mlir::MutableOperandRange getInputOpMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Block *defaultDest();
-  ::mlir::SuccessorRange cases();
-  ::mlir::DenseIntElementsAttr caseValuesAttr();
-  ::mlir::DenseIntElementsAttr caseValues();
-  void caseValuesAttr(::mlir::DenseIntElementsAttr attr);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value operation, ArrayRef<int32_t> counts, Block *defaultDest, BlockRange dests);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operation, ::mlir::DenseIntElementsAttr caseValues, ::mlir::Block *defaultDest, ::mlir::BlockRange cases);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operation, ::mlir::DenseIntElementsAttr caseValues, ::mlir::Block *defaultDest, ::mlir::BlockRange cases);
+  ::mlir::Block *getDefaultDest();
+  ::mlir::SuccessorRange getCases();
+  ::mlir::DenseIntElementsAttr getCaseValuesAttr();
+  ::mlir::DenseIntElementsAttr getCaseValues();
+  void setCaseValuesAttr(::mlir::DenseIntElementsAttr attr);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value inputOp, ArrayRef<int32_t> counts, Block *defaultDest, BlockRange dests);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value inputOp, ::mlir::DenseIntElementsAttr caseValues, ::mlir::Block *defaultDest, ::mlir::BlockRange cases);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value inputOp, ::mlir::DenseIntElementsAttr caseValues, ::mlir::Block *defaultDest, ::mlir::BlockRange cases);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
@@ -3056,7 +3134,7 @@ public:
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::SwitchResultCountOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::SwitchResultCountOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -3074,10 +3152,10 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value value();
+  ::mlir::Value getValue();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::ArrayAttr caseValuesAttr();
-  ::mlir::ArrayAttr caseValues();
+  ::mlir::ArrayAttr getCaseValuesAttr();
+  ::mlir::ArrayAttr getCaseValues();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -3095,11 +3173,11 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr caseValuesAttrName() {
+  ::mlir::StringAttr getCaseValuesAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr caseValuesAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getCaseValuesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
@@ -3109,15 +3187,15 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value value();
-  ::mlir::MutableOperandRange valueMutable();
+  ::mlir::Value getValue();
+  ::mlir::MutableOperandRange getValueMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Block *defaultDest();
-  ::mlir::SuccessorRange cases();
-  ::mlir::ArrayAttr caseValuesAttr();
-  ::mlir::ArrayAttr caseValues();
-  void caseValuesAttr(::mlir::ArrayAttr attr);
+  ::mlir::Block *getDefaultDest();
+  ::mlir::SuccessorRange getCases();
+  ::mlir::ArrayAttr getCaseValuesAttr();
+  ::mlir::ArrayAttr getCaseValues();
+  void setCaseValuesAttr(::mlir::ArrayAttr attr);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value edge, ArrayRef<Attribute> types, Block *defaultDest, BlockRange dests);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value value, ::mlir::ArrayAttr caseValues, ::mlir::Block *defaultDest, ::mlir::BlockRange cases);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value value, ::mlir::ArrayAttr caseValues, ::mlir::Block *defaultDest, ::mlir::BlockRange cases);
@@ -3139,11 +3217,11 @@ private:
   }
 
 public:
-  auto getCaseTypes() { return caseValues().getAsValueRange<TypeAttr>(); }
+  auto getCaseTypes() { return getCaseValues().getAsValueRange<TypeAttr>(); }
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::SwitchTypeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::SwitchTypeOp)
 
 namespace mlir {
 namespace pdl_interp {
@@ -3161,10 +3239,10 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value value();
+  ::mlir::Value getValue();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::ArrayAttr caseValuesAttr();
-  ::mlir::ArrayAttr caseValues();
+  ::mlir::ArrayAttr getCaseValuesAttr();
+  ::mlir::ArrayAttr getCaseValues();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -3182,11 +3260,11 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr caseValuesAttrName() {
+  ::mlir::StringAttr getCaseValuesAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr caseValuesAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getCaseValuesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
@@ -3196,15 +3274,15 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value value();
-  ::mlir::MutableOperandRange valueMutable();
+  ::mlir::Value getValue();
+  ::mlir::MutableOperandRange getValueMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Block *defaultDest();
-  ::mlir::SuccessorRange cases();
-  ::mlir::ArrayAttr caseValuesAttr();
-  ::mlir::ArrayAttr caseValues();
-  void caseValuesAttr(::mlir::ArrayAttr attr);
+  ::mlir::Block *getDefaultDest();
+  ::mlir::SuccessorRange getCases();
+  ::mlir::ArrayAttr getCaseValuesAttr();
+  ::mlir::ArrayAttr getCaseValues();
+  void setCaseValuesAttr(::mlir::ArrayAttr attr);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value edge, ArrayRef<Attribute> types, Block *defaultDest, BlockRange dests);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value value, ::mlir::ArrayAttr caseValues, ::mlir::Block *defaultDest, ::mlir::BlockRange cases);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value value, ::mlir::ArrayAttr caseValues, ::mlir::Block *defaultDest, ::mlir::BlockRange cases);
@@ -3226,11 +3304,11 @@ private:
   }
 
 public:
-  auto getCaseTypes() { return caseValues().getAsRange<ArrayAttr>(); }
+  auto getCaseTypes() { return getCaseValues().getAsRange<ArrayAttr>(); }
 };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::SwitchTypesOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::SwitchTypesOp)
 
 
 #endif  // GET_OP_CLASSES

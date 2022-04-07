@@ -266,7 +266,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::AddOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::AddOp)
 
 namespace mlir {
 namespace shape {
@@ -325,7 +325,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::AnyOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::AnyOp)
 
 namespace mlir {
 namespace shape {
@@ -388,7 +388,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::AssumingAllOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::AssumingAllOp)
 
 namespace mlir {
 namespace shape {
@@ -456,7 +456,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::AssumingOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::AssumingOp)
 
 namespace mlir {
 namespace shape {
@@ -514,7 +514,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::AssumingYieldOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::AssumingYieldOp)
 
 namespace mlir {
 namespace shape {
@@ -602,7 +602,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::BroadcastOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::BroadcastOp)
 
 namespace mlir {
 namespace shape {
@@ -668,7 +668,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::ConcatOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::ConcatOp)
 
 namespace mlir {
 namespace shape {
@@ -755,7 +755,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::ConstShapeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::ConstShapeOp)
 
 namespace mlir {
 namespace shape {
@@ -844,7 +844,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::ConstSizeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::ConstSizeOp)
 
 namespace mlir {
 namespace shape {
@@ -931,7 +931,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::ConstWitnessOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::ConstWitnessOp)
 
 namespace mlir {
 namespace shape {
@@ -994,7 +994,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::CstrBroadcastableOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::CstrBroadcastableOp)
 
 namespace mlir {
 namespace shape {
@@ -1055,7 +1055,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::CstrEqOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::CstrEqOp)
 
 namespace mlir {
 namespace shape {
@@ -1144,7 +1144,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::CstrRequireOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::CstrRequireOp)
 
 namespace mlir {
 namespace shape {
@@ -1200,7 +1200,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::DebugPrintOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::DebugPrintOp)
 
 namespace mlir {
 namespace shape {
@@ -1270,7 +1270,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::DivOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::DivOp)
 
 namespace mlir {
 namespace shape {
@@ -1332,7 +1332,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::FromExtentTensorOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::FromExtentTensorOp)
 
 namespace mlir {
 namespace shape {
@@ -1393,7 +1393,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::FromExtentsOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::FromExtentsOp)
 
 namespace mlir {
 namespace shape {
@@ -1474,7 +1474,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::FunctionLibraryOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::FunctionLibraryOp)
 
 namespace mlir {
 namespace shape {
@@ -1547,7 +1547,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::GetExtentOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::GetExtentOp)
 
 namespace mlir {
 namespace shape {
@@ -1611,7 +1611,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::IndexToSizeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::IndexToSizeOp)
 
 namespace mlir {
 namespace shape {
@@ -1673,7 +1673,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::IsBroadcastableOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::IsBroadcastableOp)
 
 namespace mlir {
 namespace shape {
@@ -1742,7 +1742,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::MaxOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::MaxOp)
 
 namespace mlir {
 namespace shape {
@@ -1834,7 +1834,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::MeetOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::MeetOp)
 
 namespace mlir {
 namespace shape {
@@ -1903,7 +1903,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::MinOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::MinOp)
 
 namespace mlir {
 namespace shape {
@@ -1973,7 +1973,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::MulOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::MulOp)
 
 namespace mlir {
 namespace shape {
@@ -2040,7 +2040,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::NumElementsOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::NumElementsOp)
 
 namespace mlir {
 namespace shape {
@@ -2108,7 +2108,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::RankOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::RankOp)
 
 namespace mlir {
 namespace shape {
@@ -2173,7 +2173,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::ReduceOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::ReduceOp)
 
 namespace mlir {
 namespace shape {
@@ -2235,7 +2235,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::ShapeEqOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::ShapeEqOp)
 
 namespace mlir {
 namespace shape {
@@ -2303,7 +2303,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::ShapeOfOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::ShapeOfOp)
 
 namespace mlir {
 namespace shape {
@@ -2368,7 +2368,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::SizeToIndexOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::SizeToIndexOp)
 
 namespace mlir {
 namespace shape {
@@ -2431,7 +2431,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::SplitAtOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::SplitAtOp)
 
 namespace mlir {
 namespace shape {
@@ -2492,7 +2492,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::ToExtentTensorOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::ToExtentTensorOp)
 
 namespace mlir {
 namespace shape {
@@ -2551,7 +2551,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::ValueAsShapeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::ValueAsShapeOp)
 
 namespace mlir {
 namespace shape {
@@ -2616,7 +2616,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::WithOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::WithOp)
 
 namespace mlir {
 namespace shape {
@@ -2675,7 +2675,7 @@ public:
 };
 } // namespace shape
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::YieldOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::shape::YieldOp)
 
 
 #endif  // GET_OP_CLASSES

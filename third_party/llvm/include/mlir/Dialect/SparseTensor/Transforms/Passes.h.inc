@@ -58,7 +58,13 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(SparseTensorConversionBase<DerivedT>)
+
 protected:
+  ::mlir::Pass::Option<int32_t> sparseToSparse{*this, "s2s-strategy", ::llvm::cl::desc("Set the strategy for sparse-to-sparse conversion"), ::llvm::cl::init(0)};
 };
 
 //===----------------------------------------------------------------------===//
@@ -118,11 +124,17 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(SparsificationBase<DerivedT>)
+
 protected:
   ::mlir::Pass::Option<int32_t> parallelization{*this, "parallelization-strategy", ::llvm::cl::desc("Set the parallelization strategy"), ::llvm::cl::init(0)};
   ::mlir::Pass::Option<int32_t> vectorization{*this, "vectorization-strategy", ::llvm::cl::desc("Set the vectorization strategy"), ::llvm::cl::init(0)};
   ::mlir::Pass::Option<int32_t> vectorLength{*this, "vl", ::llvm::cl::desc("Set the vector length"), ::llvm::cl::init(1)};
   ::mlir::Pass::Option<bool> enableSIMDIndex32{*this, "enable-simd-index32", ::llvm::cl::desc("Enable i32 indexing into vectors (for efficiency)"), ::llvm::cl::init(false)};
+  ::mlir::Pass::Option<bool> enableVLAVectorization{*this, "enable-vla-vectorization", ::llvm::cl::desc("Enable vector length agnostic vectorization"), ::llvm::cl::init(false)};
 };
 #undef GEN_PASS_CLASSES
 #endif // GEN_PASS_CLASSES

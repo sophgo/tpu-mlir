@@ -6,7 +6,7 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
-DEFINE_EXPLICIT_TYPE_ID(::mlir::arith::ArithmeticDialect)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arith::ArithmeticDialect)
 namespace mlir {
 namespace arith {
 

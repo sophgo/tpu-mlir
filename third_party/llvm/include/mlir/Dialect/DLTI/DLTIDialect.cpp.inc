@@ -6,7 +6,7 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
-DEFINE_EXPLICIT_TYPE_ID(::mlir::DLTIDialect)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::DLTIDialect)
 namespace mlir {
 
 DLTIDialect::~DLTIDialect() = default;

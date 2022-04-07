@@ -237,10 +237,10 @@ void ConditionOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 }
 
 ::mlir::ParseResult ConditionOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType conditionRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> conditionOperands(conditionRawOperands);  ::llvm::SMLoc conditionOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand conditionRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> conditionOperands(conditionRawOperands);  ::llvm::SMLoc conditionOperandsLoc;
   (void)conditionOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> argsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
   ::llvm::SMLoc argsOperandsLoc;
   (void)argsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> argsTypes;
@@ -292,7 +292,7 @@ void ConditionOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace scf
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::scf::ConditionOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::scf::ConditionOp)
 
 namespace mlir {
 namespace scf {
@@ -415,7 +415,7 @@ void ExecuteRegionOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
 
 } // namespace scf
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::scf::ExecuteRegionOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::scf::ExecuteRegionOp)
 
 namespace mlir {
 namespace scf {
@@ -639,7 +639,7 @@ std::pair<unsigned, unsigned> ForOp::getODSResultIndexAndLength(unsigned index) 
 
 } // namespace scf
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::scf::ForOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::scf::ForOp)
 
 namespace mlir {
 namespace scf {
@@ -787,7 +787,7 @@ std::pair<unsigned, unsigned> IfOp::getODSResultIndexAndLength(unsigned index) {
 
 } // namespace scf
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::scf::IfOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::scf::IfOp)
 
 namespace mlir {
 namespace scf {
@@ -1023,7 +1023,7 @@ std::pair<unsigned, unsigned> ParallelOp::getODSResultIndexAndLength(unsigned in
 
 } // namespace scf
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::scf::ParallelOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::scf::ParallelOp)
 
 namespace mlir {
 namespace scf {
@@ -1125,14 +1125,12 @@ std::pair<unsigned, unsigned> ReduceOp::getODSResultIndexAndLength(unsigned inde
 }
 
 ::mlir::LogicalResult ReduceOp::verifyInvariants() {
-  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
-    return ::mlir::success();
-  return ::mlir::failure();
+  return verifyInvariantsImpl();
 }
 
 } // namespace scf
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::scf::ReduceOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::scf::ReduceOp)
 
 namespace mlir {
 namespace scf {
@@ -1239,8 +1237,8 @@ void ReduceReturnOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
 }
 
 ::mlir::ParseResult ReduceReturnOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType resultRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> resultOperands(resultRawOperands);  ::llvm::SMLoc resultOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand resultRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> resultOperands(resultRawOperands);  ::llvm::SMLoc resultOperandsLoc;
   (void)resultOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -1284,7 +1282,7 @@ void ReduceReturnOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Eff
 
 } // namespace scf
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::scf::ReduceReturnOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::scf::ReduceReturnOp)
 
 namespace mlir {
 namespace scf {
@@ -1461,14 +1459,12 @@ void WhileOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 ::mlir::LogicalResult WhileOp::verifyInvariants() {
-  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
-    return ::mlir::success();
-  return ::mlir::failure();
+  return verifyInvariantsImpl();
 }
 
 } // namespace scf
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::scf::WhileOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::scf::WhileOp)
 
 namespace mlir {
 namespace scf {
@@ -1598,7 +1594,7 @@ void YieldOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 ::mlir::ParseResult YieldOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> resultsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> resultsOperands;
   ::llvm::SMLoc resultsOperandsLoc;
   (void)resultsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> resultsTypes;
@@ -1636,7 +1632,7 @@ void YieldOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace scf
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::scf::YieldOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::scf::YieldOp)
 
 
 #endif  // GET_OP_CLASSES

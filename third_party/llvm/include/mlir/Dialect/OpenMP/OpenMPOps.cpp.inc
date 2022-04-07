@@ -25,6 +25,8 @@
 ::mlir::omp::ReductionOp,
 ::mlir::omp::SectionOp,
 ::mlir::omp::SectionsOp,
+::mlir::omp::SimdLoopOp,
+::mlir::omp::SingleOp,
 ::mlir::omp::TargetOp,
 ::mlir::omp::TaskwaitOp,
 ::mlir::omp::TaskyieldOp,
@@ -67,6 +69,16 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_OpenMPOps1(
 static ::mlir::LogicalResult __mlir_ods_local_type_constraint_OpenMPOps2(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
+  if (!(((type.isa<::mlir::IntegerType>())) || ((type.isa<::mlir::IndexType>())))) {
+    return op->emitOpError(valueKind) << " #" << valueIndex
+        << " must be integer or index, but got " << type;
+  }
+  return ::mlir::success();
+}
+
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_OpenMPOps3(
+    ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
+    unsigned valueIndex) {
   if (!((type.isSignlessInteger(1)))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
         << " must be 1-bit signless integer, but got " << type;
@@ -74,7 +86,7 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_OpenMPOps2(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_OpenMPOps3(
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_OpenMPOps4(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
   if (!((type.isa<::mlir::IntegerType>()))) {
@@ -84,12 +96,12 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_OpenMPOps3(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_OpenMPOps4(
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_OpenMPOps5(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
-  if (!(((type.isa<::mlir::IntegerType>())) || ((type.isa<::mlir::IndexType>())))) {
+  if (!((type.isSignlessInteger(32)))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
-        << " must be integer or index, but got " << type;
+        << " must be 32-bit signless integer, but got " << type;
   }
   return ::mlir::success();
 }
@@ -159,6 +171,15 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps6(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps7(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
+  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && ((attr.isa<::mlir::SymbolRefAttr>())); })))) {
+    return op->emitOpError("attribute '") << attrName
+        << "' failed to satisfy constraint: symbol ref array attribute";
+  }
+  return ::mlir::success();
+}
+
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps8(
+    ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((attr.isa<::mlir::omp::ClauseProcBindKindAttr>()))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: ProcBindKind Clause";
@@ -166,20 +187,11 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps7(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps8(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps9(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !(((attr.isa<::mlir::TypeAttr>())) && ((attr.cast<::mlir::TypeAttr>().getValue().isa<::mlir::Type>())))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: any type attribute";
-  }
-  return ::mlir::success();
-}
-
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps9(
-    ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return (attr.isa<::mlir::SymbolRefAttr>()); })))) {
-    return op->emitOpError("attribute '") << attrName
-        << "' failed to satisfy constraint: symbol ref array attribute";
   }
   return ::mlir::success();
 }
@@ -368,7 +380,9 @@ void AtomicCaptureOp::memory_order_valAttr(::mlir::omp::ClauseMemoryOrderKindAtt
 }
 
 void AtomicCaptureOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
+  if (hint_val) {
   odsState.addAttribute(hint_valAttrName(odsState.name), hint_val);
+  }
   if (memory_order_val) {
   odsState.addAttribute(memory_order_valAttrName(odsState.name), memory_order_val);
   }
@@ -376,7 +390,9 @@ void AtomicCaptureOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationStat
 }
 
 void AtomicCaptureOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
+  if (hint_val) {
   odsState.addAttribute(hint_valAttrName(odsState.name), hint_val);
+  }
   if (memory_order_val) {
   odsState.addAttribute(memory_order_valAttrName(odsState.name), memory_order_val);
   }
@@ -435,9 +451,7 @@ void AtomicCaptureOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
 }
 
 ::mlir::LogicalResult AtomicCaptureOp::verifyInvariants() {
-  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
-    return ::mlir::success();
-  return ::mlir::failure();
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult AtomicCaptureOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -455,7 +469,6 @@ if (succeeded(parser.parseOptionalKeyword("memory_order"))) {
              "oilist directive";
   }
   memory_orderClause = true;
-  result.addAttribute("memory_order", UnitAttr::get(parser.getContext()));
   if (parser.parseLParen())
     return ::mlir::failure();
   {
@@ -474,7 +487,6 @@ if (succeeded(parser.parseOptionalKeyword("memory_order"))) {
              "oilist directive";
   }
   hintClause = true;
-  result.addAttribute("hint", UnitAttr::get(parser.getContext()));
   if (parser.parseLParen())
     return ::mlir::failure();
   {
@@ -501,13 +513,13 @@ if (succeeded(parser.parseOptionalKeyword("memory_order"))) {
 
 void AtomicCaptureOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << " ";
-  if ((*this)->hasAttrOfType<UnitAttr>("memory_order")) {
+  if (false || memory_order_valAttr()) {
   _odsPrinter << ' ' << "memory_order";
   _odsPrinter << "(";
   printClauseAttr(_odsPrinter, *this, memory_order_valAttr());
   _odsPrinter << ")";
   }
-  if ((*this)->hasAttrOfType<UnitAttr>("hint")) {
+  if (false || hint_valAttr()) {
   _odsPrinter << ' ' << "hint";
   _odsPrinter << "(";
   printSynchronizationHint(_odsPrinter, *this, hint_valAttr());
@@ -525,12 +537,12 @@ void AtomicCaptureOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
     _odsPrinter.printRegion(region(), /*printEntryBlockArgs=*/true,
       /*printBlockTerminators=*/printTerminator);
   }
-  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"hint", "memory_order", "memory_order_val", "hint_val"});
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"memory_order_val", "hint_val"});
 }
 
 } // namespace omp
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::AtomicCaptureOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::AtomicCaptureOp)
 
 namespace mlir {
 namespace omp {
@@ -684,7 +696,9 @@ void AtomicReadOp::memory_order_valAttr(::mlir::omp::ClauseMemoryOrderKindAttr a
 void AtomicReadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value x, ::mlir::Value v, ::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addOperands(x);
   odsState.addOperands(v);
+  if (hint_val) {
   odsState.addAttribute(hint_valAttrName(odsState.name), hint_val);
+  }
   if (memory_order_val) {
   odsState.addAttribute(memory_order_valAttrName(odsState.name), memory_order_val);
   }
@@ -693,7 +707,9 @@ void AtomicReadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
 void AtomicReadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value x, ::mlir::Value v, ::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addOperands(x);
   odsState.addOperands(v);
+  if (hint_val) {
   odsState.addAttribute(hint_valAttrName(odsState.name), hint_val);
+  }
   if (memory_order_val) {
   odsState.addAttribute(memory_order_valAttrName(odsState.name), memory_order_val);
   }
@@ -767,11 +783,11 @@ void AtomicReadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
 }
 
 ::mlir::ParseResult AtomicReadOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType vRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> vOperands(vRawOperands);  ::llvm::SMLoc vOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand vRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> vOperands(vRawOperands);  ::llvm::SMLoc vOperandsLoc;
   (void)vOperandsLoc;
-  ::mlir::OpAsmParser::OperandType xRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> xOperands(xRawOperands);  ::llvm::SMLoc xOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand xRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> xOperands(xRawOperands);  ::llvm::SMLoc xOperandsLoc;
   (void)xOperandsLoc;
   ::mlir::omp::ClauseMemoryOrderKindAttr memory_order_valAttr;
   ::mlir::IntegerAttr hint_valAttr;
@@ -798,7 +814,6 @@ if (succeeded(parser.parseOptionalKeyword("memory_order"))) {
              "oilist directive";
   }
   memory_orderClause = true;
-  result.addAttribute("memory_order", UnitAttr::get(parser.getContext()));
   if (parser.parseLParen())
     return ::mlir::failure();
   {
@@ -817,7 +832,6 @@ if (succeeded(parser.parseOptionalKeyword("memory_order"))) {
              "oilist directive";
   }
   hintClause = true;
-  result.addAttribute("hint", UnitAttr::get(parser.getContext()));
   if (parser.parseLParen())
     return ::mlir::failure();
   {
@@ -856,13 +870,13 @@ void AtomicReadOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
   _odsPrinter << x();
   _odsPrinter << ' ' << " ";
-  if ((*this)->hasAttrOfType<UnitAttr>("memory_order")) {
+  if (false || memory_order_valAttr()) {
   _odsPrinter << ' ' << "memory_order";
   _odsPrinter << "(";
   printClauseAttr(_odsPrinter, *this, memory_order_valAttr());
   _odsPrinter << ")";
   }
-  if ((*this)->hasAttrOfType<UnitAttr>("hint")) {
+  if (false || hint_valAttr()) {
   _odsPrinter << ' ' << "hint";
   _odsPrinter << "(";
   printSynchronizationHint(_odsPrinter, *this, hint_valAttr());
@@ -877,12 +891,12 @@ void AtomicReadOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
    else
      _odsPrinter << type;
   }
-  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"hint", "memory_order", "memory_order_val", "hint_val"});
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"memory_order_val", "hint_val"});
 }
 
 } // namespace omp
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::AtomicReadOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::AtomicReadOp)
 
 namespace mlir {
 namespace omp {
@@ -1033,7 +1047,9 @@ void AtomicUpdateOp::memory_order_valAttr(::mlir::omp::ClauseMemoryOrderKindAttr
 
 void AtomicUpdateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value x, ::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addOperands(x);
+  if (hint_val) {
   odsState.addAttribute(hint_valAttrName(odsState.name), hint_val);
+  }
   if (memory_order_val) {
   odsState.addAttribute(memory_order_valAttrName(odsState.name), memory_order_val);
   }
@@ -1042,7 +1058,9 @@ void AtomicUpdateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
 
 void AtomicUpdateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value x, ::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addOperands(x);
+  if (hint_val) {
   odsState.addAttribute(hint_valAttrName(odsState.name), hint_val);
+  }
   if (memory_order_val) {
   odsState.addAttribute(memory_order_valAttrName(odsState.name), memory_order_val);
   }
@@ -1120,8 +1138,8 @@ void AtomicUpdateOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
 ::mlir::ParseResult AtomicUpdateOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::omp::ClauseMemoryOrderKindAttr memory_order_valAttr;
   ::mlir::IntegerAttr hint_valAttr;
-  ::mlir::OpAsmParser::OperandType xRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> xOperands(xRawOperands);  ::llvm::SMLoc xOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand xRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> xOperands(xRawOperands);  ::llvm::SMLoc xOperandsLoc;
   (void)xOperandsLoc;
   ::mlir::Type xRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> xTypes(xRawTypes);
@@ -1137,7 +1155,6 @@ if (succeeded(parser.parseOptionalKeyword("memory_order"))) {
              "oilist directive";
   }
   memory_orderClause = true;
-  result.addAttribute("memory_order", UnitAttr::get(parser.getContext()));
   if (parser.parseLParen())
     return ::mlir::failure();
   {
@@ -1156,7 +1173,6 @@ if (succeeded(parser.parseOptionalKeyword("memory_order"))) {
              "oilist directive";
   }
   hintClause = true;
-  result.addAttribute("hint", UnitAttr::get(parser.getContext()));
   if (parser.parseLParen())
     return ::mlir::failure();
   {
@@ -1198,13 +1214,13 @@ if (succeeded(parser.parseOptionalKeyword("memory_order"))) {
 
 void AtomicUpdateOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << " ";
-  if ((*this)->hasAttrOfType<UnitAttr>("memory_order")) {
+  if (false || memory_order_valAttr()) {
   _odsPrinter << ' ' << "memory_order";
   _odsPrinter << "(";
   printClauseAttr(_odsPrinter, *this, memory_order_valAttr());
   _odsPrinter << ")";
   }
-  if ((*this)->hasAttrOfType<UnitAttr>("hint")) {
+  if (false || hint_valAttr()) {
   _odsPrinter << ' ' << "hint";
   _odsPrinter << "(";
   printSynchronizationHint(_odsPrinter, *this, hint_valAttr());
@@ -1233,12 +1249,12 @@ void AtomicUpdateOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
     _odsPrinter.printRegion(region(), /*printEntryBlockArgs=*/true,
       /*printBlockTerminators=*/printTerminator);
   }
-  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"hint", "memory_order", "memory_order_val", "hint_val"});
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"memory_order_val", "hint_val"});
 }
 
 } // namespace omp
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::AtomicUpdateOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::AtomicUpdateOp)
 
 namespace mlir {
 namespace omp {
@@ -1392,7 +1408,9 @@ void AtomicWriteOp::memory_order_valAttr(::mlir::omp::ClauseMemoryOrderKindAttr 
 void AtomicWriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value address, ::mlir::Value value, ::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addOperands(address);
   odsState.addOperands(value);
+  if (hint_val) {
   odsState.addAttribute(hint_valAttrName(odsState.name), hint_val);
+  }
   if (memory_order_val) {
   odsState.addAttribute(memory_order_valAttrName(odsState.name), memory_order_val);
   }
@@ -1401,7 +1419,9 @@ void AtomicWriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState 
 void AtomicWriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value address, ::mlir::Value value, ::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addOperands(address);
   odsState.addOperands(value);
+  if (hint_val) {
   odsState.addAttribute(hint_valAttrName(odsState.name), hint_val);
+  }
   if (memory_order_val) {
   odsState.addAttribute(memory_order_valAttrName(odsState.name), memory_order_val);
   }
@@ -1473,11 +1493,11 @@ void AtomicWriteOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
 }
 
 ::mlir::ParseResult AtomicWriteOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType addressRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> addressOperands(addressRawOperands);  ::llvm::SMLoc addressOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand addressRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> addressOperands(addressRawOperands);  ::llvm::SMLoc addressOperandsLoc;
   (void)addressOperandsLoc;
-  ::mlir::OpAsmParser::OperandType valueRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand valueRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
   (void)valueOperandsLoc;
   ::mlir::IntegerAttr hint_valAttr;
   ::mlir::omp::ClauseMemoryOrderKindAttr memory_order_valAttr;
@@ -1506,7 +1526,6 @@ if (succeeded(parser.parseOptionalKeyword("hint"))) {
              "oilist directive";
   }
   hintClause = true;
-  result.addAttribute("hint", UnitAttr::get(parser.getContext()));
   if (parser.parseLParen())
     return ::mlir::failure();
   {
@@ -1524,7 +1543,6 @@ if (succeeded(parser.parseOptionalKeyword("hint"))) {
              "oilist directive";
   }
   memory_orderClause = true;
-  result.addAttribute("memory_order", UnitAttr::get(parser.getContext()));
   if (parser.parseLParen())
     return ::mlir::failure();
   {
@@ -1573,13 +1591,13 @@ void AtomicWriteOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
   _odsPrinter << value();
   _odsPrinter << ' ' << " ";
-  if ((*this)->hasAttrOfType<UnitAttr>("hint")) {
+  if (false || hint_valAttr()) {
   _odsPrinter << ' ' << "hint";
   _odsPrinter << "(";
   printSynchronizationHint(_odsPrinter, *this, hint_valAttr());
   _odsPrinter << ")";
   }
-  if ((*this)->hasAttrOfType<UnitAttr>("memory_order")) {
+  if (false || memory_order_valAttr()) {
   _odsPrinter << ' ' << "memory_order";
   _odsPrinter << "(";
   printClauseAttr(_odsPrinter, *this, memory_order_valAttr());
@@ -1603,12 +1621,12 @@ void AtomicWriteOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
    else
      _odsPrinter << type;
   }
-  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"hint", "memory_order", "hint_val", "memory_order_val"});
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"hint_val", "memory_order_val"});
 }
 
 } // namespace omp
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::AtomicWriteOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::AtomicWriteOp)
 
 namespace mlir {
 namespace omp {
@@ -1699,7 +1717,7 @@ void BarrierOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace omp
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::BarrierOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::BarrierOp)
 
 namespace mlir {
 namespace omp {
@@ -1823,12 +1841,16 @@ void CriticalDeclareOp::hint_valAttr(::mlir::IntegerAttr attr) {
 
 void CriticalDeclareOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::StringAttr sym_name, ::mlir::IntegerAttr hint_val) {
   odsState.addAttribute(sym_nameAttrName(odsState.name), sym_name);
+  if (hint_val) {
   odsState.addAttribute(hint_valAttrName(odsState.name), hint_val);
+  }
 }
 
 void CriticalDeclareOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::StringAttr sym_name, ::mlir::IntegerAttr hint_val) {
   odsState.addAttribute(sym_nameAttrName(odsState.name), sym_name);
+  if (hint_val) {
   odsState.addAttribute(hint_valAttrName(odsState.name), hint_val);
+  }
   assert(resultTypes.size() == 0u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -1892,7 +1914,6 @@ if (succeeded(parser.parseOptionalKeyword("hint"))) {
              "oilist directive";
   }
   hintClause = true;
-  result.addAttribute("hint", UnitAttr::get(parser.getContext()));
   if (parser.parseLParen())
     return ::mlir::failure();
   {
@@ -1915,18 +1936,18 @@ void CriticalDeclareOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
   _odsPrinter.printSymbolName(sym_nameAttr().getValue());
   _odsPrinter << ' ' << " ";
-  if ((*this)->hasAttrOfType<UnitAttr>("hint")) {
+  if (false || hint_valAttr()) {
   _odsPrinter << ' ' << "hint";
   _odsPrinter << "(";
   printSynchronizationHint(_odsPrinter, *this, hint_valAttr());
   _odsPrinter << ")";
   }
-  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"hint", "sym_name", "hint_val"});
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"sym_name", "hint_val"});
 }
 
 } // namespace omp
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::CriticalDeclareOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::CriticalDeclareOp)
 
 namespace mlir {
 namespace omp {
@@ -2069,9 +2090,7 @@ void CriticalOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::LogicalResult CriticalOp::verifyInvariants() {
-  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
-    return ::mlir::success();
-  return ::mlir::failure();
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult CriticalOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -2108,7 +2127,7 @@ void CriticalOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace omp
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::CriticalOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::CriticalOp)
 
 namespace mlir {
 namespace omp {
@@ -2234,7 +2253,7 @@ void FlushOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 ::mlir::ParseResult FlushOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> varListOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> varListOperands;
   ::llvm::SMLoc varListOperandsLoc;
   (void)varListOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> varListTypes;
@@ -2272,7 +2291,7 @@ void FlushOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace omp
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::FlushOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::FlushOp)
 
 namespace mlir {
 namespace omp {
@@ -2393,7 +2412,7 @@ void MasterOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace omp
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::MasterOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::MasterOp)
 
 namespace mlir {
 namespace omp {
@@ -2616,7 +2635,7 @@ void OrderedOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 
 ::mlir::ParseResult OrderedOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::omp::ClauseDependAttr depend_type_valAttr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> depend_vec_varsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> depend_vec_varsOperands;
   ::llvm::SMLoc depend_vec_varsOperandsLoc;
   (void)depend_vec_varsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> depend_vec_varsTypes;
@@ -2668,7 +2687,7 @@ _odsPrinter.printStrippedAttrOrType(depend_type_valAttr());
 
 } // namespace omp
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::OrderedOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::OrderedOp)
 
 namespace mlir {
 namespace omp {
@@ -2857,7 +2876,7 @@ void OrderedRegionOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace omp
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::OrderedRegionOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::OrderedRegionOp)
 
 namespace mlir {
 namespace omp {
@@ -2912,8 +2931,23 @@ std::pair<unsigned, unsigned> ParallelOpAdaptor::getODSOperandIndexAndLength(uns
   return getODSOperands(3);
 }
 
+::mlir::ValueRange ParallelOpAdaptor::reduction_vars() {
+  return getODSOperands(4);
+}
+
 ::mlir::DictionaryAttr ParallelOpAdaptor::getAttributes() {
   return odsAttrs;
+}
+
+::mlir::ArrayAttr ParallelOpAdaptor::reductionsAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  ::mlir::ArrayAttr attr = odsAttrs.get("reductions").dyn_cast_or_null<::mlir::ArrayAttr>();
+  return attr;
+}
+
+::llvm::Optional< ::mlir::ArrayAttr > ParallelOpAdaptor::reductions() {
+  auto attr = reductionsAttr();
+  return attr ? ::llvm::Optional< ::mlir::ArrayAttr >(attr) : (::llvm::None);
 }
 
 ::mlir::omp::ClauseProcBindKindAttr ParallelOpAdaptor::proc_bind_valAttr() {
@@ -2942,11 +2976,16 @@ std::pair<unsigned, unsigned> ParallelOpAdaptor::getODSOperandIndexAndLength(uns
       return emitError(loc, "'omp.parallel' op ""missing segment sizes attribute 'operand_segment_sizes'");
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
-    if (numElements != 4)
-      return emitError(loc, "'omp.parallel' op ""'operand_segment_sizes' attribute for specifying operand segments must have 4 "
+    if (numElements != 5)
+      return emitError(loc, "'omp.parallel' op ""'operand_segment_sizes' attribute for specifying operand segments must have 5 "
                 "elements, but got ") << numElements;
   }
     {
+    auto tblgen_reductions = odsAttrs.get("reductions");
+    if (tblgen_reductions && !(((tblgen_reductions.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_reductions.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && ((attr.isa<::mlir::SymbolRefAttr>())); }))))
+      return emitError(loc, "'omp.parallel' op ""attribute 'reductions' failed to satisfy constraint: symbol ref array attribute");
+  }
+  {
     auto tblgen_proc_bind_val = odsAttrs.get("proc_bind_val");
     if (tblgen_proc_bind_val && !((tblgen_proc_bind_val.isa<::mlir::omp::ClauseProcBindKindAttr>())))
       return emitError(loc, "'omp.parallel' op ""attribute 'proc_bind_val' failed to satisfy constraint: ProcBindKind Clause");
@@ -2992,6 +3031,10 @@ std::pair<unsigned, unsigned> ParallelOp::getODSOperandIndexAndLength(unsigned i
   return getODSOperands(3);
 }
 
+::mlir::Operation::operand_range ParallelOp::reduction_vars() {
+  return getODSOperands(4);
+}
+
 ::mlir::MutableOperandRange ParallelOp::if_expr_varMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
@@ -3016,6 +3059,12 @@ std::pair<unsigned, unsigned> ParallelOp::getODSOperandIndexAndLength(unsigned i
   return mutableRange;
 }
 
+::mlir::MutableOperandRange ParallelOp::reduction_varsMutable() {
+  auto range = getODSOperandIndexAndLength(4);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(4u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  return mutableRange;
+}
+
 std::pair<unsigned, unsigned> ParallelOp::getODSResultIndexAndLength(unsigned index) {
   return {index, 1};
 }
@@ -3030,6 +3079,15 @@ std::pair<unsigned, unsigned> ParallelOp::getODSResultIndexAndLength(unsigned in
   return (*this)->getRegion(0);
 }
 
+::mlir::ArrayAttr ParallelOp::reductionsAttr() {
+  return (*this)->getAttr(reductionsAttrName()).dyn_cast_or_null<::mlir::ArrayAttr>();
+}
+
+::llvm::Optional< ::mlir::ArrayAttr > ParallelOp::reductions() {
+  auto attr = reductionsAttr();
+  return attr ? ::llvm::Optional< ::mlir::ArrayAttr >(attr) : (::llvm::None);
+}
+
 ::mlir::omp::ClauseProcBindKindAttr ParallelOp::proc_bind_valAttr() {
   return (*this)->getAttr(proc_bind_valAttrName()).dyn_cast_or_null<::mlir::omp::ClauseProcBindKindAttr>();
 }
@@ -3039,36 +3097,52 @@ std::pair<unsigned, unsigned> ParallelOp::getODSResultIndexAndLength(unsigned in
   return attr ? ::llvm::Optional<::mlir::omp::ClauseProcBindKind>(attr.getValue()) : (::llvm::None);
 }
 
+void ParallelOp::reductionsAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(reductionsAttrName(), attr);
+}
+
 void ParallelOp::proc_bind_valAttr(::mlir::omp::ClauseProcBindKindAttr attr) {
   (*this)->setAttr(proc_bind_valAttrName(), attr);
+}
+
+::mlir::Attribute ParallelOp::removeReductionsAttr() {
+  return (*this)->removeAttr(reductionsAttrName());
 }
 
 ::mlir::Attribute ParallelOp::removeProc_bind_valAttr() {
   return (*this)->removeAttr(proc_bind_valAttrName());
 }
 
-void ParallelOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, /*optional*/::mlir::Value if_expr_var, /*optional*/::mlir::Value num_threads_var, ::mlir::ValueRange allocate_vars, ::mlir::ValueRange allocators_vars, /*optional*/::mlir::omp::ClauseProcBindKindAttr proc_bind_val) {
+void ParallelOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, /*optional*/::mlir::Value if_expr_var, /*optional*/::mlir::Value num_threads_var, ::mlir::ValueRange allocate_vars, ::mlir::ValueRange allocators_vars, ::mlir::ValueRange reduction_vars, /*optional*/::mlir::ArrayAttr reductions, /*optional*/::mlir::omp::ClauseProcBindKindAttr proc_bind_val) {
   if (if_expr_var)
     odsState.addOperands(if_expr_var);
   if (num_threads_var)
     odsState.addOperands(num_threads_var);
   odsState.addOperands(allocate_vars);
   odsState.addOperands(allocators_vars);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(if_expr_var ? 1 : 0), (num_threads_var ? 1 : 0), static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
+  odsState.addOperands(reduction_vars);
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(if_expr_var ? 1 : 0), (num_threads_var ? 1 : 0), static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size()), static_cast<int32_t>(reduction_vars.size())}));
+  if (reductions) {
+  odsState.addAttribute(reductionsAttrName(odsState.name), reductions);
+  }
   if (proc_bind_val) {
   odsState.addAttribute(proc_bind_valAttrName(odsState.name), proc_bind_val);
   }
   (void)odsState.addRegion();
 }
 
-void ParallelOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, /*optional*/::mlir::Value if_expr_var, /*optional*/::mlir::Value num_threads_var, ::mlir::ValueRange allocate_vars, ::mlir::ValueRange allocators_vars, /*optional*/::mlir::omp::ClauseProcBindKindAttr proc_bind_val) {
+void ParallelOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, /*optional*/::mlir::Value if_expr_var, /*optional*/::mlir::Value num_threads_var, ::mlir::ValueRange allocate_vars, ::mlir::ValueRange allocators_vars, ::mlir::ValueRange reduction_vars, /*optional*/::mlir::ArrayAttr reductions, /*optional*/::mlir::omp::ClauseProcBindKindAttr proc_bind_val) {
   if (if_expr_var)
     odsState.addOperands(if_expr_var);
   if (num_threads_var)
     odsState.addOperands(num_threads_var);
   odsState.addOperands(allocate_vars);
   odsState.addOperands(allocators_vars);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(if_expr_var ? 1 : 0), (num_threads_var ? 1 : 0), static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
+  odsState.addOperands(reduction_vars);
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(if_expr_var ? 1 : 0), (num_threads_var ? 1 : 0), static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size()), static_cast<int32_t>(reduction_vars.size())}));
+  if (reductions) {
+  odsState.addAttribute(reductionsAttrName(odsState.name), reductions);
+  }
   if (proc_bind_val) {
   odsState.addAttribute(proc_bind_valAttrName(odsState.name), proc_bind_val);
   }
@@ -3093,13 +3167,18 @@ void ParallelOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
       return emitOpError("missing segment sizes attribute 'operand_segment_sizes'");
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
-    if (numElements != 4)
-      return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 4 "
+    if (numElements != 5)
+      return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 5 "
                 "elements, but got ") << numElements;
   }
     {
+    auto tblgen_reductions = (*this)->getAttr(reductionsAttrName());
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps7(*this, tblgen_reductions, "reductions")))
+      return ::mlir::failure();
+  }
+  {
     auto tblgen_proc_bind_val = (*this)->getAttr(proc_bind_valAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps7(*this, tblgen_proc_bind_val, "proc_bind_val")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps8(*this, tblgen_proc_bind_val, "proc_bind_val")))
       return ::mlir::failure();
   }
   {
@@ -3138,6 +3217,12 @@ void ParallelOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
       if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps1(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
+    auto valueGroup4 = getODSOperands(4);
+
+    for (auto v : valueGroup4) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
   }
   {
     unsigned index = 0; (void)index;
@@ -3156,30 +3241,55 @@ void ParallelOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::ParseResult ParallelOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> if_expr_varOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> reduction_varsOperands;
+  ::llvm::SMLoc reduction_varsOperandsLoc;
+  (void)reduction_varsOperandsLoc;
+  ::mlir::SmallVector<::mlir::Type, 1> reduction_varsTypes;
+  ::mlir::ArrayAttr reductionsAttr;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> if_expr_varOperands;
   ::llvm::SMLoc if_expr_varOperandsLoc;
   (void)if_expr_varOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> if_expr_varTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> num_threads_varOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> num_threads_varOperands;
   ::llvm::SMLoc num_threads_varOperandsLoc;
   (void)num_threads_varOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> num_threads_varTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allocate_varsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allocate_varsOperands;
   ::llvm::SMLoc allocate_varsOperandsLoc;
   (void)allocate_varsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> allocate_varsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allocators_varsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allocators_varsOperands;
   ::llvm::SMLoc allocators_varsOperandsLoc;
   (void)allocators_varsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> allocators_varsTypes;
   ::mlir::omp::ClauseProcBindKindAttr proc_bind_valAttr;
   std::unique_ptr<::mlir::Region> regionRegion = std::make_unique<::mlir::Region>();
+  bool reductionClause = false;
   bool ifClause = false;
   bool num_threadsClause = false;
   bool allocateClause = false;
   bool proc_bindClause = false;
   while(true) {
-if (succeeded(parser.parseOptionalKeyword("if"))) {
+if (succeeded(parser.parseOptionalKeyword("reduction"))) {
+
+  if (reductionClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`reduction` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  reductionClause = true;
+  if (parser.parseLParen())
+    return ::mlir::failure();
+  {
+    reduction_varsOperandsLoc = parser.getCurrentLocation();
+    if (parseReductionVarList(parser, reduction_varsOperands, reduction_varsTypes, reductionsAttr))
+      return ::mlir::failure();
+    if (reductionsAttr)
+      result.addAttribute("reductions", reductionsAttr);
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else if (succeeded(parser.parseOptionalKeyword("if"))) {
 
   if (ifClause) {
     return parser.emitError(parser.getNameLoc())
@@ -3187,13 +3297,12 @@ if (succeeded(parser.parseOptionalKeyword("if"))) {
              "oilist directive";
   }
   ifClause = true;
-  result.addAttribute("if", UnitAttr::get(parser.getContext()));
   if (parser.parseLParen())
     return ::mlir::failure();
 
   {
     if_expr_varOperandsLoc = parser.getCurrentLocation();
-    ::mlir::OpAsmParser::OperandType operand;
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
     if (parseResult.hasValue()) {
@@ -3225,13 +3334,12 @@ if (succeeded(parser.parseOptionalKeyword("if"))) {
              "oilist directive";
   }
   num_threadsClause = true;
-  result.addAttribute("num_threads", UnitAttr::get(parser.getContext()));
   if (parser.parseLParen())
     return ::mlir::failure();
 
   {
     num_threads_varOperandsLoc = parser.getCurrentLocation();
-    ::mlir::OpAsmParser::OperandType operand;
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
     if (parseResult.hasValue()) {
@@ -3263,7 +3371,6 @@ if (succeeded(parser.parseOptionalKeyword("if"))) {
              "oilist directive";
   }
   allocateClause = true;
-  result.addAttribute("allocate", UnitAttr::get(parser.getContext()));
   if (parser.parseLParen())
     return ::mlir::failure();
   {
@@ -3282,7 +3389,6 @@ if (succeeded(parser.parseOptionalKeyword("if"))) {
              "oilist directive";
   }
   proc_bindClause = true;
-  result.addAttribute("proc_bind", UnitAttr::get(parser.getContext()));
   if (parser.parseLParen())
     return ::mlir::failure();
   {
@@ -3303,7 +3409,7 @@ if (succeeded(parser.parseOptionalKeyword("if"))) {
   if (parser.parseOptionalAttrDict(result.attributes))
     return ::mlir::failure();
   result.addRegion(std::move(regionRegion));
-  result.addAttribute("operand_segment_sizes", parser.getBuilder().getI32VectorAttr({static_cast<int32_t>(if_expr_varOperands.size()), static_cast<int32_t>(num_threads_varOperands.size()), static_cast<int32_t>(allocate_varsOperands.size()), static_cast<int32_t>(allocators_varsOperands.size())}));
+  result.addAttribute("operand_segment_sizes", parser.getBuilder().getI32VectorAttr({static_cast<int32_t>(if_expr_varOperands.size()), static_cast<int32_t>(num_threads_varOperands.size()), static_cast<int32_t>(allocate_varsOperands.size()), static_cast<int32_t>(allocators_varsOperands.size()), static_cast<int32_t>(reduction_varsOperands.size())}));
   if (parser.resolveOperands(if_expr_varOperands, if_expr_varTypes, if_expr_varOperandsLoc, result.operands))
     return ::mlir::failure();
   if (parser.resolveOperands(num_threads_varOperands, num_threads_varTypes, num_threads_varOperandsLoc, result.operands))
@@ -3312,12 +3418,20 @@ if (succeeded(parser.parseOptionalKeyword("if"))) {
     return ::mlir::failure();
   if (parser.resolveOperands(allocators_varsOperands, allocators_varsTypes, allocators_varsOperandsLoc, result.operands))
     return ::mlir::failure();
+  if (parser.resolveOperands(reduction_varsOperands, reduction_varsTypes, reduction_varsOperandsLoc, result.operands))
+    return ::mlir::failure();
   return ::mlir::success();
 }
 
 void ParallelOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << " ";
-  if ((*this)->hasAttrOfType<UnitAttr>("if")) {
+  if (false || reduction_vars().size() || reductionsAttr()) {
+  _odsPrinter << ' ' << "reduction";
+  _odsPrinter << "(";
+  printReductionVarList(_odsPrinter, *this, reduction_vars(), reduction_vars().getTypes(), reductionsAttr());
+  _odsPrinter << ")";
+  }
+  if (false || if_expr_var()) {
   _odsPrinter << ' ' << "if";
   _odsPrinter << "(";
   if (::mlir::Value value = if_expr_var())
@@ -3327,7 +3441,7 @@ void ParallelOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << (if_expr_var() ? ::llvm::ArrayRef<::mlir::Type>(if_expr_var().getType()) : ::llvm::ArrayRef<::mlir::Type>());
   _odsPrinter << ")";
   }
-  if ((*this)->hasAttrOfType<UnitAttr>("num_threads")) {
+  if (false || num_threads_var()) {
   _odsPrinter << ' ' << "num_threads";
   _odsPrinter << "(";
   if (::mlir::Value value = num_threads_var())
@@ -3337,13 +3451,13 @@ void ParallelOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << (num_threads_var() ? ::llvm::ArrayRef<::mlir::Type>(num_threads_var().getType()) : ::llvm::ArrayRef<::mlir::Type>());
   _odsPrinter << ")";
   }
-  if ((*this)->hasAttrOfType<UnitAttr>("allocate")) {
+  if (false || allocate_vars().size() || allocators_vars().size()) {
   _odsPrinter << ' ' << "allocate";
   _odsPrinter << "(";
   printAllocateAndAllocator(_odsPrinter, *this, allocate_vars(), allocate_vars().getTypes(), allocators_vars(), allocators_vars().getTypes());
   _odsPrinter << ")";
   }
-  if ((*this)->hasAttrOfType<UnitAttr>("proc_bind")) {
+  if (false || proc_bind_valAttr()) {
   _odsPrinter << ' ' << "proc_bind";
   _odsPrinter << "(";
   printClauseAttr(_odsPrinter, *this, proc_bind_valAttr());
@@ -3351,12 +3465,12 @@ void ParallelOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
   _odsPrinter << ' ';
   _odsPrinter.printRegion(region());
-  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"operand_segment_sizes", "proc_bind", "allocate", "num_threads", "if", "proc_bind_val"});
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"operand_segment_sizes", "reductions", "proc_bind_val"});
 }
 
 } // namespace omp
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::ParallelOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::ParallelOp)
 
 namespace mlir {
 namespace omp {
@@ -3563,7 +3677,7 @@ void ReductionDeclareOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsS
     if (!tblgen_type)
       return emitOpError("requires attribute 'type'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps8(*this, tblgen_type, "type")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps9(*this, tblgen_type, "type")))
       return ::mlir::failure();
   }
   {
@@ -3585,9 +3699,7 @@ void ReductionDeclareOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsS
 }
 
 ::mlir::LogicalResult ReductionDeclareOp::verifyInvariants() {
-  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
-    return ::mlir::success();
-  return ::mlir::failure();
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult ReductionDeclareOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -3647,7 +3759,7 @@ void ReductionDeclareOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace omp
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::ReductionDeclareOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::ReductionDeclareOp)
 
 namespace mlir {
 namespace omp {
@@ -3778,11 +3890,11 @@ void ReductionOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 }
 
 ::mlir::ParseResult ReductionOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
-  ::mlir::OpAsmParser::OperandType accumulatorRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> accumulatorOperands(accumulatorRawOperands);  ::llvm::SMLoc accumulatorOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand accumulatorRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> accumulatorOperands(accumulatorRawOperands);  ::llvm::SMLoc accumulatorOperandsLoc;
   (void)accumulatorOperandsLoc;
   ::mlir::Type accumulatorRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> accumulatorTypes(accumulatorRawTypes);
@@ -3840,7 +3952,7 @@ void ReductionOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace omp
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::ReductionOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::ReductionOp)
 
 namespace mlir {
 namespace omp {
@@ -3961,7 +4073,7 @@ void SectionOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace omp
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::SectionOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::SectionOp)
 
 namespace mlir {
 namespace omp {
@@ -4057,7 +4169,7 @@ bool SectionsOpAdaptor::nowait() {
   }
     {
     auto tblgen_reductions = odsAttrs.get("reductions");
-    if (tblgen_reductions && !(((tblgen_reductions.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_reductions.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return (attr.isa<::mlir::SymbolRefAttr>()); }))))
+    if (tblgen_reductions && !(((tblgen_reductions.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_reductions.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && ((attr.isa<::mlir::SymbolRefAttr>())); }))))
       return emitError(loc, "'omp.sections' op ""attribute 'reductions' failed to satisfy constraint: symbol ref array attribute");
   }
   {
@@ -4248,7 +4360,7 @@ void SectionsOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   }
     {
     auto tblgen_reductions = (*this)->getAttr(reductionsAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps9(*this, tblgen_reductions, "reductions")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps7(*this, tblgen_reductions, "reductions")))
       return ::mlir::failure();
   }
   {
@@ -4294,16 +4406,16 @@ void SectionsOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::ParseResult SectionsOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> reduction_varsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> reduction_varsOperands;
   ::llvm::SMLoc reduction_varsOperandsLoc;
   (void)reduction_varsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> reduction_varsTypes;
   ::mlir::ArrayAttr reductionsAttr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allocate_varsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allocate_varsOperands;
   ::llvm::SMLoc allocate_varsOperandsLoc;
   (void)allocate_varsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> allocate_varsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allocators_varsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allocators_varsOperands;
   ::llvm::SMLoc allocators_varsOperandsLoc;
   (void)allocators_varsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> allocators_varsTypes;
@@ -4320,7 +4432,6 @@ if (succeeded(parser.parseOptionalKeyword("reduction"))) {
              "oilist directive";
   }
   reductionClause = true;
-  result.addAttribute("reduction", UnitAttr::get(parser.getContext()));
   if (parser.parseLParen())
     return ::mlir::failure();
   {
@@ -4340,7 +4451,6 @@ if (succeeded(parser.parseOptionalKeyword("reduction"))) {
              "oilist directive";
   }
   allocateClause = true;
-  result.addAttribute("allocate", UnitAttr::get(parser.getContext()));
   if (parser.parseLParen())
     return ::mlir::failure();
   {
@@ -4382,29 +4492,581 @@ if (succeeded(parser.parseOptionalKeyword("reduction"))) {
 
 void SectionsOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << " ";
-  if ((*this)->hasAttrOfType<UnitAttr>("reduction")) {
+  if (false || reduction_vars().size() || reductionsAttr()) {
   _odsPrinter << ' ' << "reduction";
   _odsPrinter << "(";
   printReductionVarList(_odsPrinter, *this, reduction_vars(), reduction_vars().getTypes(), reductionsAttr());
   _odsPrinter << ")";
   }
-  if ((*this)->hasAttrOfType<UnitAttr>("allocate")) {
+  if (false || allocate_vars().size() || allocators_vars().size()) {
   _odsPrinter << ' ' << "allocate";
   _odsPrinter << "(";
   printAllocateAndAllocator(_odsPrinter, *this, allocate_vars(), allocate_vars().getTypes(), allocators_vars(), allocators_vars().getTypes());
   _odsPrinter << ")";
   }
-  if ((*this)->hasAttrOfType<UnitAttr>("nowait")) {
+  if (false || nowaitAttr()) {
   _odsPrinter << ' ' << "nowait";
   }
   _odsPrinter << ' ';
   _odsPrinter.printRegion(region());
-  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"operand_segment_sizes", "nowait", "allocate", "reduction", "reductions"});
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"operand_segment_sizes", "reductions", "nowait"});
 }
 
 } // namespace omp
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::SectionsOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::SectionsOp)
+
+namespace mlir {
+namespace omp {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::omp::SimdLoopOp definitions
+//===----------------------------------------------------------------------===//
+
+SimdLoopOpAdaptor::SimdLoopOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+
+SimdLoopOpAdaptor::SimdLoopOpAdaptor(SimdLoopOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+
+::mlir::ValueRange SimdLoopOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> SimdLoopOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  assert(odsAttrs && "missing segment size attribute for op");
+  auto sizeAttr = odsAttrs.get("operand_segment_sizes").cast<::mlir::DenseIntElementsAttr>();
+
+  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
+  if (sizeAttr.isSplat())
+    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+
+  unsigned start = 0;
+  for (unsigned i = 0; i < index; ++i)
+    start += sizeAttrValueIt[i];
+  return {start, sizeAttrValueIt[index]};
+}
+
+::mlir::ValueRange SimdLoopOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::ValueRange SimdLoopOpAdaptor::lowerBound() {
+  return getODSOperands(0);
+}
+
+::mlir::ValueRange SimdLoopOpAdaptor::upperBound() {
+  return getODSOperands(1);
+}
+
+::mlir::ValueRange SimdLoopOpAdaptor::step() {
+  return getODSOperands(2);
+}
+
+::mlir::DictionaryAttr SimdLoopOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::RegionRange SimdLoopOpAdaptor::getRegions() {
+  return odsRegions;
+}
+
+::mlir::Region &SimdLoopOpAdaptor::region() {
+  return *odsRegions[0];
+}
+
+::mlir::LogicalResult SimdLoopOpAdaptor::verify(::mlir::Location loc) {
+  {
+    auto sizeAttr = odsAttrs.get("operand_segment_sizes").dyn_cast<::mlir::DenseIntElementsAttr>();
+    if (!sizeAttr)
+      return emitError(loc, "'omp.simdloop' op ""missing segment sizes attribute 'operand_segment_sizes'");
+    auto numElements =
+        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    if (numElements != 3)
+      return emitError(loc, "'omp.simdloop' op ""'operand_segment_sizes' attribute for specifying operand segments must have 3 "
+                "elements, but got ") << numElements;
+  }
+    return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> SimdLoopOp::getODSOperandIndexAndLength(unsigned index) {
+  auto sizeAttr =
+      (*this)->getAttr(operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
+
+  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
+  if (sizeAttr.isSplat())
+    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+
+  unsigned start = 0;
+  for (unsigned i = 0; i < index; ++i)
+    start += sizeAttrValueIt[i];
+  return {start, sizeAttrValueIt[index]};
+}
+
+::mlir::Operation::operand_range SimdLoopOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Operation::operand_range SimdLoopOp::lowerBound() {
+  return getODSOperands(0);
+}
+
+::mlir::Operation::operand_range SimdLoopOp::upperBound() {
+  return getODSOperands(1);
+}
+
+::mlir::Operation::operand_range SimdLoopOp::step() {
+  return getODSOperands(2);
+}
+
+::mlir::MutableOperandRange SimdLoopOp::lowerBoundMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange SimdLoopOp::upperBoundMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange SimdLoopOp::stepMutable() {
+  auto range = getODSOperandIndexAndLength(2);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> SimdLoopOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range SimdLoopOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Region &SimdLoopOp::region() {
+  return (*this)->getRegion(0);
+}
+
+void SimdLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange lowerBound, ::mlir::ValueRange upperBound, ::mlir::ValueRange step) {
+  odsState.addOperands(lowerBound);
+  odsState.addOperands(upperBound);
+  odsState.addOperands(step);
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(lowerBound.size()), static_cast<int32_t>(upperBound.size()), static_cast<int32_t>(step.size())}));
+  (void)odsState.addRegion();
+}
+
+void SimdLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange lowerBound, ::mlir::ValueRange upperBound, ::mlir::ValueRange step) {
+  odsState.addOperands(lowerBound);
+  odsState.addOperands(upperBound);
+  odsState.addOperands(step);
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(lowerBound.size()), static_cast<int32_t>(upperBound.size()), static_cast<int32_t>(step.size())}));
+  (void)odsState.addRegion();
+  assert(resultTypes.size() == 0u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void SimdLoopOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  for (unsigned i = 0; i != 1; ++i)
+    (void)odsState.addRegion();
+  assert(resultTypes.size() == 0u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult SimdLoopOp::verifyInvariantsImpl() {
+  {
+    auto sizeAttr = (*this)->getAttr(operand_segment_sizesAttrName()).dyn_cast<::mlir::DenseIntElementsAttr>();
+    if (!sizeAttr)
+      return emitOpError("missing segment sizes attribute 'operand_segment_sizes'");
+    auto numElements =
+        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    if (numElements != 3)
+      return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 3 "
+                "elements, but got ") << numElements;
+  }
+    {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps2(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps2(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup2 = getODSOperands(2);
+
+    for (auto v : valueGroup2) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps2(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  if (!((::llvm::is_splat(::llvm::makeArrayRef({this->getODSOperands(0).getType(), this->getODSOperands(1).getType(), this->getODSOperands(2).getType()})))))
+    return emitOpError("failed to verify that all of {lowerBound, upperBound, step} have same type");
+  {
+    unsigned index = 0; (void)index;
+
+    for (auto &region : ::llvm::makeMutableArrayRef((*this)->getRegion(0)))
+      if (::mlir::failed(__mlir_ods_local_region_constraint_OpenMPOps1(*this, region, "region", index++)))
+        return ::mlir::failure();
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult SimdLoopOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
+}
+
+} // namespace omp
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::SimdLoopOp)
+
+namespace mlir {
+namespace omp {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::omp::SingleOp definitions
+//===----------------------------------------------------------------------===//
+
+SingleOpAdaptor::SingleOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+
+SingleOpAdaptor::SingleOpAdaptor(SingleOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+
+::mlir::ValueRange SingleOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> SingleOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  assert(odsAttrs && "missing segment size attribute for op");
+  auto sizeAttr = odsAttrs.get("operand_segment_sizes").cast<::mlir::DenseIntElementsAttr>();
+
+  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
+  if (sizeAttr.isSplat())
+    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+
+  unsigned start = 0;
+  for (unsigned i = 0; i < index; ++i)
+    start += sizeAttrValueIt[i];
+  return {start, sizeAttrValueIt[index]};
+}
+
+::mlir::ValueRange SingleOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::ValueRange SingleOpAdaptor::allocate_vars() {
+  return getODSOperands(0);
+}
+
+::mlir::ValueRange SingleOpAdaptor::allocators_vars() {
+  return getODSOperands(1);
+}
+
+::mlir::DictionaryAttr SingleOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::UnitAttr SingleOpAdaptor::nowaitAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  ::mlir::UnitAttr attr = odsAttrs.get("nowait").dyn_cast_or_null<::mlir::UnitAttr>();
+  return attr;
+}
+
+bool SingleOpAdaptor::nowait() {
+  auto attr = nowaitAttr();
+  return attr != nullptr;
+}
+
+::mlir::RegionRange SingleOpAdaptor::getRegions() {
+  return odsRegions;
+}
+
+::mlir::Region &SingleOpAdaptor::region() {
+  return *odsRegions[0];
+}
+
+::mlir::LogicalResult SingleOpAdaptor::verify(::mlir::Location loc) {
+  {
+    auto sizeAttr = odsAttrs.get("operand_segment_sizes").dyn_cast<::mlir::DenseIntElementsAttr>();
+    if (!sizeAttr)
+      return emitError(loc, "'omp.single' op ""missing segment sizes attribute 'operand_segment_sizes'");
+    auto numElements =
+        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    if (numElements != 2)
+      return emitError(loc, "'omp.single' op ""'operand_segment_sizes' attribute for specifying operand segments must have 2 "
+                "elements, but got ") << numElements;
+  }
+    {
+    auto tblgen_nowait = odsAttrs.get("nowait");
+    if (tblgen_nowait && !((tblgen_nowait.isa<::mlir::UnitAttr>())))
+      return emitError(loc, "'omp.single' op ""attribute 'nowait' failed to satisfy constraint: unit attribute");
+  }
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> SingleOp::getODSOperandIndexAndLength(unsigned index) {
+  auto sizeAttr =
+      (*this)->getAttr(operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
+
+  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
+  if (sizeAttr.isSplat())
+    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+
+  unsigned start = 0;
+  for (unsigned i = 0; i < index; ++i)
+    start += sizeAttrValueIt[i];
+  return {start, sizeAttrValueIt[index]};
+}
+
+::mlir::Operation::operand_range SingleOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Operation::operand_range SingleOp::allocate_vars() {
+  return getODSOperands(0);
+}
+
+::mlir::Operation::operand_range SingleOp::allocators_vars() {
+  return getODSOperands(1);
+}
+
+::mlir::MutableOperandRange SingleOp::allocate_varsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange SingleOp::allocators_varsMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> SingleOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range SingleOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Region &SingleOp::region() {
+  return (*this)->getRegion(0);
+}
+
+::mlir::UnitAttr SingleOp::nowaitAttr() {
+  return (*this)->getAttr(nowaitAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+}
+
+bool SingleOp::nowait() {
+  auto attr = nowaitAttr();
+  return attr != nullptr;
+}
+
+void SingleOp::nowaitAttr(::mlir::UnitAttr attr) {
+  (*this)->setAttr(nowaitAttrName(), attr);
+}
+
+::mlir::Attribute SingleOp::removeNowaitAttr() {
+  return (*this)->removeAttr(nowaitAttrName());
+}
+
+void SingleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange allocate_vars, ::mlir::ValueRange allocators_vars, /*optional*/::mlir::UnitAttr nowait) {
+  odsState.addOperands(allocate_vars);
+  odsState.addOperands(allocators_vars);
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
+  if (nowait) {
+  odsState.addAttribute(nowaitAttrName(odsState.name), nowait);
+  }
+  (void)odsState.addRegion();
+}
+
+void SingleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange allocate_vars, ::mlir::ValueRange allocators_vars, /*optional*/::mlir::UnitAttr nowait) {
+  odsState.addOperands(allocate_vars);
+  odsState.addOperands(allocators_vars);
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
+  if (nowait) {
+  odsState.addAttribute(nowaitAttrName(odsState.name), nowait);
+  }
+  (void)odsState.addRegion();
+  assert(resultTypes.size() == 0u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void SingleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange allocate_vars, ::mlir::ValueRange allocators_vars, /*optional*/bool nowait) {
+  odsState.addOperands(allocate_vars);
+  odsState.addOperands(allocators_vars);
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
+  if (nowait) {
+  odsState.addAttribute(nowaitAttrName(odsState.name), odsBuilder.getUnitAttr());
+  }
+  (void)odsState.addRegion();
+}
+
+void SingleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange allocate_vars, ::mlir::ValueRange allocators_vars, /*optional*/bool nowait) {
+  odsState.addOperands(allocate_vars);
+  odsState.addOperands(allocators_vars);
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
+  if (nowait) {
+  odsState.addAttribute(nowaitAttrName(odsState.name), odsBuilder.getUnitAttr());
+  }
+  (void)odsState.addRegion();
+  assert(resultTypes.size() == 0u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void SingleOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  for (unsigned i = 0; i != 1; ++i)
+    (void)odsState.addRegion();
+  assert(resultTypes.size() == 0u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult SingleOp::verifyInvariantsImpl() {
+  {
+    auto sizeAttr = (*this)->getAttr(operand_segment_sizesAttrName()).dyn_cast<::mlir::DenseIntElementsAttr>();
+    if (!sizeAttr)
+      return emitOpError("missing segment sizes attribute 'operand_segment_sizes'");
+    auto numElements =
+        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    if (numElements != 2)
+      return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 2 "
+                "elements, but got ") << numElements;
+  }
+    {
+    auto tblgen_nowait = (*this)->getAttr(nowaitAttrName());
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps6(*this, tblgen_nowait, "nowait")))
+      return ::mlir::failure();
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps1(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps1(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+
+    for (auto &region : ::llvm::makeMutableArrayRef((*this)->getRegion(0)))
+      if (::mlir::failed(__mlir_ods_local_region_constraint_OpenMPOps0(*this, region, "region", index++)))
+        return ::mlir::failure();
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult SingleOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
+}
+
+::mlir::ParseResult SingleOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allocate_varsOperands;
+  ::llvm::SMLoc allocate_varsOperandsLoc;
+  (void)allocate_varsOperandsLoc;
+  ::mlir::SmallVector<::mlir::Type, 1> allocate_varsTypes;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allocators_varsOperands;
+  ::llvm::SMLoc allocators_varsOperandsLoc;
+  (void)allocators_varsOperandsLoc;
+  ::mlir::SmallVector<::mlir::Type, 1> allocators_varsTypes;
+  std::unique_ptr<::mlir::Region> regionRegion = std::make_unique<::mlir::Region>();
+  bool allocateClause = false;
+  bool nowaitClause = false;
+  while(true) {
+if (succeeded(parser.parseOptionalKeyword("allocate"))) {
+
+  if (allocateClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`allocate` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  allocateClause = true;
+  if (parser.parseLParen())
+    return ::mlir::failure();
+  {
+    allocate_varsOperandsLoc = parser.getCurrentLocation();
+    allocators_varsOperandsLoc = parser.getCurrentLocation();
+    if (parseAllocateAndAllocator(parser, allocate_varsOperands, allocate_varsTypes, allocators_varsOperands, allocators_varsTypes))
+      return ::mlir::failure();
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else if (succeeded(parser.parseOptionalKeyword("nowait"))) {
+
+  if (nowaitClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`nowait` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  nowaitClause = true;
+  result.addAttribute("nowait", UnitAttr::get(parser.getContext()));
+    } else  {
+    break;
+  }
+}
+
+  if (parser.parseRegion(*regionRegion))
+    return ::mlir::failure();
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  result.addRegion(std::move(regionRegion));
+  result.addAttribute("operand_segment_sizes", parser.getBuilder().getI32VectorAttr({static_cast<int32_t>(allocate_varsOperands.size()), static_cast<int32_t>(allocators_varsOperands.size())}));
+  if (parser.resolveOperands(allocate_varsOperands, allocate_varsTypes, allocate_varsOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(allocators_varsOperands, allocators_varsTypes, allocators_varsOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void SingleOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ' << " ";
+  if (false || allocate_vars().size() || allocators_vars().size()) {
+  _odsPrinter << ' ' << "allocate";
+  _odsPrinter << "(";
+  printAllocateAndAllocator(_odsPrinter, *this, allocate_vars(), allocate_vars().getTypes(), allocators_vars(), allocators_vars().getTypes());
+  _odsPrinter << ")";
+  }
+  if (false || nowaitAttr()) {
+  _odsPrinter << ' ' << "nowait";
+  }
+  _odsPrinter << ' ';
+  _odsPrinter.printRegion(region());
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"operand_segment_sizes", "nowait"});
+}
+
+} // namespace omp
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::SingleOp)
 
 namespace mlir {
 namespace omp {
@@ -4677,7 +5339,7 @@ void TargetOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
     }
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps2(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps3(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
@@ -4688,7 +5350,7 @@ void TargetOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
     }
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps3(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps4(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup2 = getODSOperands(2);
@@ -4699,7 +5361,7 @@ void TargetOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
     }
 
     for (auto v : valueGroup2) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps3(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps4(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -4718,14 +5380,14 @@ void TargetOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::ParseResult TargetOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> if_exprOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> if_exprOperands;
   ::llvm::SMLoc if_exprOperandsLoc;
   (void)if_exprOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> deviceOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> deviceOperands;
   ::llvm::SMLoc deviceOperandsLoc;
   (void)deviceOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> deviceTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> thread_limitOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> thread_limitOperands;
   ::llvm::SMLoc thread_limitOperandsLoc;
   (void)thread_limitOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> thread_limitTypes;
@@ -4743,13 +5405,12 @@ if (succeeded(parser.parseOptionalKeyword("if"))) {
              "oilist directive";
   }
   ifClause = true;
-  result.addAttribute("if", UnitAttr::get(parser.getContext()));
   if (parser.parseLParen())
     return ::mlir::failure();
 
   {
     if_exprOperandsLoc = parser.getCurrentLocation();
-    ::mlir::OpAsmParser::OperandType operand;
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
     if (parseResult.hasValue()) {
@@ -4768,13 +5429,12 @@ if (succeeded(parser.parseOptionalKeyword("if"))) {
              "oilist directive";
   }
   deviceClause = true;
-  result.addAttribute("device", UnitAttr::get(parser.getContext()));
   if (parser.parseLParen())
     return ::mlir::failure();
 
   {
     deviceOperandsLoc = parser.getCurrentLocation();
-    ::mlir::OpAsmParser::OperandType operand;
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
     if (parseResult.hasValue()) {
@@ -4806,13 +5466,12 @@ if (succeeded(parser.parseOptionalKeyword("if"))) {
              "oilist directive";
   }
   thread_limitClause = true;
-  result.addAttribute("thread_limit", UnitAttr::get(parser.getContext()));
   if (parser.parseLParen())
     return ::mlir::failure();
 
   {
     thread_limitOperandsLoc = parser.getCurrentLocation();
-    ::mlir::OpAsmParser::OperandType operand;
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
     if (parseResult.hasValue()) {
@@ -4868,14 +5527,14 @@ if (succeeded(parser.parseOptionalKeyword("if"))) {
 
 void TargetOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << " ";
-  if ((*this)->hasAttrOfType<UnitAttr>("if")) {
+  if (false || if_expr()) {
   _odsPrinter << ' ' << "if";
   _odsPrinter << "(";
   if (::mlir::Value value = if_expr())
     _odsPrinter << value;
   _odsPrinter << ")";
   }
-  if ((*this)->hasAttrOfType<UnitAttr>("device")) {
+  if (false || device()) {
   _odsPrinter << ' ' << "device";
   _odsPrinter << "(";
   if (::mlir::Value value = device())
@@ -4885,7 +5544,7 @@ void TargetOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << (device() ? ::llvm::ArrayRef<::mlir::Type>(device().getType()) : ::llvm::ArrayRef<::mlir::Type>());
   _odsPrinter << ")";
   }
-  if ((*this)->hasAttrOfType<UnitAttr>("thread_limit")) {
+  if (false || thread_limit()) {
   _odsPrinter << ' ' << "thread_limit";
   _odsPrinter << "(";
   if (::mlir::Value value = thread_limit())
@@ -4895,17 +5554,17 @@ void TargetOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << (thread_limit() ? ::llvm::ArrayRef<::mlir::Type>(thread_limit().getType()) : ::llvm::ArrayRef<::mlir::Type>());
   _odsPrinter << ")";
   }
-  if ((*this)->hasAttrOfType<UnitAttr>("nowait")) {
+  if (false || nowaitAttr()) {
   _odsPrinter << ' ' << "nowait";
   }
   _odsPrinter << ' ';
   _odsPrinter.printRegion(region());
-  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"operand_segment_sizes", "device", "nowait", "thread_limit", "if", });
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"operand_segment_sizes", "nowait"});
 }
 
 } // namespace omp
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::TargetOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::TargetOp)
 
 namespace mlir {
 namespace omp {
@@ -4996,7 +5655,7 @@ void TaskwaitOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace omp
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::TaskwaitOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::TaskwaitOp)
 
 namespace mlir {
 namespace omp {
@@ -5087,7 +5746,7 @@ void TaskyieldOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace omp
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::TaskyieldOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::TaskyieldOp)
 
 namespace mlir {
 namespace omp {
@@ -5178,7 +5837,7 @@ void TerminatorOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace omp
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::TerminatorOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::TerminatorOp)
 
 namespace mlir {
 namespace omp {
@@ -5368,7 +6027,7 @@ bool WsLoopOpAdaptor::inclusive() {
   }
     {
     auto tblgen_reductions = odsAttrs.get("reductions");
-    if (tblgen_reductions && !(((tblgen_reductions.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_reductions.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return (attr.isa<::mlir::SymbolRefAttr>()); }))))
+    if (tblgen_reductions && !(((tblgen_reductions.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_reductions.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && ((attr.isa<::mlir::SymbolRefAttr>())); }))))
       return emitError(loc, "'omp.wsloop' op ""attribute 'reductions' failed to satisfy constraint: symbol ref array attribute");
   }
   {
@@ -5858,7 +6517,7 @@ void WsLoopOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   }
     {
     auto tblgen_reductions = (*this)->getAttr(reductionsAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps9(*this, tblgen_reductions, "reductions")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps7(*this, tblgen_reductions, "reductions")))
       return ::mlir::failure();
   }
   {
@@ -5906,19 +6565,19 @@ void WsLoopOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps2(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps2(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup2 = getODSOperands(2);
 
     for (auto v : valueGroup2) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps2(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup3 = getODSOperands(3);
@@ -5930,7 +6589,7 @@ void WsLoopOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
     auto valueGroup4 = getODSOperands(4);
 
     for (auto v : valueGroup4) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps1(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup5 = getODSOperands(5);
@@ -5969,9 +6628,267 @@ void WsLoopOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   return ::mlir::failure();
 }
 
+::mlir::ParseResult WsLoopOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> linear_varsOperands;
+  ::llvm::SMLoc linear_varsOperandsLoc;
+  (void)linear_varsOperandsLoc;
+  ::mlir::SmallVector<::mlir::Type, 1> linear_varsTypes;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> linear_step_varsOperands;
+  ::llvm::SMLoc linear_step_varsOperandsLoc;
+  (void)linear_step_varsOperandsLoc;
+  ::mlir::omp::ClauseScheduleKindAttr schedule_valAttr;
+  ::mlir::omp::ScheduleModifierAttr schedule_modifierAttr;
+  ::mlir::UnitAttr simd_modifierAttr;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> schedule_chunk_varOperands;
+  ::llvm::SMLoc schedule_chunk_varOperandsLoc;
+  (void)schedule_chunk_varOperandsLoc;
+  ::mlir::SmallVector<::mlir::Type, 1> schedule_chunk_varTypes;
+  ::mlir::IntegerAttr collapse_valAttr;
+  ::mlir::IntegerAttr ordered_valAttr;
+  ::mlir::omp::ClauseOrderKindAttr order_valAttr;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> reduction_varsOperands;
+  ::llvm::SMLoc reduction_varsOperandsLoc;
+  (void)reduction_varsOperandsLoc;
+  ::mlir::SmallVector<::mlir::Type, 1> reduction_varsTypes;
+  ::mlir::ArrayAttr reductionsAttr;
+  std::unique_ptr<::mlir::Region> regionRegion = std::make_unique<::mlir::Region>();
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> lowerBoundOperands;
+  ::llvm::SMLoc lowerBoundOperandsLoc;
+  (void)lowerBoundOperandsLoc;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> upperBoundOperands;
+  ::llvm::SMLoc upperBoundOperandsLoc;
+  (void)upperBoundOperandsLoc;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> stepOperands;
+  ::llvm::SMLoc stepOperandsLoc;
+  (void)stepOperandsLoc;
+  ::mlir::SmallVector<::mlir::Type, 1> stepTypes;
+  ::mlir::UnitAttr inclusiveAttr;
+  bool linearClause = false;
+  bool scheduleClause = false;
+  bool collapseClause = false;
+  bool nowaitClause = false;
+  bool orderedClause = false;
+  bool orderClause = false;
+  bool reductionClause = false;
+  while(true) {
+if (succeeded(parser.parseOptionalKeyword("linear"))) {
+
+  if (linearClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`linear` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  linearClause = true;
+  if (parser.parseLParen())
+    return ::mlir::failure();
+  {
+    linear_varsOperandsLoc = parser.getCurrentLocation();
+    linear_step_varsOperandsLoc = parser.getCurrentLocation();
+    if (parseLinearClause(parser, linear_varsOperands, linear_varsTypes, linear_step_varsOperands))
+      return ::mlir::failure();
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else if (succeeded(parser.parseOptionalKeyword("schedule"))) {
+
+  if (scheduleClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`schedule` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  scheduleClause = true;
+  if (parser.parseLParen())
+    return ::mlir::failure();
+  {
+    schedule_chunk_varOperandsLoc = parser.getCurrentLocation();
+    ::llvm::Optional<::mlir::OpAsmParser::UnresolvedOperand> schedule_chunk_varOperand;
+    ::mlir::Type schedule_chunk_varType;
+    if (parseScheduleClause(parser, schedule_valAttr, schedule_modifierAttr, simd_modifierAttr, schedule_chunk_varOperand, schedule_chunk_varType))
+      return ::mlir::failure();
+    if (schedule_valAttr)
+      result.addAttribute("schedule_val", schedule_valAttr);
+    if (schedule_modifierAttr)
+      result.addAttribute("schedule_modifier", schedule_modifierAttr);
+    if (simd_modifierAttr)
+      result.addAttribute("simd_modifier", simd_modifierAttr);
+    if (schedule_chunk_varOperand.hasValue())
+      schedule_chunk_varOperands.push_back(*schedule_chunk_varOperand);
+    if (schedule_chunk_varType)
+      schedule_chunk_varTypes.push_back(schedule_chunk_varType);
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else if (succeeded(parser.parseOptionalKeyword("collapse"))) {
+
+  if (collapseClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`collapse` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  collapseClause = true;
+  if (parser.parseLParen())
+    return ::mlir::failure();
+
+  {
+    ::mlir::OptionalParseResult parseResult =
+      parser.parseOptionalAttribute(collapse_valAttr, parser.getBuilder().getIntegerType(64), "collapse_val", result.attributes);
+    if (parseResult.hasValue() && failed(*parseResult))
+      return ::mlir::failure();
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else if (succeeded(parser.parseOptionalKeyword("nowait"))) {
+
+  if (nowaitClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`nowait` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  nowaitClause = true;
+  result.addAttribute("nowait", UnitAttr::get(parser.getContext()));
+    } else if (succeeded(parser.parseOptionalKeyword("ordered"))) {
+
+  if (orderedClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`ordered` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  orderedClause = true;
+  if (parser.parseLParen())
+    return ::mlir::failure();
+
+  {
+    ::mlir::OptionalParseResult parseResult =
+      parser.parseOptionalAttribute(ordered_valAttr, parser.getBuilder().getIntegerType(64), "ordered_val", result.attributes);
+    if (parseResult.hasValue() && failed(*parseResult))
+      return ::mlir::failure();
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else if (succeeded(parser.parseOptionalKeyword("order"))) {
+
+  if (orderClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`order` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  orderClause = true;
+  if (parser.parseLParen())
+    return ::mlir::failure();
+  {
+    if (parseClauseAttr(parser, order_valAttr))
+      return ::mlir::failure();
+    if (order_valAttr)
+      result.addAttribute("order_val", order_valAttr);
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else if (succeeded(parser.parseOptionalKeyword("reduction"))) {
+
+  if (reductionClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`reduction` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  reductionClause = true;
+  if (parser.parseLParen())
+    return ::mlir::failure();
+  {
+    reduction_varsOperandsLoc = parser.getCurrentLocation();
+    if (parseReductionVarList(parser, reduction_varsOperands, reduction_varsTypes, reductionsAttr))
+      return ::mlir::failure();
+    if (reductionsAttr)
+      result.addAttribute("reductions", reductionsAttr);
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else  {
+    break;
+  }
+}
+  if (parser.parseKeyword("for"))
+    return ::mlir::failure();
+  {
+    lowerBoundOperandsLoc = parser.getCurrentLocation();
+    upperBoundOperandsLoc = parser.getCurrentLocation();
+    stepOperandsLoc = parser.getCurrentLocation();
+    if (parseWsLoopControl(parser, *regionRegion, lowerBoundOperands, upperBoundOperands, stepOperands, stepTypes, inclusiveAttr))
+      return ::mlir::failure();
+    if (inclusiveAttr)
+      result.addAttribute("inclusive", inclusiveAttr);
+  }
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  result.addRegion(std::move(regionRegion));
+  result.addAttribute("operand_segment_sizes", parser.getBuilder().getI32VectorAttr({static_cast<int32_t>(lowerBoundOperands.size()), static_cast<int32_t>(upperBoundOperands.size()), static_cast<int32_t>(stepOperands.size()), static_cast<int32_t>(linear_varsOperands.size()), static_cast<int32_t>(linear_step_varsOperands.size()), static_cast<int32_t>(reduction_varsOperands.size()), static_cast<int32_t>(schedule_chunk_varOperands.size())}));
+  ::mlir::Type odsBuildableType0 = parser.getBuilder().getIntegerType(32);
+  if (parser.resolveOperands(lowerBoundOperands, stepTypes, lowerBoundOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(upperBoundOperands, stepTypes, upperBoundOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(stepOperands, stepTypes, stepOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(linear_varsOperands, linear_varsTypes, linear_varsOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(linear_step_varsOperands, odsBuildableType0, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(reduction_varsOperands, reduction_varsTypes, reduction_varsOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(schedule_chunk_varOperands, schedule_chunk_varTypes, schedule_chunk_varOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void WsLoopOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ' << " ";
+  if (false || linear_vars().size() || linear_step_vars().size()) {
+  _odsPrinter << ' ' << "linear";
+  _odsPrinter << "(";
+  printLinearClause(_odsPrinter, *this, linear_vars(), linear_vars().getTypes(), linear_step_vars());
+  _odsPrinter << ")";
+  }
+  if (false || schedule_valAttr() || schedule_modifierAttr() || simd_modifierAttr() || schedule_chunk_var()) {
+  _odsPrinter << ' ' << "schedule";
+  _odsPrinter << "(";
+  printScheduleClause(_odsPrinter, *this, schedule_valAttr(), schedule_modifierAttr(), simd_modifierAttr(), schedule_chunk_var(), (schedule_chunk_var() ? schedule_chunk_var().getType() : Type()));
+  _odsPrinter << ")";
+  }
+  if (false || collapse_valAttr()) {
+  _odsPrinter << ' ' << "collapse";
+  _odsPrinter << "(";
+  _odsPrinter.printAttributeWithoutType(collapse_valAttr());
+  _odsPrinter << ")";
+  }
+  if (false || nowaitAttr()) {
+  _odsPrinter << ' ' << "nowait";
+  }
+  if (false || ordered_valAttr()) {
+  _odsPrinter << ' ' << "ordered";
+  _odsPrinter << "(";
+  _odsPrinter.printAttributeWithoutType(ordered_valAttr());
+  _odsPrinter << ")";
+  }
+  if (false || order_valAttr()) {
+  _odsPrinter << ' ' << "order";
+  _odsPrinter << "(";
+  printClauseAttr(_odsPrinter, *this, order_valAttr());
+  _odsPrinter << ")";
+  }
+  if (false || reduction_vars().size() || reductionsAttr()) {
+  _odsPrinter << ' ' << "reduction";
+  _odsPrinter << "(";
+  printReductionVarList(_odsPrinter, *this, reduction_vars(), reduction_vars().getTypes(), reductionsAttr());
+  _odsPrinter << ")";
+  }
+  _odsPrinter << ' ' << "for";
+  _odsPrinter << ' ';
+  printWsLoopControl(_odsPrinter, *this, region(), lowerBound(), upperBound(), step(), step().getTypes(), inclusiveAttr());
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"operand_segment_sizes", "schedule_val", "schedule_modifier", "simd_modifier", "collapse_val", "nowait", "ordered_val", "order_val", "reductions", "inclusive"});
+}
+
 } // namespace omp
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::WsLoopOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::WsLoopOp)
 
 namespace mlir {
 namespace omp {
@@ -6101,7 +7018,7 @@ void YieldOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 ::mlir::ParseResult YieldOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> resultsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> resultsOperands;
   ::llvm::SMLoc resultsOperandsLoc;
   (void)resultsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> resultsTypes;
@@ -6142,7 +7059,7 @@ void YieldOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace omp
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::YieldOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::YieldOp)
 
 
 #endif  // GET_OP_CLASSES

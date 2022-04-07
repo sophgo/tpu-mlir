@@ -272,7 +272,7 @@ void x86_amx_tdpbf16ps::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
 
 } // namespace amx
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tdpbf16ps)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tdpbf16ps)
 
 namespace mlir {
 namespace amx {
@@ -418,7 +418,7 @@ void x86_amx_tdpbssd::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
 
 } // namespace amx
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tdpbssd)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tdpbssd)
 
 namespace mlir {
 namespace amx {
@@ -564,7 +564,7 @@ void x86_amx_tdpbsud::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
 
 } // namespace amx
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tdpbsud)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tdpbsud)
 
 namespace mlir {
 namespace amx {
@@ -710,7 +710,7 @@ void x86_amx_tdpbusd::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
 
 } // namespace amx
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tdpbusd)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tdpbusd)
 
 namespace mlir {
 namespace amx {
@@ -856,7 +856,7 @@ void x86_amx_tdpbuud::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
 
 } // namespace amx
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tdpbuud)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tdpbuud)
 
 namespace mlir {
 namespace amx {
@@ -986,7 +986,7 @@ void x86_amx_tileloadd64::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
 
 } // namespace amx
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tileloadd64)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tileloadd64)
 
 namespace mlir {
 namespace amx {
@@ -1110,7 +1110,7 @@ void x86_amx_tilestored64::build(::mlir::OpBuilder &, ::mlir::OperationState &od
 
 } // namespace amx
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tilestored64)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tilestored64)
 
 namespace mlir {
 namespace amx {
@@ -1224,7 +1224,7 @@ void x86_amx_tilezero::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
 
 } // namespace amx
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tilezero)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::amx::x86_amx_tilezero)
 
 namespace mlir {
 namespace amx {
@@ -1395,10 +1395,10 @@ void TileLoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::ParseResult TileLoadOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType baseRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> baseOperands(baseRawOperands);  ::llvm::SMLoc baseOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand baseRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> baseOperands(baseRawOperands);  ::llvm::SMLoc baseOperandsLoc;
   (void)baseOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> indicesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
   ::llvm::SMLoc indicesOperandsLoc;
   (void)indicesOperandsLoc;
   ::mlir::Type baseRawTypes[1];
@@ -1480,7 +1480,7 @@ void TileLoadOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace amx
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::amx::TileLoadOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::amx::TileLoadOp)
 
 namespace mlir {
 namespace amx {
@@ -1647,14 +1647,14 @@ void TileMulFOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::ParseResult TileMulFOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType accRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> accOperands(accRawOperands);  ::llvm::SMLoc accOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand accRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> accOperands(accRawOperands);  ::llvm::SMLoc accOperandsLoc;
   (void)accOperandsLoc;
   ::mlir::Type lhsRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> lhsTypes(lhsRawTypes);
@@ -1761,7 +1761,7 @@ void TileMulFOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace amx
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::amx::TileMulFOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::amx::TileMulFOp)
 
 namespace mlir {
 namespace amx {
@@ -2043,14 +2043,14 @@ void TileMulIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::ParseResult TileMulIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType accRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> accOperands(accRawOperands);  ::llvm::SMLoc accOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand accRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> accOperands(accRawOperands);  ::llvm::SMLoc accOperandsLoc;
   (void)accOperandsLoc;
   ::mlir::Type lhsRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> lhsTypes(lhsRawTypes);
@@ -2169,7 +2169,7 @@ void TileMulIOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace amx
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::amx::TileMulIOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::amx::TileMulIOp)
 
 namespace mlir {
 namespace amx {
@@ -2348,14 +2348,14 @@ void TileStoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 }
 
 ::mlir::ParseResult TileStoreOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType baseRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> baseOperands(baseRawOperands);  ::llvm::SMLoc baseOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand baseRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> baseOperands(baseRawOperands);  ::llvm::SMLoc baseOperandsLoc;
   (void)baseOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> indicesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
   ::llvm::SMLoc indicesOperandsLoc;
   (void)indicesOperandsLoc;
-  ::mlir::OpAsmParser::OperandType valRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> valOperands(valRawOperands);  ::llvm::SMLoc valOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand valRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> valOperands(valRawOperands);  ::llvm::SMLoc valOperandsLoc;
   (void)valOperandsLoc;
   ::mlir::Type baseRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> baseTypes(baseRawTypes);
@@ -2446,7 +2446,7 @@ void TileStoreOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace amx
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::amx::TileStoreOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::amx::TileStoreOp)
 
 namespace mlir {
 namespace amx {
@@ -2577,7 +2577,7 @@ void TileZeroOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace amx
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::amx::TileZeroOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::amx::TileZeroOp)
 
 
 #endif  // GET_OP_CLASSES

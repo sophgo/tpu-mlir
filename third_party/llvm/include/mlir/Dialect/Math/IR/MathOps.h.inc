@@ -190,6 +190,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  ::mlir::OpFoldResult fold(::llvm::ArrayRef<::mlir::Attribute> operands);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -197,7 +198,7 @@ public:
 };
 } // namespace math
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::math::AbsOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::math::AbsOp)
 
 namespace mlir {
 namespace math {
@@ -261,7 +262,7 @@ public:
 };
 } // namespace math
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::math::Atan2Op)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::math::Atan2Op)
 
 namespace mlir {
 namespace math {
@@ -322,7 +323,7 @@ public:
 };
 } // namespace math
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::math::AtanOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::math::AtanOp)
 
 namespace mlir {
 namespace math {
@@ -384,7 +385,7 @@ public:
 };
 } // namespace math
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::math::CeilOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::math::CeilOp)
 
 namespace mlir {
 namespace math {
@@ -441,6 +442,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  ::mlir::OpFoldResult fold(::llvm::ArrayRef<::mlir::Attribute> operands);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -448,7 +450,7 @@ public:
 };
 } // namespace math
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::math::CopySignOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::math::CopySignOp)
 
 namespace mlir {
 namespace math {
@@ -509,7 +511,7 @@ public:
 };
 } // namespace math
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::math::CosOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::math::CosOp)
 
 namespace mlir {
 namespace math {
@@ -563,6 +565,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  ::mlir::OpFoldResult fold(::llvm::ArrayRef<::mlir::Attribute> operands);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -570,7 +573,7 @@ public:
 };
 } // namespace math
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::math::CountLeadingZerosOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::math::CountLeadingZerosOp)
 
 namespace mlir {
 namespace math {
@@ -624,6 +627,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  ::mlir::OpFoldResult fold(::llvm::ArrayRef<::mlir::Attribute> operands);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -631,7 +635,7 @@ public:
 };
 } // namespace math
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::math::CountTrailingZerosOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::math::CountTrailingZerosOp)
 
 namespace mlir {
 namespace math {
@@ -685,6 +689,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  ::mlir::OpFoldResult fold(::llvm::ArrayRef<::mlir::Attribute> operands);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -692,7 +697,7 @@ public:
 };
 } // namespace math
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::math::CtPopOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::math::CtPopOp)
 
 namespace mlir {
 namespace math {
@@ -753,7 +758,7 @@ public:
 };
 } // namespace math
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::math::ErfOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::math::ErfOp)
 
 namespace mlir {
 namespace math {
@@ -814,7 +819,7 @@ public:
 };
 } // namespace math
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::math::Exp2Op)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::math::Exp2Op)
 
 namespace mlir {
 namespace math {
@@ -875,7 +880,7 @@ public:
 };
 } // namespace math
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::math::ExpM1Op)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::math::ExpM1Op)
 
 namespace mlir {
 namespace math {
@@ -936,7 +941,7 @@ public:
 };
 } // namespace math
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::math::ExpOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::math::ExpOp)
 
 namespace mlir {
 namespace math {
@@ -997,7 +1002,7 @@ public:
 };
 } // namespace math
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::math::FloorOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::math::FloorOp)
 
 namespace mlir {
 namespace math {
@@ -1064,7 +1069,7 @@ public:
 };
 } // namespace math
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::math::FmaOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::math::FmaOp)
 
 namespace mlir {
 namespace math {
@@ -1125,7 +1130,7 @@ public:
 };
 } // namespace math
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::math::Log10Op)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::math::Log10Op)
 
 namespace mlir {
 namespace math {
@@ -1186,7 +1191,7 @@ public:
 };
 } // namespace math
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::math::Log1pOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::math::Log1pOp)
 
 namespace mlir {
 namespace math {
@@ -1248,7 +1253,7 @@ public:
 };
 } // namespace math
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::math::Log2Op)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::math::Log2Op)
 
 namespace mlir {
 namespace math {
@@ -1309,7 +1314,7 @@ public:
 };
 } // namespace math
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::math::LogOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::math::LogOp)
 
 namespace mlir {
 namespace math {
@@ -1366,6 +1371,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  ::mlir::OpFoldResult fold(::llvm::ArrayRef<::mlir::Attribute> operands);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -1373,7 +1379,7 @@ public:
 };
 } // namespace math
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::math::PowFOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::math::PowFOp)
 
 namespace mlir {
 namespace math {
@@ -1434,7 +1440,7 @@ public:
 };
 } // namespace math
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::math::RsqrtOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::math::RsqrtOp)
 
 namespace mlir {
 namespace math {
@@ -1495,7 +1501,7 @@ public:
 };
 } // namespace math
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::math::SinOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::math::SinOp)
 
 namespace mlir {
 namespace math {
@@ -1549,6 +1555,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  ::mlir::OpFoldResult fold(::llvm::ArrayRef<::mlir::Attribute> operands);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -1556,7 +1563,7 @@ public:
 };
 } // namespace math
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::math::SqrtOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::math::SqrtOp)
 
 namespace mlir {
 namespace math {
@@ -1617,7 +1624,7 @@ public:
 };
 } // namespace math
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::math::TanhOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::math::TanhOp)
 
 
 #endif  // GET_OP_CLASSES

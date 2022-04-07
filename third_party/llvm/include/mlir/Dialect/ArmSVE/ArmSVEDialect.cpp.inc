@@ -6,7 +6,7 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
-DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ArmSVEDialect)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ArmSVEDialect)
 namespace mlir {
 namespace arm_sve {
 

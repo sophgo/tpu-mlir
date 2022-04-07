@@ -86,7 +86,7 @@ FastmathFlags FMFAttr::getFlags() const {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FMFAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FMFAttr)
 namespace mlir {
 namespace LLVM {
 namespace detail {
@@ -120,7 +120,7 @@ linkage::Linkage LinkageAttr::getLinkage() const {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::LinkageAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::LinkageAttr)
 namespace mlir {
 namespace LLVM {
 namespace detail {
@@ -151,7 +151,7 @@ struct LoopOptionsAttrStorage : public ::mlir::AttributeStorage {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::LoopOptionsAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::LoopOptionsAttr)
 namespace mlir {
 namespace LLVM {
 

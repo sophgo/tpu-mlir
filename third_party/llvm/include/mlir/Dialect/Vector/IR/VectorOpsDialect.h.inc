@@ -44,4 +44,4 @@ public:
 };
 } // namespace vector
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::vector::VectorDialect)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::vector::VectorDialect)

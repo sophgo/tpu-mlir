@@ -9,9 +9,6 @@
 #if defined(GET_OP_CLASSES) || defined(GET_OP_FWD_DEFINES)
 #undef GET_OP_FWD_DEFINES
 namespace mlir {
-class FuncOp;
-} // namespace mlir
-namespace mlir {
 class ModuleOp;
 } // namespace mlir
 namespace mlir {
@@ -30,184 +27,6 @@ class UnrealizedConversionCastOp;
 namespace mlir {
 
 //===----------------------------------------------------------------------===//
-// ::mlir::FuncOp declarations
-//===----------------------------------------------------------------------===//
-
-class FuncOpAdaptor {
-public:
-  FuncOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
-
-  FuncOpAdaptor(FuncOp &op);
-
-  ::mlir::ValueRange getOperands();
-  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
-  ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::DictionaryAttr getAttributes();
-  ::mlir::StringAttr sym_nameAttr();
-  ::llvm::StringRef sym_name();
-  ::mlir::TypeAttr typeAttr();
-  ::mlir::Type type();
-  ::mlir::StringAttr sym_visibilityAttr();
-  ::llvm::Optional< ::llvm::StringRef > sym_visibility();
-  ::mlir::RegionRange getRegions();
-  ::mlir::Region &body();
-  ::mlir::LogicalResult verify(::mlir::Location loc);
-private:
-  ::mlir::ValueRange odsOperands;
-  ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
-};
-class FuncOp : public ::mlir::Op<FuncOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::AffineScope, ::mlir::OpTrait::AutomaticAllocationScope, ::mlir::CallableOpInterface::Trait, ::mlir::FunctionOpInterface::Trait, ::mlir::OpTrait::IsIsolatedFromAbove, ::mlir::SymbolOpInterface::Trait> {
-public:
-  using Op::Op;
-  using Op::print;
-  using Adaptor = FuncOpAdaptor;
-public:
-  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("sym_name"), ::llvm::StringRef("type"), ::llvm::StringRef("sym_visibility")};
-    return ::llvm::makeArrayRef(attrNames);
-  }
-
-  ::mlir::StringAttr sym_nameAttrName() {
-    return getAttributeNameForIndex(0);
-  }
-
-  static ::mlir::StringAttr sym_nameAttrName(::mlir::OperationName name) {
-    return getAttributeNameForIndex(name, 0);
-  }
-
-  ::mlir::StringAttr typeAttrName() {
-    return getAttributeNameForIndex(1);
-  }
-
-  static ::mlir::StringAttr typeAttrName(::mlir::OperationName name) {
-    return getAttributeNameForIndex(name, 1);
-  }
-
-  ::mlir::StringAttr sym_visibilityAttrName() {
-    return getAttributeNameForIndex(2);
-  }
-
-  static ::mlir::StringAttr sym_visibilityAttrName(::mlir::OperationName name) {
-    return getAttributeNameForIndex(name, 2);
-  }
-
-  static constexpr ::llvm::StringLiteral getOperationName() {
-    return ::llvm::StringLiteral("builtin.func");
-  }
-
-  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
-  ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
-  ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Region &body();
-  ::mlir::StringAttr sym_nameAttr();
-  ::llvm::StringRef sym_name();
-  ::mlir::TypeAttr typeAttr();
-  ::mlir::Type type();
-  ::mlir::StringAttr sym_visibilityAttr();
-  ::llvm::Optional< ::llvm::StringRef > sym_visibility();
-  void sym_nameAttr(::mlir::StringAttr attr);
-  void typeAttr(::mlir::TypeAttr attr);
-  void sym_visibilityAttr(::mlir::StringAttr attr);
-  ::mlir::Attribute removeSym_visibilityAttr();
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, StringRef name, FunctionType type, ArrayRef<NamedAttribute> attrs = {}, ArrayRef<DictionaryAttr> argAttrs = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::StringAttr sym_name, ::mlir::TypeAttr type, /*optional*/::mlir::StringAttr sym_visibility);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::StringAttr sym_name, ::mlir::TypeAttr type, /*optional*/::mlir::StringAttr sym_visibility);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::llvm::StringRef sym_name, ::mlir::Type type, /*optional*/::mlir::StringAttr sym_visibility);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::llvm::StringRef sym_name, ::mlir::Type type, /*optional*/::mlir::StringAttr sym_visibility);
-  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
-  void print(::mlir::OpAsmPrinter &p);
-  ::mlir::LogicalResult verifyInvariantsImpl();
-  ::mlir::LogicalResult verifyInvariants();
-  ::mlir::LogicalResult verify();
-private:
-  ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
-    return getAttributeNameForIndex((*this)->getName(), index);
-  }
-
-  static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
-    assert(index < 3 && "invalid attribute index");
-    return name.getRegisteredInfo()->getAttributeNames()[index];
-  }
-
-public:
-  static FuncOp create(Location location, StringRef name, FunctionType type,
-                       ArrayRef<NamedAttribute> attrs = {});
-  static FuncOp create(Location location, StringRef name, FunctionType type,
-                       Operation::dialect_attr_range attrs);
-  static FuncOp create(Location location, StringRef name, FunctionType type,
-                       ArrayRef<NamedAttribute> attrs,
-                       ArrayRef<DictionaryAttr> argAttrs);
-
-  /// Create a deep copy of this function and all of its blocks, remapping any
-  /// operands that use values outside of the function using the map that is
-  /// provided (leaving them alone if no entry is present). If the mapper
-  /// contains entries for function arguments, these arguments are not
-  /// included in the new function. Replaces references to cloned sub-values
-  /// with the corresponding value that is copied, and adds those mappings to
-  /// the mapper.
-  FuncOp clone(BlockAndValueMapping &mapper);
-  FuncOp clone();
-
-  /// Clone the internal blocks and attributes from this function into dest.
-  /// Any cloned blocks are appended to the back of dest. This function
-  /// asserts that the attributes of the current function and dest are
-  /// compatible.
-  void cloneInto(FuncOp dest, BlockAndValueMapping &mapper);
-
-  /// Returns the type of this function.
-  /// FIXME: We should drive this via the ODS `type` param.
-  FunctionType getType() { 
-    return getTypeAttr().getValue().cast<FunctionType>();
-  }
-
-  //===------------------------------------------------------------------===//
-  // CallableOpInterface
-  //===------------------------------------------------------------------===//
-
-  /// Returns the region on the current operation that is callable. This may
-  /// return null in the case of an external callable object, e.g. an external
-  /// function.
-  ::mlir::Region *getCallableRegion() { return isExternal() ? nullptr : &getBody(); }
-
-  /// Returns the results types that the callable region produces when
-  /// executed.
-  ArrayRef<Type> getCallableResults() { return getType().getResults(); }
-
-  //===------------------------------------------------------------------===//
-  // FunctionOpInterface Methods
-  //===------------------------------------------------------------------===//
-
-  /// Returns the argument types of this function.
-  ArrayRef<Type> getArgumentTypes() { return getType().getInputs(); }
-
-  /// Returns the result types of this function.
-  ArrayRef<Type> getResultTypes() { return getType().getResults(); }
-
-  /// Verify the type attribute of this function. Returns failure and emits
-  /// an error if the attribute is invalid.
-  LogicalResult verifyType() {
-    auto type = getTypeAttr().getValue();
-    if (!type.isa<FunctionType>())
-      return emitOpError("requires '" + getTypeAttrName() +
-                         "' attribute of function type");
-    return success();
-  }
-
-  //===------------------------------------------------------------------===//
-  // SymbolOpInterface Methods
-  //===------------------------------------------------------------------===//
-
-  bool isDeclaration() { return isExternal(); }
-};
-} // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::FuncOp)
-
-namespace mlir {
-
-//===----------------------------------------------------------------------===//
 // ::mlir::ModuleOp declarations
 //===----------------------------------------------------------------------===//
 
@@ -221,12 +40,12 @@ public:
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::StringAttr sym_nameAttr();
-  ::llvm::Optional< ::llvm::StringRef > sym_name();
-  ::mlir::StringAttr sym_visibilityAttr();
-  ::llvm::Optional< ::llvm::StringRef > sym_visibility();
+  ::mlir::StringAttr getSymNameAttr();
+  ::llvm::Optional< ::llvm::StringRef > getSymName();
+  ::mlir::StringAttr getSymVisibilityAttr();
+  ::llvm::Optional< ::llvm::StringRef > getSymVisibility();
   ::mlir::RegionRange getRegions();
-  ::mlir::Region &body();
+  ::mlir::Region &getBodyRegion();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -244,19 +63,19 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr sym_nameAttrName() {
+  ::mlir::StringAttr getSymNameAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr sym_nameAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getSymNameAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr sym_visibilityAttrName() {
+  ::mlir::StringAttr getSymVisibilityAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr sym_visibilityAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getSymVisibilityAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
   }
 
@@ -268,13 +87,13 @@ public:
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Region &body();
-  ::mlir::StringAttr sym_nameAttr();
-  ::llvm::Optional< ::llvm::StringRef > sym_name();
-  ::mlir::StringAttr sym_visibilityAttr();
-  ::llvm::Optional< ::llvm::StringRef > sym_visibility();
-  void sym_nameAttr(::mlir::StringAttr attr);
-  void sym_visibilityAttr(::mlir::StringAttr attr);
+  ::mlir::Region &getBodyRegion();
+  ::mlir::StringAttr getSymNameAttr();
+  ::llvm::Optional< ::llvm::StringRef > getSymName();
+  ::mlir::StringAttr getSymVisibilityAttr();
+  ::llvm::Optional< ::llvm::StringRef > getSymVisibility();
+  void setSymNameAttr(::mlir::StringAttr attr);
+  void setSymVisibilityAttr(::mlir::StringAttr attr);
   ::mlir::Attribute removeSym_nameAttr();
   ::mlir::Attribute removeSym_visibilityAttr();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Optional<StringRef> name = {});
@@ -298,7 +117,7 @@ public:
   static ModuleOp create(Location loc, Optional<StringRef> name = llvm::None);
 
   /// Return the name of this module if present.
-  Optional<StringRef> getName() { return sym_name(); }
+  Optional<StringRef> getName() { return getSymName(); }
 
   //===------------------------------------------------------------------===//
   // SymbolOpInterface Methods
@@ -322,7 +141,7 @@ public:
   }
 };
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ModuleOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ModuleOp)
 
 namespace mlir {
 
@@ -339,7 +158,7 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getInputs();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -363,11 +182,11 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Operation::operand_range inputs();
-  ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::Operation::operand_range getInputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Operation::result_range outputs();
+  ::mlir::Operation::result_range getOutputs();
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
@@ -379,7 +198,7 @@ public:
 public:
 };
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::UnrealizedConversionCastOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::UnrealizedConversionCastOp)
 
 
 #endif  // GET_OP_CLASSES

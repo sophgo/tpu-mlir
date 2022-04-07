@@ -27,4 +27,4 @@ public:
 };
 } // namespace x86vector
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::X86VectorDialect)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::x86vector::X86VectorDialect)

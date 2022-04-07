@@ -406,7 +406,7 @@ void DotIntrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace x86vector
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::DotIntrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::DotIntrOp)
 
 namespace mlir {
 namespace x86vector {
@@ -561,11 +561,11 @@ void DotOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult DotOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType aRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> aOperands(aRawOperands);  ::llvm::SMLoc aOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand aRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> aOperands(aRawOperands);  ::llvm::SMLoc aOperandsLoc;
   (void)aOperandsLoc;
-  ::mlir::OpAsmParser::OperandType bRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> bOperands(bRawOperands);  ::llvm::SMLoc bOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand bRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> bOperands(bRawOperands);  ::llvm::SMLoc bOperandsLoc;
   (void)bOperandsLoc;
   ::mlir::Type resRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resTypes(resRawTypes);
@@ -621,7 +621,7 @@ void DotOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace x86vector
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::DotOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::DotOp)
 
 namespace mlir {
 namespace x86vector {
@@ -831,7 +831,7 @@ void MaskCompressIntrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects:
 
 } // namespace x86vector
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskCompressIntrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskCompressIntrOp)
 
 namespace mlir {
 namespace x86vector {
@@ -1124,13 +1124,13 @@ void MaskCompressOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
 }
 
 ::mlir::ParseResult MaskCompressOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType kRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> kOperands(kRawOperands);  ::llvm::SMLoc kOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand kRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> kOperands(kRawOperands);  ::llvm::SMLoc kOperandsLoc;
   (void)kOperandsLoc;
-  ::mlir::OpAsmParser::OperandType aRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> aOperands(aRawOperands);  ::llvm::SMLoc aOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand aRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> aOperands(aRawOperands);  ::llvm::SMLoc aOperandsLoc;
   (void)aOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> srcOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> srcOperands;
   ::llvm::SMLoc srcOperandsLoc;
   (void)srcOperandsLoc;
   ::mlir::Type dstRawTypes[1];
@@ -1150,7 +1150,7 @@ void MaskCompressOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
 
   {
     srcOperandsLoc = parser.getCurrentLocation();
-    ::mlir::OpAsmParser::OperandType operand;
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
     if (parseResult.hasValue()) {
@@ -1236,7 +1236,7 @@ void MaskCompressOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Eff
 
 } // namespace x86vector
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskCompressOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskCompressOp)
 
 namespace mlir {
 namespace x86vector {
@@ -1488,20 +1488,20 @@ void MaskRndScaleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
 }
 
 ::mlir::ParseResult MaskRndScaleOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType srcRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> srcOperands(srcRawOperands);  ::llvm::SMLoc srcOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand srcRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> srcOperands(srcRawOperands);  ::llvm::SMLoc srcOperandsLoc;
   (void)srcOperandsLoc;
-  ::mlir::OpAsmParser::OperandType kRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> kOperands(kRawOperands);  ::llvm::SMLoc kOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand kRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> kOperands(kRawOperands);  ::llvm::SMLoc kOperandsLoc;
   (void)kOperandsLoc;
-  ::mlir::OpAsmParser::OperandType aRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> aOperands(aRawOperands);  ::llvm::SMLoc aOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand aRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> aOperands(aRawOperands);  ::llvm::SMLoc aOperandsLoc;
   (void)aOperandsLoc;
-  ::mlir::OpAsmParser::OperandType immRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> immOperands(immRawOperands);  ::llvm::SMLoc immOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand immRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> immOperands(immRawOperands);  ::llvm::SMLoc immOperandsLoc;
   (void)immOperandsLoc;
-  ::mlir::OpAsmParser::OperandType roundingRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> roundingOperands(roundingRawOperands);  ::llvm::SMLoc roundingOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand roundingRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> roundingOperands(roundingRawOperands);  ::llvm::SMLoc roundingOperandsLoc;
   (void)roundingOperandsLoc;
   ::mlir::Type dstRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> dstTypes(dstRawTypes);
@@ -1599,7 +1599,7 @@ void MaskRndScaleOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Eff
 
 } // namespace x86vector
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskRndScaleOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskRndScaleOp)
 
 namespace mlir {
 namespace x86vector {
@@ -1853,7 +1853,7 @@ void MaskRndScalePDIntrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffect
 
 } // namespace x86vector
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskRndScalePDIntrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskRndScalePDIntrOp)
 
 namespace mlir {
 namespace x86vector {
@@ -2107,7 +2107,7 @@ void MaskRndScalePSIntrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffect
 
 } // namespace x86vector
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskRndScalePSIntrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskRndScalePSIntrOp)
 
 namespace mlir {
 namespace x86vector {
@@ -2359,20 +2359,20 @@ void MaskScaleFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
 }
 
 ::mlir::ParseResult MaskScaleFOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType srcRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> srcOperands(srcRawOperands);  ::llvm::SMLoc srcOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand srcRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> srcOperands(srcRawOperands);  ::llvm::SMLoc srcOperandsLoc;
   (void)srcOperandsLoc;
-  ::mlir::OpAsmParser::OperandType aRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> aOperands(aRawOperands);  ::llvm::SMLoc aOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand aRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> aOperands(aRawOperands);  ::llvm::SMLoc aOperandsLoc;
   (void)aOperandsLoc;
-  ::mlir::OpAsmParser::OperandType bRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> bOperands(bRawOperands);  ::llvm::SMLoc bOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand bRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> bOperands(bRawOperands);  ::llvm::SMLoc bOperandsLoc;
   (void)bOperandsLoc;
-  ::mlir::OpAsmParser::OperandType kRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> kOperands(kRawOperands);  ::llvm::SMLoc kOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand kRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> kOperands(kRawOperands);  ::llvm::SMLoc kOperandsLoc;
   (void)kOperandsLoc;
-  ::mlir::OpAsmParser::OperandType roundingRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> roundingOperands(roundingRawOperands);  ::llvm::SMLoc roundingOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand roundingRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> roundingOperands(roundingRawOperands);  ::llvm::SMLoc roundingOperandsLoc;
   (void)roundingOperandsLoc;
   ::mlir::Type dstRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> dstTypes(dstRawTypes);
@@ -2470,7 +2470,7 @@ void MaskScaleFOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effec
 
 } // namespace x86vector
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskScaleFOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskScaleFOp)
 
 namespace mlir {
 namespace x86vector {
@@ -2724,7 +2724,7 @@ void MaskScaleFPDIntrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects:
 
 } // namespace x86vector
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskScaleFPDIntrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskScaleFPDIntrOp)
 
 namespace mlir {
 namespace x86vector {
@@ -2978,7 +2978,7 @@ void MaskScaleFPSIntrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects:
 
 } // namespace x86vector
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskScaleFPSIntrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::MaskScaleFPSIntrOp)
 
 namespace mlir {
 namespace x86vector {
@@ -3114,7 +3114,7 @@ void RsqrtIntrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace x86vector
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::RsqrtIntrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::RsqrtIntrOp)
 
 namespace mlir {
 namespace x86vector {
@@ -3246,8 +3246,8 @@ void RsqrtOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
 }
 
 ::mlir::ParseResult RsqrtOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType aRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> aOperands(aRawOperands);  ::llvm::SMLoc aOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand aRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> aOperands(aRawOperands);  ::llvm::SMLoc aOperandsLoc;
   (void)aOperandsLoc;
   ::mlir::Type aRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> aTypes(aRawTypes);
@@ -3292,7 +3292,7 @@ void RsqrtOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace x86vector
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::RsqrtOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::RsqrtOp)
 
 namespace mlir {
 namespace x86vector {
@@ -3437,7 +3437,7 @@ void Vp2IntersectDIntrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects
 
 } // namespace x86vector
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::Vp2IntersectDIntrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::Vp2IntersectDIntrOp)
 
 namespace mlir {
 namespace x86vector {
@@ -3604,11 +3604,11 @@ void Vp2IntersectOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
 }
 
 ::mlir::ParseResult Vp2IntersectOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType aRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> aOperands(aRawOperands);  ::llvm::SMLoc aOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand aRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> aOperands(aRawOperands);  ::llvm::SMLoc aOperandsLoc;
   (void)aOperandsLoc;
-  ::mlir::OpAsmParser::OperandType bRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> bOperands(bRawOperands);  ::llvm::SMLoc bOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand bRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> bOperands(bRawOperands);  ::llvm::SMLoc bOperandsLoc;
   (void)bOperandsLoc;
   ::mlir::Type aRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> aTypes(aRawTypes);
@@ -3673,7 +3673,7 @@ void Vp2IntersectOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Eff
 
 } // namespace x86vector
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::Vp2IntersectOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::Vp2IntersectOp)
 
 namespace mlir {
 namespace x86vector {
@@ -3818,7 +3818,7 @@ void Vp2IntersectQIntrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects
 
 } // namespace x86vector
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::Vp2IntersectQIntrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::Vp2IntersectQIntrOp)
 
 
 #endif  // GET_OP_CLASSES

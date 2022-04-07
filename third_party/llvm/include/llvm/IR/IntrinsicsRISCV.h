@@ -13,7 +13,7 @@ namespace llvm {
 namespace Intrinsic {
 enum RISCVIntrinsics : unsigned {
 // Enum values for intrinsics
-    riscv_aes32dsi = 7349,                            // llvm.riscv.aes32dsi
+    riscv_aes32dsi = 7382,                            // llvm.riscv.aes32dsi
     riscv_aes32dsmi,                           // llvm.riscv.aes32dsmi
     riscv_aes32esi,                            // llvm.riscv.aes32esi
     riscv_aes32esmi,                           // llvm.riscv.aes32esmi
@@ -64,6 +64,13 @@ enum RISCVIntrinsics : unsigned {
     riscv_masked_strided_load,                 // llvm.riscv.masked.strided.load
     riscv_masked_strided_store,                // llvm.riscv.masked.strided.store
     riscv_orc_b,                               // llvm.riscv.orc.b
+    riscv_seg2_load,                           // llvm.riscv.seg2.load
+    riscv_seg3_load,                           // llvm.riscv.seg3.load
+    riscv_seg4_load,                           // llvm.riscv.seg4.load
+    riscv_seg5_load,                           // llvm.riscv.seg5.load
+    riscv_seg6_load,                           // llvm.riscv.seg6.load
+    riscv_seg7_load,                           // llvm.riscv.seg7.load
+    riscv_seg8_load,                           // llvm.riscv.seg8.load
     riscv_sha256sig0,                          // llvm.riscv.sha256sig0
     riscv_sha256sig1,                          // llvm.riscv.sha256sig1
     riscv_sha256sum0,                          // llvm.riscv.sha256sum0

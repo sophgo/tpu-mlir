@@ -122,6 +122,7 @@
 ::mlir::LLVM::SqrtOp,
 ::mlir::LLVM::StackRestoreOp,
 ::mlir::LLVM::StackSaveOp,
+::mlir::LLVM::StepVectorOp,
 ::mlir::LLVM::StoreOp,
 ::mlir::LLVM::SubOp,
 ::mlir::LLVM::SwitchOp,
@@ -136,6 +137,24 @@
 ::mlir::LLVM::USubWithOverflowOp,
 ::mlir::LLVM::UndefOp,
 ::mlir::LLVM::UnreachableOp,
+::mlir::LLVM::VPAShrOp,
+::mlir::LLVM::VPAddOp,
+::mlir::LLVM::VPAndOp,
+::mlir::LLVM::VPFAddOp,
+::mlir::LLVM::VPFDivOp,
+::mlir::LLVM::VPFMulOp,
+::mlir::LLVM::VPFRemOp,
+::mlir::LLVM::VPFSubOp,
+::mlir::LLVM::VPLShrOp,
+::mlir::LLVM::VPMulOp,
+::mlir::LLVM::VPOrOp,
+::mlir::LLVM::VPSDivOp,
+::mlir::LLVM::VPSRemOp,
+::mlir::LLVM::VPShlOp,
+::mlir::LLVM::VPSubOp,
+::mlir::LLVM::VPUDivOp,
+::mlir::LLVM::VPURemOp,
+::mlir::LLVM::VPXorOp,
 ::mlir::LLVM::XOrOp,
 ::mlir::LLVM::ZExtOp,
 ::mlir::LLVM::masked_compressstore,
@@ -409,6 +428,36 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_LLVMOps23(
   return ::mlir::success();
 }
 
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_LLVMOps24(
+    ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
+    unsigned valueIndex) {
+  if (!(((::mlir::LLVM::isCompatibleVectorType(type))) && ((::mlir::LLVM::getVectorElementType(type).isa<::mlir::IntegerType>())))) {
+    return op->emitOpError(valueKind) << " #" << valueIndex
+        << " must be LLVM dialect-compatible vector of integer, but got " << type;
+  }
+  return ::mlir::success();
+}
+
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_LLVMOps25(
+    ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
+    unsigned valueIndex) {
+  if (!(((::mlir::LLVM::isCompatibleVectorType(type))) && ((::mlir::LLVM::getVectorElementType(type).isSignlessInteger(1))))) {
+    return op->emitOpError(valueKind) << " #" << valueIndex
+        << " must be LLVM dialect-compatible vector of 1-bit signless integer, but got " << type;
+  }
+  return ::mlir::success();
+}
+
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_LLVMOps26(
+    ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
+    unsigned valueIndex) {
+  if (!(((::mlir::LLVM::isCompatibleVectorType(type))) && ((::mlir::LLVM::getVectorElementType(type).isa<::mlir::FloatType>())))) {
+    return op->emitOpError(valueKind) << " #" << valueIndex
+        << " must be LLVM dialect-compatible vector of floating-point, but got " << type;
+  }
+  return ::mlir::success();
+}
+
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_LLVMOps0(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((attr.isa<::mlir::StringAttr>()))) {
@@ -510,7 +559,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_LLVMOps10(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_LLVMOps11(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return (attr.isa<::mlir::FlatSymbolRefAttr>()); })))) {
+  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && ((attr.isa<::mlir::FlatSymbolRefAttr>())); })))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: flat symbol ref array attribute";
   }
@@ -519,7 +568,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_LLVMOps11(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_LLVMOps12(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32))); })))) {
+  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))); })))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: 32-bit integer array attribute";
   }
@@ -591,14 +640,23 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_LLVMOps19(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_LLVMOps20(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return (attr.isa<::mlir::SymbolRefAttr>()); })))) {
+  if (attr && !(((attr.isa<::mlir::TypeAttr>())) && ((attr.cast<::mlir::TypeAttr>().getValue().isa<::mlir::LLVM::LLVMFunctionType>())))) {
+    return op->emitOpError("attribute '") << attrName
+        << "' failed to satisfy constraint: type attribute of LLVM function type";
+  }
+  return ::mlir::success();
+}
+
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_LLVMOps21(
+    ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
+  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && ((attr.isa<::mlir::SymbolRefAttr>())); })))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: symbol ref array attribute";
   }
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_LLVMOps21(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_LLVMOps22(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !(((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32))))) {
     return op->emitOpError("attribute '") << attrName
@@ -607,7 +665,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_LLVMOps21(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_LLVMOps22(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_LLVMOps23(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !(((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(1))))) {
     return op->emitOpError("attribute '") << attrName
@@ -616,7 +674,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_LLVMOps22(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_LLVMOps23(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_LLVMOps24(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((attr.isa<::mlir::BoolAttr>()))) {
     return op->emitOpError("attribute '") << attrName
@@ -809,11 +867,11 @@ void AShrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult AShrOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type resRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resTypes(resRawTypes);
@@ -872,7 +930,7 @@ void AShrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::AShrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::AShrOp)
 
 namespace mlir {
 namespace LLVM {
@@ -1021,7 +1079,7 @@ void AccessGroupMetadataOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::AccessGroupMetadataOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::AccessGroupMetadataOp)
 
 namespace mlir {
 namespace LLVM {
@@ -1184,11 +1242,11 @@ void AddOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult AddOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type resRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resTypes(resRawTypes);
@@ -1247,7 +1305,7 @@ void AddOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::AddOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::AddOp)
 
 namespace mlir {
 namespace LLVM {
@@ -1374,8 +1432,8 @@ void AddrSpaceCastOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult AddrSpaceCastOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType argRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand argRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
   (void)argOperandsLoc;
   ::mlir::Type argRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> argTypes(argRawTypes);
@@ -1440,7 +1498,7 @@ void AddrSpaceCastOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Ef
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::AddrSpaceCastOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::AddrSpaceCastOp)
 
 namespace mlir {
 namespace LLVM {
@@ -1541,7 +1599,7 @@ void AddressOfOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
 
 void AddressOfOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, LLVMFuncOp func, ArrayRef<NamedAttribute> attrs) {
       build(odsBuilder, odsState,
-            LLVM::LLVMPointerType::get(func.getType()), func.getName());
+            LLVM::LLVMPointerType::get(func.getFunctionType()), func.getName());
       odsState.addAttributes(attrs);
     
 }
@@ -1647,7 +1705,7 @@ void AddressOfOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::AddressOfOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::AddressOfOp)
 
 namespace mlir {
 namespace LLVM {
@@ -1846,7 +1904,7 @@ void AliasScopeDomainMetadataOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::AliasScopeDomainMetadataOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::AliasScopeDomainMetadataOp)
 
 namespace mlir {
 namespace LLVM {
@@ -2089,7 +2147,7 @@ void AliasScopeMetadataOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::AliasScopeMetadataOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::AliasScopeMetadataOp)
 
 namespace mlir {
 namespace LLVM {
@@ -2266,7 +2324,7 @@ void AllocaOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::AllocaOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::AllocaOp)
 
 namespace mlir {
 namespace LLVM {
@@ -2429,11 +2487,11 @@ void AndOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult AndOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type resRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resTypes(resRawTypes);
@@ -2492,7 +2550,7 @@ void AndOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::AndOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::AndOp)
 
 namespace mlir {
 namespace LLVM {
@@ -2598,7 +2656,7 @@ void AssumeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::AssumeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::AssumeOp)
 
 namespace mlir {
 namespace LLVM {
@@ -2867,7 +2925,7 @@ void AtomicCmpXchgOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::AtomicCmpXchgOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::AtomicCmpXchgOp)
 
 namespace mlir {
 namespace LLVM {
@@ -3112,7 +3170,7 @@ void AtomicRMWOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::AtomicRMWOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::AtomicRMWOp)
 
 namespace mlir {
 namespace LLVM {
@@ -3248,7 +3306,7 @@ void BitReverseOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effec
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::BitReverseOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::BitReverseOp)
 
 namespace mlir {
 namespace LLVM {
@@ -3375,8 +3433,8 @@ void BitcastOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 }
 
 ::mlir::ParseResult BitcastOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType argRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand argRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
   (void)argOperandsLoc;
   ::mlir::Type argRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> argTypes(argRawTypes);
@@ -3441,7 +3499,7 @@ void BitcastOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::BitcastOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::BitcastOp)
 
 namespace mlir {
 namespace LLVM {
@@ -3590,7 +3648,7 @@ void BrOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::
 
 ::mlir::ParseResult BrOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::Block *destSuccessor = nullptr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> destOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> destOperandsOperands;
   ::llvm::SMLoc destOperandsOperandsLoc;
   (void)destOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> destOperandsTypes;
@@ -3637,7 +3695,7 @@ void BrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstanc
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::BrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::BrOp)
 
 namespace mlir {
 namespace LLVM {
@@ -3803,7 +3861,7 @@ void CallOp::setFastmathFlagsAttr(::mlir::LLVM::FMFAttr attr) {
 }
 
 void CallOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, LLVMFuncOp func, ValueRange operands, ArrayRef<NamedAttribute> attributes) {
-      Type resultType = func.getType().getReturnType();
+      Type resultType = func.getFunctionType().getReturnType();
       if (!resultType.isa<LLVM::LLVMVoidType>())
         odsState.addTypes(resultType);
       odsState.addAttribute("callee", SymbolRefAttr::get(func));
@@ -3828,7 +3886,9 @@ void CallOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
   if (callee) {
   odsState.addAttribute(getCalleeAttrName(odsState.name), callee);
   }
+  if (fastmathFlags) {
   odsState.addAttribute(getFastmathFlagsAttrName(odsState.name), fastmathFlags);
+  }
   odsState.addTypes(resultType0);
 }
 
@@ -3887,7 +3947,7 @@ void CallOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CallOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CallOp)
 
 namespace mlir {
 namespace LLVM {
@@ -4162,17 +4222,17 @@ void CondBrOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::ParseResult CondBrOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType conditionRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> conditionOperands(conditionRawOperands);  ::llvm::SMLoc conditionOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand conditionRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> conditionOperands(conditionRawOperands);  ::llvm::SMLoc conditionOperandsLoc;
   (void)conditionOperandsLoc;
   ::mlir::ElementsAttr branch_weightsAttr;
   ::mlir::Block *trueDestSuccessor = nullptr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> trueDestOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> trueDestOperandsOperands;
   ::llvm::SMLoc trueDestOperandsOperandsLoc;
   (void)trueDestOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> trueDestOperandsTypes;
   ::mlir::Block *falseDestSuccessor = nullptr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> falseDestOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> falseDestOperandsOperands;
   ::llvm::SMLoc falseDestOperandsOperandsLoc;
   (void)falseDestOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> falseDestOperandsTypes;
@@ -4281,7 +4341,7 @@ void CondBrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CondBrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CondBrOp)
 
 namespace mlir {
 namespace LLVM {
@@ -4473,7 +4533,7 @@ void ConstantOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::ConstantOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::ConstantOp)
 
 namespace mlir {
 namespace LLVM {
@@ -4632,7 +4692,7 @@ void CopySignOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CopySignOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CopySignOp)
 
 namespace mlir {
 namespace LLVM {
@@ -4758,7 +4818,7 @@ void CoroAlignOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroAlignOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroAlignOp)
 
 namespace mlir {
 namespace LLVM {
@@ -4899,11 +4959,11 @@ void CoroBeginOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 }
 
 ::mlir::ParseResult CoroBeginOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType tokenRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> tokenOperands(tokenRawOperands);  ::llvm::SMLoc tokenOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand tokenRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> tokenOperands(tokenRawOperands);  ::llvm::SMLoc tokenOperandsLoc;
   (void)tokenOperandsLoc;
-  ::mlir::OpAsmParser::OperandType memRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> memOperands(memRawOperands);  ::llvm::SMLoc memOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand memRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> memOperands(memRawOperands);  ::llvm::SMLoc memOperandsLoc;
   (void)memOperandsLoc;
   ::mlir::Type resRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resTypes(resRawTypes);
@@ -4958,7 +5018,7 @@ void CoroBeginOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroBeginOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroBeginOp)
 
 namespace mlir {
 namespace LLVM {
@@ -5099,11 +5159,11 @@ void CoroEndOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 }
 
 ::mlir::ParseResult CoroEndOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType handleRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> handleOperands(handleRawOperands);  ::llvm::SMLoc handleOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand handleRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> handleOperands(handleRawOperands);  ::llvm::SMLoc handleOperandsLoc;
   (void)handleOperandsLoc;
-  ::mlir::OpAsmParser::OperandType unwindRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> unwindOperands(unwindRawOperands);  ::llvm::SMLoc unwindOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand unwindRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> unwindOperands(unwindRawOperands);  ::llvm::SMLoc unwindOperandsLoc;
   (void)unwindOperandsLoc;
   ::mlir::Type resRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resTypes(resRawTypes);
@@ -5158,7 +5218,7 @@ void CoroEndOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroEndOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroEndOp)
 
 namespace mlir {
 namespace LLVM {
@@ -5299,11 +5359,11 @@ void CoroFreeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::ParseResult CoroFreeOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType idRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> idOperands(idRawOperands);  ::llvm::SMLoc idOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand idRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> idOperands(idRawOperands);  ::llvm::SMLoc idOperandsLoc;
   (void)idOperandsLoc;
-  ::mlir::OpAsmParser::OperandType handleRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> handleOperands(handleRawOperands);  ::llvm::SMLoc handleOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand handleRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> handleOperands(handleRawOperands);  ::llvm::SMLoc handleOperandsLoc;
   (void)handleOperandsLoc;
   ::mlir::Type resRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resTypes(resRawTypes);
@@ -5358,7 +5418,7 @@ void CoroFreeOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroFreeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroFreeOp)
 
 namespace mlir {
 namespace LLVM {
@@ -5543,17 +5603,17 @@ void CoroIdOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::ParseResult CoroIdOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType alignRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> alignOperands(alignRawOperands);  ::llvm::SMLoc alignOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand alignRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> alignOperands(alignRawOperands);  ::llvm::SMLoc alignOperandsLoc;
   (void)alignOperandsLoc;
-  ::mlir::OpAsmParser::OperandType promiseRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> promiseOperands(promiseRawOperands);  ::llvm::SMLoc promiseOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand promiseRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> promiseOperands(promiseRawOperands);  ::llvm::SMLoc promiseOperandsLoc;
   (void)promiseOperandsLoc;
-  ::mlir::OpAsmParser::OperandType coroaddrRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> coroaddrOperands(coroaddrRawOperands);  ::llvm::SMLoc coroaddrOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand coroaddrRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> coroaddrOperands(coroaddrRawOperands);  ::llvm::SMLoc coroaddrOperandsLoc;
   (void)coroaddrOperandsLoc;
-  ::mlir::OpAsmParser::OperandType fnaddrsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> fnaddrsOperands(fnaddrsRawOperands);  ::llvm::SMLoc fnaddrsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand fnaddrsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> fnaddrsOperands(fnaddrsRawOperands);  ::llvm::SMLoc fnaddrsOperandsLoc;
   (void)fnaddrsOperandsLoc;
   ::mlir::Type resRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resTypes(resRawTypes);
@@ -5630,7 +5690,7 @@ void CoroIdOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroIdOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroIdOp)
 
 namespace mlir {
 namespace LLVM {
@@ -5735,8 +5795,8 @@ void CoroResumeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
 }
 
 ::mlir::ParseResult CoroResumeOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType handleRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> handleOperands(handleRawOperands);  ::llvm::SMLoc handleOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand handleRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> handleOperands(handleRawOperands);  ::llvm::SMLoc handleOperandsLoc;
   (void)handleOperandsLoc;
 
   handleOperandsLoc = parser.getCurrentLocation();
@@ -5758,7 +5818,7 @@ void CoroResumeOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroResumeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroResumeOp)
 
 namespace mlir {
 namespace LLVM {
@@ -5877,8 +5937,8 @@ void CoroSaveOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::ParseResult CoroSaveOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType handleRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> handleOperands(handleRawOperands);  ::llvm::SMLoc handleOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand handleRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> handleOperands(handleRawOperands);  ::llvm::SMLoc handleOperandsLoc;
   (void)handleOperandsLoc;
   ::mlir::Type resRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resTypes(resRawTypes);
@@ -5921,7 +5981,7 @@ void CoroSaveOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroSaveOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroSaveOp)
 
 namespace mlir {
 namespace LLVM {
@@ -6047,7 +6107,7 @@ void CoroSizeOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroSizeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroSizeOp)
 
 namespace mlir {
 namespace LLVM {
@@ -6188,11 +6248,11 @@ void CoroSuspendOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
 }
 
 ::mlir::ParseResult CoroSuspendOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType saveRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> saveOperands(saveRawOperands);  ::llvm::SMLoc saveOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand saveRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> saveOperands(saveRawOperands);  ::llvm::SMLoc saveOperandsLoc;
   (void)saveOperandsLoc;
-  ::mlir::OpAsmParser::OperandType finalRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> finalOperands(finalRawOperands);  ::llvm::SMLoc finalOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand finalRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> finalOperands(finalRawOperands);  ::llvm::SMLoc finalOperandsLoc;
   (void)finalOperandsLoc;
   ::mlir::Type resRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resTypes(resRawTypes);
@@ -6247,7 +6307,7 @@ void CoroSuspendOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroSuspendOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CoroSuspendOp)
 
 namespace mlir {
 namespace LLVM {
@@ -6383,7 +6443,7 @@ void CosOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CosOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CosOp)
 
 namespace mlir {
 namespace LLVM {
@@ -6528,7 +6588,7 @@ void CountLeadingZerosOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CountLeadingZerosOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CountLeadingZerosOp)
 
 namespace mlir {
 namespace LLVM {
@@ -6673,7 +6733,7 @@ void CountTrailingZerosOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffect
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CountTrailingZerosOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CountTrailingZerosOp)
 
 namespace mlir {
 namespace LLVM {
@@ -6809,7 +6869,7 @@ void CtPopOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CtPopOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CtPopOp)
 
 namespace mlir {
 namespace LLVM {
@@ -6928,8 +6988,8 @@ void EhTypeidForOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
 }
 
 ::mlir::ParseResult EhTypeidForOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType type_infoRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> type_infoOperands(type_infoRawOperands);  ::llvm::SMLoc type_infoOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand type_infoRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> type_infoOperands(type_infoRawOperands);  ::llvm::SMLoc type_infoOperandsLoc;
   (void)type_infoOperandsLoc;
   ::mlir::Type resRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resTypes(resRawTypes);
@@ -6972,7 +7032,7 @@ void EhTypeidForOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::EhTypeidForOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::EhTypeidForOp)
 
 namespace mlir {
 namespace LLVM {
@@ -7108,7 +7168,7 @@ void Exp2Op::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::Exp2Op)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::Exp2Op)
 
 namespace mlir {
 namespace LLVM {
@@ -7244,7 +7304,7 @@ void ExpOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::ExpOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::ExpOp)
 
 namespace mlir {
 namespace LLVM {
@@ -7391,7 +7451,7 @@ void ExtractElementOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::E
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::ExtractElementOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::ExtractElementOp)
 
 namespace mlir {
 namespace LLVM {
@@ -7566,7 +7626,7 @@ void ExtractValueOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Eff
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::ExtractValueOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::ExtractValueOp)
 
 namespace mlir {
 namespace LLVM {
@@ -7702,7 +7762,7 @@ void FAbsOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FAbsOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FAbsOp)
 
 namespace mlir {
 namespace LLVM {
@@ -7835,14 +7895,18 @@ void FAddOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 void FAddOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::LLVM::FMFAttr fastmathFlags) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
+  if (fastmathFlags) {
   odsState.addAttribute(getFastmathFlagsAttrName(odsState.name), fastmathFlags);
+  }
   odsState.addTypes(res);
 }
 
 void FAddOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::LLVM::FMFAttr fastmathFlags) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
+  if (fastmathFlags) {
   odsState.addAttribute(getFastmathFlagsAttrName(odsState.name), fastmathFlags);
+  }
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -7873,7 +7937,9 @@ void FAddOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 void FAddOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::LLVM::FMFAttr fastmathFlags) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
+  if (fastmathFlags) {
   odsState.addAttribute(getFastmathFlagsAttrName(odsState.name), fastmathFlags);
+  }
   odsState.addTypes({lhs.getType()});
 
 }
@@ -7923,11 +7989,11 @@ void FAddOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult FAddOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type resRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resTypes(resRawTypes);
@@ -7986,7 +8052,7 @@ void FAddOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FAddOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FAddOp)
 
 namespace mlir {
 namespace LLVM {
@@ -8122,7 +8188,7 @@ void FCeilOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FCeilOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FCeilOp)
 
 namespace mlir {
 namespace LLVM {
@@ -8280,7 +8346,9 @@ void FCmpOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
   odsState.addAttribute(getPredicateAttrName(odsState.name), predicate);
+  if (fastmathFlags) {
   odsState.addAttribute(getFastmathFlagsAttrName(odsState.name), fastmathFlags);
+  }
   odsState.addTypes(res);
 }
 
@@ -8288,7 +8356,9 @@ void FCmpOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
   odsState.addAttribute(getPredicateAttrName(odsState.name), predicate);
+  if (fastmathFlags) {
   odsState.addAttribute(getFastmathFlagsAttrName(odsState.name), fastmathFlags);
+  }
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -8368,7 +8438,7 @@ void FCmpOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FCmpOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FCmpOp)
 
 namespace mlir {
 namespace LLVM {
@@ -8501,14 +8571,18 @@ void FDivOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 void FDivOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::LLVM::FMFAttr fastmathFlags) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
+  if (fastmathFlags) {
   odsState.addAttribute(getFastmathFlagsAttrName(odsState.name), fastmathFlags);
+  }
   odsState.addTypes(res);
 }
 
 void FDivOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::LLVM::FMFAttr fastmathFlags) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
+  if (fastmathFlags) {
   odsState.addAttribute(getFastmathFlagsAttrName(odsState.name), fastmathFlags);
+  }
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -8539,7 +8613,9 @@ void FDivOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 void FDivOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::LLVM::FMFAttr fastmathFlags) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
+  if (fastmathFlags) {
   odsState.addAttribute(getFastmathFlagsAttrName(odsState.name), fastmathFlags);
+  }
   odsState.addTypes({lhs.getType()});
 
 }
@@ -8589,11 +8665,11 @@ void FDivOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult FDivOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type resRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resTypes(resRawTypes);
@@ -8652,7 +8728,7 @@ void FDivOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FDivOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FDivOp)
 
 namespace mlir {
 namespace LLVM {
@@ -8788,7 +8864,7 @@ void FFloorOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FFloorOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FFloorOp)
 
 namespace mlir {
 namespace LLVM {
@@ -8970,7 +9046,7 @@ void FMAOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FMAOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FMAOp)
 
 namespace mlir {
 namespace LLVM {
@@ -9152,7 +9228,7 @@ void FMulAddOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FMulAddOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FMulAddOp)
 
 namespace mlir {
 namespace LLVM {
@@ -9285,14 +9361,18 @@ void FMulOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 void FMulOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::LLVM::FMFAttr fastmathFlags) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
+  if (fastmathFlags) {
   odsState.addAttribute(getFastmathFlagsAttrName(odsState.name), fastmathFlags);
+  }
   odsState.addTypes(res);
 }
 
 void FMulOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::LLVM::FMFAttr fastmathFlags) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
+  if (fastmathFlags) {
   odsState.addAttribute(getFastmathFlagsAttrName(odsState.name), fastmathFlags);
+  }
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -9323,7 +9403,9 @@ void FMulOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 void FMulOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::LLVM::FMFAttr fastmathFlags) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
+  if (fastmathFlags) {
   odsState.addAttribute(getFastmathFlagsAttrName(odsState.name), fastmathFlags);
+  }
   odsState.addTypes({lhs.getType()});
 
 }
@@ -9373,11 +9455,11 @@ void FMulOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult FMulOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type resRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resTypes(resRawTypes);
@@ -9436,7 +9518,7 @@ void FMulOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FMulOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FMulOp)
 
 namespace mlir {
 namespace LLVM {
@@ -9554,13 +9636,17 @@ void FNegOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 
 void FNegOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value operand, ::mlir::LLVM::FMFAttr fastmathFlags) {
   odsState.addOperands(operand);
+  if (fastmathFlags) {
   odsState.addAttribute(getFastmathFlagsAttrName(odsState.name), fastmathFlags);
+  }
   odsState.addTypes(res);
 }
 
 void FNegOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand, ::mlir::LLVM::FMFAttr fastmathFlags) {
   odsState.addOperands(operand);
+  if (fastmathFlags) {
   odsState.addAttribute(getFastmathFlagsAttrName(odsState.name), fastmathFlags);
+  }
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -9588,7 +9674,9 @@ void FNegOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 
 void FNegOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand, ::mlir::LLVM::FMFAttr fastmathFlags) {
   odsState.addOperands(operand);
+  if (fastmathFlags) {
   odsState.addAttribute(getFastmathFlagsAttrName(odsState.name), fastmathFlags);
+  }
   odsState.addTypes({operand.getType()});
 
 }
@@ -9632,8 +9720,8 @@ void FNegOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult FNegOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type resRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resTypes(resRawTypes);
@@ -9681,7 +9769,7 @@ void FNegOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FNegOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FNegOp)
 
 namespace mlir {
 namespace LLVM {
@@ -9808,8 +9896,8 @@ void FPExtOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 ::mlir::ParseResult FPExtOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType argRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand argRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
   (void)argOperandsLoc;
   ::mlir::Type argRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> argTypes(argRawTypes);
@@ -9874,7 +9962,7 @@ void FPExtOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FPExtOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FPExtOp)
 
 namespace mlir {
 namespace LLVM {
@@ -10001,8 +10089,8 @@ void FPToSIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::ParseResult FPToSIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType argRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand argRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
   (void)argOperandsLoc;
   ::mlir::Type argRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> argTypes(argRawTypes);
@@ -10067,7 +10155,7 @@ void FPToSIOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FPToSIOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FPToSIOp)
 
 namespace mlir {
 namespace LLVM {
@@ -10194,8 +10282,8 @@ void FPToUIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::ParseResult FPToUIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType argRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand argRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
   (void)argOperandsLoc;
   ::mlir::Type argRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> argTypes(argRawTypes);
@@ -10260,7 +10348,7 @@ void FPToUIOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FPToUIOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FPToUIOp)
 
 namespace mlir {
 namespace LLVM {
@@ -10387,8 +10475,8 @@ void FPTruncOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 }
 
 ::mlir::ParseResult FPTruncOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType argRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand argRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
   (void)argOperandsLoc;
   ::mlir::Type argRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> argTypes(argRawTypes);
@@ -10453,7 +10541,7 @@ void FPTruncOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FPTruncOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FPTruncOp)
 
 namespace mlir {
 namespace LLVM {
@@ -10586,14 +10674,18 @@ void FRemOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 void FRemOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::LLVM::FMFAttr fastmathFlags) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
+  if (fastmathFlags) {
   odsState.addAttribute(getFastmathFlagsAttrName(odsState.name), fastmathFlags);
+  }
   odsState.addTypes(res);
 }
 
 void FRemOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::LLVM::FMFAttr fastmathFlags) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
+  if (fastmathFlags) {
   odsState.addAttribute(getFastmathFlagsAttrName(odsState.name), fastmathFlags);
+  }
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -10624,7 +10716,9 @@ void FRemOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 void FRemOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::LLVM::FMFAttr fastmathFlags) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
+  if (fastmathFlags) {
   odsState.addAttribute(getFastmathFlagsAttrName(odsState.name), fastmathFlags);
+  }
   odsState.addTypes({lhs.getType()});
 
 }
@@ -10674,11 +10768,11 @@ void FRemOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult FRemOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type resRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resTypes(resRawTypes);
@@ -10737,7 +10831,7 @@ void FRemOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FRemOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FRemOp)
 
 namespace mlir {
 namespace LLVM {
@@ -10870,14 +10964,18 @@ void FSubOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 void FSubOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::LLVM::FMFAttr fastmathFlags) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
+  if (fastmathFlags) {
   odsState.addAttribute(getFastmathFlagsAttrName(odsState.name), fastmathFlags);
+  }
   odsState.addTypes(res);
 }
 
 void FSubOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::LLVM::FMFAttr fastmathFlags) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
+  if (fastmathFlags) {
   odsState.addAttribute(getFastmathFlagsAttrName(odsState.name), fastmathFlags);
+  }
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -10908,7 +11006,9 @@ void FSubOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 void FSubOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::LLVM::FMFAttr fastmathFlags) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
+  if (fastmathFlags) {
   odsState.addAttribute(getFastmathFlagsAttrName(odsState.name), fastmathFlags);
+  }
   odsState.addTypes({lhs.getType()});
 
 }
@@ -10958,11 +11058,11 @@ void FSubOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult FSubOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type resRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resTypes(resRawTypes);
@@ -11021,7 +11121,7 @@ void FSubOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FSubOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FSubOp)
 
 namespace mlir {
 namespace LLVM {
@@ -11215,7 +11315,7 @@ void FenceOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FenceOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FenceOp)
 
 namespace mlir {
 namespace LLVM {
@@ -11355,8 +11455,8 @@ void FreezeOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
 }
 
 ::mlir::ParseResult FreezeOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType valRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> valOperands(valRawOperands);  ::llvm::SMLoc valOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand valRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> valOperands(valRawOperands);  ::llvm::SMLoc valOperandsLoc;
   (void)valOperandsLoc;
   ::mlir::Type valRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> valTypes(valRawTypes);
@@ -11398,7 +11498,7 @@ void FreezeOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FreezeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::FreezeOp)
 
 namespace mlir {
 namespace LLVM {
@@ -11588,10 +11688,10 @@ void GEPOp::setStructIndicesAttr(::mlir::DenseIntElementsAttr attr) {
 }
 
 ::mlir::ParseResult GEPOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType baseRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> baseOperands(baseRawOperands);  ::llvm::SMLoc baseOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand baseRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> baseOperands(baseRawOperands);  ::llvm::SMLoc baseOperandsLoc;
   (void)baseOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> indicesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
   ::llvm::SMLoc indicesOperandsLoc;
   (void)indicesOperandsLoc;
   ::mlir::DenseIntElementsAttr structIndicesAttr;
@@ -11622,7 +11722,7 @@ void GEPOp::setStructIndicesAttr(::mlir::DenseIntElementsAttr attr) {
   allOperandTypes = allOperand__allResult_functionType.getInputs();
   allResultTypes = allOperand__allResult_functionType.getResults();
   result.addTypes(allResultTypes);
-  if (parser.resolveOperands(::llvm::concat<const ::mlir::OpAsmParser::OperandType>(baseOperands, indicesOperands), allOperandTypes, parser.getNameLoc(), result.operands))
+  if (parser.resolveOperands(::llvm::concat<const ::mlir::OpAsmParser::UnresolvedOperand>(baseOperands, indicesOperands), allOperandTypes, parser.getNameLoc(), result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -11644,7 +11744,7 @@ void GEPOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::GEPOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::GEPOp)
 
 namespace mlir {
 namespace LLVM {
@@ -11785,11 +11885,11 @@ void GetActiveLaneMaskOp::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult GetActiveLaneMaskOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType baseRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> baseOperands(baseRawOperands);  ::llvm::SMLoc baseOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand baseRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> baseOperands(baseRawOperands);  ::llvm::SMLoc baseOperandsLoc;
   (void)baseOperandsLoc;
-  ::mlir::OpAsmParser::OperandType nRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> nOperands(nRawOperands);  ::llvm::SMLoc nOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand nRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> nOperands(nRawOperands);  ::llvm::SMLoc nOperandsLoc;
   (void)nOperandsLoc;
   ::mlir::Type baseRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> baseTypes(baseRawTypes);
@@ -11885,7 +11985,7 @@ void GetActiveLaneMaskOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::GetActiveLaneMaskOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::GetActiveLaneMaskOp)
 
 namespace mlir {
 namespace LLVM {
@@ -11944,7 +12044,7 @@ std::pair<unsigned, unsigned> GlobalCtorsOpAdaptor::getODSOperandIndexAndLength(
     if (!tblgen_ctors)
       return emitError(loc, "'llvm.mlir.global_ctors' op ""requires attribute 'ctors'");
 
-    if (tblgen_ctors && !(((tblgen_ctors.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_ctors.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return (attr.isa<::mlir::FlatSymbolRefAttr>()); }))))
+    if (tblgen_ctors && !(((tblgen_ctors.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_ctors.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && ((attr.isa<::mlir::FlatSymbolRefAttr>())); }))))
       return emitError(loc, "'llvm.mlir.global_ctors' op ""attribute 'ctors' failed to satisfy constraint: flat symbol ref array attribute");
   }
   {
@@ -11952,7 +12052,7 @@ std::pair<unsigned, unsigned> GlobalCtorsOpAdaptor::getODSOperandIndexAndLength(
     if (!tblgen_priorities)
       return emitError(loc, "'llvm.mlir.global_ctors' op ""requires attribute 'priorities'");
 
-    if (tblgen_priorities && !(((tblgen_priorities.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_priorities.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32))); }))))
+    if (tblgen_priorities && !(((tblgen_priorities.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_priorities.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))); }))))
       return emitError(loc, "'llvm.mlir.global_ctors' op ""attribute 'priorities' failed to satisfy constraint: 32-bit integer array attribute");
   }
   return ::mlir::success();
@@ -12062,7 +12162,7 @@ void GlobalCtorsOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::GlobalCtorsOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::GlobalCtorsOp)
 
 namespace mlir {
 namespace LLVM {
@@ -12121,7 +12221,7 @@ std::pair<unsigned, unsigned> GlobalDtorsOpAdaptor::getODSOperandIndexAndLength(
     if (!tblgen_dtors)
       return emitError(loc, "'llvm.mlir.global_dtors' op ""requires attribute 'dtors'");
 
-    if (tblgen_dtors && !(((tblgen_dtors.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_dtors.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return (attr.isa<::mlir::FlatSymbolRefAttr>()); }))))
+    if (tblgen_dtors && !(((tblgen_dtors.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_dtors.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && ((attr.isa<::mlir::FlatSymbolRefAttr>())); }))))
       return emitError(loc, "'llvm.mlir.global_dtors' op ""attribute 'dtors' failed to satisfy constraint: flat symbol ref array attribute");
   }
   {
@@ -12129,7 +12229,7 @@ std::pair<unsigned, unsigned> GlobalDtorsOpAdaptor::getODSOperandIndexAndLength(
     if (!tblgen_priorities)
       return emitError(loc, "'llvm.mlir.global_dtors' op ""requires attribute 'priorities'");
 
-    if (tblgen_priorities && !(((tblgen_priorities.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_priorities.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32))); }))))
+    if (tblgen_priorities && !(((tblgen_priorities.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_priorities.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))); }))))
       return emitError(loc, "'llvm.mlir.global_dtors' op ""attribute 'priorities' failed to satisfy constraint: 32-bit integer array attribute");
   }
   return ::mlir::success();
@@ -12239,7 +12339,7 @@ void GlobalDtorsOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::GlobalDtorsOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::GlobalDtorsOp)
 
 namespace mlir {
 namespace LLVM {
@@ -12651,7 +12751,9 @@ void GlobalOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
   if (alignment) {
   odsState.addAttribute(getAlignmentAttrName(odsState.name), alignment);
   }
+  if (addr_space) {
   odsState.addAttribute(getAddrSpaceAttrName(odsState.name), addr_space);
+  }
   if (unnamed_addr) {
   odsState.addAttribute(getUnnamedAddrAttrName(odsState.name), unnamed_addr);
   }
@@ -12677,7 +12779,9 @@ void GlobalOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
   if (alignment) {
   odsState.addAttribute(getAlignmentAttrName(odsState.name), alignment);
   }
+  if (addr_space) {
   odsState.addAttribute(getAddrSpaceAttrName(odsState.name), addr_space);
+  }
   if (unnamed_addr) {
   odsState.addAttribute(getUnnamedAddrAttrName(odsState.name), unnamed_addr);
   }
@@ -12831,7 +12935,7 @@ void GlobalOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::GlobalOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::GlobalOp)
 
 namespace mlir {
 namespace LLVM {
@@ -13039,7 +13143,7 @@ void ICmpOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::ICmpOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::ICmpOp)
 
 namespace mlir {
 namespace LLVM {
@@ -13507,7 +13611,7 @@ void InlineAsmOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   ::mlir::ArrayAttr operand_attrsAttr;
   ::mlir::StringAttr asm_stringAttr;
   ::mlir::StringAttr constraintsAttr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::llvm::ArrayRef<::mlir::Type> allOperandTypes;
   ::llvm::ArrayRef<::mlir::Type> allResultTypes;
   if (succeeded(parser.parseOptionalKeyword("has_side_effects"))) {
@@ -13628,7 +13732,7 @@ void InlineAsmOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::InlineAsmOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::InlineAsmOp)
 
 namespace mlir {
 namespace LLVM {
@@ -13805,7 +13909,7 @@ void InsertElementOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Ef
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::InsertElementOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::InsertElementOp)
 
 namespace mlir {
 namespace LLVM {
@@ -13999,7 +14103,7 @@ void InsertValueOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effe
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::InsertValueOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::InsertValueOp)
 
 namespace mlir {
 namespace LLVM {
@@ -14126,8 +14230,8 @@ void IntToPtrOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::ParseResult IntToPtrOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType argRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand argRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
   (void)argOperandsLoc;
   ::mlir::Type argRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> argTypes(argRawTypes);
@@ -14192,7 +14296,7 @@ void IntToPtrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::IntToPtrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::IntToPtrOp)
 
 namespace mlir {
 namespace LLVM {
@@ -14465,7 +14569,7 @@ void InvokeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::InvokeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::InvokeOp)
 
 namespace mlir {
 namespace LLVM {
@@ -14494,6 +14598,17 @@ std::pair<unsigned, unsigned> LLVMFuncOpAdaptor::getODSOperandIndexAndLength(uns
 
 ::mlir::DictionaryAttr LLVMFuncOpAdaptor::getAttributes() {
   return odsAttrs;
+}
+
+::mlir::TypeAttr LLVMFuncOpAdaptor::getFunctionTypeAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  ::mlir::TypeAttr attr = odsAttrs.get("function_type").cast<::mlir::TypeAttr>();
+  return attr;
+}
+
+::mlir::LLVM::LLVMFunctionType LLVMFuncOpAdaptor::getFunctionType() {
+  auto attr = getFunctionTypeAttr();
+  return attr.getValue().cast<::mlir::LLVM::LLVMFunctionType>();
 }
 
 ::mlir::LLVM::LinkageAttr LLVMFuncOpAdaptor::getLinkageAttr() {
@@ -14565,6 +14680,14 @@ bool LLVMFuncOpAdaptor::getDsoLocal() {
 
 ::mlir::LogicalResult LLVMFuncOpAdaptor::verify(::mlir::Location loc) {
   {
+    auto tblgen_function_type = odsAttrs.get("function_type");
+    if (!tblgen_function_type)
+      return emitError(loc, "'llvm.func' op ""requires attribute 'function_type'");
+
+    if (tblgen_function_type && !(((tblgen_function_type.isa<::mlir::TypeAttr>())) && ((tblgen_function_type.cast<::mlir::TypeAttr>().getValue().isa<::mlir::LLVM::LLVMFunctionType>()))))
+      return emitError(loc, "'llvm.func' op ""attribute 'function_type' failed to satisfy constraint: type attribute of LLVM function type");
+  }
+  {
     auto tblgen_linkage = odsAttrs.get("linkage");
     if (tblgen_linkage && !((tblgen_linkage.isa<::mlir::LLVM::LinkageAttr>())))
       return emitError(loc, "'llvm.func' op ""attribute 'linkage' failed to satisfy constraint: LLVM Linkage specification");
@@ -14616,6 +14739,15 @@ std::pair<unsigned, unsigned> LLVMFuncOp::getODSResultIndexAndLength(unsigned in
   return (*this)->getRegion(0);
 }
 
+::mlir::TypeAttr LLVMFuncOp::getFunctionTypeAttr() {
+  return (*this)->getAttr(getFunctionTypeAttrName()).cast<::mlir::TypeAttr>();
+}
+
+::mlir::LLVM::LLVMFunctionType LLVMFuncOp::getFunctionType() {
+  auto attr = getFunctionTypeAttr();
+  return attr.getValue().cast<::mlir::LLVM::LLVMFunctionType>();
+}
+
 ::mlir::LLVM::LinkageAttr LLVMFuncOp::getLinkageAttr() {
   return (*this)->getAttr(getLinkageAttrName()).dyn_cast_or_null<::mlir::LLVM::LinkageAttr>();
 }
@@ -14663,6 +14795,10 @@ bool LLVMFuncOp::getDsoLocal() {
   return attr ? ::llvm::Optional< ::mlir::ArrayAttr >(attr) : (::llvm::None);
 }
 
+void LLVMFuncOp::setFunctionTypeAttr(::mlir::TypeAttr attr) {
+  (*this)->setAttr(getFunctionTypeAttrName(), attr);
+}
+
 void LLVMFuncOp::setLinkageAttr(::mlir::LLVM::LinkageAttr attr) {
   (*this)->setAttr(getLinkageAttrName(), attr);
 }
@@ -14700,6 +14836,14 @@ void LLVMFuncOp::setPassthroughAttr(::mlir::ArrayAttr attr) {
 }
 
 ::mlir::LogicalResult LLVMFuncOp::verifyInvariantsImpl() {
+  {
+    auto tblgen_function_type = (*this)->getAttr(getFunctionTypeAttrName());
+    if (!tblgen_function_type)
+      return emitOpError("requires attribute 'function_type'");
+
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps20(*this, tblgen_function_type, "function_type")))
+      return ::mlir::failure();
+  }
   {
     auto tblgen_linkage = (*this)->getAttr(getLinkageAttrName());
     if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps15(*this, tblgen_linkage, "linkage")))
@@ -14743,7 +14887,7 @@ void LLVMFuncOp::setPassthroughAttr(::mlir::ArrayAttr attr) {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::LLVMFuncOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::LLVMFuncOp)
 
 namespace mlir {
 namespace LLVM {
@@ -14906,11 +15050,11 @@ void LShrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult LShrOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type resRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resTypes(resRawTypes);
@@ -14969,7 +15113,7 @@ void LShrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::LShrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::LShrOp)
 
 namespace mlir {
 namespace LLVM {
@@ -15173,7 +15317,7 @@ void LandingpadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::LandingpadOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::LandingpadOp)
 
 namespace mlir {
 namespace LLVM {
@@ -15277,17 +15421,17 @@ bool LoadOpAdaptor::getNontemporal() {
 ::mlir::LogicalResult LoadOpAdaptor::verify(::mlir::Location loc) {
   {
     auto tblgen_access_groups = odsAttrs.get("access_groups");
-    if (tblgen_access_groups && !(((tblgen_access_groups.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_access_groups.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return (attr.isa<::mlir::SymbolRefAttr>()); }))))
+    if (tblgen_access_groups && !(((tblgen_access_groups.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_access_groups.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && ((attr.isa<::mlir::SymbolRefAttr>())); }))))
       return emitError(loc, "'llvm.load' op ""attribute 'access_groups' failed to satisfy constraint: symbol ref array attribute");
   }
   {
     auto tblgen_alias_scopes = odsAttrs.get("alias_scopes");
-    if (tblgen_alias_scopes && !(((tblgen_alias_scopes.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_alias_scopes.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return (attr.isa<::mlir::SymbolRefAttr>()); }))))
+    if (tblgen_alias_scopes && !(((tblgen_alias_scopes.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_alias_scopes.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && ((attr.isa<::mlir::SymbolRefAttr>())); }))))
       return emitError(loc, "'llvm.load' op ""attribute 'alias_scopes' failed to satisfy constraint: symbol ref array attribute");
   }
   {
     auto tblgen_noalias_scopes = odsAttrs.get("noalias_scopes");
-    if (tblgen_noalias_scopes && !(((tblgen_noalias_scopes.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_noalias_scopes.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return (attr.isa<::mlir::SymbolRefAttr>()); }))))
+    if (tblgen_noalias_scopes && !(((tblgen_noalias_scopes.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_noalias_scopes.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && ((attr.isa<::mlir::SymbolRefAttr>())); }))))
       return emitError(loc, "'llvm.load' op ""attribute 'noalias_scopes' failed to satisfy constraint: symbol ref array attribute");
   }
   {
@@ -15555,17 +15699,17 @@ void LoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 ::mlir::LogicalResult LoadOp::verifyInvariantsImpl() {
   {
     auto tblgen_access_groups = (*this)->getAttr(getAccessGroupsAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps20(*this, tblgen_access_groups, "access_groups")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps21(*this, tblgen_access_groups, "access_groups")))
       return ::mlir::failure();
   }
   {
     auto tblgen_alias_scopes = (*this)->getAttr(getAliasScopesAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps20(*this, tblgen_alias_scopes, "alias_scopes")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps21(*this, tblgen_alias_scopes, "alias_scopes")))
       return ::mlir::failure();
   }
   {
     auto tblgen_noalias_scopes = (*this)->getAttr(getNoaliasScopesAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps20(*this, tblgen_noalias_scopes, "noalias_scopes")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps21(*this, tblgen_noalias_scopes, "noalias_scopes")))
       return ::mlir::failure();
   }
   {
@@ -15617,7 +15761,7 @@ void LoadOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::LoadOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::LoadOp)
 
 namespace mlir {
 namespace LLVM {
@@ -15753,7 +15897,7 @@ void Log10Op::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::Log10Op)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::Log10Op)
 
 namespace mlir {
 namespace LLVM {
@@ -15889,7 +16033,7 @@ void Log2Op::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::Log2Op)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::Log2Op)
 
 namespace mlir {
 namespace LLVM {
@@ -16025,7 +16169,7 @@ void LogOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::LogOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::LogOp)
 
 namespace mlir {
 namespace LLVM {
@@ -16242,7 +16386,7 @@ void MaskedLoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
     if (!tblgen_alignment)
       return emitOpError("requires attribute 'alignment'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps21(*this, tblgen_alignment, "alignment")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps22(*this, tblgen_alignment, "alignment")))
       return ::mlir::failure();
   }
   {
@@ -16283,7 +16427,7 @@ void MaskedLoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
 }
 
 ::mlir::ParseResult MaskedLoadOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::llvm::ArrayRef<::mlir::Type> allOperandTypes;
   ::llvm::ArrayRef<::mlir::Type> allResultTypes;
   ::llvm::SMLoc allOperandLoc = parser.getCurrentLocation();
@@ -16316,7 +16460,7 @@ void MaskedLoadOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MaskedLoadOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MaskedLoadOp)
 
 namespace mlir {
 namespace LLVM {
@@ -16506,7 +16650,7 @@ void MaskedStoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
     if (!tblgen_alignment)
       return emitOpError("requires attribute 'alignment'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps21(*this, tblgen_alignment, "alignment")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps22(*this, tblgen_alignment, "alignment")))
       return ::mlir::failure();
   }
   {
@@ -16538,14 +16682,14 @@ void MaskedStoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
 }
 
 ::mlir::ParseResult MaskedStoreOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType valueRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand valueRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
   (void)valueOperandsLoc;
-  ::mlir::OpAsmParser::OperandType dataRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> dataOperands(dataRawOperands);  ::llvm::SMLoc dataOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand dataRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> dataOperands(dataRawOperands);  ::llvm::SMLoc dataOperandsLoc;
   (void)dataOperandsLoc;
-  ::mlir::OpAsmParser::OperandType maskRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> maskOperands(maskRawOperands);  ::llvm::SMLoc maskOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand maskRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> maskOperands(maskRawOperands);  ::llvm::SMLoc maskOperandsLoc;
   (void)maskOperandsLoc;
   ::mlir::Type valueRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> valueTypes(valueRawTypes);
@@ -16648,7 +16792,7 @@ void MaskedStoreOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MaskedStoreOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MaskedStoreOp)
 
 namespace mlir {
 namespace LLVM {
@@ -16891,7 +17035,7 @@ void MatrixColumnMajorLoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState 
     if (!tblgen_isVolatile)
       return emitOpError("requires attribute 'isVolatile'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps22(*this, tblgen_isVolatile, "isVolatile")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps23(*this, tblgen_isVolatile, "isVolatile")))
       return ::mlir::failure();
   }
   {
@@ -16899,7 +17043,7 @@ void MatrixColumnMajorLoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState 
     if (!tblgen_rows)
       return emitOpError("requires attribute 'rows'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps21(*this, tblgen_rows, "rows")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps22(*this, tblgen_rows, "rows")))
       return ::mlir::failure();
   }
   {
@@ -16907,7 +17051,7 @@ void MatrixColumnMajorLoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState 
     if (!tblgen_columns)
       return emitOpError("requires attribute 'columns'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps21(*this, tblgen_columns, "columns")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps22(*this, tblgen_columns, "columns")))
       return ::mlir::failure();
   }
   {
@@ -16942,11 +17086,11 @@ void MatrixColumnMajorLoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState 
 }
 
 ::mlir::ParseResult MatrixColumnMajorLoadOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType dataRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> dataOperands(dataRawOperands);  ::llvm::SMLoc dataOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand dataRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> dataOperands(dataRawOperands);  ::llvm::SMLoc dataOperandsLoc;
   (void)dataOperandsLoc;
-  ::mlir::OpAsmParser::OperandType strideRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> strideOperands(strideRawOperands);  ::llvm::SMLoc strideOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand strideRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> strideOperands(strideRawOperands);  ::llvm::SMLoc strideOperandsLoc;
   (void)strideOperandsLoc;
   ::mlir::Type resRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resTypes(resRawTypes);
@@ -17051,7 +17195,7 @@ void MatrixColumnMajorLoadOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MatrixColumnMajorLoadOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MatrixColumnMajorLoadOp)
 
 namespace mlir {
 namespace LLVM {
@@ -17313,7 +17457,7 @@ void MatrixColumnMajorStoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState
     if (!tblgen_isVolatile)
       return emitOpError("requires attribute 'isVolatile'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps22(*this, tblgen_isVolatile, "isVolatile")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps23(*this, tblgen_isVolatile, "isVolatile")))
       return ::mlir::failure();
   }
   {
@@ -17321,7 +17465,7 @@ void MatrixColumnMajorStoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState
     if (!tblgen_rows)
       return emitOpError("requires attribute 'rows'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps21(*this, tblgen_rows, "rows")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps22(*this, tblgen_rows, "rows")))
       return ::mlir::failure();
   }
   {
@@ -17329,7 +17473,7 @@ void MatrixColumnMajorStoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState
     if (!tblgen_columns)
       return emitOpError("requires attribute 'columns'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps21(*this, tblgen_columns, "columns")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps22(*this, tblgen_columns, "columns")))
       return ::mlir::failure();
   }
   {
@@ -17361,14 +17505,14 @@ void MatrixColumnMajorStoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState
 }
 
 ::mlir::ParseResult MatrixColumnMajorStoreOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType matrixRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> matrixOperands(matrixRawOperands);  ::llvm::SMLoc matrixOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand matrixRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> matrixOperands(matrixRawOperands);  ::llvm::SMLoc matrixOperandsLoc;
   (void)matrixOperandsLoc;
-  ::mlir::OpAsmParser::OperandType dataRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> dataOperands(dataRawOperands);  ::llvm::SMLoc dataOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand dataRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> dataOperands(dataRawOperands);  ::llvm::SMLoc dataOperandsLoc;
   (void)dataOperandsLoc;
-  ::mlir::OpAsmParser::OperandType strideRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> strideOperands(strideRawOperands);  ::llvm::SMLoc strideOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand strideRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> strideOperands(strideRawOperands);  ::llvm::SMLoc strideOperandsLoc;
   (void)strideOperandsLoc;
   ::mlir::Type matrixRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> matrixTypes(matrixRawTypes);
@@ -17483,7 +17627,7 @@ void MatrixColumnMajorStoreOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MatrixColumnMajorStoreOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MatrixColumnMajorStoreOp)
 
 namespace mlir {
 namespace LLVM {
@@ -17726,7 +17870,7 @@ void MatrixMultiplyOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
     if (!tblgen_lhs_rows)
       return emitOpError("requires attribute 'lhs_rows'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps21(*this, tblgen_lhs_rows, "lhs_rows")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps22(*this, tblgen_lhs_rows, "lhs_rows")))
       return ::mlir::failure();
   }
   {
@@ -17734,7 +17878,7 @@ void MatrixMultiplyOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
     if (!tblgen_lhs_columns)
       return emitOpError("requires attribute 'lhs_columns'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps21(*this, tblgen_lhs_columns, "lhs_columns")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps22(*this, tblgen_lhs_columns, "lhs_columns")))
       return ::mlir::failure();
   }
   {
@@ -17742,7 +17886,7 @@ void MatrixMultiplyOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
     if (!tblgen_rhs_columns)
       return emitOpError("requires attribute 'rhs_columns'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps21(*this, tblgen_rhs_columns, "rhs_columns")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps22(*this, tblgen_rhs_columns, "rhs_columns")))
       return ::mlir::failure();
   }
   {
@@ -17777,11 +17921,11 @@ void MatrixMultiplyOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult MatrixMultiplyOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type lhsRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> lhsTypes(lhsRawTypes);
@@ -17879,7 +18023,7 @@ void MatrixMultiplyOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MatrixMultiplyOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MatrixMultiplyOp)
 
 namespace mlir {
 namespace LLVM {
@@ -18068,7 +18212,7 @@ void MatrixTransposeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
     if (!tblgen_rows)
       return emitOpError("requires attribute 'rows'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps21(*this, tblgen_rows, "rows")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps22(*this, tblgen_rows, "rows")))
       return ::mlir::failure();
   }
   {
@@ -18076,7 +18220,7 @@ void MatrixTransposeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
     if (!tblgen_columns)
       return emitOpError("requires attribute 'columns'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps21(*this, tblgen_columns, "columns")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps22(*this, tblgen_columns, "columns")))
       return ::mlir::failure();
   }
   {
@@ -18105,8 +18249,8 @@ void MatrixTransposeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
 }
 
 ::mlir::ParseResult MatrixTransposeOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType matrixRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> matrixOperands(matrixRawOperands);  ::llvm::SMLoc matrixOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand matrixRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> matrixOperands(matrixRawOperands);  ::llvm::SMLoc matrixOperandsLoc;
   (void)matrixOperandsLoc;
   ::mlir::Type matrixRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> matrixTypes(matrixRawTypes);
@@ -18168,7 +18312,7 @@ void MatrixTransposeOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MatrixTransposeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MatrixTransposeOp)
 
 namespace mlir {
 namespace LLVM {
@@ -18327,7 +18471,7 @@ void MaxNumOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MaxNumOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MaxNumOp)
 
 namespace mlir {
 namespace LLVM {
@@ -18486,7 +18630,7 @@ void MaximumOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MaximumOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MaximumOp)
 
 namespace mlir {
 namespace LLVM {
@@ -18656,9 +18800,16 @@ void MemcpyInlineOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
   return verifyInvariantsImpl();
 }
 
+void MemcpyInlineOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+  for (::mlir::Value value : getODSOperands(0))
+    effects.emplace_back(::mlir::MemoryEffects::Write::get(), value, ::mlir::SideEffects::DefaultResource::get());
+  for (::mlir::Value value : getODSOperands(1))
+    effects.emplace_back(::mlir::MemoryEffects::Read::get(), value, ::mlir::SideEffects::DefaultResource::get());
+}
+
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MemcpyInlineOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MemcpyInlineOp)
 
 namespace mlir {
 namespace LLVM {
@@ -18828,9 +18979,16 @@ void MemcpyOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   return verifyInvariantsImpl();
 }
 
+void MemcpyOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+  for (::mlir::Value value : getODSOperands(0))
+    effects.emplace_back(::mlir::MemoryEffects::Write::get(), value, ::mlir::SideEffects::DefaultResource::get());
+  for (::mlir::Value value : getODSOperands(1))
+    effects.emplace_back(::mlir::MemoryEffects::Read::get(), value, ::mlir::SideEffects::DefaultResource::get());
+}
+
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MemcpyOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MemcpyOp)
 
 namespace mlir {
 namespace LLVM {
@@ -19000,9 +19158,16 @@ void MemmoveOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   return verifyInvariantsImpl();
 }
 
+void MemmoveOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+  for (::mlir::Value value : getODSOperands(0))
+    effects.emplace_back(::mlir::MemoryEffects::Write::get(), value, ::mlir::SideEffects::DefaultResource::get());
+  for (::mlir::Value value : getODSOperands(1))
+    effects.emplace_back(::mlir::MemoryEffects::Read::get(), value, ::mlir::SideEffects::DefaultResource::get());
+}
+
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MemmoveOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MemmoveOp)
 
 namespace mlir {
 namespace LLVM {
@@ -19172,9 +19337,14 @@ void MemsetOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   return verifyInvariantsImpl();
 }
 
+void MemsetOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+  for (::mlir::Value value : getODSOperands(0))
+    effects.emplace_back(::mlir::MemoryEffects::Write::get(), value, ::mlir::SideEffects::DefaultResource::get());
+}
+
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MemsetOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MemsetOp)
 
 namespace mlir {
 namespace LLVM {
@@ -19355,7 +19525,7 @@ void MetadataOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MetadataOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MetadataOp)
 
 namespace mlir {
 namespace LLVM {
@@ -19514,7 +19684,7 @@ void MinNumOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MinNumOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MinNumOp)
 
 namespace mlir {
 namespace LLVM {
@@ -19673,7 +19843,7 @@ void MinimumOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MinimumOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MinimumOp)
 
 namespace mlir {
 namespace LLVM {
@@ -19836,11 +20006,11 @@ void MulOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult MulOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type resRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resTypes(resRawTypes);
@@ -19899,7 +20069,7 @@ void MulOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MulOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::MulOp)
 
 namespace mlir {
 namespace LLVM {
@@ -20036,7 +20206,7 @@ void NullOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::NullOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::NullOp)
 
 namespace mlir {
 namespace LLVM {
@@ -20199,11 +20369,11 @@ void OrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState
 }
 
 ::mlir::ParseResult OrOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type resRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resTypes(resRawTypes);
@@ -20262,7 +20432,7 @@ void OrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstanc
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::OrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::OrOp)
 
 namespace mlir {
 namespace LLVM {
@@ -20407,7 +20577,7 @@ void PowIOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::PowIOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::PowIOp)
 
 namespace mlir {
 namespace LLVM {
@@ -20566,7 +20736,7 @@ void PowOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::PowOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::PowOp)
 
 namespace mlir {
 namespace LLVM {
@@ -20738,7 +20908,7 @@ void Prefetch::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::Prefetch)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::Prefetch)
 
 namespace mlir {
 namespace LLVM {
@@ -20865,8 +21035,8 @@ void PtrToIntOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::ParseResult PtrToIntOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType argRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand argRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
   (void)argOperandsLoc;
   ::mlir::Type argRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> argTypes(argRawTypes);
@@ -20931,7 +21101,7 @@ void PtrToIntOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::PtrToIntOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::PtrToIntOp)
 
 namespace mlir {
 namespace LLVM {
@@ -21038,8 +21208,8 @@ void ResumeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::ParseResult ResumeOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType valueRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand valueRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
   (void)valueOperandsLoc;
   ::mlir::Type valueRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> valueTypes(valueRawTypes);
@@ -21080,7 +21250,7 @@ void ResumeOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::ResumeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::ResumeOp)
 
 namespace mlir {
 namespace LLVM {
@@ -21208,7 +21378,7 @@ void ReturnOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::ParseResult ReturnOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> argsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
   ::llvm::SMLoc argsOperandsLoc;
   (void)argsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> argsTypes;
@@ -21246,7 +21416,7 @@ void ReturnOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::ReturnOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::ReturnOp)
 
 namespace mlir {
 namespace LLVM {
@@ -21360,7 +21530,7 @@ void SAddWithOverflowOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsS
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::SAddWithOverflowOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::SAddWithOverflowOp)
 
 namespace mlir {
 namespace LLVM {
@@ -21523,11 +21693,11 @@ void SDivOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult SDivOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type resRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resTypes(resRawTypes);
@@ -21586,7 +21756,7 @@ void SDivOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::SDivOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::SDivOp)
 
 namespace mlir {
 namespace LLVM {
@@ -21713,8 +21883,8 @@ void SExtOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 }
 
 ::mlir::ParseResult SExtOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType argRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand argRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
   (void)argOperandsLoc;
   ::mlir::Type argRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> argTypes(argRawTypes);
@@ -21779,7 +21949,7 @@ void SExtOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::SExtOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::SExtOp)
 
 namespace mlir {
 namespace LLVM {
@@ -21906,8 +22076,8 @@ void SIToFPOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::ParseResult SIToFPOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType argRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand argRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
   (void)argOperandsLoc;
   ::mlir::Type argRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> argTypes(argRawTypes);
@@ -21972,7 +22142,7 @@ void SIToFPOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::SIToFPOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::SIToFPOp)
 
 namespace mlir {
 namespace LLVM {
@@ -22131,7 +22301,7 @@ void SMaxOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::SMaxOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::SMaxOp)
 
 namespace mlir {
 namespace LLVM {
@@ -22290,7 +22460,7 @@ void SMinOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::SMinOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::SMinOp)
 
 namespace mlir {
 namespace LLVM {
@@ -22404,7 +22574,7 @@ void SMulWithOverflowOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsS
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::SMulWithOverflowOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::SMulWithOverflowOp)
 
 namespace mlir {
 namespace LLVM {
@@ -22567,11 +22737,11 @@ void SRemOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult SRemOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type resRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resTypes(resRawTypes);
@@ -22630,7 +22800,7 @@ void SRemOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::SRemOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::SRemOp)
 
 namespace mlir {
 namespace LLVM {
@@ -22744,7 +22914,7 @@ void SSubWithOverflowOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsS
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::SSubWithOverflowOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::SSubWithOverflowOp)
 
 namespace mlir {
 namespace LLVM {
@@ -22948,7 +23118,7 @@ void SelectOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
 }
 
 ::mlir::ParseResult SelectOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type conditionRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> conditionTypes(conditionRawTypes);
   ::mlir::Type resRawTypes[1];
@@ -23011,7 +23181,7 @@ void SelectOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::SelectOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::SelectOp)
 
 namespace mlir {
 namespace LLVM {
@@ -23174,11 +23344,11 @@ void ShlOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult ShlOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type resRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resTypes(resRawTypes);
@@ -23237,7 +23407,7 @@ void ShlOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::ShlOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::ShlOp)
 
 namespace mlir {
 namespace LLVM {
@@ -23426,7 +23596,7 @@ void ShuffleVectorOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Ef
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::ShuffleVectorOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::ShuffleVectorOp)
 
 namespace mlir {
 namespace LLVM {
@@ -23562,7 +23732,7 @@ void SinOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::SinOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::SinOp)
 
 namespace mlir {
 namespace LLVM {
@@ -23698,7 +23868,7 @@ void SqrtOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::SqrtOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::SqrtOp)
 
 namespace mlir {
 namespace LLVM {
@@ -23803,8 +23973,8 @@ void StackRestoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
 }
 
 ::mlir::ParseResult StackRestoreOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType ptrRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> ptrOperands(ptrRawOperands);  ::llvm::SMLoc ptrOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand ptrRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> ptrOperands(ptrRawOperands);  ::llvm::SMLoc ptrOperandsLoc;
   (void)ptrOperandsLoc;
 
   ptrOperandsLoc = parser.getCurrentLocation();
@@ -23826,7 +23996,7 @@ void StackRestoreOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::StackRestoreOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::StackRestoreOp)
 
 namespace mlir {
 namespace LLVM {
@@ -23952,7 +24122,136 @@ void StackSaveOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::StackSaveOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::StackSaveOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::StepVectorOp definitions
+//===----------------------------------------------------------------------===//
+
+StepVectorOpAdaptor::StepVectorOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+
+StepVectorOpAdaptor::StepVectorOpAdaptor(StepVectorOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+
+::mlir::ValueRange StepVectorOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> StepVectorOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange StepVectorOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::DictionaryAttr StepVectorOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult StepVectorOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> StepVectorOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range StepVectorOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+std::pair<unsigned, unsigned> StepVectorOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range StepVectorOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value StepVectorOp::getRes() {
+  return *getODSResults(0).begin();
+}
+
+void StepVectorOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res) {
+  odsState.addTypes(res);
+}
+
+void StepVectorOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes) {
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void StepVectorOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 0u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult StepVectorOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps2(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult StepVectorOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+::mlir::ParseResult StepVectorOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::mlir::Type resRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> resTypes(resRawTypes);
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  {
+    ::mlir::Type type;
+    if (parser.parseCustomTypeWithFallback(type))
+      return ::mlir::failure();
+    resRawTypes[0] = type;
+  }
+  result.addTypes(resTypes);
+  return ::mlir::success();
+}
+
+void StepVectorOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  {
+    auto type = getRes().getType();
+    if (auto validType = type.dyn_cast<::mlir::Type>())
+      _odsPrinter.printStrippedAttrOrType(validType);
+   else
+     _odsPrinter << type;
+  }
+}
+
+void StepVectorOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace LLVM
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::StepVectorOp)
 
 namespace mlir {
 namespace LLVM {
@@ -24060,17 +24359,17 @@ bool StoreOpAdaptor::getNontemporal() {
 ::mlir::LogicalResult StoreOpAdaptor::verify(::mlir::Location loc) {
   {
     auto tblgen_access_groups = odsAttrs.get("access_groups");
-    if (tblgen_access_groups && !(((tblgen_access_groups.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_access_groups.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return (attr.isa<::mlir::SymbolRefAttr>()); }))))
+    if (tblgen_access_groups && !(((tblgen_access_groups.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_access_groups.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && ((attr.isa<::mlir::SymbolRefAttr>())); }))))
       return emitError(loc, "'llvm.store' op ""attribute 'access_groups' failed to satisfy constraint: symbol ref array attribute");
   }
   {
     auto tblgen_alias_scopes = odsAttrs.get("alias_scopes");
-    if (tblgen_alias_scopes && !(((tblgen_alias_scopes.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_alias_scopes.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return (attr.isa<::mlir::SymbolRefAttr>()); }))))
+    if (tblgen_alias_scopes && !(((tblgen_alias_scopes.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_alias_scopes.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && ((attr.isa<::mlir::SymbolRefAttr>())); }))))
       return emitError(loc, "'llvm.store' op ""attribute 'alias_scopes' failed to satisfy constraint: symbol ref array attribute");
   }
   {
     auto tblgen_noalias_scopes = odsAttrs.get("noalias_scopes");
-    if (tblgen_noalias_scopes && !(((tblgen_noalias_scopes.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_noalias_scopes.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return (attr.isa<::mlir::SymbolRefAttr>()); }))))
+    if (tblgen_noalias_scopes && !(((tblgen_noalias_scopes.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_noalias_scopes.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && ((attr.isa<::mlir::SymbolRefAttr>())); }))))
       return emitError(loc, "'llvm.store' op ""attribute 'noalias_scopes' failed to satisfy constraint: symbol ref array attribute");
   }
   {
@@ -24340,17 +24639,17 @@ void StoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 ::mlir::LogicalResult StoreOp::verifyInvariantsImpl() {
   {
     auto tblgen_access_groups = (*this)->getAttr(getAccessGroupsAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps20(*this, tblgen_access_groups, "access_groups")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps21(*this, tblgen_access_groups, "access_groups")))
       return ::mlir::failure();
   }
   {
     auto tblgen_alias_scopes = (*this)->getAttr(getAliasScopesAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps20(*this, tblgen_alias_scopes, "alias_scopes")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps21(*this, tblgen_alias_scopes, "alias_scopes")))
       return ::mlir::failure();
   }
   {
     auto tblgen_noalias_scopes = (*this)->getAttr(getNoaliasScopesAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps20(*this, tblgen_noalias_scopes, "noalias_scopes")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps21(*this, tblgen_noalias_scopes, "noalias_scopes")))
       return ::mlir::failure();
   }
   {
@@ -24399,7 +24698,7 @@ void StoreOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::StoreOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::StoreOp)
 
 namespace mlir {
 namespace LLVM {
@@ -24562,11 +24861,11 @@ void SubOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult SubOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type resRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resTypes(resRawTypes);
@@ -24625,7 +24924,7 @@ void SubOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::SubOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::SubOp)
 
 namespace mlir {
 namespace LLVM {
@@ -24991,19 +25290,19 @@ void SwitchOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::ParseResult SwitchOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType valueRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand valueRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
   (void)valueOperandsLoc;
   ::mlir::Type valueRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> valueTypes(valueRawTypes);
   ::mlir::Block *defaultDestinationSuccessor = nullptr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> defaultOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> defaultOperandsOperands;
   ::llvm::SMLoc defaultOperandsOperandsLoc;
   (void)defaultOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> defaultOperandsTypes;
   ::mlir::ElementsAttr case_valuesAttr;
   ::llvm::SmallVector<::mlir::Block *, 2> caseDestinationsSuccessors;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> caseOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> caseOperandsOperands;
     llvm::SmallVector<int32_t> caseOperandsOperandGroupSizes;
   ::llvm::SMLoc caseOperandsOperandsLoc;
   (void)caseOperandsOperandsLoc;
@@ -25043,7 +25342,7 @@ void SwitchOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
     return ::mlir::failure();
   {
     caseOperandsOperandsLoc = parser.getCurrentLocation();
-    ::llvm::SmallVector<::llvm::SmallVector<::mlir::OpAsmParser::OperandType>> caseOperandsOperandGroups;
+    ::llvm::SmallVector<::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand>> caseOperandsOperandGroups;
     ::llvm::SmallVector<llvm::SmallVector<::mlir::Type>> caseOperandsTypeGroups;
     if (parseSwitchOpCases(parser, valueRawTypes[0], case_valuesAttr, caseDestinationsSuccessors, caseOperandsOperandGroups, caseOperandsTypeGroups))
       return ::mlir::failure();
@@ -25108,7 +25407,7 @@ void SwitchOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::SwitchOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::SwitchOp)
 
 namespace mlir {
 namespace LLVM {
@@ -25235,8 +25534,8 @@ void TruncOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 ::mlir::ParseResult TruncOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType argRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand argRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
   (void)argOperandsLoc;
   ::mlir::Type argRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> argTypes(argRawTypes);
@@ -25301,7 +25600,7 @@ void TruncOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::TruncOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::TruncOp)
 
 namespace mlir {
 namespace LLVM {
@@ -25415,7 +25714,7 @@ void UAddWithOverflowOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsS
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::UAddWithOverflowOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::UAddWithOverflowOp)
 
 namespace mlir {
 namespace LLVM {
@@ -25578,11 +25877,11 @@ void UDivOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult UDivOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type resRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resTypes(resRawTypes);
@@ -25641,7 +25940,7 @@ void UDivOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::UDivOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::UDivOp)
 
 namespace mlir {
 namespace LLVM {
@@ -25768,8 +26067,8 @@ void UIToFPOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::ParseResult UIToFPOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType argRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand argRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
   (void)argOperandsLoc;
   ::mlir::Type argRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> argTypes(argRawTypes);
@@ -25834,7 +26133,7 @@ void UIToFPOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::UIToFPOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::UIToFPOp)
 
 namespace mlir {
 namespace LLVM {
@@ -25993,7 +26292,7 @@ void UMaxOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::UMaxOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::UMaxOp)
 
 namespace mlir {
 namespace LLVM {
@@ -26152,7 +26451,7 @@ void UMinOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::UMinOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::UMinOp)
 
 namespace mlir {
 namespace LLVM {
@@ -26266,7 +26565,7 @@ void UMulWithOverflowOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsS
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::UMulWithOverflowOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::UMulWithOverflowOp)
 
 namespace mlir {
 namespace LLVM {
@@ -26429,11 +26728,11 @@ void URemOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult URemOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type resRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resTypes(resRawTypes);
@@ -26492,7 +26791,7 @@ void URemOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::URemOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::URemOp)
 
 namespace mlir {
 namespace LLVM {
@@ -26606,7 +26905,7 @@ void USubWithOverflowOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsS
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::USubWithOverflowOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::USubWithOverflowOp)
 
 namespace mlir {
 namespace LLVM {
@@ -26743,7 +27042,7 @@ void UndefOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::UndefOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::UndefOp)
 
 namespace mlir {
 namespace LLVM {
@@ -26834,7 +27133,3409 @@ void UnreachableOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::UnreachableOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::UnreachableOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPAShrOp definitions
+//===----------------------------------------------------------------------===//
+
+VPAShrOpAdaptor::VPAShrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+
+VPAShrOpAdaptor::VPAShrOpAdaptor(VPAShrOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+
+::mlir::ValueRange VPAShrOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> VPAShrOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange VPAShrOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPAShrOpAdaptor::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPAShrOpAdaptor::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPAShrOpAdaptor::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPAShrOpAdaptor::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::DictionaryAttr VPAShrOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult VPAShrOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> VPAShrOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range VPAShrOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPAShrOp::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPAShrOp::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPAShrOp::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPAShrOp::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::MutableOperandRange VPAShrOp::getLhsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPAShrOp::getRhsMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPAShrOp::getMaskMutable() {
+  auto range = getODSOperandIndexAndLength(2);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPAShrOp::getEvlMutable() {
+  auto range = getODSOperandIndexAndLength(3);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> VPAShrOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range VPAShrOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPAShrOp::getRes() {
+  return *getODSResults(0).begin();
+}
+
+void VPAShrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  odsState.addTypes(res);
+}
+
+void VPAShrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void VPAShrOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 4u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult VPAShrOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps24(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps24(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup2 = getODSOperands(2);
+
+    for (auto v : valueGroup2) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps25(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup3 = getODSOperands(3);
+
+    for (auto v : valueGroup3) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps14(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps2(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult VPAShrOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+void VPAShrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace LLVM
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPAShrOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPAddOp definitions
+//===----------------------------------------------------------------------===//
+
+VPAddOpAdaptor::VPAddOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+
+VPAddOpAdaptor::VPAddOpAdaptor(VPAddOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+
+::mlir::ValueRange VPAddOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> VPAddOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange VPAddOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPAddOpAdaptor::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPAddOpAdaptor::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPAddOpAdaptor::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPAddOpAdaptor::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::DictionaryAttr VPAddOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult VPAddOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> VPAddOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range VPAddOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPAddOp::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPAddOp::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPAddOp::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPAddOp::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::MutableOperandRange VPAddOp::getLhsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPAddOp::getRhsMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPAddOp::getMaskMutable() {
+  auto range = getODSOperandIndexAndLength(2);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPAddOp::getEvlMutable() {
+  auto range = getODSOperandIndexAndLength(3);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> VPAddOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range VPAddOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPAddOp::getRes() {
+  return *getODSResults(0).begin();
+}
+
+void VPAddOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  odsState.addTypes(res);
+}
+
+void VPAddOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void VPAddOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 4u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult VPAddOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps24(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps24(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup2 = getODSOperands(2);
+
+    for (auto v : valueGroup2) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps25(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup3 = getODSOperands(3);
+
+    for (auto v : valueGroup3) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps14(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps2(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult VPAddOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+void VPAddOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace LLVM
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPAddOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPAndOp definitions
+//===----------------------------------------------------------------------===//
+
+VPAndOpAdaptor::VPAndOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+
+VPAndOpAdaptor::VPAndOpAdaptor(VPAndOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+
+::mlir::ValueRange VPAndOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> VPAndOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange VPAndOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPAndOpAdaptor::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPAndOpAdaptor::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPAndOpAdaptor::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPAndOpAdaptor::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::DictionaryAttr VPAndOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult VPAndOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> VPAndOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range VPAndOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPAndOp::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPAndOp::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPAndOp::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPAndOp::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::MutableOperandRange VPAndOp::getLhsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPAndOp::getRhsMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPAndOp::getMaskMutable() {
+  auto range = getODSOperandIndexAndLength(2);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPAndOp::getEvlMutable() {
+  auto range = getODSOperandIndexAndLength(3);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> VPAndOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range VPAndOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPAndOp::getRes() {
+  return *getODSResults(0).begin();
+}
+
+void VPAndOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  odsState.addTypes(res);
+}
+
+void VPAndOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void VPAndOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 4u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult VPAndOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps24(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps24(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup2 = getODSOperands(2);
+
+    for (auto v : valueGroup2) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps25(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup3 = getODSOperands(3);
+
+    for (auto v : valueGroup3) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps14(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps2(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult VPAndOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+void VPAndOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace LLVM
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPAndOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPFAddOp definitions
+//===----------------------------------------------------------------------===//
+
+VPFAddOpAdaptor::VPFAddOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+
+VPFAddOpAdaptor::VPFAddOpAdaptor(VPFAddOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+
+::mlir::ValueRange VPFAddOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> VPFAddOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange VPFAddOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPFAddOpAdaptor::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPFAddOpAdaptor::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPFAddOpAdaptor::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPFAddOpAdaptor::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::DictionaryAttr VPFAddOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult VPFAddOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> VPFAddOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range VPFAddOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPFAddOp::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPFAddOp::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPFAddOp::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPFAddOp::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::MutableOperandRange VPFAddOp::getLhsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPFAddOp::getRhsMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPFAddOp::getMaskMutable() {
+  auto range = getODSOperandIndexAndLength(2);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPFAddOp::getEvlMutable() {
+  auto range = getODSOperandIndexAndLength(3);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> VPFAddOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range VPFAddOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPFAddOp::getRes() {
+  return *getODSResults(0).begin();
+}
+
+void VPFAddOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  odsState.addTypes(res);
+}
+
+void VPFAddOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void VPFAddOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 4u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult VPFAddOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps26(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps26(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup2 = getODSOperands(2);
+
+    for (auto v : valueGroup2) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps25(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup3 = getODSOperands(3);
+
+    for (auto v : valueGroup3) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps14(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps2(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult VPFAddOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+void VPFAddOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace LLVM
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPFAddOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPFDivOp definitions
+//===----------------------------------------------------------------------===//
+
+VPFDivOpAdaptor::VPFDivOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+
+VPFDivOpAdaptor::VPFDivOpAdaptor(VPFDivOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+
+::mlir::ValueRange VPFDivOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> VPFDivOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange VPFDivOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPFDivOpAdaptor::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPFDivOpAdaptor::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPFDivOpAdaptor::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPFDivOpAdaptor::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::DictionaryAttr VPFDivOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult VPFDivOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> VPFDivOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range VPFDivOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPFDivOp::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPFDivOp::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPFDivOp::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPFDivOp::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::MutableOperandRange VPFDivOp::getLhsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPFDivOp::getRhsMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPFDivOp::getMaskMutable() {
+  auto range = getODSOperandIndexAndLength(2);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPFDivOp::getEvlMutable() {
+  auto range = getODSOperandIndexAndLength(3);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> VPFDivOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range VPFDivOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPFDivOp::getRes() {
+  return *getODSResults(0).begin();
+}
+
+void VPFDivOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  odsState.addTypes(res);
+}
+
+void VPFDivOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void VPFDivOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 4u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult VPFDivOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps26(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps26(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup2 = getODSOperands(2);
+
+    for (auto v : valueGroup2) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps25(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup3 = getODSOperands(3);
+
+    for (auto v : valueGroup3) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps14(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps2(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult VPFDivOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+void VPFDivOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace LLVM
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPFDivOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPFMulOp definitions
+//===----------------------------------------------------------------------===//
+
+VPFMulOpAdaptor::VPFMulOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+
+VPFMulOpAdaptor::VPFMulOpAdaptor(VPFMulOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+
+::mlir::ValueRange VPFMulOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> VPFMulOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange VPFMulOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPFMulOpAdaptor::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPFMulOpAdaptor::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPFMulOpAdaptor::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPFMulOpAdaptor::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::DictionaryAttr VPFMulOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult VPFMulOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> VPFMulOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range VPFMulOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPFMulOp::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPFMulOp::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPFMulOp::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPFMulOp::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::MutableOperandRange VPFMulOp::getLhsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPFMulOp::getRhsMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPFMulOp::getMaskMutable() {
+  auto range = getODSOperandIndexAndLength(2);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPFMulOp::getEvlMutable() {
+  auto range = getODSOperandIndexAndLength(3);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> VPFMulOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range VPFMulOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPFMulOp::getRes() {
+  return *getODSResults(0).begin();
+}
+
+void VPFMulOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  odsState.addTypes(res);
+}
+
+void VPFMulOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void VPFMulOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 4u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult VPFMulOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps26(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps26(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup2 = getODSOperands(2);
+
+    for (auto v : valueGroup2) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps25(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup3 = getODSOperands(3);
+
+    for (auto v : valueGroup3) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps14(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps2(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult VPFMulOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+void VPFMulOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace LLVM
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPFMulOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPFRemOp definitions
+//===----------------------------------------------------------------------===//
+
+VPFRemOpAdaptor::VPFRemOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+
+VPFRemOpAdaptor::VPFRemOpAdaptor(VPFRemOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+
+::mlir::ValueRange VPFRemOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> VPFRemOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange VPFRemOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPFRemOpAdaptor::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPFRemOpAdaptor::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPFRemOpAdaptor::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPFRemOpAdaptor::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::DictionaryAttr VPFRemOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult VPFRemOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> VPFRemOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range VPFRemOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPFRemOp::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPFRemOp::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPFRemOp::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPFRemOp::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::MutableOperandRange VPFRemOp::getLhsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPFRemOp::getRhsMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPFRemOp::getMaskMutable() {
+  auto range = getODSOperandIndexAndLength(2);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPFRemOp::getEvlMutable() {
+  auto range = getODSOperandIndexAndLength(3);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> VPFRemOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range VPFRemOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPFRemOp::getRes() {
+  return *getODSResults(0).begin();
+}
+
+void VPFRemOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  odsState.addTypes(res);
+}
+
+void VPFRemOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void VPFRemOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 4u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult VPFRemOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps26(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps26(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup2 = getODSOperands(2);
+
+    for (auto v : valueGroup2) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps25(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup3 = getODSOperands(3);
+
+    for (auto v : valueGroup3) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps14(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps2(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult VPFRemOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+void VPFRemOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace LLVM
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPFRemOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPFSubOp definitions
+//===----------------------------------------------------------------------===//
+
+VPFSubOpAdaptor::VPFSubOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+
+VPFSubOpAdaptor::VPFSubOpAdaptor(VPFSubOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+
+::mlir::ValueRange VPFSubOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> VPFSubOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange VPFSubOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPFSubOpAdaptor::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPFSubOpAdaptor::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPFSubOpAdaptor::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPFSubOpAdaptor::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::DictionaryAttr VPFSubOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult VPFSubOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> VPFSubOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range VPFSubOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPFSubOp::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPFSubOp::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPFSubOp::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPFSubOp::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::MutableOperandRange VPFSubOp::getLhsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPFSubOp::getRhsMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPFSubOp::getMaskMutable() {
+  auto range = getODSOperandIndexAndLength(2);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPFSubOp::getEvlMutable() {
+  auto range = getODSOperandIndexAndLength(3);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> VPFSubOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range VPFSubOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPFSubOp::getRes() {
+  return *getODSResults(0).begin();
+}
+
+void VPFSubOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  odsState.addTypes(res);
+}
+
+void VPFSubOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void VPFSubOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 4u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult VPFSubOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps26(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps26(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup2 = getODSOperands(2);
+
+    for (auto v : valueGroup2) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps25(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup3 = getODSOperands(3);
+
+    for (auto v : valueGroup3) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps14(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps2(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult VPFSubOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+void VPFSubOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace LLVM
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPFSubOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPLShrOp definitions
+//===----------------------------------------------------------------------===//
+
+VPLShrOpAdaptor::VPLShrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+
+VPLShrOpAdaptor::VPLShrOpAdaptor(VPLShrOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+
+::mlir::ValueRange VPLShrOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> VPLShrOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange VPLShrOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPLShrOpAdaptor::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPLShrOpAdaptor::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPLShrOpAdaptor::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPLShrOpAdaptor::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::DictionaryAttr VPLShrOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult VPLShrOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> VPLShrOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range VPLShrOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPLShrOp::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPLShrOp::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPLShrOp::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPLShrOp::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::MutableOperandRange VPLShrOp::getLhsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPLShrOp::getRhsMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPLShrOp::getMaskMutable() {
+  auto range = getODSOperandIndexAndLength(2);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPLShrOp::getEvlMutable() {
+  auto range = getODSOperandIndexAndLength(3);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> VPLShrOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range VPLShrOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPLShrOp::getRes() {
+  return *getODSResults(0).begin();
+}
+
+void VPLShrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  odsState.addTypes(res);
+}
+
+void VPLShrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void VPLShrOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 4u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult VPLShrOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps24(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps24(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup2 = getODSOperands(2);
+
+    for (auto v : valueGroup2) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps25(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup3 = getODSOperands(3);
+
+    for (auto v : valueGroup3) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps14(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps2(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult VPLShrOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+void VPLShrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace LLVM
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPLShrOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPMulOp definitions
+//===----------------------------------------------------------------------===//
+
+VPMulOpAdaptor::VPMulOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+
+VPMulOpAdaptor::VPMulOpAdaptor(VPMulOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+
+::mlir::ValueRange VPMulOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> VPMulOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange VPMulOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPMulOpAdaptor::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPMulOpAdaptor::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPMulOpAdaptor::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPMulOpAdaptor::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::DictionaryAttr VPMulOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult VPMulOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> VPMulOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range VPMulOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPMulOp::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPMulOp::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPMulOp::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPMulOp::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::MutableOperandRange VPMulOp::getLhsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPMulOp::getRhsMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPMulOp::getMaskMutable() {
+  auto range = getODSOperandIndexAndLength(2);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPMulOp::getEvlMutable() {
+  auto range = getODSOperandIndexAndLength(3);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> VPMulOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range VPMulOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPMulOp::getRes() {
+  return *getODSResults(0).begin();
+}
+
+void VPMulOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  odsState.addTypes(res);
+}
+
+void VPMulOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void VPMulOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 4u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult VPMulOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps24(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps24(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup2 = getODSOperands(2);
+
+    for (auto v : valueGroup2) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps25(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup3 = getODSOperands(3);
+
+    for (auto v : valueGroup3) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps14(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps2(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult VPMulOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+void VPMulOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace LLVM
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPMulOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPOrOp definitions
+//===----------------------------------------------------------------------===//
+
+VPOrOpAdaptor::VPOrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+
+VPOrOpAdaptor::VPOrOpAdaptor(VPOrOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+
+::mlir::ValueRange VPOrOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> VPOrOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange VPOrOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPOrOpAdaptor::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPOrOpAdaptor::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPOrOpAdaptor::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPOrOpAdaptor::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::DictionaryAttr VPOrOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult VPOrOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> VPOrOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range VPOrOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPOrOp::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPOrOp::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPOrOp::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPOrOp::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::MutableOperandRange VPOrOp::getLhsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPOrOp::getRhsMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPOrOp::getMaskMutable() {
+  auto range = getODSOperandIndexAndLength(2);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPOrOp::getEvlMutable() {
+  auto range = getODSOperandIndexAndLength(3);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> VPOrOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range VPOrOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPOrOp::getRes() {
+  return *getODSResults(0).begin();
+}
+
+void VPOrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  odsState.addTypes(res);
+}
+
+void VPOrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void VPOrOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 4u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult VPOrOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps24(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps24(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup2 = getODSOperands(2);
+
+    for (auto v : valueGroup2) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps25(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup3 = getODSOperands(3);
+
+    for (auto v : valueGroup3) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps14(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps2(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult VPOrOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+void VPOrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace LLVM
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPOrOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPSDivOp definitions
+//===----------------------------------------------------------------------===//
+
+VPSDivOpAdaptor::VPSDivOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+
+VPSDivOpAdaptor::VPSDivOpAdaptor(VPSDivOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+
+::mlir::ValueRange VPSDivOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> VPSDivOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange VPSDivOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPSDivOpAdaptor::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPSDivOpAdaptor::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPSDivOpAdaptor::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPSDivOpAdaptor::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::DictionaryAttr VPSDivOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult VPSDivOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> VPSDivOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range VPSDivOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPSDivOp::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPSDivOp::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPSDivOp::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPSDivOp::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::MutableOperandRange VPSDivOp::getLhsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPSDivOp::getRhsMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPSDivOp::getMaskMutable() {
+  auto range = getODSOperandIndexAndLength(2);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPSDivOp::getEvlMutable() {
+  auto range = getODSOperandIndexAndLength(3);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> VPSDivOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range VPSDivOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPSDivOp::getRes() {
+  return *getODSResults(0).begin();
+}
+
+void VPSDivOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  odsState.addTypes(res);
+}
+
+void VPSDivOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void VPSDivOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 4u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult VPSDivOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps24(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps24(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup2 = getODSOperands(2);
+
+    for (auto v : valueGroup2) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps25(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup3 = getODSOperands(3);
+
+    for (auto v : valueGroup3) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps14(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps2(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult VPSDivOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+void VPSDivOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace LLVM
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPSDivOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPSRemOp definitions
+//===----------------------------------------------------------------------===//
+
+VPSRemOpAdaptor::VPSRemOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+
+VPSRemOpAdaptor::VPSRemOpAdaptor(VPSRemOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+
+::mlir::ValueRange VPSRemOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> VPSRemOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange VPSRemOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPSRemOpAdaptor::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPSRemOpAdaptor::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPSRemOpAdaptor::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPSRemOpAdaptor::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::DictionaryAttr VPSRemOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult VPSRemOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> VPSRemOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range VPSRemOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPSRemOp::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPSRemOp::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPSRemOp::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPSRemOp::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::MutableOperandRange VPSRemOp::getLhsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPSRemOp::getRhsMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPSRemOp::getMaskMutable() {
+  auto range = getODSOperandIndexAndLength(2);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPSRemOp::getEvlMutable() {
+  auto range = getODSOperandIndexAndLength(3);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> VPSRemOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range VPSRemOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPSRemOp::getRes() {
+  return *getODSResults(0).begin();
+}
+
+void VPSRemOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  odsState.addTypes(res);
+}
+
+void VPSRemOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void VPSRemOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 4u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult VPSRemOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps24(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps24(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup2 = getODSOperands(2);
+
+    for (auto v : valueGroup2) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps25(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup3 = getODSOperands(3);
+
+    for (auto v : valueGroup3) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps14(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps2(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult VPSRemOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+void VPSRemOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace LLVM
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPSRemOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPShlOp definitions
+//===----------------------------------------------------------------------===//
+
+VPShlOpAdaptor::VPShlOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+
+VPShlOpAdaptor::VPShlOpAdaptor(VPShlOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+
+::mlir::ValueRange VPShlOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> VPShlOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange VPShlOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPShlOpAdaptor::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPShlOpAdaptor::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPShlOpAdaptor::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPShlOpAdaptor::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::DictionaryAttr VPShlOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult VPShlOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> VPShlOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range VPShlOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPShlOp::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPShlOp::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPShlOp::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPShlOp::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::MutableOperandRange VPShlOp::getLhsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPShlOp::getRhsMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPShlOp::getMaskMutable() {
+  auto range = getODSOperandIndexAndLength(2);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPShlOp::getEvlMutable() {
+  auto range = getODSOperandIndexAndLength(3);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> VPShlOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range VPShlOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPShlOp::getRes() {
+  return *getODSResults(0).begin();
+}
+
+void VPShlOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  odsState.addTypes(res);
+}
+
+void VPShlOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void VPShlOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 4u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult VPShlOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps24(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps24(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup2 = getODSOperands(2);
+
+    for (auto v : valueGroup2) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps25(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup3 = getODSOperands(3);
+
+    for (auto v : valueGroup3) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps14(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps2(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult VPShlOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+void VPShlOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace LLVM
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPShlOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPSubOp definitions
+//===----------------------------------------------------------------------===//
+
+VPSubOpAdaptor::VPSubOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+
+VPSubOpAdaptor::VPSubOpAdaptor(VPSubOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+
+::mlir::ValueRange VPSubOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> VPSubOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange VPSubOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPSubOpAdaptor::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPSubOpAdaptor::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPSubOpAdaptor::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPSubOpAdaptor::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::DictionaryAttr VPSubOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult VPSubOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> VPSubOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range VPSubOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPSubOp::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPSubOp::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPSubOp::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPSubOp::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::MutableOperandRange VPSubOp::getLhsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPSubOp::getRhsMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPSubOp::getMaskMutable() {
+  auto range = getODSOperandIndexAndLength(2);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPSubOp::getEvlMutable() {
+  auto range = getODSOperandIndexAndLength(3);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> VPSubOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range VPSubOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPSubOp::getRes() {
+  return *getODSResults(0).begin();
+}
+
+void VPSubOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  odsState.addTypes(res);
+}
+
+void VPSubOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void VPSubOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 4u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult VPSubOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps24(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps24(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup2 = getODSOperands(2);
+
+    for (auto v : valueGroup2) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps25(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup3 = getODSOperands(3);
+
+    for (auto v : valueGroup3) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps14(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps2(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult VPSubOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+void VPSubOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace LLVM
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPSubOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPUDivOp definitions
+//===----------------------------------------------------------------------===//
+
+VPUDivOpAdaptor::VPUDivOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+
+VPUDivOpAdaptor::VPUDivOpAdaptor(VPUDivOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+
+::mlir::ValueRange VPUDivOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> VPUDivOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange VPUDivOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPUDivOpAdaptor::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPUDivOpAdaptor::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPUDivOpAdaptor::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPUDivOpAdaptor::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::DictionaryAttr VPUDivOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult VPUDivOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> VPUDivOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range VPUDivOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPUDivOp::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPUDivOp::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPUDivOp::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPUDivOp::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::MutableOperandRange VPUDivOp::getLhsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPUDivOp::getRhsMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPUDivOp::getMaskMutable() {
+  auto range = getODSOperandIndexAndLength(2);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPUDivOp::getEvlMutable() {
+  auto range = getODSOperandIndexAndLength(3);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> VPUDivOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range VPUDivOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPUDivOp::getRes() {
+  return *getODSResults(0).begin();
+}
+
+void VPUDivOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  odsState.addTypes(res);
+}
+
+void VPUDivOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void VPUDivOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 4u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult VPUDivOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps24(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps24(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup2 = getODSOperands(2);
+
+    for (auto v : valueGroup2) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps25(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup3 = getODSOperands(3);
+
+    for (auto v : valueGroup3) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps14(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps2(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult VPUDivOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+void VPUDivOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace LLVM
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPUDivOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPURemOp definitions
+//===----------------------------------------------------------------------===//
+
+VPURemOpAdaptor::VPURemOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+
+VPURemOpAdaptor::VPURemOpAdaptor(VPURemOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+
+::mlir::ValueRange VPURemOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> VPURemOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange VPURemOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPURemOpAdaptor::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPURemOpAdaptor::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPURemOpAdaptor::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPURemOpAdaptor::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::DictionaryAttr VPURemOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult VPURemOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> VPURemOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range VPURemOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPURemOp::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPURemOp::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPURemOp::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPURemOp::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::MutableOperandRange VPURemOp::getLhsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPURemOp::getRhsMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPURemOp::getMaskMutable() {
+  auto range = getODSOperandIndexAndLength(2);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPURemOp::getEvlMutable() {
+  auto range = getODSOperandIndexAndLength(3);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> VPURemOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range VPURemOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPURemOp::getRes() {
+  return *getODSResults(0).begin();
+}
+
+void VPURemOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  odsState.addTypes(res);
+}
+
+void VPURemOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void VPURemOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 4u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult VPURemOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps24(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps24(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup2 = getODSOperands(2);
+
+    for (auto v : valueGroup2) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps25(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup3 = getODSOperands(3);
+
+    for (auto v : valueGroup3) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps14(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps2(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult VPURemOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+void VPURemOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace LLVM
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPURemOp)
+
+namespace mlir {
+namespace LLVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::LLVM::VPXorOp definitions
+//===----------------------------------------------------------------------===//
+
+VPXorOpAdaptor::VPXorOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+
+VPXorOpAdaptor::VPXorOpAdaptor(VPXorOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+
+::mlir::ValueRange VPXorOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> VPXorOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange VPXorOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPXorOpAdaptor::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPXorOpAdaptor::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPXorOpAdaptor::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPXorOpAdaptor::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::DictionaryAttr VPXorOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult VPXorOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> VPXorOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range VPXorOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPXorOp::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VPXorOp::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value VPXorOp::getMask() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value VPXorOp::getEvl() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::MutableOperandRange VPXorOp::getLhsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPXorOp::getRhsMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPXorOp::getMaskMutable() {
+  auto range = getODSOperandIndexAndLength(2);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VPXorOp::getEvlMutable() {
+  auto range = getODSOperandIndexAndLength(3);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> VPXorOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range VPXorOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VPXorOp::getRes() {
+  return *getODSResults(0).begin();
+}
+
+void VPXorOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  odsState.addTypes(res);
+}
+
+void VPXorOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value mask, ::mlir::Value evl) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addOperands(mask);
+  odsState.addOperands(evl);
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void VPXorOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 4u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult VPXorOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps24(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps24(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup2 = getODSOperands(2);
+
+    for (auto v : valueGroup2) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps25(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup3 = getODSOperands(3);
+
+    for (auto v : valueGroup3) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps14(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_LLVMOps2(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult VPXorOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+void VPXorOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace LLVM
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::VPXorOp)
 
 namespace mlir {
 namespace LLVM {
@@ -26997,11 +30698,11 @@ void XOrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult XOrOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type resRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resTypes(resRawTypes);
@@ -27060,7 +30761,7 @@ void XOrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::XOrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::XOrOp)
 
 namespace mlir {
 namespace LLVM {
@@ -27187,8 +30888,8 @@ void ZExtOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 }
 
 ::mlir::ParseResult ZExtOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType argRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand argRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
   (void)argOperandsLoc;
   ::mlir::Type argRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> argTypes(argRawTypes);
@@ -27253,7 +30954,7 @@ void ZExtOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::ZExtOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::ZExtOp)
 
 namespace mlir {
 namespace LLVM {
@@ -27361,7 +31062,7 @@ void masked_compressstore::build(::mlir::OpBuilder &, ::mlir::OperationState &od
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::masked_compressstore)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::masked_compressstore)
 
 namespace mlir {
 namespace LLVM {
@@ -27483,7 +31184,7 @@ void masked_expandload::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::masked_expandload)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::masked_expandload)
 
 namespace mlir {
 namespace LLVM {
@@ -27700,7 +31401,7 @@ void masked_gather::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
     if (!tblgen_alignment)
       return emitOpError("requires attribute 'alignment'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps21(*this, tblgen_alignment, "alignment")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps22(*this, tblgen_alignment, "alignment")))
       return ::mlir::failure();
   }
   {
@@ -27741,7 +31442,7 @@ void masked_gather::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
 }
 
 ::mlir::ParseResult masked_gather::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::llvm::ArrayRef<::mlir::Type> allOperandTypes;
   ::llvm::ArrayRef<::mlir::Type> allResultTypes;
   ::llvm::SMLoc allOperandLoc = parser.getCurrentLocation();
@@ -27774,7 +31475,7 @@ void masked_gather::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::masked_gather)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::masked_gather)
 
 namespace mlir {
 namespace LLVM {
@@ -27964,7 +31665,7 @@ void masked_scatter::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
     if (!tblgen_alignment)
       return emitOpError("requires attribute 'alignment'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps21(*this, tblgen_alignment, "alignment")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps22(*this, tblgen_alignment, "alignment")))
       return ::mlir::failure();
   }
   {
@@ -27996,14 +31697,14 @@ void masked_scatter::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
 }
 
 ::mlir::ParseResult masked_scatter::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType valueRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand valueRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
   (void)valueOperandsLoc;
-  ::mlir::OpAsmParser::OperandType ptrsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> ptrsOperands(ptrsRawOperands);  ::llvm::SMLoc ptrsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand ptrsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> ptrsOperands(ptrsRawOperands);  ::llvm::SMLoc ptrsOperandsLoc;
   (void)ptrsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType maskRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> maskOperands(maskRawOperands);  ::llvm::SMLoc maskOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand maskRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> maskOperands(maskRawOperands);  ::llvm::SMLoc maskOperandsLoc;
   (void)maskOperandsLoc;
   ::mlir::Type valueRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> valueTypes(valueRawTypes);
@@ -28106,7 +31807,7 @@ void masked_scatter::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::masked_scatter)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::masked_scatter)
 
 namespace mlir {
 namespace LLVM {
@@ -28215,7 +31916,7 @@ void vector_reduce_add::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_add)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_add)
 
 namespace mlir {
 namespace LLVM {
@@ -28324,7 +32025,7 @@ void vector_reduce_and::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_and)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_and)
 
 namespace mlir {
 namespace LLVM {
@@ -28421,14 +32122,18 @@ void vector_reduce_fadd::setReassocAttr(::mlir::BoolAttr attr) {
 void vector_reduce_fadd::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value odsArg_0, ::mlir::Value odsArg_1, ::mlir::BoolAttr reassoc) {
   odsState.addOperands(odsArg_0);
   odsState.addOperands(odsArg_1);
+  if (reassoc) {
   odsState.addAttribute(getReassocAttrName(odsState.name), reassoc);
+  }
   odsState.addTypes(res);
 }
 
 void vector_reduce_fadd::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value odsArg_0, ::mlir::Value odsArg_1, ::mlir::BoolAttr reassoc) {
   odsState.addOperands(odsArg_0);
   odsState.addOperands(odsArg_1);
+  if (reassoc) {
   odsState.addAttribute(getReassocAttrName(odsState.name), reassoc);
+  }
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -28459,7 +32164,7 @@ void vector_reduce_fadd::build(::mlir::OpBuilder &, ::mlir::OperationState &odsS
 ::mlir::LogicalResult vector_reduce_fadd::verifyInvariantsImpl() {
   {
     auto tblgen_reassoc = (*this)->getAttr(getReassocAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps23(*this, tblgen_reassoc, "reassoc")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps24(*this, tblgen_reassoc, "reassoc")))
       return ::mlir::failure();
   }
   {
@@ -28498,7 +32203,7 @@ void vector_reduce_fadd::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects:
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_fadd)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_fadd)
 
 namespace mlir {
 namespace LLVM {
@@ -28607,7 +32312,7 @@ void vector_reduce_fmax::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects:
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_fmax)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_fmax)
 
 namespace mlir {
 namespace LLVM {
@@ -28716,7 +32421,7 @@ void vector_reduce_fmin::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects:
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_fmin)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_fmin)
 
 namespace mlir {
 namespace LLVM {
@@ -28813,14 +32518,18 @@ void vector_reduce_fmul::setReassocAttr(::mlir::BoolAttr attr) {
 void vector_reduce_fmul::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value odsArg_0, ::mlir::Value odsArg_1, ::mlir::BoolAttr reassoc) {
   odsState.addOperands(odsArg_0);
   odsState.addOperands(odsArg_1);
+  if (reassoc) {
   odsState.addAttribute(getReassocAttrName(odsState.name), reassoc);
+  }
   odsState.addTypes(res);
 }
 
 void vector_reduce_fmul::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value odsArg_0, ::mlir::Value odsArg_1, ::mlir::BoolAttr reassoc) {
   odsState.addOperands(odsArg_0);
   odsState.addOperands(odsArg_1);
+  if (reassoc) {
   odsState.addAttribute(getReassocAttrName(odsState.name), reassoc);
+  }
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -28851,7 +32560,7 @@ void vector_reduce_fmul::build(::mlir::OpBuilder &, ::mlir::OperationState &odsS
 ::mlir::LogicalResult vector_reduce_fmul::verifyInvariantsImpl() {
   {
     auto tblgen_reassoc = (*this)->getAttr(getReassocAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps23(*this, tblgen_reassoc, "reassoc")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_LLVMOps24(*this, tblgen_reassoc, "reassoc")))
       return ::mlir::failure();
   }
   {
@@ -28890,7 +32599,7 @@ void vector_reduce_fmul::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects:
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_fmul)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_fmul)
 
 namespace mlir {
 namespace LLVM {
@@ -28999,7 +32708,7 @@ void vector_reduce_mul::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_mul)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_mul)
 
 namespace mlir {
 namespace LLVM {
@@ -29108,7 +32817,7 @@ void vector_reduce_or::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::E
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_or)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_or)
 
 namespace mlir {
 namespace LLVM {
@@ -29217,7 +32926,7 @@ void vector_reduce_smax::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects:
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_smax)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_smax)
 
 namespace mlir {
 namespace LLVM {
@@ -29326,7 +33035,7 @@ void vector_reduce_smin::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects:
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_smin)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_smin)
 
 namespace mlir {
 namespace LLVM {
@@ -29435,7 +33144,7 @@ void vector_reduce_umax::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects:
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_umax)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_umax)
 
 namespace mlir {
 namespace LLVM {
@@ -29544,7 +33253,7 @@ void vector_reduce_umin::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects:
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_umin)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_umin)
 
 namespace mlir {
 namespace LLVM {
@@ -29653,7 +33362,7 @@ void vector_reduce_xor::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_xor)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::vector_reduce_xor)
 
 namespace mlir {
 namespace LLVM {
@@ -29748,7 +33457,7 @@ void vscale::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 
 } // namespace LLVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::vscale)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::vscale)
 
 
 #endif  // GET_OP_CLASSES

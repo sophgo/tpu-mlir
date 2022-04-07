@@ -210,7 +210,7 @@ public:
 };
 } // namespace async
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::AddToGroupOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::AddToGroupOp)
 
 namespace mlir {
 namespace async {
@@ -267,7 +267,7 @@ public:
 };
 } // namespace async
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::AwaitAllOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::AwaitAllOp)
 
 namespace mlir {
 namespace async {
@@ -328,7 +328,7 @@ public:
 };
 } // namespace async
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::AwaitOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::AwaitOp)
 
 namespace mlir {
 namespace async {
@@ -389,7 +389,7 @@ public:
 };
 } // namespace async
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::CoroBeginOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::CoroBeginOp)
 
 namespace mlir {
 namespace async {
@@ -446,7 +446,7 @@ public:
 };
 } // namespace async
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::CoroEndOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::CoroEndOp)
 
 namespace mlir {
 namespace async {
@@ -506,7 +506,7 @@ public:
 };
 } // namespace async
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::CoroFreeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::CoroFreeOp)
 
 namespace mlir {
 namespace async {
@@ -564,7 +564,7 @@ public:
 };
 } // namespace async
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::CoroIdOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::CoroIdOp)
 
 namespace mlir {
 namespace async {
@@ -625,7 +625,7 @@ public:
 };
 } // namespace async
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::CoroSaveOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::CoroSaveOp)
 
 namespace mlir {
 namespace async {
@@ -685,7 +685,7 @@ public:
 };
 } // namespace async
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::CoroSuspendOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::CoroSuspendOp)
 
 namespace mlir {
 namespace async {
@@ -749,7 +749,7 @@ public:
 };
 } // namespace async
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::CreateGroupOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::CreateGroupOp)
 
 namespace mlir {
 namespace async {
@@ -818,7 +818,7 @@ public:
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  ::mlir::LogicalResult verify();
+  ::mlir::LogicalResult verifyRegions();
   ::mlir::OperandRange getSuccessorEntryOperands(unsigned index);
   void getSuccessorRegions(::mlir::Optional<unsigned> index, ::mlir::ArrayRef<::mlir::Attribute> operands, ::mlir::SmallVectorImpl<::mlir::RegionSuccessor> &regions);
   bool areTypesCompatible(::mlir::Type lhs, ::mlir::Type rhs);
@@ -839,7 +839,7 @@ public:
 };
 } // namespace async
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::ExecuteOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::ExecuteOp)
 
 namespace mlir {
 namespace async {
@@ -922,7 +922,7 @@ public:
 };
 } // namespace async
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeAddRefOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeAddRefOp)
 
 namespace mlir {
 namespace async {
@@ -986,7 +986,7 @@ public:
 };
 } // namespace async
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeAddToGroupOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeAddToGroupOp)
 
 namespace mlir {
 namespace async {
@@ -1046,7 +1046,7 @@ public:
 };
 } // namespace async
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeAwaitAndResumeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeAwaitAndResumeOp)
 
 namespace mlir {
 namespace async {
@@ -1103,7 +1103,7 @@ public:
 };
 } // namespace async
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeAwaitOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeAwaitOp)
 
 namespace mlir {
 namespace async {
@@ -1164,7 +1164,7 @@ public:
 };
 } // namespace async
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeCreateGroupOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeCreateGroupOp)
 
 namespace mlir {
 namespace async {
@@ -1219,7 +1219,7 @@ public:
 };
 } // namespace async
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeCreateOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeCreateOp)
 
 namespace mlir {
 namespace async {
@@ -1302,7 +1302,7 @@ public:
 };
 } // namespace async
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeDropRefOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeDropRefOp)
 
 namespace mlir {
 namespace async {
@@ -1363,7 +1363,7 @@ public:
 };
 } // namespace async
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeIsErrorOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeIsErrorOp)
 
 namespace mlir {
 namespace async {
@@ -1421,7 +1421,7 @@ public:
 };
 } // namespace async
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeLoadOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeLoadOp)
 
 namespace mlir {
 namespace async {
@@ -1479,7 +1479,7 @@ public:
 };
 } // namespace async
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeNumWorkerThreadsOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeNumWorkerThreadsOp)
 
 namespace mlir {
 namespace async {
@@ -1536,7 +1536,7 @@ public:
 };
 } // namespace async
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeResumeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeResumeOp)
 
 namespace mlir {
 namespace async {
@@ -1593,7 +1593,7 @@ public:
 };
 } // namespace async
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeSetAvailableOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeSetAvailableOp)
 
 namespace mlir {
 namespace async {
@@ -1650,7 +1650,7 @@ public:
 };
 } // namespace async
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeSetErrorOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeSetErrorOp)
 
 namespace mlir {
 namespace async {
@@ -1710,7 +1710,7 @@ public:
 };
 } // namespace async
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeStoreOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeStoreOp)
 
 namespace mlir {
 namespace async {
@@ -1769,7 +1769,7 @@ public:
 };
 } // namespace async
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::async::YieldOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::async::YieldOp)
 
 
 #endif  // GET_OP_CLASSES

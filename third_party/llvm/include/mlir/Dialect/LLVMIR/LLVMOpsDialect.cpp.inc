@@ -6,7 +6,7 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
-DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::LLVMDialect)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::LLVMDialect)
 namespace mlir {
 namespace LLVM {
 

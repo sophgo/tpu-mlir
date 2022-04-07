@@ -38,4 +38,4 @@ public:
 };
 } // namespace tensor
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::TensorDialect)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::TensorDialect)

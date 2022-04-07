@@ -1,5 +1,5 @@
-def DefaultValuepresent : I32EnumAttrCase<"present", 0>;
-def DefaultValuenone : I32EnumAttrCase<"none", 1>;
+def DefaultValuepresent : I32EnumAttrCase<"Present", 0, "present">;
+def DefaultValuenone : I32EnumAttrCase<"None", 1, "none">;
 def DefaultValue: I32EnumAttr<
   "ClauseDefaultValue",
   "DefaultValue Clause",

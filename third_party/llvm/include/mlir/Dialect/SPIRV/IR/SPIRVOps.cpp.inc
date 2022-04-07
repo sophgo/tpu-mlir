@@ -11,6 +11,7 @@
 
 ::mlir::spirv::AccessChainOp,
 ::mlir::spirv::AddressOfOp,
+::mlir::spirv::AssumeTrueKHROp,
 ::mlir::spirv::AtomicAndOp,
 ::mlir::spirv::AtomicCompareExchangeOp,
 ::mlir::spirv::AtomicCompareExchangeWeakOp,
@@ -203,6 +204,7 @@
 ::mlir::spirv::VectorExtractDynamicOp,
 ::mlir::spirv::VectorInsertDynamicOp,
 ::mlir::spirv::VectorShuffleOp,
+::mlir::spirv::VectorTimesScalarOp,
 ::mlir::spirv::YieldOp
 #endif  // GET_OP_LIST
 
@@ -240,6 +242,16 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps1(
 static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps2(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
+  if (!((type.isSignlessInteger(1)))) {
+    return op->emitOpError(valueKind) << " #" << valueIndex
+        << " must be bool, but got " << type;
+  }
+  return ::mlir::success();
+}
+
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps3(
+    ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
+    unsigned valueIndex) {
   if (!((((type.isInteger(8))) || ((type.isInteger(16))) || ((type.isInteger(32))) || ((type.isInteger(64)))) || (((type.isF16())) || ((type.isF32())) || ((type.isF64()))))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
         << " must be 8/16/32/64-bit integer or 16/32/64-bit float, but got " << type;
@@ -247,7 +259,7 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps2(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps3(
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps4(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
   if (!(((type.isF16())) || ((type.isF32())) || ((type.isF64())))) {
@@ -257,7 +269,7 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps3(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps4(
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps5(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
   if (!((((type.isInteger(8))) || ((type.isInteger(16))) || ((type.isInteger(32))) || ((type.isInteger(64)))) || (((((type.isa<::mlir::VectorType>())) && ((type.cast<::mlir::VectorType>().getRank() > 0))) && ([](::mlir::Type elementType) { return ((elementType.isInteger(8))) || ((elementType.isInteger(16))) || ((elementType.isInteger(32))) || ((elementType.isInteger(64))); }(type.cast<::mlir::ShapedType>().getElementType()))) && ((((type.isa<::mlir::VectorType>())) && ((type.cast<::mlir::VectorType>().getRank() > 0))) && (((type.cast<::mlir::VectorType>().getNumElements()
@@ -272,7 +284,7 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps4(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps5(
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps6(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
   if (!(((((((type.isInteger(8))) || ((type.isInteger(16))) || ((type.isInteger(32))) || ((type.isInteger(64)))) || (((type.isF16())) || ((type.isF32())) || ((type.isF64())))) || ((type.isSignlessInteger(1)))) || (((((type.isa<::mlir::VectorType>())) && ((type.cast<::mlir::VectorType>().getRank() > 0))) && ([](::mlir::Type elementType) { return ((elementType.isSignlessInteger(1))) || (((elementType.isInteger(8))) || ((elementType.isInteger(16))) || ((elementType.isInteger(32))) || ((elementType.isInteger(64)))) || (((elementType.isF16())) || ((elementType.isF32())) || ((elementType.isF64()))); }(type.cast<::mlir::ShapedType>().getElementType()))) && ((((type.isa<::mlir::VectorType>())) && ((type.cast<::mlir::VectorType>().getRank() > 0))) && (((type.cast<::mlir::VectorType>().getNumElements()
@@ -283,16 +295,6 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps5(
                            == 16)))))) || ((type.isa<::mlir::spirv::PointerType>())))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
         << " must be 8/16/32/64-bit integer or 16/32/64-bit float or bool or vector of bool or 8/16/32/64-bit integer or 16/32/64-bit float values of length 2/3/4/8/16 or any SPIR-V pointer type, but got " << type;
-  }
-  return ::mlir::success();
-}
-
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps6(
-    ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
-    unsigned valueIndex) {
-  if (!((type.isSignlessInteger(1)))) {
-    return op->emitOpError(valueKind) << " #" << valueIndex
-        << " must be bool, but got " << type;
   }
   return ::mlir::success();
 }
@@ -435,36 +437,6 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps16(
 static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps17(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
-  if (!((((type.isSignedInteger(8))) || ((type.isSignedInteger(16))) || ((type.isSignedInteger(32))) || ((type.isSignedInteger(64)))) || (((((type.isa<::mlir::VectorType>())) && ((type.cast<::mlir::VectorType>().getRank() > 0))) && ([](::mlir::Type elementType) { return ((elementType.isSignedInteger(8))) || ((elementType.isSignedInteger(16))) || ((elementType.isSignedInteger(32))) || ((elementType.isSignedInteger(64))); }(type.cast<::mlir::ShapedType>().getElementType()))) && ((((type.isa<::mlir::VectorType>())) && ((type.cast<::mlir::VectorType>().getRank() > 0))) && (((type.cast<::mlir::VectorType>().getNumElements()
-                           == 2)) || ((type.cast<::mlir::VectorType>().getNumElements()
-                           == 3)) || ((type.cast<::mlir::VectorType>().getNumElements()
-                           == 4)) || ((type.cast<::mlir::VectorType>().getNumElements()
-                           == 8)) || ((type.cast<::mlir::VectorType>().getNumElements()
-                           == 16))))))) {
-    return op->emitOpError(valueKind) << " #" << valueIndex
-        << " must be 8/16/32/64-bit signed integer or vector of 8/16/32/64-bit signed integer values of length 2/3/4/8/16, but got " << type;
-  }
-  return ::mlir::success();
-}
-
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps18(
-    ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
-    unsigned valueIndex) {
-  if (!(((((type.isSignlessInteger(8))) || ((type.isUnsignedInteger(8)))) || (((type.isSignlessInteger(16))) || ((type.isUnsignedInteger(16)))) || (((type.isSignlessInteger(32))) || ((type.isUnsignedInteger(32)))) || (((type.isSignlessInteger(64))) || ((type.isUnsignedInteger(64))))) || (((((type.isa<::mlir::VectorType>())) && ((type.cast<::mlir::VectorType>().getRank() > 0))) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(8))) || ((elementType.isUnsignedInteger(8)))) || (((elementType.isSignlessInteger(16))) || ((elementType.isUnsignedInteger(16)))) || (((elementType.isSignlessInteger(32))) || ((elementType.isUnsignedInteger(32)))) || (((elementType.isSignlessInteger(64))) || ((elementType.isUnsignedInteger(64)))); }(type.cast<::mlir::ShapedType>().getElementType()))) && ((((type.isa<::mlir::VectorType>())) && ((type.cast<::mlir::VectorType>().getRank() > 0))) && (((type.cast<::mlir::VectorType>().getNumElements()
-                           == 2)) || ((type.cast<::mlir::VectorType>().getNumElements()
-                           == 3)) || ((type.cast<::mlir::VectorType>().getNumElements()
-                           == 4)) || ((type.cast<::mlir::VectorType>().getNumElements()
-                           == 8)) || ((type.cast<::mlir::VectorType>().getNumElements()
-                           == 16))))))) {
-    return op->emitOpError(valueKind) << " #" << valueIndex
-        << " must be 8/16/32/64-bit signless/unsigned integer or vector of 8/16/32/64-bit signless/unsigned integer values of length 2/3/4/8/16, but got " << type;
-  }
-  return ::mlir::success();
-}
-
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps19(
-    ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
-    unsigned valueIndex) {
   if (!(((((type.isa<::mlir::VectorType>())) && ((type.cast<::mlir::VectorType>().getRank() > 0))) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(8))) || ((elementType.isUnsignedInteger(8)))) || (((elementType.isSignlessInteger(16))) || ((elementType.isUnsignedInteger(16)))) || (((elementType.isSignlessInteger(32))) || ((elementType.isUnsignedInteger(32)))) || (((elementType.isSignlessInteger(64))) || ((elementType.isUnsignedInteger(64)))); }(type.cast<::mlir::ShapedType>().getElementType()))) && ((((type.isa<::mlir::VectorType>())) && ((type.cast<::mlir::VectorType>().getRank() > 0))) && ((type.cast<::mlir::VectorType>().getNumElements()
                            == 4))))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
@@ -473,7 +445,7 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps19(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps20(
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps18(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
   if (!((type.isa<::mlir::spirv::SampledImageType>()))) {
@@ -483,7 +455,7 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps20(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps21(
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps19(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
   if (!(((((type.isa<::mlir::VectorType>())) && ((type.cast<::mlir::VectorType>().getRank() > 0))) && ([](::mlir::Type elementType) { return ((elementType.isSignlessInteger(1))) || (((elementType.isInteger(8))) || ((elementType.isInteger(16))) || ((elementType.isInteger(32))) || ((elementType.isInteger(64)))) || (((elementType.isF16())) || ((elementType.isF32())) || ((elementType.isF64()))); }(type.cast<::mlir::ShapedType>().getElementType()))) && ((((type.isa<::mlir::VectorType>())) && ((type.cast<::mlir::VectorType>().getRank() > 0))) && (((type.cast<::mlir::VectorType>().getNumElements()
@@ -498,7 +470,7 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps21(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps22(
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps20(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
   if (!((type.isa<::mlir::spirv::ImageType>()))) {
@@ -508,7 +480,7 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps22(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps23(
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps21(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
   if (!((type.isa<::mlir::spirv::MatrixType>()))) {
@@ -518,7 +490,7 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps23(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps24(
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps22(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
   if (!((((((type.isInteger(8))) || ((type.isInteger(16))) || ((type.isInteger(32))) || ((type.isInteger(64)))) || (((type.isF16())) || ((type.isF32())) || ((type.isF64())))) || ((type.isSignlessInteger(1)))) || (((((type.isa<::mlir::VectorType>())) && ((type.cast<::mlir::VectorType>().getRank() > 0))) && ([](::mlir::Type elementType) { return ((elementType.isSignlessInteger(1))) || (((elementType.isInteger(8))) || ((elementType.isInteger(16))) || ((elementType.isInteger(32))) || ((elementType.isInteger(64)))) || (((elementType.isF16())) || ((elementType.isF32())) || ((elementType.isF64()))); }(type.cast<::mlir::ShapedType>().getElementType()))) && ((((type.isa<::mlir::VectorType>())) && ((type.cast<::mlir::VectorType>().getRank() > 0))) && (((type.cast<::mlir::VectorType>().getNumElements()
@@ -533,7 +505,7 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps24(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps25(
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps23(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
   if (!((true))) {
@@ -543,7 +515,7 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps25(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps26(
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps24(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
   if (!(((((type.isa<::mlir::VectorType>())) && ((type.cast<::mlir::VectorType>().getRank() > 0))) && ([](::mlir::Type elementType) { return (elementType.isInteger(32)); }(type.cast<::mlir::ShapedType>().getElementType()))) && ((((type.isa<::mlir::VectorType>())) && ((type.cast<::mlir::VectorType>().getRank() > 0))) && ((type.cast<::mlir::VectorType>().getNumElements()
@@ -554,12 +526,25 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps26(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps27(
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps25(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
   if (!(((((type.isInteger(8))) || ((type.isInteger(16))) || ((type.isInteger(32))) || ((type.isInteger(64)))) || (((type.isF16())) || ((type.isF32())) || ((type.isF64())))) || ((type.isSignlessInteger(1))))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
         << " must be 8/16/32/64-bit integer or 16/32/64-bit float or bool, but got " << type;
+  }
+  return ::mlir::success();
+}
+
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SPIRVOps26(
+    ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
+    unsigned valueIndex) {
+  if (!(((((type.isa<::mlir::VectorType>())) && ((type.cast<::mlir::VectorType>().getRank() > 0))) && ([](::mlir::Type elementType) { return ((elementType.isF16())) || ((elementType.isF32())) || ((elementType.isF64())); }(type.cast<::mlir::ShapedType>().getElementType()))) && ((((type.isa<::mlir::VectorType>())) && ((type.cast<::mlir::VectorType>().getRank() > 0))) && (((type.cast<::mlir::VectorType>().getNumElements()
+                           == 2)) || ((type.cast<::mlir::VectorType>().getNumElements()
+                           == 3)) || ((type.cast<::mlir::VectorType>().getNumElements()
+                           == 4)))))) {
+    return op->emitOpError(valueKind) << " #" << valueIndex
+        << " must be vector of 16/32/64-bit float values of length 2/3/4, but got " << type;
   }
   return ::mlir::success();
 }
@@ -593,7 +578,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps2(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps3(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32))); })))) {
+  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))); })))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: 32-bit integer array attribute";
   }
@@ -647,7 +632,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps8(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps9(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return (attr.isa<::mlir::SymbolRefAttr>()); })))) {
+  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && ((attr.isa<::mlir::SymbolRefAttr>())); })))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: symbol ref array attribute";
   }
@@ -665,6 +650,15 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps10(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps11(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
+  if (attr && !(((attr.isa<::mlir::TypeAttr>())) && ((attr.cast<::mlir::TypeAttr>().getValue().isa<::mlir::FunctionType>())))) {
+    return op->emitOpError("attribute '") << attrName
+        << "' failed to satisfy constraint: type attribute of function type";
+  }
+  return ::mlir::success();
+}
+
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps12(
+    ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((attr.isa<::mlir::StringAttr>()))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: string attribute";
@@ -672,7 +666,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps11(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps12(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps13(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))) && ((::mlir::spirv::symbolizeFunctionControl(attr.cast<IntegerAttr>().getValue().getZExtValue()).hasValue())))) {
     return op->emitOpError("attribute '") << attrName
@@ -681,7 +675,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps12(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps13(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps14(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))) && ((::mlir::spirv::symbolizeGroupOperation(attr.cast<IntegerAttr>().getValue().getZExtValue()).hasValue())))) {
     return op->emitOpError("attribute '") << attrName
@@ -690,7 +684,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps13(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps14(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps15(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))) && ((::mlir::spirv::symbolizeImageOperands(attr.cast<IntegerAttr>().getValue().getZExtValue()).hasValue())))) {
     return op->emitOpError("attribute '") << attrName
@@ -699,7 +693,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps14(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps15(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps16(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))) && ((::mlir::spirv::symbolizeLoopControl(attr.cast<IntegerAttr>().getValue().getZExtValue()).hasValue())))) {
     return op->emitOpError("attribute '") << attrName
@@ -708,7 +702,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps15(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps16(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps17(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))) && ((::mlir::spirv::symbolizeAddressingModel(attr.cast<IntegerAttr>().getValue().getZExtValue()).hasValue())))) {
     return op->emitOpError("attribute '") << attrName
@@ -717,7 +711,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps16(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps17(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps18(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))) && ((::mlir::spirv::symbolizeMemoryModel(attr.cast<IntegerAttr>().getValue().getZExtValue()).hasValue())))) {
     return op->emitOpError("attribute '") << attrName
@@ -726,7 +720,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps17(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps18(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps19(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((attr.isa<::mlir::spirv::VerCapExtAttr>()))) {
     return op->emitOpError("attribute '") << attrName
@@ -735,7 +729,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps18(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps19(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps20(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))) && ((::mlir::spirv::symbolizeSelectionControl(attr.cast<IntegerAttr>().getValue().getZExtValue()).hasValue())))) {
     return op->emitOpError("attribute '") << attrName
@@ -744,7 +738,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps19(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps20(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SPIRVOps21(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))) && ((::mlir::spirv::symbolizeStorageClass(attr.cast<IntegerAttr>().getValue().getZExtValue()).hasValue())))) {
     return op->emitOpError("attribute '") << attrName
@@ -949,7 +943,7 @@ void AccessChainOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effe
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AccessChainOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AccessChainOp)
 
 namespace mlir {
 namespace spirv {
@@ -1143,7 +1137,135 @@ void AddressOfOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AddressOfOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AddressOfOp)
+
+namespace mlir {
+namespace spirv {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::spirv::AssumeTrueKHROp definitions
+//===----------------------------------------------------------------------===//
+
+AssumeTrueKHROpAdaptor::AssumeTrueKHROpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+
+AssumeTrueKHROpAdaptor::AssumeTrueKHROpAdaptor(AssumeTrueKHROp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+
+::mlir::ValueRange AssumeTrueKHROpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> AssumeTrueKHROpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange AssumeTrueKHROpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value AssumeTrueKHROpAdaptor::condition() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::DictionaryAttr AssumeTrueKHROpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult AssumeTrueKHROpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> AssumeTrueKHROp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range AssumeTrueKHROp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value AssumeTrueKHROp::condition() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::MutableOperandRange AssumeTrueKHROp::conditionMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> AssumeTrueKHROp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range AssumeTrueKHROp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+void AssumeTrueKHROp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value condition) {
+  odsState.addOperands(condition);
+}
+
+void AssumeTrueKHROp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value condition) {
+  odsState.addOperands(condition);
+  assert(resultTypes.size() == 0u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void AssumeTrueKHROp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 1u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 0u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult AssumeTrueKHROp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps2(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult AssumeTrueKHROp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+::mlir::ParseResult AssumeTrueKHROp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::mlir::OpAsmParser::UnresolvedOperand conditionRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> conditionOperands(conditionRawOperands);  ::llvm::SMLoc conditionOperandsLoc;
+  (void)conditionOperandsLoc;
+
+  conditionOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperand(conditionRawOperands[0]))
+    return ::mlir::failure();
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  ::mlir::Type odsBuildableType0 = parser.getBuilder().getIntegerType(1);
+  if (parser.resolveOperands(conditionOperands, odsBuildableType0, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void AssumeTrueKHROp::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ';
+  _odsPrinter << condition();
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
+}
+
+} // namespace spirv
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AssumeTrueKHROp)
 
 namespace mlir {
 namespace spirv {
@@ -1392,7 +1514,7 @@ void AtomicAndOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicAndOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicAndOp)
 
 namespace mlir {
 namespace spirv {
@@ -1705,7 +1827,7 @@ void AtomicCompareExchangeOp::build(::mlir::OpBuilder &, ::mlir::OperationState 
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicCompareExchangeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicCompareExchangeOp)
 
 namespace mlir {
 namespace spirv {
@@ -2018,7 +2140,7 @@ void AtomicCompareExchangeWeakOp::build(::mlir::OpBuilder &, ::mlir::OperationSt
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicCompareExchangeWeakOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicCompareExchangeWeakOp)
 
 namespace mlir {
 namespace spirv {
@@ -2239,7 +2361,7 @@ void AtomicExchangeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps2(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps3(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -2248,7 +2370,7 @@ void AtomicExchangeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps2(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps3(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -2263,7 +2385,7 @@ void AtomicExchangeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicExchangeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicExchangeOp)
 
 namespace mlir {
 namespace spirv {
@@ -2484,7 +2606,7 @@ void AtomicFAddEXTOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps3(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -2493,7 +2615,7 @@ void AtomicFAddEXTOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps3(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -2508,7 +2630,7 @@ void AtomicFAddEXTOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicFAddEXTOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicFAddEXTOp)
 
 namespace mlir {
 namespace spirv {
@@ -2757,7 +2879,7 @@ void AtomicIAddOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicIAddOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicIAddOp)
 
 namespace mlir {
 namespace spirv {
@@ -2978,7 +3100,7 @@ void AtomicIDecrementOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsS
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicIDecrementOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicIDecrementOp)
 
 namespace mlir {
 namespace spirv {
@@ -3199,7 +3321,7 @@ void AtomicIIncrementOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsS
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicIIncrementOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicIIncrementOp)
 
 namespace mlir {
 namespace spirv {
@@ -3448,7 +3570,7 @@ void AtomicISubOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicISubOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicISubOp)
 
 namespace mlir {
 namespace spirv {
@@ -3697,7 +3819,7 @@ void AtomicOrOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicOrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicOrOp)
 
 namespace mlir {
 namespace spirv {
@@ -3946,7 +4068,7 @@ void AtomicSMaxOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicSMaxOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicSMaxOp)
 
 namespace mlir {
 namespace spirv {
@@ -4195,7 +4317,7 @@ void AtomicSMinOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicSMinOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicSMinOp)
 
 namespace mlir {
 namespace spirv {
@@ -4444,7 +4566,7 @@ void AtomicUMaxOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicUMaxOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicUMaxOp)
 
 namespace mlir {
 namespace spirv {
@@ -4693,7 +4815,7 @@ void AtomicUMinOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicUMinOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicUMinOp)
 
 namespace mlir {
 namespace spirv {
@@ -4942,7 +5064,7 @@ void AtomicXorOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicXorOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::AtomicXorOp)
 
 namespace mlir {
 namespace spirv {
@@ -5053,7 +5175,7 @@ void BitCountOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -5062,7 +5184,7 @@ void BitCountOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -5074,8 +5196,8 @@ void BitCountOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult BitCountOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -5120,7 +5242,7 @@ void BitCountOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::BitCountOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::BitCountOp)
 
 namespace mlir {
 namespace spirv {
@@ -5299,13 +5421,13 @@ void BitFieldInsertOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationSta
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup2 = getODSOperands(2);
@@ -5326,7 +5448,7 @@ void BitFieldInsertOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationSta
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -5347,7 +5469,7 @@ void BitFieldInsertOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationSta
 }
 
 ::mlir::ParseResult BitFieldInsertOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type baseRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> baseTypes(baseRawTypes);
   ::mlir::Type offsetRawTypes[1];
@@ -5430,7 +5552,7 @@ void BitFieldInsertOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::E
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::BitFieldInsertOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::BitFieldInsertOp)
 
 namespace mlir {
 namespace spirv {
@@ -5592,7 +5714,7 @@ void BitFieldSExtractOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationS
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
@@ -5613,7 +5735,7 @@ void BitFieldSExtractOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationS
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -5634,7 +5756,7 @@ void BitFieldSExtractOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationS
 }
 
 ::mlir::ParseResult BitFieldSExtractOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type baseRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> baseTypes(baseRawTypes);
   ::mlir::Type offsetRawTypes[1];
@@ -5717,7 +5839,7 @@ void BitFieldSExtractOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects:
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::BitFieldSExtractOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::BitFieldSExtractOp)
 
 namespace mlir {
 namespace spirv {
@@ -5879,7 +6001,7 @@ void BitFieldUExtractOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationS
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
@@ -5900,7 +6022,7 @@ void BitFieldUExtractOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationS
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -5921,7 +6043,7 @@ void BitFieldUExtractOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationS
 }
 
 ::mlir::ParseResult BitFieldUExtractOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type baseRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> baseTypes(baseRawTypes);
   ::mlir::Type offsetRawTypes[1];
@@ -6004,7 +6126,7 @@ void BitFieldUExtractOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects:
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::BitFieldUExtractOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::BitFieldUExtractOp)
 
 namespace mlir {
 namespace spirv {
@@ -6115,7 +6237,7 @@ void BitReverseOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -6124,7 +6246,7 @@ void BitReverseOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -6136,8 +6258,8 @@ void BitReverseOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
 }
 
 ::mlir::ParseResult BitReverseOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -6182,7 +6304,7 @@ void BitReverseOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effec
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::BitReverseOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::BitReverseOp)
 
 namespace mlir {
 namespace spirv {
@@ -6280,7 +6402,7 @@ void BitcastOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps6(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -6289,7 +6411,7 @@ void BitcastOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps6(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -6303,8 +6425,8 @@ void BitcastOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 }
 
 ::mlir::ParseResult BitcastOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -6369,7 +6491,7 @@ void BitcastOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::BitcastOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::BitcastOp)
 
 namespace mlir {
 namespace spirv {
@@ -6497,13 +6619,13 @@ void BitwiseAndOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -6512,7 +6634,7 @@ void BitwiseAndOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -6524,7 +6646,7 @@ void BitwiseAndOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
 }
 
 ::mlir::ParseResult BitwiseAndOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
   ::llvm::SMLoc allOperandLoc = parser.getCurrentLocation();
@@ -6567,7 +6689,7 @@ void BitwiseAndOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effec
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::BitwiseAndOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::BitwiseAndOp)
 
 namespace mlir {
 namespace spirv {
@@ -6695,13 +6817,13 @@ void BitwiseOrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -6710,7 +6832,7 @@ void BitwiseOrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -6722,7 +6844,7 @@ void BitwiseOrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
 }
 
 ::mlir::ParseResult BitwiseOrOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
   ::llvm::SMLoc allOperandLoc = parser.getCurrentLocation();
@@ -6765,7 +6887,7 @@ void BitwiseOrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::BitwiseOrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::BitwiseOrOp)
 
 namespace mlir {
 namespace spirv {
@@ -6893,13 +7015,13 @@ void BitwiseXorOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -6908,7 +7030,7 @@ void BitwiseXorOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -6920,7 +7042,7 @@ void BitwiseXorOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
 }
 
 ::mlir::ParseResult BitwiseXorOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
   ::llvm::SMLoc allOperandLoc = parser.getCurrentLocation();
@@ -6963,7 +7085,7 @@ void BitwiseXorOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effec
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::BitwiseXorOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::BitwiseXorOp)
 
 namespace mlir {
 namespace spirv {
@@ -7040,7 +7162,7 @@ std::pair<unsigned, unsigned> BranchConditionalOpAdaptor::getODSOperandIndexAndL
   }
     {
     auto tblgen_branch_weights = odsAttrs.get("branch_weights");
-    if (tblgen_branch_weights && !(((tblgen_branch_weights.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_branch_weights.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32))); }))))
+    if (tblgen_branch_weights && !(((tblgen_branch_weights.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_branch_weights.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))); }))))
       return emitError(loc, "'spv.BranchConditional' op ""attribute 'branch_weights' failed to satisfy constraint: 32-bit integer array attribute");
   }
   return ::mlir::success();
@@ -7198,7 +7320,7 @@ void BranchConditionalOp::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps6(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps2(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
@@ -7233,7 +7355,7 @@ void BranchConditionalOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::BranchConditionalOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::BranchConditionalOp)
 
 namespace mlir {
 namespace spirv {
@@ -7364,7 +7486,7 @@ void BranchOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
 
 ::mlir::ParseResult BranchOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::Block *targetSuccessor = nullptr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> targetOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> targetOperandsOperands;
   ::llvm::SMLoc targetOperandsOperandsLoc;
   (void)targetOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> targetOperandsTypes;
@@ -7411,7 +7533,7 @@ void BranchOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::BranchOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::BranchOp)
 
 namespace mlir {
 namespace spirv {
@@ -7557,7 +7679,7 @@ void CompositeConstructOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffect
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::CompositeConstructOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::CompositeConstructOp)
 
 namespace mlir {
 namespace spirv {
@@ -7609,7 +7731,7 @@ std::pair<unsigned, unsigned> CompositeExtractOpAdaptor::getODSOperandIndexAndLe
     if (!tblgen_indices)
       return emitError(loc, "'spv.CompositeExtract' op ""requires attribute 'indices'");
 
-    if (tblgen_indices && !(((tblgen_indices.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_indices.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32))); }))))
+    if (tblgen_indices && !(((tblgen_indices.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_indices.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))); }))))
       return emitError(loc, "'spv.CompositeExtract' op ""attribute 'indices' failed to satisfy constraint: 32-bit integer array attribute");
   }
   return ::mlir::success();
@@ -7724,7 +7846,7 @@ void CompositeExtractOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects:
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::CompositeExtractOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::CompositeExtractOp)
 
 namespace mlir {
 namespace spirv {
@@ -7780,7 +7902,7 @@ std::pair<unsigned, unsigned> CompositeInsertOpAdaptor::getODSOperandIndexAndLen
     if (!tblgen_indices)
       return emitError(loc, "'spv.CompositeInsert' op ""requires attribute 'indices'");
 
-    if (tblgen_indices && !(((tblgen_indices.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_indices.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32))); }))))
+    if (tblgen_indices && !(((tblgen_indices.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_indices.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))); }))))
       return emitError(loc, "'spv.CompositeInsert' op ""attribute 'indices' failed to satisfy constraint: 32-bit integer array attribute");
   }
   return ::mlir::success();
@@ -7913,7 +8035,7 @@ void CompositeInsertOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::CompositeInsertOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::CompositeInsertOp)
 
 namespace mlir {
 namespace spirv {
@@ -8055,7 +8177,7 @@ void ConstantOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ConstantOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ConstantOp)
 
 namespace mlir {
 namespace spirv {
@@ -8425,7 +8547,7 @@ void ControlBarrierOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ControlBarrierOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ControlBarrierOp)
 
 namespace mlir {
 namespace spirv {
@@ -8546,8 +8668,8 @@ void ConvertFToSOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
 }
 
 ::mlir::ParseResult ConvertFToSOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -8612,7 +8734,7 @@ void ConvertFToSOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effe
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ConvertFToSOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ConvertFToSOp)
 
 namespace mlir {
 namespace spirv {
@@ -8733,8 +8855,8 @@ void ConvertFToUOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
 }
 
 ::mlir::ParseResult ConvertFToUOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -8799,7 +8921,7 @@ void ConvertFToUOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effe
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ConvertFToUOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ConvertFToUOp)
 
 namespace mlir {
 namespace spirv {
@@ -8920,8 +9042,8 @@ void ConvertSToFOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
 }
 
 ::mlir::ParseResult ConvertSToFOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -8986,7 +9108,7 @@ void ConvertSToFOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effe
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ConvertSToFOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ConvertSToFOp)
 
 namespace mlir {
 namespace spirv {
@@ -9107,8 +9229,8 @@ void ConvertUToFOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
 }
 
 ::mlir::ParseResult ConvertUToFOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -9173,7 +9295,7 @@ void ConvertUToFOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effe
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ConvertUToFOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ConvertUToFOp)
 
 namespace mlir {
 namespace spirv {
@@ -9397,7 +9519,7 @@ void CooperativeMatrixLengthNVOp::getEffects(::mlir::SmallVectorImpl<::mlir::Sid
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::CooperativeMatrixLengthNVOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::CooperativeMatrixLengthNVOp)
 
 namespace mlir {
 namespace spirv {
@@ -9583,7 +9705,7 @@ void CooperativeMatrixLoadNVOp::build(::mlir::OpBuilder &, ::mlir::OperationStat
     auto valueGroup2 = getODSOperands(2);
 
     for (auto v : valueGroup2) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps6(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps2(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -9607,7 +9729,7 @@ void CooperativeMatrixLoadNVOp::build(::mlir::OpBuilder &, ::mlir::OperationStat
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::CooperativeMatrixLoadNVOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::CooperativeMatrixLoadNVOp)
 
 namespace mlir {
 namespace spirv {
@@ -9813,7 +9935,7 @@ void CooperativeMatrixMulAddNVOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::O
 }
 
 ::mlir::ParseResult CooperativeMatrixMulAddNVOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type aRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> aTypes(aRawTypes);
   ::mlir::Type bRawTypes[1];
@@ -9896,7 +10018,7 @@ void CooperativeMatrixMulAddNVOp::getEffects(::mlir::SmallVectorImpl<::mlir::Sid
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::CooperativeMatrixMulAddNVOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::CooperativeMatrixMulAddNVOp)
 
 namespace mlir {
 namespace spirv {
@@ -10099,7 +10221,7 @@ void CooperativeMatrixStoreNVOp::build(::mlir::OpBuilder &, ::mlir::OperationSta
     auto valueGroup3 = getODSOperands(3);
 
     for (auto v : valueGroup3) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps6(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps2(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -10114,7 +10236,7 @@ void CooperativeMatrixStoreNVOp::build(::mlir::OpBuilder &, ::mlir::OperationSta
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::CooperativeMatrixStoreNVOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::CooperativeMatrixStoreNVOp)
 
 namespace mlir {
 namespace spirv {
@@ -10420,7 +10542,7 @@ void CopyMemoryOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::CopyMemoryOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::CopyMemoryOp)
 
 namespace mlir {
 namespace spirv {
@@ -10506,7 +10628,7 @@ std::pair<unsigned, unsigned> EntryPointOpAdaptor::getODSOperandIndexAndLength(u
     if (!tblgen_interface)
       return emitError(loc, "'spv.EntryPoint' op ""requires attribute 'interface'");
 
-    if (tblgen_interface && !(((tblgen_interface.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_interface.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return (attr.isa<::mlir::SymbolRefAttr>()); }))))
+    if (tblgen_interface && !(((tblgen_interface.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_interface.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && ((attr.isa<::mlir::SymbolRefAttr>())); }))))
       return emitError(loc, "'spv.EntryPoint' op ""attribute 'interface' failed to satisfy constraint: symbol ref array attribute");
   }
   return ::mlir::success();
@@ -10645,7 +10767,7 @@ void EntryPointOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::EntryPointOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::EntryPointOp)
 
 namespace mlir {
 namespace spirv {
@@ -10731,7 +10853,7 @@ std::pair<unsigned, unsigned> ExecutionModeOpAdaptor::getODSOperandIndexAndLengt
     if (!tblgen_values)
       return emitError(loc, "'spv.ExecutionMode' op ""requires attribute 'values'");
 
-    if (tblgen_values && !(((tblgen_values.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_values.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32))); }))))
+    if (tblgen_values && !(((tblgen_values.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_values.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))); }))))
       return emitError(loc, "'spv.ExecutionMode' op ""attribute 'values' failed to satisfy constraint: 32-bit integer array attribute");
   }
   return ::mlir::success();
@@ -10868,7 +10990,7 @@ void ExecutionModeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ExecutionModeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ExecutionModeOp)
 
 namespace mlir {
 namespace spirv {
@@ -11023,7 +11145,7 @@ void FAddOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult FAddOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
   ::llvm::SMLoc allOperandLoc = parser.getCurrentLocation();
@@ -11066,7 +11188,7 @@ void FAddOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FAddOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FAddOp)
 
 namespace mlir {
 namespace spirv {
@@ -11187,8 +11309,8 @@ void FConvertOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::ParseResult FConvertOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -11253,7 +11375,7 @@ void FConvertOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FConvertOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FConvertOp)
 
 namespace mlir {
 namespace spirv {
@@ -11408,7 +11530,7 @@ void FDivOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult FDivOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
   ::llvm::SMLoc allOperandLoc = parser.getCurrentLocation();
@@ -11451,7 +11573,7 @@ void FDivOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FDivOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FDivOp)
 
 namespace mlir {
 namespace spirv {
@@ -11606,7 +11728,7 @@ void FModOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult FModOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
   ::llvm::SMLoc allOperandLoc = parser.getCurrentLocation();
@@ -11649,7 +11771,7 @@ void FModOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FModOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FModOp)
 
 namespace mlir {
 namespace spirv {
@@ -11804,7 +11926,7 @@ void FMulOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult FMulOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
   ::llvm::SMLoc allOperandLoc = parser.getCurrentLocation();
@@ -11847,7 +11969,7 @@ void FMulOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FMulOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FMulOp)
 
 namespace mlir {
 namespace spirv {
@@ -11979,8 +12101,8 @@ void FNegateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult FNegateOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -12025,7 +12147,7 @@ void FNegateOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FNegateOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FNegateOp)
 
 namespace mlir {
 namespace spirv {
@@ -12172,11 +12294,11 @@ void FOrdEqualOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 }
 
 ::mlir::ParseResult FOrdEqualOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operand1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
   (void)operand1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType operand2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
   (void)operand2OperandsLoc;
   ::mlir::Type operand1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operand1Types(operand1RawTypes);
@@ -12243,7 +12365,7 @@ void FOrdEqualOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FOrdEqualOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FOrdEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -12390,11 +12512,11 @@ void FOrdGreaterThanEqualOp::build(::mlir::OpBuilder &, ::mlir::OperationState &
 }
 
 ::mlir::ParseResult FOrdGreaterThanEqualOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operand1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
   (void)operand1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType operand2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
   (void)operand2OperandsLoc;
   ::mlir::Type operand1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operand1Types(operand1RawTypes);
@@ -12461,7 +12583,7 @@ void FOrdGreaterThanEqualOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffe
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FOrdGreaterThanEqualOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FOrdGreaterThanEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -12608,11 +12730,11 @@ void FOrdGreaterThanOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
 }
 
 ::mlir::ParseResult FOrdGreaterThanOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operand1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
   (void)operand1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType operand2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
   (void)operand2OperandsLoc;
   ::mlir::Type operand1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operand1Types(operand1RawTypes);
@@ -12679,7 +12801,7 @@ void FOrdGreaterThanOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FOrdGreaterThanOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FOrdGreaterThanOp)
 
 namespace mlir {
 namespace spirv {
@@ -12826,11 +12948,11 @@ void FOrdLessThanEqualOp::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult FOrdLessThanEqualOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operand1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
   (void)operand1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType operand2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
   (void)operand2OperandsLoc;
   ::mlir::Type operand1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operand1Types(operand1RawTypes);
@@ -12897,7 +13019,7 @@ void FOrdLessThanEqualOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FOrdLessThanEqualOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FOrdLessThanEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -13044,11 +13166,11 @@ void FOrdLessThanOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
 }
 
 ::mlir::ParseResult FOrdLessThanOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operand1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
   (void)operand1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType operand2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
   (void)operand2OperandsLoc;
   ::mlir::Type operand1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operand1Types(operand1RawTypes);
@@ -13115,7 +13237,7 @@ void FOrdLessThanOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Eff
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FOrdLessThanOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FOrdLessThanOp)
 
 namespace mlir {
 namespace spirv {
@@ -13262,11 +13384,11 @@ void FOrdNotEqualOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
 }
 
 ::mlir::ParseResult FOrdNotEqualOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operand1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
   (void)operand1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType operand2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
   (void)operand2OperandsLoc;
   ::mlir::Type operand1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operand1Types(operand1RawTypes);
@@ -13333,7 +13455,7 @@ void FOrdNotEqualOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Eff
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FOrdNotEqualOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FOrdNotEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -13488,7 +13610,7 @@ void FRemOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult FRemOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
   ::llvm::SMLoc allOperandLoc = parser.getCurrentLocation();
@@ -13531,7 +13653,7 @@ void FRemOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FRemOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FRemOp)
 
 namespace mlir {
 namespace spirv {
@@ -13686,7 +13808,7 @@ void FSubOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult FSubOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
   ::llvm::SMLoc allOperandLoc = parser.getCurrentLocation();
@@ -13729,7 +13851,7 @@ void FSubOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FSubOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FSubOp)
 
 namespace mlir {
 namespace spirv {
@@ -13876,11 +13998,11 @@ void FUnordEqualOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
 }
 
 ::mlir::ParseResult FUnordEqualOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operand1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
   (void)operand1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType operand2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
   (void)operand2OperandsLoc;
   ::mlir::Type operand1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operand1Types(operand1RawTypes);
@@ -13947,7 +14069,7 @@ void FUnordEqualOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effe
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FUnordEqualOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FUnordEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -14094,11 +14216,11 @@ void FUnordGreaterThanEqualOp::build(::mlir::OpBuilder &, ::mlir::OperationState
 }
 
 ::mlir::ParseResult FUnordGreaterThanEqualOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operand1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
   (void)operand1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType operand2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
   (void)operand2OperandsLoc;
   ::mlir::Type operand1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operand1Types(operand1RawTypes);
@@ -14165,7 +14287,7 @@ void FUnordGreaterThanEqualOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEf
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FUnordGreaterThanEqualOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FUnordGreaterThanEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -14312,11 +14434,11 @@ void FUnordGreaterThanOp::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult FUnordGreaterThanOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operand1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
   (void)operand1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType operand2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
   (void)operand2OperandsLoc;
   ::mlir::Type operand1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operand1Types(operand1RawTypes);
@@ -14383,7 +14505,7 @@ void FUnordGreaterThanOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FUnordGreaterThanOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FUnordGreaterThanOp)
 
 namespace mlir {
 namespace spirv {
@@ -14530,11 +14652,11 @@ void FUnordLessThanEqualOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
 }
 
 ::mlir::ParseResult FUnordLessThanEqualOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operand1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
   (void)operand1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType operand2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
   (void)operand2OperandsLoc;
   ::mlir::Type operand1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operand1Types(operand1RawTypes);
@@ -14601,7 +14723,7 @@ void FUnordLessThanEqualOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffec
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FUnordLessThanEqualOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FUnordLessThanEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -14748,11 +14870,11 @@ void FUnordLessThanOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult FUnordLessThanOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operand1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
   (void)operand1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType operand2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
   (void)operand2OperandsLoc;
   ::mlir::Type operand1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operand1Types(operand1RawTypes);
@@ -14819,7 +14941,7 @@ void FUnordLessThanOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::E
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FUnordLessThanOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FUnordLessThanOp)
 
 namespace mlir {
 namespace spirv {
@@ -14966,11 +15088,11 @@ void FUnordNotEqualOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult FUnordNotEqualOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operand1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
   (void)operand1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType operand2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
   (void)operand2OperandsLoc;
   ::mlir::Type operand1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operand1Types(operand1RawTypes);
@@ -15037,7 +15159,7 @@ void FUnordNotEqualOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::E
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FUnordNotEqualOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FUnordNotEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -15068,15 +15190,15 @@ std::pair<unsigned, unsigned> FuncOpAdaptor::getODSOperandIndexAndLength(unsigne
   return odsAttrs;
 }
 
-::mlir::TypeAttr FuncOpAdaptor::typeAttr() {
+::mlir::TypeAttr FuncOpAdaptor::function_typeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::TypeAttr attr = odsAttrs.get("type").cast<::mlir::TypeAttr>();
+  ::mlir::TypeAttr attr = odsAttrs.get("function_type").cast<::mlir::TypeAttr>();
   return attr;
 }
 
-::mlir::Type FuncOpAdaptor::type() {
-  auto attr = typeAttr();
-  return attr.getValue().cast<::mlir::Type>();
+::mlir::FunctionType FuncOpAdaptor::function_type() {
+  auto attr = function_typeAttr();
+  return attr.getValue().cast<::mlir::FunctionType>();
 }
 
 ::mlir::StringAttr FuncOpAdaptor::sym_nameAttr() {
@@ -15111,12 +15233,12 @@ std::pair<unsigned, unsigned> FuncOpAdaptor::getODSOperandIndexAndLength(unsigne
 
 ::mlir::LogicalResult FuncOpAdaptor::verify(::mlir::Location loc) {
   {
-    auto tblgen_type = odsAttrs.get("type");
-    if (!tblgen_type)
-      return emitError(loc, "'spv.func' op ""requires attribute 'type'");
+    auto tblgen_function_type = odsAttrs.get("function_type");
+    if (!tblgen_function_type)
+      return emitError(loc, "'spv.func' op ""requires attribute 'function_type'");
 
-    if (tblgen_type && !(((tblgen_type.isa<::mlir::TypeAttr>())) && ((tblgen_type.cast<::mlir::TypeAttr>().getValue().isa<::mlir::Type>()))))
-      return emitError(loc, "'spv.func' op ""attribute 'type' failed to satisfy constraint: any type attribute");
+    if (tblgen_function_type && !(((tblgen_function_type.isa<::mlir::TypeAttr>())) && ((tblgen_function_type.cast<::mlir::TypeAttr>().getValue().isa<::mlir::FunctionType>()))))
+      return emitError(loc, "'spv.func' op ""attribute 'function_type' failed to satisfy constraint: type attribute of function type");
   }
   {
     auto tblgen_sym_name = odsAttrs.get("sym_name");
@@ -15161,13 +15283,13 @@ std::pair<unsigned, unsigned> FuncOp::getODSResultIndexAndLength(unsigned index)
   return (*this)->getRegion(0);
 }
 
-::mlir::TypeAttr FuncOp::typeAttr() {
-  return (*this)->getAttr(typeAttrName()).cast<::mlir::TypeAttr>();
+::mlir::TypeAttr FuncOp::function_typeAttr() {
+  return (*this)->getAttr(function_typeAttrName()).cast<::mlir::TypeAttr>();
 }
 
-::mlir::Type FuncOp::type() {
-  auto attr = typeAttr();
-  return attr.getValue().cast<::mlir::Type>();
+::mlir::FunctionType FuncOp::function_type() {
+  auto attr = function_typeAttr();
+  return attr.getValue().cast<::mlir::FunctionType>();
 }
 
 ::mlir::StringAttr FuncOp::sym_nameAttr() {
@@ -15188,8 +15310,8 @@ std::pair<unsigned, unsigned> FuncOp::getODSResultIndexAndLength(unsigned index)
   return attr.getValue();
 }
 
-void FuncOp::typeAttr(::mlir::TypeAttr attr) {
-  (*this)->setAttr(typeAttrName(), attr);
+void FuncOp::function_typeAttr(::mlir::TypeAttr attr) {
+  (*this)->setAttr(function_typeAttrName(), attr);
 }
 
 void FuncOp::sym_nameAttr(::mlir::StringAttr attr) {
@@ -15200,15 +15322,15 @@ void FuncOp::function_controlAttr(::mlir::spirv::FunctionControlAttr attr) {
   (*this)->setAttr(function_controlAttrName(), attr);
 }
 
-void FuncOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeAttr type, ::mlir::StringAttr sym_name, ::mlir::spirv::FunctionControlAttr function_control) {
-  odsState.addAttribute(typeAttrName(odsState.name), type);
+void FuncOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeAttr function_type, ::mlir::StringAttr sym_name, ::mlir::spirv::FunctionControlAttr function_control) {
+  odsState.addAttribute(function_typeAttrName(odsState.name), function_type);
   odsState.addAttribute(sym_nameAttrName(odsState.name), sym_name);
   odsState.addAttribute(function_controlAttrName(odsState.name), function_control);
   (void)odsState.addRegion();
 }
 
-void FuncOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::TypeAttr type, ::mlir::StringAttr sym_name, ::mlir::spirv::FunctionControlAttr function_control) {
-  odsState.addAttribute(typeAttrName(odsState.name), type);
+void FuncOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::TypeAttr function_type, ::mlir::StringAttr sym_name, ::mlir::spirv::FunctionControlAttr function_control) {
+  odsState.addAttribute(function_typeAttrName(odsState.name), function_type);
   odsState.addAttribute(sym_nameAttrName(odsState.name), sym_name);
   odsState.addAttribute(function_controlAttrName(odsState.name), function_control);
   (void)odsState.addRegion();
@@ -15216,15 +15338,15 @@ void FuncOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
   odsState.addTypes(resultTypes);
 }
 
-void FuncOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type type, ::llvm::StringRef sym_name, ::mlir::spirv::FunctionControl function_control) {
-  odsState.addAttribute(typeAttrName(odsState.name), ::mlir::TypeAttr::get(type));
+void FuncOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::FunctionType function_type, ::llvm::StringRef sym_name, ::mlir::spirv::FunctionControl function_control) {
+  odsState.addAttribute(function_typeAttrName(odsState.name), ::mlir::TypeAttr::get(function_type));
   odsState.addAttribute(sym_nameAttrName(odsState.name), odsBuilder.getStringAttr(sym_name));
   odsState.addAttribute(function_controlAttrName(odsState.name), ::mlir::spirv::FunctionControlAttr::get(odsBuilder.getContext(), function_control));
   (void)odsState.addRegion();
 }
 
-void FuncOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Type type, ::llvm::StringRef sym_name, ::mlir::spirv::FunctionControl function_control) {
-  odsState.addAttribute(typeAttrName(odsState.name), ::mlir::TypeAttr::get(type));
+void FuncOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::FunctionType function_type, ::llvm::StringRef sym_name, ::mlir::spirv::FunctionControl function_control) {
+  odsState.addAttribute(function_typeAttrName(odsState.name), ::mlir::TypeAttr::get(function_type));
   odsState.addAttribute(sym_nameAttrName(odsState.name), odsBuilder.getStringAttr(sym_name));
   odsState.addAttribute(function_controlAttrName(odsState.name), ::mlir::spirv::FunctionControlAttr::get(odsBuilder.getContext(), function_control));
   (void)odsState.addRegion();
@@ -15244,11 +15366,11 @@ void FuncOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 
 ::mlir::LogicalResult FuncOp::verifyInvariantsImpl() {
   {
-    auto tblgen_type = (*this)->getAttr(typeAttrName());
-    if (!tblgen_type)
-      return emitOpError("requires attribute 'type'");
+    auto tblgen_function_type = (*this)->getAttr(function_typeAttrName());
+    if (!tblgen_function_type)
+      return emitOpError("requires attribute 'function_type'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps5(*this, tblgen_type, "type")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps11(*this, tblgen_function_type, "function_type")))
       return ::mlir::failure();
   }
   {
@@ -15256,7 +15378,7 @@ void FuncOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
     if (!tblgen_sym_name)
       return emitOpError("requires attribute 'sym_name'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps11(*this, tblgen_sym_name, "sym_name")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps12(*this, tblgen_sym_name, "sym_name")))
       return ::mlir::failure();
   }
   {
@@ -15264,7 +15386,7 @@ void FuncOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
     if (!tblgen_function_control)
       return emitOpError("requires attribute 'function_control'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps12(*this, tblgen_function_control, "function_control")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps13(*this, tblgen_function_control, "function_control")))
       return ::mlir::failure();
   }
   if (!((isDirectInModuleLikeOp((*this->getOperation()).getParentOp()))))
@@ -15285,7 +15407,7 @@ void FuncOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FuncOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FuncOp)
 
 namespace mlir {
 namespace spirv {
@@ -15510,7 +15632,7 @@ void FunctionCallOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
 
 ::mlir::ParseResult FunctionCallOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::FlatSymbolRefAttr calleeAttr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> argumentsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argumentsOperands;
   ::llvm::SMLoc argumentsOperandsLoc;
   (void)argumentsOperandsLoc;
   ::llvm::ArrayRef<::mlir::Type> argumentsTypes;
@@ -15558,7 +15680,7 @@ void FunctionCallOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FunctionCallOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::FunctionCallOp)
 
 namespace mlir {
 namespace spirv {
@@ -15690,8 +15812,8 @@ void GLSLAcosOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult GLSLAcosOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -15736,7 +15858,7 @@ void GLSLAcosOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLAcosOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLAcosOp)
 
 namespace mlir {
 namespace spirv {
@@ -15868,8 +15990,8 @@ void GLSLAsinOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult GLSLAsinOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -15914,7 +16036,7 @@ void GLSLAsinOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLAsinOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLAsinOp)
 
 namespace mlir {
 namespace spirv {
@@ -16046,8 +16168,8 @@ void GLSLAtanOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult GLSLAtanOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -16092,7 +16214,7 @@ void GLSLAtanOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLAtanOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLAtanOp)
 
 namespace mlir {
 namespace spirv {
@@ -16224,8 +16346,8 @@ void GLSLCeilOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult GLSLCeilOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -16270,7 +16392,7 @@ void GLSLCeilOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLCeilOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLCeilOp)
 
 namespace mlir {
 namespace spirv {
@@ -16402,8 +16524,8 @@ void GLSLCosOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult GLSLCosOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -16448,7 +16570,7 @@ void GLSLCosOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLCosOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLCosOp)
 
 namespace mlir {
 namespace spirv {
@@ -16580,8 +16702,8 @@ void GLSLCoshOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult GLSLCoshOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -16626,7 +16748,7 @@ void GLSLCoshOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLCoshOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLCoshOp)
 
 namespace mlir {
 namespace spirv {
@@ -16758,8 +16880,8 @@ void GLSLExpOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult GLSLExpOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -16804,7 +16926,7 @@ void GLSLExpOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLExpOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLExpOp)
 
 namespace mlir {
 namespace spirv {
@@ -16936,8 +17058,8 @@ void GLSLFAbsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult GLSLFAbsOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -16982,7 +17104,7 @@ void GLSLFAbsOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFAbsOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFAbsOp)
 
 namespace mlir {
 namespace spirv {
@@ -17149,7 +17271,7 @@ void GLSLFClampOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effec
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFClampOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFClampOp)
 
 namespace mlir {
 namespace spirv {
@@ -17304,7 +17426,7 @@ void GLSLFMaxOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult GLSLFMaxOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
   ::llvm::SMLoc allOperandLoc = parser.getCurrentLocation();
@@ -17347,7 +17469,7 @@ void GLSLFMaxOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFMaxOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFMaxOp)
 
 namespace mlir {
 namespace spirv {
@@ -17502,7 +17624,7 @@ void GLSLFMinOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult GLSLFMinOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
   ::llvm::SMLoc allOperandLoc = parser.getCurrentLocation();
@@ -17545,7 +17667,7 @@ void GLSLFMinOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFMinOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFMinOp)
 
 namespace mlir {
 namespace spirv {
@@ -17749,18 +17871,18 @@ void GLSLFMixOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult GLSLFMixOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType xRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> xOperands(xRawOperands);  ::llvm::SMLoc xOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand xRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> xOperands(xRawOperands);  ::llvm::SMLoc xOperandsLoc;
   (void)xOperandsLoc;
   ::mlir::Type xRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> xTypes(xRawTypes);
-  ::mlir::OpAsmParser::OperandType yRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> yOperands(yRawOperands);  ::llvm::SMLoc yOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand yRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> yOperands(yRawOperands);  ::llvm::SMLoc yOperandsLoc;
   (void)yOperandsLoc;
   ::mlir::Type yRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> yTypes(yRawTypes);
-  ::mlir::OpAsmParser::OperandType aRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> aOperands(aRawOperands);  ::llvm::SMLoc aOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand aRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> aOperands(aRawOperands);  ::llvm::SMLoc aOperandsLoc;
   (void)aOperandsLoc;
   ::mlir::Type aRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> aTypes(aRawTypes);
@@ -17883,7 +18005,7 @@ void GLSLFMixOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFMixOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFMixOp)
 
 namespace mlir {
 namespace spirv {
@@ -18015,8 +18137,8 @@ void GLSLFSignOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
 }
 
 ::mlir::ParseResult GLSLFSignOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -18061,7 +18183,7 @@ void GLSLFSignOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFSignOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFSignOp)
 
 namespace mlir {
 namespace spirv {
@@ -18193,8 +18315,8 @@ void GLSLFloorOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
 }
 
 ::mlir::ParseResult GLSLFloorOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -18239,7 +18361,7 @@ void GLSLFloorOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFloorOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFloorOp)
 
 namespace mlir {
 namespace spirv {
@@ -18406,7 +18528,7 @@ void GLSLFmaOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFmaOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFmaOp)
 
 namespace mlir {
 namespace spirv {
@@ -18527,8 +18649,8 @@ void GLSLFrexpStructOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
 }
 
 ::mlir::ParseResult GLSLFrexpStructOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -18593,7 +18715,7 @@ void GLSLFrexpStructOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFrexpStructOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLFrexpStructOp)
 
 namespace mlir {
 namespace spirv {
@@ -18725,8 +18847,8 @@ void GLSLInverseSqrtOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationSt
 }
 
 ::mlir::ParseResult GLSLInverseSqrtOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -18771,7 +18893,7 @@ void GLSLInverseSqrtOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLInverseSqrtOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLInverseSqrtOp)
 
 namespace mlir {
 namespace spirv {
@@ -18922,7 +19044,7 @@ void GLSLLdexpOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -18954,13 +19076,13 @@ void GLSLLdexpOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
 }
 
 ::mlir::ParseResult GLSLLdexpOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType xRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> xOperands(xRawOperands);  ::llvm::SMLoc xOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand xRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> xOperands(xRawOperands);  ::llvm::SMLoc xOperandsLoc;
   (void)xOperandsLoc;
   ::mlir::Type xRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> xTypes(xRawTypes);
-  ::mlir::OpAsmParser::OperandType expRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> expOperands(expRawOperands);  ::llvm::SMLoc expOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand expRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> expOperands(expRawOperands);  ::llvm::SMLoc expOperandsLoc;
   (void)expOperandsLoc;
   ::mlir::Type expRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> expTypes(expRawTypes);
@@ -19054,7 +19176,7 @@ void GLSLLdexpOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLLdexpOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLLdexpOp)
 
 namespace mlir {
 namespace spirv {
@@ -19186,8 +19308,8 @@ void GLSLLogOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult GLSLLogOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -19232,7 +19354,7 @@ void GLSLLogOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLLogOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLLogOp)
 
 namespace mlir {
 namespace spirv {
@@ -19387,7 +19509,7 @@ void GLSLPowOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult GLSLPowOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
   ::llvm::SMLoc allOperandLoc = parser.getCurrentLocation();
@@ -19430,7 +19552,7 @@ void GLSLPowOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLPowOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLPowOp)
 
 namespace mlir {
 namespace spirv {
@@ -19562,8 +19684,8 @@ void GLSLRoundOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
 }
 
 ::mlir::ParseResult GLSLRoundOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -19608,7 +19730,7 @@ void GLSLRoundOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLRoundOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLRoundOp)
 
 namespace mlir {
 namespace spirv {
@@ -19719,7 +19841,7 @@ void GLSLSAbsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -19728,7 +19850,7 @@ void GLSLSAbsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -19740,8 +19862,8 @@ void GLSLSAbsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult GLSLSAbsOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -19786,7 +19908,7 @@ void GLSLSAbsOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSAbsOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSAbsOp)
 
 namespace mlir {
 namespace spirv {
@@ -19916,19 +20038,19 @@ void GLSLSClampOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps17(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps17(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup2 = getODSOperands(2);
 
     for (auto v : valueGroup2) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps17(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -19937,7 +20059,7 @@ void GLSLSClampOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps17(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -19953,7 +20075,7 @@ void GLSLSClampOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effec
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSClampOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSClampOp)
 
 namespace mlir {
 namespace spirv {
@@ -20081,13 +20203,13 @@ void GLSLSMaxOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -20096,7 +20218,7 @@ void GLSLSMaxOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -20108,7 +20230,7 @@ void GLSLSMaxOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult GLSLSMaxOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
   ::llvm::SMLoc allOperandLoc = parser.getCurrentLocation();
@@ -20151,7 +20273,7 @@ void GLSLSMaxOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSMaxOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSMaxOp)
 
 namespace mlir {
 namespace spirv {
@@ -20279,13 +20401,13 @@ void GLSLSMinOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -20294,7 +20416,7 @@ void GLSLSMinOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -20306,7 +20428,7 @@ void GLSLSMinOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult GLSLSMinOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
   ::llvm::SMLoc allOperandLoc = parser.getCurrentLocation();
@@ -20349,7 +20471,7 @@ void GLSLSMinOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSMinOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSMinOp)
 
 namespace mlir {
 namespace spirv {
@@ -20460,7 +20582,7 @@ void GLSLSSignOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -20469,7 +20591,7 @@ void GLSLSSignOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -20481,8 +20603,8 @@ void GLSLSSignOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
 }
 
 ::mlir::ParseResult GLSLSSignOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -20527,7 +20649,7 @@ void GLSLSSignOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSSignOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSSignOp)
 
 namespace mlir {
 namespace spirv {
@@ -20659,8 +20781,8 @@ void GLSLSinOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult GLSLSinOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -20705,7 +20827,7 @@ void GLSLSinOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSinOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSinOp)
 
 namespace mlir {
 namespace spirv {
@@ -20837,8 +20959,8 @@ void GLSLSinhOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult GLSLSinhOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -20883,7 +21005,7 @@ void GLSLSinhOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSinhOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSinhOp)
 
 namespace mlir {
 namespace spirv {
@@ -21015,8 +21137,8 @@ void GLSLSqrtOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult GLSLSqrtOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -21061,7 +21183,7 @@ void GLSLSqrtOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSqrtOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLSqrtOp)
 
 namespace mlir {
 namespace spirv {
@@ -21193,8 +21315,8 @@ void GLSLTanOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult GLSLTanOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -21239,7 +21361,7 @@ void GLSLTanOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLTanOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLTanOp)
 
 namespace mlir {
 namespace spirv {
@@ -21371,8 +21493,8 @@ void GLSLTanhOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult GLSLTanhOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -21417,7 +21539,7 @@ void GLSLTanhOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLTanhOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLTanhOp)
 
 namespace mlir {
 namespace spirv {
@@ -21547,19 +21669,19 @@ void GLSLUClampOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps18(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps18(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup2 = getODSOperands(2);
 
     for (auto v : valueGroup2) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps18(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -21568,7 +21690,7 @@ void GLSLUClampOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps18(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -21584,7 +21706,7 @@ void GLSLUClampOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effec
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLUClampOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLUClampOp)
 
 namespace mlir {
 namespace spirv {
@@ -21712,13 +21834,13 @@ void GLSLUMaxOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -21727,7 +21849,7 @@ void GLSLUMaxOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -21739,7 +21861,7 @@ void GLSLUMaxOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult GLSLUMaxOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
   ::llvm::SMLoc allOperandLoc = parser.getCurrentLocation();
@@ -21782,7 +21904,7 @@ void GLSLUMaxOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLUMaxOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLUMaxOp)
 
 namespace mlir {
 namespace spirv {
@@ -21910,13 +22032,13 @@ void GLSLUMinOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -21925,7 +22047,7 @@ void GLSLUMinOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -21937,7 +22059,7 @@ void GLSLUMinOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult GLSLUMinOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
   ::llvm::SMLoc allOperandLoc = parser.getCurrentLocation();
@@ -21980,7 +22102,7 @@ void GLSLUMinOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLUMinOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GLSLUMinOp)
 
 namespace mlir {
 namespace spirv {
@@ -22392,7 +22514,7 @@ void GlobalVariableOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
     if (!tblgen_sym_name)
       return emitOpError("requires attribute 'sym_name'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps11(*this, tblgen_sym_name, "sym_name")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps12(*this, tblgen_sym_name, "sym_name")))
       return ::mlir::failure();
   }
   {
@@ -22417,7 +22539,7 @@ void GlobalVariableOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
   }
   {
     auto tblgen_builtin = (*this)->getAttr(builtinAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps11(*this, tblgen_builtin, "builtin")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps12(*this, tblgen_builtin, "builtin")))
       return ::mlir::failure();
   }
   if (!((isDirectInModuleLikeOp((*this->getOperation()).getParentOp()))))
@@ -22433,7 +22555,7 @@ void GlobalVariableOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GlobalVariableOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GlobalVariableOp)
 
 namespace mlir {
 namespace spirv {
@@ -22657,7 +22779,7 @@ void GroupBroadcastOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationSta
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -22690,7 +22812,7 @@ void GroupBroadcastOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationSta
 
 ::mlir::ParseResult GroupBroadcastOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::spirv::ScopeAttr execution_scopeAttr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type valueRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> valueTypes(valueRawTypes);
   ::mlir::Type localidRawTypes[1];
@@ -22789,7 +22911,7 @@ void GroupBroadcastOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::E
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupBroadcastOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupBroadcastOp)
 
 namespace mlir {
 namespace spirv {
@@ -22942,7 +23064,7 @@ void GroupNonUniformBallotOp::build(::mlir::OpBuilder &, ::mlir::OperationState 
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps6(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps2(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -22951,7 +23073,7 @@ void GroupNonUniformBallotOp::build(::mlir::OpBuilder &, ::mlir::OperationState 
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps19(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps17(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -22966,8 +23088,8 @@ void GroupNonUniformBallotOp::build(::mlir::OpBuilder &, ::mlir::OperationState 
 
 ::mlir::ParseResult GroupNonUniformBallotOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::spirv::ScopeAttr execution_scopeAttr;
-  ::mlir::OpAsmParser::OperandType predicateRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> predicateOperands(predicateRawOperands);  ::llvm::SMLoc predicateOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand predicateRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> predicateOperands(predicateRawOperands);  ::llvm::SMLoc predicateOperandsLoc;
   (void)predicateOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -23046,7 +23168,7 @@ void GroupNonUniformBallotOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformBallotOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformBallotOp)
 
 namespace mlir {
 namespace spirv {
@@ -23303,7 +23425,7 @@ void GroupNonUniformBroadcastOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Op
 
 ::mlir::ParseResult GroupNonUniformBroadcastOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::spirv::ScopeAttr execution_scopeAttr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type valueRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> valueTypes(valueRawTypes);
   ::mlir::Type idRawTypes[1];
@@ -23402,7 +23524,7 @@ void GroupNonUniformBroadcastOp::getEffects(::mlir::SmallVectorImpl<::mlir::Side
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformBroadcastOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformBroadcastOp)
 
 namespace mlir {
 namespace spirv {
@@ -23580,7 +23702,7 @@ void GroupNonUniformElectOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operat
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps6(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps2(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -23670,7 +23792,7 @@ void GroupNonUniformElectOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformElectOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformElectOp)
 
 namespace mlir {
 namespace spirv {
@@ -23911,7 +24033,7 @@ void GroupNonUniformFAddOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
     if (!tblgen_group_operation)
       return emitOpError("requires attribute 'group_operation'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps13(*this, tblgen_group_operation, "group_operation")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps14(*this, tblgen_group_operation, "group_operation")))
       return ::mlir::failure();
   }
   {
@@ -23954,7 +24076,7 @@ void GroupNonUniformFAddOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformFAddOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformFAddOp)
 
 namespace mlir {
 namespace spirv {
@@ -24195,7 +24317,7 @@ void GroupNonUniformFMaxOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
     if (!tblgen_group_operation)
       return emitOpError("requires attribute 'group_operation'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps13(*this, tblgen_group_operation, "group_operation")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps14(*this, tblgen_group_operation, "group_operation")))
       return ::mlir::failure();
   }
   {
@@ -24238,7 +24360,7 @@ void GroupNonUniformFMaxOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformFMaxOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformFMaxOp)
 
 namespace mlir {
 namespace spirv {
@@ -24479,7 +24601,7 @@ void GroupNonUniformFMinOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
     if (!tblgen_group_operation)
       return emitOpError("requires attribute 'group_operation'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps13(*this, tblgen_group_operation, "group_operation")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps14(*this, tblgen_group_operation, "group_operation")))
       return ::mlir::failure();
   }
   {
@@ -24522,7 +24644,7 @@ void GroupNonUniformFMinOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformFMinOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformFMinOp)
 
 namespace mlir {
 namespace spirv {
@@ -24763,7 +24885,7 @@ void GroupNonUniformFMulOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
     if (!tblgen_group_operation)
       return emitOpError("requires attribute 'group_operation'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps13(*this, tblgen_group_operation, "group_operation")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps14(*this, tblgen_group_operation, "group_operation")))
       return ::mlir::failure();
   }
   {
@@ -24806,7 +24928,7 @@ void GroupNonUniformFMulOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformFMulOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformFMulOp)
 
 namespace mlir {
 namespace spirv {
@@ -25047,7 +25169,7 @@ void GroupNonUniformIAddOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
     if (!tblgen_group_operation)
       return emitOpError("requires attribute 'group_operation'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps13(*this, tblgen_group_operation, "group_operation")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps14(*this, tblgen_group_operation, "group_operation")))
       return ::mlir::failure();
   }
   {
@@ -25055,7 +25177,7 @@ void GroupNonUniformIAddOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
@@ -25075,7 +25197,7 @@ void GroupNonUniformIAddOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -25090,7 +25212,7 @@ void GroupNonUniformIAddOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformIAddOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformIAddOp)
 
 namespace mlir {
 namespace spirv {
@@ -25331,7 +25453,7 @@ void GroupNonUniformIMulOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
     if (!tblgen_group_operation)
       return emitOpError("requires attribute 'group_operation'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps13(*this, tblgen_group_operation, "group_operation")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps14(*this, tblgen_group_operation, "group_operation")))
       return ::mlir::failure();
   }
   {
@@ -25339,7 +25461,7 @@ void GroupNonUniformIMulOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
@@ -25359,7 +25481,7 @@ void GroupNonUniformIMulOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -25374,7 +25496,7 @@ void GroupNonUniformIMulOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformIMulOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformIMulOp)
 
 namespace mlir {
 namespace spirv {
@@ -25615,7 +25737,7 @@ void GroupNonUniformSMaxOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
     if (!tblgen_group_operation)
       return emitOpError("requires attribute 'group_operation'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps13(*this, tblgen_group_operation, "group_operation")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps14(*this, tblgen_group_operation, "group_operation")))
       return ::mlir::failure();
   }
   {
@@ -25623,7 +25745,7 @@ void GroupNonUniformSMaxOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
@@ -25643,7 +25765,7 @@ void GroupNonUniformSMaxOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -25658,7 +25780,7 @@ void GroupNonUniformSMaxOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformSMaxOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformSMaxOp)
 
 namespace mlir {
 namespace spirv {
@@ -25899,7 +26021,7 @@ void GroupNonUniformSMinOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
     if (!tblgen_group_operation)
       return emitOpError("requires attribute 'group_operation'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps13(*this, tblgen_group_operation, "group_operation")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps14(*this, tblgen_group_operation, "group_operation")))
       return ::mlir::failure();
   }
   {
@@ -25907,7 +26029,7 @@ void GroupNonUniformSMinOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
@@ -25927,7 +26049,7 @@ void GroupNonUniformSMinOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -25942,7 +26064,7 @@ void GroupNonUniformSMinOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformSMinOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformSMinOp)
 
 namespace mlir {
 namespace spirv {
@@ -26183,7 +26305,7 @@ void GroupNonUniformUMaxOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
     if (!tblgen_group_operation)
       return emitOpError("requires attribute 'group_operation'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps13(*this, tblgen_group_operation, "group_operation")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps14(*this, tblgen_group_operation, "group_operation")))
       return ::mlir::failure();
   }
   {
@@ -26191,7 +26313,7 @@ void GroupNonUniformUMaxOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
@@ -26211,7 +26333,7 @@ void GroupNonUniformUMaxOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -26226,7 +26348,7 @@ void GroupNonUniformUMaxOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformUMaxOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformUMaxOp)
 
 namespace mlir {
 namespace spirv {
@@ -26467,7 +26589,7 @@ void GroupNonUniformUMinOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
     if (!tblgen_group_operation)
       return emitOpError("requires attribute 'group_operation'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps13(*this, tblgen_group_operation, "group_operation")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps14(*this, tblgen_group_operation, "group_operation")))
       return ::mlir::failure();
   }
   {
@@ -26475,7 +26597,7 @@ void GroupNonUniformUMinOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
@@ -26495,7 +26617,7 @@ void GroupNonUniformUMinOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -26510,7 +26632,7 @@ void GroupNonUniformUMinOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformUMinOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::GroupNonUniformUMinOp)
 
 namespace mlir {
 namespace spirv {
@@ -26665,7 +26787,7 @@ void IAddOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult IAddOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
   ::llvm::SMLoc allOperandLoc = parser.getCurrentLocation();
@@ -26708,7 +26830,7 @@ void IAddOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::IAddOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::IAddOp)
 
 namespace mlir {
 namespace spirv {
@@ -26826,13 +26948,13 @@ void IEqualOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -26855,11 +26977,11 @@ void IEqualOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::ParseResult IEqualOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operand1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
   (void)operand1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType operand2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
   (void)operand2OperandsLoc;
   ::mlir::Type operand1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operand1Types(operand1RawTypes);
@@ -26926,7 +27048,7 @@ void IEqualOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::IEqualOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::IEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -27081,7 +27203,7 @@ void IMulOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult IMulOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
   ::llvm::SMLoc allOperandLoc = parser.getCurrentLocation();
@@ -27124,7 +27246,7 @@ void IMulOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::IMulOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::IMulOp)
 
 namespace mlir {
 namespace spirv {
@@ -27242,13 +27364,13 @@ void INotEqualOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -27271,11 +27393,11 @@ void INotEqualOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 }
 
 ::mlir::ParseResult INotEqualOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operand1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
   (void)operand1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType operand2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
   (void)operand2OperandsLoc;
   ::mlir::Type operand1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operand1Types(operand1RawTypes);
@@ -27342,7 +27464,7 @@ void INotEqualOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::INotEqualOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::INotEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -27497,7 +27619,7 @@ void ISubOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult ISubOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
   ::llvm::SMLoc allOperandLoc = parser.getCurrentLocation();
@@ -27540,7 +27662,7 @@ void ISubOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ISubOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ISubOp)
 
 namespace mlir {
 namespace spirv {
@@ -27750,7 +27872,7 @@ void ImageDrefGatherOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
 ::mlir::LogicalResult ImageDrefGatherOp::verifyInvariantsImpl() {
   {
     auto tblgen_imageoperands = (*this)->getAttr(imageoperandsAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps14(*this, tblgen_imageoperands, "imageoperands")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps15(*this, tblgen_imageoperands, "imageoperands")))
       return ::mlir::failure();
   }
   {
@@ -27758,7 +27880,7 @@ void ImageDrefGatherOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps20(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps18(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
@@ -27770,7 +27892,7 @@ void ImageDrefGatherOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
     auto valueGroup2 = getODSOperands(2);
 
     for (auto v : valueGroup2) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps3(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup3 = getODSOperands(3);
@@ -27785,7 +27907,7 @@ void ImageDrefGatherOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps21(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps19(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -27799,23 +27921,23 @@ void ImageDrefGatherOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
 }
 
 ::mlir::ParseResult ImageDrefGatherOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType sampledimageRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> sampledimageOperands(sampledimageRawOperands);  ::llvm::SMLoc sampledimageOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand sampledimageRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> sampledimageOperands(sampledimageRawOperands);  ::llvm::SMLoc sampledimageOperandsLoc;
   (void)sampledimageOperandsLoc;
   ::mlir::Type sampledimageRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> sampledimageTypes(sampledimageRawTypes);
-  ::mlir::OpAsmParser::OperandType coordinateRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> coordinateOperands(coordinateRawOperands);  ::llvm::SMLoc coordinateOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand coordinateRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> coordinateOperands(coordinateRawOperands);  ::llvm::SMLoc coordinateOperandsLoc;
   (void)coordinateOperandsLoc;
   ::mlir::Type coordinateRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> coordinateTypes(coordinateRawTypes);
-  ::mlir::OpAsmParser::OperandType drefRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> drefOperands(drefRawOperands);  ::llvm::SMLoc drefOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand drefRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> drefOperands(drefRawOperands);  ::llvm::SMLoc drefOperandsLoc;
   (void)drefOperandsLoc;
   ::mlir::Type drefRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> drefTypes(drefRawTypes);
   ::mlir::spirv::ImageOperandsAttr imageoperandsAttr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> operand_argumentsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> operand_argumentsOperands;
   ::llvm::SMLoc operand_argumentsOperandsLoc;
   (void)operand_argumentsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> operand_argumentsTypes;
@@ -27969,7 +28091,7 @@ void ImageDrefGatherOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ImageDrefGatherOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ImageDrefGatherOp)
 
 namespace mlir {
 namespace spirv {
@@ -28067,7 +28189,7 @@ void ImageOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps20(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps18(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -28076,7 +28198,7 @@ void ImageOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps22(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps20(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -28090,8 +28212,8 @@ void ImageOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 ::mlir::ParseResult ImageOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType sampledimageRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> sampledimageOperands(sampledimageRawOperands);  ::llvm::SMLoc sampledimageOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand sampledimageRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> sampledimageOperands(sampledimageRawOperands);  ::llvm::SMLoc sampledimageOperandsLoc;
   (void)sampledimageOperandsLoc;
   ::mlir::Type sampledimageRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> sampledimageTypes(sampledimageRawTypes);
@@ -28142,7 +28264,7 @@ void ImageOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ImageOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ImageOp)
 
 namespace mlir {
 namespace spirv {
@@ -28240,7 +28362,7 @@ void ImageQuerySizeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps22(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps20(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -28249,7 +28371,7 @@ void ImageQuerySizeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -28263,8 +28385,8 @@ void ImageQuerySizeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult ImageQuerySizeOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType imageRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> imageOperands(imageRawOperands);  ::llvm::SMLoc imageOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand imageRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> imageOperands(imageRawOperands);  ::llvm::SMLoc imageOperandsLoc;
   (void)imageOperandsLoc;
   ::mlir::Type imageRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> imageTypes(imageRawTypes);
@@ -28329,7 +28451,7 @@ void ImageQuerySizeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::E
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ImageQuerySizeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ImageQuerySizeOp)
 
 namespace mlir {
 namespace spirv {
@@ -28526,7 +28648,7 @@ void InBoundsPtrAccessChainOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEf
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::InBoundsPtrAccessChainOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::InBoundsPtrAccessChainOp)
 
 namespace mlir {
 namespace spirv {
@@ -28651,8 +28773,8 @@ void IsInfOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 ::mlir::ParseResult IsInfOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -28708,7 +28830,7 @@ void IsInfOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::IsInfOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::IsInfOp)
 
 namespace mlir {
 namespace spirv {
@@ -28833,8 +28955,8 @@ void IsNanOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 ::mlir::ParseResult IsNanOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -28890,7 +29012,7 @@ void IsNanOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::IsNanOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::IsNanOp)
 
 namespace mlir {
 namespace spirv {
@@ -29100,7 +29222,7 @@ void LoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::LoadOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::LoadOp)
 
 namespace mlir {
 namespace spirv {
@@ -29247,11 +29369,11 @@ void LogicalAndOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
 }
 
 ::mlir::ParseResult LogicalAndOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operand1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
   (void)operand1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType operand2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
   (void)operand2OperandsLoc;
   ::mlir::Type operand1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operand1Types(operand1RawTypes);
@@ -29318,7 +29440,7 @@ void LogicalAndOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effec
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::LogicalAndOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::LogicalAndOp)
 
 namespace mlir {
 namespace spirv {
@@ -29465,11 +29587,11 @@ void LogicalEqualOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
 }
 
 ::mlir::ParseResult LogicalEqualOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operand1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
   (void)operand1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType operand2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
   (void)operand2OperandsLoc;
   ::mlir::Type operand1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operand1Types(operand1RawTypes);
@@ -29536,7 +29658,7 @@ void LogicalEqualOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Eff
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::LogicalEqualOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::LogicalEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -29683,11 +29805,11 @@ void LogicalNotEqualOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
 }
 
 ::mlir::ParseResult LogicalNotEqualOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operand1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
   (void)operand1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType operand2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
   (void)operand2OperandsLoc;
   ::mlir::Type operand1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operand1Types(operand1RawTypes);
@@ -29754,7 +29876,7 @@ void LogicalNotEqualOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::LogicalNotEqualOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::LogicalNotEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -29879,8 +30001,8 @@ void LogicalNotOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
 }
 
 ::mlir::ParseResult LogicalNotOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -29936,7 +30058,7 @@ void LogicalNotOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effec
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::LogicalNotOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::LogicalNotOp)
 
 namespace mlir {
 namespace spirv {
@@ -30083,11 +30205,11 @@ void LogicalOrOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 }
 
 ::mlir::ParseResult LogicalOrOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operand1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
   (void)operand1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType operand2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
   (void)operand2OperandsLoc;
   ::mlir::Type operand1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operand1Types(operand1RawTypes);
@@ -30154,7 +30276,7 @@ void LogicalOrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::LogicalOrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::LogicalOrOp)
 
 namespace mlir {
 namespace spirv {
@@ -30293,7 +30415,7 @@ void LoopOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
     if (!tblgen_loop_control)
       return emitOpError("requires attribute 'loop_control'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps15(*this, tblgen_loop_control, "loop_control")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps16(*this, tblgen_loop_control, "loop_control")))
       return ::mlir::failure();
   }
   if (!((isNestedInFunctionOpInterface((*this->getOperation()).getParentOp()))))
@@ -30309,14 +30431,12 @@ void LoopOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 }
 
 ::mlir::LogicalResult LoopOp::verifyInvariants() {
-  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
-    return ::mlir::success();
-  return ::mlir::failure();
+  return verifyInvariantsImpl();
 }
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::LoopOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::LoopOp)
 
 namespace mlir {
 namespace spirv {
@@ -30430,13 +30550,13 @@ void MatrixTimesMatrixOp::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps23(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps21(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps23(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps21(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -30445,7 +30565,7 @@ void MatrixTimesMatrixOp::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps23(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps21(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -30459,7 +30579,7 @@ void MatrixTimesMatrixOp::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult MatrixTimesMatrixOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type leftmatrixRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> leftmatrixTypes(leftmatrixRawTypes);
   ::mlir::Type rightmatrixRawTypes[1];
@@ -30542,7 +30662,7 @@ void MatrixTimesMatrixOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::MatrixTimesMatrixOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::MatrixTimesMatrixOp)
 
 namespace mlir {
 namespace spirv {
@@ -30656,13 +30776,13 @@ void MatrixTimesScalarOp::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps23(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps21(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps3(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -30671,7 +30791,7 @@ void MatrixTimesScalarOp::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps23(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps21(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -30685,7 +30805,7 @@ void MatrixTimesScalarOp::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult MatrixTimesScalarOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type matrixRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> matrixTypes(matrixRawTypes);
   ::mlir::Type scalarRawTypes[1];
@@ -30768,7 +30888,7 @@ void MatrixTimesScalarOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::MatrixTimesScalarOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::MatrixTimesScalarOp)
 
 namespace mlir {
 namespace spirv {
@@ -31054,7 +31174,7 @@ void MemoryBarrierOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::MemoryBarrierOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::MemoryBarrierOp)
 
 namespace mlir {
 namespace spirv {
@@ -31150,7 +31270,7 @@ void MergeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::MergeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::MergeOp)
 
 namespace mlir {
 namespace spirv {
@@ -31345,7 +31465,7 @@ void ModuleOp::sym_nameAttr(::mlir::StringAttr attr) {
     if (!tblgen_addressing_model)
       return emitOpError("requires attribute 'addressing_model'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps16(*this, tblgen_addressing_model, "addressing_model")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps17(*this, tblgen_addressing_model, "addressing_model")))
       return ::mlir::failure();
   }
   {
@@ -31353,17 +31473,17 @@ void ModuleOp::sym_nameAttr(::mlir::StringAttr attr) {
     if (!tblgen_memory_model)
       return emitOpError("requires attribute 'memory_model'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps17(*this, tblgen_memory_model, "memory_model")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps18(*this, tblgen_memory_model, "memory_model")))
       return ::mlir::failure();
   }
   {
     auto tblgen_vce_triple = (*this)->getAttr(vce_tripleAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps18(*this, tblgen_vce_triple, "vce_triple")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps19(*this, tblgen_vce_triple, "vce_triple")))
       return ::mlir::failure();
   }
   {
     auto tblgen_sym_name = (*this)->getAttr(sym_nameAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps11(*this, tblgen_sym_name, "sym_name")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps12(*this, tblgen_sym_name, "sym_name")))
       return ::mlir::failure();
   }
   {
@@ -31377,14 +31497,12 @@ void ModuleOp::sym_nameAttr(::mlir::StringAttr attr) {
 }
 
 ::mlir::LogicalResult ModuleOp::verifyInvariants() {
-  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
-    return ::mlir::success();
-  return ::mlir::failure();
+  return verifyInvariantsImpl();
 }
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ModuleOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ModuleOp)
 
 namespace mlir {
 namespace spirv {
@@ -31495,7 +31613,7 @@ void NotOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -31504,7 +31622,7 @@ void NotOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -31516,8 +31634,8 @@ void NotOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult NotOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -31562,7 +31680,7 @@ void NotOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::NotOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::NotOp)
 
 namespace mlir {
 namespace spirv {
@@ -31694,8 +31812,8 @@ void OCLCeilOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult OCLCeilOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -31740,7 +31858,7 @@ void OCLCeilOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLCeilOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLCeilOp)
 
 namespace mlir {
 namespace spirv {
@@ -31872,8 +31990,8 @@ void OCLCosOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
 }
 
 ::mlir::ParseResult OCLCosOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -31918,7 +32036,7 @@ void OCLCosOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLCosOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLCosOp)
 
 namespace mlir {
 namespace spirv {
@@ -32050,8 +32168,8 @@ void OCLErfOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
 }
 
 ::mlir::ParseResult OCLErfOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -32096,7 +32214,7 @@ void OCLErfOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLErfOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLErfOp)
 
 namespace mlir {
 namespace spirv {
@@ -32228,8 +32346,8 @@ void OCLExpOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
 }
 
 ::mlir::ParseResult OCLExpOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -32274,7 +32392,7 @@ void OCLExpOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLExpOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLExpOp)
 
 namespace mlir {
 namespace spirv {
@@ -32406,8 +32524,8 @@ void OCLFAbsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult OCLFAbsOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -32452,7 +32570,7 @@ void OCLFAbsOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLFAbsOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLFAbsOp)
 
 namespace mlir {
 namespace spirv {
@@ -32584,8 +32702,8 @@ void OCLFloorOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult OCLFloorOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -32630,7 +32748,7 @@ void OCLFloorOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLFloorOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLFloorOp)
 
 namespace mlir {
 namespace spirv {
@@ -32808,7 +32926,7 @@ void OCLFmaOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
 }
 
 ::mlir::ParseResult OCLFmaOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
   ::llvm::SMLoc allOperandLoc = parser.getCurrentLocation();
@@ -32851,7 +32969,7 @@ void OCLFmaOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLFmaOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLFmaOp)
 
 namespace mlir {
 namespace spirv {
@@ -32983,8 +33101,8 @@ void OCLLogOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
 }
 
 ::mlir::ParseResult OCLLogOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -33029,7 +33147,7 @@ void OCLLogOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLLogOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLLogOp)
 
 namespace mlir {
 namespace spirv {
@@ -33184,7 +33302,7 @@ void OCLPowOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
 }
 
 ::mlir::ParseResult OCLPowOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
   ::llvm::SMLoc allOperandLoc = parser.getCurrentLocation();
@@ -33227,7 +33345,7 @@ void OCLPowOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLPowOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLPowOp)
 
 namespace mlir {
 namespace spirv {
@@ -33359,8 +33477,8 @@ void OCLRsqrtOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult OCLRsqrtOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -33405,7 +33523,7 @@ void OCLRsqrtOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLRsqrtOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLRsqrtOp)
 
 namespace mlir {
 namespace spirv {
@@ -33516,7 +33634,7 @@ void OCLSAbsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -33525,7 +33643,7 @@ void OCLSAbsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -33537,8 +33655,8 @@ void OCLSAbsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult OCLSAbsOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -33583,7 +33701,7 @@ void OCLSAbsOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLSAbsOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLSAbsOp)
 
 namespace mlir {
 namespace spirv {
@@ -33715,8 +33833,8 @@ void OCLSinOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
 }
 
 ::mlir::ParseResult OCLSinOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -33761,7 +33879,7 @@ void OCLSinOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLSinOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLSinOp)
 
 namespace mlir {
 namespace spirv {
@@ -33893,8 +34011,8 @@ void OCLSqrtOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult OCLSqrtOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -33939,7 +34057,7 @@ void OCLSqrtOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLSqrtOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLSqrtOp)
 
 namespace mlir {
 namespace spirv {
@@ -34071,8 +34189,8 @@ void OCLTanhOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult OCLTanhOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -34117,7 +34235,7 @@ void OCLTanhOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLTanhOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::OCLTanhOp)
 
 namespace mlir {
 namespace spirv {
@@ -34264,11 +34382,11 @@ void OrderedOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 }
 
 ::mlir::ParseResult OrderedOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operand1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
   (void)operand1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType operand2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
   (void)operand2OperandsLoc;
   ::mlir::Type operand1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operand1Types(operand1RawTypes);
@@ -34335,7 +34453,7 @@ void OrderedOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::OrderedOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::OrderedOp)
 
 namespace mlir {
 namespace spirv {
@@ -34532,7 +34650,7 @@ void PtrAccessChainOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::E
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::PtrAccessChainOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::PtrAccessChainOp)
 
 namespace mlir {
 namespace spirv {
@@ -34724,7 +34842,7 @@ void ReferenceOfOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effe
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ReferenceOfOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ReferenceOfOp)
 
 namespace mlir {
 namespace spirv {
@@ -34822,7 +34940,7 @@ void ReturnOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ReturnOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ReturnOp)
 
 namespace mlir {
 namespace spirv {
@@ -34931,8 +35049,8 @@ void ReturnValueOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
 }
 
 ::mlir::ParseResult ReturnValueOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType valueRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand valueRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
   (void)valueOperandsLoc;
   ::mlir::Type valueRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> valueTypes(valueRawTypes);
@@ -34976,7 +35094,7 @@ void ReturnValueOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effe
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ReturnValueOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ReturnValueOp)
 
 namespace mlir {
 namespace spirv {
@@ -35097,8 +35215,8 @@ void SConvertOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::ParseResult SConvertOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -35163,7 +35281,7 @@ void SConvertOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SConvertOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SConvertOp)
 
 namespace mlir {
 namespace spirv {
@@ -35318,7 +35436,7 @@ void SDivOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult SDivOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
   ::llvm::SMLoc allOperandLoc = parser.getCurrentLocation();
@@ -35361,7 +35479,7 @@ void SDivOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SDivOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SDivOp)
 
 namespace mlir {
 namespace spirv {
@@ -35479,13 +35597,13 @@ void SGreaterThanEqualOp::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -35508,11 +35626,11 @@ void SGreaterThanEqualOp::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult SGreaterThanEqualOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operand1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
   (void)operand1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType operand2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
   (void)operand2OperandsLoc;
   ::mlir::Type operand1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operand1Types(operand1RawTypes);
@@ -35579,7 +35697,7 @@ void SGreaterThanEqualOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SGreaterThanEqualOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SGreaterThanEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -35697,13 +35815,13 @@ void SGreaterThanOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -35726,11 +35844,11 @@ void SGreaterThanOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
 }
 
 ::mlir::ParseResult SGreaterThanOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operand1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
   (void)operand1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType operand2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
   (void)operand2OperandsLoc;
   ::mlir::Type operand1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operand1Types(operand1RawTypes);
@@ -35797,7 +35915,7 @@ void SGreaterThanOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Eff
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SGreaterThanOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SGreaterThanOp)
 
 namespace mlir {
 namespace spirv {
@@ -35915,13 +36033,13 @@ void SLessThanEqualOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -35944,11 +36062,11 @@ void SLessThanEqualOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult SLessThanEqualOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operand1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
   (void)operand1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType operand2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
   (void)operand2OperandsLoc;
   ::mlir::Type operand1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operand1Types(operand1RawTypes);
@@ -36015,7 +36133,7 @@ void SLessThanEqualOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::E
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SLessThanEqualOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SLessThanEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -36133,13 +36251,13 @@ void SLessThanOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -36162,11 +36280,11 @@ void SLessThanOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 }
 
 ::mlir::ParseResult SLessThanOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operand1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
   (void)operand1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType operand2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
   (void)operand2OperandsLoc;
   ::mlir::Type operand1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operand1Types(operand1RawTypes);
@@ -36233,7 +36351,7 @@ void SLessThanOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SLessThanOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SLessThanOp)
 
 namespace mlir {
 namespace spirv {
@@ -36388,7 +36506,7 @@ void SModOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult SModOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
   ::llvm::SMLoc allOperandLoc = parser.getCurrentLocation();
@@ -36431,7 +36549,7 @@ void SModOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SModOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SModOp)
 
 namespace mlir {
 namespace spirv {
@@ -36542,7 +36660,7 @@ void SNegateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -36551,7 +36669,7 @@ void SNegateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -36563,8 +36681,8 @@ void SNegateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult SNegateOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -36609,7 +36727,7 @@ void SNegateOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SNegateOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SNegateOp)
 
 namespace mlir {
 namespace spirv {
@@ -36764,7 +36882,7 @@ void SRemOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult SRemOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
   ::llvm::SMLoc allOperandLoc = parser.getCurrentLocation();
@@ -36807,7 +36925,7 @@ void SRemOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SRemOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SRemOp)
 
 namespace mlir {
 namespace spirv {
@@ -36975,13 +37093,13 @@ void SelectOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps24(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps22(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup2 = getODSOperands(2);
 
     for (auto v : valueGroup2) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps24(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps22(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -36990,7 +37108,7 @@ void SelectOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps24(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps22(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -37013,7 +37131,7 @@ void SelectOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
 }
 
 ::mlir::ParseResult SelectOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type conditionRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> conditionTypes(conditionRawTypes);
   ::mlir::Type resultRawTypes[1];
@@ -37076,7 +37194,7 @@ void SelectOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SelectOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SelectOp)
 
 namespace mlir {
 namespace spirv {
@@ -37215,7 +37333,7 @@ void SelectionOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
     if (!tblgen_selection_control)
       return emitOpError("requires attribute 'selection_control'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps19(*this, tblgen_selection_control, "selection_control")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps20(*this, tblgen_selection_control, "selection_control")))
       return ::mlir::failure();
   }
   if (!((isNestedInFunctionOpInterface((*this->getOperation()).getParentOp()))))
@@ -37231,14 +37349,12 @@ void SelectionOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 }
 
 ::mlir::LogicalResult SelectionOp::verifyInvariants() {
-  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
-    return ::mlir::success();
-  return ::mlir::failure();
+  return verifyInvariantsImpl();
 }
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SelectionOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SelectionOp)
 
 namespace mlir {
 namespace spirv {
@@ -37383,13 +37499,13 @@ void ShiftLeftLogicalOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationS
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -37398,7 +37514,7 @@ void ShiftLeftLogicalOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationS
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -37421,7 +37537,7 @@ void ShiftLeftLogicalOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationS
 }
 
 ::mlir::ParseResult ShiftLeftLogicalOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type operand1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operand1Types(operand1RawTypes);
   ::mlir::Type operand2RawTypes[1];
@@ -37484,7 +37600,7 @@ void ShiftLeftLogicalOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects:
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ShiftLeftLogicalOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ShiftLeftLogicalOp)
 
 namespace mlir {
 namespace spirv {
@@ -37629,13 +37745,13 @@ void ShiftRightArithmeticOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operat
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -37644,7 +37760,7 @@ void ShiftRightArithmeticOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operat
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -37667,7 +37783,7 @@ void ShiftRightArithmeticOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operat
 }
 
 ::mlir::ParseResult ShiftRightArithmeticOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type operand1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operand1Types(operand1RawTypes);
   ::mlir::Type operand2RawTypes[1];
@@ -37730,7 +37846,7 @@ void ShiftRightArithmeticOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffe
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ShiftRightArithmeticOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ShiftRightArithmeticOp)
 
 namespace mlir {
 namespace spirv {
@@ -37875,13 +37991,13 @@ void ShiftRightLogicalOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operation
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -37890,7 +38006,7 @@ void ShiftRightLogicalOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operation
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -37913,7 +38029,7 @@ void ShiftRightLogicalOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operation
 }
 
 ::mlir::ParseResult ShiftRightLogicalOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type operand1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operand1Types(operand1RawTypes);
   ::mlir::Type operand2RawTypes[1];
@@ -37976,7 +38092,7 @@ void ShiftRightLogicalOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ShiftRightLogicalOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ShiftRightLogicalOp)
 
 namespace mlir {
 namespace spirv {
@@ -38062,7 +38178,7 @@ std::pair<unsigned, unsigned> SpecConstantCompositeOpAdaptor::getODSOperandIndex
     if (!tblgen_constituents)
       return emitError(loc, "'spv.SpecConstantComposite' op ""requires attribute 'constituents'");
 
-    if (tblgen_constituents && !(((tblgen_constituents.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_constituents.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return (attr.isa<::mlir::SymbolRefAttr>()); }))))
+    if (tblgen_constituents && !(((tblgen_constituents.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_constituents.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && ((attr.isa<::mlir::SymbolRefAttr>())); }))))
       return emitError(loc, "'spv.SpecConstantComposite' op ""attribute 'constituents' failed to satisfy constraint: symbol ref array attribute");
   }
   return ::mlir::success();
@@ -38177,7 +38293,7 @@ void SpecConstantCompositeOp::build(::mlir::OpBuilder &, ::mlir::OperationState 
     if (!tblgen_sym_name)
       return emitOpError("requires attribute 'sym_name'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps11(*this, tblgen_sym_name, "sym_name")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps12(*this, tblgen_sym_name, "sym_name")))
       return ::mlir::failure();
   }
   {
@@ -38201,7 +38317,7 @@ void SpecConstantCompositeOp::build(::mlir::OpBuilder &, ::mlir::OperationState 
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SpecConstantCompositeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SpecConstantCompositeOp)
 
 namespace mlir {
 namespace spirv {
@@ -38358,7 +38474,7 @@ void SpecConstantOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
     if (!tblgen_sym_name)
       return emitOpError("requires attribute 'sym_name'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps11(*this, tblgen_sym_name, "sym_name")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps12(*this, tblgen_sym_name, "sym_name")))
       return ::mlir::failure();
   }
   {
@@ -38382,7 +38498,7 @@ void SpecConstantOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SpecConstantOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SpecConstantOp)
 
 namespace mlir {
 namespace spirv {
@@ -38480,7 +38596,7 @@ void SpecConstantOperationOp::build(::mlir::OpBuilder &, ::mlir::OperationState 
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps25(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps23(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -38497,9 +38613,7 @@ void SpecConstantOperationOp::build(::mlir::OpBuilder &, ::mlir::OperationState 
 }
 
 ::mlir::LogicalResult SpecConstantOperationOp::verifyInvariants() {
-  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
-    return ::mlir::success();
-  return ::mlir::failure();
+  return verifyInvariantsImpl();
 }
 
 void SpecConstantOperationOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
@@ -38507,7 +38621,7 @@ void SpecConstantOperationOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEff
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SpecConstantOperationOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SpecConstantOperationOp)
 
 namespace mlir {
 namespace spirv {
@@ -38732,7 +38846,7 @@ void StoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::StoreOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::StoreOp)
 
 namespace mlir {
 namespace spirv {
@@ -38830,7 +38944,7 @@ void SubgroupBallotKHROp::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps6(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps2(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -38839,7 +38953,7 @@ void SubgroupBallotKHROp::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps26(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps24(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -38851,8 +38965,8 @@ void SubgroupBallotKHROp::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult SubgroupBallotKHROp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType predicateRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> predicateOperands(predicateRawOperands);  ::llvm::SMLoc predicateOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand predicateRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> predicateOperands(predicateRawOperands);  ::llvm::SMLoc predicateOperandsLoc;
   (void)predicateOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -38895,7 +39009,7 @@ void SubgroupBallotKHROp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SubgroupBallotKHROp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SubgroupBallotKHROp)
 
 namespace mlir {
 namespace spirv {
@@ -39017,7 +39131,7 @@ void SubgroupBlockReadINTELOp::build(::mlir::OpBuilder &, ::mlir::OperationState
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SubgroupBlockReadINTELOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SubgroupBlockReadINTELOp)
 
 namespace mlir {
 namespace spirv {
@@ -39147,7 +39261,7 @@ void SubgroupBlockWriteINTELOp::build(::mlir::OpBuilder &, ::mlir::OperationStat
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SubgroupBlockWriteINTELOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SubgroupBlockWriteINTELOp)
 
 namespace mlir {
 namespace spirv {
@@ -39245,7 +39359,7 @@ void TransposeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps23(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps21(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -39254,7 +39368,7 @@ void TransposeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps23(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps21(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -39268,7 +39382,7 @@ void TransposeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 }
 
 ::mlir::ParseResult TransposeOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type matrixRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> matrixTypes(matrixRawTypes);
   ::mlir::Type resultRawTypes[1];
@@ -39331,7 +39445,7 @@ void TransposeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::TransposeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::TransposeOp)
 
 namespace mlir {
 namespace spirv {
@@ -39452,8 +39566,8 @@ void UConvertOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::ParseResult UConvertOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -39518,7 +39632,7 @@ void UConvertOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::UConvertOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::UConvertOp)
 
 namespace mlir {
 namespace spirv {
@@ -39673,7 +39787,7 @@ void UDivOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult UDivOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
   ::llvm::SMLoc allOperandLoc = parser.getCurrentLocation();
@@ -39716,7 +39830,7 @@ void UDivOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::UDivOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::UDivOp)
 
 namespace mlir {
 namespace spirv {
@@ -39834,13 +39948,13 @@ void UGreaterThanEqualOp::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -39863,11 +39977,11 @@ void UGreaterThanEqualOp::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult UGreaterThanEqualOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operand1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
   (void)operand1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType operand2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
   (void)operand2OperandsLoc;
   ::mlir::Type operand1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operand1Types(operand1RawTypes);
@@ -39934,7 +40048,7 @@ void UGreaterThanEqualOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::UGreaterThanEqualOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::UGreaterThanEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -40052,13 +40166,13 @@ void UGreaterThanOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -40081,11 +40195,11 @@ void UGreaterThanOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
 }
 
 ::mlir::ParseResult UGreaterThanOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operand1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
   (void)operand1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType operand2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
   (void)operand2OperandsLoc;
   ::mlir::Type operand1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operand1Types(operand1RawTypes);
@@ -40152,7 +40266,7 @@ void UGreaterThanOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Eff
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::UGreaterThanOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::UGreaterThanOp)
 
 namespace mlir {
 namespace spirv {
@@ -40270,13 +40384,13 @@ void ULessThanEqualOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -40299,11 +40413,11 @@ void ULessThanEqualOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult ULessThanEqualOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operand1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
   (void)operand1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType operand2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
   (void)operand2OperandsLoc;
   ::mlir::Type operand1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operand1Types(operand1RawTypes);
@@ -40370,7 +40484,7 @@ void ULessThanEqualOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::E
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ULessThanEqualOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ULessThanEqualOp)
 
 namespace mlir {
 namespace spirv {
@@ -40488,13 +40602,13 @@ void ULessThanOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -40517,11 +40631,11 @@ void ULessThanOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 }
 
 ::mlir::ParseResult ULessThanOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operand1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
   (void)operand1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType operand2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
   (void)operand2OperandsLoc;
   ::mlir::Type operand1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operand1Types(operand1RawTypes);
@@ -40588,7 +40702,7 @@ void ULessThanOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ULessThanOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::ULessThanOp)
 
 namespace mlir {
 namespace spirv {
@@ -40743,7 +40857,7 @@ void UModOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult UModOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
   ::llvm::SMLoc allOperandLoc = parser.getCurrentLocation();
@@ -40786,7 +40900,7 @@ void UModOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::UModOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::UModOp)
 
 namespace mlir {
 namespace spirv {
@@ -40910,9 +41024,12 @@ void UndefOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
+void UndefOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::UndefOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::UndefOp)
 
 namespace mlir {
 namespace spirv {
@@ -41059,11 +41176,11 @@ void UnorderedOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 }
 
 ::mlir::ParseResult UnorderedOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operand1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand1Operands(operand1RawOperands);  ::llvm::SMLoc operand1OperandsLoc;
   (void)operand1OperandsLoc;
-  ::mlir::OpAsmParser::OperandType operand2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operand2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operand2Operands(operand2RawOperands);  ::llvm::SMLoc operand2OperandsLoc;
   (void)operand2OperandsLoc;
   ::mlir::Type operand1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operand1Types(operand1RawTypes);
@@ -41130,7 +41247,7 @@ void UnorderedOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::UnorderedOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::UnorderedOp)
 
 namespace mlir {
 namespace spirv {
@@ -41225,7 +41342,7 @@ void UnreachableOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::UnreachableOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::UnreachableOp)
 
 namespace mlir {
 namespace spirv {
@@ -41403,7 +41520,7 @@ void VariableOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
     if (!tblgen_storage_class)
       return emitOpError("requires attribute 'storage_class'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps20(*this, tblgen_storage_class, "storage_class")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_SPIRVOps21(*this, tblgen_storage_class, "storage_class")))
       return ::mlir::failure();
   }
   {
@@ -41416,7 +41533,7 @@ void VariableOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
     }
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps25(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps23(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -41440,7 +41557,7 @@ void VariableOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::VariableOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::VariableOp)
 
 namespace mlir {
 namespace spirv {
@@ -41554,7 +41671,7 @@ void VectorExtractDynamicOp::build(::mlir::OpBuilder &, ::mlir::OperationState &
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps21(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps19(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
@@ -41569,7 +41686,7 @@ void VectorExtractDynamicOp::build(::mlir::OpBuilder &, ::mlir::OperationState &
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps27(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps25(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -41583,11 +41700,11 @@ void VectorExtractDynamicOp::build(::mlir::OpBuilder &, ::mlir::OperationState &
 }
 
 ::mlir::ParseResult VectorExtractDynamicOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType vectorRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> vectorOperands(vectorRawOperands);  ::llvm::SMLoc vectorOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand vectorRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> vectorOperands(vectorRawOperands);  ::llvm::SMLoc vectorOperandsLoc;
   (void)vectorOperandsLoc;
-  ::mlir::OpAsmParser::OperandType indexRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> indexOperands(indexRawOperands);  ::llvm::SMLoc indexOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand indexRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> indexOperands(indexRawOperands);  ::llvm::SMLoc indexOperandsLoc;
   (void)indexOperandsLoc;
   ::mlir::Type vectorRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> vectorTypes(vectorRawTypes);
@@ -41676,7 +41793,7 @@ void VectorExtractDynamicOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffe
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::VectorExtractDynamicOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::VectorExtractDynamicOp)
 
 namespace mlir {
 namespace spirv {
@@ -41838,13 +41955,13 @@ void VectorInsertDynamicOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operati
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps21(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps19(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps27(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps25(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup2 = getODSOperands(2);
@@ -41859,7 +41976,7 @@ void VectorInsertDynamicOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operati
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps21(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps19(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -41882,14 +41999,14 @@ void VectorInsertDynamicOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operati
 }
 
 ::mlir::ParseResult VectorInsertDynamicOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType componentRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> componentOperands(componentRawOperands);  ::llvm::SMLoc componentOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand componentRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> componentOperands(componentRawOperands);  ::llvm::SMLoc componentOperandsLoc;
   (void)componentOperandsLoc;
-  ::mlir::OpAsmParser::OperandType vectorRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> vectorOperands(vectorRawOperands);  ::llvm::SMLoc vectorOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand vectorRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> vectorOperands(vectorRawOperands);  ::llvm::SMLoc vectorOperandsLoc;
   (void)vectorOperandsLoc;
-  ::mlir::OpAsmParser::OperandType indexRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> indexOperands(indexRawOperands);  ::llvm::SMLoc indexOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand indexRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> indexOperands(indexRawOperands);  ::llvm::SMLoc indexOperandsLoc;
   (void)indexOperandsLoc;
   ::mlir::Type vectorRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> vectorTypes(vectorRawTypes);
@@ -41989,7 +42106,7 @@ void VectorInsertDynamicOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffec
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::VectorInsertDynamicOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::VectorInsertDynamicOp)
 
 namespace mlir {
 namespace spirv {
@@ -42045,7 +42162,7 @@ std::pair<unsigned, unsigned> VectorShuffleOpAdaptor::getODSOperandIndexAndLengt
     if (!tblgen_components)
       return emitError(loc, "'spv.VectorShuffle' op ""requires attribute 'components'");
 
-    if (tblgen_components && !(((tblgen_components.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_components.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32))); }))))
+    if (tblgen_components && !(((tblgen_components.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_components.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))); }))))
       return emitError(loc, "'spv.VectorShuffle' op ""attribute 'components' failed to satisfy constraint: 32-bit integer array attribute");
   }
   return ::mlir::success();
@@ -42145,13 +42262,13 @@ void VectorShuffleOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps21(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps19(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps21(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps19(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -42160,7 +42277,7 @@ void VectorShuffleOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps21(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps19(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -42177,13 +42294,13 @@ void VectorShuffleOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
 
 ::mlir::ParseResult VectorShuffleOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::ArrayAttr componentsAttr;
-  ::mlir::OpAsmParser::OperandType vector1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> vector1Operands(vector1RawOperands);  ::llvm::SMLoc vector1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand vector1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> vector1Operands(vector1RawOperands);  ::llvm::SMLoc vector1OperandsLoc;
   (void)vector1OperandsLoc;
   ::mlir::Type vector1RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> vector1Types(vector1RawTypes);
-  ::mlir::OpAsmParser::OperandType vector2RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> vector2Operands(vector2RawOperands);  ::llvm::SMLoc vector2OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand vector2RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> vector2Operands(vector2RawOperands);  ::llvm::SMLoc vector2OperandsLoc;
   (void)vector2OperandsLoc;
   ::mlir::Type vector2RawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> vector2Types(vector2RawTypes);
@@ -42284,7 +42401,207 @@ void VectorShuffleOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Ef
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::VectorShuffleOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::VectorShuffleOp)
+
+namespace mlir {
+namespace spirv {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::spirv::VectorTimesScalarOp definitions
+//===----------------------------------------------------------------------===//
+
+VectorTimesScalarOpAdaptor::VectorTimesScalarOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+
+VectorTimesScalarOpAdaptor::VectorTimesScalarOpAdaptor(VectorTimesScalarOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+
+::mlir::ValueRange VectorTimesScalarOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> VectorTimesScalarOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange VectorTimesScalarOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VectorTimesScalarOpAdaptor::vector() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VectorTimesScalarOpAdaptor::scalar() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::DictionaryAttr VectorTimesScalarOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult VectorTimesScalarOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> VectorTimesScalarOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range VectorTimesScalarOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VectorTimesScalarOp::vector() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value VectorTimesScalarOp::scalar() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::MutableOperandRange VectorTimesScalarOp::vectorMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange VectorTimesScalarOp::scalarMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> VectorTimesScalarOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range VectorTimesScalarOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value VectorTimesScalarOp::result() {
+  return *getODSResults(0).begin();
+}
+
+void VectorTimesScalarOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value vector, ::mlir::Value scalar) {
+  odsState.addOperands(vector);
+  odsState.addOperands(scalar);
+  odsState.addTypes(result);
+}
+
+void VectorTimesScalarOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value vector, ::mlir::Value scalar) {
+  odsState.addOperands(vector);
+  odsState.addOperands(scalar);
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void VectorTimesScalarOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult VectorTimesScalarOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps26(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps4(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps26(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult VectorTimesScalarOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
+}
+
+::mlir::ParseResult VectorTimesScalarOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
+  ::mlir::SmallVector<::mlir::Type, 1> allOperandTypes;
+  ::mlir::Type resultRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
+  ::llvm::SMLoc allOperandLoc = parser.getCurrentLocation();
+  if (parser.parseOperandList(allOperands))
+    return ::mlir::failure();
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  if (parser.parseColon())
+    return ::mlir::failure();
+  if (parser.parseLParen())
+    return ::mlir::failure();
+
+  if (parser.parseTypeList(allOperandTypes))
+    return ::mlir::failure();
+  if (parser.parseRParen())
+    return ::mlir::failure();
+  if (parser.parseArrow())
+    return ::mlir::failure();
+
+  {
+    ::mlir::VectorType type;
+    if (parser.parseCustomTypeWithFallback(type))
+      return ::mlir::failure();
+    resultRawTypes[0] = type;
+  }
+  result.addTypes(resultTypes);
+  if (parser.resolveOperands(allOperands, allOperandTypes, allOperandLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void VectorTimesScalarOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ';
+  _odsPrinter << getOperation()->getOperands();
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ' << "(";
+  _odsPrinter << getOperation()->getOperandTypes();
+  _odsPrinter << ")";
+  _odsPrinter << ' ' << "->";
+  _odsPrinter << ' ';
+  {
+    auto type = result().getType();
+    if (auto validType = type.dyn_cast<::mlir::VectorType>())
+      _odsPrinter.printStrippedAttrOrType(validType);
+   else
+     _odsPrinter << type;
+  }
+}
+
+void VectorTimesScalarOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace spirv
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::VectorTimesScalarOp)
 
 namespace mlir {
 namespace spirv {
@@ -42377,7 +42694,7 @@ void YieldOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps25(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SPIRVOps23(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -42389,8 +42706,8 @@ void YieldOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 ::mlir::ParseResult YieldOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -42434,7 +42751,7 @@ void YieldOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace spirv
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::YieldOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::YieldOp)
 
 
 #endif  // GET_OP_CLASSES

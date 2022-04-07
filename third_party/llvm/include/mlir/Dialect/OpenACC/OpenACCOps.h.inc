@@ -203,7 +203,7 @@ public:
 };
 } // namespace acc
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::acc::DataOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::acc::DataOp)
 
 namespace mlir {
 namespace acc {
@@ -337,7 +337,7 @@ public:
 };
 } // namespace acc
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::acc::EnterDataOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::acc::EnterDataOp)
 
 namespace mlir {
 namespace acc {
@@ -482,7 +482,7 @@ public:
 };
 } // namespace acc
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::acc::ExitDataOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::acc::ExitDataOp)
 
 namespace mlir {
 namespace acc {
@@ -565,7 +565,7 @@ public:
 };
 } // namespace acc
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::acc::InitOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::acc::InitOp)
 
 namespace mlir {
 namespace acc {
@@ -760,7 +760,7 @@ public:
 };
 } // namespace acc
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::acc::LoopOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::acc::LoopOp)
 
 namespace mlir {
 namespace acc {
@@ -1001,7 +1001,7 @@ public:
 };
 } // namespace acc
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::acc::ParallelOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::acc::ParallelOp)
 
 namespace mlir {
 namespace acc {
@@ -1084,7 +1084,7 @@ public:
 };
 } // namespace acc
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::acc::ShutdownOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::acc::ShutdownOp)
 
 namespace mlir {
 namespace acc {
@@ -1138,7 +1138,7 @@ public:
 };
 } // namespace acc
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::acc::TerminatorOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::acc::TerminatorOp)
 
 namespace mlir {
 namespace acc {
@@ -1283,7 +1283,7 @@ public:
 };
 } // namespace acc
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::acc::UpdateOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::acc::UpdateOp)
 
 namespace mlir {
 namespace acc {
@@ -1385,7 +1385,7 @@ public:
 };
 } // namespace acc
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::acc::WaitOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::acc::WaitOp)
 
 namespace mlir {
 namespace acc {
@@ -1442,7 +1442,7 @@ public:
 };
 } // namespace acc
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::acc::YieldOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::acc::YieldOp)
 
 
 #endif  // GET_OP_CLASSES

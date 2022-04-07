@@ -35,7 +35,7 @@
 
 namespace mlir {
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::BFloat16Type)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::BFloat16Type)
 namespace mlir {
 namespace detail {
 struct ComplexTypeStorage : public ::mlir::TypeStorage {
@@ -71,35 +71,35 @@ Type ComplexType::getElementType() const {
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::ComplexType)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::ComplexType)
 namespace mlir {
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::Float128Type)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::Float128Type)
 namespace mlir {
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::Float16Type)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::Float16Type)
 namespace mlir {
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::Float32Type)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::Float32Type)
 namespace mlir {
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::Float64Type)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::Float64Type)
 namespace mlir {
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::Float80Type)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::Float80Type)
 namespace mlir {
 FunctionType FunctionType::get(::mlir::MLIRContext *context, TypeRange inputs, TypeRange results) {
   return Base::get(context, inputs, results);
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::FunctionType)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::FunctionType)
 namespace mlir {
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::IndexType)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::IndexType)
 namespace mlir {
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::IntegerType)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::IntegerType)
 namespace mlir {
 namespace detail {
 struct MemRefTypeStorage : public ::mlir::TypeStorage {
@@ -146,10 +146,10 @@ Attribute MemRefType::getMemorySpace() const {
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::MemRefType)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::MemRefType)
 namespace mlir {
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::NoneType)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::NoneType)
 namespace mlir {
 namespace detail {
 struct OpaqueTypeStorage : public ::mlir::TypeStorage {
@@ -192,7 +192,7 @@ StringAttr OpaqueType::getDialectNamespace() const {
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::OpaqueType)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::OpaqueType)
 namespace mlir {
 namespace detail {
 struct RankedTensorTypeStorage : public ::mlir::TypeStorage {
@@ -241,7 +241,7 @@ Attribute RankedTensorType::getEncoding() const {
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::RankedTensorType)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::RankedTensorType)
 namespace mlir {
 TupleType TupleType::get(::mlir::MLIRContext *context, TypeRange elementTypes) {
   return Base::get(context, elementTypes);
@@ -252,7 +252,7 @@ TupleType TupleType::get(::mlir::MLIRContext *context) {
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::TupleType)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::TupleType)
 namespace mlir {
 namespace detail {
 struct UnrankedMemRefTypeStorage : public ::mlir::TypeStorage {
@@ -312,7 +312,7 @@ Attribute UnrankedMemRefType::getMemorySpace() const {
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::UnrankedMemRefType)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::UnrankedMemRefType)
 namespace mlir {
 namespace detail {
 struct UnrankedTensorTypeStorage : public ::mlir::TypeStorage {
@@ -348,7 +348,7 @@ Type UnrankedTensorType::getElementType() const {
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::UnrankedTensorType)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::UnrankedTensorType)
 namespace mlir {
 namespace detail {
 struct VectorTypeStorage : public ::mlir::TypeStorage {
@@ -399,7 +399,7 @@ unsigned VectorType::getNumScalableDims() const {
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::VectorType)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::VectorType)
 
 #endif  // GET_TYPEDEF_CLASSES
 

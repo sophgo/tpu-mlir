@@ -13,7 +13,7 @@ namespace llvm {
 namespace Intrinsic {
 enum PPCIntrinsics : unsigned {
 // Enum values for intrinsics
-    ppc_addex = 6706,                                 // llvm.ppc.addex
+    ppc_addex = 6734,                                 // llvm.ppc.addex
     ppc_addf128_round_to_odd,                  // llvm.ppc.addf128.round.to.odd
     ppc_altivec_crypto_vcipher,                // llvm.ppc.altivec.crypto.vcipher
     ppc_altivec_crypto_vcipherlast,            // llvm.ppc.altivec.crypto.vcipherlast
@@ -390,7 +390,6 @@ enum PPCIntrinsics : unsigned {
     ppc_fnmadd,                                // llvm.ppc.fnmadd
     ppc_fnmadds,                               // llvm.ppc.fnmadds
     ppc_fnmsub,                                // llvm.ppc.fnmsub
-    ppc_fnmsubs,                               // llvm.ppc.fnmsubs
     ppc_fre,                                   // llvm.ppc.fre
     ppc_fres,                                  // llvm.ppc.fres
     ppc_frsqrte,                               // llvm.ppc.frsqrte
@@ -414,9 +413,15 @@ enum PPCIntrinsics : unsigned {
     ppc_maddhd,                                // llvm.ppc.maddhd
     ppc_maddhdu,                               // llvm.ppc.maddhdu
     ppc_maddld,                                // llvm.ppc.maddld
+    ppc_maxfe,                                 // llvm.ppc.maxfe
+    ppc_maxfl,                                 // llvm.ppc.maxfl
+    ppc_maxfs,                                 // llvm.ppc.maxfs
     ppc_mfmsr,                                 // llvm.ppc.mfmsr
     ppc_mfspr,                                 // llvm.ppc.mfspr
     ppc_mftbu,                                 // llvm.ppc.mftbu
+    ppc_minfe,                                 // llvm.ppc.minfe
+    ppc_minfl,                                 // llvm.ppc.minfl
+    ppc_minfs,                                 // llvm.ppc.minfs
     ppc_mma_assemble_acc,                      // llvm.ppc.mma.assemble.acc
     ppc_mma_disassemble_acc,                   // llvm.ppc.mma.disassemble.acc
     ppc_mma_pmxvbf16ger2,                      // llvm.ppc.mma.pmxvbf16ger2

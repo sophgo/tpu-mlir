@@ -1,5 +1,71 @@
 
 //===----------------------------------------------------------------------===//
+// Implementation of CopyOp
+//===----------------------------------------------------------------------===//
+
+ArrayAttr CopyOp::iterator_types() {
+  int64_t rank = getRank(getOutputOperand(0));
+  return Builder(getContext()).getStrArrayAttr(
+    SmallVector<StringRef>(rank, getParallelIteratorTypeName()));
+}
+
+ArrayAttr CopyOp::indexing_maps() {
+  MLIRContext *context = getContext();
+  AffineMap scalarMap = AffineMap::get(getNumParallelLoops(), 0, context);
+  AffineMap tensorMap = AffineMap::getMultiDimIdentityMap(
+    getNumParallelLoops(), context);
+  SmallVector<AffineMap> indexingMaps;
+  for (OpOperand *opOperand : getInputAndOutputOperands())
+    indexingMaps.push_back(getRank(opOperand) == 0 ? scalarMap : tensorMap);
+  return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
+}
+
+unsigned CopyOp::getNumRegionArgs() { return 2; }
+
+std::string CopyOp::getLibraryCallName() {
+  return generateLibraryCallName(getOperation());
+}
+
+void CopyOp::regionBuilder(ImplicitLocOpBuilder &b,
+                        Block &block, ArrayRef<NamedAttribute> attrs) {
+  assert(2 > 0 && block.getNumArguments() == 2 &&
+         "CopyOp regionBuilder expects 2 (>=0) args");
+  RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
+  SmallVector<Value> yields;
+  
+TypeFn castVal = TypeFn::cast_signed;
+auto castIter = llvm::find_if(attrs, [&](const NamedAttribute &attr) {
+                              return attr.getName() == "cast"; });
+if (castIter != attrs.end()) {
+  if (auto attr = castIter->getValue().dyn_cast<TypeFnAttr>())
+    castVal = attr.getValue();
+}
+
+  Value value1 = helper.buildTypeFn(castVal, block.getArgument(1).getType(), block.getArgument(0));
+  yields.push_back(value1);
+  helper.yieldOutputs(yields);
+}
+
+ParseResult CopyOp::parse(OpAsmParser &parser, OperationState &result) {
+  return ::parseNamedStructuredOp<CopyOp>(parser, result);
+}
+void CopyOp::print(OpAsmPrinter &p) {
+  ::printNamedStructuredOp(p, *this);
+}
+
+LogicalResult CopyOp::fold(ArrayRef<Attribute>,
+                        SmallVectorImpl<OpFoldResult> &) {
+  return foldMemRefCast(*this);
+}
+void CopyOp::getEffects(SmallVectorImpl<
+    SideEffects::EffectInstance<MemoryEffects::Effect> >&effects) {
+      SmallVector<Value> inputBuffers = getInputBufferOperands();
+      SmallVector<Value> outputBuffers = getOutputBufferOperands();
+      getGenericEffectsImpl(effects,
+        getOperation()->getResults(), inputBuffers, outputBuffers);
+}
+
+//===----------------------------------------------------------------------===//
 // Implementation of ElemwiseUnaryOp
 //===----------------------------------------------------------------------===//
 
@@ -16,7 +82,7 @@ ArrayAttr ElemwiseUnaryOp::indexing_maps() {
     getNumParallelLoops(), context);
   SmallVector<AffineMap> indexingMaps;
   for (OpOperand *opOperand : getInputAndOutputOperands())
-    indexingMaps.push_back(isScalar(opOperand) ? scalarMap : tensorMap);
+    indexingMaps.push_back(getRank(opOperand) == 0 ? scalarMap : tensorMap);
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 }
 
@@ -92,7 +158,7 @@ ArrayAttr ElemwiseBinaryOp::indexing_maps() {
     getNumParallelLoops(), context);
   SmallVector<AffineMap> indexingMaps;
   for (OpOperand *opOperand : getInputAndOutputOperands())
-    indexingMaps.push_back(isScalar(opOperand) ? scalarMap : tensorMap);
+    indexingMaps.push_back(getRank(opOperand) == 0 ? scalarMap : tensorMap);
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 }
 
@@ -3457,36 +3523,36 @@ void PoolingNdhwcMinOp::getEffects(SmallVectorImpl<
 }
 
 //===----------------------------------------------------------------------===//
-// Implementation of FillTensorOp
+// Implementation of FillOp
 //===----------------------------------------------------------------------===//
 
-ArrayAttr FillTensorOp::iterator_types() {
+ArrayAttr FillOp::iterator_types() {
   int64_t rank = getRank(getOutputOperand(0));
   return Builder(getContext()).getStrArrayAttr(
     SmallVector<StringRef>(rank, getParallelIteratorTypeName()));
 }
 
-ArrayAttr FillTensorOp::indexing_maps() {
+ArrayAttr FillOp::indexing_maps() {
   MLIRContext *context = getContext();
   AffineMap scalarMap = AffineMap::get(getNumParallelLoops(), 0, context);
   AffineMap tensorMap = AffineMap::getMultiDimIdentityMap(
     getNumParallelLoops(), context);
   SmallVector<AffineMap> indexingMaps;
   for (OpOperand *opOperand : getInputAndOutputOperands())
-    indexingMaps.push_back(isScalar(opOperand) ? scalarMap : tensorMap);
+    indexingMaps.push_back(getRank(opOperand) == 0 ? scalarMap : tensorMap);
   return Builder(getContext()).getAffineMapArrayAttr(indexingMaps);
 }
 
-unsigned FillTensorOp::getNumRegionArgs() { return 2; }
+unsigned FillOp::getNumRegionArgs() { return 2; }
 
-std::string FillTensorOp::getLibraryCallName() {
+std::string FillOp::getLibraryCallName() {
   return generateLibraryCallName(getOperation());
 }
 
-void FillTensorOp::regionBuilder(ImplicitLocOpBuilder &b,
+void FillOp::regionBuilder(ImplicitLocOpBuilder &b,
                         Block &block, ArrayRef<NamedAttribute> attrs) {
   assert(2 > 0 && block.getNumArguments() == 2 &&
-         "FillTensorOp regionBuilder expects 2 (>=0) args");
+         "FillOp regionBuilder expects 2 (>=0) args");
   RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
   SmallVector<Value> yields;
   
@@ -3495,18 +3561,18 @@ void FillTensorOp::regionBuilder(ImplicitLocOpBuilder &b,
   helper.yieldOutputs(yields);
 }
 
-ParseResult FillTensorOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<FillTensorOp>(parser, result);
+ParseResult FillOp::parse(OpAsmParser &parser, OperationState &result) {
+  return ::parseNamedStructuredOp<FillOp>(parser, result);
 }
-void FillTensorOp::print(OpAsmPrinter &p) {
+void FillOp::print(OpAsmPrinter &p) {
   ::printNamedStructuredOp(p, *this);
 }
 
-LogicalResult FillTensorOp::fold(ArrayRef<Attribute>,
+LogicalResult FillOp::fold(ArrayRef<Attribute>,
                         SmallVectorImpl<OpFoldResult> &) {
   return foldMemRefCast(*this);
 }
-void FillTensorOp::getEffects(SmallVectorImpl<
+void FillOp::getEffects(SmallVectorImpl<
     SideEffects::EffectInstance<MemoryEffects::Effect> >&effects) {
       SmallVector<Value> inputBuffers = getInputBufferOperands();
       SmallVector<Value> outputBuffers = getOutputBufferOperands();
@@ -3610,82 +3676,6 @@ LogicalResult FillRng2DOp::fold(ArrayRef<Attribute>,
   return foldMemRefCast(*this);
 }
 void FillRng2DOp::getEffects(SmallVectorImpl<
-    SideEffects::EffectInstance<MemoryEffects::Effect> >&effects) {
-      SmallVector<Value> inputBuffers = getInputBufferOperands();
-      SmallVector<Value> outputBuffers = getOutputBufferOperands();
-      getGenericEffectsImpl(effects,
-        getOperation()->getResults(), inputBuffers, outputBuffers);
-}
-
-//===----------------------------------------------------------------------===//
-// Implementation of SoftPlus2DOp
-//===----------------------------------------------------------------------===//
-
-ArrayAttr SoftPlus2DOp::iterator_types() {
-  return Builder(getContext()).getStrArrayAttr(SmallVector<StringRef>{ getParallelIteratorTypeName(), getParallelIteratorTypeName() });
-}
-
-static SmallVector<AffineExpr> getSymbolBindings(SoftPlus2DOp self) {
-  MLIRContext *context = self.getContext();
-  SmallVector<AffineExpr> exprs;
-  exprs.push_back(getAffineSymbolExpr(0, context));
-  exprs.push_back(getAffineSymbolExpr(1, context));
-  return exprs;
-}
-
-ArrayAttr SoftPlus2DOp::indexing_maps() {
-  static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
-  ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
-  if (cached)
-    return cached;
-
-  MLIRContext *context = getContext();
-  auto symbolBindings = getSymbolBindings(*this);
-  SmallVector<AffineMap> maps;
-  maps.push_back(mlir::parseAttribute("affine_map<(d0, d1)[s0, s1] -> (d0, d1)>", context).cast<AffineMapAttr>().getValue());
-  maps.back() = simplifyAffineMap(maps.back().replaceDimsAndSymbols({}, symbolBindings, 2, 0));
-  maps.push_back(mlir::parseAttribute("affine_map<(d0, d1)[s0, s1] -> (d0, d1)>", context).cast<AffineMapAttr>().getValue());
-  maps.back() = simplifyAffineMap(maps.back().replaceDimsAndSymbols({}, symbolBindings, 2, 0));
-  cached = Builder(context).getAffineMapArrayAttr(maps);
-  getOperation()->setAttr(memoizeAttr, cached);
-  return cached;
-}
-
-unsigned SoftPlus2DOp::getNumRegionArgs() { return 2; }
-
-std::string SoftPlus2DOp::getLibraryCallName() {
-  return generateLibraryCallName(getOperation());
-}
-
-void SoftPlus2DOp::regionBuilder(ImplicitLocOpBuilder &b,
-                        Block &block, ArrayRef<NamedAttribute> attrs) {
-  assert(2 > 0 && block.getNumArguments() == 2 &&
-         "SoftPlus2DOp regionBuilder expects 2 (>=0) args");
-  RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
-  SmallVector<Value> yields;
-  
-  Value value1 = helper.constant("1.000000e+00 : f64");
-  Value value2 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(1).getType(), value1);
-  Value value3 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(1).getType(), block.getArgument(0));
-  Value value4 = helper.buildUnaryFn(UnaryFn::exp, value3);
-  Value value5 = helper.buildBinaryFn(BinaryFn::add, value2, value4);
-  Value value6 = helper.buildUnaryFn(UnaryFn::log, value5);
-  yields.push_back(value6);
-  helper.yieldOutputs(yields);
-}
-
-ParseResult SoftPlus2DOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<SoftPlus2DOp>(parser, result);
-}
-void SoftPlus2DOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
-}
-
-LogicalResult SoftPlus2DOp::fold(ArrayRef<Attribute>,
-                        SmallVectorImpl<OpFoldResult> &) {
-  return foldMemRefCast(*this);
-}
-void SoftPlus2DOp::getEffects(SmallVectorImpl<
     SideEffects::EffectInstance<MemoryEffects::Effect> >&effects) {
       SmallVector<Value> inputBuffers = getInputBufferOperands();
       SmallVector<Value> outputBuffers = getOutputBufferOperands();

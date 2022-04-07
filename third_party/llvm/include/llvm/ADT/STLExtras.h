@@ -129,7 +129,7 @@ struct function_traits<ReturnType (ClassType::*)(Args...) const, false> {
 /// Overload for class function types.
 template <typename ClassType, typename ReturnType, typename... Args>
 struct function_traits<ReturnType (ClassType::*)(Args...), false>
-    : function_traits<ReturnType (ClassType::*)(Args...) const> {};
+    : public function_traits<ReturnType (ClassType::*)(Args...) const> {};
 /// Overload for non-class function types.
 template <typename ReturnType, typename... Args>
 struct function_traits<ReturnType (*)(Args...), false> {
@@ -143,6 +143,9 @@ struct function_traits<ReturnType (*)(Args...), false> {
   template <size_t i>
   using arg_t = typename std::tuple_element<i, std::tuple<Args...>>::type;
 };
+template <typename ReturnType, typename... Args>
+struct function_traits<ReturnType (*const)(Args...), false>
+    : public function_traits<ReturnType (*)(Args...)> {};
 /// Overload for non-class function type references.
 template <typename ReturnType, typename... Args>
 struct function_traits<ReturnType (&)(Args...), false>
@@ -266,6 +269,13 @@ template <typename ContainerTy> bool hasSingleElement(ContainerTy &&C) {
 template <typename T> auto drop_begin(T &&RangeOrContainer, size_t N = 1) {
   return make_range(std::next(adl_begin(RangeOrContainer), N),
                     adl_end(RangeOrContainer));
+}
+
+/// Return a range covering \p RangeOrContainer with the last N elements
+/// excluded.
+template <typename T> auto drop_end(T &&RangeOrContainer, size_t N = 1) {
+  return make_range(adl_begin(RangeOrContainer),
+                    std::prev(adl_end(RangeOrContainer), N));
 }
 
 // mapped_iterator - This is a simple iterator adapter that causes a function to
@@ -1648,6 +1658,15 @@ OutputIt move(R &&Range, OutputIt Out) {
 template <typename R, typename E>
 bool is_contained(R &&Range, const E &Element) {
   return std::find(adl_begin(Range), adl_end(Range), Element) != adl_end(Range);
+}
+
+template <typename T>
+constexpr bool is_contained(std::initializer_list<T> Set, T Value) {
+  // TODO: Use std::find when we switch to C++20.
+  for (T V : Set)
+    if (V == Value)
+      return true;
+  return false;
 }
 
 /// Wrapper function around std::is_sorted to check if elements in a range \p R

@@ -69,9 +69,9 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::BinaryFnAttr)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::TypeFnAttr)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::UnaryFnAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::BinaryFnAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::TypeFnAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::UnaryFnAttr)
 
 #endif  // GET_ATTRDEF_CLASSES
 

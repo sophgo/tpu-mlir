@@ -6,7 +6,7 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
-DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SPIRVDialect)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::spirv::SPIRVDialect)
 namespace mlir {
 namespace spirv {
 

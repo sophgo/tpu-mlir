@@ -27,4 +27,4 @@ public:
 };
 } // namespace arm_sve
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ArmSVEDialect)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_sve::ArmSVEDialect)

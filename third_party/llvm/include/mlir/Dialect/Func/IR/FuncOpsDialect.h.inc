@@ -36,4 +36,4 @@ public:
 };
 } // namespace func
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::func::FuncDialect)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::func::FuncDialect)

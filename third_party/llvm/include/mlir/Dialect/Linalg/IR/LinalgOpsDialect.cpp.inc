@@ -6,7 +6,7 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
-DEFINE_EXPLICIT_TYPE_ID(::mlir::linalg::LinalgDialect)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::linalg::LinalgDialect)
 namespace mlir {
 namespace linalg {
 

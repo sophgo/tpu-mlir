@@ -6,7 +6,7 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::ShapeDialect)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::ShapeDialect)
 namespace mlir {
 namespace shape {
 

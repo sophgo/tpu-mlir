@@ -6,7 +6,7 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
-DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::ComplexDialect)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::ComplexDialect)
 namespace mlir {
 namespace complex {
 

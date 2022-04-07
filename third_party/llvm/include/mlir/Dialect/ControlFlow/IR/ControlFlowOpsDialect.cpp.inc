@@ -6,7 +6,7 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
-DEFINE_EXPLICIT_TYPE_ID(::mlir::cf::ControlFlowDialect)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::cf::ControlFlowDialect)
 namespace mlir {
 namespace cf {
 

@@ -9,6 +9,7 @@
 #ifdef GET_OP_LIST
 #undef GET_OP_LIST
 
+::mlir::sparse_tensor::BinaryOp,
 ::mlir::sparse_tensor::CompressOp,
 ::mlir::sparse_tensor::ConvertOp,
 ::mlir::sparse_tensor::ExpandOp,
@@ -20,7 +21,9 @@
 ::mlir::sparse_tensor::ReleaseOp,
 ::mlir::sparse_tensor::ToIndicesOp,
 ::mlir::sparse_tensor::ToPointersOp,
-::mlir::sparse_tensor::ToValuesOp
+::mlir::sparse_tensor::ToValuesOp,
+::mlir::sparse_tensor::UnaryOp,
+::mlir::sparse_tensor::YieldOp
 #endif  // GET_OP_LIST
 
 #ifdef GET_OP_CLASSES
@@ -37,6 +40,16 @@ namespace sparse_tensor {
 static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SparseTensorOps0(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
+  if (!((true))) {
+    return op->emitOpError(valueKind) << " #" << valueIndex
+        << " must be any type, but got " << type;
+  }
+  return ::mlir::success();
+}
+
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SparseTensorOps1(
+    ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
+    unsigned valueIndex) {
   if (!(((type.isa<::mlir::TensorType>())) && ([](::mlir::Type elementType) { return (true); }(type.cast<::mlir::ShapedType>().getElementType())))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
         << " must be tensor of any type values, but got " << type;
@@ -44,7 +57,7 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SparseTensorOps0(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SparseTensorOps1(
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SparseTensorOps2(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
   if (!((((type.isa<::mlir::MemRefType>())) && ([](::mlir::Type elementType) { return (elementType.isa<::mlir::IndexType>()); }(type.cast<::mlir::ShapedType>().getElementType()))) && (((type.cast<::mlir::ShapedType>().hasRank())) && ((type.cast<::mlir::ShapedType>().getRank()
@@ -55,7 +68,7 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SparseTensorOps1(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SparseTensorOps2(
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SparseTensorOps3(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
   if (!(((((type.isa<::mlir::MemRefType>())) && ([](::mlir::Type elementType) { return (true); }(type.cast<::mlir::ShapedType>().getElementType()))) && (( isStrided(type.cast<::mlir::MemRefType>()) ))) && ((((type.isa<::mlir::MemRefType>())) && ([](::mlir::Type elementType) { return (true); }(type.cast<::mlir::ShapedType>().getElementType()))) && (((type.cast<::mlir::ShapedType>().hasRank())) && ((type.cast<::mlir::ShapedType>().getRank()
@@ -66,7 +79,7 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SparseTensorOps2(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SparseTensorOps3(
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SparseTensorOps4(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
   if (!((((type.isa<::mlir::MemRefType>())) && ([](::mlir::Type elementType) { return (elementType.isSignlessInteger(1)); }(type.cast<::mlir::ShapedType>().getElementType()))) && (((type.cast<::mlir::ShapedType>().hasRank())) && ((type.cast<::mlir::ShapedType>().getRank()
@@ -77,22 +90,12 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SparseTensorOps3(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SparseTensorOps4(
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SparseTensorOps5(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
   if (!((type.isa<::mlir::IndexType>()))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
         << " must be index, but got " << type;
-  }
-  return ::mlir::success();
-}
-
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SparseTensorOps5(
-    ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
-    unsigned valueIndex) {
-  if (!((true))) {
-    return op->emitOpError(valueKind) << " #" << valueIndex
-        << " must be any type, but got " << type;
   }
   return ::mlir::success();
 }
@@ -105,8 +108,490 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SparseTensorOps0(
   }
   return ::mlir::success();
 }
+
+static ::mlir::LogicalResult __mlir_ods_local_region_constraint_SparseTensorOps0(
+    ::mlir::Operation *op, ::mlir::Region &region, ::llvm::StringRef regionName,
+    unsigned regionIndex) {
+  if (!((true))) {
+    return op->emitOpError("region #") << regionIndex
+        << (regionName.empty() ? " " : " ('" + regionName + "') ")
+        << "failed to verify constraint: any region";
+  }
+  return ::mlir::success();
+}
 } // namespace sparse_tensor
 } // namespace mlir
+namespace mlir {
+namespace sparse_tensor {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::sparse_tensor::BinaryOp definitions
+//===----------------------------------------------------------------------===//
+
+BinaryOpAdaptor::BinaryOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+
+BinaryOpAdaptor::BinaryOpAdaptor(BinaryOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+
+::mlir::ValueRange BinaryOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> BinaryOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange BinaryOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value BinaryOpAdaptor::x() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value BinaryOpAdaptor::y() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::DictionaryAttr BinaryOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::UnitAttr BinaryOpAdaptor::left_identityAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  ::mlir::UnitAttr attr = odsAttrs.get("left_identity").dyn_cast_or_null<::mlir::UnitAttr>();
+  return attr;
+}
+
+bool BinaryOpAdaptor::left_identity() {
+  auto attr = left_identityAttr();
+  return attr != nullptr;
+}
+
+::mlir::UnitAttr BinaryOpAdaptor::right_identityAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  ::mlir::UnitAttr attr = odsAttrs.get("right_identity").dyn_cast_or_null<::mlir::UnitAttr>();
+  return attr;
+}
+
+bool BinaryOpAdaptor::right_identity() {
+  auto attr = right_identityAttr();
+  return attr != nullptr;
+}
+
+::mlir::RegionRange BinaryOpAdaptor::getRegions() {
+  return odsRegions;
+}
+
+::mlir::Region &BinaryOpAdaptor::overlapRegion() {
+  return *odsRegions[0];
+}
+
+::mlir::Region &BinaryOpAdaptor::leftRegion() {
+  return *odsRegions[1];
+}
+
+::mlir::Region &BinaryOpAdaptor::rightRegion() {
+  return *odsRegions[2];
+}
+
+::mlir::LogicalResult BinaryOpAdaptor::verify(::mlir::Location loc) {
+  {
+    auto tblgen_left_identity = odsAttrs.get("left_identity");
+    if (tblgen_left_identity && !((tblgen_left_identity.isa<::mlir::UnitAttr>())))
+      return emitError(loc, "'sparse_tensor.binary' op ""attribute 'left_identity' failed to satisfy constraint: unit attribute");
+  }
+  {
+    auto tblgen_right_identity = odsAttrs.get("right_identity");
+    if (tblgen_right_identity && !((tblgen_right_identity.isa<::mlir::UnitAttr>())))
+      return emitError(loc, "'sparse_tensor.binary' op ""attribute 'right_identity' failed to satisfy constraint: unit attribute");
+  }
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> BinaryOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range BinaryOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value BinaryOp::x() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value BinaryOp::y() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::MutableOperandRange BinaryOp::xMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange BinaryOp::yMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> BinaryOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range BinaryOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value BinaryOp::output() {
+  return *getODSResults(0).begin();
+}
+
+::mlir::Region &BinaryOp::overlapRegion() {
+  return (*this)->getRegion(0);
+}
+
+::mlir::Region &BinaryOp::leftRegion() {
+  return (*this)->getRegion(1);
+}
+
+::mlir::Region &BinaryOp::rightRegion() {
+  return (*this)->getRegion(2);
+}
+
+::mlir::UnitAttr BinaryOp::left_identityAttr() {
+  return (*this)->getAttr(left_identityAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+}
+
+bool BinaryOp::left_identity() {
+  auto attr = left_identityAttr();
+  return attr != nullptr;
+}
+
+::mlir::UnitAttr BinaryOp::right_identityAttr() {
+  return (*this)->getAttr(right_identityAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+}
+
+bool BinaryOp::right_identity() {
+  auto attr = right_identityAttr();
+  return attr != nullptr;
+}
+
+void BinaryOp::left_identityAttr(::mlir::UnitAttr attr) {
+  (*this)->setAttr(left_identityAttrName(), attr);
+}
+
+void BinaryOp::right_identityAttr(::mlir::UnitAttr attr) {
+  (*this)->setAttr(right_identityAttrName(), attr);
+}
+
+::mlir::Attribute BinaryOp::removeLeft_identityAttr() {
+  return (*this)->removeAttr(left_identityAttrName());
+}
+
+::mlir::Attribute BinaryOp::removeRight_identityAttr() {
+  return (*this)->removeAttr(right_identityAttrName());
+}
+
+void BinaryOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value x, ::mlir::Value y, /*optional*/::mlir::UnitAttr left_identity, /*optional*/::mlir::UnitAttr right_identity) {
+  odsState.addOperands(x);
+  odsState.addOperands(y);
+  if (left_identity) {
+  odsState.addAttribute(left_identityAttrName(odsState.name), left_identity);
+  }
+  if (right_identity) {
+  odsState.addAttribute(right_identityAttrName(odsState.name), right_identity);
+  }
+  (void)odsState.addRegion();
+  (void)odsState.addRegion();
+  (void)odsState.addRegion();
+  odsState.addTypes(output);
+}
+
+void BinaryOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value x, ::mlir::Value y, /*optional*/::mlir::UnitAttr left_identity, /*optional*/::mlir::UnitAttr right_identity) {
+  odsState.addOperands(x);
+  odsState.addOperands(y);
+  if (left_identity) {
+  odsState.addAttribute(left_identityAttrName(odsState.name), left_identity);
+  }
+  if (right_identity) {
+  odsState.addAttribute(right_identityAttrName(odsState.name), right_identity);
+  }
+  (void)odsState.addRegion();
+  (void)odsState.addRegion();
+  (void)odsState.addRegion();
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void BinaryOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value x, ::mlir::Value y, /*optional*/bool left_identity, /*optional*/bool right_identity) {
+  odsState.addOperands(x);
+  odsState.addOperands(y);
+  if (left_identity) {
+  odsState.addAttribute(left_identityAttrName(odsState.name), odsBuilder.getUnitAttr());
+  }
+  if (right_identity) {
+  odsState.addAttribute(right_identityAttrName(odsState.name), odsBuilder.getUnitAttr());
+  }
+  (void)odsState.addRegion();
+  (void)odsState.addRegion();
+  (void)odsState.addRegion();
+  odsState.addTypes(output);
+}
+
+void BinaryOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value x, ::mlir::Value y, /*optional*/bool left_identity, /*optional*/bool right_identity) {
+  odsState.addOperands(x);
+  odsState.addOperands(y);
+  if (left_identity) {
+  odsState.addAttribute(left_identityAttrName(odsState.name), odsBuilder.getUnitAttr());
+  }
+  if (right_identity) {
+  odsState.addAttribute(right_identityAttrName(odsState.name), odsBuilder.getUnitAttr());
+  }
+  (void)odsState.addRegion();
+  (void)odsState.addRegion();
+  (void)odsState.addRegion();
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void BinaryOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  for (unsigned i = 0; i != 3; ++i)
+    (void)odsState.addRegion();
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult BinaryOp::verifyInvariantsImpl() {
+  {
+    auto tblgen_left_identity = (*this)->getAttr(left_identityAttrName());
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_SparseTensorOps0(*this, tblgen_left_identity, "left_identity")))
+      return ::mlir::failure();
+  }
+  {
+    auto tblgen_right_identity = (*this)->getAttr(right_identityAttrName());
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_SparseTensorOps0(*this, tblgen_right_identity, "right_identity")))
+      return ::mlir::failure();
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps0(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+
+    for (auto &region : ::llvm::makeMutableArrayRef((*this)->getRegion(0)))
+      if (::mlir::failed(__mlir_ods_local_region_constraint_SparseTensorOps0(*this, region, "overlapRegion", index++)))
+        return ::mlir::failure();
+
+    for (auto &region : ::llvm::makeMutableArrayRef((*this)->getRegion(1)))
+      if (::mlir::failed(__mlir_ods_local_region_constraint_SparseTensorOps0(*this, region, "leftRegion", index++)))
+        return ::mlir::failure();
+
+    for (auto &region : ::llvm::makeMutableArrayRef((*this)->getRegion(2)))
+      if (::mlir::failed(__mlir_ods_local_region_constraint_SparseTensorOps0(*this, region, "rightRegion", index++)))
+        return ::mlir::failure();
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult BinaryOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
+}
+
+::mlir::ParseResult BinaryOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::mlir::OpAsmParser::UnresolvedOperand xRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> xOperands(xRawOperands);  ::llvm::SMLoc xOperandsLoc;
+  (void)xOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand yRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> yOperands(yRawOperands);  ::llvm::SMLoc yOperandsLoc;
+  (void)yOperandsLoc;
+  ::mlir::Type xRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> xTypes(xRawTypes);
+  ::mlir::Type yRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> yTypes(yRawTypes);
+  ::mlir::Type outputRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> outputTypes(outputRawTypes);
+  std::unique_ptr<::mlir::Region> overlapRegionRegion = std::make_unique<::mlir::Region>();
+  std::unique_ptr<::mlir::Region> leftRegionRegion = std::make_unique<::mlir::Region>();
+  std::unique_ptr<::mlir::Region> rightRegionRegion = std::make_unique<::mlir::Region>();
+
+  xOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperand(xRawOperands[0]))
+    return ::mlir::failure();
+  if (parser.parseComma())
+    return ::mlir::failure();
+
+  yOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperand(yRawOperands[0]))
+    return ::mlir::failure();
+  if (parser.parseColon())
+    return ::mlir::failure();
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+
+  {
+    ::mlir::Type type;
+    if (parser.parseCustomTypeWithFallback(type))
+      return ::mlir::failure();
+    xRawTypes[0] = type;
+  }
+  if (parser.parseComma())
+    return ::mlir::failure();
+
+  {
+    ::mlir::Type type;
+    if (parser.parseCustomTypeWithFallback(type))
+      return ::mlir::failure();
+    yRawTypes[0] = type;
+  }
+  if (parser.parseKeyword("to"))
+    return ::mlir::failure();
+
+  {
+    ::mlir::Type type;
+    if (parser.parseCustomTypeWithFallback(type))
+      return ::mlir::failure();
+    outputRawTypes[0] = type;
+  }
+  if (parser.parseKeyword("overlap"))
+    return ::mlir::failure();
+  if (parser.parseEqual())
+    return ::mlir::failure();
+
+  if (parser.parseRegion(*overlapRegionRegion))
+    return ::mlir::failure();
+  if (parser.parseKeyword("left"))
+    return ::mlir::failure();
+  if (parser.parseEqual())
+    return ::mlir::failure();
+  if (succeeded(parser.parseOptionalKeyword("identity"))) {
+    result.addAttribute("left_identity", parser.getBuilder().getUnitAttr());
+  } else {
+
+  if (parser.parseRegion(*leftRegionRegion))
+    return ::mlir::failure();
+  }
+  if (parser.parseKeyword("right"))
+    return ::mlir::failure();
+  if (parser.parseEqual())
+    return ::mlir::failure();
+  if (succeeded(parser.parseOptionalKeyword("identity"))) {
+    result.addAttribute("right_identity", parser.getBuilder().getUnitAttr());
+  } else {
+
+  if (parser.parseRegion(*rightRegionRegion))
+    return ::mlir::failure();
+  }
+  result.addRegion(std::move(overlapRegionRegion));
+  result.addRegion(std::move(leftRegionRegion));
+  result.addRegion(std::move(rightRegionRegion));
+  result.addTypes(outputTypes);
+  if (parser.resolveOperands(xOperands, xTypes, xOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(yOperands, yTypes, yOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void BinaryOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ';
+  _odsPrinter << x();
+  _odsPrinter << ",";
+  _odsPrinter << ' ';
+  _odsPrinter << y();
+  _odsPrinter << ' ' << ":";
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"left_identity", "right_identity"});
+  _odsPrinter << ' ';
+  {
+    auto type = x().getType();
+    if (auto validType = type.dyn_cast<::mlir::Type>())
+      _odsPrinter.printStrippedAttrOrType(validType);
+   else
+     _odsPrinter << type;
+  }
+  _odsPrinter << ",";
+  _odsPrinter << ' ';
+  {
+    auto type = y().getType();
+    if (auto validType = type.dyn_cast<::mlir::Type>())
+      _odsPrinter.printStrippedAttrOrType(validType);
+   else
+     _odsPrinter << type;
+  }
+  _odsPrinter << ' ' << "to";
+  _odsPrinter << ' ';
+  {
+    auto type = output().getType();
+    if (auto validType = type.dyn_cast<::mlir::Type>())
+      _odsPrinter.printStrippedAttrOrType(validType);
+   else
+     _odsPrinter << type;
+  }
+  _odsPrinter.printNewline();
+  _odsPrinter << ' ' << "overlap";
+  _odsPrinter << ' ' << "=";
+  _odsPrinter << ' ';
+  _odsPrinter.printRegion(overlapRegion());
+  _odsPrinter.printNewline();
+  _odsPrinter << ' ' << "left";
+  _odsPrinter << ' ' << "=";
+  if ((*this)->getAttr("left_identity")) {
+  _odsPrinter << ' ' << "identity";
+  } else {
+  _odsPrinter << ' ';
+  _odsPrinter.printRegion(leftRegion());
+  }
+  _odsPrinter.printNewline();
+  _odsPrinter << ' ' << "right";
+  _odsPrinter << ' ' << "=";
+  if ((*this)->getAttr("right_identity")) {
+  _odsPrinter << ' ' << "identity";
+  } else {
+  _odsPrinter << ' ';
+  _odsPrinter.printRegion(rightRegion());
+  }
+}
+
+void BinaryOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace sparse_tensor
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::BinaryOp)
+
 namespace mlir {
 namespace sparse_tensor {
 
@@ -278,37 +763,37 @@ void CompressOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps0(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps1(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps1(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps2(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup2 = getODSOperands(2);
 
     for (auto v : valueGroup2) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps2(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps3(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup3 = getODSOperands(3);
 
     for (auto v : valueGroup3) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps3(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps4(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup4 = getODSOperands(4);
 
     for (auto v : valueGroup4) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps1(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps2(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup5 = getODSOperands(5);
 
     for (auto v : valueGroup5) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -322,23 +807,23 @@ void CompressOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::ParseResult CompressOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType tensorRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> tensorOperands(tensorRawOperands);  ::llvm::SMLoc tensorOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand tensorRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> tensorOperands(tensorRawOperands);  ::llvm::SMLoc tensorOperandsLoc;
   (void)tensorOperandsLoc;
-  ::mlir::OpAsmParser::OperandType indicesRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> indicesOperands(indicesRawOperands);  ::llvm::SMLoc indicesOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand indicesRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> indicesOperands(indicesRawOperands);  ::llvm::SMLoc indicesOperandsLoc;
   (void)indicesOperandsLoc;
-  ::mlir::OpAsmParser::OperandType valuesRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> valuesOperands(valuesRawOperands);  ::llvm::SMLoc valuesOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand valuesRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> valuesOperands(valuesRawOperands);  ::llvm::SMLoc valuesOperandsLoc;
   (void)valuesOperandsLoc;
-  ::mlir::OpAsmParser::OperandType filledRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> filledOperands(filledRawOperands);  ::llvm::SMLoc filledOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand filledRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> filledOperands(filledRawOperands);  ::llvm::SMLoc filledOperandsLoc;
   (void)filledOperandsLoc;
-  ::mlir::OpAsmParser::OperandType addedRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> addedOperands(addedRawOperands);  ::llvm::SMLoc addedOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand addedRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> addedOperands(addedRawOperands);  ::llvm::SMLoc addedOperandsLoc;
   (void)addedOperandsLoc;
-  ::mlir::OpAsmParser::OperandType countRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> countOperands(countRawOperands);  ::llvm::SMLoc countOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand countRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> countOperands(countRawOperands);  ::llvm::SMLoc countOperandsLoc;
   (void)countOperandsLoc;
   ::mlir::Type tensorRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> tensorTypes(tensorRawTypes);
@@ -534,7 +1019,7 @@ void CompressOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace sparse_tensor
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::CompressOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::CompressOp)
 
 namespace mlir {
 namespace sparse_tensor {
@@ -632,7 +1117,7 @@ void ConvertOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps0(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps1(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -641,7 +1126,7 @@ void ConvertOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps0(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps1(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -655,8 +1140,8 @@ void ConvertOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 }
 
 ::mlir::ParseResult ConvertOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType sourceRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand sourceRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
   (void)sourceOperandsLoc;
   ::mlir::Type sourceRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> sourceTypes(sourceRawTypes);
@@ -721,7 +1206,7 @@ void ConvertOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace sparse_tensor
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::ConvertOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::ConvertOp)
 
 namespace mlir {
 namespace sparse_tensor {
@@ -849,7 +1334,7 @@ void ExpandOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps0(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps1(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -858,25 +1343,25 @@ void ExpandOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps2(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps3(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSResults(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps3(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps4(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
     auto valueGroup2 = getODSResults(2);
 
     for (auto v : valueGroup2) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps1(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps2(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
     auto valueGroup3 = getODSResults(3);
 
     for (auto v : valueGroup3) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps4(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -890,8 +1375,8 @@ void ExpandOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::ParseResult ExpandOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType tensorRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> tensorOperands(tensorRawOperands);  ::llvm::SMLoc tensorOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand tensorRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> tensorOperands(tensorRawOperands);  ::llvm::SMLoc tensorOperandsLoc;
   (void)tensorOperandsLoc;
   ::mlir::Type tensorRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> tensorTypes(tensorRawTypes);
@@ -1016,7 +1501,7 @@ void ExpandOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace sparse_tensor
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::ExpandOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::ExpandOp)
 
 namespace mlir {
 namespace sparse_tensor {
@@ -1135,7 +1620,7 @@ void InitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -1144,7 +1629,7 @@ void InitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps0(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps1(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -1158,7 +1643,7 @@ void InitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 }
 
 ::mlir::ParseResult InitOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> sizesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> sizesOperands;
   ::llvm::SMLoc sizesOperandsLoc;
   (void)sizesOperandsLoc;
   ::mlir::Type resultRawTypes[1];
@@ -1210,7 +1695,7 @@ void InitOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace sparse_tensor
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::InitOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::InitOp)
 
 namespace mlir {
 namespace sparse_tensor {
@@ -1335,19 +1820,19 @@ void LexInsertOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps0(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps1(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps1(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps2(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup2 = getODSOperands(2);
 
     for (auto v : valueGroup2) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps5(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps0(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -1361,14 +1846,14 @@ void LexInsertOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 }
 
 ::mlir::ParseResult LexInsertOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType tensorRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> tensorOperands(tensorRawOperands);  ::llvm::SMLoc tensorOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand tensorRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> tensorOperands(tensorRawOperands);  ::llvm::SMLoc tensorOperandsLoc;
   (void)tensorOperandsLoc;
-  ::mlir::OpAsmParser::OperandType indicesRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> indicesOperands(indicesRawOperands);  ::llvm::SMLoc indicesOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand indicesRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> indicesOperands(indicesRawOperands);  ::llvm::SMLoc indicesOperandsLoc;
   (void)indicesOperandsLoc;
-  ::mlir::OpAsmParser::OperandType valueRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand valueRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
   (void)valueOperandsLoc;
   ::mlir::Type tensorRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> tensorTypes(tensorRawTypes);
@@ -1471,7 +1956,7 @@ void LexInsertOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace sparse_tensor
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::LexInsertOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::LexInsertOp)
 
 namespace mlir {
 namespace sparse_tensor {
@@ -1646,7 +2131,7 @@ void LoadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps0(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps1(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -1655,7 +2140,7 @@ void LoadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps0(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps1(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -1669,8 +2154,8 @@ void LoadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult LoadOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType tensorRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> tensorOperands(tensorRawOperands);  ::llvm::SMLoc tensorOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand tensorRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> tensorOperands(tensorRawOperands);  ::llvm::SMLoc tensorOperandsLoc;
   (void)tensorOperandsLoc;
   ::mlir::Type tensorRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> tensorTypes(tensorRawTypes);
@@ -1718,7 +2203,7 @@ void LoadOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace sparse_tensor
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::LoadOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::LoadOp)
 
 namespace mlir {
 namespace sparse_tensor {
@@ -1816,7 +2301,7 @@ void NewOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps5(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps0(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -1825,7 +2310,7 @@ void NewOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps0(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps1(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -1839,8 +2324,8 @@ void NewOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
 }
 
 ::mlir::ParseResult NewOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType sourceRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand sourceRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
   (void)sourceOperandsLoc;
   ::mlir::Type sourceRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> sourceTypes(sourceRawTypes);
@@ -1905,7 +2390,7 @@ void NewOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace sparse_tensor
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::NewOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::NewOp)
 
 namespace mlir {
 namespace sparse_tensor {
@@ -2014,13 +2499,13 @@ void OutOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps5(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps0(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps5(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps0(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -2034,11 +2519,11 @@ void OutOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
 }
 
 ::mlir::ParseResult OutOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType tensorRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> tensorOperands(tensorRawOperands);  ::llvm::SMLoc tensorOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand tensorRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> tensorOperands(tensorRawOperands);  ::llvm::SMLoc tensorOperandsLoc;
   (void)tensorOperandsLoc;
-  ::mlir::OpAsmParser::OperandType destRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> destOperands(destRawOperands);  ::llvm::SMLoc destOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand destRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> destOperands(destRawOperands);  ::llvm::SMLoc destOperandsLoc;
   (void)destOperandsLoc;
   ::mlir::Type tensorRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> tensorTypes(tensorRawTypes);
@@ -2110,7 +2595,7 @@ void OutOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace sparse_tensor
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::OutOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::OutOp)
 
 namespace mlir {
 namespace sparse_tensor {
@@ -2203,7 +2688,7 @@ void ReleaseOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps0(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps1(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -2217,8 +2702,8 @@ void ReleaseOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 }
 
 ::mlir::ParseResult ReleaseOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType tensorRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> tensorOperands(tensorRawOperands);  ::llvm::SMLoc tensorOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand tensorRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> tensorOperands(tensorRawOperands);  ::llvm::SMLoc tensorOperandsLoc;
   (void)tensorOperandsLoc;
   ::mlir::Type tensorRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> tensorTypes(tensorRawTypes);
@@ -2259,7 +2744,7 @@ void ReleaseOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace sparse_tensor
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::ReleaseOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::ReleaseOp)
 
 namespace mlir {
 namespace sparse_tensor {
@@ -2373,13 +2858,13 @@ void ToIndicesOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps0(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps1(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -2388,7 +2873,7 @@ void ToIndicesOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps2(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps3(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -2402,11 +2887,11 @@ void ToIndicesOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 }
 
 ::mlir::ParseResult ToIndicesOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType tensorRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> tensorOperands(tensorRawOperands);  ::llvm::SMLoc tensorOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand tensorRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> tensorOperands(tensorRawOperands);  ::llvm::SMLoc tensorOperandsLoc;
   (void)tensorOperandsLoc;
-  ::mlir::OpAsmParser::OperandType dimRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> dimOperands(dimRawOperands);  ::llvm::SMLoc dimOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand dimRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> dimOperands(dimRawOperands);  ::llvm::SMLoc dimOperandsLoc;
   (void)dimOperandsLoc;
   ::mlir::Type tensorRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> tensorTypes(tensorRawTypes);
@@ -2483,7 +2968,7 @@ void ToIndicesOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace sparse_tensor
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::ToIndicesOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::ToIndicesOp)
 
 namespace mlir {
 namespace sparse_tensor {
@@ -2597,13 +3082,13 @@ void ToPointersOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps0(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps1(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -2612,7 +3097,7 @@ void ToPointersOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps2(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps3(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -2626,11 +3111,11 @@ void ToPointersOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
 }
 
 ::mlir::ParseResult ToPointersOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType tensorRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> tensorOperands(tensorRawOperands);  ::llvm::SMLoc tensorOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand tensorRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> tensorOperands(tensorRawOperands);  ::llvm::SMLoc tensorOperandsLoc;
   (void)tensorOperandsLoc;
-  ::mlir::OpAsmParser::OperandType dimRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> dimOperands(dimRawOperands);  ::llvm::SMLoc dimOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand dimRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> dimOperands(dimRawOperands);  ::llvm::SMLoc dimOperandsLoc;
   (void)dimOperandsLoc;
   ::mlir::Type tensorRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> tensorTypes(tensorRawTypes);
@@ -2707,7 +3192,7 @@ void ToPointersOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effec
 
 } // namespace sparse_tensor
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::ToPointersOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::ToPointersOp)
 
 namespace mlir {
 namespace sparse_tensor {
@@ -2805,7 +3290,7 @@ void ToValuesOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps0(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps1(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -2814,7 +3299,7 @@ void ToValuesOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps2(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps3(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -2828,8 +3313,8 @@ void ToValuesOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::ParseResult ToValuesOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType tensorRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> tensorOperands(tensorRawOperands);  ::llvm::SMLoc tensorOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand tensorRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> tensorOperands(tensorRawOperands);  ::llvm::SMLoc tensorOperandsLoc;
   (void)tensorOperandsLoc;
   ::mlir::Type tensorRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> tensorTypes(tensorRawTypes);
@@ -2894,7 +3379,411 @@ void ToValuesOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace sparse_tensor
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::ToValuesOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::ToValuesOp)
+
+namespace mlir {
+namespace sparse_tensor {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::sparse_tensor::UnaryOp definitions
+//===----------------------------------------------------------------------===//
+
+UnaryOpAdaptor::UnaryOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+
+UnaryOpAdaptor::UnaryOpAdaptor(UnaryOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+
+::mlir::ValueRange UnaryOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> UnaryOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange UnaryOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value UnaryOpAdaptor::x() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::DictionaryAttr UnaryOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::RegionRange UnaryOpAdaptor::getRegions() {
+  return odsRegions;
+}
+
+::mlir::Region &UnaryOpAdaptor::presentRegion() {
+  return *odsRegions[0];
+}
+
+::mlir::Region &UnaryOpAdaptor::absentRegion() {
+  return *odsRegions[1];
+}
+
+::mlir::LogicalResult UnaryOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> UnaryOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range UnaryOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value UnaryOp::x() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::MutableOperandRange UnaryOp::xMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> UnaryOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range UnaryOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value UnaryOp::output() {
+  return *getODSResults(0).begin();
+}
+
+::mlir::Region &UnaryOp::presentRegion() {
+  return (*this)->getRegion(0);
+}
+
+::mlir::Region &UnaryOp::absentRegion() {
+  return (*this)->getRegion(1);
+}
+
+void UnaryOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value x) {
+  odsState.addOperands(x);
+  (void)odsState.addRegion();
+  (void)odsState.addRegion();
+  odsState.addTypes(output);
+}
+
+void UnaryOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value x) {
+  odsState.addOperands(x);
+  (void)odsState.addRegion();
+  (void)odsState.addRegion();
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void UnaryOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 1u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  for (unsigned i = 0; i != 2; ++i)
+    (void)odsState.addRegion();
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult UnaryOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps0(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+
+    for (auto &region : ::llvm::makeMutableArrayRef((*this)->getRegion(0)))
+      if (::mlir::failed(__mlir_ods_local_region_constraint_SparseTensorOps0(*this, region, "presentRegion", index++)))
+        return ::mlir::failure();
+
+    for (auto &region : ::llvm::makeMutableArrayRef((*this)->getRegion(1)))
+      if (::mlir::failed(__mlir_ods_local_region_constraint_SparseTensorOps0(*this, region, "absentRegion", index++)))
+        return ::mlir::failure();
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult UnaryOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
+}
+
+::mlir::ParseResult UnaryOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::mlir::OpAsmParser::UnresolvedOperand xRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> xOperands(xRawOperands);  ::llvm::SMLoc xOperandsLoc;
+  (void)xOperandsLoc;
+  ::mlir::Type xRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> xTypes(xRawTypes);
+  ::mlir::Type outputRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> outputTypes(outputRawTypes);
+  std::unique_ptr<::mlir::Region> presentRegionRegion = std::make_unique<::mlir::Region>();
+  std::unique_ptr<::mlir::Region> absentRegionRegion = std::make_unique<::mlir::Region>();
+
+  xOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperand(xRawOperands[0]))
+    return ::mlir::failure();
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  {
+    ::mlir::Type type;
+    if (parser.parseCustomTypeWithFallback(type))
+      return ::mlir::failure();
+    xRawTypes[0] = type;
+  }
+  if (parser.parseKeyword("to"))
+    return ::mlir::failure();
+
+  {
+    ::mlir::Type type;
+    if (parser.parseCustomTypeWithFallback(type))
+      return ::mlir::failure();
+    outputRawTypes[0] = type;
+  }
+  if (parser.parseKeyword("present"))
+    return ::mlir::failure();
+  if (parser.parseEqual())
+    return ::mlir::failure();
+
+  if (parser.parseRegion(*presentRegionRegion))
+    return ::mlir::failure();
+  if (parser.parseKeyword("absent"))
+    return ::mlir::failure();
+  if (parser.parseEqual())
+    return ::mlir::failure();
+
+  if (parser.parseRegion(*absentRegionRegion))
+    return ::mlir::failure();
+  result.addRegion(std::move(presentRegionRegion));
+  result.addRegion(std::move(absentRegionRegion));
+  result.addTypes(outputTypes);
+  if (parser.resolveOperands(xOperands, xTypes, xOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void UnaryOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ';
+  _odsPrinter << x();
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  {
+    auto type = x().getType();
+    if (auto validType = type.dyn_cast<::mlir::Type>())
+      _odsPrinter.printStrippedAttrOrType(validType);
+   else
+     _odsPrinter << type;
+  }
+  _odsPrinter << ' ' << "to";
+  _odsPrinter << ' ';
+  {
+    auto type = output().getType();
+    if (auto validType = type.dyn_cast<::mlir::Type>())
+      _odsPrinter.printStrippedAttrOrType(validType);
+   else
+     _odsPrinter << type;
+  }
+  _odsPrinter.printNewline();
+  _odsPrinter << ' ' << "present";
+  _odsPrinter << ' ' << "=";
+  _odsPrinter << ' ';
+  _odsPrinter.printRegion(presentRegion());
+  _odsPrinter.printNewline();
+  _odsPrinter << ' ' << "absent";
+  _odsPrinter << ' ' << "=";
+  _odsPrinter << ' ';
+  _odsPrinter.printRegion(absentRegion());
+}
+
+void UnaryOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace sparse_tensor
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::UnaryOp)
+
+namespace mlir {
+namespace sparse_tensor {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::sparse_tensor::YieldOp definitions
+//===----------------------------------------------------------------------===//
+
+YieldOpAdaptor::YieldOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+
+YieldOpAdaptor::YieldOpAdaptor(YieldOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+
+::mlir::ValueRange YieldOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> YieldOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange YieldOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value YieldOpAdaptor::result() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::DictionaryAttr YieldOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult YieldOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> YieldOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range YieldOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value YieldOp::result() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::MutableOperandRange YieldOp::resultMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> YieldOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range YieldOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+void YieldOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value result) {
+  odsState.addOperands(result);
+}
+
+void YieldOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value result) {
+  odsState.addOperands(result);
+  assert(resultTypes.size() == 0u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void YieldOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 1u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 0u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult YieldOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult YieldOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
+}
+
+::mlir::ParseResult YieldOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::mlir::OpAsmParser::UnresolvedOperand resultRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> resultOperands(resultRawOperands);  ::llvm::SMLoc resultOperandsLoc;
+  (void)resultOperandsLoc;
+  ::mlir::Type resultRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
+
+  resultOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperand(resultRawOperands[0]))
+    return ::mlir::failure();
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  {
+    ::mlir::Type type;
+    if (parser.parseCustomTypeWithFallback(type))
+      return ::mlir::failure();
+    resultRawTypes[0] = type;
+  }
+  if (parser.resolveOperands(resultOperands, resultTypes, resultOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void YieldOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ';
+  _odsPrinter << result();
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  {
+    auto type = result().getType();
+    if (auto validType = type.dyn_cast<::mlir::Type>())
+      _odsPrinter.printStrippedAttrOrType(validType);
+   else
+     _odsPrinter << type;
+  }
+}
+
+void YieldOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace sparse_tensor
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::YieldOp)
 
 
 #endif  // GET_OP_CLASSES

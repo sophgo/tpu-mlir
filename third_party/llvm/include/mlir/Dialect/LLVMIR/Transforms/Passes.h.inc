@@ -42,6 +42,11 @@ public:
     
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LLVMLegalizeForExportBase<DerivedT>)
+
 protected:
 };
 #undef GEN_PASS_CLASSES

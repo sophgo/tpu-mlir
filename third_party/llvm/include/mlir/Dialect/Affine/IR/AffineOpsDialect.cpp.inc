@@ -6,7 +6,7 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
-DEFINE_EXPLICIT_TYPE_ID(mlir::AffineDialect)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::AffineDialect)
 namespace mlir {
 
 AffineDialect::~AffineDialect() = default;

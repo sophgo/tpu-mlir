@@ -110,7 +110,7 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_TensorOps6(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_TensorOps0(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); })); })))) {
+  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))); })))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: Array of 64-bit integer array attributes";
   }
@@ -119,7 +119,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_TensorOps0(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_TensorOps1(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); })))) {
+  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); })))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: 64-bit integer array attribute";
   }
@@ -264,8 +264,8 @@ void CastOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 }
 
 ::mlir::ParseResult CastOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType sourceRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand sourceRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
   (void)sourceOperandsLoc;
   ::mlir::Type sourceRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> sourceTypes(sourceRawTypes);
@@ -330,7 +330,7 @@ void CastOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace tensor
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::CastOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::CastOp)
 
 namespace mlir {
 namespace tensor {
@@ -382,7 +382,7 @@ std::pair<unsigned, unsigned> CollapseShapeOpAdaptor::getODSOperandIndexAndLengt
     if (!tblgen_reassociation)
       return emitError(loc, "'tensor.collapse_shape' op ""requires attribute 'reassociation'");
 
-    if (tblgen_reassociation && !(((tblgen_reassociation.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_reassociation.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); })); }))))
+    if (tblgen_reassociation && !(((tblgen_reassociation.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_reassociation.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))); }))))
       return emitError(loc, "'tensor.collapse_shape' op ""attribute 'reassociation' failed to satisfy constraint: Array of 64-bit integer array attributes");
   }
   return ::mlir::success();
@@ -514,8 +514,8 @@ void CollapseShapeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult CollapseShapeOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType srcRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> srcOperands(srcRawOperands);  ::llvm::SMLoc srcOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand srcRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> srcOperands(srcRawOperands);  ::llvm::SMLoc srcOperandsLoc;
   (void)srcOperandsLoc;
   ::mlir::ArrayAttr reassociationAttr;
   ::mlir::Type srcRawTypes[1];
@@ -588,7 +588,7 @@ void CollapseShapeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Ef
 
 } // namespace tensor
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::CollapseShapeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::CollapseShapeOp)
 
 namespace mlir {
 namespace tensor {
@@ -769,11 +769,11 @@ void DimOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult DimOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType sourceRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand sourceRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
   (void)sourceOperandsLoc;
-  ::mlir::OpAsmParser::OperandType indexRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> indexOperands(indexRawOperands);  ::llvm::SMLoc indexOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand indexRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> indexOperands(indexRawOperands);  ::llvm::SMLoc indexOperandsLoc;
   (void)indexOperandsLoc;
   ::mlir::Type sourceRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> sourceTypes(sourceRawTypes);
@@ -830,7 +830,7 @@ void DimOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace tensor
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::DimOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::DimOp)
 
 namespace mlir {
 namespace tensor {
@@ -882,7 +882,7 @@ std::pair<unsigned, unsigned> ExpandShapeOpAdaptor::getODSOperandIndexAndLength(
     if (!tblgen_reassociation)
       return emitError(loc, "'tensor.expand_shape' op ""requires attribute 'reassociation'");
 
-    if (tblgen_reassociation && !(((tblgen_reassociation.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_reassociation.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); })); }))))
+    if (tblgen_reassociation && !(((tblgen_reassociation.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_reassociation.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))); }))))
       return emitError(loc, "'tensor.expand_shape' op ""attribute 'reassociation' failed to satisfy constraint: Array of 64-bit integer array attributes");
   }
   return ::mlir::success();
@@ -933,13 +933,6 @@ std::pair<unsigned, unsigned> ExpandShapeOp::getODSResultIndexAndLength(unsigned
 
 void ExpandShapeOp::reassociationAttr(::mlir::ArrayAttr attr) {
   (*this)->setAttr(reassociationAttrName(), attr);
-}
-
-void ExpandShapeOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value src, ArrayRef<ReassociationExprs> reassociation, ArrayRef<NamedAttribute> attrs) {
-      auto reassociationMaps =
-          convertReassociationMapsToIndices(odsBuilder, reassociation);
-      build(odsBuilder, odsState, src, reassociationMaps, attrs);
-    
 }
 
 void ExpandShapeOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Type resultType, Value src, ArrayRef<ReassociationIndices> reassociation, ArrayRef<NamedAttribute> attrs) {
@@ -1014,8 +1007,8 @@ void ExpandShapeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
 }
 
 ::mlir::ParseResult ExpandShapeOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType srcRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> srcOperands(srcRawOperands);  ::llvm::SMLoc srcOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand srcRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> srcOperands(srcRawOperands);  ::llvm::SMLoc srcOperandsLoc;
   (void)srcOperandsLoc;
   ::mlir::ArrayAttr reassociationAttr;
   ::mlir::Type srcRawTypes[1];
@@ -1088,7 +1081,7 @@ void ExpandShapeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effe
 
 } // namespace tensor
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::ExpandShapeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::ExpandShapeOp)
 
 namespace mlir {
 namespace tensor {
@@ -1267,10 +1260,10 @@ void ExtractOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 }
 
 ::mlir::ParseResult ExtractOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType tensorRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> tensorOperands(tensorRawOperands);  ::llvm::SMLoc tensorOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand tensorRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> tensorOperands(tensorRawOperands);  ::llvm::SMLoc tensorOperandsLoc;
   (void)tensorOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> indicesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
   ::llvm::SMLoc indicesOperandsLoc;
   (void)indicesOperandsLoc;
   ::mlir::Type tensorRawTypes[1];
@@ -1336,7 +1329,7 @@ void ExtractOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace tensor
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::ExtractOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::ExtractOp)
 
 namespace mlir {
 namespace tensor {
@@ -1442,7 +1435,7 @@ std::pair<unsigned, unsigned> ExtractSliceOpAdaptor::getODSOperandIndexAndLength
     if (!tblgen_static_offsets)
       return emitError(loc, "'tensor.extract_slice' op ""requires attribute 'static_offsets'");
 
-    if (tblgen_static_offsets && !(((tblgen_static_offsets.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_offsets.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))))
+    if (tblgen_static_offsets && !(((tblgen_static_offsets.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_offsets.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
       return emitError(loc, "'tensor.extract_slice' op ""attribute 'static_offsets' failed to satisfy constraint: 64-bit integer array attribute");
   }
   {
@@ -1450,7 +1443,7 @@ std::pair<unsigned, unsigned> ExtractSliceOpAdaptor::getODSOperandIndexAndLength
     if (!tblgen_static_sizes)
       return emitError(loc, "'tensor.extract_slice' op ""requires attribute 'static_sizes'");
 
-    if (tblgen_static_sizes && !(((tblgen_static_sizes.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_sizes.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))))
+    if (tblgen_static_sizes && !(((tblgen_static_sizes.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_sizes.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
       return emitError(loc, "'tensor.extract_slice' op ""attribute 'static_sizes' failed to satisfy constraint: 64-bit integer array attribute");
   }
   {
@@ -1458,7 +1451,7 @@ std::pair<unsigned, unsigned> ExtractSliceOpAdaptor::getODSOperandIndexAndLength
     if (!tblgen_static_strides)
       return emitError(loc, "'tensor.extract_slice' op ""requires attribute 'static_strides'");
 
-    if (tblgen_static_strides && !(((tblgen_static_strides.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_strides.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))))
+    if (tblgen_static_strides && !(((tblgen_static_strides.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_strides.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
       return emitError(loc, "'tensor.extract_slice' op ""attribute 'static_strides' failed to satisfy constraint: 64-bit integer array attribute");
   }
   return ::mlir::success();
@@ -1691,18 +1684,18 @@ void ExtractSliceOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
 }
 
 ::mlir::ParseResult ExtractSliceOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType sourceRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand sourceRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
   (void)sourceOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> offsetsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> offsetsOperands;
   ::llvm::SMLoc offsetsOperandsLoc;
   (void)offsetsOperandsLoc;
   ::mlir::ArrayAttr static_offsetsAttr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> sizesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> sizesOperands;
   ::llvm::SMLoc sizesOperandsLoc;
   (void)sizesOperandsLoc;
   ::mlir::ArrayAttr static_sizesAttr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> stridesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> stridesOperands;
   ::llvm::SMLoc stridesOperandsLoc;
   (void)stridesOperandsLoc;
   ::mlir::ArrayAttr static_stridesAttr;
@@ -1800,7 +1793,7 @@ void ExtractSliceOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Eff
 
 } // namespace tensor
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::ExtractSliceOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::ExtractSliceOp)
 
 namespace mlir {
 namespace tensor {
@@ -1930,7 +1923,7 @@ std::pair<unsigned, unsigned> FromElementsOp::getODSResultIndexAndLength(unsigne
 }
 
 ::mlir::ParseResult FromElementsOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> elementsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> elementsOperands;
   ::llvm::SMLoc elementsOperandsLoc;
   (void)elementsOperandsLoc;
   ::mlir::Type resultRawTypes[1];
@@ -1982,7 +1975,7 @@ void FromElementsOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Eff
 
 } // namespace tensor
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::FromElementsOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::FromElementsOp)
 
 namespace mlir {
 namespace tensor {
@@ -2146,7 +2139,7 @@ void GenerateOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::ParseResult GenerateOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> dynamicExtentsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> dynamicExtentsOperands;
   ::llvm::SMLoc dynamicExtentsOperandsLoc;
   (void)dynamicExtentsOperandsLoc;
   std::unique_ptr<::mlir::Region> bodyRegion = std::make_unique<::mlir::Region>();
@@ -2209,7 +2202,7 @@ void GenerateOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace tensor
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::GenerateOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::GenerateOp)
 
 namespace mlir {
 namespace tensor {
@@ -2412,13 +2405,13 @@ void InsertOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::ParseResult InsertOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType scalarRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> scalarOperands(scalarRawOperands);  ::llvm::SMLoc scalarOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand scalarRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> scalarOperands(scalarRawOperands);  ::llvm::SMLoc scalarOperandsLoc;
   (void)scalarOperandsLoc;
-  ::mlir::OpAsmParser::OperandType destRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> destOperands(destRawOperands);  ::llvm::SMLoc destOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand destRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> destOperands(destRawOperands);  ::llvm::SMLoc destOperandsLoc;
   (void)destOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> indicesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
   ::llvm::SMLoc indicesOperandsLoc;
   (void)indicesOperandsLoc;
   ::mlir::Type destRawTypes[1];
@@ -2495,7 +2488,7 @@ void InsertOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace tensor
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::InsertOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::InsertOp)
 
 namespace mlir {
 namespace tensor {
@@ -2605,7 +2598,7 @@ std::pair<unsigned, unsigned> InsertSliceOpAdaptor::getODSOperandIndexAndLength(
     if (!tblgen_static_offsets)
       return emitError(loc, "'tensor.insert_slice' op ""requires attribute 'static_offsets'");
 
-    if (tblgen_static_offsets && !(((tblgen_static_offsets.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_offsets.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))))
+    if (tblgen_static_offsets && !(((tblgen_static_offsets.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_offsets.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
       return emitError(loc, "'tensor.insert_slice' op ""attribute 'static_offsets' failed to satisfy constraint: 64-bit integer array attribute");
   }
   {
@@ -2613,7 +2606,7 @@ std::pair<unsigned, unsigned> InsertSliceOpAdaptor::getODSOperandIndexAndLength(
     if (!tblgen_static_sizes)
       return emitError(loc, "'tensor.insert_slice' op ""requires attribute 'static_sizes'");
 
-    if (tblgen_static_sizes && !(((tblgen_static_sizes.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_sizes.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))))
+    if (tblgen_static_sizes && !(((tblgen_static_sizes.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_sizes.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
       return emitError(loc, "'tensor.insert_slice' op ""attribute 'static_sizes' failed to satisfy constraint: 64-bit integer array attribute");
   }
   {
@@ -2621,7 +2614,7 @@ std::pair<unsigned, unsigned> InsertSliceOpAdaptor::getODSOperandIndexAndLength(
     if (!tblgen_static_strides)
       return emitError(loc, "'tensor.insert_slice' op ""requires attribute 'static_strides'");
 
-    if (tblgen_static_strides && !(((tblgen_static_strides.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_strides.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))))
+    if (tblgen_static_strides && !(((tblgen_static_strides.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_strides.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
       return emitError(loc, "'tensor.insert_slice' op ""attribute 'static_strides' failed to satisfy constraint: 64-bit integer array attribute");
   }
   return ::mlir::success();
@@ -2874,21 +2867,21 @@ void InsertSliceOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
 }
 
 ::mlir::ParseResult InsertSliceOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType sourceRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand sourceRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
   (void)sourceOperandsLoc;
-  ::mlir::OpAsmParser::OperandType destRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> destOperands(destRawOperands);  ::llvm::SMLoc destOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand destRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> destOperands(destRawOperands);  ::llvm::SMLoc destOperandsLoc;
   (void)destOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> offsetsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> offsetsOperands;
   ::llvm::SMLoc offsetsOperandsLoc;
   (void)offsetsOperandsLoc;
   ::mlir::ArrayAttr static_offsetsAttr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> sizesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> sizesOperands;
   ::llvm::SMLoc sizesOperandsLoc;
   (void)sizesOperandsLoc;
   ::mlir::ArrayAttr static_sizesAttr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> stridesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> stridesOperands;
   ::llvm::SMLoc stridesOperandsLoc;
   (void)stridesOperandsLoc;
   ::mlir::ArrayAttr static_stridesAttr;
@@ -3003,7 +2996,7 @@ void InsertSliceOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effe
 
 } // namespace tensor
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::InsertSliceOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::InsertSliceOp)
 
 namespace mlir {
 namespace tensor {
@@ -3113,7 +3106,7 @@ bool PadOpAdaptor::nofold() {
     if (!tblgen_static_low)
       return emitError(loc, "'tensor.pad' op ""requires attribute 'static_low'");
 
-    if (tblgen_static_low && !(((tblgen_static_low.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_low.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))))
+    if (tblgen_static_low && !(((tblgen_static_low.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_low.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
       return emitError(loc, "'tensor.pad' op ""attribute 'static_low' failed to satisfy constraint: 64-bit integer array attribute");
   }
   {
@@ -3121,7 +3114,7 @@ bool PadOpAdaptor::nofold() {
     if (!tblgen_static_high)
       return emitError(loc, "'tensor.pad' op ""requires attribute 'static_high'");
 
-    if (tblgen_static_high && !(((tblgen_static_high.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_high.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))))
+    if (tblgen_static_high && !(((tblgen_static_high.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_high.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
       return emitError(loc, "'tensor.pad' op ""attribute 'static_high' failed to satisfy constraint: 64-bit integer array attribute");
   }
   {
@@ -3390,14 +3383,14 @@ void PadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
 }
 
 ::mlir::ParseResult PadOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType sourceRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand sourceRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
   (void)sourceOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> lowOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> lowOperands;
   ::llvm::SMLoc lowOperandsLoc;
   (void)lowOperandsLoc;
   ::mlir::ArrayAttr static_lowAttr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> highOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> highOperands;
   ::llvm::SMLoc highOperandsLoc;
   (void)highOperandsLoc;
   ::mlir::ArrayAttr static_highAttr;
@@ -3515,7 +3508,7 @@ void PadOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace tensor
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::PadOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::PadOp)
 
 namespace mlir {
 namespace tensor {
@@ -3667,8 +3660,8 @@ void RankOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult RankOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType tensorRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> tensorOperands(tensorRawOperands);  ::llvm::SMLoc tensorOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand tensorRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> tensorOperands(tensorRawOperands);  ::llvm::SMLoc tensorOperandsLoc;
   (void)tensorOperandsLoc;
   ::mlir::Type tensorRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> tensorTypes(tensorRawTypes);
@@ -3714,7 +3707,7 @@ void RankOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace tensor
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::RankOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::RankOp)
 
 namespace mlir {
 namespace tensor {
@@ -3864,11 +3857,11 @@ void ReshapeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 }
 
 ::mlir::ParseResult ReshapeOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType sourceRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand sourceRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
   (void)sourceOperandsLoc;
-  ::mlir::OpAsmParser::OperandType shapeRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> shapeOperands(shapeRawOperands);  ::llvm::SMLoc shapeOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand shapeRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> shapeOperands(shapeRawOperands);  ::llvm::SMLoc shapeOperandsLoc;
   (void)shapeOperandsLoc;
   ::llvm::ArrayRef<::mlir::Type> allOperandTypes;
   ::llvm::ArrayRef<::mlir::Type> allResultTypes;
@@ -3895,7 +3888,7 @@ void ReshapeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   allOperandTypes = allOperand__allResult_functionType.getInputs();
   allResultTypes = allOperand__allResult_functionType.getResults();
   result.addTypes(allResultTypes);
-  if (parser.resolveOperands(::llvm::concat<const ::mlir::OpAsmParser::OperandType>(sourceOperands, shapeOperands), allOperandTypes, parser.getNameLoc(), result.operands))
+  if (parser.resolveOperands(::llvm::concat<const ::mlir::OpAsmParser::UnresolvedOperand>(sourceOperands, shapeOperands), allOperandTypes, parser.getNameLoc(), result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -3917,7 +3910,7 @@ void ReshapeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace tensor
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::ReshapeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::ReshapeOp)
 
 namespace mlir {
 namespace tensor {
@@ -4042,8 +4035,8 @@ void SplatOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 ::mlir::ParseResult SplatOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType inputRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> inputOperands(inputRawOperands);  ::llvm::SMLoc inputOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand inputRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> inputOperands(inputRawOperands);  ::llvm::SMLoc inputOperandsLoc;
   (void)inputOperandsLoc;
   ::mlir::Type aggregateRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> aggregateTypes(aggregateRawTypes);
@@ -4094,7 +4087,7 @@ void SplatOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace tensor
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::SplatOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::SplatOp)
 
 namespace mlir {
 namespace tensor {
@@ -4203,8 +4196,8 @@ void YieldOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 ::mlir::ParseResult YieldOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType valueRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand valueRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
   (void)valueOperandsLoc;
   ::mlir::Type valueRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> valueTypes(valueRawTypes);
@@ -4248,7 +4241,7 @@ void YieldOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace tensor
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::YieldOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::YieldOp)
 
 
 #endif  // GET_OP_CLASSES

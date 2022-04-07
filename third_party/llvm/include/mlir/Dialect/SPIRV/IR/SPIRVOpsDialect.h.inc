@@ -77,4 +77,4 @@ public:
   };
 } // namespace spirv
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SPIRVDialect)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::spirv::SPIRVDialect)

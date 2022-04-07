@@ -42,6 +42,11 @@ public:
     
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(CSEBase<DerivedT>)
+
 protected:
   ::mlir::Pass::Statistic numCSE{this, "num-cse'd", "Number of operations CSE'd"};
   ::mlir::Pass::Statistic numDCE{this, "num-dce'd", "Number of operations DCE'd"};
@@ -88,12 +93,17 @@ public:
     
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(CanonicalizerBase<DerivedT>)
+
 protected:
   ::mlir::Pass::Option<bool> topDownProcessingEnabled{*this, "top-down", ::llvm::cl::desc("Seed the worklist in general top-down order"), ::llvm::cl::init(true)};
   ::mlir::Pass::Option<bool> enableRegionSimplification{*this, "region-simplify", ::llvm::cl::desc("Seed the worklist in general top-down order"), ::llvm::cl::init(true)};
   ::mlir::Pass::Option<int64_t> maxIterations{*this, "max-iterations", ::llvm::cl::desc("Seed the worklist in general top-down order"), ::llvm::cl::init(10)};
-  ::mlir::Pass::ListOption<std::string> disabledPatterns{*this, "disable-patterns", ::llvm::cl::desc("Labels of patterns that should be filtered out during application"), llvm::cl::MiscFlags::CommaSeparated};
-  ::mlir::Pass::ListOption<std::string> enabledPatterns{*this, "enable-patterns", ::llvm::cl::desc("Labels of patterns that should be used during application, all other patterns are filtered out"), llvm::cl::MiscFlags::CommaSeparated};
+  ::mlir::Pass::ListOption<std::string> disabledPatterns{*this, "disable-patterns", ::llvm::cl::desc("Labels of patterns that should be filtered out during application")};
+  ::mlir::Pass::ListOption<std::string> enabledPatterns{*this, "enable-patterns", ::llvm::cl::desc("Labels of patterns that should be used during application, all other patterns are filtered out")};
 };
 
 //===----------------------------------------------------------------------===//
@@ -136,6 +146,11 @@ public:
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
     
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ControlFlowSinkBase<DerivedT>)
 
 protected:
   ::mlir::Pass::Statistic numSunk{this, "num-sunk", "Number of operations sunk"};
@@ -182,9 +197,14 @@ public:
     
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(InlinerBase<DerivedT>)
+
 protected:
   ::mlir::Pass::Option<std::string> defaultPipelineStr{*this, "default-pipeline", ::llvm::cl::desc("The default optimizer pipeline used for callables")};
-  ::mlir::Pass::ListOption<std::string> opPipelineStrs{*this, "op-pipelines", ::llvm::cl::desc("Callable operation specific optimizer pipelines (in the form of `dialect.op(pipeline)`)"), llvm::cl::MiscFlags::CommaSeparated};
+  ::mlir::Pass::ListOption<OpPassManager> opPipelineList{*this, "op-pipelines", ::llvm::cl::desc("Callable operation specific optimizer pipelines (in the form of `dialect.op(pipeline)`)")};
   ::mlir::Pass::Option<unsigned> maxInliningIterations{*this, "max-iterations", ::llvm::cl::desc("Maximum number of iterations when inlining within an SCC"), ::llvm::cl::init(4)};
 };
 
@@ -228,6 +248,11 @@ public:
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
     
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LocationSnapshotBase<DerivedT>)
 
 protected:
   ::mlir::Pass::Option<std::string> fileName{*this, "filename", ::llvm::cl::desc("The filename to print the generated IR")};
@@ -275,6 +300,11 @@ public:
     
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LoopInvariantCodeMotionBase<DerivedT>)
+
 protected:
 };
 
@@ -318,6 +348,11 @@ public:
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
     
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(PrintOpStatsBase<DerivedT>)
 
 protected:
 };
@@ -363,6 +398,11 @@ public:
     
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(SCCPBase<DerivedT>)
+
 protected:
 };
 
@@ -406,6 +446,11 @@ public:
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
     
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(StripDebugInfoBase<DerivedT>)
 
 protected:
 };
@@ -451,7 +496,13 @@ public:
     
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(SymbolDCEBase<DerivedT>)
+
 protected:
+  ::mlir::Pass::Statistic numDCE{this, "num-dce'd", "Number of symbols DCE'd"};
 };
 
 //===----------------------------------------------------------------------===//
@@ -495,8 +546,13 @@ public:
     
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(SymbolPrivatizeBase<DerivedT>)
+
 protected:
-  ::mlir::Pass::ListOption<std::string> exclude{*this, "exclude", ::llvm::cl::desc("Comma separated list of symbols that should not be marked private"), llvm::cl::MiscFlags::CommaSeparated};
+  ::mlir::Pass::ListOption<std::string> exclude{*this, "exclude", ::llvm::cl::desc("Comma separated list of symbols that should not be marked private")};
 };
 
 //===----------------------------------------------------------------------===//
@@ -539,6 +595,11 @@ public:
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
     
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ViewOpGraphBase<DerivedT>)
 
 protected:
   ::mlir::Pass::Option<unsigned> maxLabelLen{*this, "max-label-len", ::llvm::cl::desc("Limit attribute/type length to number of chars"), ::llvm::cl::init(20)};

@@ -6,12 +6,12 @@
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class ExpandOpsBase : public ::mlir::OperationPass<FuncOp> {
+class ExpandOpsBase : public ::mlir::OperationPass<> {
 public:
   using Base = ExpandOpsBase;
 
-  ExpandOpsBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  ExpandOpsBase(const ExpandOpsBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  ExpandOpsBase() : ::mlir::OperationPass<>(::mlir::TypeID::get<DerivedT>()) {}
+  ExpandOpsBase(const ExpandOpsBase &other) : ::mlir::OperationPass<>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -41,6 +41,11 @@ public:
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
     
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ExpandOpsBase<DerivedT>)
 
 protected:
 };
@@ -92,6 +97,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(FoldSubViewOpsBase<DerivedT>)
+
 protected:
 };
 
@@ -137,6 +147,11 @@ public:
   registry.insert<AffineDialect>();
 
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(NormalizeMemRefsBase<DerivedT>)
 
 protected:
 };
@@ -185,6 +200,11 @@ public:
   registry.insert<tensor::TensorDialect>();
 
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ResolveRankedShapeTypeResultDimsBase<DerivedT>)
 
 protected:
 };
@@ -235,6 +255,11 @@ public:
   registry.insert<tensor::TensorDialect>();
 
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ResolveShapedTypeResultDimsBase<DerivedT>)
 
 protected:
 };

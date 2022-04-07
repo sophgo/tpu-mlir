@@ -86,10 +86,10 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::AllReduceOperationAttr)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::DimensionAttr)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::ShuffleModeAttr)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::MMAElementwiseOpAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::AllReduceOperationAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::DimensionAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::ShuffleModeAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::MMAElementwiseOpAttr)
 
 #endif  // GET_ATTRDEF_CLASSES
 

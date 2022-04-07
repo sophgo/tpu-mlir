@@ -6,7 +6,7 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
-DEFINE_EXPLICIT_TYPE_ID(::mlir::math::MathDialect)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::math::MathDialect)
 namespace mlir {
 namespace math {
 

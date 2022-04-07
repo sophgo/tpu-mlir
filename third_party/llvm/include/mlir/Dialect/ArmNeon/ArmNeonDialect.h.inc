@@ -27,4 +27,4 @@ public:
 };
 } // namespace arm_neon
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_neon::ArmNeonDialect)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_neon::ArmNeonDialect)

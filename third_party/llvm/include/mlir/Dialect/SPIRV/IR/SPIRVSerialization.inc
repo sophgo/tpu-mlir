@@ -39,6 +39,11 @@ Serializer::processOp<::mlir::spirv::AccessChainOp>(::mlir::spirv::AccessChainOp
 }
 
 template <> LogicalResult
+Serializer::processOp<::mlir::spirv::AssumeTrueKHROp>(::mlir::spirv::AssumeTrueKHROp op) {
+  return processOpWithoutGrammarAttr(op, "", static_cast<uint32_t>(spirv::Opcode::OpAssumeTrueKHR));
+}
+
+template <> LogicalResult
 Serializer::processOp<::mlir::spirv::AtomicAndOp>(::mlir::spirv::AtomicAndOp op) {
   SmallVector<uint32_t, 4> operands;
   SmallVector<StringRef, 2> elidedAttrs;
@@ -2672,9 +2677,17 @@ Serializer::processOp<::mlir::spirv::VectorShuffleOp>(::mlir::spirv::VectorShuff
   return success();
 }
 
+template <> LogicalResult
+Serializer::processOp<::mlir::spirv::VectorTimesScalarOp>(::mlir::spirv::VectorTimesScalarOp op) {
+  return processOpWithoutGrammarAttr(op, "", static_cast<uint32_t>(spirv::Opcode::OpVectorTimesScalar));
+}
+
 LogicalResult Serializer::dispatchToAutogenSerialization(Operation *op) {
   if (isa<::mlir::spirv::AccessChainOp>(op)) {
     return processOp(cast<::mlir::spirv::AccessChainOp>(op));
+  }
+  if (isa<::mlir::spirv::AssumeTrueKHROp>(op)) {
+    return processOp(cast<::mlir::spirv::AssumeTrueKHROp>(op));
   }
   if (isa<::mlir::spirv::AtomicAndOp>(op)) {
     return processOp(cast<::mlir::spirv::AtomicAndOp>(op));
@@ -3216,6 +3229,9 @@ LogicalResult Serializer::dispatchToAutogenSerialization(Operation *op) {
   if (isa<::mlir::spirv::VectorShuffleOp>(op)) {
     return processOp(cast<::mlir::spirv::VectorShuffleOp>(op));
   }
+  if (isa<::mlir::spirv::VectorTimesScalarOp>(op)) {
+    return processOp(cast<::mlir::spirv::VectorTimesScalarOp>(op));
+  }
   return op->emitError("unhandled operation serialization");
 }
 
@@ -3275,6 +3291,11 @@ Deserializer::processOp<::mlir::spirv::AccessChainOp>(ArrayRef<uint32_t> words) 
   if (op.hasTrait<OpTrait::IsTerminator>())
     (void)clearDebugLine();
   return success();
+}
+
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::AssumeTrueKHROp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.AssumeTrueKHR", false, 1);
 }
 
 template <> LogicalResult
@@ -6380,10 +6401,17 @@ Deserializer::processOp<::mlir::spirv::VectorShuffleOp>(ArrayRef<uint32_t> words
   return success();
 }
 
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::VectorTimesScalarOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.VectorTimesScalar", true, 2);
+}
+
 LogicalResult spirv::Deserializer::dispatchToAutogenDeserialization(spirv::Opcode opcode, ArrayRef<uint32_t> words) {
   switch (opcode) {
   case spirv::Opcode::OpAccessChain:
     return processOp<::mlir::spirv::AccessChainOp>(words);
+  case spirv::Opcode::OpAssumeTrueKHR:
+    return processOp<::mlir::spirv::AssumeTrueKHROp>(words);
   case spirv::Opcode::OpAtomicAnd:
     return processOp<::mlir::spirv::AtomicAndOp>(words);
   case spirv::Opcode::OpAtomicCompareExchange:
@@ -6648,6 +6676,8 @@ LogicalResult spirv::Deserializer::dispatchToAutogenDeserialization(spirv::Opcod
     return processOp<::mlir::spirv::VectorInsertDynamicOp>(words);
   case spirv::Opcode::OpVectorShuffle:
     return processOp<::mlir::spirv::VectorShuffleOp>(words);
+  case spirv::Opcode::OpVectorTimesScalar:
+    return processOp<::mlir::spirv::VectorTimesScalarOp>(words);
   default:
     ;
   }

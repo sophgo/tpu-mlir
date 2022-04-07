@@ -108,7 +108,6 @@
 #include "llvm/Analysis/AssumeBundleQueries.h"
 #include "llvm/Analysis/CFG.h"
 #include "llvm/Analysis/CGSCCPassManager.h"
-#include "llvm/Analysis/CallGraphSCCPass.h"
 #include "llvm/Analysis/LazyCallGraph.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/MustExecute.h"
@@ -121,7 +120,7 @@
 #include "llvm/IR/PassManager.h"
 #include "llvm/Support/Allocator.h"
 #include "llvm/Support/Casting.h"
-#include "llvm/Support/GraphWriter.h"
+#include "llvm/Support/DOTGraphTraits.h"
 #include "llvm/Support/TimeProfiler.h"
 #include "llvm/Transforms/Utils/CallGraphUpdater.h"
 
@@ -129,6 +128,10 @@
 
 namespace llvm {
 
+class DataLayout;
+class LLVMContext;
+class Pass;
+template <typename Fn> class function_ref;
 struct AADepGraphNode;
 struct AADepGraph;
 struct Attributor;
@@ -151,8 +154,11 @@ bool isNoSyncInst(Attributor &A, const Instruction &I,
 
 /// Return true if \p V is dynamically unique, that is, there are no two
 /// "instances" of \p V at runtime with different values.
+/// Note: If \p ForAnalysisOnly is set we only check that the Attributor will
+/// never use \p V to represent two "instances" not that \p V could not
+/// technically represent them.
 bool isDynamicallyUnique(Attributor &A, const AbstractAttribute &QueryingAA,
-                         const Value &V);
+                         const Value &V, bool ForAnalysisOnly = true);
 
 /// Return true if \p V is a valid value in \p Scope, that is a constant or an
 /// instruction/argument of \p Scope.
@@ -199,9 +205,26 @@ bool getAssumedUnderlyingObjects(Attributor &A, const Value &Ptr,
                                  bool &UsedAssumedInformation,
                                  bool Intraprocedural = false);
 
+/// Collect all potential values \p LI could read into \p PotentialValues. That
+/// is, the only values read by \p LI are assumed to be known and all are in
+/// \p PotentialValues. \p PotentialValueOrigins will contain all the
+/// instructions that might have put a potential value into \p PotentialValues.
+/// Dependences onto \p QueryingAA are properly tracked, \p
+/// UsedAssumedInformation will inform the caller if assumed information was
+/// used.
+///
+/// \returns True if the assumed potential copies are all in \p PotentialValues,
+///          false if something went wrong and the copies could not be
+///          determined.
+bool getPotentiallyLoadedValues(
+    Attributor &A, LoadInst &LI, SmallSetVector<Value *, 4> &PotentialValues,
+    SmallSetVector<Instruction *, 4> &PotentialValueOrigins,
+    const AbstractAttribute &QueryingAA, bool &UsedAssumedInformation,
+    bool OnlyExact = false);
+
 /// Collect all potential values of the one stored by \p SI into
 /// \p PotentialCopies. That is, the only copies that were made via the
-/// store are assumed to be known and all in \p PotentialCopies. Dependences
+/// store are assumed to be known and all are in \p PotentialCopies. Dependences
 /// onto \p QueryingAA are properly tracked, \p UsedAssumedInformation will
 /// inform the caller if assumed information was used.
 ///
@@ -210,7 +233,8 @@ bool getAssumedUnderlyingObjects(Attributor &A, const Value &Ptr,
 ///          determined.
 bool getPotentialCopiesOfStoredValue(
     Attributor &A, StoreInst &SI, SmallSetVector<Value *, 4> &PotentialCopies,
-    const AbstractAttribute &QueryingAA, bool &UsedAssumedInformation);
+    const AbstractAttribute &QueryingAA, bool &UsedAssumedInformation,
+    bool OnlyExact = false);
 
 /// Return true if \p IRP is readonly. This will query respective AAs that
 /// deduce the information and introduce dependences for \p QueryingAA.
@@ -1038,6 +1062,10 @@ struct InformationCache {
     return FI.CalledViaMustTail || FI.ContainsMustTailCall;
   }
 
+  bool isOnlyUsedByAssume(const Instruction &I) const {
+    return AssumeOnlyValues.contains(&I);
+  }
+
   /// Return the analysis result from a pass \p AP for function \p F.
   template <typename AP>
   typename AP::Result *getAnalysisResultForFunction(const Function &F) {
@@ -1130,6 +1158,9 @@ private:
   /// A map with knowledge retained in `llvm.assume` instructions.
   RetainedKnowledgeMap KnowledgeMap;
 
+  /// A container for all instructions that are only used by `llvm.assume`.
+  SetVector<const Instruction *> AssumeOnlyValues;
+
   /// Getters for analysis.
   AnalysisGetter &AG;
 
@@ -1189,14 +1220,18 @@ struct Attributor {
   /// \param Allowed If not null, a set limiting the attribute opportunities.
   /// \param DeleteFns Whether to delete functions.
   /// \param RewriteSignatures Whether to rewrite function signatures.
+  /// \param DefaultInitializeLiveInternals Whether to initialize default AAs
+  ///                                       for live internal functions.
   Attributor(SetVector<Function *> &Functions, InformationCache &InfoCache,
              CallGraphUpdater &CGUpdater,
              DenseSet<const char *> *Allowed = nullptr, bool DeleteFns = true,
-             bool RewriteSignatures = true)
+             bool RewriteSignatures = true,
+             bool DefaultInitializeLiveInternals = true)
       : Allocator(InfoCache.Allocator), Functions(Functions),
         InfoCache(InfoCache), CGUpdater(CGUpdater), Allowed(Allowed),
         DeleteFns(DeleteFns), RewriteSignatures(RewriteSignatures),
-        MaxFixpointIterations(None), OREGetter(None), PassName("") {}
+        MaxFixpointIterations(None), OREGetter(None), PassName(""),
+        DefaultInitializeLiveInternals(DefaultInitializeLiveInternals) {}
 
   /// Constructor
   ///
@@ -1222,7 +1257,7 @@ struct Attributor {
         DeleteFns(DeleteFns), RewriteSignatures(RewriteSignatures),
         MaxFixpointIterations(MaxFixpointIterations),
         OREGetter(Optional<OptimizationRemarkGetter>(OREGetter)),
-        PassName(PassName) {}
+        PassName(PassName), DefaultInitializeLiveInternals(false) {}
 
   ~Attributor();
 
@@ -1332,8 +1367,6 @@ struct Attributor {
 
     // Initialize and update is allowed for code outside of the current function
     // set, but only if it is part of module slice we are allowed to look at.
-    // Only exception is AAIsDeadFunction whose initialization is prevented
-    // directly, since we don't to compute it twice.
     if (FnScope && !Functions.count(const_cast<Function *>(FnScope))) {
       if (!getInfoCache().isInModuleSlice(*FnScope)) {
         AA.getState().indicatePessimisticFixpoint();
@@ -1486,7 +1519,8 @@ struct Attributor {
     assert(F.hasLocalLinkage() &&
            "Only local linkage is assumed dead initially.");
 
-    identifyDefaultAbstractAttributes(const_cast<Function &>(F));
+    if (DefaultInitializeLiveInternals)
+      identifyDefaultAbstractAttributes(const_cast<Function &>(F));
   }
 
   /// Helper function to remove callsite.
@@ -1537,7 +1571,7 @@ struct Attributor {
   /// is used, e.g., to replace \p II with a call, after information was
   /// manifested.
   void registerInvokeWithDeadSuccessor(InvokeInst &II) {
-    InvokeWithDeadSuccessor.push_back(&II);
+    InvokeWithDeadSuccessor.insert(&II);
   }
 
   /// Record that \p I is deleted after information was manifested. This also
@@ -1673,6 +1707,7 @@ public:
                        const AbstractAttribute &QueryingAA, const Value &V,
                        bool CheckBBLivenessOnly = false,
                        DepClassTy LivenessDepClass = DepClassTy::OPTIONAL,
+                       bool IgnoreDroppableUses = true,
                        function_ref<bool(const Use &OldU, const Use &NewU)>
                            EquivalentUseCB = nullptr);
 
@@ -1865,6 +1900,19 @@ public:
   bool checkForAllReturnedValues(function_ref<bool(Value &)> Pred,
                                  const AbstractAttribute &QueryingAA);
 
+  /// Check \p Pred on all instructions in \p Fn with an opcode present in
+  /// \p Opcodes.
+  ///
+  /// This method will evaluate \p Pred on all instructions with an opcode
+  /// present in \p Opcode and return true if \p Pred holds on all of them.
+  bool checkForAllInstructions(function_ref<bool(Instruction &)> Pred,
+                               const Function *Fn,
+                               const AbstractAttribute &QueryingAA,
+                               const ArrayRef<unsigned> &Opcodes,
+                               bool &UsedAssumedInformation,
+                               bool CheckBBLivenessOnly = false,
+                               bool CheckPotentiallyDead = false);
+
   /// Check \p Pred on all instructions with an opcode present in \p Opcodes.
   ///
   /// This method will evaluate \p Pred on all instructions with an opcode
@@ -1993,7 +2041,7 @@ private:
   /// (\see registerFunctionSignatureRewrite) and return Changed if the module
   /// was altered.
   ChangeStatus
-  rewriteFunctionSignatures(SmallPtrSetImpl<Function *> &ModifiedFns);
+  rewriteFunctionSignatures(SmallSetVector<Function *, 8> &ModifiedFns);
 
   /// Check if the Attribute \p AA should be seeded.
   /// See getOrCreateAAFor.
@@ -2025,7 +2073,7 @@ private:
 
   /// Set of functions for which we modified the content such that it might
   /// impact the call graph.
-  SmallPtrSet<Function *, 8> CGModifiedFunctions;
+  SmallSetVector<Function *, 8> CGModifiedFunctions;
 
   /// Information about a dependence. If FromAA is changed ToAA needs to be
   /// updated as well.
@@ -2062,17 +2110,17 @@ private:
 
   /// Uses we replace with a new value after manifest is done. We will remove
   /// then trivially dead instructions as well.
-  DenseMap<Use *, Value *> ToBeChangedUses;
+  SmallMapVector<Use *, Value *, 32> ToBeChangedUses;
 
   /// Values we replace with a new value after manifest is done. We will remove
   /// then trivially dead instructions as well.
-  DenseMap<Value *, std::pair<Value *, bool>> ToBeChangedValues;
+  SmallMapVector<Value *, std::pair<Value *, bool>, 32> ToBeChangedValues;
 
   /// Instructions we replace with `unreachable` insts after manifest is done.
-  SmallDenseSet<WeakVH, 16> ToBeChangedToUnreachableInsts;
+  SmallSetVector<WeakVH, 16> ToBeChangedToUnreachableInsts;
 
   /// Invoke instructions with at least a single dead successor block.
-  SmallVector<WeakVH, 16> InvokeWithDeadSuccessor;
+  SmallSetVector<WeakVH, 16> InvokeWithDeadSuccessor;
 
   /// A flag that indicates which stage of the process we are in. Initially, the
   /// phase is SEEDING. Phase is changed in `Attributor::run()`
@@ -2089,10 +2137,10 @@ private:
   /// Functions, blocks, and instructions we delete after manifest is done.
   ///
   ///{
-  SmallPtrSet<Function *, 8> ToBeDeletedFunctions;
-  SmallPtrSet<BasicBlock *, 8> ToBeDeletedBlocks;
   SmallPtrSet<BasicBlock *, 8> ManifestAddedBlocks;
-  SmallDenseSet<WeakVH, 8> ToBeDeletedInsts;
+  SmallSetVector<Function *, 8> ToBeDeletedFunctions;
+  SmallSetVector<BasicBlock *, 8> ToBeDeletedBlocks;
+  SmallSetVector<WeakVH, 8> ToBeDeletedInsts;
   ///}
 
   /// Callback to get an OptimizationRemarkEmitter from a Function *.
@@ -2104,6 +2152,13 @@ private:
 
   /// The name of the pass to emit remarks for.
   const char *PassName = "";
+
+  /// Flag to determine if we want to initialize all default AAs for an internal
+  /// function marked live.
+  /// TODO: This should probably be a callback, or maybe
+  /// identifyDefaultAbstractAttributes should be virtual, something to allow
+  /// customizable lazy initialization for internal functions.
+  const bool DefaultInitializeLiveInternals;
 
   friend AADepGraph;
   friend AttributorCallGraph;
@@ -3369,6 +3424,12 @@ protected:
   /// Returns true if \p I is known dead.
   virtual bool isKnownDead(const Instruction *I) const = 0;
 
+  /// Return true if the underlying value is a store that is known to be
+  /// removable. This is different from dead stores as the removable store
+  /// can have an effect on live values, especially loads, but that effect
+  /// is propagated which allows us to remove the store in turn.
+  virtual bool isRemovableStore() const { return false; }
+
   /// This method is used to check if at least one instruction in a collection
   /// of instructions is live.
   template <typename T> bool isLiveInstSet(T begin, T end) const {
@@ -3642,6 +3703,46 @@ struct AAAlign : public IRAttribute<
 
   /// Create an abstract attribute view for the position \p IRP.
   static AAAlign &createForPosition(const IRPosition &IRP, Attributor &A);
+
+  /// Unique ID (due to the unique address)
+  static const char ID;
+};
+
+/// An abstract interface to track if a value leaves it's defining function
+/// instance.
+/// TODO: We should make it a ternary AA tracking uniqueness, and uniqueness
+/// wrt. the Attributor analysis separately.
+struct AAInstanceInfo : public StateWrapper<BooleanState, AbstractAttribute> {
+  AAInstanceInfo(const IRPosition &IRP, Attributor &A)
+      : StateWrapper<BooleanState, AbstractAttribute>(IRP) {}
+
+  /// Return true if we know that the underlying value is unique in its scope
+  /// wrt. the Attributor analysis. That means it might not be unique but we can
+  /// still use pointer equality without risking to represent two instances with
+  /// one `llvm::Value`.
+  bool isKnownUniqueForAnalysis() const { return isKnown(); }
+
+  /// Return true if we assume that the underlying value is unique in its scope
+  /// wrt. the Attributor analysis. That means it might not be unique but we can
+  /// still use pointer equality without risking to represent two instances with
+  /// one `llvm::Value`.
+  bool isAssumedUniqueForAnalysis() const { return isAssumed(); }
+
+  /// Create an abstract attribute view for the position \p IRP.
+  static AAInstanceInfo &createForPosition(const IRPosition &IRP,
+                                           Attributor &A);
+
+  /// See AbstractAttribute::getName()
+  const std::string getName() const override { return "AAInstanceInfo"; }
+
+  /// See AbstractAttribute::getIdAddr()
+  const char *getIdAddr() const override { return &ID; }
+
+  /// This function should return true if the type of the \p AA is
+  /// AAInstanceInfo
+  static bool classof(const AbstractAttribute *AA) {
+    return (AA->getIdAddr() == &ID);
+  }
 
   /// Unique ID (due to the unique address)
   static const char ID;
@@ -4840,21 +4941,13 @@ struct AAPointerInfo : public AbstractAttribute {
   virtual bool forallInterferingAccesses(
       OffsetAndSize OAS, function_ref<bool(const Access &, bool)> CB) const = 0;
 
-  /// Call \p CB on all accesses that might interfere with \p LI and return true
-  /// if all such accesses were known and the callback returned true for all of
-  /// them, false otherwise.
-  virtual bool forallInterferingAccesses(
-      LoadInst &LI, function_ref<bool(const Access &, bool)> CB) const = 0;
-  virtual bool forallInterferingAccesses(
-      StoreInst &SI, function_ref<bool(const Access &, bool)> CB) const = 0;
-
-  /// Call \p CB on all write accesses that might interfere with \p LI and
+  /// Call \p CB on all accesses that might interfere with \p I and
   /// return true if all such accesses were known and the callback returned true
   /// for all of them, false otherwise. In contrast to forallInterferingAccesses
   /// this function will perform reasoning to exclude write accesses that cannot
   /// affect the load even if they on the surface look as if they would.
-  virtual bool forallInterferingWrites(
-      Attributor &A, const AbstractAttribute &QueryingAA, LoadInst &LI,
+  virtual bool forallInterferingAccesses(
+      Attributor &A, const AbstractAttribute &QueryingAA, Instruction &I,
       function_ref<bool(const Access &, bool)> CB) const = 0;
 
   /// This function should return true if the type of the \p AA is AAPointerInfo

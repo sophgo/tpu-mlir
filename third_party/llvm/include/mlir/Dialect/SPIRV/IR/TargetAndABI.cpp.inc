@@ -171,9 +171,10 @@ EntryPointABIAttr EntryPointABIAttr::get(
     ::mlir::MLIRContext* context) {
   ::llvm::SmallVector<::mlir::NamedAttribute, 1> fields;
 
-  assert(local_size);
-  auto local_size_id = ::mlir::StringAttr::get(context, "local_size");
-  fields.emplace_back(local_size_id, local_size);
+  if (local_size) {
+    auto local_size_id = ::mlir::StringAttr::get(context, "local_size");
+    fields.emplace_back(local_size_id, local_size);
+  }
 
   ::mlir::Attribute dict = ::mlir::DictionaryAttr::get(context, fields);
   return dict.dyn_cast<EntryPointABIAttr>();
@@ -188,7 +189,9 @@ bool EntryPointABIAttr::classof(::mlir::Attribute attr) {
   int num_absent_attrs = 0;
 
   auto local_size = derived.get("local_size");
-  if (!local_size || !(((local_size.isa<::mlir::DenseIntElementsAttr>())) && ((local_size.cast<::mlir::DenseIntElementsAttr>().getType().getElementType().isSignlessInteger(32)))))
+  if (!local_size)
+    ++num_absent_attrs;
+  else if (!(((local_size.isa<::mlir::DenseIntElementsAttr>())) && ((local_size.cast<::mlir::DenseIntElementsAttr>().getType().getElementType().isSignlessInteger(32)))))
     return false;
 
   return derived.size() + num_absent_attrs == 1;
@@ -197,7 +200,8 @@ bool EntryPointABIAttr::classof(::mlir::Attribute attr) {
 ::mlir::DenseIntElementsAttr EntryPointABIAttr::local_size() const {
   auto derived = this->cast<::mlir::DictionaryAttr>();
   auto local_size = derived.get("local_size");
-  assert(local_size && "attribute not found.");
+  if (!local_size)
+    return nullptr;
   assert(local_size.isa<::mlir::DenseIntElementsAttr>() && "incorrect Attribute type found.");
   return local_size.cast<::mlir::DenseIntElementsAttr>();
 }
@@ -278,7 +282,7 @@ bool ResourceLimitsAttr::classof(::mlir::Attribute attr) {
   auto cooperative_matrix_properties_nv = derived.get("cooperative_matrix_properties_nv");
   if (!cooperative_matrix_properties_nv)
     ++num_absent_attrs;
-  else if (!(((cooperative_matrix_properties_nv.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(cooperative_matrix_properties_nv.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return (attr.isa<::mlir::spirv::CooperativeMatrixPropertiesNVAttr>()); }))))
+  else if (!(((cooperative_matrix_properties_nv.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(cooperative_matrix_properties_nv.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && ((attr.isa<::mlir::spirv::CooperativeMatrixPropertiesNVAttr>())); }))))
     return false;
 
   return derived.size() + num_absent_attrs == 5;

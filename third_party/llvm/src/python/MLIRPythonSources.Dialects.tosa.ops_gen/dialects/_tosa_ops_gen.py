@@ -2125,14 +2125,14 @@ class SelectOp(_ods_ir.OpView):
 
   _ODS_REGIONS = (0, True)
 
-  def __init__(self, output, input1, input2, input3, *, loc=None, ip=None):
+  def __init__(self, output, pred, on_true, on_false, *, loc=None, ip=None):
     operands = []
     results = []
     attributes = {}
     regions = None
-    operands.append(_get_op_result_or_value(input1))
-    operands.append(_get_op_result_or_value(input2))
-    operands.append(_get_op_result_or_value(input3))
+    operands.append(_get_op_result_or_value(pred))
+    operands.append(_get_op_result_or_value(on_true))
+    operands.append(_get_op_result_or_value(on_false))
     results.append(output)
     _ods_successors = None
     super().__init__(self.build_generic(
@@ -2140,15 +2140,15 @@ class SelectOp(_ods_ir.OpView):
       successors=_ods_successors, regions=regions, loc=loc, ip=ip))
 
   @builtins.property
-  def input1(self):
+  def pred(self):
     return self.operation.operands[0]
 
   @builtins.property
-  def input2(self):
+  def on_true(self):
     return self.operation.operands[1]
 
   @builtins.property
-  def input3(self):
+  def on_false(self):
     return self.operation.operands[2]
 
   @builtins.property

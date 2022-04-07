@@ -356,11 +356,11 @@ void AddToGroupOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
 }
 
 ::mlir::ParseResult AddToGroupOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
-  ::mlir::OpAsmParser::OperandType groupRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> groupOperands(groupRawOperands);  ::llvm::SMLoc groupOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand groupRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> groupOperands(groupRawOperands);  ::llvm::SMLoc groupOperandsLoc;
   (void)groupOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -415,7 +415,7 @@ void AddToGroupOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::AddToGroupOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::AddToGroupOp)
 
 namespace mlir {
 namespace async {
@@ -520,8 +520,8 @@ void AwaitAllOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::ParseResult AwaitAllOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
 
   operandOperandsLoc = parser.getCurrentLocation();
@@ -543,7 +543,7 @@ void AwaitAllOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::AwaitAllOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::AwaitAllOp)
 
 namespace mlir {
 namespace async {
@@ -665,8 +665,8 @@ std::pair<unsigned, unsigned> AwaitOp::getODSResultIndexAndLength(unsigned index
 }
 
 ::mlir::ParseResult AwaitOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -703,7 +703,7 @@ void AwaitOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::AwaitOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::AwaitOp)
 
 namespace mlir {
 namespace async {
@@ -859,8 +859,8 @@ void CoroBeginOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
 }
 
 ::mlir::ParseResult CoroBeginOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType idRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> idOperands(idRawOperands);  ::llvm::SMLoc idOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand idRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> idOperands(idRawOperands);  ::llvm::SMLoc idOperandsLoc;
   (void)idOperandsLoc;
 
   idOperandsLoc = parser.getCurrentLocation();
@@ -884,7 +884,7 @@ void CoroBeginOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::CoroBeginOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::CoroBeginOp)
 
 namespace mlir {
 namespace async {
@@ -989,8 +989,8 @@ void CoroEndOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 }
 
 ::mlir::ParseResult CoroEndOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType handleRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> handleOperands(handleRawOperands);  ::llvm::SMLoc handleOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand handleRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> handleOperands(handleRawOperands);  ::llvm::SMLoc handleOperandsLoc;
   (void)handleOperandsLoc;
 
   handleOperandsLoc = parser.getCurrentLocation();
@@ -1012,7 +1012,7 @@ void CoroEndOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::CoroEndOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::CoroEndOp)
 
 namespace mlir {
 namespace async {
@@ -1139,11 +1139,11 @@ void CoroFreeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::ParseResult CoroFreeOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType idRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> idOperands(idRawOperands);  ::llvm::SMLoc idOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand idRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> idOperands(idRawOperands);  ::llvm::SMLoc idOperandsLoc;
   (void)idOperandsLoc;
-  ::mlir::OpAsmParser::OperandType handleRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> handleOperands(handleRawOperands);  ::llvm::SMLoc handleOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand handleRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> handleOperands(handleRawOperands);  ::llvm::SMLoc handleOperandsLoc;
   (void)handleOperandsLoc;
 
   idOperandsLoc = parser.getCurrentLocation();
@@ -1177,7 +1177,7 @@ void CoroFreeOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::CoroFreeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::CoroFreeOp)
 
 namespace mlir {
 namespace async {
@@ -1319,7 +1319,7 @@ void CoroIdOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::CoroIdOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::CoroIdOp)
 
 namespace mlir {
 namespace async {
@@ -1475,8 +1475,8 @@ void CoroSaveOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult CoroSaveOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType handleRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> handleOperands(handleRawOperands);  ::llvm::SMLoc handleOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand handleRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> handleOperands(handleRawOperands);  ::llvm::SMLoc handleOperandsLoc;
   (void)handleOperandsLoc;
 
   handleOperandsLoc = parser.getCurrentLocation();
@@ -1500,7 +1500,7 @@ void CoroSaveOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::CoroSaveOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::CoroSaveOp)
 
 namespace mlir {
 namespace async {
@@ -1626,8 +1626,8 @@ void CoroSuspendOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
 }
 
 ::mlir::ParseResult CoroSuspendOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType stateRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> stateOperands(stateRawOperands);  ::llvm::SMLoc stateOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand stateRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> stateOperands(stateRawOperands);  ::llvm::SMLoc stateOperandsLoc;
   (void)stateOperandsLoc;
   ::mlir::Block *suspendDestSuccessor = nullptr;
   ::mlir::Block *resumeDestSuccessor = nullptr;
@@ -1679,7 +1679,7 @@ void CoroSuspendOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::CoroSuspendOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::CoroSuspendOp)
 
 namespace mlir {
 namespace async {
@@ -1839,8 +1839,8 @@ void CreateGroupOp::getCanonicalizationPatterns(::mlir::RewritePatternSet &resul
 }
 
 ::mlir::ParseResult CreateGroupOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType sizeRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> sizeOperands(sizeRawOperands);  ::llvm::SMLoc sizeOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand sizeRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> sizeOperands(sizeRawOperands);  ::llvm::SMLoc sizeOperandsLoc;
   (void)sizeOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -1886,7 +1886,7 @@ void CreateGroupOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effe
 
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::CreateGroupOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::CreateGroupOp)
 
 namespace mlir {
 namespace async {
@@ -2094,14 +2094,12 @@ std::pair<unsigned, unsigned> ExecuteOp::getODSResultIndexAndLength(unsigned ind
 }
 
 ::mlir::LogicalResult ExecuteOp::verifyInvariants() {
-  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
-    return ::mlir::success();
-  return ::mlir::failure();
+  return verifyInvariantsImpl();
 }
 
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::ExecuteOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::ExecuteOp)
 
 namespace mlir {
 namespace async {
@@ -2260,8 +2258,8 @@ void RuntimeAddRefOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult RuntimeAddRefOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -2302,7 +2300,7 @@ void RuntimeAddRefOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeAddRefOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeAddRefOp)
 
 namespace mlir {
 namespace async {
@@ -2481,11 +2479,11 @@ void RuntimeAddToGroupOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operation
 }
 
 ::mlir::ParseResult RuntimeAddToGroupOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
-  ::mlir::OpAsmParser::OperandType groupRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> groupOperands(groupRawOperands);  ::llvm::SMLoc groupOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand groupRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> groupOperands(groupRawOperands);  ::llvm::SMLoc groupOperandsLoc;
   (void)groupOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -2540,7 +2538,7 @@ void RuntimeAddToGroupOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeAddToGroupOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeAddToGroupOp)
 
 namespace mlir {
 namespace async {
@@ -2667,11 +2665,11 @@ void RuntimeAwaitAndResumeOp::build(::mlir::OpBuilder &, ::mlir::OperationState 
 }
 
 ::mlir::ParseResult RuntimeAwaitAndResumeOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
-  ::mlir::OpAsmParser::OperandType handleRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> handleOperands(handleRawOperands);  ::llvm::SMLoc handleOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand handleRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> handleOperands(handleRawOperands);  ::llvm::SMLoc handleOperandsLoc;
   (void)handleOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -2724,7 +2722,7 @@ void RuntimeAwaitAndResumeOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeAwaitAndResumeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeAwaitAndResumeOp)
 
 namespace mlir {
 namespace async {
@@ -2829,8 +2827,8 @@ void RuntimeAwaitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
 }
 
 ::mlir::ParseResult RuntimeAwaitOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -2871,7 +2869,7 @@ void RuntimeAwaitOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeAwaitOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeAwaitOp)
 
 namespace mlir {
 namespace async {
@@ -3027,8 +3025,8 @@ void RuntimeCreateGroupOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operatio
 }
 
 ::mlir::ParseResult RuntimeCreateGroupOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType sizeRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> sizeOperands(sizeRawOperands);  ::llvm::SMLoc sizeOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand sizeRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> sizeOperands(sizeRawOperands);  ::llvm::SMLoc sizeOperandsLoc;
   (void)sizeOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -3071,7 +3069,7 @@ void RuntimeCreateGroupOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeCreateGroupOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeCreateGroupOp)
 
 namespace mlir {
 namespace async {
@@ -3197,7 +3195,7 @@ void RuntimeCreateOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeCreateOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeCreateOp)
 
 namespace mlir {
 namespace async {
@@ -3356,8 +3354,8 @@ void RuntimeDropRefOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult RuntimeDropRefOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -3398,7 +3396,7 @@ void RuntimeDropRefOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeDropRefOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeDropRefOp)
 
 namespace mlir {
 namespace async {
@@ -3554,8 +3552,8 @@ void RuntimeIsErrorOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationSta
 }
 
 ::mlir::ParseResult RuntimeIsErrorOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -3598,7 +3596,7 @@ void RuntimeIsErrorOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeIsErrorOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeIsErrorOp)
 
 namespace mlir {
 namespace async {
@@ -3719,8 +3717,8 @@ void RuntimeLoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
 }
 
 ::mlir::ParseResult RuntimeLoadOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType storageRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> storageOperands(storageRawOperands);  ::llvm::SMLoc storageOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand storageRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> storageOperands(storageRawOperands);  ::llvm::SMLoc storageOperandsLoc;
   (void)storageOperandsLoc;
   ::mlir::Type storageRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> storageTypes(storageRawTypes);
@@ -3768,7 +3766,7 @@ void RuntimeLoadOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeLoadOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeLoadOp)
 
 namespace mlir {
 namespace async {
@@ -3929,7 +3927,7 @@ void RuntimeNumWorkerThreadsOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeNumWorkerThreadsOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeNumWorkerThreadsOp)
 
 namespace mlir {
 namespace async {
@@ -4034,8 +4032,8 @@ void RuntimeResumeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult RuntimeResumeOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType handleRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> handleOperands(handleRawOperands);  ::llvm::SMLoc handleOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand handleRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> handleOperands(handleRawOperands);  ::llvm::SMLoc handleOperandsLoc;
   (void)handleOperandsLoc;
 
   handleOperandsLoc = parser.getCurrentLocation();
@@ -4057,7 +4055,7 @@ void RuntimeResumeOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeResumeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeResumeOp)
 
 namespace mlir {
 namespace async {
@@ -4162,8 +4160,8 @@ void RuntimeSetAvailableOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
 }
 
 ::mlir::ParseResult RuntimeSetAvailableOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -4204,7 +4202,7 @@ void RuntimeSetAvailableOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeSetAvailableOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeSetAvailableOp)
 
 namespace mlir {
 namespace async {
@@ -4309,8 +4307,8 @@ void RuntimeSetErrorOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
 }
 
 ::mlir::ParseResult RuntimeSetErrorOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
@@ -4351,7 +4349,7 @@ void RuntimeSetErrorOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeSetErrorOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeSetErrorOp)
 
 namespace mlir {
 namespace async {
@@ -4480,11 +4478,11 @@ void RuntimeStoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
 }
 
 ::mlir::ParseResult RuntimeStoreOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType valueRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand valueRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
   (void)valueOperandsLoc;
-  ::mlir::OpAsmParser::OperandType storageRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> storageOperands(storageRawOperands);  ::llvm::SMLoc storageOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand storageRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> storageOperands(storageRawOperands);  ::llvm::SMLoc storageOperandsLoc;
   (void)storageOperandsLoc;
   ::mlir::Type storageRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> storageTypes(storageRawTypes);
@@ -4542,7 +4540,7 @@ void RuntimeStoreOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeStoreOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::RuntimeStoreOp)
 
 namespace mlir {
 namespace async {
@@ -4670,7 +4668,7 @@ void YieldOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 ::mlir::ParseResult YieldOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> operandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> operandsOperands;
   ::llvm::SMLoc operandsOperandsLoc;
   (void)operandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> operandsTypes;
@@ -4708,7 +4706,7 @@ void YieldOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace async
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::async::YieldOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::async::YieldOp)
 
 
 #endif  // GET_OP_CLASSES

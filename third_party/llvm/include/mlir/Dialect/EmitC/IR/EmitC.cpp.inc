@@ -249,8 +249,8 @@ void ApplyOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 
 ::mlir::ParseResult ApplyOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::StringAttr applicableOperatorAttr;
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::llvm::ArrayRef<::mlir::Type> operandTypes;
   ::llvm::ArrayRef<::mlir::Type> allResultTypes;
@@ -297,7 +297,7 @@ void ApplyOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace emitc
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::emitc::ApplyOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::emitc::ApplyOp)
 
 namespace mlir {
 namespace emitc {
@@ -584,7 +584,7 @@ void CallOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 
 ::mlir::ParseResult CallOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::StringAttr calleeAttr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> operandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> operandsOperands;
   ::llvm::SMLoc operandsOperandsLoc;
   (void)operandsOperandsLoc;
   ::llvm::ArrayRef<::mlir::Type> operandsTypes;
@@ -632,7 +632,7 @@ void CallOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace emitc
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::emitc::CallOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::emitc::CallOp)
 
 namespace mlir {
 namespace emitc {
@@ -767,7 +767,7 @@ void ConstantOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 
 } // namespace emitc
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::emitc::ConstantOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::emitc::ConstantOp)
 
 namespace mlir {
 namespace emitc {
@@ -953,7 +953,7 @@ void IncludeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace emitc
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::emitc::IncludeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::emitc::IncludeOp)
 
 namespace mlir {
 namespace emitc {
@@ -1088,7 +1088,7 @@ void VariableOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 
 } // namespace emitc
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::emitc::VariableOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::emitc::VariableOp)
 
 
 #endif  // GET_OP_CLASSES

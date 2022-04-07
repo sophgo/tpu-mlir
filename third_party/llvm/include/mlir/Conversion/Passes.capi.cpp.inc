@@ -95,6 +95,14 @@ void mlirRegisterConversionConvertControlFlowToSPIRV() {
 }
 
 
+MlirPass mlirCreateConversionConvertFuncToLLVM() {
+  return wrap(mlir::createConvertFuncToLLVMPass().release());
+}
+void mlirRegisterConversionConvertFuncToLLVM() {
+  registerConvertFuncToLLVMPass();
+}
+
+
 MlirPass mlirCreateConversionConvertFuncToSPIRV() {
   return wrap(mlir::createConvertFuncToSPIRVPass().release());
 }
@@ -271,14 +279,6 @@ void mlirRegisterConversionConvertShapeToStandard() {
 }
 
 
-MlirPass mlirCreateConversionConvertStandardToLLVM() {
-  return wrap(mlir::createLowerToLLVMPass().release());
-}
-void mlirRegisterConversionConvertStandardToLLVM() {
-  registerConvertStandardToLLVMPass();
-}
-
-
 MlirPass mlirCreateConversionConvertTensorToSPIRV() {
   return wrap(mlir::createConvertTensorToSPIRVPass().release());
 }
@@ -375,6 +375,14 @@ void mlirRegisterConversionSCFToSPIRV() {
 }
 
 
+MlirPass mlirCreateConversionTosaToArith() {
+  return wrap(tosa::createTosaToArith().release());
+}
+void mlirRegisterConversionTosaToArith() {
+  registerTosaToArithPass();
+}
+
+
 MlirPass mlirCreateConversionTosaToLinalg() {
   return wrap(tosa::createTosaToLinalg().release());
 }
@@ -399,10 +407,10 @@ void mlirRegisterConversionTosaToSCF() {
 }
 
 
-MlirPass mlirCreateConversionTosaToStandard() {
-  return wrap(tosa::createTosaToStandard().release());
+MlirPass mlirCreateConversionTosaToTensor() {
+  return wrap(tosa::createTosaToTensor().release());
 }
-void mlirRegisterConversionTosaToStandard() {
-  registerTosaToStandardPass();
+void mlirRegisterConversionTosaToTensor() {
+  registerTosaToTensorPass();
 }
 

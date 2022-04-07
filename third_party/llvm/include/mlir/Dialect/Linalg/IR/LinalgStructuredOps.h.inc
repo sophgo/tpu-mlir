@@ -60,6 +60,11 @@ class Conv3DOp;
 } // namespace mlir
 namespace mlir {
 namespace linalg {
+class CopyOp;
+} // namespace linalg
+} // namespace mlir
+namespace mlir {
+namespace linalg {
 class DepthwiseConv1DNwcWcOp;
 } // namespace linalg
 } // namespace mlir
@@ -106,11 +111,6 @@ class FillOp;
 namespace mlir {
 namespace linalg {
 class FillRng2DOp;
-} // namespace linalg
-} // namespace mlir
-namespace mlir {
-namespace linalg {
-class FillTensorOp;
 } // namespace linalg
 } // namespace mlir
 namespace mlir {
@@ -195,11 +195,6 @@ class QuantizedMatmulOp;
 } // namespace mlir
 namespace mlir {
 namespace linalg {
-class SoftPlus2DOp;
-} // namespace linalg
-} // namespace mlir
-namespace mlir {
-namespace linalg {
 class VecmatOp;
 } // namespace linalg
 } // namespace mlir
@@ -240,7 +235,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class BatchMatmulOp : public ::mlir::Op<BatchMatmulOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
+class BatchMatmulOp : public ::mlir::Op<BatchMatmulOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -304,6 +299,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -322,7 +324,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::BatchMatmulOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::BatchMatmulOp)
 
 namespace mlir {
 namespace linalg {
@@ -351,7 +353,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class BatchMatvecOp : public ::mlir::Op<BatchMatvecOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
+class BatchMatvecOp : public ::mlir::Op<BatchMatvecOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -415,6 +417,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -433,7 +442,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::BatchMatvecOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::BatchMatvecOp)
 
 namespace mlir {
 namespace linalg {
@@ -466,7 +475,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class Conv1DNwcWcfOp : public ::mlir::Op<Conv1DNwcWcfOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class Conv1DNwcWcfOp : public ::mlir::Op<Conv1DNwcWcfOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -553,6 +562,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -574,7 +590,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::Conv1DNwcWcfOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::Conv1DNwcWcfOp)
 
 namespace mlir {
 namespace linalg {
@@ -603,7 +619,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class Conv1DOp : public ::mlir::Op<Conv1DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class Conv1DOp : public ::mlir::Op<Conv1DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -667,6 +683,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -685,7 +708,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::Conv1DOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::Conv1DOp)
 
 namespace mlir {
 namespace linalg {
@@ -718,7 +741,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class Conv2DNchwFchwOp : public ::mlir::Op<Conv2DNchwFchwOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class Conv2DNchwFchwOp : public ::mlir::Op<Conv2DNchwFchwOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -805,6 +828,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -826,7 +856,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::Conv2DNchwFchwOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::Conv2DNchwFchwOp)
 
 namespace mlir {
 namespace linalg {
@@ -859,7 +889,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class Conv2DNhwcHwcfOp : public ::mlir::Op<Conv2DNhwcHwcfOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class Conv2DNhwcHwcfOp : public ::mlir::Op<Conv2DNhwcHwcfOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -946,6 +976,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -967,7 +1004,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::Conv2DNhwcHwcfOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::Conv2DNhwcHwcfOp)
 
 namespace mlir {
 namespace linalg {
@@ -1000,7 +1037,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class Conv2DNhwcHwcfQOp : public ::mlir::Op<Conv2DNhwcHwcfQOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class Conv2DNhwcHwcfQOp : public ::mlir::Op<Conv2DNhwcHwcfQOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -1087,6 +1124,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -1108,7 +1152,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::Conv2DNhwcHwcfQOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::Conv2DNhwcHwcfQOp)
 
 namespace mlir {
 namespace linalg {
@@ -1137,7 +1181,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class Conv2DOp : public ::mlir::Op<Conv2DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class Conv2DOp : public ::mlir::Op<Conv2DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -1201,6 +1245,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -1219,7 +1270,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::Conv2DOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::Conv2DOp)
 
 namespace mlir {
 namespace linalg {
@@ -1252,7 +1303,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class Conv3DNdhwcDhwcfOp : public ::mlir::Op<Conv3DNdhwcDhwcfOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class Conv3DNdhwcDhwcfOp : public ::mlir::Op<Conv3DNdhwcDhwcfOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -1339,6 +1390,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -1360,7 +1418,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::Conv3DNdhwcDhwcfOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::Conv3DNdhwcDhwcfOp)
 
 namespace mlir {
 namespace linalg {
@@ -1389,7 +1447,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class Conv3DOp : public ::mlir::Op<Conv3DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class Conv3DOp : public ::mlir::Op<Conv3DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -1453,6 +1511,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -1471,7 +1536,139 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::Conv3DOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::Conv3DOp)
+
+namespace mlir {
+namespace linalg {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::linalg::CopyOp declarations
+//===----------------------------------------------------------------------===//
+
+class CopyOpAdaptor {
+public:
+  CopyOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  CopyOpAdaptor(CopyOp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange inputs();
+  ::mlir::ValueRange outputs();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::linalg::TypeFnAttr castAttr();
+  ::mlir::linalg::TypeFn cast();
+  ::mlir::RegionRange getRegions();
+  ::mlir::Region &region();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class CopyOp : public ::mlir::Op<CopyOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = CopyOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("cast"), ::llvm::StringRef("operand_segment_sizes")};
+    return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr castAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr castAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
+  ::mlir::StringAttr operand_segment_sizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("linalg.copy");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange outputsMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &region();
+  ::mlir::linalg::TypeFnAttr castAttr();
+  ::mlir::linalg::TypeFn cast();
+  void castAttr(::mlir::linalg::TypeFnAttr attr);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute cast, ArrayRef<NamedAttribute> attributes = {});
+  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
+  void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+private:
+  ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
+    return getAttributeNameForIndex((*this)->getName(), index);
+  }
+
+  static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
+    assert(index < 2 && "invalid attribute index");
+    return name.getRegisteredInfo()->getAttributeNames()[index];
+  }
+
+public:
+  // Return whether the op accesses the iteration indices.
+  bool hasIndexSemantics() {
+    return !this->getBody()->getOps<IndexOp>().empty();
+  }
+
+  LogicalResult reifyResultShapes(OpBuilder &b,
+      ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+        reifiedReturnShapes);
+  }
+
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
+    // Auto-generated.
+    ArrayAttr iterator_types();
+    ArrayAttr indexing_maps();
+    static void regionBuilder(ImplicitLocOpBuilder &b,
+                              Block &block, ArrayRef<NamedAttribute> attrs);
+    static std::function<void(ImplicitLocOpBuilder &,
+                              Block &, ArrayRef<NamedAttribute>)>
+    getRegionBuilder() {
+      return regionBuilder;
+    }
+
+    // Generic methods.
+    static unsigned getNumRegionArgs();
+    std::string getLibraryCallName();
+
+};
+} // namespace linalg
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::CopyOp)
 
 namespace mlir {
 namespace linalg {
@@ -1504,7 +1701,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class DepthwiseConv1DNwcWcOp : public ::mlir::Op<DepthwiseConv1DNwcWcOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class DepthwiseConv1DNwcWcOp : public ::mlir::Op<DepthwiseConv1DNwcWcOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -1591,6 +1788,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -1612,7 +1816,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::DepthwiseConv1DNwcWcOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::DepthwiseConv1DNwcWcOp)
 
 namespace mlir {
 namespace linalg {
@@ -1645,7 +1849,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class DepthwiseConv2DNhwcHwcOp : public ::mlir::Op<DepthwiseConv2DNhwcHwcOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class DepthwiseConv2DNhwcHwcOp : public ::mlir::Op<DepthwiseConv2DNhwcHwcOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -1732,6 +1936,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -1753,7 +1964,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::DepthwiseConv2DNhwcHwcOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::DepthwiseConv2DNhwcHwcOp)
 
 namespace mlir {
 namespace linalg {
@@ -1786,7 +1997,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class DepthwiseConv2DNhwcHwcQOp : public ::mlir::Op<DepthwiseConv2DNhwcHwcQOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class DepthwiseConv2DNhwcHwcQOp : public ::mlir::Op<DepthwiseConv2DNhwcHwcQOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -1873,6 +2084,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -1894,7 +2112,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::DepthwiseConv2DNhwcHwcQOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::DepthwiseConv2DNhwcHwcQOp)
 
 namespace mlir {
 namespace linalg {
@@ -1927,7 +2145,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class DepthwiseConv2DNhwcHwcmOp : public ::mlir::Op<DepthwiseConv2DNhwcHwcmOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class DepthwiseConv2DNhwcHwcmOp : public ::mlir::Op<DepthwiseConv2DNhwcHwcmOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -2014,6 +2232,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -2035,7 +2260,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::DepthwiseConv2DNhwcHwcmOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::DepthwiseConv2DNhwcHwcmOp)
 
 namespace mlir {
 namespace linalg {
@@ -2068,7 +2293,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class DepthwiseConv2DNhwcHwcmQOp : public ::mlir::Op<DepthwiseConv2DNhwcHwcmQOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class DepthwiseConv2DNhwcHwcmQOp : public ::mlir::Op<DepthwiseConv2DNhwcHwcmQOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -2155,6 +2380,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -2176,7 +2408,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::DepthwiseConv2DNhwcHwcmQOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::DepthwiseConv2DNhwcHwcmQOp)
 
 namespace mlir {
 namespace linalg {
@@ -2205,7 +2437,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class DotOp : public ::mlir::Op<DotOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
+class DotOp : public ::mlir::Op<DotOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -2269,6 +2501,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -2287,7 +2526,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::DotOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::DotOp)
 
 namespace mlir {
 namespace linalg {
@@ -2320,7 +2559,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class ElemwiseBinaryOp : public ::mlir::Op<ElemwiseBinaryOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
+class ElemwiseBinaryOp : public ::mlir::Op<ElemwiseBinaryOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -2407,6 +2646,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -2425,7 +2671,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::ElemwiseBinaryOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::ElemwiseBinaryOp)
 
 namespace mlir {
 namespace linalg {
@@ -2458,7 +2704,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class ElemwiseUnaryOp : public ::mlir::Op<ElemwiseUnaryOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
+class ElemwiseUnaryOp : public ::mlir::Op<ElemwiseUnaryOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -2545,6 +2791,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -2563,7 +2816,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::ElemwiseUnaryOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::ElemwiseUnaryOp)
 
 namespace mlir {
 namespace linalg {
@@ -2581,8 +2834,8 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value value();
-  ::mlir::Value output();
+  ::mlir::ValueRange inputs();
+  ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::RegionRange getRegions();
   ::mlir::Region &region();
@@ -2592,14 +2845,23 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class FillOp : public ::mlir::Op<FillOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
+class FillOp : public ::mlir::Op<FillOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::FillOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = FillOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    return {};
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("operand_segment_sizes")};
+    return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr operand_segment_sizesAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
   }
 
   static constexpr ::llvm::StringLiteral getOperationName() {
@@ -2608,26 +2870,34 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value value();
-  ::mlir::Value output();
-  ::mlir::MutableOperandRange valueMutable();
-  ::mlir::MutableOperandRange outputMutable();
+  ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value result();
+  ::mlir::Operation::result_range result_tensors();
   ::mlir::Region &region();
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value value, Value output);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, /*optional*/::mlir::Type result, ::mlir::Value value, ::mlir::Value output);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value value, ::mlir::Value output);
-  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
+  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
+  void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  ::mlir::LogicalResult verify();
   static void getCanonicalizationPatterns(::mlir::RewritePatternSet &results, ::mlir::MLIRContext *context);
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
-  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
-  void print(::mlir::OpAsmPrinter &_odsPrinter);
+private:
+  ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
+    return getAttributeNameForIndex((*this)->getName(), index);
+  }
+
+  static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
+    assert(index < 1 && "invalid attribute index");
+    return name.getRegisteredInfo()->getAttributeNames()[index];
+  }
+
 public:
   // Return whether the op accesses the iteration indices.
   bool hasIndexSemantics() {
@@ -2640,41 +2910,32 @@ public:
         reifiedReturnShapes);
   }
 
-  std::string getLibraryCallName() {
-    return generateLibraryCallName(getOperation());
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
   }
 
-  ValueRange inputs() { return getOperands().take_front(); }
-  ValueRange outputs() { return getOperands().take_back(); }
+    // Auto-generated.
+    ArrayAttr iterator_types();
+    ArrayAttr indexing_maps();
+    static void regionBuilder(ImplicitLocOpBuilder &b,
+                              Block &block, ArrayRef<NamedAttribute> attrs);
+    static std::function<void(ImplicitLocOpBuilder &,
+                              Block &, ArrayRef<NamedAttribute>)>
+    getRegionBuilder() {
+      return regionBuilder;
+    }
 
-  // Rank-polymorphic.
-  //   filling_value -> O(ivs) with parallel iterators.
-  ArrayAttr iterator_types() {
-    int64_t nPar = getRank(getOutputOperand(0));
-    return Builder(getContext()).getStrArrayAttr(
-      SmallVector<StringRef, 8>(nPar, getParallelIteratorTypeName()));
-  }
+    // Generic methods.
+    static unsigned getNumRegionArgs();
+    std::string getLibraryCallName();
 
-  ArrayAttr indexing_maps() {
-    MLIRContext *context = getContext();
-    // filling_value -> O(ivs)
-    return Builder(getContext()).getAffineMapArrayAttr({
-        AffineMap::get(getNumParallelLoops(), 0, {}, getContext()),
-        extractOrIdentityMap(llvm::None, getNumParallelLoops(), context)});
-  }
-
-  static void regionBuilder(ImplicitLocOpBuilder &b, Block &block,
-                            ArrayRef<NamedAttribute> attrs);
-  static std::function<void(ImplicitLocOpBuilder&,
-                            Block&, ArrayRef<NamedAttribute>)>
-  getRegionBuilder() {
-    return &regionBuilder;
-  }
-  static unsigned getNumRegionArgs() { return 2; }
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::FillOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::FillOp)
 
 namespace mlir {
 namespace linalg {
@@ -2703,7 +2964,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class FillRng2DOp : public ::mlir::Op<FillRng2DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
+class FillRng2DOp : public ::mlir::Op<FillRng2DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -2767,115 +3028,11 @@ public:
         reifiedReturnShapes);
   }
 
-    // Auto-generated.
-    ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
-    static void regionBuilder(ImplicitLocOpBuilder &b,
-                              Block &block, ArrayRef<NamedAttribute> attrs);
-    static std::function<void(ImplicitLocOpBuilder &,
-                              Block &, ArrayRef<NamedAttribute>)>
-    getRegionBuilder() {
-      return regionBuilder;
-    }
-
-    // Generic methods.
-    static unsigned getNumRegionArgs();
-    std::string getLibraryCallName();
-
-};
-} // namespace linalg
-} // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::FillRng2DOp)
-
-namespace mlir {
-namespace linalg {
-
-//===----------------------------------------------------------------------===//
-// ::mlir::linalg::FillTensorOp declarations
-//===----------------------------------------------------------------------===//
-
-class FillTensorOpAdaptor {
-public:
-  FillTensorOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
-
-  FillTensorOpAdaptor(FillTensorOp &op);
-
-  ::mlir::ValueRange getOperands();
-  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
-  ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::ValueRange inputs();
-  ::mlir::ValueRange outputs();
-  ::mlir::DictionaryAttr getAttributes();
-  ::mlir::RegionRange getRegions();
-  ::mlir::Region &region();
-  ::mlir::LogicalResult verify(::mlir::Location loc);
-private:
-  ::mlir::ValueRange odsOperands;
-  ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
-};
-class FillTensorOp : public ::mlir::Op<FillTensorOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
-public:
-  using Op::Op;
-  using Op::print;
-  using Adaptor = FillTensorOpAdaptor;
-public:
-  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("operand_segment_sizes")};
-    return ::llvm::makeArrayRef(attrNames);
-  }
-
-  ::mlir::StringAttr operand_segment_sizesAttrName() {
-    return getAttributeNameForIndex(0);
-  }
-
-  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
-    return getAttributeNameForIndex(name, 0);
-  }
-
-  static constexpr ::llvm::StringLiteral getOperationName() {
-    return ::llvm::StringLiteral("linalg.fill_tensor");
-  }
-
-  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
-  ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Operation::operand_range inputs();
-  ::mlir::Operation::operand_range outputs();
-  ::mlir::MutableOperandRange inputsMutable();
-  ::mlir::MutableOperandRange outputsMutable();
-  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
-  ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Operation::result_range result_tensors();
-  ::mlir::Region &region();
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
-  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
-  void print(::mlir::OpAsmPrinter &p);
-  ::mlir::LogicalResult verifyInvariantsImpl();
-  ::mlir::LogicalResult verifyInvariants();
-  ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
-private:
-  ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
-    return getAttributeNameForIndex((*this)->getName(), index);
-  }
-
-  static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
-    assert(index < 1 && "invalid attribute index");
-    return name.getRegisteredInfo()->getAttributeNames()[index];
-  }
-
-public:
-  // Return whether the op accesses the iteration indices.
-  bool hasIndexSemantics() {
-    return !this->getBody()->getOps<IndexOp>().empty();
-  }
-
-  LogicalResult reifyResultShapes(OpBuilder &b,
-      ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
-        reifiedReturnShapes);
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
   }
 
     // Auto-generated.
@@ -2896,7 +3053,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::FillTensorOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::FillRng2DOp)
 
 namespace mlir {
 namespace linalg {
@@ -2933,7 +3090,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class GenericOp : public ::mlir::Op<GenericOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
+class GenericOp : public ::mlir::Op<GenericOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3048,6 +3205,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
   SmallVector<StringRef, 8> linalgTraitAttrNames() {
     return SmallVector<StringRef, 8>{
       getDocAttrName(),
@@ -3068,7 +3232,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::GenericOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::GenericOp)
 
 namespace mlir {
 namespace linalg {
@@ -3099,7 +3263,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class MatmulOp : public ::mlir::Op<MatmulOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
+class MatmulOp : public ::mlir::Op<MatmulOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3175,6 +3339,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -3193,7 +3364,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::MatmulOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::MatmulOp)
 
 namespace mlir {
 namespace linalg {
@@ -3222,7 +3393,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class MatmulUnsignedOp : public ::mlir::Op<MatmulUnsignedOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
+class MatmulUnsignedOp : public ::mlir::Op<MatmulUnsignedOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3286,6 +3457,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -3304,7 +3482,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::MatmulUnsignedOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::MatmulUnsignedOp)
 
 namespace mlir {
 namespace linalg {
@@ -3333,7 +3511,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class MatvecOp : public ::mlir::Op<MatvecOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
+class MatvecOp : public ::mlir::Op<MatvecOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3397,6 +3575,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -3415,7 +3600,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::MatvecOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::MatvecOp)
 
 namespace mlir {
 namespace linalg {
@@ -3444,7 +3629,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class Mmt4DOp : public ::mlir::Op<Mmt4DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
+class Mmt4DOp : public ::mlir::Op<Mmt4DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3508,6 +3693,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -3526,7 +3718,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::Mmt4DOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::Mmt4DOp)
 
 namespace mlir {
 namespace linalg {
@@ -3559,7 +3751,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class PoolingNchwMaxOp : public ::mlir::Op<PoolingNchwMaxOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class PoolingNchwMaxOp : public ::mlir::Op<PoolingNchwMaxOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3646,6 +3838,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -3667,7 +3866,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::PoolingNchwMaxOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::PoolingNchwMaxOp)
 
 namespace mlir {
 namespace linalg {
@@ -3700,7 +3899,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class PoolingNdhwcMaxOp : public ::mlir::Op<PoolingNdhwcMaxOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class PoolingNdhwcMaxOp : public ::mlir::Op<PoolingNdhwcMaxOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3787,6 +3986,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -3808,7 +4014,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::PoolingNdhwcMaxOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::PoolingNdhwcMaxOp)
 
 namespace mlir {
 namespace linalg {
@@ -3841,7 +4047,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class PoolingNdhwcMinOp : public ::mlir::Op<PoolingNdhwcMinOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class PoolingNdhwcMinOp : public ::mlir::Op<PoolingNdhwcMinOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3928,6 +4134,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -3949,7 +4162,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::PoolingNdhwcMinOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::PoolingNdhwcMinOp)
 
 namespace mlir {
 namespace linalg {
@@ -3982,7 +4195,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class PoolingNdhwcSumOp : public ::mlir::Op<PoolingNdhwcSumOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class PoolingNdhwcSumOp : public ::mlir::Op<PoolingNdhwcSumOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4069,6 +4282,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -4090,7 +4310,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::PoolingNdhwcSumOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::PoolingNdhwcSumOp)
 
 namespace mlir {
 namespace linalg {
@@ -4123,7 +4343,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class PoolingNhwcMaxOp : public ::mlir::Op<PoolingNhwcMaxOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class PoolingNhwcMaxOp : public ::mlir::Op<PoolingNhwcMaxOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4210,6 +4430,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -4231,7 +4458,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::PoolingNhwcMaxOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::PoolingNhwcMaxOp)
 
 namespace mlir {
 namespace linalg {
@@ -4264,7 +4491,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class PoolingNhwcMaxUnsignedOp : public ::mlir::Op<PoolingNhwcMaxUnsignedOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class PoolingNhwcMaxUnsignedOp : public ::mlir::Op<PoolingNhwcMaxUnsignedOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4351,6 +4578,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -4372,7 +4606,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::PoolingNhwcMaxUnsignedOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::PoolingNhwcMaxUnsignedOp)
 
 namespace mlir {
 namespace linalg {
@@ -4405,7 +4639,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class PoolingNhwcMinOp : public ::mlir::Op<PoolingNhwcMinOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class PoolingNhwcMinOp : public ::mlir::Op<PoolingNhwcMinOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4492,6 +4726,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -4513,7 +4754,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::PoolingNhwcMinOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::PoolingNhwcMinOp)
 
 namespace mlir {
 namespace linalg {
@@ -4546,7 +4787,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class PoolingNhwcMinUnsignedOp : public ::mlir::Op<PoolingNhwcMinUnsignedOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class PoolingNhwcMinUnsignedOp : public ::mlir::Op<PoolingNhwcMinUnsignedOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4633,6 +4874,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -4654,7 +4902,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::PoolingNhwcMinUnsignedOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::PoolingNhwcMinUnsignedOp)
 
 namespace mlir {
 namespace linalg {
@@ -4687,7 +4935,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class PoolingNhwcSumOp : public ::mlir::Op<PoolingNhwcSumOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class PoolingNhwcSumOp : public ::mlir::Op<PoolingNhwcSumOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4774,6 +5022,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -4795,7 +5050,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::PoolingNhwcSumOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::PoolingNhwcSumOp)
 
 namespace mlir {
 namespace linalg {
@@ -4824,7 +5079,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class QuantizedBatchMatmulOp : public ::mlir::Op<QuantizedBatchMatmulOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
+class QuantizedBatchMatmulOp : public ::mlir::Op<QuantizedBatchMatmulOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4888,6 +5143,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -4906,7 +5168,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::QuantizedBatchMatmulOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::QuantizedBatchMatmulOp)
 
 namespace mlir {
 namespace linalg {
@@ -4935,7 +5197,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class QuantizedMatmulOp : public ::mlir::Op<QuantizedMatmulOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
+class QuantizedMatmulOp : public ::mlir::Op<QuantizedMatmulOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4999,115 +5261,11 @@ public:
         reifiedReturnShapes);
   }
 
-    // Auto-generated.
-    ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
-    static void regionBuilder(ImplicitLocOpBuilder &b,
-                              Block &block, ArrayRef<NamedAttribute> attrs);
-    static std::function<void(ImplicitLocOpBuilder &,
-                              Block &, ArrayRef<NamedAttribute>)>
-    getRegionBuilder() {
-      return regionBuilder;
-    }
-
-    // Generic methods.
-    static unsigned getNumRegionArgs();
-    std::string getLibraryCallName();
-
-};
-} // namespace linalg
-} // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::QuantizedMatmulOp)
-
-namespace mlir {
-namespace linalg {
-
-//===----------------------------------------------------------------------===//
-// ::mlir::linalg::SoftPlus2DOp declarations
-//===----------------------------------------------------------------------===//
-
-class SoftPlus2DOpAdaptor {
-public:
-  SoftPlus2DOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
-
-  SoftPlus2DOpAdaptor(SoftPlus2DOp &op);
-
-  ::mlir::ValueRange getOperands();
-  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
-  ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::ValueRange inputs();
-  ::mlir::ValueRange outputs();
-  ::mlir::DictionaryAttr getAttributes();
-  ::mlir::RegionRange getRegions();
-  ::mlir::Region &region();
-  ::mlir::LogicalResult verify(::mlir::Location loc);
-private:
-  ::mlir::ValueRange odsOperands;
-  ::mlir::DictionaryAttr odsAttrs;
-  ::mlir::RegionRange odsRegions;
-};
-class SoftPlus2DOp : public ::mlir::Op<SoftPlus2DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
-public:
-  using Op::Op;
-  using Op::print;
-  using Adaptor = SoftPlus2DOpAdaptor;
-public:
-  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("operand_segment_sizes")};
-    return ::llvm::makeArrayRef(attrNames);
-  }
-
-  ::mlir::StringAttr operand_segment_sizesAttrName() {
-    return getAttributeNameForIndex(0);
-  }
-
-  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
-    return getAttributeNameForIndex(name, 0);
-  }
-
-  static constexpr ::llvm::StringLiteral getOperationName() {
-    return ::llvm::StringLiteral("linalg.soft_plus_2d");
-  }
-
-  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
-  ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Operation::operand_range inputs();
-  ::mlir::Operation::operand_range outputs();
-  ::mlir::MutableOperandRange inputsMutable();
-  ::mlir::MutableOperandRange outputsMutable();
-  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
-  ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Operation::result_range result_tensors();
-  ::mlir::Region &region();
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
-  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
-  void print(::mlir::OpAsmPrinter &p);
-  ::mlir::LogicalResult verifyInvariantsImpl();
-  ::mlir::LogicalResult verifyInvariants();
-  ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
-private:
-  ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
-    return getAttributeNameForIndex((*this)->getName(), index);
-  }
-
-  static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
-    assert(index < 1 && "invalid attribute index");
-    return name.getRegisteredInfo()->getAttributeNames()[index];
-  }
-
-public:
-  // Return whether the op accesses the iteration indices.
-  bool hasIndexSemantics() {
-    return !this->getBody()->getOps<IndexOp>().empty();
-  }
-
-  LogicalResult reifyResultShapes(OpBuilder &b,
-      ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
-    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
-        reifiedReturnShapes);
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
   }
 
     // Auto-generated.
@@ -5128,7 +5286,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::SoftPlus2DOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::QuantizedMatmulOp)
 
 namespace mlir {
 namespace linalg {
@@ -5157,7 +5315,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class VecmatOp : public ::mlir::Op<VecmatOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
+class VecmatOp : public ::mlir::Op<VecmatOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -5221,6 +5379,13 @@ public:
         reifiedReturnShapes);
   }
 
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
     // Auto-generated.
     ArrayAttr iterator_types();
     ArrayAttr indexing_maps();
@@ -5239,7 +5404,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::VecmatOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::VecmatOp)
 
 
 #endif  // GET_OP_CLASSES

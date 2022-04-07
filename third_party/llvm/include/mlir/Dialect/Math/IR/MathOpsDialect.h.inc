@@ -34,4 +34,4 @@ public:
 };
 } // namespace math
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::math::MathDialect)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::math::MathDialect)

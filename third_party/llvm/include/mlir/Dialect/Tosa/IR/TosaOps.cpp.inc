@@ -304,7 +304,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_TosaOps1(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_TosaOps2(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !((((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))) && ((attr.cast<::mlir::ArrayAttr>().size() == 2)))) {
+  if (attr && !((((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((attr.cast<::mlir::ArrayAttr>().size() == 2)))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements";
   }
@@ -313,7 +313,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_TosaOps2(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_TosaOps3(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !((((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))) && ((attr.cast<::mlir::ArrayAttr>().size() == 4)))) {
+  if (attr && !((((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((attr.cast<::mlir::ArrayAttr>().size() == 4)))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: 64-bit integer array attribute with exactly 4 elements";
   }
@@ -358,7 +358,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_TosaOps7(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_TosaOps8(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !((((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))) && ((attr.cast<::mlir::ArrayAttr>().size() == 6)))) {
+  if (attr && !((((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((attr.cast<::mlir::ArrayAttr>().size() == 6)))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: 64-bit integer array attribute with exactly 6 elements";
   }
@@ -367,7 +367,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_TosaOps8(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_TosaOps9(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !((((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))) && ((attr.cast<::mlir::ArrayAttr>().size() == 3)))) {
+  if (attr && !((((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((attr.cast<::mlir::ArrayAttr>().size() == 3)))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: 64-bit integer array attribute with exactly 3 elements";
   }
@@ -412,7 +412,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_TosaOps13(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_TosaOps14(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32))); })))) {
+  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))); })))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: 32-bit integer array attribute";
   }
@@ -421,7 +421,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_TosaOps14(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_TosaOps15(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); })))) {
+  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); })))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: 64-bit integer array attribute";
   }
@@ -430,7 +430,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_TosaOps15(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_TosaOps16(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !((((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::FloatAttr>())) && ((attr.cast<::mlir::FloatAttr>().getType().isF32())); }))) && ((attr.cast<::mlir::ArrayAttr>().size() == 2)))) {
+  if (attr && !((((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::FloatAttr>())) && ((attr.cast<::mlir::FloatAttr>().getType().isF32()))); }))) && ((attr.cast<::mlir::ArrayAttr>().size() == 2)))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: 32-bit float array attribute with exactly 2 elements";
   }
@@ -448,7 +448,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_TosaOps17(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_TosaOps18(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !((((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))) && ((attr.cast<::mlir::ArrayAttr>().size() <= 4)))) {
+  if (attr && !((((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((attr.cast<::mlir::ArrayAttr>().size() <= 4)))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: 64-bit integer array attribute with at least 4 elements";
   }
@@ -588,7 +588,7 @@ void AbsOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::AbsOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::AbsOp)
 
 namespace mlir {
 namespace tosa {
@@ -733,7 +733,7 @@ void AddOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::AddOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::AddOp)
 
 namespace mlir {
 namespace tosa {
@@ -959,7 +959,7 @@ void ApplyScaleOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effec
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ApplyScaleOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ApplyScaleOp)
 
 namespace mlir {
 namespace tosa {
@@ -1137,7 +1137,7 @@ void ArgMaxOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ArgMaxOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ArgMaxOp)
 
 namespace mlir {
 namespace tosa {
@@ -1339,7 +1339,7 @@ void ArithmeticRightShiftOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffe
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ArithmeticRightShiftOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ArithmeticRightShiftOp)
 
 namespace mlir {
 namespace tosa {
@@ -1424,7 +1424,7 @@ mlir::tosa::UnaryOpQuantizationAttr AvgPool2dOpAdaptor::quantization_infoAttr() 
     if (!tblgen_kernel)
       return emitError(loc, "'tosa.avg_pool2d' op ""requires attribute 'kernel'");
 
-    if (tblgen_kernel && !((((tblgen_kernel.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_kernel.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))) && ((tblgen_kernel.cast<::mlir::ArrayAttr>().size() == 2))))
+    if (tblgen_kernel && !((((tblgen_kernel.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_kernel.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_kernel.cast<::mlir::ArrayAttr>().size() == 2))))
       return emitError(loc, "'tosa.avg_pool2d' op ""attribute 'kernel' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
   }
   {
@@ -1432,7 +1432,7 @@ mlir::tosa::UnaryOpQuantizationAttr AvgPool2dOpAdaptor::quantization_infoAttr() 
     if (!tblgen_stride)
       return emitError(loc, "'tosa.avg_pool2d' op ""requires attribute 'stride'");
 
-    if (tblgen_stride && !((((tblgen_stride.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))) && ((tblgen_stride.cast<::mlir::ArrayAttr>().size() == 2))))
+    if (tblgen_stride && !((((tblgen_stride.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_stride.cast<::mlir::ArrayAttr>().size() == 2))))
       return emitError(loc, "'tosa.avg_pool2d' op ""attribute 'stride' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
   }
   {
@@ -1440,7 +1440,7 @@ mlir::tosa::UnaryOpQuantizationAttr AvgPool2dOpAdaptor::quantization_infoAttr() 
     if (!tblgen_pad)
       return emitError(loc, "'tosa.avg_pool2d' op ""requires attribute 'pad'");
 
-    if (tblgen_pad && !((((tblgen_pad.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_pad.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))) && ((tblgen_pad.cast<::mlir::ArrayAttr>().size() == 4))))
+    if (tblgen_pad && !((((tblgen_pad.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_pad.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_pad.cast<::mlir::ArrayAttr>().size() == 4))))
       return emitError(loc, "'tosa.avg_pool2d' op ""attribute 'pad' failed to satisfy constraint: 64-bit integer array attribute with exactly 4 elements");
   }
   {
@@ -1640,7 +1640,7 @@ void AvgPool2dOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::AvgPool2dOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::AvgPool2dOp)
 
 namespace mlir {
 namespace tosa {
@@ -1785,7 +1785,7 @@ void BitwiseAndOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effec
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::BitwiseAndOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::BitwiseAndOp)
 
 namespace mlir {
 namespace tosa {
@@ -1908,7 +1908,7 @@ void BitwiseNotOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effec
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::BitwiseNotOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::BitwiseNotOp)
 
 namespace mlir {
 namespace tosa {
@@ -2053,7 +2053,7 @@ void BitwiseOrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::BitwiseOrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::BitwiseOrOp)
 
 namespace mlir {
 namespace tosa {
@@ -2198,7 +2198,7 @@ void BitwiseXorOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effec
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::BitwiseXorOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::BitwiseXorOp)
 
 namespace mlir {
 namespace tosa {
@@ -2321,7 +2321,7 @@ void CastOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::CastOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::CastOp)
 
 namespace mlir {
 namespace tosa {
@@ -2444,7 +2444,7 @@ void CeilOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::CeilOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::CeilOp)
 
 namespace mlir {
 namespace tosa {
@@ -2754,7 +2754,7 @@ void ClampOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ClampOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ClampOp)
 
 namespace mlir {
 namespace tosa {
@@ -2877,7 +2877,7 @@ void ClzOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ClzOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ClzOp)
 
 namespace mlir {
 namespace tosa {
@@ -3082,7 +3082,7 @@ void ConcatOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ConcatOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ConcatOp)
 
 namespace mlir {
 namespace tosa {
@@ -3232,7 +3232,7 @@ void ConstOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ConstOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ConstOp)
 
 namespace mlir {
 namespace tosa {
@@ -3325,7 +3325,7 @@ mlir::tosa::ConvOpQuantizationAttr Conv2DOpAdaptor::quantization_infoAttr() {
     if (!tblgen_pad)
       return emitError(loc, "'tosa.conv2d' op ""requires attribute 'pad'");
 
-    if (tblgen_pad && !((((tblgen_pad.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_pad.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))) && ((tblgen_pad.cast<::mlir::ArrayAttr>().size() == 4))))
+    if (tblgen_pad && !((((tblgen_pad.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_pad.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_pad.cast<::mlir::ArrayAttr>().size() == 4))))
       return emitError(loc, "'tosa.conv2d' op ""attribute 'pad' failed to satisfy constraint: 64-bit integer array attribute with exactly 4 elements");
   }
   {
@@ -3333,7 +3333,7 @@ mlir::tosa::ConvOpQuantizationAttr Conv2DOpAdaptor::quantization_infoAttr() {
     if (!tblgen_stride)
       return emitError(loc, "'tosa.conv2d' op ""requires attribute 'stride'");
 
-    if (tblgen_stride && !((((tblgen_stride.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))) && ((tblgen_stride.cast<::mlir::ArrayAttr>().size() == 2))))
+    if (tblgen_stride && !((((tblgen_stride.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_stride.cast<::mlir::ArrayAttr>().size() == 2))))
       return emitError(loc, "'tosa.conv2d' op ""attribute 'stride' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
   }
   {
@@ -3341,7 +3341,7 @@ mlir::tosa::ConvOpQuantizationAttr Conv2DOpAdaptor::quantization_infoAttr() {
     if (!tblgen_dilation)
       return emitError(loc, "'tosa.conv2d' op ""requires attribute 'dilation'");
 
-    if (tblgen_dilation && !((((tblgen_dilation.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_dilation.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))) && ((tblgen_dilation.cast<::mlir::ArrayAttr>().size() == 2))))
+    if (tblgen_dilation && !((((tblgen_dilation.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_dilation.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_dilation.cast<::mlir::ArrayAttr>().size() == 2))))
       return emitError(loc, "'tosa.conv2d' op ""attribute 'dilation' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
   }
   {
@@ -3578,7 +3578,7 @@ void Conv2DOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::Conv2DOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::Conv2DOp)
 
 namespace mlir {
 namespace tosa {
@@ -3671,7 +3671,7 @@ mlir::tosa::ConvOpQuantizationAttr Conv3DOpAdaptor::quantization_infoAttr() {
     if (!tblgen_pad)
       return emitError(loc, "'tosa.conv3d' op ""requires attribute 'pad'");
 
-    if (tblgen_pad && !((((tblgen_pad.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_pad.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))) && ((tblgen_pad.cast<::mlir::ArrayAttr>().size() == 6))))
+    if (tblgen_pad && !((((tblgen_pad.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_pad.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_pad.cast<::mlir::ArrayAttr>().size() == 6))))
       return emitError(loc, "'tosa.conv3d' op ""attribute 'pad' failed to satisfy constraint: 64-bit integer array attribute with exactly 6 elements");
   }
   {
@@ -3679,7 +3679,7 @@ mlir::tosa::ConvOpQuantizationAttr Conv3DOpAdaptor::quantization_infoAttr() {
     if (!tblgen_stride)
       return emitError(loc, "'tosa.conv3d' op ""requires attribute 'stride'");
 
-    if (tblgen_stride && !((((tblgen_stride.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))) && ((tblgen_stride.cast<::mlir::ArrayAttr>().size() == 3))))
+    if (tblgen_stride && !((((tblgen_stride.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_stride.cast<::mlir::ArrayAttr>().size() == 3))))
       return emitError(loc, "'tosa.conv3d' op ""attribute 'stride' failed to satisfy constraint: 64-bit integer array attribute with exactly 3 elements");
   }
   {
@@ -3687,7 +3687,7 @@ mlir::tosa::ConvOpQuantizationAttr Conv3DOpAdaptor::quantization_infoAttr() {
     if (!tblgen_dilation)
       return emitError(loc, "'tosa.conv3d' op ""requires attribute 'dilation'");
 
-    if (tblgen_dilation && !((((tblgen_dilation.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_dilation.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))) && ((tblgen_dilation.cast<::mlir::ArrayAttr>().size() == 3))))
+    if (tblgen_dilation && !((((tblgen_dilation.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_dilation.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_dilation.cast<::mlir::ArrayAttr>().size() == 3))))
       return emitError(loc, "'tosa.conv3d' op ""attribute 'dilation' failed to satisfy constraint: 64-bit integer array attribute with exactly 3 elements");
   }
   {
@@ -3924,7 +3924,7 @@ void Conv3DOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::Conv3DOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::Conv3DOp)
 
 namespace mlir {
 namespace tosa {
@@ -4125,7 +4125,7 @@ void CustomOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::CustomOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::CustomOp)
 
 namespace mlir {
 namespace tosa {
@@ -4218,7 +4218,7 @@ mlir::tosa::ConvOpQuantizationAttr DepthwiseConv2DOpAdaptor::quantization_infoAt
     if (!tblgen_pad)
       return emitError(loc, "'tosa.depthwise_conv2d' op ""requires attribute 'pad'");
 
-    if (tblgen_pad && !((((tblgen_pad.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_pad.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))) && ((tblgen_pad.cast<::mlir::ArrayAttr>().size() == 4))))
+    if (tblgen_pad && !((((tblgen_pad.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_pad.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_pad.cast<::mlir::ArrayAttr>().size() == 4))))
       return emitError(loc, "'tosa.depthwise_conv2d' op ""attribute 'pad' failed to satisfy constraint: 64-bit integer array attribute with exactly 4 elements");
   }
   {
@@ -4226,7 +4226,7 @@ mlir::tosa::ConvOpQuantizationAttr DepthwiseConv2DOpAdaptor::quantization_infoAt
     if (!tblgen_stride)
       return emitError(loc, "'tosa.depthwise_conv2d' op ""requires attribute 'stride'");
 
-    if (tblgen_stride && !((((tblgen_stride.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))) && ((tblgen_stride.cast<::mlir::ArrayAttr>().size() == 2))))
+    if (tblgen_stride && !((((tblgen_stride.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_stride.cast<::mlir::ArrayAttr>().size() == 2))))
       return emitError(loc, "'tosa.depthwise_conv2d' op ""attribute 'stride' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
   }
   {
@@ -4234,7 +4234,7 @@ mlir::tosa::ConvOpQuantizationAttr DepthwiseConv2DOpAdaptor::quantization_infoAt
     if (!tblgen_dilation)
       return emitError(loc, "'tosa.depthwise_conv2d' op ""requires attribute 'dilation'");
 
-    if (tblgen_dilation && !((((tblgen_dilation.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_dilation.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))) && ((tblgen_dilation.cast<::mlir::ArrayAttr>().size() == 2))))
+    if (tblgen_dilation && !((((tblgen_dilation.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_dilation.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_dilation.cast<::mlir::ArrayAttr>().size() == 2))))
       return emitError(loc, "'tosa.depthwise_conv2d' op ""attribute 'dilation' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
   }
   {
@@ -4471,7 +4471,7 @@ void DepthwiseConv2DOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::DepthwiseConv2DOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::DepthwiseConv2DOp)
 
 namespace mlir {
 namespace tosa {
@@ -4616,7 +4616,7 @@ void DivOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::DivOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::DivOp)
 
 namespace mlir {
 namespace tosa {
@@ -4761,7 +4761,7 @@ void EqualOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::EqualOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::EqualOp)
 
 namespace mlir {
 namespace tosa {
@@ -4884,7 +4884,7 @@ void ExpOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ExpOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ExpOp)
 
 namespace mlir {
 namespace tosa {
@@ -5007,7 +5007,7 @@ void FloorOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::FloorOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::FloorOp)
 
 namespace mlir {
 namespace tosa {
@@ -5226,7 +5226,7 @@ void FullyConnectedOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::E
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::FullyConnectedOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::FullyConnectedOp)
 
 namespace mlir {
 namespace tosa {
@@ -5371,7 +5371,7 @@ void GatherOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::GatherOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::GatherOp)
 
 namespace mlir {
 namespace tosa {
@@ -5516,7 +5516,7 @@ void GreaterEqualOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Eff
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::GreaterEqualOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::GreaterEqualOp)
 
 namespace mlir {
 namespace tosa {
@@ -5661,7 +5661,7 @@ void GreaterOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::GreaterOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::GreaterOp)
 
 namespace mlir {
 namespace tosa {
@@ -5784,7 +5784,7 @@ void IdentityOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::IdentityOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::IdentityOp)
 
 namespace mlir {
 namespace tosa {
@@ -5995,7 +5995,7 @@ void IfOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::IfOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::IfOp)
 
 namespace mlir {
 namespace tosa {
@@ -6118,7 +6118,7 @@ void LogOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::LogOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::LogOp)
 
 namespace mlir {
 namespace tosa {
@@ -6263,7 +6263,7 @@ void LogicalAndOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effec
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::LogicalAndOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::LogicalAndOp)
 
 namespace mlir {
 namespace tosa {
@@ -6408,7 +6408,7 @@ void LogicalLeftShiftOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects:
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::LogicalLeftShiftOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::LogicalLeftShiftOp)
 
 namespace mlir {
 namespace tosa {
@@ -6531,7 +6531,7 @@ void LogicalNotOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effec
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::LogicalNotOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::LogicalNotOp)
 
 namespace mlir {
 namespace tosa {
@@ -6676,7 +6676,7 @@ void LogicalOrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::LogicalOrOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::LogicalOrOp)
 
 namespace mlir {
 namespace tosa {
@@ -6821,7 +6821,7 @@ void LogicalRightShiftOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::LogicalRightShiftOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::LogicalRightShiftOp)
 
 namespace mlir {
 namespace tosa {
@@ -6966,7 +6966,7 @@ void LogicalXorOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effec
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::LogicalXorOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::LogicalXorOp)
 
 namespace mlir {
 namespace tosa {
@@ -7161,7 +7161,7 @@ void MatMulOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::MatMulOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::MatMulOp)
 
 namespace mlir {
 namespace tosa {
@@ -7235,7 +7235,7 @@ std::pair<unsigned, unsigned> MaxPool2dOpAdaptor::getODSOperandIndexAndLength(un
     if (!tblgen_kernel)
       return emitError(loc, "'tosa.max_pool2d' op ""requires attribute 'kernel'");
 
-    if (tblgen_kernel && !((((tblgen_kernel.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_kernel.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))) && ((tblgen_kernel.cast<::mlir::ArrayAttr>().size() == 2))))
+    if (tblgen_kernel && !((((tblgen_kernel.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_kernel.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_kernel.cast<::mlir::ArrayAttr>().size() == 2))))
       return emitError(loc, "'tosa.max_pool2d' op ""attribute 'kernel' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
   }
   {
@@ -7243,7 +7243,7 @@ std::pair<unsigned, unsigned> MaxPool2dOpAdaptor::getODSOperandIndexAndLength(un
     if (!tblgen_stride)
       return emitError(loc, "'tosa.max_pool2d' op ""requires attribute 'stride'");
 
-    if (tblgen_stride && !((((tblgen_stride.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))) && ((tblgen_stride.cast<::mlir::ArrayAttr>().size() == 2))))
+    if (tblgen_stride && !((((tblgen_stride.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_stride.cast<::mlir::ArrayAttr>().size() == 2))))
       return emitError(loc, "'tosa.max_pool2d' op ""attribute 'stride' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
   }
   {
@@ -7251,7 +7251,7 @@ std::pair<unsigned, unsigned> MaxPool2dOpAdaptor::getODSOperandIndexAndLength(un
     if (!tblgen_pad)
       return emitError(loc, "'tosa.max_pool2d' op ""requires attribute 'pad'");
 
-    if (tblgen_pad && !((((tblgen_pad.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_pad.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))) && ((tblgen_pad.cast<::mlir::ArrayAttr>().size() == 4))))
+    if (tblgen_pad && !((((tblgen_pad.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_pad.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_pad.cast<::mlir::ArrayAttr>().size() == 4))))
       return emitError(loc, "'tosa.max_pool2d' op ""attribute 'pad' failed to satisfy constraint: 64-bit integer array attribute with exactly 4 elements");
   }
   return ::mlir::success();
@@ -7410,7 +7410,7 @@ void MaxPool2dOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::MaxPool2dOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::MaxPool2dOp)
 
 namespace mlir {
 namespace tosa {
@@ -7555,7 +7555,7 @@ void MaximumOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::MaximumOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::MaximumOp)
 
 namespace mlir {
 namespace tosa {
@@ -7700,7 +7700,7 @@ void MinimumOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::MinimumOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::MinimumOp)
 
 namespace mlir {
 namespace tosa {
@@ -7902,7 +7902,7 @@ void MulOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::MulOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::MulOp)
 
 namespace mlir {
 namespace tosa {
@@ -8074,7 +8074,7 @@ void NegateOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::NegateOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::NegateOp)
 
 namespace mlir {
 namespace tosa {
@@ -8334,7 +8334,7 @@ void PadOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::PadOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::PadOp)
 
 namespace mlir {
 namespace tosa {
@@ -8479,7 +8479,7 @@ void PowOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::PowOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::PowOp)
 
 namespace mlir {
 namespace tosa {
@@ -8602,7 +8602,7 @@ void ReciprocalOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effec
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ReciprocalOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ReciprocalOp)
 
 namespace mlir {
 namespace tosa {
@@ -8780,7 +8780,7 @@ void ReduceAllOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ReduceAllOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ReduceAllOp)
 
 namespace mlir {
 namespace tosa {
@@ -8958,7 +8958,7 @@ void ReduceAnyOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ReduceAnyOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ReduceAnyOp)
 
 namespace mlir {
 namespace tosa {
@@ -9136,7 +9136,7 @@ void ReduceMaxOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ReduceMaxOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ReduceMaxOp)
 
 namespace mlir {
 namespace tosa {
@@ -9314,7 +9314,7 @@ void ReduceMinOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ReduceMinOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ReduceMinOp)
 
 namespace mlir {
 namespace tosa {
@@ -9492,7 +9492,7 @@ void ReduceProdOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effec
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ReduceProdOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ReduceProdOp)
 
 namespace mlir {
 namespace tosa {
@@ -9670,7 +9670,7 @@ void ReduceSumOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ReduceSumOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ReduceSumOp)
 
 namespace mlir {
 namespace tosa {
@@ -9892,7 +9892,7 @@ void ReluNOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ReluNOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ReluNOp)
 
 namespace mlir {
 namespace tosa {
@@ -10026,7 +10026,7 @@ bool RescaleOpAdaptor::per_channel() {
     if (!tblgen_multiplier)
       return emitError(loc, "'tosa.rescale' op ""requires attribute 'multiplier'");
 
-    if (tblgen_multiplier && !(((tblgen_multiplier.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_multiplier.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32))); }))))
+    if (tblgen_multiplier && !(((tblgen_multiplier.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_multiplier.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))); }))))
       return emitError(loc, "'tosa.rescale' op ""attribute 'multiplier' failed to satisfy constraint: 32-bit integer array attribute");
   }
   {
@@ -10034,7 +10034,7 @@ bool RescaleOpAdaptor::per_channel() {
     if (!tblgen_shift)
       return emitError(loc, "'tosa.rescale' op ""requires attribute 'shift'");
 
-    if (tblgen_shift && !(((tblgen_shift.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_shift.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32))); }))))
+    if (tblgen_shift && !(((tblgen_shift.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_shift.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))); }))))
       return emitError(loc, "'tosa.rescale' op ""attribute 'shift' failed to satisfy constraint: 32-bit integer array attribute");
   }
   {
@@ -10334,7 +10334,7 @@ void RescaleOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::RescaleOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::RescaleOp)
 
 namespace mlir {
 namespace tosa {
@@ -10386,7 +10386,7 @@ std::pair<unsigned, unsigned> ReshapeOpAdaptor::getODSOperandIndexAndLength(unsi
     if (!tblgen_new_shape)
       return emitError(loc, "'tosa.reshape' op ""requires attribute 'new_shape'");
 
-    if (tblgen_new_shape && !(((tblgen_new_shape.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_new_shape.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))))
+    if (tblgen_new_shape && !(((tblgen_new_shape.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_new_shape.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
       return emitError(loc, "'tosa.reshape' op ""attribute 'new_shape' failed to satisfy constraint: 64-bit integer array attribute");
   }
   return ::mlir::success();
@@ -10499,7 +10499,7 @@ void ReshapeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ReshapeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ReshapeOp)
 
 namespace mlir {
 namespace tosa {
@@ -10617,7 +10617,7 @@ uint32_t ResizeOpAdaptor::shift() {
     if (!tblgen_output_size)
       return emitError(loc, "'tosa.resize' op ""requires attribute 'output_size'");
 
-    if (tblgen_output_size && !((((tblgen_output_size.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_output_size.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))) && ((tblgen_output_size.cast<::mlir::ArrayAttr>().size() == 2))))
+    if (tblgen_output_size && !((((tblgen_output_size.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_output_size.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_output_size.cast<::mlir::ArrayAttr>().size() == 2))))
       return emitError(loc, "'tosa.resize' op ""attribute 'output_size' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
   }
   {
@@ -10625,7 +10625,7 @@ uint32_t ResizeOpAdaptor::shift() {
     if (!tblgen_stride)
       return emitError(loc, "'tosa.resize' op ""requires attribute 'stride'");
 
-    if (tblgen_stride && !((((tblgen_stride.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))) && ((tblgen_stride.cast<::mlir::ArrayAttr>().size() == 2))))
+    if (tblgen_stride && !((((tblgen_stride.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_stride.cast<::mlir::ArrayAttr>().size() == 2))))
       return emitError(loc, "'tosa.resize' op ""attribute 'stride' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
   }
   {
@@ -10633,7 +10633,7 @@ uint32_t ResizeOpAdaptor::shift() {
     if (!tblgen_offset)
       return emitError(loc, "'tosa.resize' op ""requires attribute 'offset'");
 
-    if (tblgen_offset && !((((tblgen_offset.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_offset.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))) && ((tblgen_offset.cast<::mlir::ArrayAttr>().size() == 2))))
+    if (tblgen_offset && !((((tblgen_offset.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_offset.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_offset.cast<::mlir::ArrayAttr>().size() == 2))))
       return emitError(loc, "'tosa.resize' op ""attribute 'offset' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
   }
   {
@@ -10649,7 +10649,7 @@ uint32_t ResizeOpAdaptor::shift() {
     if (!tblgen_stride_fp)
       return emitError(loc, "'tosa.resize' op ""requires attribute 'stride_fp'");
 
-    if (tblgen_stride_fp && !((((tblgen_stride_fp.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride_fp.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::FloatAttr>())) && ((attr.cast<::mlir::FloatAttr>().getType().isF32())); }))) && ((tblgen_stride_fp.cast<::mlir::ArrayAttr>().size() == 2))))
+    if (tblgen_stride_fp && !((((tblgen_stride_fp.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride_fp.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::FloatAttr>())) && ((attr.cast<::mlir::FloatAttr>().getType().isF32()))); }))) && ((tblgen_stride_fp.cast<::mlir::ArrayAttr>().size() == 2))))
       return emitError(loc, "'tosa.resize' op ""attribute 'stride_fp' failed to satisfy constraint: 32-bit float array attribute with exactly 2 elements");
   }
   {
@@ -10657,7 +10657,7 @@ uint32_t ResizeOpAdaptor::shift() {
     if (!tblgen_offset_fp)
       return emitError(loc, "'tosa.resize' op ""requires attribute 'offset_fp'");
 
-    if (tblgen_offset_fp && !((((tblgen_offset_fp.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_offset_fp.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::FloatAttr>())) && ((attr.cast<::mlir::FloatAttr>().getType().isF32())); }))) && ((tblgen_offset_fp.cast<::mlir::ArrayAttr>().size() == 2))))
+    if (tblgen_offset_fp && !((((tblgen_offset_fp.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_offset_fp.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::FloatAttr>())) && ((attr.cast<::mlir::FloatAttr>().getType().isF32()))); }))) && ((tblgen_offset_fp.cast<::mlir::ArrayAttr>().size() == 2))))
       return emitError(loc, "'tosa.resize' op ""attribute 'offset_fp' failed to satisfy constraint: 32-bit float array attribute with exactly 2 elements");
   }
   {
@@ -10941,7 +10941,7 @@ void ResizeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ResizeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ResizeOp)
 
 namespace mlir {
 namespace tosa {
@@ -11119,7 +11119,7 @@ void ReverseOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ReverseOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ReverseOp)
 
 namespace mlir {
 namespace tosa {
@@ -11242,7 +11242,7 @@ void RsqrtOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::RsqrtOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::RsqrtOp)
 
 namespace mlir {
 namespace tosa {
@@ -11409,7 +11409,7 @@ void ScatterOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ScatterOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ScatterOp)
 
 namespace mlir {
 namespace tosa {
@@ -11436,15 +11436,15 @@ std::pair<unsigned, unsigned> SelectOpAdaptor::getODSOperandIndexAndLength(unsig
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value SelectOpAdaptor::input1() {
+::mlir::Value SelectOpAdaptor::pred() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value SelectOpAdaptor::input2() {
+::mlir::Value SelectOpAdaptor::on_true() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value SelectOpAdaptor::input3() {
+::mlir::Value SelectOpAdaptor::on_false() {
   return *getODSOperands(2).begin();
 }
 
@@ -11466,31 +11466,31 @@ std::pair<unsigned, unsigned> SelectOp::getODSOperandIndexAndLength(unsigned ind
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value SelectOp::input1() {
+::mlir::Value SelectOp::pred() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value SelectOp::input2() {
+::mlir::Value SelectOp::on_true() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value SelectOp::input3() {
+::mlir::Value SelectOp::on_false() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::MutableOperandRange SelectOp::input1Mutable() {
+::mlir::MutableOperandRange SelectOp::predMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange SelectOp::input2Mutable() {
+::mlir::MutableOperandRange SelectOp::on_trueMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange SelectOp::input3Mutable() {
+::mlir::MutableOperandRange SelectOp::on_falseMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -11510,17 +11510,17 @@ std::pair<unsigned, unsigned> SelectOp::getODSResultIndexAndLength(unsigned inde
   return *getODSResults(0).begin();
 }
 
-void SelectOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input1, ::mlir::Value input2, ::mlir::Value input3) {
-  odsState.addOperands(input1);
-  odsState.addOperands(input2);
-  odsState.addOperands(input3);
+void SelectOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value pred, ::mlir::Value on_true, ::mlir::Value on_false) {
+  odsState.addOperands(pred);
+  odsState.addOperands(on_true);
+  odsState.addOperands(on_false);
   odsState.addTypes(output);
 }
 
-void SelectOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input1, ::mlir::Value input2, ::mlir::Value input3) {
-  odsState.addOperands(input1);
-  odsState.addOperands(input2);
-  odsState.addOperands(input3);
+void SelectOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value pred, ::mlir::Value on_true, ::mlir::Value on_false) {
+  odsState.addOperands(pred);
+  odsState.addOperands(on_true);
+  odsState.addOperands(on_false);
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -11571,12 +11571,16 @@ void SelectOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   return verifyInvariantsImpl();
 }
 
+void SelectOp::getCanonicalizationPatterns(::mlir::RewritePatternSet &results, ::mlir::MLIRContext *context) {
+  results.add(canonicalize);
+}
+
 void SelectOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::SelectOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::SelectOp)
 
 namespace mlir {
 namespace tosa {
@@ -11699,7 +11703,7 @@ void SigmoidOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::SigmoidOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::SigmoidOp)
 
 namespace mlir {
 namespace tosa {
@@ -11762,7 +11766,7 @@ std::pair<unsigned, unsigned> SliceOpAdaptor::getODSOperandIndexAndLength(unsign
     if (!tblgen_start)
       return emitError(loc, "'tosa.slice' op ""requires attribute 'start'");
 
-    if (tblgen_start && !(((tblgen_start.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_start.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))))
+    if (tblgen_start && !(((tblgen_start.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_start.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
       return emitError(loc, "'tosa.slice' op ""attribute 'start' failed to satisfy constraint: 64-bit integer array attribute");
   }
   {
@@ -11770,7 +11774,7 @@ std::pair<unsigned, unsigned> SliceOpAdaptor::getODSOperandIndexAndLength(unsign
     if (!tblgen_size)
       return emitError(loc, "'tosa.slice' op ""requires attribute 'size'");
 
-    if (tblgen_size && !(((tblgen_size.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_size.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))))
+    if (tblgen_size && !(((tblgen_size.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_size.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
       return emitError(loc, "'tosa.slice' op ""attribute 'size' failed to satisfy constraint: 64-bit integer array attribute");
   }
   return ::mlir::success();
@@ -11906,7 +11910,7 @@ void SliceOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::SliceOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::SliceOp)
 
 namespace mlir {
 namespace tosa {
@@ -12051,7 +12055,7 @@ void SubOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::SubOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::SubOp)
 
 namespace mlir {
 namespace tosa {
@@ -12196,7 +12200,7 @@ void TableOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::TableOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::TableOp)
 
 namespace mlir {
 namespace tosa {
@@ -12319,7 +12323,7 @@ void TanhOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::TanhOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::TanhOp)
 
 namespace mlir {
 namespace tosa {
@@ -12371,7 +12375,7 @@ std::pair<unsigned, unsigned> TileOpAdaptor::getODSOperandIndexAndLength(unsigne
     if (!tblgen_multiples)
       return emitError(loc, "'tosa.tile' op ""requires attribute 'multiples'");
 
-    if (tblgen_multiples && !(((tblgen_multiples.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_multiples.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))))
+    if (tblgen_multiples && !(((tblgen_multiples.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_multiples.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
       return emitError(loc, "'tosa.tile' op ""attribute 'multiples' failed to satisfy constraint: 64-bit integer array attribute");
   }
   return ::mlir::success();
@@ -12484,7 +12488,7 @@ void TileOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::TileOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::TileOp)
 
 namespace mlir {
 namespace tosa {
@@ -12588,7 +12592,7 @@ mlir::tosa::ConvOpQuantizationAttr TransposeConv2DOpAdaptor::quantization_infoAt
     if (!tblgen_out_pad)
       return emitError(loc, "'tosa.transpose_conv2d' op ""requires attribute 'out_pad'");
 
-    if (tblgen_out_pad && !((((tblgen_out_pad.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_out_pad.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))) && ((tblgen_out_pad.cast<::mlir::ArrayAttr>().size() == 2))))
+    if (tblgen_out_pad && !((((tblgen_out_pad.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_out_pad.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_out_pad.cast<::mlir::ArrayAttr>().size() == 2))))
       return emitError(loc, "'tosa.transpose_conv2d' op ""attribute 'out_pad' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
   }
   {
@@ -12596,7 +12600,7 @@ mlir::tosa::ConvOpQuantizationAttr TransposeConv2DOpAdaptor::quantization_infoAt
     if (!tblgen_stride)
       return emitError(loc, "'tosa.transpose_conv2d' op ""requires attribute 'stride'");
 
-    if (tblgen_stride && !((((tblgen_stride.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))) && ((tblgen_stride.cast<::mlir::ArrayAttr>().size() == 2))))
+    if (tblgen_stride && !((((tblgen_stride.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_stride.cast<::mlir::ArrayAttr>().size() == 2))))
       return emitError(loc, "'tosa.transpose_conv2d' op ""attribute 'stride' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
   }
   {
@@ -12604,7 +12608,7 @@ mlir::tosa::ConvOpQuantizationAttr TransposeConv2DOpAdaptor::quantization_infoAt
     if (!tblgen_dilation)
       return emitError(loc, "'tosa.transpose_conv2d' op ""requires attribute 'dilation'");
 
-    if (tblgen_dilation && !((((tblgen_dilation.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_dilation.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))) && ((tblgen_dilation.cast<::mlir::ArrayAttr>().size() == 2))))
+    if (tblgen_dilation && !((((tblgen_dilation.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_dilation.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_dilation.cast<::mlir::ArrayAttr>().size() == 2))))
       return emitError(loc, "'tosa.transpose_conv2d' op ""attribute 'dilation' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
   }
   {
@@ -12612,7 +12616,7 @@ mlir::tosa::ConvOpQuantizationAttr TransposeConv2DOpAdaptor::quantization_infoAt
     if (!tblgen_out_shape)
       return emitError(loc, "'tosa.transpose_conv2d' op ""requires attribute 'out_shape'");
 
-    if (tblgen_out_shape && !((((tblgen_out_shape.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_out_shape.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))) && ((tblgen_out_shape.cast<::mlir::ArrayAttr>().size() <= 4))))
+    if (tblgen_out_shape && !((((tblgen_out_shape.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_out_shape.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_out_shape.cast<::mlir::ArrayAttr>().size() <= 4))))
       return emitError(loc, "'tosa.transpose_conv2d' op ""attribute 'out_shape' failed to satisfy constraint: 64-bit integer array attribute with at least 4 elements");
   }
   {
@@ -12871,7 +12875,7 @@ void TransposeConv2DOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::TransposeConv2DOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::TransposeConv2DOp)
 
 namespace mlir {
 namespace tosa {
@@ -13016,7 +13020,7 @@ void TransposeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::TransposeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::TransposeOp)
 
 namespace mlir {
 namespace tosa {
@@ -13198,7 +13202,7 @@ void WhileOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::WhileOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::WhileOp)
 
 namespace mlir {
 namespace tosa {
@@ -13328,7 +13332,7 @@ void YieldOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace tosa
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::YieldOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::YieldOp)
 
 
 #endif  // GET_OP_CLASSES

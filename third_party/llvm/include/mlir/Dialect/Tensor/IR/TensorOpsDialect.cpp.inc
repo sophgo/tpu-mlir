@@ -6,7 +6,7 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
-DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::TensorDialect)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::tensor::TensorDialect)
 namespace mlir {
 namespace tensor {
 

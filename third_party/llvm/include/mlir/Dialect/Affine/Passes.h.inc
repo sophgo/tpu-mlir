@@ -44,6 +44,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(AffineDataCopyGenerationBase<DerivedT>)
+
 protected:
   ::mlir::Pass::Option<uint64_t> fastMemoryCapacity{*this, "fast-mem-capacity", ::llvm::cl::desc("Set fast memory space capacity in KiB (default: unlimited)"), ::llvm::cl::init(std::numeric_limits<uint64_t>::max())};
   ::mlir::Pass::Option<unsigned> fastMemorySpace{*this, "fast-mem-space", ::llvm::cl::desc("Fast memory space identifier for copy generation (default: 1)"), ::llvm::cl::init(1)};
@@ -97,6 +102,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(AffineLoopFusionBase<DerivedT>)
+
 protected:
   ::mlir::Pass::Option<double> computeToleranceThreshold{*this, "fusion-compute-tolerance", ::llvm::cl::desc("Fractional increase in additional computation tolerated while fusing"), ::llvm::cl::init(0.30f)};
   ::mlir::Pass::Option<unsigned> fastMemorySpace{*this, "fusion-fast-mem-space", ::llvm::cl::desc("Faster memory space number to promote fusion buffers to"), ::llvm::cl::init(0)};
@@ -146,6 +156,11 @@ public:
     
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(AffineLoopInvariantCodeMotionBase<DerivedT>)
+
 protected:
 };
 
@@ -190,6 +205,11 @@ public:
     
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(AffineLoopNormalizeBase<DerivedT>)
+
 protected:
 };
 
@@ -233,6 +253,11 @@ public:
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
     
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(AffineLoopTilingBase<DerivedT>)
 
 protected:
   ::mlir::Pass::Option<uint64_t> cacheSizeInKiB{*this, "cache-size", ::llvm::cl::desc("Set size of cache to tile for in KiB"), ::llvm::cl::init(512)};
@@ -281,6 +306,11 @@ public:
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
     
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(AffineLoopUnrollBase<DerivedT>)
 
 protected:
   ::mlir::Pass::Option<unsigned> unrollFactor{*this, "unroll-factor", ::llvm::cl::desc("Use this unroll factor for all loops being unrolled"), ::llvm::cl::init(4)};
@@ -331,6 +361,11 @@ public:
     
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(AffineLoopUnrollAndJamBase<DerivedT>)
+
 protected:
   ::mlir::Pass::Option<unsigned> unrollJamFactor{*this, "unroll-jam-factor", ::llvm::cl::desc("Use this unroll jam factor for all loops (default 4)"), ::llvm::cl::init(4)};
 };
@@ -375,6 +410,11 @@ public:
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
     
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(AffineParallelizeBase<DerivedT>)
 
 protected:
   ::mlir::Pass::Option<unsigned> maxNested{*this, "max-nested", ::llvm::cl::desc("Maximum number of nested parallel loops to produce. Defaults to unlimited (UINT_MAX)."), ::llvm::cl::init(-1u)};
@@ -422,6 +462,11 @@ public:
     
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(AffinePipelineDataTransferBase<DerivedT>)
+
 protected:
 };
 
@@ -465,6 +510,11 @@ public:
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
     
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(AffineScalarReplacementBase<DerivedT>)
 
 protected:
 };
@@ -512,9 +562,14 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(AffineVectorizeBase<DerivedT>)
+
 protected:
-  ::mlir::Pass::ListOption<int64_t> vectorSizes{*this, "virtual-vector-size", ::llvm::cl::desc("Specify an n-D virtual vector size for vectorization"), llvm::cl::ZeroOrMore, llvm::cl::MiscFlags::CommaSeparated};
-  ::mlir::Pass::ListOption<int64_t> fastestVaryingPattern{*this, "test-fastest-varying", ::llvm::cl::desc("Specify a 1-D, 2-D or 3-D pattern of fastest varying memory dimensions to match. See defaultPatterns in Vectorize.cpp for a description and examples. This is used for testing purposes"), llvm::cl::ZeroOrMore, llvm::cl::MiscFlags::CommaSeparated};
+  ::mlir::Pass::ListOption<int64_t> vectorSizes{*this, "virtual-vector-size", ::llvm::cl::desc("Specify an n-D virtual vector size for vectorization"), llvm::cl::ZeroOrMore};
+  ::mlir::Pass::ListOption<int64_t> fastestVaryingPattern{*this, "test-fastest-varying", ::llvm::cl::desc("Specify a 1-D, 2-D or 3-D pattern of fastest varying memory dimensions to match. See defaultPatterns in Vectorize.cpp for a description and examples. This is used for testing purposes"), llvm::cl::ZeroOrMore};
   ::mlir::Pass::Option<bool> vectorizeReductions{*this, "vectorize-reductions", ::llvm::cl::desc("Vectorize known reductions expressed via iter_args. Switched off by default."), ::llvm::cl::init(false)};
 };
 
@@ -561,6 +616,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LoopCoalescingBase<DerivedT>)
+
 protected:
 };
 
@@ -604,6 +664,11 @@ public:
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
     
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(SimplifyAffineStructuresBase<DerivedT>)
 
 protected:
 };

@@ -6,7 +6,7 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
-DEFINE_EXPLICIT_TYPE_ID(::mlir::amx::AMXDialect)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::amx::AMXDialect)
 namespace mlir {
 namespace amx {
 

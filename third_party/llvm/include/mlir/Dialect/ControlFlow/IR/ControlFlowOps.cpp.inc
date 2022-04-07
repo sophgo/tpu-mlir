@@ -245,8 +245,8 @@ void AssertOp::getCanonicalizationPatterns(::mlir::RewritePatternSet &results, :
 }
 
 ::mlir::ParseResult AssertOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType argRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand argRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
   (void)argOperandsLoc;
   ::mlir::StringAttr msgAttr;
 
@@ -279,7 +279,7 @@ void AssertOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace cf
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::cf::AssertOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::cf::AssertOp)
 
 namespace mlir {
 namespace cf {
@@ -431,7 +431,7 @@ void BranchOp::getCanonicalizationPatterns(::mlir::RewritePatternSet &results, :
 
 ::mlir::ParseResult BranchOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::Block *destSuccessor = nullptr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> destOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> destOperandsOperands;
   ::llvm::SMLoc destOperandsOperandsLoc;
   (void)destOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> destOperandsTypes;
@@ -478,7 +478,7 @@ void BranchOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace cf
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::cf::BranchOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::cf::BranchOp)
 
 namespace mlir {
 namespace cf {
@@ -696,16 +696,16 @@ void CondBranchOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
 }
 
 ::mlir::ParseResult CondBranchOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType conditionRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> conditionOperands(conditionRawOperands);  ::llvm::SMLoc conditionOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand conditionRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> conditionOperands(conditionRawOperands);  ::llvm::SMLoc conditionOperandsLoc;
   (void)conditionOperandsLoc;
   ::mlir::Block *trueDestSuccessor = nullptr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> trueDestOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> trueDestOperandsOperands;
   ::llvm::SMLoc trueDestOperandsOperandsLoc;
   (void)trueDestOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> trueDestOperandsTypes;
   ::mlir::Block *falseDestSuccessor = nullptr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> falseDestOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> falseDestOperandsOperands;
   ::llvm::SMLoc falseDestOperandsOperandsLoc;
   (void)falseDestOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> falseDestOperandsTypes;
@@ -797,7 +797,7 @@ void CondBranchOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effec
 
 } // namespace cf
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::cf::CondBranchOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::cf::CondBranchOp)
 
 namespace mlir {
 namespace cf {
@@ -1112,19 +1112,19 @@ void SwitchOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::ParseResult SwitchOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType flagRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> flagOperands(flagRawOperands);  ::llvm::SMLoc flagOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand flagRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> flagOperands(flagRawOperands);  ::llvm::SMLoc flagOperandsLoc;
   (void)flagOperandsLoc;
   ::mlir::Type flagRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> flagTypes(flagRawTypes);
   ::mlir::Block *defaultDestinationSuccessor = nullptr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> defaultOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> defaultOperandsOperands;
   ::llvm::SMLoc defaultOperandsOperandsLoc;
   (void)defaultOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> defaultOperandsTypes;
   ::mlir::DenseIntElementsAttr case_valuesAttr;
   ::llvm::SmallVector<::mlir::Block *, 2> caseDestinationsSuccessors;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> caseOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> caseOperandsOperands;
     llvm::SmallVector<int32_t> caseOperandsOperandGroupSizes;
   ::llvm::SMLoc caseOperandsOperandsLoc;
   (void)caseOperandsOperandsLoc;
@@ -1149,7 +1149,7 @@ void SwitchOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   {
     defaultOperandsOperandsLoc = parser.getCurrentLocation();
     caseOperandsOperandsLoc = parser.getCurrentLocation();
-    ::llvm::SmallVector<::llvm::SmallVector<::mlir::OpAsmParser::OperandType>> caseOperandsOperandGroups;
+    ::llvm::SmallVector<::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand>> caseOperandsOperandGroups;
     ::llvm::SmallVector<llvm::SmallVector<::mlir::Type>> caseOperandsTypeGroups;
     if (parseSwitchOpCases(parser, flagRawTypes[0], defaultDestinationSuccessor, defaultOperandsOperands, defaultOperandsTypes, case_valuesAttr, caseDestinationsSuccessors, caseOperandsOperandGroups, caseOperandsTypeGroups))
       return ::mlir::failure();
@@ -1204,7 +1204,7 @@ void SwitchOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace cf
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::cf::SwitchOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::cf::SwitchOp)
 
 
 #endif  // GET_OP_CLASSES

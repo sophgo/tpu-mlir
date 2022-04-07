@@ -21,57 +21,6 @@ class _Dialect(_ods_ir.Dialect):
 
 @_ods_cext.register_operation(_Dialect)
 @_ods_extend_opview_class(_ods_ext_module)
-class FuncOp(_ods_ir.OpView):
-  OPERATION_NAME = "builtin.func"
-
-  _ODS_REGIONS = (1, True)
-
-  def __init__(self, sym_name, type, sym_visibility, *, loc=None, ip=None):
-    operands = []
-    results = []
-    attributes = {}
-    regions = None
-    attributes["sym_name"] = sym_name
-    attributes["type"] = type
-    if sym_visibility is not None: attributes["sym_visibility"] = sym_visibility
-    _ods_successors = None
-    super().__init__(self.build_generic(
-      attributes=attributes, results=results, operands=operands,
-      successors=_ods_successors, regions=regions, loc=loc, ip=ip))
-
-  @builtins.property
-  def sym_name(self):
-    return _ods_ir.StringAttr(self.operation.attributes["sym_name"])
-
-  @sym_name.setter
-  def sym_name(self, value):
-    if value is None:
-      raise ValueError("'None' not allowed as value for mandatory attributes")
-    self.operation.attributes["sym_name"] = value
-
-  @builtins.property
-  def sym_visibility(self):
-    if "sym_visibility" not in self.operation.attributes:
-      return None
-    return _ods_ir.StringAttr(self.operation.attributes["sym_visibility"])
-
-  @sym_visibility.setter
-  def sym_visibility(self, value):
-    if value is not None:
-      self.operation.attributes["sym_visibility"] = value
-    elif "sym_visibility" in self.operation.attributes:
-      del self.operation.attributes["sym_visibility"]
-
-  @sym_visibility.deleter
-  def sym_visibility(self):
-    del self.operation.attributes["sym_visibility"]
-
-  @builtins.property
-  def body(self):
-    return self.regions[0]
-
-@_ods_cext.register_operation(_Dialect)
-@_ods_extend_opview_class(_ods_ext_module)
 class ModuleOp(_ods_ir.OpView):
   OPERATION_NAME = "builtin.module"
 
@@ -112,7 +61,7 @@ class ModuleOp(_ods_ir.OpView):
     del self.operation.attributes["sym_visibility"]
 
   @builtins.property
-  def body(self):
+  def bodyRegion(self):
     return self.regions[0]
 
 @_ods_cext.register_operation(_Dialect)

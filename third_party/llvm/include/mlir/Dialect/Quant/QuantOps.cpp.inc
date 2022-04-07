@@ -111,7 +111,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_QuantOps2(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_QuantOps3(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::FloatAttr>())) && ((attr.cast<::mlir::FloatAttr>().getType().isF32())); })))) {
+  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::FloatAttr>())) && ((attr.cast<::mlir::FloatAttr>().getType().isF32()))); })))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: 32-bit float array attribute";
   }
@@ -129,7 +129,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_QuantOps4(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_QuantOps5(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::TypeAttr>())) && ((attr.cast<::mlir::TypeAttr>().getValue().isa<::mlir::Type>())); })))) {
+  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::TypeAttr>())) && ((attr.cast<::mlir::TypeAttr>().getValue().isa<::mlir::Type>()))); })))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: type array attribute";
   }
@@ -399,8 +399,12 @@ void ConstFakeQuant::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
   odsState.addAttribute(minAttrName(odsState.name), min);
   odsState.addAttribute(maxAttrName(odsState.name), max);
   odsState.addAttribute(num_bitsAttrName(odsState.name), num_bits);
+  if (narrow_range) {
   odsState.addAttribute(narrow_rangeAttrName(odsState.name), narrow_range);
+  }
+  if (is_signed) {
   odsState.addAttribute(is_signedAttrName(odsState.name), is_signed);
+  }
   odsState.addTypes(outputs);
 }
 
@@ -409,8 +413,12 @@ void ConstFakeQuant::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
   odsState.addAttribute(minAttrName(odsState.name), min);
   odsState.addAttribute(maxAttrName(odsState.name), max);
   odsState.addAttribute(num_bitsAttrName(odsState.name), num_bits);
+  if (narrow_range) {
   odsState.addAttribute(narrow_rangeAttrName(odsState.name), narrow_range);
+  }
+  if (is_signed) {
   odsState.addAttribute(is_signedAttrName(odsState.name), is_signed);
+  }
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -449,8 +457,12 @@ void ConstFakeQuant::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
   odsState.addAttribute(minAttrName(odsState.name), min);
   odsState.addAttribute(maxAttrName(odsState.name), max);
   odsState.addAttribute(num_bitsAttrName(odsState.name), num_bits);
+  if (narrow_range) {
   odsState.addAttribute(narrow_rangeAttrName(odsState.name), narrow_range);
+  }
+  if (is_signed) {
   odsState.addAttribute(is_signedAttrName(odsState.name), is_signed);
+  }
   odsState.addTypes({inputs.getType()});
 
 }
@@ -527,7 +539,7 @@ void ConstFakeQuant::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Eff
 
 } // namespace quant
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::quant::ConstFakeQuant)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::quant::ConstFakeQuant)
 
 namespace mlir {
 namespace quant {
@@ -642,7 +654,7 @@ bool ConstFakeQuantPerAxisAdaptor::is_signed() {
     if (!tblgen_min)
       return emitError(loc, "'quant.const_fake_quant_per_axis' op ""requires attribute 'min'");
 
-    if (tblgen_min && !(((tblgen_min.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_min.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::FloatAttr>())) && ((attr.cast<::mlir::FloatAttr>().getType().isF32())); }))))
+    if (tblgen_min && !(((tblgen_min.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_min.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::FloatAttr>())) && ((attr.cast<::mlir::FloatAttr>().getType().isF32()))); }))))
       return emitError(loc, "'quant.const_fake_quant_per_axis' op ""attribute 'min' failed to satisfy constraint: 32-bit float array attribute");
   }
   {
@@ -650,7 +662,7 @@ bool ConstFakeQuantPerAxisAdaptor::is_signed() {
     if (!tblgen_max)
       return emitError(loc, "'quant.const_fake_quant_per_axis' op ""requires attribute 'max'");
 
-    if (tblgen_max && !(((tblgen_max.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_max.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::FloatAttr>())) && ((attr.cast<::mlir::FloatAttr>().getType().isF32())); }))))
+    if (tblgen_max && !(((tblgen_max.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_max.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::FloatAttr>())) && ((attr.cast<::mlir::FloatAttr>().getType().isF32()))); }))))
       return emitError(loc, "'quant.const_fake_quant_per_axis' op ""attribute 'max' failed to satisfy constraint: 32-bit float array attribute");
   }
   {
@@ -804,8 +816,12 @@ void ConstFakeQuantPerAxis::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operati
   odsState.addAttribute(maxAttrName(odsState.name), max);
   odsState.addAttribute(axisAttrName(odsState.name), axis);
   odsState.addAttribute(num_bitsAttrName(odsState.name), num_bits);
+  if (narrow_range) {
   odsState.addAttribute(narrow_rangeAttrName(odsState.name), narrow_range);
+  }
+  if (is_signed) {
   odsState.addAttribute(is_signedAttrName(odsState.name), is_signed);
+  }
   odsState.addTypes(outputs);
 }
 
@@ -815,8 +831,12 @@ void ConstFakeQuantPerAxis::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operati
   odsState.addAttribute(maxAttrName(odsState.name), max);
   odsState.addAttribute(axisAttrName(odsState.name), axis);
   odsState.addAttribute(num_bitsAttrName(odsState.name), num_bits);
+  if (narrow_range) {
   odsState.addAttribute(narrow_rangeAttrName(odsState.name), narrow_range);
+  }
+  if (is_signed) {
   odsState.addAttribute(is_signedAttrName(odsState.name), is_signed);
+  }
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -858,8 +878,12 @@ void ConstFakeQuantPerAxis::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operati
   odsState.addAttribute(maxAttrName(odsState.name), max);
   odsState.addAttribute(axisAttrName(odsState.name), axis);
   odsState.addAttribute(num_bitsAttrName(odsState.name), num_bits);
+  if (narrow_range) {
   odsState.addAttribute(narrow_rangeAttrName(odsState.name), narrow_range);
+  }
+  if (is_signed) {
   odsState.addAttribute(is_signedAttrName(odsState.name), is_signed);
+  }
   odsState.addTypes({inputs.getType()});
 
 }
@@ -944,7 +968,7 @@ void ConstFakeQuantPerAxis::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffec
 
 } // namespace quant
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::quant::ConstFakeQuantPerAxis)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::quant::ConstFakeQuantPerAxis)
 
 namespace mlir {
 namespace quant {
@@ -1129,7 +1153,7 @@ void CoupledRefOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
 
 } // namespace quant
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::quant::CoupledRefOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::quant::CoupledRefOp)
 
 namespace mlir {
 namespace quant {
@@ -1248,7 +1272,7 @@ void DequantizeCastOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::E
 
 } // namespace quant
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::quant::DequantizeCastOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::quant::DequantizeCastOp)
 
 namespace mlir {
 namespace quant {
@@ -1367,7 +1391,7 @@ void QuantizeCastOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Eff
 
 } // namespace quant
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::quant::QuantizeCastOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::quant::QuantizeCastOp)
 
 namespace mlir {
 namespace quant {
@@ -1463,7 +1487,7 @@ std::pair<unsigned, unsigned> QuantizeRegionOpAdaptor::getODSOperandIndexAndLeng
     if (!tblgen_input_specs)
       return emitError(loc, "'quant.region' op ""requires attribute 'input_specs'");
 
-    if (tblgen_input_specs && !(((tblgen_input_specs.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_input_specs.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::TypeAttr>())) && ((attr.cast<::mlir::TypeAttr>().getValue().isa<::mlir::Type>())); }))))
+    if (tblgen_input_specs && !(((tblgen_input_specs.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_input_specs.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::TypeAttr>())) && ((attr.cast<::mlir::TypeAttr>().getValue().isa<::mlir::Type>()))); }))))
       return emitError(loc, "'quant.region' op ""attribute 'input_specs' failed to satisfy constraint: type array attribute");
   }
   {
@@ -1471,7 +1495,7 @@ std::pair<unsigned, unsigned> QuantizeRegionOpAdaptor::getODSOperandIndexAndLeng
     if (!tblgen_output_specs)
       return emitError(loc, "'quant.region' op ""requires attribute 'output_specs'");
 
-    if (tblgen_output_specs && !(((tblgen_output_specs.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_output_specs.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::TypeAttr>())) && ((attr.cast<::mlir::TypeAttr>().getValue().isa<::mlir::Type>())); }))))
+    if (tblgen_output_specs && !(((tblgen_output_specs.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_output_specs.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::TypeAttr>())) && ((attr.cast<::mlir::TypeAttr>().getValue().isa<::mlir::Type>()))); }))))
       return emitError(loc, "'quant.region' op ""attribute 'output_specs' failed to satisfy constraint: type array attribute");
   }
   {
@@ -1680,7 +1704,7 @@ void QuantizeRegionOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::E
 
 } // namespace quant
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::quant::QuantizeRegionOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::quant::QuantizeRegionOp)
 
 namespace mlir {
 namespace quant {
@@ -1807,7 +1831,7 @@ void ReturnOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 
 } // namespace quant
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::quant::ReturnOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::quant::ReturnOp)
 
 namespace mlir {
 namespace quant {
@@ -2075,7 +2099,7 @@ void StatisticsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
 
 } // namespace quant
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::quant::StatisticsOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::quant::StatisticsOp)
 
 namespace mlir {
 namespace quant {
@@ -2260,7 +2284,7 @@ void StatisticsRefOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationStat
 
 } // namespace quant
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::quant::StatisticsRefOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::quant::StatisticsRefOp)
 
 namespace mlir {
 namespace quant {
@@ -2379,7 +2403,7 @@ void StorageCastOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effe
 
 } // namespace quant
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::quant::StorageCastOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::quant::StorageCastOp)
 
 
 #endif  // GET_OP_CLASSES

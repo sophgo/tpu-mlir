@@ -37,31 +37,31 @@ namespace mlir {
 namespace omp {
 ::llvm::StringRef stringifyClauseMemoryOrderKind(ClauseMemoryOrderKind val) {
   switch (val) {
-    case ClauseMemoryOrderKind::seq_cst: return "seq_cst";
-    case ClauseMemoryOrderKind::acq_rel: return "acq_rel";
-    case ClauseMemoryOrderKind::acquire: return "acquire";
-    case ClauseMemoryOrderKind::release: return "release";
-    case ClauseMemoryOrderKind::relaxed: return "relaxed";
+    case ClauseMemoryOrderKind::Seq_cst: return "seq_cst";
+    case ClauseMemoryOrderKind::Acq_rel: return "acq_rel";
+    case ClauseMemoryOrderKind::Acquire: return "acquire";
+    case ClauseMemoryOrderKind::Release: return "release";
+    case ClauseMemoryOrderKind::Relaxed: return "relaxed";
   }
   return "";
 }
 
 ::llvm::Optional<ClauseMemoryOrderKind> symbolizeClauseMemoryOrderKind(::llvm::StringRef str) {
   return ::llvm::StringSwitch<::llvm::Optional<ClauseMemoryOrderKind>>(str)
-      .Case("seq_cst", ClauseMemoryOrderKind::seq_cst)
-      .Case("acq_rel", ClauseMemoryOrderKind::acq_rel)
-      .Case("acquire", ClauseMemoryOrderKind::acquire)
-      .Case("release", ClauseMemoryOrderKind::release)
-      .Case("relaxed", ClauseMemoryOrderKind::relaxed)
+      .Case("seq_cst", ClauseMemoryOrderKind::Seq_cst)
+      .Case("acq_rel", ClauseMemoryOrderKind::Acq_rel)
+      .Case("acquire", ClauseMemoryOrderKind::Acquire)
+      .Case("release", ClauseMemoryOrderKind::Release)
+      .Case("relaxed", ClauseMemoryOrderKind::Relaxed)
       .Default(::llvm::None);
 }
 ::llvm::Optional<ClauseMemoryOrderKind> symbolizeClauseMemoryOrderKind(uint32_t value) {
   switch (value) {
-  case 0: return ClauseMemoryOrderKind::seq_cst;
-  case 1: return ClauseMemoryOrderKind::acq_rel;
-  case 2: return ClauseMemoryOrderKind::acquire;
-  case 3: return ClauseMemoryOrderKind::release;
-  case 4: return ClauseMemoryOrderKind::relaxed;
+  case 0: return ClauseMemoryOrderKind::Seq_cst;
+  case 1: return ClauseMemoryOrderKind::Acq_rel;
+  case 2: return ClauseMemoryOrderKind::Acquire;
+  case 3: return ClauseMemoryOrderKind::Release;
+  case 4: return ClauseMemoryOrderKind::Relaxed;
   default: return ::llvm::None;
   }
 }
@@ -73,19 +73,19 @@ namespace mlir {
 namespace omp {
 ::llvm::StringRef stringifyClauseOrderKind(ClauseOrderKind val) {
   switch (val) {
-    case ClauseOrderKind::concurrent: return "concurrent";
+    case ClauseOrderKind::Concurrent: return "concurrent";
   }
   return "";
 }
 
 ::llvm::Optional<ClauseOrderKind> symbolizeClauseOrderKind(::llvm::StringRef str) {
   return ::llvm::StringSwitch<::llvm::Optional<ClauseOrderKind>>(str)
-      .Case("concurrent", ClauseOrderKind::concurrent)
+      .Case("concurrent", ClauseOrderKind::Concurrent)
       .Default(::llvm::None);
 }
 ::llvm::Optional<ClauseOrderKind> symbolizeClauseOrderKind(uint32_t value) {
   switch (value) {
-  case 1: return ClauseOrderKind::concurrent;
+  case 1: return ClauseOrderKind::Concurrent;
   default: return ::llvm::None;
   }
 }
@@ -97,28 +97,28 @@ namespace mlir {
 namespace omp {
 ::llvm::StringRef stringifyClauseProcBindKind(ClauseProcBindKind val) {
   switch (val) {
-    case ClauseProcBindKind::primary: return "primary";
-    case ClauseProcBindKind::master: return "master";
-    case ClauseProcBindKind::close: return "close";
-    case ClauseProcBindKind::spread: return "spread";
+    case ClauseProcBindKind::Primary: return "primary";
+    case ClauseProcBindKind::Master: return "master";
+    case ClauseProcBindKind::Close: return "close";
+    case ClauseProcBindKind::Spread: return "spread";
   }
   return "";
 }
 
 ::llvm::Optional<ClauseProcBindKind> symbolizeClauseProcBindKind(::llvm::StringRef str) {
   return ::llvm::StringSwitch<::llvm::Optional<ClauseProcBindKind>>(str)
-      .Case("primary", ClauseProcBindKind::primary)
-      .Case("master", ClauseProcBindKind::master)
-      .Case("close", ClauseProcBindKind::close)
-      .Case("spread", ClauseProcBindKind::spread)
+      .Case("primary", ClauseProcBindKind::Primary)
+      .Case("master", ClauseProcBindKind::Master)
+      .Case("close", ClauseProcBindKind::Close)
+      .Case("spread", ClauseProcBindKind::Spread)
       .Default(::llvm::None);
 }
 ::llvm::Optional<ClauseProcBindKind> symbolizeClauseProcBindKind(uint32_t value) {
   switch (value) {
-  case 0: return ClauseProcBindKind::primary;
-  case 1: return ClauseProcBindKind::master;
-  case 2: return ClauseProcBindKind::close;
-  case 3: return ClauseProcBindKind::spread;
+  case 0: return ClauseProcBindKind::Primary;
+  case 1: return ClauseProcBindKind::Master;
+  case 2: return ClauseProcBindKind::Close;
+  case 3: return ClauseProcBindKind::Spread;
   default: return ::llvm::None;
   }
 }
@@ -130,22 +130,22 @@ namespace mlir {
 namespace omp {
 ::llvm::StringRef stringifyClauseScheduleKind(ClauseScheduleKind val) {
   switch (val) {
-    case ClauseScheduleKind::Static: return "Static";
-    case ClauseScheduleKind::Dynamic: return "Dynamic";
-    case ClauseScheduleKind::Guided: return "Guided";
-    case ClauseScheduleKind::Auto: return "Auto";
-    case ClauseScheduleKind::Runtime: return "Runtime";
+    case ClauseScheduleKind::Static: return "static";
+    case ClauseScheduleKind::Dynamic: return "dynamic";
+    case ClauseScheduleKind::Guided: return "guided";
+    case ClauseScheduleKind::Auto: return "auto";
+    case ClauseScheduleKind::Runtime: return "runtime";
   }
   return "";
 }
 
 ::llvm::Optional<ClauseScheduleKind> symbolizeClauseScheduleKind(::llvm::StringRef str) {
   return ::llvm::StringSwitch<::llvm::Optional<ClauseScheduleKind>>(str)
-      .Case("Static", ClauseScheduleKind::Static)
-      .Case("Dynamic", ClauseScheduleKind::Dynamic)
-      .Case("Guided", ClauseScheduleKind::Guided)
-      .Case("Auto", ClauseScheduleKind::Auto)
-      .Case("Runtime", ClauseScheduleKind::Runtime)
+      .Case("static", ClauseScheduleKind::Static)
+      .Case("dynamic", ClauseScheduleKind::Dynamic)
+      .Case("guided", ClauseScheduleKind::Guided)
+      .Case("auto", ClauseScheduleKind::Auto)
+      .Case("runtime", ClauseScheduleKind::Runtime)
       .Default(::llvm::None);
 }
 ::llvm::Optional<ClauseScheduleKind> symbolizeClauseScheduleKind(uint32_t value) {

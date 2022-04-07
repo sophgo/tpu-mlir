@@ -6,7 +6,7 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
-DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::X86VectorDialect)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::X86VectorDialect)
 namespace mlir {
 namespace x86vector {
 

@@ -6,7 +6,7 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
-DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::PDLDialect)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::pdl::PDLDialect)
 namespace mlir {
 namespace pdl {
 

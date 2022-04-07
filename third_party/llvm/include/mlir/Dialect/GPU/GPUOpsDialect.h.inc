@@ -75,4 +75,4 @@ public:
   };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::GPUDialect)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::GPUDialect)

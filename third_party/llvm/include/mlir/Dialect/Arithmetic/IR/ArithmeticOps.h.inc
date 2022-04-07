@@ -296,7 +296,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::AddFOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::AddFOp)
 
 namespace mlir {
 namespace arith {
@@ -362,7 +362,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::AddIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::AddIOp)
 
 namespace mlir {
 namespace arith {
@@ -428,7 +428,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::AndIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::AndIOp)
 
 namespace mlir {
 namespace arith {
@@ -490,7 +490,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::BitcastOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::BitcastOp)
 
 namespace mlir {
 namespace arith {
@@ -555,7 +555,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::CeilDivSIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::CeilDivSIOp)
 
 namespace mlir {
 namespace arith {
@@ -620,7 +620,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::CeilDivUIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::CeilDivUIOp)
 
 namespace mlir {
 namespace arith {
@@ -712,7 +712,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::CmpFOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::CmpFOp)
 
 namespace mlir {
 namespace arith {
@@ -804,7 +804,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::CmpIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::CmpIOp)
 
 namespace mlir {
 namespace arith {
@@ -892,7 +892,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::ConstantOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::ConstantOp)
 
 namespace mlir {
 namespace arith {
@@ -957,7 +957,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::DivFOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::DivFOp)
 
 namespace mlir {
 namespace arith {
@@ -1022,7 +1022,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::DivSIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::DivSIOp)
 
 namespace mlir {
 namespace arith {
@@ -1087,7 +1087,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::DivUIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::DivUIOp)
 
 namespace mlir {
 namespace arith {
@@ -1148,7 +1148,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::ExtFOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::ExtFOp)
 
 namespace mlir {
 namespace arith {
@@ -1211,7 +1211,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::ExtSIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::ExtSIOp)
 
 namespace mlir {
 namespace arith {
@@ -1273,7 +1273,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::ExtUIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::ExtUIOp)
 
 namespace mlir {
 namespace arith {
@@ -1334,7 +1334,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::FPToSIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::FPToSIOp)
 
 namespace mlir {
 namespace arith {
@@ -1395,7 +1395,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::FPToUIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::FPToUIOp)
 
 namespace mlir {
 namespace arith {
@@ -1460,7 +1460,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::FloorDivSIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::FloorDivSIOp)
 
 namespace mlir {
 namespace arith {
@@ -1522,7 +1522,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::IndexCastOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::IndexCastOp)
 
 namespace mlir {
 namespace arith {
@@ -1587,7 +1587,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::MaxFOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::MaxFOp)
 
 namespace mlir {
 namespace arith {
@@ -1614,7 +1614,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class MaxSIOp : public ::mlir::Op<MaxSIOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::VectorUnrollOpInterface::Trait, ::mlir::OpTrait::Elementwise, ::mlir::OpTrait::Scalarizable, ::mlir::OpTrait::Vectorizable, ::mlir::OpTrait::Tensorizable> {
+class MaxSIOp : public ::mlir::Op<MaxSIOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::VectorUnrollOpInterface::Trait, ::mlir::OpTrait::Elementwise, ::mlir::OpTrait::Scalarizable, ::mlir::OpTrait::Vectorizable, ::mlir::OpTrait::Tensorizable> {
 public:
   using Op::Op;
   using Op::print;
@@ -1652,7 +1652,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::MaxSIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::MaxSIOp)
 
 namespace mlir {
 namespace arith {
@@ -1679,7 +1679,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class MaxUIOp : public ::mlir::Op<MaxUIOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::VectorUnrollOpInterface::Trait, ::mlir::OpTrait::Elementwise, ::mlir::OpTrait::Scalarizable, ::mlir::OpTrait::Vectorizable, ::mlir::OpTrait::Tensorizable> {
+class MaxUIOp : public ::mlir::Op<MaxUIOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::VectorUnrollOpInterface::Trait, ::mlir::OpTrait::Elementwise, ::mlir::OpTrait::Scalarizable, ::mlir::OpTrait::Vectorizable, ::mlir::OpTrait::Tensorizable> {
 public:
   using Op::Op;
   using Op::print;
@@ -1717,7 +1717,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::MaxUIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::MaxUIOp)
 
 namespace mlir {
 namespace arith {
@@ -1782,7 +1782,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::MinFOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::MinFOp)
 
 namespace mlir {
 namespace arith {
@@ -1809,7 +1809,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class MinSIOp : public ::mlir::Op<MinSIOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::VectorUnrollOpInterface::Trait, ::mlir::OpTrait::Elementwise, ::mlir::OpTrait::Scalarizable, ::mlir::OpTrait::Vectorizable, ::mlir::OpTrait::Tensorizable> {
+class MinSIOp : public ::mlir::Op<MinSIOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::VectorUnrollOpInterface::Trait, ::mlir::OpTrait::Elementwise, ::mlir::OpTrait::Scalarizable, ::mlir::OpTrait::Vectorizable, ::mlir::OpTrait::Tensorizable> {
 public:
   using Op::Op;
   using Op::print;
@@ -1847,7 +1847,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::MinSIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::MinSIOp)
 
 namespace mlir {
 namespace arith {
@@ -1874,7 +1874,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class MinUIOp : public ::mlir::Op<MinUIOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::VectorUnrollOpInterface::Trait, ::mlir::OpTrait::Elementwise, ::mlir::OpTrait::Scalarizable, ::mlir::OpTrait::Vectorizable, ::mlir::OpTrait::Tensorizable> {
+class MinUIOp : public ::mlir::Op<MinUIOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::VectorUnrollOpInterface::Trait, ::mlir::OpTrait::Elementwise, ::mlir::OpTrait::Scalarizable, ::mlir::OpTrait::Vectorizable, ::mlir::OpTrait::Tensorizable> {
 public:
   using Op::Op;
   using Op::print;
@@ -1912,7 +1912,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::MinUIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::MinUIOp)
 
 namespace mlir {
 namespace arith {
@@ -1977,7 +1977,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::MulFOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::MulFOp)
 
 namespace mlir {
 namespace arith {
@@ -2042,7 +2042,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::MulIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::MulIOp)
 
 namespace mlir {
 namespace arith {
@@ -2103,7 +2103,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::NegFOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::NegFOp)
 
 namespace mlir {
 namespace arith {
@@ -2169,7 +2169,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::OrIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::OrIOp)
 
 namespace mlir {
 namespace arith {
@@ -2233,7 +2233,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::RemFOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::RemFOp)
 
 namespace mlir {
 namespace arith {
@@ -2298,7 +2298,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::RemSIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::RemSIOp)
 
 namespace mlir {
 namespace arith {
@@ -2363,7 +2363,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::RemUIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::RemUIOp)
 
 namespace mlir {
 namespace arith {
@@ -2424,7 +2424,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::SIToFPOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::SIToFPOp)
 
 namespace mlir {
 namespace arith {
@@ -2489,7 +2489,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::ShLIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::ShLIOp)
 
 namespace mlir {
 namespace arith {
@@ -2546,6 +2546,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  ::mlir::OpFoldResult fold(::llvm::ArrayRef<::mlir::Attribute> operands);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -2553,7 +2554,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::ShRSIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::ShRSIOp)
 
 namespace mlir {
 namespace arith {
@@ -2610,6 +2611,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  ::mlir::OpFoldResult fold(::llvm::ArrayRef<::mlir::Attribute> operands);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -2617,7 +2619,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::ShRUIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::ShRUIOp)
 
 namespace mlir {
 namespace arith {
@@ -2682,7 +2684,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::SubFOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::SubFOp)
 
 namespace mlir {
 namespace arith {
@@ -2748,7 +2750,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::SubIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::SubIOp)
 
 namespace mlir {
 namespace arith {
@@ -2810,7 +2812,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::TruncFOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::TruncFOp)
 
 namespace mlir {
 namespace arith {
@@ -2872,7 +2874,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::TruncIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::TruncIOp)
 
 namespace mlir {
 namespace arith {
@@ -2933,7 +2935,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::UIToFPOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::UIToFPOp)
 
 namespace mlir {
 namespace arith {
@@ -2999,7 +3001,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::XOrIOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::XOrIOp)
 
 namespace mlir {
 namespace arith {
@@ -3070,7 +3072,7 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::SelectOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::SelectOp)
 
 
 #endif  // GET_OP_CLASSES

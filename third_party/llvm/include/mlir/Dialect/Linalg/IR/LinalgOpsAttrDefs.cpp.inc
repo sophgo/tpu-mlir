@@ -121,7 +121,7 @@ void BinaryFnAttr::print(::mlir::AsmPrinter &odsPrinter) const {
 
 } // namespace linalg
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::linalg::BinaryFnAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::linalg::BinaryFnAttr)
 namespace mlir {
 namespace linalg {
 namespace detail {
@@ -190,7 +190,7 @@ void TypeFnAttr::print(::mlir::AsmPrinter &odsPrinter) const {
 
 } // namespace linalg
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::linalg::TypeFnAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::linalg::TypeFnAttr)
 namespace mlir {
 namespace linalg {
 namespace detail {
@@ -234,7 +234,7 @@ UnaryFnAttr UnaryFnAttr::get(::mlir::MLIRContext *context, ::mlir::linalg::Unary
       auto maybeEnum = ::mlir::linalg::symbolizeUnaryFn(enumKeyword);
       if (maybeEnum)
         return *maybeEnum;
-      return {(::mlir::LogicalResult)odsParser.emitError(loc, "expected ::mlir::linalg::UnaryFn to be one of: exp, log")};
+      return {(::mlir::LogicalResult)odsParser.emitError(loc, "expected ::mlir::linalg::UnaryFn to be one of: exp, log, abs, ceil, floor, negf")};
     }();
   if (::mlir::failed(_result_value)) {
     odsParser.emitError(odsParser.getCurrentLocation(), "failed to parse UnaryFnAttr parameter 'value' which is to be a `::mlir::linalg::UnaryFn`");
@@ -259,7 +259,7 @@ void UnaryFnAttr::print(::mlir::AsmPrinter &odsPrinter) const {
 
 } // namespace linalg
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::linalg::UnaryFnAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::linalg::UnaryFnAttr)
 namespace mlir {
 namespace linalg {
 

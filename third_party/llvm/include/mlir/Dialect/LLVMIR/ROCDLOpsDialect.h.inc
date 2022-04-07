@@ -38,4 +38,4 @@ public:
   };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::ROCDLDialect)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::ROCDLDialect)

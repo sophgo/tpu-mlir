@@ -9,7 +9,9 @@
 #ifdef GET_ATTRDEF_LIST
 #undef GET_ATTRDEF_LIST
 
+::mlir::NVVM::MMAB1OpAttr,
 ::mlir::NVVM::MMAFragAttr,
+::mlir::NVVM::MMAIntOverflowAttr,
 ::mlir::NVVM::MMALayoutAttr,
 ::mlir::NVVM::MMATypesAttr,
 ::mlir::NVVM::ShflKindAttr
@@ -20,8 +22,16 @@
 #undef GET_ATTRDEF_CLASSES
 
 static ::mlir::OptionalParseResult generatedAttributeParser(::mlir::AsmParser &parser, ::llvm::StringRef mnemonic, ::mlir::Type type, ::mlir::Attribute &value) {
+  if (mnemonic == ::mlir::NVVM::MMAB1OpAttr::getMnemonic()) {
+    value = ::mlir::NVVM::MMAB1OpAttr::parse(parser, type);
+    return ::mlir::success(!!value);
+  }
   if (mnemonic == ::mlir::NVVM::MMAFragAttr::getMnemonic()) {
     value = ::mlir::NVVM::MMAFragAttr::parse(parser, type);
+    return ::mlir::success(!!value);
+  }
+  if (mnemonic == ::mlir::NVVM::MMAIntOverflowAttr::getMnemonic()) {
+    value = ::mlir::NVVM::MMAIntOverflowAttr::parse(parser, type);
     return ::mlir::success(!!value);
   }
   if (mnemonic == ::mlir::NVVM::MMALayoutAttr::getMnemonic()) {
@@ -40,8 +50,18 @@ static ::mlir::OptionalParseResult generatedAttributeParser(::mlir::AsmParser &p
 }
 
 static ::mlir::LogicalResult generatedAttributePrinter(::mlir::Attribute def, ::mlir::AsmPrinter &printer) {
-  return ::llvm::TypeSwitch<::mlir::Attribute, ::mlir::LogicalResult>(def)    .Case<::mlir::NVVM::MMAFragAttr>([&](auto t) {
+  return ::llvm::TypeSwitch<::mlir::Attribute, ::mlir::LogicalResult>(def)    .Case<::mlir::NVVM::MMAB1OpAttr>([&](auto t) {
+      printer << ::mlir::NVVM::MMAB1OpAttr::getMnemonic();
+t.print(printer);
+      return ::mlir::success();
+    })
+    .Case<::mlir::NVVM::MMAFragAttr>([&](auto t) {
       printer << ::mlir::NVVM::MMAFragAttr::getMnemonic();
+t.print(printer);
+      return ::mlir::success();
+    })
+    .Case<::mlir::NVVM::MMAIntOverflowAttr>([&](auto t) {
+      printer << ::mlir::NVVM::MMAIntOverflowAttr::getMnemonic();
 t.print(printer);
       return ::mlir::success();
     })
@@ -63,6 +83,75 @@ t.print(printer);
     .Default([](auto) { return ::mlir::failure(); });
 }
 
+namespace mlir {
+namespace NVVM {
+namespace detail {
+struct MMAB1OpAttrStorage : public ::mlir::AttributeStorage {
+  using KeyTy = std::tuple<::mlir::NVVM::MMAB1Op>;
+  MMAB1OpAttrStorage(::mlir::NVVM::MMAB1Op value) : ::mlir::AttributeStorage(), value(value) {}
+
+  bool operator==(const KeyTy &tblgenKey) const {
+    return (value == std::get<0>(tblgenKey));
+  }
+
+  static ::llvm::hash_code hashKey(const KeyTy &tblgenKey) {
+    return ::llvm::hash_combine(std::get<0>(tblgenKey));
+  }
+
+  static MMAB1OpAttrStorage *construct(::mlir::AttributeStorageAllocator &allocator, const KeyTy &tblgenKey) {
+    auto value = std::get<0>(tblgenKey);
+    return new (allocator.allocate<MMAB1OpAttrStorage>()) MMAB1OpAttrStorage(value);
+  }
+
+  ::mlir::NVVM::MMAB1Op value;
+};
+} // namespace detail
+MMAB1OpAttr MMAB1OpAttr::get(::mlir::MLIRContext *context, ::mlir::NVVM::MMAB1Op value) {
+  return Base::get(context, value);
+}
+
+::mlir::Attribute MMAB1OpAttr::parse(::mlir::AsmParser &odsParser, ::mlir::Type odsType) {
+  ::mlir::FailureOr<::mlir::NVVM::MMAB1Op> _result_value;
+  ::llvm::SMLoc odsLoc = odsParser.getCurrentLocation();
+  (void) odsLoc;
+  // Parse literal '<'
+  if (odsParser.parseLess()) return {};
+
+  // Parse variable 'value'
+  _result_value = [&]() -> ::mlir::FailureOr<::mlir::NVVM::MMAB1Op> {
+      auto loc = odsParser.getCurrentLocation();
+      ::llvm::StringRef enumKeyword;
+      if (::mlir::failed(odsParser.parseKeyword(&enumKeyword)))
+        return ::mlir::failure();
+      auto maybeEnum = ::mlir::NVVM::symbolizeMMAB1Op(enumKeyword);
+      if (maybeEnum)
+        return *maybeEnum;
+      return {(::mlir::LogicalResult)odsParser.emitError(loc, "expected ::mlir::NVVM::MMAB1Op to be one of: none, xor_popc, and_popc")};
+    }();
+  if (::mlir::failed(_result_value)) {
+    odsParser.emitError(odsParser.getCurrentLocation(), "failed to parse MMAB1OpAttr parameter 'value' which is to be a `::mlir::NVVM::MMAB1Op`");
+    return {};
+  }
+  // Parse literal '>'
+  if (odsParser.parseGreater()) return {};
+  assert(::mlir::succeeded(_result_value));
+  return MMAB1OpAttr::get(odsParser.getContext(),
+      *_result_value);
+}
+
+void MMAB1OpAttr::print(::mlir::AsmPrinter &odsPrinter) const {
+  odsPrinter << "<";
+  odsPrinter << stringifyMMAB1Op(getValue());
+  odsPrinter << ">";
+}
+
+::mlir::NVVM::MMAB1Op MMAB1OpAttr::getValue() const {
+  return getImpl()->value;
+}
+
+} // namespace NVVM
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::NVVM::MMAB1OpAttr)
 namespace mlir {
 namespace NVVM {
 namespace detail {
@@ -131,7 +220,76 @@ void MMAFragAttr::print(::mlir::AsmPrinter &odsPrinter) const {
 
 } // namespace NVVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::NVVM::MMAFragAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::NVVM::MMAFragAttr)
+namespace mlir {
+namespace NVVM {
+namespace detail {
+struct MMAIntOverflowAttrStorage : public ::mlir::AttributeStorage {
+  using KeyTy = std::tuple<::mlir::NVVM::MMAIntOverflow>;
+  MMAIntOverflowAttrStorage(::mlir::NVVM::MMAIntOverflow value) : ::mlir::AttributeStorage(), value(value) {}
+
+  bool operator==(const KeyTy &tblgenKey) const {
+    return (value == std::get<0>(tblgenKey));
+  }
+
+  static ::llvm::hash_code hashKey(const KeyTy &tblgenKey) {
+    return ::llvm::hash_combine(std::get<0>(tblgenKey));
+  }
+
+  static MMAIntOverflowAttrStorage *construct(::mlir::AttributeStorageAllocator &allocator, const KeyTy &tblgenKey) {
+    auto value = std::get<0>(tblgenKey);
+    return new (allocator.allocate<MMAIntOverflowAttrStorage>()) MMAIntOverflowAttrStorage(value);
+  }
+
+  ::mlir::NVVM::MMAIntOverflow value;
+};
+} // namespace detail
+MMAIntOverflowAttr MMAIntOverflowAttr::get(::mlir::MLIRContext *context, ::mlir::NVVM::MMAIntOverflow value) {
+  return Base::get(context, value);
+}
+
+::mlir::Attribute MMAIntOverflowAttr::parse(::mlir::AsmParser &odsParser, ::mlir::Type odsType) {
+  ::mlir::FailureOr<::mlir::NVVM::MMAIntOverflow> _result_value;
+  ::llvm::SMLoc odsLoc = odsParser.getCurrentLocation();
+  (void) odsLoc;
+  // Parse literal '<'
+  if (odsParser.parseLess()) return {};
+
+  // Parse variable 'value'
+  _result_value = [&]() -> ::mlir::FailureOr<::mlir::NVVM::MMAIntOverflow> {
+      auto loc = odsParser.getCurrentLocation();
+      ::llvm::StringRef enumKeyword;
+      if (::mlir::failed(odsParser.parseKeyword(&enumKeyword)))
+        return ::mlir::failure();
+      auto maybeEnum = ::mlir::NVVM::symbolizeMMAIntOverflow(enumKeyword);
+      if (maybeEnum)
+        return *maybeEnum;
+      return {(::mlir::LogicalResult)odsParser.emitError(loc, "expected ::mlir::NVVM::MMAIntOverflow to be one of: satfinite, wrapped")};
+    }();
+  if (::mlir::failed(_result_value)) {
+    odsParser.emitError(odsParser.getCurrentLocation(), "failed to parse MMAIntOverflowAttr parameter 'value' which is to be a `::mlir::NVVM::MMAIntOverflow`");
+    return {};
+  }
+  // Parse literal '>'
+  if (odsParser.parseGreater()) return {};
+  assert(::mlir::succeeded(_result_value));
+  return MMAIntOverflowAttr::get(odsParser.getContext(),
+      *_result_value);
+}
+
+void MMAIntOverflowAttr::print(::mlir::AsmPrinter &odsPrinter) const {
+  odsPrinter << "<";
+  odsPrinter << stringifyMMAIntOverflow(getValue());
+  odsPrinter << ">";
+}
+
+::mlir::NVVM::MMAIntOverflow MMAIntOverflowAttr::getValue() const {
+  return getImpl()->value;
+}
+
+} // namespace NVVM
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::NVVM::MMAIntOverflowAttr)
 namespace mlir {
 namespace NVVM {
 namespace detail {
@@ -200,7 +358,7 @@ void MMALayoutAttr::print(::mlir::AsmPrinter &odsPrinter) const {
 
 } // namespace NVVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::NVVM::MMALayoutAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::NVVM::MMALayoutAttr)
 namespace mlir {
 namespace NVVM {
 namespace detail {
@@ -244,7 +402,7 @@ MMATypesAttr MMATypesAttr::get(::mlir::MLIRContext *context, ::mlir::NVVM::MMATy
       auto maybeEnum = ::mlir::NVVM::symbolizeMMATypes(enumKeyword);
       if (maybeEnum)
         return *maybeEnum;
-      return {(::mlir::LogicalResult)odsParser.emitError(loc, "expected ::mlir::NVVM::MMATypes to be one of: f16, f32, tf32")};
+      return {(::mlir::LogicalResult)odsParser.emitError(loc, "expected ::mlir::NVVM::MMATypes to be one of: f16, f32, tf32, bf16, s8, u8, s32, s4, u4, b1, f64")};
     }();
   if (::mlir::failed(_result_value)) {
     odsParser.emitError(odsParser.getCurrentLocation(), "failed to parse MMATypesAttr parameter 'value' which is to be a `::mlir::NVVM::MMATypes`");
@@ -269,7 +427,7 @@ void MMATypesAttr::print(::mlir::AsmPrinter &odsPrinter) const {
 
 } // namespace NVVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::NVVM::MMATypesAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::NVVM::MMATypesAttr)
 namespace mlir {
 namespace NVVM {
 namespace detail {
@@ -333,7 +491,7 @@ void ShflKindAttr::print(::mlir::AsmPrinter &odsPrinter) const {
 
 } // namespace NVVM
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::NVVM::ShflKindAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::NVVM::ShflKindAttr)
 namespace mlir {
 namespace NVVM {
 

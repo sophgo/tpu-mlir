@@ -6,12 +6,12 @@
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class ConvertAffineForToGPUBase : public ::mlir::OperationPass<FuncOp> {
+class ConvertAffineForToGPUBase : public ::mlir::InterfacePass<FunctionOpInterface> {
 public:
   using Base = ConvertAffineForToGPUBase;
 
-  ConvertAffineForToGPUBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  ConvertAffineForToGPUBase(const ConvertAffineForToGPUBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  ConvertAffineForToGPUBase() : ::mlir::InterfacePass<FunctionOpInterface>(::mlir::TypeID::get<DerivedT>()) {}
+  ConvertAffineForToGPUBase(const ConvertAffineForToGPUBase &other) : ::mlir::InterfacePass<FunctionOpInterface>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -43,6 +43,11 @@ public:
   registry.insert<gpu::GPUDialect>();
 
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertAffineForToGPUBase<DerivedT>)
 
 protected:
   ::mlir::Pass::Option<unsigned> numBlockDims{*this, "gpu-block-dims", ::llvm::cl::desc("Number of GPU block dimensions for mapping"), ::llvm::cl::init(1u)};
@@ -96,6 +101,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertAffineToStandardBase<DerivedT>)
+
 protected:
 };
 
@@ -104,12 +114,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class ConvertArithmeticToLLVMBase : public ::mlir::OperationPass<FuncOp> {
+class ConvertArithmeticToLLVMBase : public ::mlir::OperationPass<> {
 public:
   using Base = ConvertArithmeticToLLVMBase;
 
-  ConvertArithmeticToLLVMBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  ConvertArithmeticToLLVMBase(const ConvertArithmeticToLLVMBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  ConvertArithmeticToLLVMBase() : ::mlir::OperationPass<>(::mlir::TypeID::get<DerivedT>()) {}
+  ConvertArithmeticToLLVMBase(const ConvertArithmeticToLLVMBase &other) : ::mlir::OperationPass<>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -141,6 +151,11 @@ public:
   registry.insert<LLVM::LLVMDialect>();
 
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertArithmeticToLLVMBase<DerivedT>)
 
 protected:
   ::mlir::Pass::Option<unsigned> indexBitwidth{*this, "index-bitwidth", ::llvm::cl::desc("Bitwidth of the index type, 0 to use size of machine word"), ::llvm::cl::init(0)};
@@ -189,6 +204,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertArithmeticToSPIRVBase<DerivedT>)
+
 protected:
   ::mlir::Pass::Option<bool> emulateNon32BitScalarTypes{*this, "emulate-non-32-bit-scalar-types", ::llvm::cl::desc("Emulate non-32-bit scalar types with 32-bit ones if missing native support"), ::llvm::cl::init(true)};
 };
@@ -198,12 +218,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class ConvertArmNeon2dToIntrBase : public ::mlir::OperationPass<FuncOp> {
+class ConvertArmNeon2dToIntrBase : public ::mlir::OperationPass<> {
 public:
   using Base = ConvertArmNeon2dToIntrBase;
 
-  ConvertArmNeon2dToIntrBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  ConvertArmNeon2dToIntrBase(const ConvertArmNeon2dToIntrBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  ConvertArmNeon2dToIntrBase() : ::mlir::OperationPass<>(::mlir::TypeID::get<DerivedT>()) {}
+  ConvertArmNeon2dToIntrBase(const ConvertArmNeon2dToIntrBase &other) : ::mlir::OperationPass<>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -237,6 +257,11 @@ public:
   registry.insert<vector::VectorDialect>();
 
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertArmNeon2dToIntrBase<DerivedT>)
 
 protected:
 };
@@ -286,6 +311,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertAsyncToLLVMBase<DerivedT>)
+
 protected:
 };
 
@@ -334,6 +364,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertBufferizationToMemRefBase<DerivedT>)
+
 protected:
 };
 
@@ -342,12 +377,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class ConvertComplexToLLVMBase : public ::mlir::OperationPass<ModuleOp> {
+class ConvertComplexToLLVMBase : public ::mlir::OperationPass<> {
 public:
   using Base = ConvertComplexToLLVMBase;
 
-  ConvertComplexToLLVMBase() : ::mlir::OperationPass<ModuleOp>(::mlir::TypeID::get<DerivedT>()) {}
-  ConvertComplexToLLVMBase(const ConvertComplexToLLVMBase &other) : ::mlir::OperationPass<ModuleOp>(other) {}
+  ConvertComplexToLLVMBase() : ::mlir::OperationPass<>(::mlir::TypeID::get<DerivedT>()) {}
+  ConvertComplexToLLVMBase(const ConvertComplexToLLVMBase &other) : ::mlir::OperationPass<>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -380,6 +415,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertComplexToLLVMBase<DerivedT>)
+
 protected:
 };
 
@@ -388,12 +428,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class ConvertComplexToStandardBase : public ::mlir::OperationPass<FuncOp> {
+class ConvertComplexToStandardBase : public ::mlir::OperationPass<> {
 public:
   using Base = ConvertComplexToStandardBase;
 
-  ConvertComplexToStandardBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  ConvertComplexToStandardBase(const ConvertComplexToStandardBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  ConvertComplexToStandardBase() : ::mlir::OperationPass<>(::mlir::TypeID::get<DerivedT>()) {}
+  ConvertComplexToStandardBase(const ConvertComplexToStandardBase &other) : ::mlir::OperationPass<>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -425,6 +465,11 @@ public:
   registry.insert<math::MathDialect>();
 
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertComplexToStandardBase<DerivedT>)
 
 protected:
 };
@@ -471,6 +516,11 @@ public:
   registry.insert<LLVM::LLVMDialect>();
 
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertControlFlowToLLVMBase<DerivedT>)
 
 protected:
   ::mlir::Pass::Option<unsigned> indexBitwidth{*this, "index-bitwidth", ::llvm::cl::desc("Bitwidth of the index type, 0 to use size of machine word"), ::llvm::cl::init(0)};
@@ -519,8 +569,68 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertControlFlowToSPIRVBase<DerivedT>)
+
 protected:
   ::mlir::Pass::Option<bool> emulateNon32BitScalarTypes{*this, "emulate-non-32-bit-scalar-types", ::llvm::cl::desc("Emulate non-32-bit scalar types with 32-bit ones if missing native support"), ::llvm::cl::init(true)};
+};
+
+//===----------------------------------------------------------------------===//
+// ConvertFuncToLLVM
+//===----------------------------------------------------------------------===//
+
+template <typename DerivedT>
+class ConvertFuncToLLVMBase : public ::mlir::OperationPass<ModuleOp> {
+public:
+  using Base = ConvertFuncToLLVMBase;
+
+  ConvertFuncToLLVMBase() : ::mlir::OperationPass<ModuleOp>(::mlir::TypeID::get<DerivedT>()) {}
+  ConvertFuncToLLVMBase(const ConvertFuncToLLVMBase &other) : ::mlir::OperationPass<ModuleOp>(other) {}
+
+  /// Returns the command-line argument attached to this pass.
+  static constexpr ::llvm::StringLiteral getArgumentName() {
+    return ::llvm::StringLiteral("convert-func-to-llvm");
+  }
+  ::llvm::StringRef getArgument() const override { return "convert-func-to-llvm"; }
+
+  ::llvm::StringRef getDescription() const override { return "Convert from the Func dialect to the LLVM dialect"; }
+
+  /// Returns the derived pass name.
+  static constexpr ::llvm::StringLiteral getPassName() {
+    return ::llvm::StringLiteral("ConvertFuncToLLVM");
+  }
+  ::llvm::StringRef getName() const override { return "ConvertFuncToLLVM"; }
+
+  /// Support isa/dyn_cast functionality for the derived pass class.
+  static bool classof(const ::mlir::Pass *pass) {
+    return pass->getTypeID() == ::mlir::TypeID::get<DerivedT>();
+  }
+
+  /// A clone method to create a copy of this pass.
+  std::unique_ptr<::mlir::Pass> clonePass() const override {
+    return std::make_unique<DerivedT>(*static_cast<const DerivedT *>(this));
+  }
+
+  /// Return the dialect that must be loaded in the context before this pass.
+  void getDependentDialects(::mlir::DialectRegistry &registry) const override {
+    
+  registry.insert<LLVM::LLVMDialect>();
+
+  }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertFuncToLLVMBase<DerivedT>)
+
+protected:
+  ::mlir::Pass::Option<bool> useBarePtrCallConv{*this, "use-bare-ptr-memref-call-conv", ::llvm::cl::desc("Replace FuncOp's MemRef arguments with bare pointers to the MemRef element types"), ::llvm::cl::init(false)};
+  ::mlir::Pass::Option<bool> emitCWrappers{*this, "emit-c-wrappers", ::llvm::cl::desc("Emit wrappers for C-compatible pointer-to-struct memref descriptors"), ::llvm::cl::init(false)};
+  ::mlir::Pass::Option<unsigned> indexBitwidth{*this, "index-bitwidth", ::llvm::cl::desc("Bitwidth of the index type, 0 to use size of machine word"), ::llvm::cl::init(0)};
+  ::mlir::Pass::Option<std::string> dataLayout{*this, "data-layout", ::llvm::cl::desc("String description (LLVM format) of the data layout that is expected on the produced module"), ::llvm::cl::init("")};
 };
 
 //===----------------------------------------------------------------------===//
@@ -565,6 +675,11 @@ public:
   registry.insert<spirv::SPIRVDialect>();
 
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertFuncToSPIRVBase<DerivedT>)
 
 protected:
   ::mlir::Pass::Option<bool> emulateNon32BitScalarTypes{*this, "emulate-non-32-bit-scalar-types", ::llvm::cl::desc("Emulate non-32-bit scalar types with 32-bit ones if missing native support"), ::llvm::cl::init(true)};
@@ -613,6 +728,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertGPUToSPIRVBase<DerivedT>)
+
 protected:
 };
 
@@ -658,6 +778,11 @@ public:
   registry.insert<spirv::SPIRVDialect>();
 
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertGpuLaunchFuncToVulkanLaunchFuncBase<DerivedT>)
 
 protected:
 };
@@ -709,6 +834,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertGpuOpsToNVVMOpsBase<DerivedT>)
+
 protected:
   ::mlir::Pass::Option<unsigned> indexBitwidth{*this, "index-bitwidth", ::llvm::cl::desc("Bitwidth of the index type, 0 to use size of machine word"), ::llvm::cl::init(0)};
 };
@@ -755,6 +885,11 @@ public:
   registry.insert<ROCDL::ROCDLDialect>();
 
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertGpuOpsToROCDLOpsBase<DerivedT>)
 
 protected:
   ::mlir::Pass::Option<unsigned> indexBitwidth{*this, "index-bitwidth", ::llvm::cl::desc("Bitwidth of the index type, 0 to use size of machine word"), ::llvm::cl::init(0)};
@@ -810,6 +945,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertLinalgToLLVMBase<DerivedT>)
+
 protected:
 };
 
@@ -855,6 +995,11 @@ public:
   registry.insert<spirv::SPIRVDialect>();
 
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertLinalgToSPIRVBase<DerivedT>)
 
 protected:
 };
@@ -904,6 +1049,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertLinalgToStandardBase<DerivedT>)
+
 protected:
 };
 
@@ -912,12 +1062,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class ConvertMathToLLVMBase : public ::mlir::OperationPass<FuncOp> {
+class ConvertMathToLLVMBase : public ::mlir::OperationPass<> {
 public:
   using Base = ConvertMathToLLVMBase;
 
-  ConvertMathToLLVMBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  ConvertMathToLLVMBase(const ConvertMathToLLVMBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  ConvertMathToLLVMBase() : ::mlir::OperationPass<>(::mlir::TypeID::get<DerivedT>()) {}
+  ConvertMathToLLVMBase(const ConvertMathToLLVMBase &other) : ::mlir::OperationPass<>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -949,6 +1099,11 @@ public:
   registry.insert<LLVM::LLVMDialect>();
 
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertMathToLLVMBase<DerivedT>)
 
 protected:
 };
@@ -1000,6 +1155,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertMathToLibmBase<DerivedT>)
+
 protected:
 };
 
@@ -1046,6 +1206,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertMathToSPIRVBase<DerivedT>)
+
 protected:
 };
 
@@ -1091,6 +1256,11 @@ public:
   registry.insert<LLVM::LLVMDialect>();
 
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertMemRefToLLVMBase<DerivedT>)
 
 protected:
   ::mlir::Pass::Option<bool> useAlignedAlloc{*this, "use-aligned-alloc", ::llvm::cl::desc("Use aligned_alloc in place of malloc for heap allocations"), ::llvm::cl::init(false)};
@@ -1140,6 +1310,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertMemRefToSPIRVBase<DerivedT>)
+
 protected:
   ::mlir::Pass::Option<int> boolNumBits{*this, "bool-num-bits", ::llvm::cl::desc("The number of bits to store a boolean value"), ::llvm::cl::init(8)};
 };
@@ -1186,6 +1361,11 @@ public:
   registry.insert<LLVM::LLVMDialect>();
 
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertOpenACCToLLVMBase<DerivedT>)
 
 protected:
 };
@@ -1235,6 +1415,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertOpenACCToSCFBase<DerivedT>)
+
 protected:
 };
 
@@ -1281,6 +1466,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertOpenMPToLLVMBase<DerivedT>)
+
 protected:
 };
 
@@ -1326,6 +1516,11 @@ public:
   registry.insert<pdl_interp::PDLInterpDialect>();
 
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertPDLToPDLInterpBase<DerivedT>)
 
 protected:
 };
@@ -1374,6 +1569,11 @@ public:
   registry.insert<gpu::GPUDialect>();
 
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertParallelLoopToGpuBase<DerivedT>)
 
 protected:
 };
@@ -1425,6 +1625,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertSCFToOpenMPBase<DerivedT>)
+
 protected:
 };
 
@@ -1471,6 +1676,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertSPIRVToLLVMBase<DerivedT>)
+
 protected:
 };
 
@@ -1479,12 +1689,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class ConvertShapeConstraintsBase : public ::mlir::OperationPass<FuncOp> {
+class ConvertShapeConstraintsBase : public ::mlir::OperationPass<> {
 public:
   using Base = ConvertShapeConstraintsBase;
 
-  ConvertShapeConstraintsBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  ConvertShapeConstraintsBase(const ConvertShapeConstraintsBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  ConvertShapeConstraintsBase() : ::mlir::OperationPass<>(::mlir::TypeID::get<DerivedT>()) {}
+  ConvertShapeConstraintsBase(const ConvertShapeConstraintsBase &other) : ::mlir::OperationPass<>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -1518,6 +1728,11 @@ public:
   registry.insert<scf::SCFDialect>();
 
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertShapeConstraintsBase<DerivedT>)
 
 protected:
 };
@@ -1565,57 +1780,12 @@ public:
 
   }
 
-protected:
-};
-
-//===----------------------------------------------------------------------===//
-// ConvertStandardToLLVM
-//===----------------------------------------------------------------------===//
-
-template <typename DerivedT>
-class ConvertStandardToLLVMBase : public ::mlir::OperationPass<ModuleOp> {
-public:
-  using Base = ConvertStandardToLLVMBase;
-
-  ConvertStandardToLLVMBase() : ::mlir::OperationPass<ModuleOp>(::mlir::TypeID::get<DerivedT>()) {}
-  ConvertStandardToLLVMBase(const ConvertStandardToLLVMBase &other) : ::mlir::OperationPass<ModuleOp>(other) {}
-
-  /// Returns the command-line argument attached to this pass.
-  static constexpr ::llvm::StringLiteral getArgumentName() {
-    return ::llvm::StringLiteral("convert-std-to-llvm");
-  }
-  ::llvm::StringRef getArgument() const override { return "convert-std-to-llvm"; }
-
-  ::llvm::StringRef getDescription() const override { return "Convert scalar and vector operations from the Standard to the LLVM dialect"; }
-
-  /// Returns the derived pass name.
-  static constexpr ::llvm::StringLiteral getPassName() {
-    return ::llvm::StringLiteral("ConvertStandardToLLVM");
-  }
-  ::llvm::StringRef getName() const override { return "ConvertStandardToLLVM"; }
-
-  /// Support isa/dyn_cast functionality for the derived pass class.
-  static bool classof(const ::mlir::Pass *pass) {
-    return pass->getTypeID() == ::mlir::TypeID::get<DerivedT>();
-  }
-
-  /// A clone method to create a copy of this pass.
-  std::unique_ptr<::mlir::Pass> clonePass() const override {
-    return std::make_unique<DerivedT>(*static_cast<const DerivedT *>(this));
-  }
-
-  /// Return the dialect that must be loaded in the context before this pass.
-  void getDependentDialects(::mlir::DialectRegistry &registry) const override {
-    
-  registry.insert<LLVM::LLVMDialect>();
-
-  }
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertShapeToStandardBase<DerivedT>)
 
 protected:
-  ::mlir::Pass::Option<bool> useBarePtrCallConv{*this, "use-bare-ptr-memref-call-conv", ::llvm::cl::desc("Replace FuncOp's MemRef arguments with bare pointers to the MemRef element types"), ::llvm::cl::init(false)};
-  ::mlir::Pass::Option<bool> emitCWrappers{*this, "emit-c-wrappers", ::llvm::cl::desc("Emit wrappers for C-compatible pointer-to-struct memref descriptors"), ::llvm::cl::init(false)};
-  ::mlir::Pass::Option<unsigned> indexBitwidth{*this, "index-bitwidth", ::llvm::cl::desc("Bitwidth of the index type, 0 to use size of machine word"), ::llvm::cl::init(0)};
-  ::mlir::Pass::Option<std::string> dataLayout{*this, "data-layout", ::llvm::cl::desc("String description (LLVM format) of the data layout that is expected on the produced module"), ::llvm::cl::init("")};
 };
 
 //===----------------------------------------------------------------------===//
@@ -1661,6 +1831,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertTensorToSPIRVBase<DerivedT>)
+
 protected:
   ::mlir::Pass::Option<bool> emulateNon32BitScalarTypes{*this, "emulate-non-32-bit-scalar-types", ::llvm::cl::desc("Emulate non-32-bit scalar types with 32-bit ones if missing native support"), ::llvm::cl::init(true)};
 };
@@ -1670,12 +1845,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class ConvertVectorToGPUBase : public ::mlir::OperationPass<FuncOp> {
+class ConvertVectorToGPUBase : public ::mlir::OperationPass<> {
 public:
   using Base = ConvertVectorToGPUBase;
 
-  ConvertVectorToGPUBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  ConvertVectorToGPUBase(const ConvertVectorToGPUBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  ConvertVectorToGPUBase() : ::mlir::OperationPass<>(::mlir::TypeID::get<DerivedT>()) {}
+  ConvertVectorToGPUBase(const ConvertVectorToGPUBase &other) : ::mlir::OperationPass<>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -1709,6 +1884,11 @@ public:
   registry.insert<gpu::GPUDialect>();
 
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertVectorToGPUBase<DerivedT>)
 
 protected:
 };
@@ -1754,9 +1934,14 @@ public:
     
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertVectorToLLVMBase<DerivedT>)
+
 protected:
   ::mlir::Pass::Option<bool> reassociateFPReductions{*this, "reassociate-fp-reductions", ::llvm::cl::desc("Allows llvm to reassociate floating-point reductions for speed"), ::llvm::cl::init(false)};
-  ::mlir::Pass::Option<bool> indexOptimizations{*this, "enable-index-optimizations", ::llvm::cl::desc("Allows compiler to assume indices fit in 32-bit if that yields faster code"), ::llvm::cl::init(true)};
+  ::mlir::Pass::Option<bool> force32BitVectorIndices{*this, "force-32bit-vector-indices", ::llvm::cl::desc("Allows compiler to assume vector indices fit in 32-bit if that yields faster code"), ::llvm::cl::init(true)};
   ::mlir::Pass::Option<bool> amx{*this, "enable-amx", ::llvm::cl::desc("Enables the use of AMX dialect while lowering the vector dialect."), ::llvm::cl::init(false)};
   ::mlir::Pass::Option<bool> armNeon{*this, "enable-arm-neon", ::llvm::cl::desc("Enables the use of ArmNeon dialect while lowering the vector dialect."), ::llvm::cl::init(false)};
   ::mlir::Pass::Option<bool> armSVE{*this, "enable-arm-sve", ::llvm::cl::desc("Enables the use of ArmSVE dialect while lowering the vector dialect."), ::llvm::cl::init(false)};
@@ -1806,6 +1991,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertVectorToROCDLBase<DerivedT>)
+
 protected:
 };
 
@@ -1814,12 +2004,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class ConvertVectorToSCFBase : public ::mlir::OperationPass<FuncOp> {
+class ConvertVectorToSCFBase : public ::mlir::OperationPass<> {
 public:
   using Base = ConvertVectorToSCFBase;
 
-  ConvertVectorToSCFBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  ConvertVectorToSCFBase(const ConvertVectorToSCFBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  ConvertVectorToSCFBase() : ::mlir::OperationPass<>(::mlir::TypeID::get<DerivedT>()) {}
+  ConvertVectorToSCFBase(const ConvertVectorToSCFBase &other) : ::mlir::OperationPass<>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -1855,6 +2045,11 @@ public:
   registry.insert<scf::SCFDialect>();
 
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertVectorToSCFBase<DerivedT>)
 
 protected:
   ::mlir::Pass::Option<bool> fullUnroll{*this, "full-unroll", ::llvm::cl::desc("Perform full unrolling when converting vector transfers to SCF"), ::llvm::cl::init(false)};
@@ -1906,6 +2101,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertVectorToSPIRVBase<DerivedT>)
+
 protected:
 };
 
@@ -1951,6 +2151,11 @@ public:
   registry.insert<LLVM::LLVMDialect>();
 
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertVulkanLaunchFuncToVulkanCallsBase<DerivedT>)
 
 protected:
 };
@@ -1998,6 +2203,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(GpuToLLVMConversionPassBase<DerivedT>)
+
 protected:
 };
 
@@ -2044,6 +2254,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LowerHostCodeToLLVMBase<DerivedT>)
+
 protected:
 };
 
@@ -2087,6 +2302,11 @@ public:
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
     
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ReconcileUnrealizedCastsBase<DerivedT>)
 
 protected:
 };
@@ -2134,6 +2354,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(SCFToControlFlowBase<DerivedT>)
+
 protected:
 };
 
@@ -2180,7 +2405,64 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(SCFToSPIRVBase<DerivedT>)
+
 protected:
+};
+
+//===----------------------------------------------------------------------===//
+// TosaToArith
+//===----------------------------------------------------------------------===//
+
+template <typename DerivedT>
+class TosaToArithBase : public ::mlir::OperationPass<> {
+public:
+  using Base = TosaToArithBase;
+
+  TosaToArithBase() : ::mlir::OperationPass<>(::mlir::TypeID::get<DerivedT>()) {}
+  TosaToArithBase(const TosaToArithBase &other) : ::mlir::OperationPass<>(other) {}
+
+  /// Returns the command-line argument attached to this pass.
+  static constexpr ::llvm::StringLiteral getArgumentName() {
+    return ::llvm::StringLiteral("tosa-to-arith");
+  }
+  ::llvm::StringRef getArgument() const override { return "tosa-to-arith"; }
+
+  ::llvm::StringRef getDescription() const override { return "Lower TOSA to the Arith dialect"; }
+
+  /// Returns the derived pass name.
+  static constexpr ::llvm::StringLiteral getPassName() {
+    return ::llvm::StringLiteral("TosaToArith");
+  }
+  ::llvm::StringRef getName() const override { return "TosaToArith"; }
+
+  /// Support isa/dyn_cast functionality for the derived pass class.
+  static bool classof(const ::mlir::Pass *pass) {
+    return pass->getTypeID() == ::mlir::TypeID::get<DerivedT>();
+  }
+
+  /// A clone method to create a copy of this pass.
+  std::unique_ptr<::mlir::Pass> clonePass() const override {
+    return std::make_unique<DerivedT>(*static_cast<const DerivedT *>(this));
+  }
+
+  /// Return the dialect that must be loaded in the context before this pass.
+  void getDependentDialects(::mlir::DialectRegistry &registry) const override {
+    
+  registry.insert<arith::ArithmeticDialect>();
+
+  }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(TosaToArithBase<DerivedT>)
+
+protected:
+  ::mlir::Pass::Option<bool> includeApplyRescale{*this, "include-apply-rescale", ::llvm::cl::desc("Whether to include the lowering for tosa.apply_rescale to arith"), ::llvm::cl::init(false)};
 };
 
 //===----------------------------------------------------------------------===//
@@ -2188,12 +2470,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class TosaToLinalgBase : public ::mlir::OperationPass<FuncOp> {
+class TosaToLinalgBase : public ::mlir::InterfacePass<FunctionOpInterface> {
 public:
   using Base = TosaToLinalgBase;
 
-  TosaToLinalgBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  TosaToLinalgBase(const TosaToLinalgBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  TosaToLinalgBase() : ::mlir::InterfacePass<FunctionOpInterface>(::mlir::TypeID::get<DerivedT>()) {}
+  TosaToLinalgBase(const TosaToLinalgBase &other) : ::mlir::InterfacePass<FunctionOpInterface>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -2224,6 +2506,11 @@ public:
     
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(TosaToLinalgBase<DerivedT>)
+
 protected:
 };
 
@@ -2232,12 +2519,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class TosaToLinalgNamedBase : public ::mlir::OperationPass<FuncOp> {
+class TosaToLinalgNamedBase : public ::mlir::InterfacePass<FunctionOpInterface> {
 public:
   using Base = TosaToLinalgNamedBase;
 
-  TosaToLinalgNamedBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  TosaToLinalgNamedBase(const TosaToLinalgNamedBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  TosaToLinalgNamedBase() : ::mlir::InterfacePass<FunctionOpInterface>(::mlir::TypeID::get<DerivedT>()) {}
+  TosaToLinalgNamedBase(const TosaToLinalgNamedBase &other) : ::mlir::InterfacePass<FunctionOpInterface>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -2267,6 +2554,11 @@ public:
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
     
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(TosaToLinalgNamedBase<DerivedT>)
 
 protected:
 };
@@ -2314,34 +2606,39 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(TosaToSCFBase<DerivedT>)
+
 protected:
 };
 
 //===----------------------------------------------------------------------===//
-// TosaToStandard
+// TosaToTensor
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class TosaToStandardBase : public ::mlir::OperationPass<> {
+class TosaToTensorBase : public ::mlir::OperationPass<> {
 public:
-  using Base = TosaToStandardBase;
+  using Base = TosaToTensorBase;
 
-  TosaToStandardBase() : ::mlir::OperationPass<>(::mlir::TypeID::get<DerivedT>()) {}
-  TosaToStandardBase(const TosaToStandardBase &other) : ::mlir::OperationPass<>(other) {}
+  TosaToTensorBase() : ::mlir::OperationPass<>(::mlir::TypeID::get<DerivedT>()) {}
+  TosaToTensorBase(const TosaToTensorBase &other) : ::mlir::OperationPass<>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
-    return ::llvm::StringLiteral("tosa-to-standard");
+    return ::llvm::StringLiteral("tosa-to-tensor");
   }
-  ::llvm::StringRef getArgument() const override { return "tosa-to-standard"; }
+  ::llvm::StringRef getArgument() const override { return "tosa-to-tensor"; }
 
-  ::llvm::StringRef getDescription() const override { return "Lower TOSA to the Standard dialect"; }
+  ::llvm::StringRef getDescription() const override { return "Lower TOSA to the Tensor dialect"; }
 
   /// Returns the derived pass name.
   static constexpr ::llvm::StringLiteral getPassName() {
-    return ::llvm::StringLiteral("TosaToStandard");
+    return ::llvm::StringLiteral("TosaToTensor");
   }
-  ::llvm::StringRef getName() const override { return "TosaToStandard"; }
+  ::llvm::StringRef getName() const override { return "TosaToTensor"; }
 
   /// Support isa/dyn_cast functionality for the derived pass class.
   static bool classof(const ::mlir::Pass *pass) {
@@ -2356,11 +2653,14 @@ public:
   /// Return the dialect that must be loaded in the context before this pass.
   void getDependentDialects(::mlir::DialectRegistry &registry) const override {
     
-  registry.insert<arith::ArithmeticDialect>();
-
   registry.insert<tensor::TensorDialect>();
 
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(TosaToTensorBase<DerivedT>)
 
 protected:
 };
@@ -2475,6 +2775,16 @@ inline void registerConvertControlFlowToLLVMPass() {
 inline void registerConvertControlFlowToSPIRVPass() {
   ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
     return mlir::createConvertControlFlowToSPIRVPass();
+  });
+}
+
+//===----------------------------------------------------------------------===//
+// ConvertFuncToLLVM Registration
+//===----------------------------------------------------------------------===//
+
+inline void registerConvertFuncToLLVMPass() {
+  ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
+    return mlir::createConvertFuncToLLVMPass();
   });
 }
 
@@ -2699,16 +3009,6 @@ inline void registerConvertShapeToStandardPass() {
 }
 
 //===----------------------------------------------------------------------===//
-// ConvertStandardToLLVM Registration
-//===----------------------------------------------------------------------===//
-
-inline void registerConvertStandardToLLVMPass() {
-  ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
-    return mlir::createLowerToLLVMPass();
-  });
-}
-
-//===----------------------------------------------------------------------===//
 // ConvertTensorToSPIRV Registration
 //===----------------------------------------------------------------------===//
 
@@ -2829,6 +3129,16 @@ inline void registerSCFToSPIRVPass() {
 }
 
 //===----------------------------------------------------------------------===//
+// TosaToArith Registration
+//===----------------------------------------------------------------------===//
+
+inline void registerTosaToArithPass() {
+  ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
+    return tosa::createTosaToArith();
+  });
+}
+
+//===----------------------------------------------------------------------===//
 // TosaToLinalg Registration
 //===----------------------------------------------------------------------===//
 
@@ -2859,12 +3169,12 @@ inline void registerTosaToSCFPass() {
 }
 
 //===----------------------------------------------------------------------===//
-// TosaToStandard Registration
+// TosaToTensor Registration
 //===----------------------------------------------------------------------===//
 
-inline void registerTosaToStandardPass() {
+inline void registerTosaToTensorPass() {
   ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
-    return tosa::createTosaToStandard();
+    return tosa::createTosaToTensor();
   });
 }
 
@@ -2884,6 +3194,7 @@ inline void registerConversionPasses() {
   registerConvertComplexToStandardPass();
   registerConvertControlFlowToLLVMPass();
   registerConvertControlFlowToSPIRVPass();
+  registerConvertFuncToLLVMPass();
   registerConvertFuncToSPIRVPass();
   registerConvertGPUToSPIRVPass();
   registerConvertGpuLaunchFuncToVulkanLaunchFuncPass();
@@ -2906,7 +3217,6 @@ inline void registerConversionPasses() {
   registerConvertSPIRVToLLVMPass();
   registerConvertShapeConstraintsPass();
   registerConvertShapeToStandardPass();
-  registerConvertStandardToLLVMPass();
   registerConvertTensorToSPIRVPass();
   registerConvertVectorToGPUPass();
   registerConvertVectorToLLVMPass();
@@ -2919,10 +3229,11 @@ inline void registerConversionPasses() {
   registerReconcileUnrealizedCastsPass();
   registerSCFToControlFlowPass();
   registerSCFToSPIRVPass();
+  registerTosaToArithPass();
   registerTosaToLinalgPass();
   registerTosaToLinalgNamedPass();
   registerTosaToSCFPass();
-  registerTosaToStandardPass();
+  registerTosaToTensorPass();
 }
 #undef GEN_PASS_REGISTRATION
 #endif // GEN_PASS_REGISTRATION

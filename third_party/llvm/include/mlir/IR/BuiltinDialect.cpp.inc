@@ -6,7 +6,7 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
-DEFINE_EXPLICIT_TYPE_ID(::mlir::BuiltinDialect)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::BuiltinDialect)
 namespace mlir {
 
 BuiltinDialect::~BuiltinDialect() = default;

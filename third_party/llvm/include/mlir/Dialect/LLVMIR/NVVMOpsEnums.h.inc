@@ -8,6 +8,59 @@
 
 namespace mlir {
 namespace NVVM {
+// MMA binary operations
+enum class MMAB1Op : uint32_t {
+  none = 0,
+  xor_popc = 1,
+  and_popc = 2,
+};
+
+::llvm::Optional<MMAB1Op> symbolizeMMAB1Op(uint32_t);
+::llvm::StringRef stringifyMMAB1Op(MMAB1Op);
+::llvm::Optional<MMAB1Op> symbolizeMMAB1Op(::llvm::StringRef);
+inline constexpr unsigned getMaxEnumValForMMAB1Op() {
+  return 2;
+}
+
+
+inline ::llvm::StringRef stringifyEnum(MMAB1Op enumValue) {
+  return stringifyMMAB1Op(enumValue);
+}
+
+template <typename EnumType>
+::llvm::Optional<EnumType> symbolizeEnum(::llvm::StringRef);
+
+template <>
+inline ::llvm::Optional<MMAB1Op> symbolizeEnum<MMAB1Op>(::llvm::StringRef str) {
+  return symbolizeMMAB1Op(str);
+}
+} // namespace NVVM
+} // namespace mlir
+
+namespace llvm {
+template<> struct DenseMapInfo<::mlir::NVVM::MMAB1Op> {
+  using StorageInfo = ::llvm::DenseMapInfo<uint32_t>;
+
+  static inline ::mlir::NVVM::MMAB1Op getEmptyKey() {
+    return static_cast<::mlir::NVVM::MMAB1Op>(StorageInfo::getEmptyKey());
+  }
+
+  static inline ::mlir::NVVM::MMAB1Op getTombstoneKey() {
+    return static_cast<::mlir::NVVM::MMAB1Op>(StorageInfo::getTombstoneKey());
+  }
+
+  static unsigned getHashValue(const ::mlir::NVVM::MMAB1Op &val) {
+    return StorageInfo::getHashValue(static_cast<uint32_t>(val));
+  }
+
+  static bool isEqual(const ::mlir::NVVM::MMAB1Op &lhs, const ::mlir::NVVM::MMAB1Op &rhs) {
+    return lhs == rhs;
+  }
+};
+}
+
+namespace mlir {
+namespace NVVM {
 // NVVM MMA frag type
 enum class MMAFrag : uint32_t {
   a = 0,
@@ -54,6 +107,58 @@ template<> struct DenseMapInfo<::mlir::NVVM::MMAFrag> {
   }
 
   static bool isEqual(const ::mlir::NVVM::MMAFrag &lhs, const ::mlir::NVVM::MMAFrag &rhs) {
+    return lhs == rhs;
+  }
+};
+}
+
+namespace mlir {
+namespace NVVM {
+// MMA overflow options
+enum class MMAIntOverflow : uint32_t {
+  satfinite = 1,
+  wrapped = 0,
+};
+
+::llvm::Optional<MMAIntOverflow> symbolizeMMAIntOverflow(uint32_t);
+::llvm::StringRef stringifyMMAIntOverflow(MMAIntOverflow);
+::llvm::Optional<MMAIntOverflow> symbolizeMMAIntOverflow(::llvm::StringRef);
+inline constexpr unsigned getMaxEnumValForMMAIntOverflow() {
+  return 1;
+}
+
+
+inline ::llvm::StringRef stringifyEnum(MMAIntOverflow enumValue) {
+  return stringifyMMAIntOverflow(enumValue);
+}
+
+template <typename EnumType>
+::llvm::Optional<EnumType> symbolizeEnum(::llvm::StringRef);
+
+template <>
+inline ::llvm::Optional<MMAIntOverflow> symbolizeEnum<MMAIntOverflow>(::llvm::StringRef str) {
+  return symbolizeMMAIntOverflow(str);
+}
+} // namespace NVVM
+} // namespace mlir
+
+namespace llvm {
+template<> struct DenseMapInfo<::mlir::NVVM::MMAIntOverflow> {
+  using StorageInfo = ::llvm::DenseMapInfo<uint32_t>;
+
+  static inline ::mlir::NVVM::MMAIntOverflow getEmptyKey() {
+    return static_cast<::mlir::NVVM::MMAIntOverflow>(StorageInfo::getEmptyKey());
+  }
+
+  static inline ::mlir::NVVM::MMAIntOverflow getTombstoneKey() {
+    return static_cast<::mlir::NVVM::MMAIntOverflow>(StorageInfo::getTombstoneKey());
+  }
+
+  static unsigned getHashValue(const ::mlir::NVVM::MMAIntOverflow &val) {
+    return StorageInfo::getHashValue(static_cast<uint32_t>(val));
+  }
+
+  static bool isEqual(const ::mlir::NVVM::MMAIntOverflow &lhs, const ::mlir::NVVM::MMAIntOverflow &rhs) {
     return lhs == rhs;
   }
 };
@@ -118,13 +223,21 @@ enum class MMATypes : uint32_t {
   f16 = 0,
   f32 = 1,
   tf32 = 2,
+  bf16 = 9,
+  s8 = 4,
+  u8 = 3,
+  s32 = 5,
+  s4 = 8,
+  u4 = 7,
+  b1 = 6,
+  f64 = 10,
 };
 
 ::llvm::Optional<MMATypes> symbolizeMMATypes(uint32_t);
 ::llvm::StringRef stringifyMMATypes(MMATypes);
 ::llvm::Optional<MMATypes> symbolizeMMATypes(::llvm::StringRef);
 inline constexpr unsigned getMaxEnumValForMMATypes() {
-  return 2;
+  return 10;
 }
 
 

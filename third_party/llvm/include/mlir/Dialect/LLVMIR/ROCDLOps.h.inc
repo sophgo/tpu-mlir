@@ -245,7 +245,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::BarrierOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::BarrierOp)
 
 namespace mlir {
 namespace ROCDL {
@@ -301,7 +301,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::BlockDimXOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::BlockDimXOp)
 
 namespace mlir {
 namespace ROCDL {
@@ -357,7 +357,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::BlockDimYOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::BlockDimYOp)
 
 namespace mlir {
 namespace ROCDL {
@@ -413,7 +413,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::BlockDimZOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::BlockDimZOp)
 
 namespace mlir {
 namespace ROCDL {
@@ -469,7 +469,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::BlockIdXOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::BlockIdXOp)
 
 namespace mlir {
 namespace ROCDL {
@@ -525,7 +525,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::BlockIdYOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::BlockIdYOp)
 
 namespace mlir {
 namespace ROCDL {
@@ -581,7 +581,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::BlockIdZOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::BlockIdZOp)
 
 namespace mlir {
 namespace ROCDL {
@@ -637,7 +637,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::GridDimXOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::GridDimXOp)
 
 namespace mlir {
 namespace ROCDL {
@@ -693,7 +693,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::GridDimYOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::GridDimYOp)
 
 namespace mlir {
 namespace ROCDL {
@@ -749,7 +749,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::GridDimZOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::GridDimZOp)
 
 namespace mlir {
 namespace ROCDL {
@@ -819,7 +819,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::MubufLoadOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::MubufLoadOp)
 
 namespace mlir {
 namespace ROCDL {
@@ -891,7 +891,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::MubufStoreOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::MubufStoreOp)
 
 namespace mlir {
 namespace ROCDL {
@@ -947,7 +947,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::ThreadIdXOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::ThreadIdXOp)
 
 namespace mlir {
 namespace ROCDL {
@@ -1003,7 +1003,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::ThreadIdYOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::ThreadIdYOp)
 
 namespace mlir {
 namespace ROCDL {
@@ -1059,7 +1059,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::ThreadIdZOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::ThreadIdZOp)
 
 namespace mlir {
 namespace ROCDL {
@@ -1116,7 +1116,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_16x16x16f16)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_16x16x16f16)
 
 namespace mlir {
 namespace ROCDL {
@@ -1173,7 +1173,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_16x16x1f32)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_16x16x1f32)
 
 namespace mlir {
 namespace ROCDL {
@@ -1230,7 +1230,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_16x16x2bf16)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_16x16x2bf16)
 
 namespace mlir {
 namespace ROCDL {
@@ -1287,7 +1287,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_16x16x4f16)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_16x16x4f16)
 
 namespace mlir {
 namespace ROCDL {
@@ -1344,7 +1344,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_16x16x4f32)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_16x16x4f32)
 
 namespace mlir {
 namespace ROCDL {
@@ -1401,7 +1401,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_16x16x8bf16)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_16x16x8bf16)
 
 namespace mlir {
 namespace ROCDL {
@@ -1458,7 +1458,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_32x32x1f32)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_32x32x1f32)
 
 namespace mlir {
 namespace ROCDL {
@@ -1515,7 +1515,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_32x32x2bf16)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_32x32x2bf16)
 
 namespace mlir {
 namespace ROCDL {
@@ -1572,7 +1572,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_32x32x2f32)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_32x32x2f32)
 
 namespace mlir {
 namespace ROCDL {
@@ -1629,7 +1629,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_32x32x4bf16)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_32x32x4bf16)
 
 namespace mlir {
 namespace ROCDL {
@@ -1686,7 +1686,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_32x32x4f16)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_32x32x4f16)
 
 namespace mlir {
 namespace ROCDL {
@@ -1743,7 +1743,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_32x32x8f16)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_32x32x8f16)
 
 namespace mlir {
 namespace ROCDL {
@@ -1800,7 +1800,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_4x4x1f32)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_4x4x1f32)
 
 namespace mlir {
 namespace ROCDL {
@@ -1857,7 +1857,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_4x4x2bf16)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_4x4x2bf16)
 
 namespace mlir {
 namespace ROCDL {
@@ -1914,7 +1914,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_4x4x4f16)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_4x4x4f16)
 
 namespace mlir {
 namespace ROCDL {
@@ -1971,7 +1971,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_i32_16x16x16i8)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_i32_16x16x16i8)
 
 namespace mlir {
 namespace ROCDL {
@@ -2028,7 +2028,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_i32_16x16x4i8)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_i32_16x16x4i8)
 
 namespace mlir {
 namespace ROCDL {
@@ -2085,7 +2085,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_i32_32x32x4i8)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_i32_32x32x4i8)
 
 namespace mlir {
 namespace ROCDL {
@@ -2142,7 +2142,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_i32_32x32x8i8)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_i32_32x32x8i8)
 
 namespace mlir {
 namespace ROCDL {
@@ -2199,7 +2199,7 @@ public:
 };
 } // namespace ROCDL
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_i32_4x4x4i8)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_i32_4x4x4i8)
 
 
 #endif  // GET_OP_CLASSES

@@ -10,8 +10,8 @@ namespace mlir {
 namespace acc {
 // DefaultValue Clause
 enum class ClauseDefaultValue : uint32_t {
-  present = 0,
-  none = 1,
+  Present = 0,
+  None = 1,
 };
 
 ::llvm::Optional<ClauseDefaultValue> symbolizeClauseDefaultValue(uint32_t);

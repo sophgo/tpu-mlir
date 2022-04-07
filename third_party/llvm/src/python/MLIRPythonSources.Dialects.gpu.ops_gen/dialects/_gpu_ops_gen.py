@@ -368,6 +368,30 @@ class GPUModuleOp(_ods_ir.OpView):
 
 @_ods_cext.register_operation(_Dialect)
 @_ods_extend_opview_class(_ods_ext_module)
+class GlobalIdOp(_ods_ir.OpView):
+  OPERATION_NAME = "gpu.global_id"
+
+  _ODS_REGIONS = (0, True)
+
+  def __init__(self, dimension, *, loc=None, ip=None):
+    operands = []
+    results = []
+    attributes = {}
+    regions = None
+    attributes["dimension"] = dimension
+    _ods_context = _ods_get_default_loc_context(loc)
+    results = _ods_ir.InferTypeOpInterface(GlobalIdOp).inferReturnTypes(
+        operands=operands,
+        attributes=_ods_ir.DictAttr.get(attributes, context=_ods_context),
+        context=_ods_context,
+        loc=loc)
+    _ods_successors = None
+    super().__init__(self.build_generic(
+      attributes=attributes, results=results, operands=operands,
+      successors=_ods_successors, regions=regions, loc=loc, ip=ip))
+
+@_ods_cext.register_operation(_Dialect)
+@_ods_extend_opview_class(_ods_ext_module)
 class GridDimOp(_ods_ir.OpView):
   OPERATION_NAME = "gpu.grid_dim"
 

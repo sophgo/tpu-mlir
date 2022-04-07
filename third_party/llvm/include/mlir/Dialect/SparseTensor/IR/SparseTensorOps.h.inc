@@ -10,6 +10,11 @@
 #undef GET_OP_FWD_DEFINES
 namespace mlir {
 namespace sparse_tensor {
+class BinaryOp;
+} // namespace sparse_tensor
+} // namespace mlir
+namespace mlir {
+namespace sparse_tensor {
 class CompressOp;
 } // namespace sparse_tensor
 } // namespace mlir
@@ -68,6 +73,16 @@ namespace sparse_tensor {
 class ToValuesOp;
 } // namespace sparse_tensor
 } // namespace mlir
+namespace mlir {
+namespace sparse_tensor {
+class UnaryOp;
+} // namespace sparse_tensor
+} // namespace mlir
+namespace mlir {
+namespace sparse_tensor {
+class YieldOp;
+} // namespace sparse_tensor
+} // namespace mlir
 #endif
 
 #ifdef GET_OP_CLASSES
@@ -77,6 +92,117 @@ class ToValuesOp;
 //===----------------------------------------------------------------------===//
 // Local Utility Method Definitions
 //===----------------------------------------------------------------------===//
+
+namespace mlir {
+namespace sparse_tensor {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::sparse_tensor::BinaryOp declarations
+//===----------------------------------------------------------------------===//
+
+class BinaryOpAdaptor {
+public:
+  BinaryOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  BinaryOpAdaptor(BinaryOp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::Value x();
+  ::mlir::Value y();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::UnitAttr left_identityAttr();
+  bool left_identity();
+  ::mlir::UnitAttr right_identityAttr();
+  bool right_identity();
+  ::mlir::RegionRange getRegions();
+  ::mlir::Region &overlapRegion();
+  ::mlir::Region &leftRegion();
+  ::mlir::Region &rightRegion();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class BinaryOp : public ::mlir::Op<BinaryOp, ::mlir::OpTrait::NRegions<3>::Impl, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = BinaryOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("left_identity"), ::llvm::StringRef("right_identity")};
+    return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr left_identityAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr left_identityAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
+  ::mlir::StringAttr right_identityAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr right_identityAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("sparse_tensor.binary");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Value x();
+  ::mlir::Value y();
+  ::mlir::MutableOperandRange xMutable();
+  ::mlir::MutableOperandRange yMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Value output();
+  ::mlir::Region &overlapRegion();
+  ::mlir::Region &leftRegion();
+  ::mlir::Region &rightRegion();
+  ::mlir::UnitAttr left_identityAttr();
+  bool left_identity();
+  ::mlir::UnitAttr right_identityAttr();
+  bool right_identity();
+  void left_identityAttr(::mlir::UnitAttr attr);
+  void right_identityAttr(::mlir::UnitAttr attr);
+  ::mlir::Attribute removeLeft_identityAttr();
+  ::mlir::Attribute removeRight_identityAttr();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value x, ::mlir::Value y, /*optional*/::mlir::UnitAttr left_identity, /*optional*/::mlir::UnitAttr right_identity);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value x, ::mlir::Value y, /*optional*/::mlir::UnitAttr left_identity, /*optional*/::mlir::UnitAttr right_identity);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value x, ::mlir::Value y, /*optional*/bool left_identity, /*optional*/bool right_identity);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value x, ::mlir::Value y, /*optional*/bool left_identity, /*optional*/bool right_identity);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  ::mlir::LogicalResult verify();
+  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
+  void print(::mlir::OpAsmPrinter &_odsPrinter);
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+private:
+  ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
+    return getAttributeNameForIndex((*this)->getName(), index);
+  }
+
+  static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
+    assert(index < 2 && "invalid attribute index");
+    return name.getRegisteredInfo()->getAttributeNames()[index];
+  }
+
+public:
+};
+} // namespace sparse_tensor
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::BinaryOp)
 
 namespace mlir {
 namespace sparse_tensor {
@@ -149,7 +275,7 @@ public:
 };
 } // namespace sparse_tensor
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::CompressOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::CompressOp)
 
 namespace mlir {
 namespace sparse_tensor {
@@ -210,7 +336,7 @@ public:
 };
 } // namespace sparse_tensor
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::ConvertOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::ConvertOp)
 
 namespace mlir {
 namespace sparse_tensor {
@@ -273,7 +399,7 @@ public:
 };
 } // namespace sparse_tensor
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::ExpandOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::ExpandOp)
 
 namespace mlir {
 namespace sparse_tensor {
@@ -332,7 +458,7 @@ public:
 };
 } // namespace sparse_tensor
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::InitOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::InitOp)
 
 namespace mlir {
 namespace sparse_tensor {
@@ -396,7 +522,7 @@ public:
 };
 } // namespace sparse_tensor
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::LexInsertOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::LexInsertOp)
 
 namespace mlir {
 namespace sparse_tensor {
@@ -484,7 +610,7 @@ public:
 };
 } // namespace sparse_tensor
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::LoadOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::LoadOp)
 
 namespace mlir {
 namespace sparse_tensor {
@@ -544,7 +670,7 @@ public:
 };
 } // namespace sparse_tensor
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::NewOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::NewOp)
 
 namespace mlir {
 namespace sparse_tensor {
@@ -605,7 +731,7 @@ public:
 };
 } // namespace sparse_tensor
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::OutOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::OutOp)
 
 namespace mlir {
 namespace sparse_tensor {
@@ -663,7 +789,7 @@ public:
 };
 } // namespace sparse_tensor
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::ReleaseOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::ReleaseOp)
 
 namespace mlir {
 namespace sparse_tensor {
@@ -726,7 +852,7 @@ public:
 };
 } // namespace sparse_tensor
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::ToIndicesOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::ToIndicesOp)
 
 namespace mlir {
 namespace sparse_tensor {
@@ -789,7 +915,7 @@ public:
 };
 } // namespace sparse_tensor
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::ToPointersOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::ToPointersOp)
 
 namespace mlir {
 namespace sparse_tensor {
@@ -849,7 +975,131 @@ public:
 };
 } // namespace sparse_tensor
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::ToValuesOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::ToValuesOp)
+
+namespace mlir {
+namespace sparse_tensor {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::sparse_tensor::UnaryOp declarations
+//===----------------------------------------------------------------------===//
+
+class UnaryOpAdaptor {
+public:
+  UnaryOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  UnaryOpAdaptor(UnaryOp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::Value x();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::RegionRange getRegions();
+  ::mlir::Region &presentRegion();
+  ::mlir::Region &absentRegion();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class UnaryOp : public ::mlir::Op<UnaryOp, ::mlir::OpTrait::NRegions<2>::Impl, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = UnaryOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    return {};
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("sparse_tensor.unary");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Value x();
+  ::mlir::MutableOperandRange xMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Value output();
+  ::mlir::Region &presentRegion();
+  ::mlir::Region &absentRegion();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value x);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value x);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  ::mlir::LogicalResult verify();
+  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
+  void print(::mlir::OpAsmPrinter &_odsPrinter);
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+public:
+};
+} // namespace sparse_tensor
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::UnaryOp)
+
+namespace mlir {
+namespace sparse_tensor {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::sparse_tensor::YieldOp declarations
+//===----------------------------------------------------------------------===//
+
+class YieldOpAdaptor {
+public:
+  YieldOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  YieldOpAdaptor(YieldOp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::Value result();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class YieldOp : public ::mlir::Op<YieldOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::IsTerminator> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = YieldOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    return {};
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("sparse_tensor.yield");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Value result();
+  ::mlir::MutableOperandRange resultMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value result);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value result);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  ::mlir::LogicalResult verify();
+  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
+  void print(::mlir::OpAsmPrinter &_odsPrinter);
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+public:
+};
+} // namespace sparse_tensor
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::YieldOp)
 
 
 #endif  // GET_OP_CLASSES

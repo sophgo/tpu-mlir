@@ -117,17 +117,21 @@ template<> struct DenseMapInfo<::mlir::linalg::TypeFn> {
 
 namespace mlir {
 namespace linalg {
-// allowed 32-bit signless integer cases: 0, 1
+// allowed 32-bit signless integer cases: 0, 1, 2, 3, 4, 5
 enum class UnaryFn : uint32_t {
   exp = 0,
   log = 1,
+  abs = 2,
+  ceil = 3,
+  floor = 4,
+  negf = 5,
 };
 
 ::llvm::Optional<UnaryFn> symbolizeUnaryFn(uint32_t);
 ::llvm::StringRef stringifyUnaryFn(UnaryFn);
 ::llvm::Optional<UnaryFn> symbolizeUnaryFn(::llvm::StringRef);
 inline constexpr unsigned getMaxEnumValForUnaryFn() {
-  return 1;
+  return 5;
 }
 
 

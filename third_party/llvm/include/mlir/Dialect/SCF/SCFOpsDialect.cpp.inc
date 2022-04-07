@@ -6,7 +6,7 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
-DEFINE_EXPLICIT_TYPE_ID(::mlir::scf::SCFDialect)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::scf::SCFDialect)
 namespace mlir {
 namespace scf {
 

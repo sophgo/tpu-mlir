@@ -4,7 +4,7 @@ more info:<https://oneapi-src.github.io/oneDNN/index.html>
 
 ``` c++
 git clone https://github.com/oneapi-src/oneDNN.git
-cd oneDNN && git checkout 48d956c10ec6cacf338e6a812c1ae1e3087b920c && cd ..
+cd oneDNN && git checkout 9636c49abf376d2144dace1c58247148a16960ab && cd ..
 mkdir -p oneDNN/build
 cd oneDNN/build
 cmake .. \

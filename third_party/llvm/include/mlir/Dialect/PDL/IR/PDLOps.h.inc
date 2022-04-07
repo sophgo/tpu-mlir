@@ -108,8 +108,6 @@ public:
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::StringAttr nameAttr();
   ::llvm::StringRef name();
-  ::mlir::ArrayAttr constParamsAttr();
-  ::llvm::Optional< ::mlir::ArrayAttr > constParams();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -123,7 +121,7 @@ public:
   using Adaptor = ApplyNativeConstraintOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("name"), ::llvm::StringRef("constParams")};
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("name")};
     return ::llvm::makeArrayRef(attrNames);
   }
 
@@ -133,14 +131,6 @@ public:
 
   static ::mlir::StringAttr nameAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
-  }
-
-  ::mlir::StringAttr constParamsAttrName() {
-    return getAttributeNameForIndex(1);
-  }
-
-  static ::mlir::StringAttr constParamsAttrName(::mlir::OperationName name) {
-    return getAttributeNameForIndex(name, 1);
   }
 
   static constexpr ::llvm::StringLiteral getOperationName() {
@@ -155,16 +145,11 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::StringAttr nameAttr();
   ::llvm::StringRef name();
-  ::mlir::ArrayAttr constParamsAttr();
-  ::llvm::Optional< ::mlir::ArrayAttr > constParams();
   void nameAttr(::mlir::StringAttr attr);
-  void constParamsAttr(::mlir::ArrayAttr attr);
-  ::mlir::Attribute removeConstParamsAttr();
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, StringRef name, ValueRange args = {}, ArrayRef<Attribute> params = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::StringAttr name, ::mlir::ValueRange args, /*optional*/::mlir::ArrayAttr constParams);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::StringAttr name, ::mlir::ValueRange args, /*optional*/::mlir::ArrayAttr constParams);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::llvm::StringRef name, ::mlir::ValueRange args, /*optional*/::mlir::ArrayAttr constParams);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::llvm::StringRef name, ::mlir::ValueRange args, /*optional*/::mlir::ArrayAttr constParams);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::StringAttr name, ::mlir::ValueRange args);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::StringAttr name, ::mlir::ValueRange args);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::llvm::StringRef name, ::mlir::ValueRange args);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::llvm::StringRef name, ::mlir::ValueRange args);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
@@ -177,7 +162,7 @@ private:
   }
 
   static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
-    assert(index < 2 && "invalid attribute index");
+    assert(index < 1 && "invalid attribute index");
     return name.getRegisteredInfo()->getAttributeNames()[index];
   }
 
@@ -185,7 +170,7 @@ public:
 };
 } // namespace pdl
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::ApplyNativeConstraintOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::ApplyNativeConstraintOp)
 
 namespace mlir {
 namespace pdl {
@@ -207,8 +192,6 @@ public:
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::StringAttr nameAttr();
   ::llvm::StringRef name();
-  ::mlir::ArrayAttr constParamsAttr();
-  ::llvm::Optional< ::mlir::ArrayAttr > constParams();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -222,7 +205,7 @@ public:
   using Adaptor = ApplyNativeRewriteOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("name"), ::llvm::StringRef("constParams")};
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("name")};
     return ::llvm::makeArrayRef(attrNames);
   }
 
@@ -232,14 +215,6 @@ public:
 
   static ::mlir::StringAttr nameAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
-  }
-
-  ::mlir::StringAttr constParamsAttrName() {
-    return getAttributeNameForIndex(1);
-  }
-
-  static ::mlir::StringAttr constParamsAttrName(::mlir::OperationName name) {
-    return getAttributeNameForIndex(name, 1);
   }
 
   static constexpr ::llvm::StringLiteral getOperationName() {
@@ -255,13 +230,9 @@ public:
   ::mlir::Operation::result_range results();
   ::mlir::StringAttr nameAttr();
   ::llvm::StringRef name();
-  ::mlir::ArrayAttr constParamsAttr();
-  ::llvm::Optional< ::mlir::ArrayAttr > constParams();
   void nameAttr(::mlir::StringAttr attr);
-  void constParamsAttr(::mlir::ArrayAttr attr);
-  ::mlir::Attribute removeConstParamsAttr();
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange results, ::mlir::StringAttr name, ::mlir::ValueRange args, /*optional*/::mlir::ArrayAttr constParams);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange results, ::llvm::StringRef name, ::mlir::ValueRange args, /*optional*/::mlir::ArrayAttr constParams);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange results, ::mlir::StringAttr name, ::mlir::ValueRange args);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange results, ::llvm::StringRef name, ::mlir::ValueRange args);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
@@ -274,7 +245,7 @@ private:
   }
 
   static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
-    assert(index < 2 && "invalid attribute index");
+    assert(index < 1 && "invalid attribute index");
     return name.getRegisteredInfo()->getAttributeNames()[index];
   }
 
@@ -282,7 +253,7 @@ public:
 };
 } // namespace pdl
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::ApplyNativeRewriteOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::ApplyNativeRewriteOp)
 
 namespace mlir {
 namespace pdl {
@@ -368,7 +339,7 @@ public:
 };
 } // namespace pdl
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::AttributeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::AttributeOp)
 
 namespace mlir {
 namespace pdl {
@@ -425,7 +396,7 @@ public:
 };
 } // namespace pdl
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::EraseOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::EraseOp)
 
 namespace mlir {
 namespace pdl {
@@ -485,7 +456,7 @@ public:
 };
 } // namespace pdl
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::OperandOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::OperandOp)
 
 namespace mlir {
 namespace pdl {
@@ -545,7 +516,7 @@ public:
 };
 } // namespace pdl
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::OperandsOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::OperandsOp)
 
 namespace mlir {
 namespace pdl {
@@ -660,7 +631,7 @@ public:
 };
 } // namespace pdl
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::OperationOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::OperationOp)
 
 namespace mlir {
 namespace pdl {
@@ -742,7 +713,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  ::mlir::LogicalResult verify();
+  ::mlir::LogicalResult verifyRegions();
   static ::llvm::StringRef getDefaultDialect();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
@@ -769,7 +740,7 @@ public:
 };
 } // namespace pdl
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::PatternOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::PatternOp)
 
 namespace mlir {
 namespace pdl {
@@ -852,7 +823,7 @@ public:
 };
 } // namespace pdl
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::ReplaceOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::ReplaceOp)
 
 namespace mlir {
 namespace pdl {
@@ -937,7 +908,7 @@ public:
 };
 } // namespace pdl
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::ResultOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::ResultOp)
 
 namespace mlir {
 namespace pdl {
@@ -1022,7 +993,7 @@ public:
 };
 } // namespace pdl
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::ResultsOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::ResultsOp)
 
 namespace mlir {
 namespace pdl {
@@ -1045,8 +1016,6 @@ public:
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::StringAttr nameAttr();
   ::llvm::Optional< ::llvm::StringRef > name();
-  ::mlir::ArrayAttr externalConstParamsAttr();
-  ::llvm::Optional< ::mlir::ArrayAttr > externalConstParams();
   ::mlir::RegionRange getRegions();
   ::mlir::Region &body();
   ::mlir::LogicalResult verify(::mlir::Location loc);
@@ -1062,7 +1031,7 @@ public:
   using Adaptor = RewriteOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("name"), ::llvm::StringRef("externalConstParams"), ::llvm::StringRef("operand_segment_sizes")};
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("name"), ::llvm::StringRef("operand_segment_sizes")};
     return ::llvm::makeArrayRef(attrNames);
   }
 
@@ -1074,20 +1043,12 @@ public:
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr externalConstParamsAttrName() {
+  ::mlir::StringAttr operand_segment_sizesAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr externalConstParamsAttrName(::mlir::OperationName name) {
-    return getAttributeNameForIndex(name, 1);
-  }
-
-  ::mlir::StringAttr operand_segment_sizesAttrName() {
-    return getAttributeNameForIndex(2);
-  }
-
   static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
-    return getAttributeNameForIndex(name, 2);
+    return getAttributeNameForIndex(name, 1);
   }
 
   static constexpr ::llvm::StringLiteral getOperationName() {
@@ -1105,18 +1066,14 @@ public:
   ::mlir::Region &body();
   ::mlir::StringAttr nameAttr();
   ::llvm::Optional< ::llvm::StringRef > name();
-  ::mlir::ArrayAttr externalConstParamsAttr();
-  ::llvm::Optional< ::mlir::ArrayAttr > externalConstParams();
   void nameAttr(::mlir::StringAttr attr);
-  void externalConstParamsAttr(::mlir::ArrayAttr attr);
   ::mlir::Attribute removeNameAttr();
-  ::mlir::Attribute removeExternalConstParamsAttr();
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, /*optional*/::mlir::Value root, /*optional*/::mlir::StringAttr name, ::mlir::ValueRange externalArgs, /*optional*/::mlir::ArrayAttr externalConstParams);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, /*optional*/::mlir::Value root, /*optional*/::mlir::StringAttr name, ::mlir::ValueRange externalArgs, /*optional*/::mlir::ArrayAttr externalConstParams);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, /*optional*/::mlir::Value root, /*optional*/::mlir::StringAttr name, ::mlir::ValueRange externalArgs);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, /*optional*/::mlir::Value root, /*optional*/::mlir::StringAttr name, ::mlir::ValueRange externalArgs);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  ::mlir::LogicalResult verify();
+  ::mlir::LogicalResult verifyRegions();
   static ::llvm::StringRef getDefaultDialect();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
@@ -1126,7 +1083,7 @@ private:
   }
 
   static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
-    assert(index < 3 && "invalid attribute index");
+    assert(index < 2 && "invalid attribute index");
     return name.getRegisteredInfo()->getAttributeNames()[index];
   }
 
@@ -1134,7 +1091,7 @@ public:
 };
 } // namespace pdl
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::RewriteOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::RewriteOp)
 
 namespace mlir {
 namespace pdl {
@@ -1215,7 +1172,7 @@ public:
 };
 } // namespace pdl
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::TypeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::TypeOp)
 
 namespace mlir {
 namespace pdl {
@@ -1296,7 +1253,7 @@ public:
 };
 } // namespace pdl
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::TypesOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl::TypesOp)
 
 
 #endif  // GET_OP_CLASSES

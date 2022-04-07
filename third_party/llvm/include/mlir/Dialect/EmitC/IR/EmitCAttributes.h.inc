@@ -35,7 +35,7 @@ public:
 };
 } // namespace emitc
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::emitc::OpaqueAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::emitc::OpaqueAttr)
 
 #endif  // GET_ATTRDEF_CLASSES
 

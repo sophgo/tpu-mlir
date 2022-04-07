@@ -27,4 +27,4 @@ public:
 };
 } // namespace amx
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::amx::AMXDialect)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::amx::AMXDialect)

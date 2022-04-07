@@ -106,9 +106,13 @@ enum class Directive {
   OMPD_interop,
   OMPD_loop,
   OMPD_masked,
+  OMPD_parallel_loop,
+  OMPD_target_parallel_loop,
+  OMPD_target_teams_loop,
+  OMPD_teams_loop,
 };
 
-static constexpr std::size_t Directive_enumSize = 96;
+static constexpr std::size_t Directive_enumSize = 100;
 
 constexpr auto OMPD_allocate = llvm::omp::Directive::OMPD_allocate;
 constexpr auto OMPD_assumes = llvm::omp::Directive::OMPD_assumes;
@@ -206,6 +210,10 @@ constexpr auto OMPD_dispatch = llvm::omp::Directive::OMPD_dispatch;
 constexpr auto OMPD_interop = llvm::omp::Directive::OMPD_interop;
 constexpr auto OMPD_loop = llvm::omp::Directive::OMPD_loop;
 constexpr auto OMPD_masked = llvm::omp::Directive::OMPD_masked;
+constexpr auto OMPD_parallel_loop = llvm::omp::Directive::OMPD_parallel_loop;
+constexpr auto OMPD_target_parallel_loop = llvm::omp::Directive::OMPD_target_parallel_loop;
+constexpr auto OMPD_target_teams_loop = llvm::omp::Directive::OMPD_target_teams_loop;
+constexpr auto OMPD_teams_loop = llvm::omp::Directive::OMPD_teams_loop;
 
 enum class Clause {
   OMPC_acq_rel,

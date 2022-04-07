@@ -58,7 +58,7 @@ Location CallSiteLoc::getCaller() const {
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::CallSiteLoc)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::CallSiteLoc)
 namespace mlir {
 namespace detail {
 struct FileLineColLocAttrStorage : public ::mlir::AttributeStorage {
@@ -108,7 +108,7 @@ unsigned FileLineColLoc::getColumn() const {
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::FileLineColLoc)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::FileLineColLoc)
 namespace mlir {
 namespace detail {
 struct FusedLocAttrStorage : public ::mlir::AttributeStorage {
@@ -147,7 +147,7 @@ Attribute FusedLoc::getMetadata() const {
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::FusedLoc)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::FusedLoc)
 namespace mlir {
 namespace detail {
 struct NameLocAttrStorage : public ::mlir::AttributeStorage {
@@ -190,7 +190,7 @@ Location NameLoc::getChildLoc() const {
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::NameLoc)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::NameLoc)
 namespace mlir {
 namespace detail {
 struct OpaqueLocAttrStorage : public ::mlir::AttributeStorage {
@@ -235,10 +235,10 @@ Location OpaqueLoc::getFallbackLocation() const {
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::OpaqueLoc)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::OpaqueLoc)
 namespace mlir {
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::UnknownLoc)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::UnknownLoc)
 
 #endif  // GET_ATTRDEF_CLASSES
 

@@ -424,7 +424,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::AbsOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::AbsOp)
 
 namespace mlir {
 namespace tosa {
@@ -486,7 +486,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::AddOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::AddOp)
 
 namespace mlir {
 namespace tosa {
@@ -575,7 +575,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ApplyScaleOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ApplyScaleOp)
 
 namespace mlir {
 namespace tosa {
@@ -659,7 +659,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ArgMaxOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ArgMaxOp)
 
 namespace mlir {
 namespace tosa {
@@ -746,7 +746,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ArithmeticRightShiftOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ArithmeticRightShiftOp)
 
 namespace mlir {
 namespace tosa {
@@ -870,7 +870,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::AvgPool2dOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::AvgPool2dOp)
 
 namespace mlir {
 namespace tosa {
@@ -931,7 +931,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::BitwiseAndOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::BitwiseAndOp)
 
 namespace mlir {
 namespace tosa {
@@ -989,7 +989,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::BitwiseNotOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::BitwiseNotOp)
 
 namespace mlir {
 namespace tosa {
@@ -1050,7 +1050,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::BitwiseOrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::BitwiseOrOp)
 
 namespace mlir {
 namespace tosa {
@@ -1111,7 +1111,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::BitwiseXorOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::BitwiseXorOp)
 
 namespace mlir {
 namespace tosa {
@@ -1170,7 +1170,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::CastOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::CastOp)
 
 namespace mlir {
 namespace tosa {
@@ -1228,7 +1228,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::CeilOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::CeilOp)
 
 namespace mlir {
 namespace tosa {
@@ -1352,7 +1352,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ClampOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ClampOp)
 
 namespace mlir {
 namespace tosa {
@@ -1410,7 +1410,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ClzOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ClzOp)
 
 namespace mlir {
 namespace tosa {
@@ -1495,7 +1495,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ConcatOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ConcatOp)
 
 namespace mlir {
 namespace tosa {
@@ -1575,7 +1575,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ConstOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ConstOp)
 
 namespace mlir {
 namespace tosa {
@@ -1705,7 +1705,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::Conv2DOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::Conv2DOp)
 
 namespace mlir {
 namespace tosa {
@@ -1835,7 +1835,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::Conv3DOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::Conv3DOp)
 
 namespace mlir {
 namespace tosa {
@@ -1915,7 +1915,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::CustomOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::CustomOp)
 
 namespace mlir {
 namespace tosa {
@@ -2045,7 +2045,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::DepthwiseConv2DOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::DepthwiseConv2DOp)
 
 namespace mlir {
 namespace tosa {
@@ -2106,7 +2106,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::DivOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::DivOp)
 
 namespace mlir {
 namespace tosa {
@@ -2167,7 +2167,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::EqualOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::EqualOp)
 
 namespace mlir {
 namespace tosa {
@@ -2225,7 +2225,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ExpOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ExpOp)
 
 namespace mlir {
 namespace tosa {
@@ -2283,7 +2283,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::FloorOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::FloorOp)
 
 namespace mlir {
 namespace tosa {
@@ -2374,7 +2374,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::FullyConnectedOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::FullyConnectedOp)
 
 namespace mlir {
 namespace tosa {
@@ -2435,7 +2435,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::GatherOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::GatherOp)
 
 namespace mlir {
 namespace tosa {
@@ -2496,7 +2496,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::GreaterEqualOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::GreaterEqualOp)
 
 namespace mlir {
 namespace tosa {
@@ -2557,7 +2557,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::GreaterOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::GreaterOp)
 
 namespace mlir {
 namespace tosa {
@@ -2615,7 +2615,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::IdentityOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::IdentityOp)
 
 namespace mlir {
 namespace tosa {
@@ -2679,7 +2679,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::IfOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::IfOp)
 
 namespace mlir {
 namespace tosa {
@@ -2737,7 +2737,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::LogOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::LogOp)
 
 namespace mlir {
 namespace tosa {
@@ -2798,7 +2798,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::LogicalAndOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::LogicalAndOp)
 
 namespace mlir {
 namespace tosa {
@@ -2859,7 +2859,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::LogicalLeftShiftOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::LogicalLeftShiftOp)
 
 namespace mlir {
 namespace tosa {
@@ -2917,7 +2917,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::LogicalNotOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::LogicalNotOp)
 
 namespace mlir {
 namespace tosa {
@@ -2978,7 +2978,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::LogicalOrOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::LogicalOrOp)
 
 namespace mlir {
 namespace tosa {
@@ -3039,7 +3039,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::LogicalRightShiftOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::LogicalRightShiftOp)
 
 namespace mlir {
 namespace tosa {
@@ -3100,7 +3100,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::LogicalXorOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::LogicalXorOp)
 
 namespace mlir {
 namespace tosa {
@@ -3187,7 +3187,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::MatMulOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::MatMulOp)
 
 namespace mlir {
 namespace tosa {
@@ -3296,7 +3296,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::MaxPool2dOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::MaxPool2dOp)
 
 namespace mlir {
 namespace tosa {
@@ -3357,7 +3357,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::MaximumOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::MaximumOp)
 
 namespace mlir {
 namespace tosa {
@@ -3418,7 +3418,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::MinimumOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::MinimumOp)
 
 namespace mlir {
 namespace tosa {
@@ -3506,7 +3506,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::MulOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::MulOp)
 
 namespace mlir {
 namespace tosa {
@@ -3590,7 +3590,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::NegateOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::NegateOp)
 
 namespace mlir {
 namespace tosa {
@@ -3683,7 +3683,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::PadOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::PadOp)
 
 namespace mlir {
 namespace tosa {
@@ -3744,7 +3744,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::PowOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::PowOp)
 
 namespace mlir {
 namespace tosa {
@@ -3802,7 +3802,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ReciprocalOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ReciprocalOp)
 
 namespace mlir {
 namespace tosa {
@@ -3887,7 +3887,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ReduceAllOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ReduceAllOp)
 
 namespace mlir {
 namespace tosa {
@@ -3972,7 +3972,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ReduceAnyOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ReduceAnyOp)
 
 namespace mlir {
 namespace tosa {
@@ -4057,7 +4057,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ReduceMaxOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ReduceMaxOp)
 
 namespace mlir {
 namespace tosa {
@@ -4142,7 +4142,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ReduceMinOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ReduceMinOp)
 
 namespace mlir {
 namespace tosa {
@@ -4227,7 +4227,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ReduceProdOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ReduceProdOp)
 
 namespace mlir {
 namespace tosa {
@@ -4312,7 +4312,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ReduceSumOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ReduceSumOp)
 
 namespace mlir {
 namespace tosa {
@@ -4409,7 +4409,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ReluNOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ReluNOp)
 
 namespace mlir {
 namespace tosa {
@@ -4571,7 +4571,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::RescaleOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::RescaleOp)
 
 namespace mlir {
 namespace tosa {
@@ -4655,7 +4655,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ReshapeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ReshapeOp)
 
 namespace mlir {
 namespace tosa {
@@ -4817,7 +4817,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ResizeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ResizeOp)
 
 namespace mlir {
 namespace tosa {
@@ -4901,7 +4901,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ReverseOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ReverseOp)
 
 namespace mlir {
 namespace tosa {
@@ -4959,7 +4959,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::RsqrtOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::RsqrtOp)
 
 namespace mlir {
 namespace tosa {
@@ -5023,7 +5023,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ScatterOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::ScatterOp)
 
 namespace mlir {
 namespace tosa {
@@ -5041,9 +5041,9 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value input1();
-  ::mlir::Value input2();
-  ::mlir::Value input3();
+  ::mlir::Value pred();
+  ::mlir::Value on_true();
+  ::mlir::Value on_false();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -5067,27 +5067,30 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value input1();
-  ::mlir::Value input2();
-  ::mlir::Value input3();
-  ::mlir::MutableOperandRange input1Mutable();
-  ::mlir::MutableOperandRange input2Mutable();
-  ::mlir::MutableOperandRange input3Mutable();
+  ::mlir::Value pred();
+  ::mlir::Value on_true();
+  ::mlir::Value on_false();
+  ::mlir::MutableOperandRange predMutable();
+  ::mlir::MutableOperandRange on_trueMutable();
+  ::mlir::MutableOperandRange on_falseMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value output();
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input1, ::mlir::Value input2, ::mlir::Value input3);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input1, ::mlir::Value input2, ::mlir::Value input3);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value pred, ::mlir::Value on_true, ::mlir::Value on_false);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value pred, ::mlir::Value on_true, ::mlir::Value on_false);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult canonicalize(SelectOp op, ::mlir::PatternRewriter &rewriter);
+  static void getCanonicalizationPatterns(::mlir::RewritePatternSet &results, ::mlir::MLIRContext *context);
+  ::mlir::OpFoldResult fold(::llvm::ArrayRef<::mlir::Attribute> operands);
   static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::mlir::Optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::mlir::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::SelectOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::SelectOp)
 
 namespace mlir {
 namespace tosa {
@@ -5145,7 +5148,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::SigmoidOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::SigmoidOp)
 
 namespace mlir {
 namespace tosa {
@@ -5241,7 +5244,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::SliceOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::SliceOp)
 
 namespace mlir {
 namespace tosa {
@@ -5302,7 +5305,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::SubOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::SubOp)
 
 namespace mlir {
 namespace tosa {
@@ -5363,7 +5366,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::TableOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::TableOp)
 
 namespace mlir {
 namespace tosa {
@@ -5421,7 +5424,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::TanhOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::TanhOp)
 
 namespace mlir {
 namespace tosa {
@@ -5504,7 +5507,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::TileOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::TileOp)
 
 namespace mlir {
 namespace tosa {
@@ -5646,7 +5649,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::TransposeConv2DOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::TransposeConv2DOp)
 
 namespace mlir {
 namespace tosa {
@@ -5709,7 +5712,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::TransposeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::TransposeOp)
 
 namespace mlir {
 namespace tosa {
@@ -5764,15 +5767,13 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  bool isDefinedOutsideOfLoop(::mlir::Value  value);
   ::mlir::Region &getLoopBody();
-  ::mlir::LogicalResult moveOutOfLoop(::mlir::ArrayRef<::mlir::Operation *> ops);
   static ::mlir::LogicalResult inferReturnTypeComponents(::mlir::MLIRContext*context, ::mlir::Optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::mlir::SmallVectorImpl<::mlir::ShapedTypeComponents>&inferredReturnShapes);
 public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::WhileOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::WhileOp)
 
 namespace mlir {
 namespace tosa {
@@ -5827,7 +5828,7 @@ public:
 };
 } // namespace tosa
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::YieldOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::tosa::YieldOp)
 
 
 #endif  // GET_OP_CLASSES

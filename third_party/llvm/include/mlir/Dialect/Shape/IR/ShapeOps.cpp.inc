@@ -444,11 +444,11 @@ void AddOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult AddOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type lhsRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> lhsTypes(lhsRawTypes);
@@ -544,7 +544,7 @@ void AddOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::AddOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::AddOp)
 
 namespace mlir {
 namespace shape {
@@ -684,7 +684,7 @@ void AnyOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
 }
 
 ::mlir::ParseResult AnyOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> inputsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> inputsOperands;
   ::llvm::SMLoc inputsOperandsLoc;
   (void)inputsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> inputsTypes;
@@ -739,7 +739,7 @@ void AnyOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::AnyOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::AnyOp)
 
 namespace mlir {
 namespace shape {
@@ -904,7 +904,7 @@ void AssumingAllOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState 
 }
 
 ::mlir::ParseResult AssumingAllOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> inputsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> inputsOperands;
   ::llvm::SMLoc inputsOperandsLoc;
   (void)inputsOperandsLoc;
 
@@ -931,7 +931,7 @@ void AssumingAllOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effe
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::AssumingAllOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::AssumingAllOp)
 
 namespace mlir {
 namespace shape {
@@ -1080,7 +1080,7 @@ void AssumingOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::AssumingOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::AssumingOp)
 
 namespace mlir {
 namespace shape {
@@ -1210,7 +1210,7 @@ void AssumingYieldOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult AssumingYieldOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> operandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> operandsOperands;
   ::llvm::SMLoc operandsOperandsLoc;
   (void)operandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> operandsTypes;
@@ -1248,7 +1248,7 @@ void AssumingYieldOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Ef
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::AssumingYieldOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::AssumingYieldOp)
 
 namespace mlir {
 namespace shape {
@@ -1445,7 +1445,7 @@ void BroadcastOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 }
 
 ::mlir::ParseResult BroadcastOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> shapesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> shapesOperands;
   ::llvm::SMLoc shapesOperandsLoc;
   (void)shapesOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> shapesTypes;
@@ -1500,7 +1500,7 @@ void BroadcastOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::BroadcastOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::BroadcastOp)
 
 namespace mlir {
 namespace shape {
@@ -1679,11 +1679,11 @@ void ConcatOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
 }
 
 ::mlir::ParseResult ConcatOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
 
   lhsOperandsLoc = parser.getCurrentLocation();
@@ -1720,7 +1720,7 @@ void ConcatOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::ConcatOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::ConcatOp)
 
 namespace mlir {
 namespace shape {
@@ -1893,7 +1893,7 @@ void ConstShapeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effec
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::ConstShapeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::ConstShapeOp)
 
 namespace mlir {
 namespace shape {
@@ -2114,7 +2114,7 @@ void ConstSizeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::ConstSizeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::ConstSizeOp)
 
 namespace mlir {
 namespace shape {
@@ -2335,7 +2335,7 @@ void ConstWitnessOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Eff
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::ConstWitnessOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::ConstWitnessOp)
 
 namespace mlir {
 namespace shape {
@@ -2504,7 +2504,7 @@ void CstrBroadcastableOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operation
 }
 
 ::mlir::ParseResult CstrBroadcastableOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> shapesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> shapesOperands;
   ::llvm::SMLoc shapesOperandsLoc;
   (void)shapesOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> shapesTypes;
@@ -2537,7 +2537,7 @@ void CstrBroadcastableOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::CstrBroadcastableOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::CstrBroadcastableOp)
 
 namespace mlir {
 namespace shape {
@@ -2700,7 +2700,7 @@ void CstrEqOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
 }
 
 ::mlir::ParseResult CstrEqOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> shapesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> shapesOperands;
   ::llvm::SMLoc shapesOperandsLoc;
   (void)shapesOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> shapesTypes;
@@ -2733,7 +2733,7 @@ void CstrEqOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::CstrEqOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::CstrEqOp)
 
 namespace mlir {
 namespace shape {
@@ -2959,8 +2959,8 @@ void CstrRequireOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState 
 }
 
 ::mlir::ParseResult CstrRequireOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType predRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> predOperands(predRawOperands);  ::llvm::SMLoc predOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand predRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> predOperands(predRawOperands);  ::llvm::SMLoc predOperandsLoc;
   (void)predOperandsLoc;
   ::mlir::StringAttr msgAttr;
 
@@ -2995,7 +2995,7 @@ void CstrRequireOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::CstrRequireOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::CstrRequireOp)
 
 namespace mlir {
 namespace shape {
@@ -3115,7 +3115,7 @@ void DebugPrintOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::DebugPrintOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::DebugPrintOp)
 
 namespace mlir {
 namespace shape {
@@ -3289,11 +3289,11 @@ void DivOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult DivOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type lhsRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> lhsTypes(lhsRawTypes);
@@ -3389,7 +3389,7 @@ void DivOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::DivOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::DivOp)
 
 namespace mlir {
 namespace shape {
@@ -3545,8 +3545,8 @@ void FromExtentTensorOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationS
 }
 
 ::mlir::ParseResult FromExtentTensorOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType inputRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> inputOperands(inputRawOperands);  ::llvm::SMLoc inputOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand inputRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> inputOperands(inputRawOperands);  ::llvm::SMLoc inputOperandsLoc;
   (void)inputOperandsLoc;
   ::mlir::Type inputRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> inputTypes(inputRawTypes);
@@ -3592,7 +3592,7 @@ void FromExtentTensorOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects:
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::FromExtentTensorOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::FromExtentTensorOp)
 
 namespace mlir {
 namespace shape {
@@ -3755,7 +3755,7 @@ void FromExtentsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState 
 }
 
 ::mlir::ParseResult FromExtentsOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> extentsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> extentsOperands;
   ::llvm::SMLoc extentsOperandsLoc;
   (void)extentsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> extentsTypes;
@@ -3791,7 +3791,7 @@ void FromExtentsOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effe
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::FromExtentsOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::FromExtentsOp)
 
 namespace mlir {
 namespace shape {
@@ -3915,7 +3915,7 @@ void FunctionLibraryOp::setMappingAttr(::mlir::DictionaryAttr attr) {
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::FunctionLibraryOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::FunctionLibraryOp)
 
 namespace mlir {
 namespace shape {
@@ -4089,11 +4089,11 @@ void GetExtentOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
 }
 
 ::mlir::ParseResult GetExtentOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType shapeRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> shapeOperands(shapeRawOperands);  ::llvm::SMLoc shapeOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand shapeRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> shapeOperands(shapeRawOperands);  ::llvm::SMLoc shapeOperandsLoc;
   (void)shapeOperandsLoc;
-  ::mlir::OpAsmParser::OperandType dimRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> dimOperands(dimRawOperands);  ::llvm::SMLoc dimOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand dimRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> dimOperands(dimRawOperands);  ::llvm::SMLoc dimOperandsLoc;
   (void)dimOperandsLoc;
   ::mlir::Type shapeRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> shapeTypes(shapeRawTypes);
@@ -4189,7 +4189,7 @@ void GetExtentOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::GetExtentOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::GetExtentOp)
 
 namespace mlir {
 namespace shape {
@@ -4345,8 +4345,8 @@ void IndexToSizeOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState 
 }
 
 ::mlir::ParseResult IndexToSizeOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType argRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand argRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
   (void)argOperandsLoc;
 
   argOperandsLoc = parser.getCurrentLocation();
@@ -4373,7 +4373,7 @@ void IndexToSizeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effe
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::IndexToSizeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::IndexToSizeOp)
 
 namespace mlir {
 namespace shape {
@@ -4540,7 +4540,7 @@ void IsBroadcastableOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationSt
 }
 
 ::mlir::ParseResult IsBroadcastableOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> shapesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> shapesOperands;
   ::llvm::SMLoc shapesOperandsLoc;
   (void)shapesOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> shapesTypes;
@@ -4573,7 +4573,7 @@ void IsBroadcastableOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::IsBroadcastableOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::IsBroadcastableOp)
 
 namespace mlir {
 namespace shape {
@@ -4745,11 +4745,11 @@ void MaxOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult MaxOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type lhsRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> lhsTypes(lhsRawTypes);
@@ -4845,7 +4845,7 @@ void MaxOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::MaxOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::MaxOp)
 
 namespace mlir {
 namespace shape {
@@ -5064,11 +5064,11 @@ void MeetOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult MeetOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType arg0RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> arg0Operands(arg0RawOperands);  ::llvm::SMLoc arg0OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand arg0RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> arg0Operands(arg0RawOperands);  ::llvm::SMLoc arg0OperandsLoc;
   (void)arg0OperandsLoc;
-  ::mlir::OpAsmParser::OperandType arg1RawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> arg1Operands(arg1RawOperands);  ::llvm::SMLoc arg1OperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand arg1RawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> arg1Operands(arg1RawOperands);  ::llvm::SMLoc arg1OperandsLoc;
   (void)arg1OperandsLoc;
   ::mlir::StringAttr errorAttr;
   ::mlir::Type arg0RawTypes[1];
@@ -5180,7 +5180,7 @@ void MeetOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::MeetOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::MeetOp)
 
 namespace mlir {
 namespace shape {
@@ -5352,11 +5352,11 @@ void MinOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult MinOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type lhsRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> lhsTypes(lhsRawTypes);
@@ -5452,7 +5452,7 @@ void MinOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::MinOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::MinOp)
 
 namespace mlir {
 namespace shape {
@@ -5626,11 +5626,11 @@ void MulOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult MulOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type lhsRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> lhsTypes(lhsRawTypes);
@@ -5726,7 +5726,7 @@ void MulOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::MulOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::MulOp)
 
 namespace mlir {
 namespace shape {
@@ -5877,8 +5877,8 @@ void NumElementsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState 
 }
 
 ::mlir::ParseResult NumElementsOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType shapeRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> shapeOperands(shapeRawOperands);  ::llvm::SMLoc shapeOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand shapeRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> shapeOperands(shapeRawOperands);  ::llvm::SMLoc shapeOperandsLoc;
   (void)shapeOperandsLoc;
   ::mlir::Type shapeRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> shapeTypes(shapeRawTypes);
@@ -5943,7 +5943,7 @@ void NumElementsOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effe
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::NumElementsOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::NumElementsOp)
 
 namespace mlir {
 namespace shape {
@@ -6094,8 +6094,8 @@ void RankOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult RankOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType shapeRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> shapeOperands(shapeRawOperands);  ::llvm::SMLoc shapeOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand shapeRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> shapeOperands(shapeRawOperands);  ::llvm::SMLoc shapeOperandsLoc;
   (void)shapeOperandsLoc;
   ::mlir::Type shapeRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> shapeTypes(shapeRawTypes);
@@ -6160,7 +6160,7 @@ void RankOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::RankOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::RankOp)
 
 namespace mlir {
 namespace shape {
@@ -6360,7 +6360,7 @@ void ReduceOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::ReduceOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::ReduceOp)
 
 namespace mlir {
 namespace shape {
@@ -6527,7 +6527,7 @@ void ShapeEqOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult ShapeEqOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> shapesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> shapesOperands;
   ::llvm::SMLoc shapesOperandsLoc;
   (void)shapesOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> shapesTypes;
@@ -6563,7 +6563,7 @@ void ShapeEqOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::ShapeEqOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::ShapeEqOp)
 
 namespace mlir {
 namespace shape {
@@ -6714,8 +6714,8 @@ void ShapeOfOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult ShapeOfOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType argRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand argRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
   (void)argOperandsLoc;
   ::mlir::Type argRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> argTypes(argRawTypes);
@@ -6780,7 +6780,7 @@ void ShapeOfOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::ShapeOfOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::ShapeOfOp)
 
 namespace mlir {
 namespace shape {
@@ -6936,8 +6936,8 @@ void SizeToIndexOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState 
 }
 
 ::mlir::ParseResult SizeToIndexOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType argRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand argRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
   (void)argOperandsLoc;
   ::mlir::Type argRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> argTypes(argRawTypes);
@@ -6983,7 +6983,7 @@ void SizeToIndexOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effe
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::SizeToIndexOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::SizeToIndexOp)
 
 namespace mlir {
 namespace shape {
@@ -7148,7 +7148,7 @@ void SplitAtOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::SplitAtOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::SplitAtOp)
 
 namespace mlir {
 namespace shape {
@@ -7267,8 +7267,8 @@ void ToExtentTensorOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult ToExtentTensorOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType inputRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> inputOperands(inputRawOperands);  ::llvm::SMLoc inputOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand inputRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> inputOperands(inputRawOperands);  ::llvm::SMLoc inputOperandsLoc;
   (void)inputOperandsLoc;
   ::mlir::Type inputRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> inputTypes(inputRawTypes);
@@ -7333,7 +7333,7 @@ void ToExtentTensorOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::E
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::ToExtentTensorOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::ToExtentTensorOp)
 
 namespace mlir {
 namespace shape {
@@ -7452,8 +7452,8 @@ void ValueAsShapeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
 }
 
 ::mlir::ParseResult ValueAsShapeOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType argRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand argRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
   (void)argOperandsLoc;
   ::mlir::Type argRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> argTypes(argRawTypes);
@@ -7518,7 +7518,7 @@ void ValueAsShapeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Eff
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::ValueAsShapeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::ValueAsShapeOp)
 
 namespace mlir {
 namespace shape {
@@ -7697,7 +7697,7 @@ void WithOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult WithOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> allOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
   ::mlir::Type shapeRawTypes[1];
@@ -7761,7 +7761,7 @@ void WithOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::WithOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::WithOp)
 
 namespace mlir {
 namespace shape {
@@ -7893,7 +7893,7 @@ void YieldOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 ::mlir::ParseResult YieldOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> operandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> operandsOperands;
   ::llvm::SMLoc operandsOperandsLoc;
   (void)operandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> operandsTypes;
@@ -7931,7 +7931,7 @@ void YieldOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace shape
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::YieldOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::YieldOp)
 
 
 #endif  // GET_OP_CLASSES

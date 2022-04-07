@@ -75,9 +75,9 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FMFAttr)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::LinkageAttr)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::LoopOptionsAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FMFAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::LinkageAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::LoopOptionsAttr)
 
 #endif  // GET_ATTRDEF_CLASSES
 

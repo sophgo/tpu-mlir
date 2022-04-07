@@ -118,7 +118,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::IndexOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::IndexOp)
 
 namespace mlir {
 namespace linalg {
@@ -245,6 +245,9 @@ public:
         });
   }
 
+  // Return both static and dynamic sizes as a list of `OpFoldResult`.
+  SmallVector<OpFoldResult> getMixedSizes();
+
   // Return the Value of the dynamic size of the tensor at dimension
   // `idx`. Asserts that the shape is dynamic at that `idx.
   Value getDynamicSize(unsigned idx) {
@@ -253,7 +256,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::InitTensorOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::InitTensorOp)
 
 namespace mlir {
 namespace linalg {
@@ -312,7 +315,7 @@ public:
 };
 } // namespace linalg
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::YieldOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::YieldOp)
 
 
 #endif  // GET_OP_CLASSES

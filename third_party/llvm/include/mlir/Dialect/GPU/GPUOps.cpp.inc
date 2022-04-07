@@ -20,6 +20,7 @@
 ::mlir::gpu::DeviceAsyncWaitOp,
 ::mlir::gpu::GPUFuncOp,
 ::mlir::gpu::GPUModuleOp,
+::mlir::gpu::GlobalIdOp,
 ::mlir::gpu::GridDimOp,
 ::mlir::gpu::HostRegisterOp,
 ::mlir::gpu::LaunchFuncOp,
@@ -234,6 +235,15 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_GPUOps3(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_GPUOps4(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
+  if (attr && !(((attr.isa<::mlir::TypeAttr>())) && ((attr.cast<::mlir::TypeAttr>().getValue().isa<::mlir::FunctionType>())))) {
+    return op->emitOpError("attribute '") << attrName
+        << "' failed to satisfy constraint: type attribute of function type";
+  }
+  return ::mlir::success();
+}
+
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_GPUOps5(
+    ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((attr.isa<::mlir::SymbolRefAttr>()))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: symbol reference attribute";
@@ -241,7 +251,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_GPUOps4(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_GPUOps5(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_GPUOps6(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((attr.isa<::mlir::StringAttr>()))) {
     return op->emitOpError("attribute '") << attrName
@@ -250,7 +260,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_GPUOps5(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_GPUOps6(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_GPUOps7(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((attr.isa<::mlir::gpu::ShuffleModeAttr>()))) {
     return op->emitOpError("attribute '") << attrName
@@ -259,7 +269,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_GPUOps6(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_GPUOps7(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_GPUOps8(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((attr.isa<::mlir::gpu::MMAElementwiseOpAttr>()))) {
     return op->emitOpError("attribute '") << attrName
@@ -486,15 +496,13 @@ void AllReduceOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
 }
 
 ::mlir::LogicalResult AllReduceOp::verifyInvariants() {
-  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
-    return ::mlir::success();
-  return ::mlir::failure();
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult AllReduceOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::gpu::AllReduceOperationAttr opAttr;
-  ::mlir::OpAsmParser::OperandType valueRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand valueRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
   (void)valueOperandsLoc;
   std::unique_ptr<::mlir::Region> bodyRegion = std::make_unique<::mlir::Region>();
   ::llvm::ArrayRef<::mlir::Type> allOperandTypes;
@@ -544,7 +552,7 @@ void AllReduceOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::AllReduceOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::AllReduceOp)
 
 namespace mlir {
 namespace gpu {
@@ -790,19 +798,15 @@ void AllocOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   return ::mlir::failure();
 }
 
-::mlir::LogicalResult AllocOp::verify() {
-  return ::verify(*this);
-}
-
 ::mlir::ParseResult AllocOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::SmallVector<::mlir::Type, 1> asyncTokenTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> asyncDependenciesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> asyncDependenciesOperands;
   ::llvm::SMLoc asyncDependenciesOperandsLoc;
   (void)asyncDependenciesOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> dynamicSizesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> dynamicSizesOperands;
   ::llvm::SMLoc dynamicSizesOperandsLoc;
   (void)dynamicSizesOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> symbolOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> symbolOperandsOperands;
   ::llvm::SMLoc symbolOperandsOperandsLoc;
   (void)symbolOperandsOperandsLoc;
   ::mlir::Type memrefRawTypes[1];
@@ -887,7 +891,7 @@ void AllocOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::AllocOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::AllocOp)
 
 namespace mlir {
 namespace gpu {
@@ -978,7 +982,7 @@ void BarrierOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::BarrierOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::BarrierOp)
 
 namespace mlir {
 namespace gpu {
@@ -1195,7 +1199,7 @@ void BlockDimOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::BlockDimOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::BlockDimOp)
 
 namespace mlir {
 namespace gpu {
@@ -1412,7 +1416,7 @@ void BlockIdOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::BlockIdOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::BlockIdOp)
 
 namespace mlir {
 namespace gpu {
@@ -1601,11 +1605,11 @@ void DeallocOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 
 ::mlir::ParseResult DeallocOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::SmallVector<::mlir::Type, 1> asyncTokenTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> asyncDependenciesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> asyncDependenciesOperands;
   ::llvm::SMLoc asyncDependenciesOperandsLoc;
   (void)asyncDependenciesOperandsLoc;
-  ::mlir::OpAsmParser::OperandType memrefRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> memrefOperands(memrefRawOperands);  ::llvm::SMLoc memrefOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand memrefRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> memrefOperands(memrefRawOperands);  ::llvm::SMLoc memrefOperandsLoc;
   (void)memrefOperandsLoc;
   ::mlir::Type memrefRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> memrefTypes(memrefRawTypes);
@@ -1665,7 +1669,7 @@ void DeallocOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::DeallocOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::DeallocOp)
 
 namespace mlir {
 namespace gpu {
@@ -2017,16 +2021,16 @@ void DeviceAsyncCopyOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationSt
 }
 
 ::mlir::ParseResult DeviceAsyncCopyOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType srcRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> srcOperands(srcRawOperands);  ::llvm::SMLoc srcOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand srcRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> srcOperands(srcRawOperands);  ::llvm::SMLoc srcOperandsLoc;
   (void)srcOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> srcIndicesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> srcIndicesOperands;
   ::llvm::SMLoc srcIndicesOperandsLoc;
   (void)srcIndicesOperandsLoc;
-  ::mlir::OpAsmParser::OperandType dstRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> dstOperands(dstRawOperands);  ::llvm::SMLoc dstOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand dstRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> dstOperands(dstRawOperands);  ::llvm::SMLoc dstOperandsLoc;
   (void)dstOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> dstIndicesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> dstIndicesOperands;
   ::llvm::SMLoc dstIndicesOperandsLoc;
   (void)dstIndicesOperandsLoc;
   ::mlir::IntegerAttr numElementsAttr;
@@ -2147,7 +2151,7 @@ void DeviceAsyncCopyOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::DeviceAsyncCopyOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::DeviceAsyncCopyOp)
 
 namespace mlir {
 namespace gpu {
@@ -2310,7 +2314,7 @@ void DeviceAsyncCreateGroupOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Oper
 }
 
 ::mlir::ParseResult DeviceAsyncCreateGroupOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> inputTokensOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> inputTokensOperands;
   ::llvm::SMLoc inputTokensOperandsLoc;
   (void)inputTokensOperandsLoc;
 
@@ -2334,7 +2338,7 @@ void DeviceAsyncCreateGroupOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::DeviceAsyncCreateGroupOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::DeviceAsyncCreateGroupOp)
 
 namespace mlir {
 namespace gpu {
@@ -2483,8 +2487,8 @@ void DeviceAsyncWaitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
 }
 
 ::mlir::ParseResult DeviceAsyncWaitOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType asyncDependenciesRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> asyncDependenciesOperands(asyncDependenciesRawOperands);  ::llvm::SMLoc asyncDependenciesOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand asyncDependenciesRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> asyncDependenciesOperands(asyncDependenciesRawOperands);  ::llvm::SMLoc asyncDependenciesOperandsLoc;
   (void)asyncDependenciesOperandsLoc;
 
   asyncDependenciesOperandsLoc = parser.getCurrentLocation();
@@ -2506,7 +2510,7 @@ void DeviceAsyncWaitOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::DeviceAsyncWaitOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::DeviceAsyncWaitOp)
 
 namespace mlir {
 namespace gpu {
@@ -2537,6 +2541,17 @@ std::pair<unsigned, unsigned> GPUFuncOpAdaptor::getODSOperandIndexAndLength(unsi
   return odsAttrs;
 }
 
+::mlir::TypeAttr GPUFuncOpAdaptor::function_typeAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  ::mlir::TypeAttr attr = odsAttrs.get("function_type").cast<::mlir::TypeAttr>();
+  return attr;
+}
+
+::mlir::FunctionType GPUFuncOpAdaptor::function_type() {
+  auto attr = function_typeAttr();
+  return attr.getValue().cast<::mlir::FunctionType>();
+}
+
 ::mlir::RegionRange GPUFuncOpAdaptor::getRegions() {
   return odsRegions;
 }
@@ -2546,6 +2561,14 @@ std::pair<unsigned, unsigned> GPUFuncOpAdaptor::getODSOperandIndexAndLength(unsi
 }
 
 ::mlir::LogicalResult GPUFuncOpAdaptor::verify(::mlir::Location loc) {
+  {
+    auto tblgen_function_type = odsAttrs.get("function_type");
+    if (!tblgen_function_type)
+      return emitError(loc, "'gpu.func' op ""requires attribute 'function_type'");
+
+    if (tblgen_function_type && !(((tblgen_function_type.isa<::mlir::TypeAttr>())) && ((tblgen_function_type.cast<::mlir::TypeAttr>().getValue().isa<::mlir::FunctionType>()))))
+      return emitError(loc, "'gpu.func' op ""attribute 'function_type' failed to satisfy constraint: type attribute of function type");
+  }
   return ::mlir::success();
 }
 
@@ -2573,7 +2596,28 @@ std::pair<unsigned, unsigned> GPUFuncOp::getODSResultIndexAndLength(unsigned ind
   return (*this)->getRegion(0);
 }
 
+::mlir::TypeAttr GPUFuncOp::function_typeAttr() {
+  return (*this)->getAttr(function_typeAttrName()).cast<::mlir::TypeAttr>();
+}
+
+::mlir::FunctionType GPUFuncOp::function_type() {
+  auto attr = function_typeAttr();
+  return attr.getValue().cast<::mlir::FunctionType>();
+}
+
+void GPUFuncOp::function_typeAttr(::mlir::TypeAttr attr) {
+  (*this)->setAttr(function_typeAttrName(), attr);
+}
+
 ::mlir::LogicalResult GPUFuncOp::verifyInvariantsImpl() {
+  {
+    auto tblgen_function_type = (*this)->getAttr(function_typeAttrName());
+    if (!tblgen_function_type)
+      return emitOpError("requires attribute 'function_type'");
+
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps4(*this, tblgen_function_type, "function_type")))
+      return ::mlir::failure();
+  }
   {
     unsigned index = 0; (void)index;
 
@@ -2590,7 +2634,7 @@ std::pair<unsigned, unsigned> GPUFuncOp::getODSResultIndexAndLength(unsigned ind
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::GPUFuncOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::GPUFuncOp)
 
 namespace mlir {
 namespace gpu {
@@ -2674,7 +2718,224 @@ std::pair<unsigned, unsigned> GPUModuleOp::getODSResultIndexAndLength(unsigned i
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::GPUModuleOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::GPUModuleOp)
+
+namespace mlir {
+namespace gpu {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::gpu::GlobalIdOp definitions
+//===----------------------------------------------------------------------===//
+
+GlobalIdOpAdaptor::GlobalIdOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+
+GlobalIdOpAdaptor::GlobalIdOpAdaptor(GlobalIdOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+
+::mlir::ValueRange GlobalIdOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> GlobalIdOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange GlobalIdOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::DictionaryAttr GlobalIdOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::gpu::DimensionAttr GlobalIdOpAdaptor::dimensionAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  ::mlir::gpu::DimensionAttr attr = odsAttrs.get("dimension").cast<::mlir::gpu::DimensionAttr>();
+  return attr;
+}
+
+::mlir::gpu::Dimension GlobalIdOpAdaptor::dimension() {
+  auto attr = dimensionAttr();
+  return attr.getValue();
+}
+
+::mlir::LogicalResult GlobalIdOpAdaptor::verify(::mlir::Location loc) {
+  {
+    auto tblgen_dimension = odsAttrs.get("dimension");
+    if (!tblgen_dimension)
+      return emitError(loc, "'gpu.global_id' op ""requires attribute 'dimension'");
+
+    if (tblgen_dimension && !((tblgen_dimension.isa<::mlir::gpu::DimensionAttr>())))
+      return emitError(loc, "'gpu.global_id' op ""attribute 'dimension' failed to satisfy constraint: a dimension, either 'x', 'y', or 'z'");
+  }
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> GlobalIdOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range GlobalIdOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+std::pair<unsigned, unsigned> GlobalIdOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range GlobalIdOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::gpu::DimensionAttr GlobalIdOp::dimensionAttr() {
+  return (*this)->getAttr(dimensionAttrName()).cast<::mlir::gpu::DimensionAttr>();
+}
+
+::mlir::gpu::Dimension GlobalIdOp::dimension() {
+  auto attr = dimensionAttr();
+  return attr.getValue();
+}
+
+void GlobalIdOp::dimensionAttr(::mlir::gpu::DimensionAttr attr) {
+  (*this)->setAttr(dimensionAttrName(), attr);
+}
+
+void GlobalIdOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type resultType0, ::mlir::gpu::DimensionAttr dimension) {
+  odsState.addAttribute(dimensionAttrName(odsState.name), dimension);
+  odsState.addTypes(resultType0);
+}
+
+void GlobalIdOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::gpu::DimensionAttr dimension) {
+  odsState.addAttribute(dimensionAttrName(odsState.name), dimension);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(GlobalIdOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
+void GlobalIdOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::gpu::DimensionAttr dimension) {
+  odsState.addAttribute(dimensionAttrName(odsState.name), dimension);
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void GlobalIdOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type resultType0, ::mlir::gpu::Dimension dimension) {
+  odsState.addAttribute(dimensionAttrName(odsState.name), ::mlir::gpu::DimensionAttr::get(odsBuilder.getContext(), dimension));
+  odsState.addTypes(resultType0);
+}
+
+void GlobalIdOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::gpu::Dimension dimension) {
+  odsState.addAttribute(dimensionAttrName(odsState.name), ::mlir::gpu::DimensionAttr::get(odsBuilder.getContext(), dimension));
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(GlobalIdOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
+void GlobalIdOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::gpu::Dimension dimension) {
+  odsState.addAttribute(dimensionAttrName(odsState.name), ::mlir::gpu::DimensionAttr::get(odsBuilder.getContext(), dimension));
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void GlobalIdOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 0u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+void GlobalIdOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 0u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+
+  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(GlobalIdOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
+}
+
+::mlir::LogicalResult GlobalIdOp::verifyInvariantsImpl() {
+  {
+    auto tblgen_dimension = (*this)->getAttr(dimensionAttrName());
+    if (!tblgen_dimension)
+      return emitOpError("requires attribute 'dimension'");
+
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps1(*this, tblgen_dimension, "dimension")))
+      return ::mlir::failure();
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps2(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult GlobalIdOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult GlobalIdOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  inferredReturnTypes[0] = odsBuilder.getIndexType();
+  return ::mlir::success();
+}
+
+::mlir::ParseResult GlobalIdOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::mlir::gpu::DimensionAttr dimensionAttr;
+
+  if (parser.parseCustomAttributeWithFallback(dimensionAttr, ::mlir::Type{}, "dimension",
+          result.attributes)) {
+    return ::mlir::failure();
+  }
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  ::mlir::Type odsBuildableType0 = parser.getBuilder().getIndexType();
+  result.addTypes(odsBuildableType0);
+  return ::mlir::success();
+}
+
+void GlobalIdOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ';
+_odsPrinter.printStrippedAttrOrType(dimensionAttr());
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"dimension"});
+}
+
+void GlobalIdOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace gpu
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::GlobalIdOp)
 
 namespace mlir {
 namespace gpu {
@@ -2891,7 +3152,7 @@ void GridDimOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::GridDimOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::GridDimOp)
 
 namespace mlir {
 namespace gpu {
@@ -2996,8 +3257,8 @@ void HostRegisterOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
 }
 
 ::mlir::ParseResult HostRegisterOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType valueRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand valueRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
   (void)valueOperandsLoc;
   ::mlir::Type valueRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> valueTypes(valueRawTypes);
@@ -3038,7 +3299,7 @@ void HostRegisterOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::HostRegisterOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::HostRegisterOp)
 
 namespace mlir {
 namespace gpu {
@@ -3318,7 +3579,7 @@ void LaunchFuncOp::kernelAttr(::mlir::SymbolRefAttr attr) {
     if (!tblgen_kernel)
       return emitOpError("requires attribute 'kernel'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps4(*this, tblgen_kernel, "kernel")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps5(*this, tblgen_kernel, "kernel")))
       return ::mlir::failure();
   }
   {
@@ -3408,32 +3669,32 @@ void LaunchFuncOp::kernelAttr(::mlir::SymbolRefAttr attr) {
 
 ::mlir::ParseResult LaunchFuncOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::SmallVector<::mlir::Type, 1> asyncTokenTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> asyncDependenciesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> asyncDependenciesOperands;
   ::llvm::SMLoc asyncDependenciesOperandsLoc;
   (void)asyncDependenciesOperandsLoc;
   ::mlir::SymbolRefAttr kernelAttr;
-  ::mlir::OpAsmParser::OperandType gridSizeXRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> gridSizeXOperands(gridSizeXRawOperands);  ::llvm::SMLoc gridSizeXOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand gridSizeXRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> gridSizeXOperands(gridSizeXRawOperands);  ::llvm::SMLoc gridSizeXOperandsLoc;
   (void)gridSizeXOperandsLoc;
-  ::mlir::OpAsmParser::OperandType gridSizeYRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> gridSizeYOperands(gridSizeYRawOperands);  ::llvm::SMLoc gridSizeYOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand gridSizeYRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> gridSizeYOperands(gridSizeYRawOperands);  ::llvm::SMLoc gridSizeYOperandsLoc;
   (void)gridSizeYOperandsLoc;
-  ::mlir::OpAsmParser::OperandType gridSizeZRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> gridSizeZOperands(gridSizeZRawOperands);  ::llvm::SMLoc gridSizeZOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand gridSizeZRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> gridSizeZOperands(gridSizeZRawOperands);  ::llvm::SMLoc gridSizeZOperandsLoc;
   (void)gridSizeZOperandsLoc;
-  ::mlir::OpAsmParser::OperandType blockSizeXRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> blockSizeXOperands(blockSizeXRawOperands);  ::llvm::SMLoc blockSizeXOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand blockSizeXRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> blockSizeXOperands(blockSizeXRawOperands);  ::llvm::SMLoc blockSizeXOperandsLoc;
   (void)blockSizeXOperandsLoc;
-  ::mlir::OpAsmParser::OperandType blockSizeYRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> blockSizeYOperands(blockSizeYRawOperands);  ::llvm::SMLoc blockSizeYOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand blockSizeYRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> blockSizeYOperands(blockSizeYRawOperands);  ::llvm::SMLoc blockSizeYOperandsLoc;
   (void)blockSizeYOperandsLoc;
-  ::mlir::OpAsmParser::OperandType blockSizeZRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> blockSizeZOperands(blockSizeZRawOperands);  ::llvm::SMLoc blockSizeZOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand blockSizeZRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> blockSizeZOperands(blockSizeZRawOperands);  ::llvm::SMLoc blockSizeZOperandsLoc;
   (void)blockSizeZOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> dynamicSharedMemorySizeOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> dynamicSharedMemorySizeOperands;
   ::llvm::SMLoc dynamicSharedMemorySizeOperandsLoc;
   (void)dynamicSharedMemorySizeOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> operandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> operandsOperands;
   ::llvm::SMLoc operandsOperandsLoc;
   (void)operandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> operandsTypes;
@@ -3502,7 +3763,7 @@ void LaunchFuncOp::kernelAttr(::mlir::SymbolRefAttr attr) {
 
   {
     dynamicSharedMemorySizeOperandsLoc = parser.getCurrentLocation();
-    ::mlir::OpAsmParser::OperandType operand;
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
     if (parseResult.hasValue()) {
@@ -3587,7 +3848,7 @@ void LaunchFuncOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::LaunchFuncOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::LaunchFuncOp)
 
 namespace mlir {
 namespace gpu {
@@ -3844,14 +4105,12 @@ std::pair<unsigned, unsigned> LaunchOp::getODSResultIndexAndLength(unsigned inde
 }
 
 ::mlir::LogicalResult LaunchOp::verifyInvariants() {
-  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
-    return ::mlir::success();
-  return ::mlir::failure();
+  return verifyInvariantsImpl();
 }
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::LaunchOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::LaunchOp)
 
 namespace mlir {
 namespace gpu {
@@ -4064,14 +4323,14 @@ void MemcpyOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 
 ::mlir::ParseResult MemcpyOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::SmallVector<::mlir::Type, 1> asyncTokenTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> asyncDependenciesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> asyncDependenciesOperands;
   ::llvm::SMLoc asyncDependenciesOperandsLoc;
   (void)asyncDependenciesOperandsLoc;
-  ::mlir::OpAsmParser::OperandType dstRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> dstOperands(dstRawOperands);  ::llvm::SMLoc dstOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand dstRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> dstOperands(dstRawOperands);  ::llvm::SMLoc dstOperandsLoc;
   (void)dstOperandsLoc;
-  ::mlir::OpAsmParser::OperandType srcRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> srcOperands(srcRawOperands);  ::llvm::SMLoc srcOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand srcRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> srcOperands(srcRawOperands);  ::llvm::SMLoc srcOperandsLoc;
   (void)srcOperandsLoc;
   ::mlir::Type dstRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> dstTypes(dstRawTypes);
@@ -4164,7 +4423,7 @@ void MemcpyOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::MemcpyOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::MemcpyOp)
 
 namespace mlir {
 namespace gpu {
@@ -4377,14 +4636,14 @@ void MemsetOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 
 ::mlir::ParseResult MemsetOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::SmallVector<::mlir::Type, 1> asyncTokenTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> asyncDependenciesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> asyncDependenciesOperands;
   ::llvm::SMLoc asyncDependenciesOperandsLoc;
   (void)asyncDependenciesOperandsLoc;
-  ::mlir::OpAsmParser::OperandType dstRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> dstOperands(dstRawOperands);  ::llvm::SMLoc dstOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand dstRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> dstOperands(dstRawOperands);  ::llvm::SMLoc dstOperandsLoc;
   (void)dstOperandsLoc;
-  ::mlir::OpAsmParser::OperandType valueRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand valueRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
   (void)valueOperandsLoc;
   ::mlir::Type dstRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> dstTypes(dstRawTypes);
@@ -4475,7 +4734,7 @@ void MemsetOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::MemsetOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::MemsetOp)
 
 namespace mlir {
 namespace gpu {
@@ -4566,7 +4825,7 @@ void ModuleEndOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::ModuleEndOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::ModuleEndOp)
 
 namespace mlir {
 namespace gpu {
@@ -4730,7 +4989,7 @@ void NumSubgroupsOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Eff
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::NumSubgroupsOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::NumSubgroupsOp)
 
 namespace mlir {
 namespace gpu {
@@ -4896,7 +5155,7 @@ void PrintfOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
     if (!tblgen_format)
       return emitOpError("requires attribute 'format'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps5(*this, tblgen_format, "format")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps6(*this, tblgen_format, "format")))
       return ::mlir::failure();
   }
   {
@@ -4917,7 +5176,7 @@ void PrintfOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 
 ::mlir::ParseResult PrintfOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::StringAttr formatAttr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> argsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
   ::llvm::SMLoc argsOperandsLoc;
   (void)argsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> argsTypes;
@@ -4963,7 +5222,7 @@ void PrintfOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::PrintfOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::PrintfOp)
 
 namespace mlir {
 namespace gpu {
@@ -5095,7 +5354,7 @@ void ReturnOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::ParseResult ReturnOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> operandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> operandsOperands;
   ::llvm::SMLoc operandsOperandsLoc;
   (void)operandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> operandsTypes;
@@ -5133,7 +5392,7 @@ void ReturnOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::ReturnOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::ReturnOp)
 
 namespace mlir {
 namespace gpu {
@@ -5238,8 +5497,8 @@ void SetDefaultDeviceOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsS
 }
 
 ::mlir::ParseResult SetDefaultDeviceOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType devIndexRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> devIndexOperands(devIndexRawOperands);  ::llvm::SMLoc devIndexOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand devIndexRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> devIndexOperands(devIndexRawOperands);  ::llvm::SMLoc devIndexOperandsLoc;
   (void)devIndexOperandsLoc;
   if (parser.parseOptionalAttrDict(result.attributes))
     return ::mlir::failure();
@@ -5265,7 +5524,7 @@ void SetDefaultDeviceOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects:
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::SetDefaultDeviceOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::SetDefaultDeviceOp)
 
 namespace mlir {
 namespace gpu {
@@ -5510,7 +5769,7 @@ void ShuffleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
     if (!tblgen_mode)
       return emitOpError("requires attribute 'mode'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps6(*this, tblgen_mode, "mode")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps7(*this, tblgen_mode, "mode")))
       return ::mlir::failure();
   }
   {
@@ -5568,14 +5827,14 @@ void ShuffleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
 
 ::mlir::ParseResult ShuffleOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::gpu::ShuffleModeAttr modeAttr;
-  ::mlir::OpAsmParser::OperandType valueRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand valueRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
   (void)valueOperandsLoc;
-  ::mlir::OpAsmParser::OperandType offsetRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> offsetOperands(offsetRawOperands);  ::llvm::SMLoc offsetOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand offsetRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> offsetOperands(offsetRawOperands);  ::llvm::SMLoc offsetOperandsLoc;
   (void)offsetOperandsLoc;
-  ::mlir::OpAsmParser::OperandType widthRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> widthOperands(widthRawOperands);  ::llvm::SMLoc widthOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand widthRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> widthOperands(widthRawOperands);  ::llvm::SMLoc widthOperandsLoc;
   (void)widthOperandsLoc;
   ::mlir::Type valueRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> valueTypes(valueRawTypes);
@@ -5652,7 +5911,7 @@ void ShuffleOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::ShuffleOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::ShuffleOp)
 
 namespace mlir {
 namespace gpu {
@@ -5816,7 +6075,7 @@ void SubgroupIdOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effec
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::SubgroupIdOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::SubgroupIdOp)
 
 namespace mlir {
 namespace gpu {
@@ -6022,14 +6281,14 @@ void SubgroupMmaComputeOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operatio
 }
 
 ::mlir::ParseResult SubgroupMmaComputeOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType opARawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> opAOperands(opARawOperands);  ::llvm::SMLoc opAOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand opARawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> opAOperands(opARawOperands);  ::llvm::SMLoc opAOperandsLoc;
   (void)opAOperandsLoc;
-  ::mlir::OpAsmParser::OperandType opBRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> opBOperands(opBRawOperands);  ::llvm::SMLoc opBOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand opBRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> opBOperands(opBRawOperands);  ::llvm::SMLoc opBOperandsLoc;
   (void)opBOperandsLoc;
-  ::mlir::OpAsmParser::OperandType opCRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> opCOperands(opCRawOperands);  ::llvm::SMLoc opCOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand opCRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> opCOperands(opCRawOperands);  ::llvm::SMLoc opCOperandsLoc;
   (void)opCOperandsLoc;
   ::mlir::Type opARawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> opATypes(opARawTypes);
@@ -6136,7 +6395,7 @@ void SubgroupMmaComputeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffect
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::SubgroupMmaComputeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::SubgroupMmaComputeOp)
 
 namespace mlir {
 namespace gpu {
@@ -6257,8 +6516,8 @@ void SubgroupMmaConstantMatrixOp::build(::mlir::OpBuilder &, ::mlir::OperationSt
 }
 
 ::mlir::ParseResult SubgroupMmaConstantMatrixOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType valueRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand valueRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
   (void)valueOperandsLoc;
   ::mlir::Type resRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resTypes(resRawTypes);
@@ -6309,7 +6568,7 @@ void SubgroupMmaConstantMatrixOp::getEffects(::mlir::SmallVectorImpl<::mlir::Sid
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::SubgroupMmaConstantMatrixOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::SubgroupMmaConstantMatrixOp)
 
 namespace mlir {
 namespace gpu {
@@ -6481,7 +6740,7 @@ void SubgroupMmaElementwiseOp::build(::mlir::OpBuilder &, ::mlir::OperationState
     if (!tblgen_operation)
       return emitOpError("requires attribute 'operation'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps7(*this, tblgen_operation, "operation")))
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps8(*this, tblgen_operation, "operation")))
       return ::mlir::failure();
   }
   {
@@ -6513,7 +6772,7 @@ void SubgroupMmaElementwiseOp::build(::mlir::OpBuilder &, ::mlir::OperationState
 
 ::mlir::ParseResult SubgroupMmaElementwiseOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::gpu::MMAElementwiseOpAttr operationAttr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> argsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
   ::llvm::SMLoc argsOperandsLoc;
   (void)argsOperandsLoc;
   ::llvm::ArrayRef<::mlir::Type> argsTypes;
@@ -6559,7 +6818,7 @@ void SubgroupMmaElementwiseOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEf
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::SubgroupMmaElementwiseOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::SubgroupMmaElementwiseOp)
 
 namespace mlir {
 namespace gpu {
@@ -6787,10 +7046,10 @@ void SubgroupMmaLoadMatrixOp::build(::mlir::OpBuilder &, ::mlir::OperationState 
 }
 
 ::mlir::ParseResult SubgroupMmaLoadMatrixOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType srcMemrefRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> srcMemrefOperands(srcMemrefRawOperands);  ::llvm::SMLoc srcMemrefOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand srcMemrefRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> srcMemrefOperands(srcMemrefRawOperands);  ::llvm::SMLoc srcMemrefOperandsLoc;
   (void)srcMemrefOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> indicesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
   ::llvm::SMLoc indicesOperandsLoc;
   (void)indicesOperandsLoc;
   ::mlir::Type srcMemrefRawTypes[1];
@@ -6873,7 +7132,7 @@ void SubgroupMmaLoadMatrixOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEff
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::SubgroupMmaLoadMatrixOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::SubgroupMmaLoadMatrixOp)
 
 namespace mlir {
 namespace gpu {
@@ -7110,13 +7369,13 @@ void SubgroupMmaStoreMatrixOp::build(::mlir::OpBuilder &, ::mlir::OperationState
 }
 
 ::mlir::ParseResult SubgroupMmaStoreMatrixOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType srcRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> srcOperands(srcRawOperands);  ::llvm::SMLoc srcOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand srcRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> srcOperands(srcRawOperands);  ::llvm::SMLoc srcOperandsLoc;
   (void)srcOperandsLoc;
-  ::mlir::OpAsmParser::OperandType dstMemrefRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> dstMemrefOperands(dstMemrefRawOperands);  ::llvm::SMLoc dstMemrefOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand dstMemrefRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> dstMemrefOperands(dstMemrefRawOperands);  ::llvm::SMLoc dstMemrefOperandsLoc;
   (void)dstMemrefOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> indicesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
   ::llvm::SMLoc indicesOperandsLoc;
   (void)indicesOperandsLoc;
   ::mlir::Type srcRawTypes[1];
@@ -7209,7 +7468,7 @@ void SubgroupMmaStoreMatrixOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEf
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::SubgroupMmaStoreMatrixOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::SubgroupMmaStoreMatrixOp)
 
 namespace mlir {
 namespace gpu {
@@ -7373,7 +7632,7 @@ void SubgroupSizeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Eff
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::SubgroupSizeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::SubgroupSizeOp)
 
 namespace mlir {
 namespace gpu {
@@ -7467,7 +7726,7 @@ void TerminatorOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effec
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::TerminatorOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::TerminatorOp)
 
 namespace mlir {
 namespace gpu {
@@ -7684,7 +7943,7 @@ void ThreadIdOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::ThreadIdOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::ThreadIdOp)
 
 namespace mlir {
 namespace gpu {
@@ -7845,7 +8104,7 @@ void WaitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 
 ::mlir::ParseResult WaitOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::SmallVector<::mlir::Type, 1> asyncTokenTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> asyncDependenciesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> asyncDependenciesOperands;
   ::llvm::SMLoc asyncDependenciesOperandsLoc;
   (void)asyncDependenciesOperandsLoc;
   {
@@ -7873,7 +8132,7 @@ void WaitOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::WaitOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::WaitOp)
 
 namespace mlir {
 namespace gpu {
@@ -8003,7 +8262,7 @@ void YieldOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace gpu
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::YieldOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::YieldOp)
 
 
 #endif  // GET_OP_CLASSES

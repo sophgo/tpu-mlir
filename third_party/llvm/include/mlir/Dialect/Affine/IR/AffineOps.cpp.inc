@@ -84,7 +84,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_AffineOps0(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_AffineOps1(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return (attr.isa<::mlir::arith::AtomicRMWKindAttr>()); })))) {
+  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && ((attr.isa<::mlir::arith::AtomicRMWKindAttr>())); })))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: Reduction ops";
   }
@@ -102,7 +102,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_AffineOps2(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_AffineOps3(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); })))) {
+  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); })))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: 64-bit integer array attribute";
   }
@@ -359,7 +359,7 @@ void AffineApplyOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effe
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::AffineApplyOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::AffineApplyOp)
 
 namespace mlir {
 
@@ -501,13 +501,11 @@ std::pair<unsigned, unsigned> AffineForOp::getODSResultIndexAndLength(unsigned i
 }
 
 ::mlir::LogicalResult AffineForOp::verifyInvariants() {
-  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
-    return ::mlir::success();
-  return ::mlir::failure();
+  return verifyInvariantsImpl();
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::AffineForOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::AffineForOp)
 
 namespace mlir {
 
@@ -667,7 +665,7 @@ std::pair<unsigned, unsigned> AffineIfOp::getODSResultIndexAndLength(unsigned in
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::AffineIfOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::AffineIfOp)
 
 namespace mlir {
 
@@ -842,7 +840,7 @@ void AffineLoadOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effec
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::AffineLoadOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::AffineLoadOp)
 
 namespace mlir {
 
@@ -1048,7 +1046,7 @@ void AffineMaxOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::AffineMaxOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::AffineMaxOp)
 
 namespace mlir {
 
@@ -1254,7 +1252,7 @@ void AffineMinOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::AffineMinOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::AffineMinOp)
 
 namespace mlir {
 
@@ -1382,7 +1380,7 @@ std::pair<unsigned, unsigned> AffineParallelOpAdaptor::getODSOperandIndexAndLeng
     if (!tblgen_reductions)
       return emitError(loc, "'affine.parallel' op ""requires attribute 'reductions'");
 
-    if (tblgen_reductions && !(((tblgen_reductions.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_reductions.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return (attr.isa<::mlir::arith::AtomicRMWKindAttr>()); }))))
+    if (tblgen_reductions && !(((tblgen_reductions.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_reductions.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && ((attr.isa<::mlir::arith::AtomicRMWKindAttr>())); }))))
       return emitError(loc, "'affine.parallel' op ""attribute 'reductions' failed to satisfy constraint: Reduction ops");
   }
   {
@@ -1422,7 +1420,7 @@ std::pair<unsigned, unsigned> AffineParallelOpAdaptor::getODSOperandIndexAndLeng
     if (!tblgen_steps)
       return emitError(loc, "'affine.parallel' op ""requires attribute 'steps'");
 
-    if (tblgen_steps && !(((tblgen_steps.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_steps.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))))
+    if (tblgen_steps && !(((tblgen_steps.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_steps.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
       return emitError(loc, "'affine.parallel' op ""attribute 'steps' failed to satisfy constraint: 64-bit integer array attribute");
   }
   return ::mlir::success();
@@ -1688,7 +1686,7 @@ void AffineParallelOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::AffineParallelOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::AffineParallelOp)
 
 namespace mlir {
 
@@ -2003,7 +2001,7 @@ void AffinePrefetchOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::AffinePrefetchOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::AffinePrefetchOp)
 
 namespace mlir {
 
@@ -2164,7 +2162,7 @@ void AffineStoreOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effe
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::AffineStoreOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::AffineStoreOp)
 
 namespace mlir {
 
@@ -2339,7 +2337,7 @@ void AffineVectorLoadOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects:
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::AffineVectorLoadOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::AffineVectorLoadOp)
 
 namespace mlir {
 
@@ -2500,7 +2498,7 @@ void AffineVectorStoreOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::AffineVectorStoreOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::AffineVectorStoreOp)
 
 namespace mlir {
 
@@ -2631,7 +2629,7 @@ void AffineYieldOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
 }
 
 ::mlir::ParseResult AffineYieldOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> operandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> operandsOperands;
   ::llvm::SMLoc operandsOperandsLoc;
   (void)operandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> operandsTypes;
@@ -2668,7 +2666,7 @@ void AffineYieldOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effe
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(mlir::AffineYieldOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::AffineYieldOp)
 
 
 #endif  // GET_OP_CLASSES

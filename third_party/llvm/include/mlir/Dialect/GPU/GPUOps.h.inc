@@ -65,6 +65,11 @@ class GPUModuleOp;
 } // namespace mlir
 namespace mlir {
 namespace gpu {
+class GlobalIdOp;
+} // namespace gpu
+} // namespace mlir
+namespace mlir {
+namespace gpu {
 class GridDimOp;
 } // namespace gpu
 } // namespace mlir
@@ -257,7 +262,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  ::mlir::LogicalResult verify();
+  ::mlir::LogicalResult verifyRegions();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
 private:
@@ -274,7 +279,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::AllReduceOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::AllReduceOp)
 
 namespace mlir {
 namespace gpu {
@@ -363,7 +368,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::AllocOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::AllocOp)
 
 namespace mlir {
 namespace gpu {
@@ -417,7 +422,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::BarrierOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::BarrierOp)
 
 namespace mlir {
 namespace gpu {
@@ -502,7 +507,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::BlockDimOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::BlockDimOp)
 
 namespace mlir {
 namespace gpu {
@@ -587,7 +592,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::BlockIdOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::BlockIdOp)
 
 namespace mlir {
 namespace gpu {
@@ -649,7 +654,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::DeallocOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::DeallocOp)
 
 namespace mlir {
 namespace gpu {
@@ -756,7 +761,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::DeviceAsyncCopyOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::DeviceAsyncCopyOp)
 
 namespace mlir {
 namespace gpu {
@@ -815,7 +820,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::DeviceAsyncCreateGroupOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::DeviceAsyncCreateGroupOp)
 
 namespace mlir {
 namespace gpu {
@@ -897,7 +902,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::DeviceAsyncWaitOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::DeviceAsyncWaitOp)
 
 namespace mlir {
 namespace gpu {
@@ -916,6 +921,8 @@ public:
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::TypeAttr function_typeAttr();
+  ::mlir::FunctionType function_type();
   ::mlir::RegionRange getRegions();
   ::mlir::Region &body();
   ::mlir::LogicalResult verify(::mlir::Location loc);
@@ -931,7 +938,16 @@ public:
   using Adaptor = GPUFuncOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    return {};
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("function_type")};
+    return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr function_typeAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr function_typeAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
   }
 
   static constexpr ::llvm::StringLiteral getOperationName() {
@@ -943,11 +959,24 @@ public:
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Region &body();
+  ::mlir::TypeAttr function_typeAttr();
+  ::mlir::FunctionType function_type();
+  void function_typeAttr(::mlir::TypeAttr attr);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, StringRef name, FunctionType type, TypeRange workgroupAttributions = {}, TypeRange privateAttributions = {}, ArrayRef<NamedAttribute> attrs = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+private:
+  ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
+    return getAttributeNameForIndex((*this)->getName(), index);
+  }
+
+  static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
+    assert(index < 1 && "invalid attribute index");
+    return name.getRegisteredInfo()->getAttributeNames()[index];
+  }
+
 public:
   /// Returns `true` if the GPU function defined by this Op is a kernel, i.e.
   /// it is intended to be launched from host.
@@ -966,7 +995,7 @@ public:
   /// the workgroup memory
   ArrayRef<BlockArgument> getWorkgroupAttributions() {
     auto begin =
-        std::next(getBody().args_begin(), getType().getNumInputs());
+        std::next(getBody().args_begin(), getFunctionType().getNumInputs());
     auto end = std::next(begin, getNumWorkgroupAttributions());
     return {begin, end};
   }
@@ -977,7 +1006,7 @@ public:
 
   /// Returns the number of buffers located in the private memory.
   unsigned getNumPrivateAttributions() {
-    return getBody().getNumArguments() - getType().getNumInputs() -
+    return getBody().getNumArguments() - getFunctionType().getNumInputs() -
         getNumWorkgroupAttributions();
   }
 
@@ -988,7 +1017,7 @@ public:
     // memory.
     auto begin =
         std::next(getBody().args_begin(),
-                  getType().getNumInputs() + getNumWorkgroupAttributions());
+                  getFunctionType().getNumInputs() + getNumWorkgroupAttributions());
     return {begin, getBody().args_end()};
   }
 
@@ -1003,16 +1032,14 @@ public:
   }
 
   /// Returns the type of this function.
-  /// FIXME: We should drive this via the ODS `type` param.
-  FunctionType getType() {
-    return getTypeAttr().getValue().cast<FunctionType>();
-  }
+  /// FIXME: Remove when GPU uses prefixed accessors.
+  FunctionType getFunctionType() { return function_type(); }
 
   /// Returns the argument types of this function.
-  ArrayRef<Type> getArgumentTypes() { return getType().getInputs(); }
+  ArrayRef<Type> getArgumentTypes() { return getFunctionType().getInputs(); }
 
   /// Returns the result types of this function.
-  ArrayRef<Type> getResultTypes() { return getType().getResults(); }
+  ArrayRef<Type> getResultTypes() { return getFunctionType().getResults(); }
 
   /// Returns the keywords used in the custom syntax for this Op.
   static StringRef getWorkgroupKeyword() { return "workgroup"; }
@@ -1027,7 +1054,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::GPUFuncOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::GPUFuncOp)
 
 namespace mlir {
 namespace gpu {
@@ -1082,7 +1109,92 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::GPUModuleOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::GPUModuleOp)
+
+namespace mlir {
+namespace gpu {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::gpu::GlobalIdOp declarations
+//===----------------------------------------------------------------------===//
+
+class GlobalIdOpAdaptor {
+public:
+  GlobalIdOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  GlobalIdOpAdaptor(GlobalIdOp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::gpu::DimensionAttr dimensionAttr();
+  ::mlir::gpu::Dimension dimension();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class GlobalIdOp : public ::mlir::Op<GlobalIdOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::IndexType>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = GlobalIdOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("dimension")};
+    return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr dimensionAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr dimensionAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("gpu.global_id");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::gpu::DimensionAttr dimensionAttr();
+  ::mlir::gpu::Dimension dimension();
+  void dimensionAttr(::mlir::gpu::DimensionAttr attr);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type resultType0, ::mlir::gpu::DimensionAttr dimension);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::gpu::DimensionAttr dimension);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::gpu::DimensionAttr dimension);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type resultType0, ::mlir::gpu::Dimension dimension);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::gpu::Dimension dimension);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::gpu::Dimension dimension);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
+  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
+  void print(::mlir::OpAsmPrinter &_odsPrinter);
+  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+private:
+  ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
+    return getAttributeNameForIndex((*this)->getName(), index);
+  }
+
+  static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
+    assert(index < 1 && "invalid attribute index");
+    return name.getRegisteredInfo()->getAttributeNames()[index];
+  }
+
+public:
+};
+} // namespace gpu
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::GlobalIdOp)
 
 namespace mlir {
 namespace gpu {
@@ -1167,7 +1279,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::GridDimOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::GridDimOp)
 
 namespace mlir {
 namespace gpu {
@@ -1224,7 +1336,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::HostRegisterOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::HostRegisterOp)
 
 namespace mlir {
 namespace gpu {
@@ -1366,7 +1478,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::LaunchFuncOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::LaunchFuncOp)
 
 namespace mlir {
 namespace gpu {
@@ -1438,7 +1550,7 @@ public:
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  ::mlir::LogicalResult verify();
+  ::mlir::LogicalResult verifyRegions();
   static void getCanonicalizationPatterns(::mlir::RewritePatternSet &results, ::mlir::MLIRContext *context);
 public:
   /// Get the SSA values corresponding to kernel block identifiers.
@@ -1471,7 +1583,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::LaunchOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::LaunchOp)
 
 namespace mlir {
 namespace gpu {
@@ -1538,7 +1650,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::MemcpyOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::MemcpyOp)
 
 namespace mlir {
 namespace gpu {
@@ -1604,7 +1716,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::MemsetOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::MemsetOp)
 
 namespace mlir {
 namespace gpu {
@@ -1658,7 +1770,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::ModuleEndOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::ModuleEndOp)
 
 namespace mlir {
 namespace gpu {
@@ -1717,7 +1829,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::NumSubgroupsOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::NumSubgroupsOp)
 
 namespace mlir {
 namespace gpu {
@@ -1801,7 +1913,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::PrintfOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::PrintfOp)
 
 namespace mlir {
 namespace gpu {
@@ -1860,7 +1972,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::ReturnOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::ReturnOp)
 
 namespace mlir {
 namespace gpu {
@@ -1918,7 +2030,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::SetDefaultDeviceOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::SetDefaultDeviceOp)
 
 namespace mlir {
 namespace gpu {
@@ -2016,7 +2128,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::ShuffleOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::ShuffleOp)
 
 namespace mlir {
 namespace gpu {
@@ -2075,7 +2187,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::SubgroupIdOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::SubgroupIdOp)
 
 namespace mlir {
 namespace gpu {
@@ -2144,7 +2256,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::SubgroupMmaComputeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::SubgroupMmaComputeOp)
 
 namespace mlir {
 namespace gpu {
@@ -2206,7 +2318,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::SubgroupMmaConstantMatrixOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::SubgroupMmaConstantMatrixOp)
 
 namespace mlir {
 namespace gpu {
@@ -2294,7 +2406,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::SubgroupMmaElementwiseOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::SubgroupMmaElementwiseOp)
 
 namespace mlir {
 namespace gpu {
@@ -2383,7 +2495,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::SubgroupMmaLoadMatrixOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::SubgroupMmaLoadMatrixOp)
 
 namespace mlir {
 namespace gpu {
@@ -2474,7 +2586,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::SubgroupMmaStoreMatrixOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::SubgroupMmaStoreMatrixOp)
 
 namespace mlir {
 namespace gpu {
@@ -2533,7 +2645,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::SubgroupSizeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::SubgroupSizeOp)
 
 namespace mlir {
 namespace gpu {
@@ -2588,7 +2700,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::TerminatorOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::TerminatorOp)
 
 namespace mlir {
 namespace gpu {
@@ -2673,7 +2785,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::ThreadIdOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::ThreadIdOp)
 
 namespace mlir {
 namespace gpu {
@@ -2730,7 +2842,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::WaitOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::WaitOp)
 
 namespace mlir {
 namespace gpu {
@@ -2785,7 +2897,7 @@ public:
 };
 } // namespace gpu
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::YieldOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::gpu::YieldOp)
 
 
 #endif  // GET_OP_CLASSES

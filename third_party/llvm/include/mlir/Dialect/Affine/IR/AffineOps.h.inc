@@ -162,7 +162,7 @@ public:
   operand_range getMapOperands() { return getOperands(); }
 };
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::AffineApplyOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::AffineApplyOp)
 
 namespace mlir {
 
@@ -214,12 +214,10 @@ public:
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  ::mlir::LogicalResult verify();
+  ::mlir::LogicalResult verifyRegions();
   static void getCanonicalizationPatterns(::mlir::RewritePatternSet &results, ::mlir::MLIRContext *context);
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
-  bool isDefinedOutsideOfLoop(::mlir::Value  value);
   ::mlir::Region &getLoopBody();
-  ::mlir::LogicalResult moveOutOfLoop(::mlir::ArrayRef<::mlir::Operation *> ops);
   ::mlir::Optional<::mlir::Value> getSingleInductionVar();
   ::mlir::Optional<::mlir::OpFoldResult> getSingleLowerBound();
   ::mlir::Optional<::mlir::OpFoldResult> getSingleStep();
@@ -331,7 +329,7 @@ public:
   bool matchingBoundOperandList();
 };
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::AffineForOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::AffineForOp)
 
 namespace mlir {
 
@@ -422,7 +420,7 @@ public:
   }
 };
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::AffineIfOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::AffineIfOp)
 
 namespace mlir {
 
@@ -497,9 +495,12 @@ public:
   }
 
   static StringRef getMapAttrName() { return "map"; }
+
+  // TODO: Remove once prefixing is flipped.
+  operand_range getIndices() { return indices(); }
 };
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::AffineLoadOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::AffineLoadOp)
 
 namespace mlir {
 
@@ -596,7 +597,7 @@ public:
   }
 };
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::AffineMaxOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::AffineMaxOp)
 
 namespace mlir {
 
@@ -693,7 +694,7 @@ public:
   }
 };
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::AffineMinOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::AffineMinOp)
 
 namespace mlir {
 
@@ -832,9 +833,7 @@ public:
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult verify();
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
-  bool isDefinedOutsideOfLoop(::mlir::Value  value);
   ::mlir::Region &getLoopBody();
-  ::mlir::LogicalResult moveOutOfLoop(::mlir::ArrayRef<::mlir::Operation *> ops);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
     return getAttributeNameForIndex((*this)->getName(), index);
@@ -899,7 +898,7 @@ public:
   }
 };
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::AffineParallelOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::AffineParallelOp)
 
 namespace mlir {
 
@@ -1041,7 +1040,7 @@ public:
   static StringRef getIsDataCacheAttrName() { return "isDataCache"; }
 };
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::AffinePrefetchOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::AffinePrefetchOp)
 
 namespace mlir {
 
@@ -1117,9 +1116,12 @@ public:
   }
 
   static StringRef getMapAttrName() { return "map"; }
+
+  // TODO: Remove once prefixing is flipped.
+  operand_range getIndices() { return indices(); }
 };
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::AffineStoreOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::AffineStoreOp)
 
 namespace mlir {
 
@@ -1194,12 +1196,15 @@ public:
 
   static StringRef getMapAttrName() { return "map"; }
 
+  // TODO: Remove once prefixing is flipped.
+  operand_range getIndices() { return indices(); }
+
   VectorType getVectorType() {
     return result().getType().cast<VectorType>();
   }
 };
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::AffineVectorLoadOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::AffineVectorLoadOp)
 
 namespace mlir {
 
@@ -1275,12 +1280,15 @@ public:
 
   static StringRef getMapAttrName() { return "map"; }
 
+  // TODO: Remove once prefixing is flipped.
+  operand_range getIndices() { return indices(); }
+
   VectorType getVectorType() {
     return value().getType().cast<VectorType>();
   }
 };
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::AffineVectorStoreOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::AffineVectorStoreOp)
 
 namespace mlir {
 
@@ -1337,7 +1345,7 @@ public:
 public:
 };
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(mlir::AffineYieldOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::AffineYieldOp)
 
 
 #endif  // GET_OP_CLASSES

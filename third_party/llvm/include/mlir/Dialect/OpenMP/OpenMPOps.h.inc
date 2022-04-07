@@ -90,6 +90,16 @@ class SectionsOp;
 } // namespace mlir
 namespace mlir {
 namespace omp {
+class SimdLoopOp;
+} // namespace omp
+} // namespace mlir
+namespace mlir {
+namespace omp {
+class SingleOp;
+} // namespace omp
+} // namespace mlir
+namespace mlir {
+namespace omp {
 class TargetOp;
 } // namespace omp
 } // namespace mlir
@@ -207,7 +217,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  ::mlir::LogicalResult verify();
+  ::mlir::LogicalResult verifyRegions();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
 private:
@@ -221,10 +231,27 @@ private:
   }
 
 public:
+  /// Returns the first operation in atomic capture region
+  Operation* getFirstOp();
+
+  /// Returns the second operation in atomic capture region
+  Operation* getSecondOp();
+
+  /// Returns the `atomic.read` operation inside the region, if any.
+  /// Otherwise, it returns nullptr.
+  AtomicReadOp getAtomicReadOp();
+
+  /// Returns the `atomic.write` operation inside the region, if any.
+  /// Otherwise, it returns nullptr.
+  AtomicWriteOp getAtomicWriteOp();
+
+  /// Returns the `atomic.update` operation inside the region, if any.
+  /// Otherwise, it returns nullptr.
+  AtomicUpdateOp getAtomicUpdateOp();
 };
 } // namespace omp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::AtomicCaptureOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::AtomicCaptureOp)
 
 namespace mlir {
 namespace omp {
@@ -325,7 +352,7 @@ public:
 };
 } // namespace omp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::AtomicReadOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::AtomicReadOp)
 
 namespace mlir {
 namespace omp {
@@ -410,6 +437,7 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult verify();
+  ::mlir::LogicalResult verifyRegions();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
 private:
@@ -423,10 +451,13 @@ private:
   }
 
 public:
+  Operation* getFirstOp() {
+    return &getRegion().front().getOperations().front();
+  }
 };
 } // namespace omp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::AtomicUpdateOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::AtomicUpdateOp)
 
 namespace mlir {
 namespace omp {
@@ -527,7 +558,7 @@ public:
 };
 } // namespace omp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::AtomicWriteOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::AtomicWriteOp)
 
 namespace mlir {
 namespace omp {
@@ -581,7 +612,7 @@ public:
 };
 } // namespace omp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::BarrierOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::BarrierOp)
 
 namespace mlir {
 namespace omp {
@@ -675,7 +706,7 @@ public:
 };
 } // namespace omp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::CriticalDeclareOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::CriticalDeclareOp)
 
 namespace mlir {
 namespace omp {
@@ -704,7 +735,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class CriticalOp : public ::mlir::Op<CriticalOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants> {
+class CriticalOp : public ::mlir::Op<CriticalOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::SymbolUserOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -741,7 +772,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  ::mlir::LogicalResult verify();
+  ::mlir::LogicalResult verifySymbolUses(::mlir::SymbolTableCollection &symbolTable);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
 private:
@@ -758,7 +789,7 @@ public:
 };
 } // namespace omp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::CriticalOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::CriticalOp)
 
 namespace mlir {
 namespace omp {
@@ -814,7 +845,7 @@ public:
 };
 } // namespace omp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::FlushOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::FlushOp)
 
 namespace mlir {
 namespace omp {
@@ -871,7 +902,7 @@ public:
 };
 } // namespace omp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::MasterOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::MasterOp)
 
 namespace mlir {
 namespace omp {
@@ -968,7 +999,7 @@ public:
 };
 } // namespace omp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::OrderedOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::OrderedOp)
 
 namespace mlir {
 namespace omp {
@@ -1053,7 +1084,7 @@ public:
 };
 } // namespace omp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::OrderedRegionOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::OrderedRegionOp)
 
 namespace mlir {
 namespace omp {
@@ -1075,7 +1106,10 @@ public:
   ::mlir::Value num_threads_var();
   ::mlir::ValueRange allocate_vars();
   ::mlir::ValueRange allocators_vars();
+  ::mlir::ValueRange reduction_vars();
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::ArrayAttr reductionsAttr();
+  ::llvm::Optional< ::mlir::ArrayAttr > reductions();
   ::mlir::omp::ClauseProcBindKindAttr proc_bind_valAttr();
   ::llvm::Optional<::mlir::omp::ClauseProcBindKind> proc_bind_val();
   ::mlir::RegionRange getRegions();
@@ -1086,31 +1120,39 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class ParallelOp : public ::mlir::Op<ParallelOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::AutomaticAllocationScope, ::mlir::omp::OutlineableOpenMPOpInterface::Trait, ::mlir::OpTrait::HasRecursiveSideEffects> {
+class ParallelOp : public ::mlir::Op<ParallelOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::AutomaticAllocationScope, ::mlir::omp::OutlineableOpenMPOpInterface::Trait, ::mlir::OpTrait::HasRecursiveSideEffects, ::mlir::omp::ReductionClauseInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = ParallelOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("proc_bind_val"), ::llvm::StringRef("operand_segment_sizes")};
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("reductions"), ::llvm::StringRef("proc_bind_val"), ::llvm::StringRef("operand_segment_sizes")};
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr proc_bind_valAttrName() {
+  ::mlir::StringAttr reductionsAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr proc_bind_valAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr reductionsAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr operand_segment_sizesAttrName() {
+  ::mlir::StringAttr proc_bind_valAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr proc_bind_valAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr operand_segment_sizesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
   }
 
   static constexpr ::llvm::StringLiteral getOperationName() {
@@ -1123,20 +1165,26 @@ public:
   ::mlir::Value num_threads_var();
   ::mlir::Operation::operand_range allocate_vars();
   ::mlir::Operation::operand_range allocators_vars();
+  ::mlir::Operation::operand_range reduction_vars();
   ::mlir::MutableOperandRange if_expr_varMutable();
   ::mlir::MutableOperandRange num_threads_varMutable();
   ::mlir::MutableOperandRange allocate_varsMutable();
   ::mlir::MutableOperandRange allocators_varsMutable();
+  ::mlir::MutableOperandRange reduction_varsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Region &region();
+  ::mlir::ArrayAttr reductionsAttr();
+  ::llvm::Optional< ::mlir::ArrayAttr > reductions();
   ::mlir::omp::ClauseProcBindKindAttr proc_bind_valAttr();
   ::llvm::Optional<::mlir::omp::ClauseProcBindKind> proc_bind_val();
+  void reductionsAttr(::mlir::ArrayAttr attr);
   void proc_bind_valAttr(::mlir::omp::ClauseProcBindKindAttr attr);
+  ::mlir::Attribute removeReductionsAttr();
   ::mlir::Attribute removeProc_bind_valAttr();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ArrayRef<NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, /*optional*/::mlir::Value if_expr_var, /*optional*/::mlir::Value num_threads_var, ::mlir::ValueRange allocate_vars, ::mlir::ValueRange allocators_vars, /*optional*/::mlir::omp::ClauseProcBindKindAttr proc_bind_val);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, /*optional*/::mlir::Value if_expr_var, /*optional*/::mlir::Value num_threads_var, ::mlir::ValueRange allocate_vars, ::mlir::ValueRange allocators_vars, /*optional*/::mlir::omp::ClauseProcBindKindAttr proc_bind_val);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, /*optional*/::mlir::Value if_expr_var, /*optional*/::mlir::Value num_threads_var, ::mlir::ValueRange allocate_vars, ::mlir::ValueRange allocators_vars, ::mlir::ValueRange reduction_vars, /*optional*/::mlir::ArrayAttr reductions, /*optional*/::mlir::omp::ClauseProcBindKindAttr proc_bind_val);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, /*optional*/::mlir::Value if_expr_var, /*optional*/::mlir::Value num_threads_var, ::mlir::ValueRange allocate_vars, ::mlir::ValueRange allocators_vars, ::mlir::ValueRange reduction_vars, /*optional*/::mlir::ArrayAttr reductions, /*optional*/::mlir::omp::ClauseProcBindKindAttr proc_bind_val);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
@@ -1149,15 +1197,19 @@ private:
   }
 
   static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
-    assert(index < 2 && "invalid attribute index");
+    assert(index < 3 && "invalid attribute index");
     return name.getRegisteredInfo()->getAttributeNames()[index];
   }
 
 public:
+  // TODO: remove this once emitAccessorPrefix is set to
+  // kEmitAccessorPrefix_Prefixed for the dialect.
+  /// Returns the reduction variables
+  operand_range getReductionVars() { return reduction_vars(); }
 };
 } // namespace omp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::ParallelOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::ParallelOp)
 
 namespace mlir {
 namespace omp {
@@ -1241,7 +1293,7 @@ public:
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  ::mlir::LogicalResult verify();
+  ::mlir::LogicalResult verifyRegions();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
 private:
@@ -1264,7 +1316,7 @@ public:
 };
 } // namespace omp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::ReductionDeclareOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::ReductionDeclareOp)
 
 namespace mlir {
 namespace omp {
@@ -1325,7 +1377,7 @@ public:
 };
 } // namespace omp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::ReductionOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::ReductionOp)
 
 namespace mlir {
 namespace omp {
@@ -1382,7 +1434,7 @@ public:
 };
 } // namespace omp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::SectionOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::SectionOp)
 
 namespace mlir {
 namespace omp {
@@ -1416,7 +1468,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class SectionsOp : public ::mlir::Op<SectionsOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants> {
+class SectionsOp : public ::mlir::Op<SectionsOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::omp::ReductionClauseInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -1482,6 +1534,7 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult verify();
+  ::mlir::LogicalResult verifyRegions();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
 private:
@@ -1495,10 +1548,202 @@ private:
   }
 
 public:
+  // TODO: remove this once emitAccessorPrefix is set to
+  // kEmitAccessorPrefix_Prefixed for the dialect.
+  /// Returns the reduction variables
+  operand_range getReductionVars() { return reduction_vars(); }
 };
 } // namespace omp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::SectionsOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::SectionsOp)
+
+namespace mlir {
+namespace omp {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::omp::SimdLoopOp declarations
+//===----------------------------------------------------------------------===//
+
+class SimdLoopOpAdaptor {
+public:
+  SimdLoopOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  SimdLoopOpAdaptor(SimdLoopOp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange lowerBound();
+  ::mlir::ValueRange upperBound();
+  ::mlir::ValueRange step();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::RegionRange getRegions();
+  ::mlir::Region &region();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class SimdLoopOp : public ::mlir::Op<SimdLoopOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = SimdLoopOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("operand_segment_sizes")};
+    return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr operand_segment_sizesAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("omp.simdloop");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range lowerBound();
+  ::mlir::Operation::operand_range upperBound();
+  ::mlir::Operation::operand_range step();
+  ::mlir::MutableOperandRange lowerBoundMutable();
+  ::mlir::MutableOperandRange upperBoundMutable();
+  ::mlir::MutableOperandRange stepMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Region &region();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange lowerBound, ::mlir::ValueRange upperBound, ::mlir::ValueRange step);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange lowerBound, ::mlir::ValueRange upperBound, ::mlir::ValueRange step);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
+  void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  ::mlir::LogicalResult verify();
+private:
+  ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
+    return getAttributeNameForIndex((*this)->getName(), index);
+  }
+
+  static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
+    assert(index < 1 && "invalid attribute index");
+    return name.getRegisteredInfo()->getAttributeNames()[index];
+  }
+
+public:
+  /// Returns the number of loops in the simd loop nest.
+  unsigned getNumLoops() { return lowerBound().size(); }
+
+};
+} // namespace omp
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::SimdLoopOp)
+
+namespace mlir {
+namespace omp {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::omp::SingleOp declarations
+//===----------------------------------------------------------------------===//
+
+class SingleOpAdaptor {
+public:
+  SingleOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  SingleOpAdaptor(SingleOp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange allocate_vars();
+  ::mlir::ValueRange allocators_vars();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::UnitAttr nowaitAttr();
+  bool nowait();
+  ::mlir::RegionRange getRegions();
+  ::mlir::Region &region();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class SingleOp : public ::mlir::Op<SingleOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = SingleOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("nowait"), ::llvm::StringRef("operand_segment_sizes")};
+    return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr nowaitAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr nowaitAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
+  ::mlir::StringAttr operand_segment_sizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("omp.single");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range allocate_vars();
+  ::mlir::Operation::operand_range allocators_vars();
+  ::mlir::MutableOperandRange allocate_varsMutable();
+  ::mlir::MutableOperandRange allocators_varsMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Region &region();
+  ::mlir::UnitAttr nowaitAttr();
+  bool nowait();
+  void nowaitAttr(::mlir::UnitAttr attr);
+  ::mlir::Attribute removeNowaitAttr();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange allocate_vars, ::mlir::ValueRange allocators_vars, /*optional*/::mlir::UnitAttr nowait);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange allocate_vars, ::mlir::ValueRange allocators_vars, /*optional*/::mlir::UnitAttr nowait);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange allocate_vars, ::mlir::ValueRange allocators_vars, /*optional*/bool nowait);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange allocate_vars, ::mlir::ValueRange allocators_vars, /*optional*/bool nowait);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  ::mlir::LogicalResult verify();
+  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
+  void print(::mlir::OpAsmPrinter &_odsPrinter);
+private:
+  ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
+    return getAttributeNameForIndex((*this)->getName(), index);
+  }
+
+  static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
+    assert(index < 2 && "invalid attribute index");
+    return name.getRegisteredInfo()->getAttributeNames()[index];
+  }
+
+public:
+};
+} // namespace omp
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::SingleOp)
 
 namespace mlir {
 namespace omp {
@@ -1599,7 +1844,7 @@ public:
 };
 } // namespace omp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::TargetOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::TargetOp)
 
 namespace mlir {
 namespace omp {
@@ -1653,7 +1898,7 @@ public:
 };
 } // namespace omp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::TaskwaitOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::TaskwaitOp)
 
 namespace mlir {
 namespace omp {
@@ -1707,7 +1952,7 @@ public:
 };
 } // namespace omp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::TaskyieldOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::TaskyieldOp)
 
 namespace mlir {
 namespace omp {
@@ -1761,7 +2006,7 @@ public:
 };
 } // namespace omp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::TerminatorOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::TerminatorOp)
 
 namespace mlir {
 namespace omp {
@@ -1813,7 +2058,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class WsLoopOp : public ::mlir::Op<WsLoopOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::HasRecursiveSideEffects> {
+class WsLoopOp : public ::mlir::Op<WsLoopOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::HasRecursiveSideEffects, ::mlir::omp::ReductionClauseInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -1969,11 +2214,11 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange lowerBound, ::mlir::ValueRange upperBound, ::mlir::ValueRange step, ::mlir::ValueRange linear_vars, ::mlir::ValueRange linear_step_vars, ::mlir::ValueRange reduction_vars, /*optional*/::mlir::ArrayAttr reductions, /*optional*/::mlir::omp::ClauseScheduleKindAttr schedule_val, /*optional*/::mlir::Value schedule_chunk_var, /*optional*/::mlir::omp::ScheduleModifierAttr schedule_modifier, /*optional*/bool simd_modifier, /*optional*/::mlir::IntegerAttr collapse_val, /*optional*/bool nowait, /*optional*/::mlir::IntegerAttr ordered_val, /*optional*/::mlir::omp::ClauseOrderKindAttr order_val, /*optional*/bool inclusive);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange lowerBound, ::mlir::ValueRange upperBound, ::mlir::ValueRange step, ::mlir::ValueRange linear_vars, ::mlir::ValueRange linear_step_vars, ::mlir::ValueRange reduction_vars, /*optional*/::mlir::ArrayAttr reductions, /*optional*/::mlir::omp::ClauseScheduleKindAttr schedule_val, /*optional*/::mlir::Value schedule_chunk_var, /*optional*/::mlir::omp::ScheduleModifierAttr schedule_modifier, /*optional*/bool simd_modifier, /*optional*/::mlir::IntegerAttr collapse_val, /*optional*/bool nowait, /*optional*/::mlir::IntegerAttr ordered_val, /*optional*/::mlir::omp::ClauseOrderKindAttr order_val, /*optional*/bool inclusive);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
-  void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult verify();
+  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
+  void print(::mlir::OpAsmPrinter &_odsPrinter);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
     return getAttributeNameForIndex((*this)->getName(), index);
@@ -1990,10 +2235,15 @@ public:
 
   /// Returns the number of reduction variables.
   unsigned getNumReductionVars() { return reduction_vars().size(); }
+
+  // TODO: remove this once emitAccessorPrefix is set to
+  // kEmitAccessorPrefix_Prefixed for the dialect.
+  /// Returns the reduction variables
+  operand_range getReductionVars() { return reduction_vars(); }
 };
 } // namespace omp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::WsLoopOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::WsLoopOp)
 
 namespace mlir {
 namespace omp {
@@ -2019,7 +2269,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class YieldOp : public ::mlir::Op<YieldOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::HasParent<WsLoopOp, ReductionDeclareOp, AtomicUpdateOp>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::ReturnLike, ::mlir::OpTrait::IsTerminator> {
+class YieldOp : public ::mlir::Op<YieldOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::HasParent<WsLoopOp, ReductionDeclareOp, AtomicUpdateOp, SimdLoopOp>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::ReturnLike, ::mlir::OpTrait::IsTerminator> {
 public:
   using Op::Op;
   using Op::print;
@@ -2051,7 +2301,7 @@ public:
 };
 } // namespace omp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::YieldOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::YieldOp)
 
 
 #endif  // GET_OP_CLASSES

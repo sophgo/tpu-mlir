@@ -137,7 +137,7 @@ namespace detail {
         /// compatibility by default.
         return lhs == rhs;
     }
-    static ::mlir::LogicalResult verifyTrait(::mlir::Operation *op) {
+    static ::mlir::LogicalResult verifyRegionTrait(::mlir::Operation *op) {
       return detail::verifyInferredResultTypes(op);
     }
   };

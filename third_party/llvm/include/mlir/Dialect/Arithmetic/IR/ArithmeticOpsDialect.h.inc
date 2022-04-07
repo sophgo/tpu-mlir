@@ -34,4 +34,4 @@ public:
 };
 } // namespace arith
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::ArithmeticDialect)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arith::ArithmeticDialect)

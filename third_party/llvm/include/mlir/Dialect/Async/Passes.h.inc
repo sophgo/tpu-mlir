@@ -48,6 +48,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(AsyncParallelForBase<DerivedT>)
+
 protected:
   ::mlir::Pass::Option<bool> asyncDispatch{*this, "async-dispatch", ::llvm::cl::desc("Dispatch async compute tasks using recursive work splitting. If `false` async compute tasks will be launched using simple for loop in the caller thread."), ::llvm::cl::init(true)};
   ::mlir::Pass::Option<int32_t> numWorkerThreads{*this, "num-workers", ::llvm::cl::desc("The number of available workers to execute async operations. If `-1` the value will be retrieved from the runtime."), ::llvm::cl::init(8)};
@@ -97,6 +102,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(AsyncRuntimePolicyBasedRefCountingBase<DerivedT>)
+
 protected:
 };
 
@@ -142,6 +152,11 @@ public:
   registry.insert<async::AsyncDialect>();
 
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(AsyncRuntimeRefCountingBase<DerivedT>)
 
 protected:
 };
@@ -189,6 +204,11 @@ public:
 
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(AsyncRuntimeRefCountingOptBase<DerivedT>)
+
 protected:
 };
 
@@ -234,6 +254,11 @@ public:
   registry.insert<async::AsyncDialect>();
 
   }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(AsyncToAsyncRuntimeBase<DerivedT>)
 
 protected:
   ::mlir::Pass::Option<bool> eliminateBlockingAwaitOps{*this, "eliminate-blocking-await-ops", ::llvm::cl::desc("Rewrite functions with blocking async.runtime.await as coroutines with async.runtime.await_and_resume."), ::llvm::cl::init(false)};

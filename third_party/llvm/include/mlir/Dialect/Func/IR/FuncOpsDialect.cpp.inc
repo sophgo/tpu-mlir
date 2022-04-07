@@ -6,7 +6,7 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
-DEFINE_EXPLICIT_TYPE_ID(::mlir::func::FuncDialect)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::func::FuncDialect)
 namespace mlir {
 namespace func {
 

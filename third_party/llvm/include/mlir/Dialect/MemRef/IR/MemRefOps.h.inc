@@ -240,7 +240,7 @@ public:
 };
 } // namespace memref
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::AssumeAlignmentOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::AssumeAlignmentOp)
 
 namespace mlir {
 namespace memref {
@@ -335,7 +335,7 @@ public:
 };
 } // namespace memref
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::AtomicRMWOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::AtomicRMWOp)
 
 namespace mlir {
 namespace memref {
@@ -394,7 +394,7 @@ public:
 };
 } // namespace memref
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::AtomicYieldOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::AtomicYieldOp)
 
 namespace mlir {
 namespace memref {
@@ -459,7 +459,7 @@ public:
 };
 } // namespace memref
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::CopyOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::CopyOp)
 
 namespace mlir {
 namespace memref {
@@ -532,7 +532,7 @@ public:
 };
 } // namespace memref
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::GenericAtomicRMWOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::GenericAtomicRMWOp)
 
 namespace mlir {
 namespace memref {
@@ -604,7 +604,7 @@ public:
 };
 } // namespace memref
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::LoadOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::LoadOp)
 
 namespace mlir {
 namespace memref {
@@ -710,7 +710,7 @@ public:
 };
 } // namespace memref
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::AllocOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::AllocOp)
 
 namespace mlir {
 namespace memref {
@@ -816,7 +816,7 @@ public:
 };
 } // namespace memref
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::AllocaOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::AllocaOp)
 
 namespace mlir {
 namespace memref {
@@ -875,7 +875,7 @@ public:
 };
 } // namespace memref
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::AllocaScopeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::AllocaScopeOp)
 
 namespace mlir {
 namespace memref {
@@ -933,7 +933,7 @@ public:
 };
 } // namespace memref
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::AllocaScopeReturnOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::AllocaScopeReturnOp)
 
 namespace mlir {
 namespace memref {
@@ -998,7 +998,7 @@ public:
 };
 } // namespace memref
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::CastOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::CastOp)
 
 namespace mlir {
 namespace memref {
@@ -1086,7 +1086,9 @@ private:
 
 public:
   SmallVector<AffineMap, 4> getReassociationMaps();
+
   SmallVector<ReassociationExprs, 4> getReassociationExprs();
+
   SmallVector<ReassociationIndices, 4> getReassociationIndices() {
     SmallVector<ReassociationIndices, 4> reassociationIndices;
     for (auto attr : reassociation())
@@ -1096,13 +1098,16 @@ public:
           })));
     return reassociationIndices;
   };
+
   MemRefType getSrcType() { return src().getType().cast<MemRefType>(); }
+
   MemRefType getResultType() { return result().getType().cast<MemRefType>(); }
+
   Value getViewSource() { return src(); }
 };
 } // namespace memref
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::CollapseShapeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::CollapseShapeOp)
 
 namespace mlir {
 namespace memref {
@@ -1161,7 +1166,7 @@ public:
 };
 } // namespace memref
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::DeallocOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::DeallocOp)
 
 namespace mlir {
 namespace memref {
@@ -1230,7 +1235,7 @@ public:
 };
 } // namespace memref
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::DimOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::DimOp)
 
 namespace mlir {
 namespace memref {
@@ -1381,7 +1386,7 @@ public:
 };
 } // namespace memref
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::DmaStartOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::DmaStartOp)
 
 namespace mlir {
 namespace memref {
@@ -1461,7 +1466,7 @@ public:
 };
 } // namespace memref
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::DmaWaitOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::DmaWaitOp)
 
 namespace mlir {
 namespace memref {
@@ -1522,10 +1527,9 @@ public:
   ::mlir::ArrayAttr reassociationAttr();
   ::mlir::ArrayAttr reassociation();
   void reassociationAttr(::mlir::ArrayAttr attr);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value src, ArrayRef<ReassociationIndices> reassociation, ArrayRef<NamedAttribute> attrs = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value src, ArrayRef<ReassociationExprs> reassociation, ArrayRef<NamedAttribute> attrs = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Type resultType, Value src, ArrayRef<ReassociationIndices> reassociation, ArrayRef<NamedAttribute> attrs = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Type resultType, Value src, ArrayRef<ReassociationExprs> reassociation, ArrayRef<NamedAttribute> attrs = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ArrayRef<int64_t> resultShape, Value src, ArrayRef<ReassociationIndices> reassociation);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value src, ::mlir::ArrayAttr reassociation);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value src, ::mlir::ArrayAttr reassociation);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
@@ -1549,7 +1553,9 @@ private:
 
 public:
   SmallVector<AffineMap, 4> getReassociationMaps();
+
   SmallVector<ReassociationExprs, 4> getReassociationExprs();
+
   SmallVector<ReassociationIndices, 4> getReassociationIndices() {
     SmallVector<ReassociationIndices, 4> reassociationIndices;
     for (auto attr : reassociation())
@@ -1559,13 +1565,16 @@ public:
           })));
     return reassociationIndices;
   };
+
   MemRefType getSrcType() { return src().getType().cast<MemRefType>(); }
+
   MemRefType getResultType() { return result().getType().cast<MemRefType>(); }
+
   Value getViewSource() { return src(); }
 };
 } // namespace memref
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::ExpandShapeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::ExpandShapeOp)
 
 namespace mlir {
 namespace memref {
@@ -1648,7 +1657,7 @@ public:
 };
 } // namespace memref
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::GetGlobalOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::GetGlobalOp)
 
 namespace mlir {
 namespace memref {
@@ -1799,10 +1808,13 @@ public:
   bool isUninitialized() {
     return !isExternal() && initial_value().getValue().isa<UnitAttr>();
   }
+  /// Returns the constant initial value if the memref.global is a constant,
+  /// or null otherwise.
+  ElementsAttr getConstantInitValue();
 };
 } // namespace memref
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::GlobalOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::GlobalOp)
 
 namespace mlir {
 namespace memref {
@@ -1922,7 +1934,7 @@ public:
 };
 } // namespace memref
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::PrefetchOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::PrefetchOp)
 
 namespace mlir {
 namespace memref {
@@ -1981,7 +1993,7 @@ public:
 };
 } // namespace memref
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::RankOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::RankOp)
 
 namespace mlir {
 namespace memref {
@@ -2094,6 +2106,7 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult verify();
+  ::mlir::OpFoldResult fold(::llvm::ArrayRef<::mlir::Attribute> operands);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
   void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -2141,7 +2154,7 @@ public:
 };
 } // namespace memref
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::ReinterpretCastOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::ReinterpretCastOp)
 
 namespace mlir {
 namespace memref {
@@ -2207,7 +2220,7 @@ public:
 };
 } // namespace memref
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::ReshapeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::ReshapeOp)
 
 namespace mlir {
 namespace memref {
@@ -2285,7 +2298,7 @@ public:
 };
 } // namespace memref
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::StoreOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::StoreOp)
 
 namespace mlir {
 namespace memref {
@@ -2374,7 +2387,7 @@ public:
 };
 } // namespace memref
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::TransposeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::TransposeOp)
 
 namespace mlir {
 namespace memref {
@@ -2454,7 +2467,7 @@ public:
 };
 } // namespace memref
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::ViewOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::ViewOp)
 
 namespace mlir {
 namespace memref {
@@ -2645,7 +2658,7 @@ public:
 };
 } // namespace memref
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::SubViewOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::SubViewOp)
 
 namespace mlir {
 namespace memref {
@@ -2706,7 +2719,7 @@ public:
 };
 } // namespace memref
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::TensorStoreOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::memref::TensorStoreOp)
 
 
 #endif  // GET_OP_CLASSES

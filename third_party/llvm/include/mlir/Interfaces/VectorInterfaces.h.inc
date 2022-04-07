@@ -131,12 +131,12 @@ namespace detail {
     }
     bool isDimInBounds(unsigned dim) {
       return (*static_cast<ConcreteOp *>(this)).isBroadcastDim(dim)
-            || ((*static_cast<ConcreteOp *>(this)).in_bounds()
-                && (*static_cast<ConcreteOp *>(this)).in_bounds()->template cast<::mlir::ArrayAttr>()[dim]
+            || ((*static_cast<ConcreteOp *>(this)).getInBounds()
+                && (*static_cast<ConcreteOp *>(this)).getInBounds()->template cast<::mlir::ArrayAttr>()[dim]
                                     .template cast<::mlir::BoolAttr>().getValue());
     }
     bool isBroadcastDim(unsigned idx) {
-      auto expr = (*static_cast<ConcreteOp *>(this)).permutation_map().getResult(idx);
+      auto expr = (*static_cast<ConcreteOp *>(this)).getPermutationMap().getResult(idx);
         return expr.template isa<::mlir::AffineConstantExpr>() &&
                expr.template dyn_cast<::mlir::AffineConstantExpr>().getValue() == 0;
     }
@@ -148,19 +148,19 @@ namespace detail {
         return false;
     }
     ::mlir::ShapedType getShapedType() {
-      return (*static_cast<ConcreteOp *>(this)).source().getType().template cast<::mlir::ShapedType>();
+      return (*static_cast<ConcreteOp *>(this)).getSource().getType().template cast<::mlir::ShapedType>();
     }
     ::mlir::VectorType getVectorType() {
-      return (*static_cast<ConcreteOp *>(this)).vector().getType().template dyn_cast<::mlir::VectorType>();
+      return (*static_cast<ConcreteOp *>(this)).getVector().getType().template dyn_cast<::mlir::VectorType>();
     }
     ::mlir::VectorType getMaskType() {
-      return (*static_cast<ConcreteOp *>(this)).mask()
+      return (*static_cast<ConcreteOp *>(this)).getMask()
             ? ::mlir::vector::detail::transferMaskType(
-                (*static_cast<ConcreteOp *>(this)).getVectorType(), (*static_cast<ConcreteOp *>(this)).permutation_map())
+                (*static_cast<ConcreteOp *>(this)).getVectorType(), (*static_cast<ConcreteOp *>(this)).getPermutationMap())
             : ::mlir::VectorType();
     }
     unsigned getTransferRank() {
-      return (*static_cast<ConcreteOp *>(this)).permutation_map().getNumResults();
+      return (*static_cast<ConcreteOp *>(this)).getPermutationMap().getNumResults();
     }
     unsigned getLeadingShapedRank() {
       return (*static_cast<ConcreteOp *>(this)).getShapedType().getRank() - (*static_cast<ConcreteOp *>(this)).getTransferRank();
@@ -195,19 +195,19 @@ bool detail::VectorTransferOpInterfaceInterfaceTraits::Model<ConcreteOp>::isDimI
 }
 template<typename ConcreteOp>
 ::mlir::Value detail::VectorTransferOpInterfaceInterfaceTraits::Model<ConcreteOp>::source(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).source();
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getSource();
 }
 template<typename ConcreteOp>
 ::mlir::Value detail::VectorTransferOpInterfaceInterfaceTraits::Model<ConcreteOp>::vector(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).vector();
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getVector();
 }
 template<typename ConcreteOp>
 ::mlir::ValueRange detail::VectorTransferOpInterfaceInterfaceTraits::Model<ConcreteOp>::indices(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).indices();
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getIndices();
 }
 template<typename ConcreteOp>
 ::mlir::AffineMap detail::VectorTransferOpInterfaceInterfaceTraits::Model<ConcreteOp>::permutation_map(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).permutation_map();
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getPermutationMap();
 }
 template<typename ConcreteOp>
 bool detail::VectorTransferOpInterfaceInterfaceTraits::Model<ConcreteOp>::isBroadcastDim(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, unsigned idx) {
@@ -219,7 +219,7 @@ bool detail::VectorTransferOpInterfaceInterfaceTraits::Model<ConcreteOp>::hasBro
 }
 template<typename ConcreteOp>
 ::mlir::Optional<::mlir::ArrayAttr> detail::VectorTransferOpInterfaceInterfaceTraits::Model<ConcreteOp>::in_bounds(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).in_bounds();
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getInBounds();
 }
 template<typename ConcreteOp>
 ::mlir::ShapedType detail::VectorTransferOpInterfaceInterfaceTraits::Model<ConcreteOp>::getShapedType(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
@@ -328,13 +328,13 @@ return "permutation_map";
 template<typename ConcreteModel, typename ConcreteOp>
 bool detail::VectorTransferOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::isDimInBounds(::mlir::Operation *tablegen_opaque_val, unsigned dim) const {
 return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).isBroadcastDim(dim)
-            || ((llvm::cast<ConcreteOp>(tablegen_opaque_val)).in_bounds()
-                && (llvm::cast<ConcreteOp>(tablegen_opaque_val)).in_bounds()->template cast<::mlir::ArrayAttr>()[dim]
+            || ((llvm::cast<ConcreteOp>(tablegen_opaque_val)).getInBounds()
+                && (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getInBounds()->template cast<::mlir::ArrayAttr>()[dim]
                                     .template cast<::mlir::BoolAttr>().getValue());
 }
 template<typename ConcreteModel, typename ConcreteOp>
 bool detail::VectorTransferOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::isBroadcastDim(::mlir::Operation *tablegen_opaque_val, unsigned idx) const {
-auto expr = (llvm::cast<ConcreteOp>(tablegen_opaque_val)).permutation_map().getResult(idx);
+auto expr = (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getPermutationMap().getResult(idx);
         return expr.template isa<::mlir::AffineConstantExpr>() &&
                expr.template dyn_cast<::mlir::AffineConstantExpr>().getValue() == 0;
 }
@@ -348,22 +348,22 @@ for (unsigned i = 0, rank = getTransferRank(); i < rank; ++i) {
 }
 template<typename ConcreteModel, typename ConcreteOp>
 ::mlir::ShapedType detail::VectorTransferOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getShapedType(::mlir::Operation *tablegen_opaque_val) const {
-return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).source().getType().template cast<::mlir::ShapedType>();
+return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getSource().getType().template cast<::mlir::ShapedType>();
 }
 template<typename ConcreteModel, typename ConcreteOp>
 ::mlir::VectorType detail::VectorTransferOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getVectorType(::mlir::Operation *tablegen_opaque_val) const {
-return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).vector().getType().template dyn_cast<::mlir::VectorType>();
+return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getVector().getType().template dyn_cast<::mlir::VectorType>();
 }
 template<typename ConcreteModel, typename ConcreteOp>
 ::mlir::VectorType detail::VectorTransferOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getMaskType(::mlir::Operation *tablegen_opaque_val) const {
-return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).mask()
+return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getMask()
             ? ::mlir::vector::detail::transferMaskType(
-                (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getVectorType(), (llvm::cast<ConcreteOp>(tablegen_opaque_val)).permutation_map())
+                (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getVectorType(), (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getPermutationMap())
             : ::mlir::VectorType();
 }
 template<typename ConcreteModel, typename ConcreteOp>
 unsigned detail::VectorTransferOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getTransferRank(::mlir::Operation *tablegen_opaque_val) const {
-return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).permutation_map().getNumResults();
+return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getPermutationMap().getNumResults();
 }
 template<typename ConcreteModel, typename ConcreteOp>
 unsigned detail::VectorTransferOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getLeadingShapedRank(::mlir::Operation *tablegen_opaque_val) const {

@@ -628,21 +628,21 @@ public:
   static UnitAttr get(MLIRContext *context);
 };
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::AffineMapAttr)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::ArrayAttr)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::DenseIntOrFPElementsAttr)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::DenseStringElementsAttr)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::DictionaryAttr)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::FloatAttr)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::IntegerAttr)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::IntegerSetAttr)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::OpaqueAttr)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::OpaqueElementsAttr)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::SparseElementsAttr)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::StringAttr)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::SymbolRefAttr)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::TypeAttr)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::UnitAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::AffineMapAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ArrayAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::DenseIntOrFPElementsAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::DenseStringElementsAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::DictionaryAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::FloatAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::IntegerAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::IntegerSetAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::OpaqueAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::OpaqueElementsAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::SparseElementsAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::StringAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::SymbolRefAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::TypeAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::UnitAttr)
 
 #endif  // GET_ATTRDEF_CLASSES
 

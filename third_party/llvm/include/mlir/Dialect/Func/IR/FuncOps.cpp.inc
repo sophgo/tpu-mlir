@@ -12,6 +12,7 @@
 ::mlir::func::CallIndirectOp,
 ::mlir::func::CallOp,
 ::mlir::func::ConstantOp,
+::mlir::func::FuncOp,
 ::mlir::func::ReturnOp
 #endif  // GET_OP_LIST
 
@@ -51,6 +52,35 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_FuncOps0(
   if (attr && !((attr.isa<::mlir::FlatSymbolRefAttr>()))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: flat symbol reference attribute";
+  }
+  return ::mlir::success();
+}
+
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_FuncOps1(
+    ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
+  if (attr && !((attr.isa<::mlir::StringAttr>()))) {
+    return op->emitOpError("attribute '") << attrName
+        << "' failed to satisfy constraint: string attribute";
+  }
+  return ::mlir::success();
+}
+
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_FuncOps2(
+    ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
+  if (attr && !(((attr.isa<::mlir::TypeAttr>())) && ((attr.cast<::mlir::TypeAttr>().getValue().isa<::mlir::FunctionType>())))) {
+    return op->emitOpError("attribute '") << attrName
+        << "' failed to satisfy constraint: type attribute of function type";
+  }
+  return ::mlir::success();
+}
+
+static ::mlir::LogicalResult __mlir_ods_local_region_constraint_FuncOps0(
+    ::mlir::Operation *op, ::mlir::Region &region, ::llvm::StringRef regionName,
+    unsigned regionIndex) {
+  if (!((true))) {
+    return op->emitOpError("region #") << regionIndex
+        << (regionName.empty() ? " " : " ('" + regionName + "') ")
+        << "failed to verify constraint: any region";
   }
   return ::mlir::success();
 }
@@ -244,10 +274,10 @@ void CallIndirectOp::getCanonicalizationPatterns(::mlir::RewritePatternSet &resu
 }
 
 ::mlir::ParseResult CallIndirectOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType calleeRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> calleeOperands(calleeRawOperands);  ::llvm::SMLoc calleeOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand calleeRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> calleeOperands(calleeRawOperands);  ::llvm::SMLoc calleeOperandsLoc;
   (void)calleeOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> callee_operandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> callee_operandsOperands;
   ::llvm::SMLoc callee_operandsOperandsLoc;
   (void)callee_operandsOperandsLoc;
   ::mlir::Type calleeRawTypes[1];
@@ -309,7 +339,7 @@ void CallIndirectOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace func
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::func::CallIndirectOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::func::CallIndirectOp)
 
 namespace mlir {
 namespace func {
@@ -455,7 +485,7 @@ void CallOp::setCalleeAttr(::mlir::FlatSymbolRefAttr attr) {
 void CallOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, FuncOp callee, ValueRange operands) {
       odsState.addOperands(operands);
       odsState.addAttribute("callee", SymbolRefAttr::get(callee));
-      odsState.addTypes(callee.getType().getResults());
+      odsState.addTypes(callee.getFunctionType().getResults());
     
 }
 
@@ -531,7 +561,7 @@ void CallOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 
 ::mlir::ParseResult CallOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::FlatSymbolRefAttr calleeAttr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> operandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> operandsOperands;
   ::llvm::SMLoc operandsOperandsLoc;
   (void)operandsOperandsLoc;
   ::llvm::ArrayRef<::mlir::Type> operandsTypes;
@@ -579,7 +609,7 @@ void CallOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace func
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::func::CallOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::func::CallOp)
 
 namespace mlir {
 namespace func {
@@ -756,7 +786,259 @@ void ConstantOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace func
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::func::ConstantOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::func::ConstantOp)
+
+namespace mlir {
+namespace func {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::func::FuncOp definitions
+//===----------------------------------------------------------------------===//
+
+FuncOpAdaptor::FuncOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+
+FuncOpAdaptor::FuncOpAdaptor(FuncOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+
+::mlir::ValueRange FuncOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> FuncOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange FuncOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::DictionaryAttr FuncOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::StringAttr FuncOpAdaptor::getSymNameAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  ::mlir::StringAttr attr = odsAttrs.get("sym_name").cast<::mlir::StringAttr>();
+  return attr;
+}
+
+::llvm::StringRef FuncOpAdaptor::getSymName() {
+  auto attr = getSymNameAttr();
+  return attr.getValue();
+}
+
+::mlir::TypeAttr FuncOpAdaptor::getFunctionTypeAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  ::mlir::TypeAttr attr = odsAttrs.get("function_type").cast<::mlir::TypeAttr>();
+  return attr;
+}
+
+::mlir::FunctionType FuncOpAdaptor::getFunctionType() {
+  auto attr = getFunctionTypeAttr();
+  return attr.getValue().cast<::mlir::FunctionType>();
+}
+
+::mlir::StringAttr FuncOpAdaptor::getSymVisibilityAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  ::mlir::StringAttr attr = odsAttrs.get("sym_visibility").dyn_cast_or_null<::mlir::StringAttr>();
+  return attr;
+}
+
+::llvm::Optional< ::llvm::StringRef > FuncOpAdaptor::getSymVisibility() {
+  auto attr = getSymVisibilityAttr();
+  return attr ? ::llvm::Optional< ::llvm::StringRef >(attr.getValue()) : (::llvm::None);
+}
+
+::mlir::RegionRange FuncOpAdaptor::getRegions() {
+  return odsRegions;
+}
+
+::mlir::Region &FuncOpAdaptor::getBody() {
+  return *odsRegions[0];
+}
+
+::mlir::LogicalResult FuncOpAdaptor::verify(::mlir::Location loc) {
+  {
+    auto tblgen_sym_name = odsAttrs.get("sym_name");
+    if (!tblgen_sym_name)
+      return emitError(loc, "'func.func' op ""requires attribute 'sym_name'");
+
+    if (tblgen_sym_name && !((tblgen_sym_name.isa<::mlir::StringAttr>())))
+      return emitError(loc, "'func.func' op ""attribute 'sym_name' failed to satisfy constraint: string attribute");
+  }
+  {
+    auto tblgen_function_type = odsAttrs.get("function_type");
+    if (!tblgen_function_type)
+      return emitError(loc, "'func.func' op ""requires attribute 'function_type'");
+
+    if (tblgen_function_type && !(((tblgen_function_type.isa<::mlir::TypeAttr>())) && ((tblgen_function_type.cast<::mlir::TypeAttr>().getValue().isa<::mlir::FunctionType>()))))
+      return emitError(loc, "'func.func' op ""attribute 'function_type' failed to satisfy constraint: type attribute of function type");
+  }
+  {
+    auto tblgen_sym_visibility = odsAttrs.get("sym_visibility");
+    if (tblgen_sym_visibility && !((tblgen_sym_visibility.isa<::mlir::StringAttr>())))
+      return emitError(loc, "'func.func' op ""attribute 'sym_visibility' failed to satisfy constraint: string attribute");
+  }
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> FuncOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range FuncOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+std::pair<unsigned, unsigned> FuncOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range FuncOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Region &FuncOp::getBody() {
+  return (*this)->getRegion(0);
+}
+
+::mlir::StringAttr FuncOp::getSymNameAttr() {
+  return (*this)->getAttr(getSymNameAttrName()).cast<::mlir::StringAttr>();
+}
+
+::llvm::StringRef FuncOp::getSymName() {
+  auto attr = getSymNameAttr();
+  return attr.getValue();
+}
+
+::mlir::TypeAttr FuncOp::getFunctionTypeAttr() {
+  return (*this)->getAttr(getFunctionTypeAttrName()).cast<::mlir::TypeAttr>();
+}
+
+::mlir::FunctionType FuncOp::getFunctionType() {
+  auto attr = getFunctionTypeAttr();
+  return attr.getValue().cast<::mlir::FunctionType>();
+}
+
+::mlir::StringAttr FuncOp::getSymVisibilityAttr() {
+  return (*this)->getAttr(getSymVisibilityAttrName()).dyn_cast_or_null<::mlir::StringAttr>();
+}
+
+::llvm::Optional< ::llvm::StringRef > FuncOp::getSymVisibility() {
+  auto attr = getSymVisibilityAttr();
+  return attr ? ::llvm::Optional< ::llvm::StringRef >(attr.getValue()) : (::llvm::None);
+}
+
+void FuncOp::setSymNameAttr(::mlir::StringAttr attr) {
+  (*this)->setAttr(getSymNameAttrName(), attr);
+}
+
+void FuncOp::setFunctionTypeAttr(::mlir::TypeAttr attr) {
+  (*this)->setAttr(getFunctionTypeAttrName(), attr);
+}
+
+void FuncOp::setSymVisibilityAttr(::mlir::StringAttr attr) {
+  (*this)->setAttr(getSymVisibilityAttrName(), attr);
+}
+
+::mlir::Attribute FuncOp::removeSym_visibilityAttr() {
+  return (*this)->removeAttr(getSymVisibilityAttrName());
+}
+
+void FuncOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::StringAttr sym_name, ::mlir::TypeAttr function_type, /*optional*/::mlir::StringAttr sym_visibility) {
+  odsState.addAttribute(getSymNameAttrName(odsState.name), sym_name);
+  odsState.addAttribute(getFunctionTypeAttrName(odsState.name), function_type);
+  if (sym_visibility) {
+  odsState.addAttribute(getSymVisibilityAttrName(odsState.name), sym_visibility);
+  }
+  (void)odsState.addRegion();
+}
+
+void FuncOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::StringAttr sym_name, ::mlir::TypeAttr function_type, /*optional*/::mlir::StringAttr sym_visibility) {
+  odsState.addAttribute(getSymNameAttrName(odsState.name), sym_name);
+  odsState.addAttribute(getFunctionTypeAttrName(odsState.name), function_type);
+  if (sym_visibility) {
+  odsState.addAttribute(getSymVisibilityAttrName(odsState.name), sym_visibility);
+  }
+  (void)odsState.addRegion();
+  assert(resultTypes.size() == 0u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void FuncOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::llvm::StringRef sym_name, ::mlir::FunctionType function_type, /*optional*/::mlir::StringAttr sym_visibility) {
+  odsState.addAttribute(getSymNameAttrName(odsState.name), odsBuilder.getStringAttr(sym_name));
+  odsState.addAttribute(getFunctionTypeAttrName(odsState.name), ::mlir::TypeAttr::get(function_type));
+  if (sym_visibility) {
+  odsState.addAttribute(getSymVisibilityAttrName(odsState.name), sym_visibility);
+  }
+  (void)odsState.addRegion();
+}
+
+void FuncOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::llvm::StringRef sym_name, ::mlir::FunctionType function_type, /*optional*/::mlir::StringAttr sym_visibility) {
+  odsState.addAttribute(getSymNameAttrName(odsState.name), odsBuilder.getStringAttr(sym_name));
+  odsState.addAttribute(getFunctionTypeAttrName(odsState.name), ::mlir::TypeAttr::get(function_type));
+  if (sym_visibility) {
+  odsState.addAttribute(getSymVisibilityAttrName(odsState.name), sym_visibility);
+  }
+  (void)odsState.addRegion();
+  assert(resultTypes.size() == 0u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void FuncOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 0u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  for (unsigned i = 0; i != 1; ++i)
+    (void)odsState.addRegion();
+  assert(resultTypes.size() == 0u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult FuncOp::verifyInvariantsImpl() {
+  {
+    auto tblgen_sym_name = (*this)->getAttr(getSymNameAttrName());
+    if (!tblgen_sym_name)
+      return emitOpError("requires attribute 'sym_name'");
+
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_FuncOps1(*this, tblgen_sym_name, "sym_name")))
+      return ::mlir::failure();
+  }
+  {
+    auto tblgen_function_type = (*this)->getAttr(getFunctionTypeAttrName());
+    if (!tblgen_function_type)
+      return emitOpError("requires attribute 'function_type'");
+
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_FuncOps2(*this, tblgen_function_type, "function_type")))
+      return ::mlir::failure();
+  }
+  {
+    auto tblgen_sym_visibility = (*this)->getAttr(getSymVisibilityAttrName());
+    if (::mlir::failed(__mlir_ods_local_attr_constraint_FuncOps1(*this, tblgen_sym_visibility, "sym_visibility")))
+      return ::mlir::failure();
+  }
+  {
+    unsigned index = 0; (void)index;
+
+    for (auto &region : ::llvm::makeMutableArrayRef((*this)->getRegion(0)))
+      if (::mlir::failed(__mlir_ods_local_region_constraint_FuncOps0(*this, region, "body", index++)))
+        return ::mlir::failure();
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult FuncOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+} // namespace func
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::func::FuncOp)
 
 namespace mlir {
 namespace func {
@@ -889,7 +1171,7 @@ void ReturnOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::ParseResult ReturnOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> operandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> operandsOperands;
   ::llvm::SMLoc operandsOperandsLoc;
   (void)operandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> operandsTypes;
@@ -927,7 +1209,7 @@ void ReturnOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace func
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::func::ReturnOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::func::ReturnOp)
 
 
 #endif  // GET_OP_CLASSES

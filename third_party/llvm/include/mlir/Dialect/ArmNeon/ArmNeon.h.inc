@@ -93,7 +93,7 @@ public:
 };
 } // namespace arm_neon
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_neon::SMullOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_neon::SMullOp)
 
 namespace mlir {
 namespace arm_neon {
@@ -159,7 +159,7 @@ public:
 };
 } // namespace arm_neon
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_neon::Sdot2dOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_neon::Sdot2dOp)
 
 namespace mlir {
 namespace arm_neon {
@@ -224,7 +224,7 @@ public:
 };
 } // namespace arm_neon
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_neon::SdotOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::arm_neon::SdotOp)
 
 
 #endif  // GET_OP_CLASSES

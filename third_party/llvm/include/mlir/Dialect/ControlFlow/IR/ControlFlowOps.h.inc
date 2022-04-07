@@ -121,7 +121,7 @@ public:
 };
 } // namespace cf
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::cf::AssertOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::cf::AssertOp)
 
 namespace mlir {
 namespace cf {
@@ -189,7 +189,7 @@ public:
 };
 } // namespace cf
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::cf::BranchOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::cf::BranchOp)
 
 namespace mlir {
 namespace cf {
@@ -328,7 +328,7 @@ public:
 };
 } // namespace cf
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::cf::CondBranchOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::cf::CondBranchOp)
 
 namespace mlir {
 namespace cf {
@@ -457,7 +457,7 @@ public:
 };
 } // namespace cf
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::cf::SwitchOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::cf::SwitchOp)
 
 
 #endif  // GET_OP_CLASSES

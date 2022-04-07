@@ -74,6 +74,8 @@ typedef enum {
     dnnl_s8 = 5,
     /// 8-bit unsigned integer.
     dnnl_u8 = 6,
+    /// 64-bit/double-precision floating point.
+    dnnl_f64 = 7,
 } dnnl_data_type_t;
 
 /// Memory format kind
@@ -713,6 +715,10 @@ typedef enum {
     dnnl_adbc,
     dnnl_ABcde16a16b2a,
     dnnl_aBCdef16b16c2b,
+    dnnl_Acedb16a,
+    dnnl_aBdfec16b,
+    dnnl_abdEC64e2c,
+    dnnl_abdEC64e4c,
 
     /// Just a sentinel, not real memory format tag. Must be changed after new
     /// format tag is added.
@@ -847,6 +853,8 @@ typedef enum {
     dnnl_ldgOi32o = dnnl_abdEc32e,
     dnnl_ldgOI32o2i = dnnl_abdEC32e2c,
     dnnl_ldgOI32o4i = dnnl_abdEC32e4c,
+    dnnl_ldgOI64o2i = dnnl_abdEC64e2c,
+    dnnl_ldgOI64o4i = dnnl_abdEC64e4c,
     dnnl_ldgIo32i = dnnl_abdCe32c,
     dnnl_ldgIO32i2o = dnnl_abdCE32c2e,
 
@@ -982,6 +990,7 @@ typedef enum {
     dnnl_OdhwI16o4i = dnnl_AcdeB16a4b,
     dnnl_Odhwi4o = dnnl_Acdeb4a,
     dnnl_Odhwi8o = dnnl_Acdeb8a,
+    dnnl_Odwhi16o = dnnl_Acedb16a,
     dnnl_OIdhw16i16o = dnnl_ABcde16b16a,
     dnnl_OIdhw16i32o = dnnl_ABcde16b32a,
     dnnl_OIdhw16i64o = dnnl_ABcde16b64a,
@@ -1102,6 +1111,7 @@ typedef enum {
     dnnl_gOdhwI16o4i = dnnl_aBdefC16b4c,
     dnnl_gOdhwi4o = dnnl_aBdefc4b,
     dnnl_gOdhwi8o = dnnl_aBdefc8b,
+    dnnl_gOdwhi16o = dnnl_aBdfec16b,
     dnnl_gOIdhw16i16o = dnnl_aBCdef16c16b,
     dnnl_gOIdhw4i16o4i = dnnl_aBCdef4c16b4c,
     dnnl_gOIdhw16i16o4i = dnnl_aBCdef16c16b4c,
@@ -1439,6 +1449,8 @@ typedef enum {
     dnnl_eltwise_bounded_relu = 0x8f,
     /// Eltwise: soft_relu
     dnnl_eltwise_soft_relu = 0x9f,
+    /// Eltwise: soft_relu version 2
+    dnnl_eltwise_soft_relu_v2 = 0xa0,
     /// Eltwise: logistic
     dnnl_eltwise_logistic = 0xaf,
     /// Eltwise: exponent
@@ -1963,7 +1975,7 @@ typedef struct {
     /// The kind of eltwise algorithm. Possible values: #dnnl_eltwise_relu,
     /// #dnnl_eltwise_tanh, #dnnl_eltwise_elu, #dnnl_eltwise_square,
     /// #dnnl_eltwise_abs, #dnnl_eltwise_sqrt, #dnnl_eltwise_linear,
-    /// #dnnl_eltwise_bounded_relu, #dnnl_eltwise_soft_relu,
+    /// #dnnl_eltwise_bounded_relu, #dnnl_eltwise_soft_relu, #dnnl_eltwise_soft_relu_v2,
     /// #dnnl_eltwise_logistic, #dnnl_eltwise_exp, #dnnl_eltwise_gelu_tanh,
     /// #dnnl_eltwise_swish, #dnnl_eltwise_log, #dnnl_eltwise_clip,
     /// #dnnl_eltwise_clip_v2, #dnnl_eltwise_pow, #dnnl_eltwise_gelu_erf,
@@ -1991,6 +2003,7 @@ typedef struct {
     ///  - #dnnl_eltwise_linear: @p alpha -- scale, @p beta -- shift
     ///  - #dnnl_eltwise_bounded_relu: @p alpha -- upper bound, @p beta ignored
     ///  - #dnnl_eltwise_soft_relu: @p alpha and @p beta ignored
+    ///  - #dnnl_eltwise_soft_relu_v2: @p alpha -- soft_relu_v2 arg scaling, @p beta ignored
     ///  - #dnnl_eltwise_logistic: @p alpha and @p beta ignored
     ///  - #dnnl_eltwise_exp: @p alpha and @p beta ignored
     ///  - #dnnl_eltwise_gelu_tanh: @p alpha and @p beta ignored
@@ -2901,8 +2914,7 @@ typedef struct {
 ///
 /// Query kind                      | Type of query result
 /// --------------------------------|-----------------------------
-/// #dnnl_query_engine              | #dnnl_engine_t *
-/// #dnnl_query_scratchpad_engine   | #dnnl_engine_t *
+/// dnnl_query_*_engine             | #dnnl_engine_t *
 /// #dnnl_query_primitive_kind      | #dnnl_primitive_kind_t *
 /// dnnl_query_*_s32                | int *
 /// dnnl_query_*_s64                | #dnnl_dim_t * (same as int64_t *)

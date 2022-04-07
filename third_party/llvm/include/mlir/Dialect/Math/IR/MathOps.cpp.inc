@@ -197,8 +197,8 @@ void AbsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult AbsOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -243,7 +243,7 @@ void AbsOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace math
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::math::AbsOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::math::AbsOp)
 
 namespace mlir {
 namespace math {
@@ -398,11 +398,11 @@ void Atan2Op::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
 }
 
 ::mlir::ParseResult Atan2Op::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -458,7 +458,7 @@ void Atan2Op::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace math
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::math::Atan2Op)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::math::Atan2Op)
 
 namespace mlir {
 namespace math {
@@ -590,8 +590,8 @@ void AtanOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult AtanOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -636,7 +636,7 @@ void AtanOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace math
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::math::AtanOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::math::AtanOp)
 
 namespace mlir {
 namespace math {
@@ -768,8 +768,8 @@ void CeilOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult CeilOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -814,7 +814,7 @@ void CeilOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace math
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::math::CeilOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::math::CeilOp)
 
 namespace mlir {
 namespace math {
@@ -969,11 +969,11 @@ void CopySignOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult CopySignOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -1029,7 +1029,7 @@ void CopySignOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace math
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::math::CopySignOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::math::CopySignOp)
 
 namespace mlir {
 namespace math {
@@ -1161,8 +1161,8 @@ void CosOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult CosOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -1207,7 +1207,7 @@ void CosOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace math
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::math::CosOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::math::CosOp)
 
 namespace mlir {
 namespace math {
@@ -1339,8 +1339,8 @@ void CountLeadingZerosOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operation
 }
 
 ::mlir::ParseResult CountLeadingZerosOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -1385,7 +1385,7 @@ void CountLeadingZerosOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects
 
 } // namespace math
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::math::CountLeadingZerosOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::math::CountLeadingZerosOp)
 
 namespace mlir {
 namespace math {
@@ -1517,8 +1517,8 @@ void CountTrailingZerosOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operatio
 }
 
 ::mlir::ParseResult CountTrailingZerosOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -1563,7 +1563,7 @@ void CountTrailingZerosOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffect
 
 } // namespace math
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::math::CountTrailingZerosOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::math::CountTrailingZerosOp)
 
 namespace mlir {
 namespace math {
@@ -1695,8 +1695,8 @@ void CtPopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
 }
 
 ::mlir::ParseResult CtPopOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -1741,7 +1741,7 @@ void CtPopOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace math
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::math::CtPopOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::math::CtPopOp)
 
 namespace mlir {
 namespace math {
@@ -1873,8 +1873,8 @@ void ErfOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult ErfOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -1919,7 +1919,7 @@ void ErfOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace math
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::math::ErfOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::math::ErfOp)
 
 namespace mlir {
 namespace math {
@@ -2051,8 +2051,8 @@ void Exp2Op::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult Exp2Op::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -2097,7 +2097,7 @@ void Exp2Op::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace math
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::math::Exp2Op)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::math::Exp2Op)
 
 namespace mlir {
 namespace math {
@@ -2229,8 +2229,8 @@ void ExpM1Op::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
 }
 
 ::mlir::ParseResult ExpM1Op::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -2275,7 +2275,7 @@ void ExpM1Op::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace math
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::math::ExpM1Op)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::math::ExpM1Op)
 
 namespace mlir {
 namespace math {
@@ -2407,8 +2407,8 @@ void ExpOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult ExpOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -2453,7 +2453,7 @@ void ExpOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace math
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::math::ExpOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::math::ExpOp)
 
 namespace mlir {
 namespace math {
@@ -2585,8 +2585,8 @@ void FloorOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
 }
 
 ::mlir::ParseResult FloorOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -2631,7 +2631,7 @@ void FloorOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace math
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::math::FloorOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::math::FloorOp)
 
 namespace mlir {
 namespace math {
@@ -2809,14 +2809,14 @@ void FmaOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult FmaOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType aRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> aOperands(aRawOperands);  ::llvm::SMLoc aOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand aRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> aOperands(aRawOperands);  ::llvm::SMLoc aOperandsLoc;
   (void)aOperandsLoc;
-  ::mlir::OpAsmParser::OperandType bRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> bOperands(bRawOperands);  ::llvm::SMLoc bOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand bRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> bOperands(bRawOperands);  ::llvm::SMLoc bOperandsLoc;
   (void)bOperandsLoc;
-  ::mlir::OpAsmParser::OperandType cRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> cOperands(cRawOperands);  ::llvm::SMLoc cOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand cRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> cOperands(cRawOperands);  ::llvm::SMLoc cOperandsLoc;
   (void)cOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -2883,7 +2883,7 @@ void FmaOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace math
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::math::FmaOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::math::FmaOp)
 
 namespace mlir {
 namespace math {
@@ -3015,8 +3015,8 @@ void Log10Op::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
 }
 
 ::mlir::ParseResult Log10Op::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -3061,7 +3061,7 @@ void Log10Op::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace math
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::math::Log10Op)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::math::Log10Op)
 
 namespace mlir {
 namespace math {
@@ -3193,8 +3193,8 @@ void Log1pOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
 }
 
 ::mlir::ParseResult Log1pOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -3239,7 +3239,7 @@ void Log1pOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace math
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::math::Log1pOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::math::Log1pOp)
 
 namespace mlir {
 namespace math {
@@ -3371,8 +3371,8 @@ void Log2Op::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult Log2Op::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -3417,7 +3417,7 @@ void Log2Op::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace math
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::math::Log2Op)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::math::Log2Op)
 
 namespace mlir {
 namespace math {
@@ -3549,8 +3549,8 @@ void LogOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult LogOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -3595,7 +3595,7 @@ void LogOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace math
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::math::LogOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::math::LogOp)
 
 namespace mlir {
 namespace math {
@@ -3750,11 +3750,11 @@ void PowFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult PowFOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -3810,7 +3810,7 @@ void PowFOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace math
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::math::PowFOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::math::PowFOp)
 
 namespace mlir {
 namespace math {
@@ -3942,8 +3942,8 @@ void RsqrtOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
 }
 
 ::mlir::ParseResult RsqrtOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -3988,7 +3988,7 @@ void RsqrtOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace math
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::math::RsqrtOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::math::RsqrtOp)
 
 namespace mlir {
 namespace math {
@@ -4120,8 +4120,8 @@ void SinOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult SinOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -4166,7 +4166,7 @@ void SinOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace math
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::math::SinOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::math::SinOp)
 
 namespace mlir {
 namespace math {
@@ -4298,8 +4298,8 @@ void SqrtOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult SqrtOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -4344,7 +4344,7 @@ void SqrtOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace math
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::math::SqrtOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::math::SqrtOp)
 
 namespace mlir {
 namespace math {
@@ -4476,8 +4476,8 @@ void TanhOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult TanhOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType operandRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand operandRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> operandOperands(operandRawOperands);  ::llvm::SMLoc operandOperandsLoc;
   (void)operandOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -4522,7 +4522,7 @@ void TanhOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace math
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::math::TanhOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::math::TanhOp)
 
 
 #endif  // GET_OP_CLASSES

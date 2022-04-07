@@ -6,7 +6,7 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
-DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::MemRefDialect)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::MemRefDialect)
 namespace mlir {
 namespace memref {
 

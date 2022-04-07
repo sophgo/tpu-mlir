@@ -54,6 +54,38 @@ llvm::Optional<::mlir::spirv::Version> AddressOfOp::getMaxVersion() {
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> tblgen_overall = {};
   return tblgen_overall;
 }
+::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> AssumeTrueKHROp::getCapabilities() {
+  ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> tblgen_overall = {};
+  {
+    static const ::mlir::spirv::Capability caps[] = {::mlir::spirv::Capability::ExpectAssumeKHR}; ArrayRef<::mlir::spirv::Capability> ref(caps, ::llvm::array_lengthof(caps));
+    tblgen_overall.emplace_back(ref);
+  }
+  return tblgen_overall;
+}
+llvm::Optional<::mlir::spirv::Version> AssumeTrueKHROp::getMinVersion() {
+  llvm::Optional<::mlir::spirv::Version> tblgen_overall = ::llvm::None;
+  {
+    
+    { if (tblgen_overall.hasValue()) { tblgen_overall = static_cast<::mlir::spirv::Version>(std::max(*tblgen_overall, ::mlir::spirv::Version::V_1_0)); } else { tblgen_overall = ::mlir::spirv::Version::V_1_0; }};
+  }
+  return tblgen_overall;
+}
+llvm::Optional<::mlir::spirv::Version> AssumeTrueKHROp::getMaxVersion() {
+  llvm::Optional<::mlir::spirv::Version> tblgen_overall = ::llvm::None;
+  {
+    
+    { if (tblgen_overall.hasValue()) { tblgen_overall = static_cast<::mlir::spirv::Version>(std::min(*tblgen_overall, ::mlir::spirv::Version::V_1_5)); } else { tblgen_overall = ::mlir::spirv::Version::V_1_5; }};
+  }
+  return tblgen_overall;
+}
+::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> AssumeTrueKHROp::getExtensions() {
+  ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> tblgen_overall = {};
+  {
+    static const ::mlir::spirv::Extension exts[] = {::mlir::spirv::Extension::SPV_KHR_expect_assume}; ArrayRef<::mlir::spirv::Extension> ref(exts, ::llvm::array_lengthof(exts));
+    tblgen_overall.emplace_back(ref);
+  }
+  return tblgen_overall;
+}
 ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> AtomicAndOp::getCapabilities() {
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> tblgen_overall = {};
   {
@@ -5913,6 +5945,30 @@ llvm::Optional<::mlir::spirv::Version> VectorShuffleOp::getMaxVersion() {
   return tblgen_overall;
 }
 ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> VectorShuffleOp::getExtensions() {
+  ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> tblgen_overall = {};
+  return tblgen_overall;
+}
+::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> VectorTimesScalarOp::getCapabilities() {
+  ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> tblgen_overall = {};
+  return tblgen_overall;
+}
+llvm::Optional<::mlir::spirv::Version> VectorTimesScalarOp::getMinVersion() {
+  llvm::Optional<::mlir::spirv::Version> tblgen_overall = ::llvm::None;
+  {
+    
+    { if (tblgen_overall.hasValue()) { tblgen_overall = static_cast<::mlir::spirv::Version>(std::max(*tblgen_overall, ::mlir::spirv::Version::V_1_0)); } else { tblgen_overall = ::mlir::spirv::Version::V_1_0; }};
+  }
+  return tblgen_overall;
+}
+llvm::Optional<::mlir::spirv::Version> VectorTimesScalarOp::getMaxVersion() {
+  llvm::Optional<::mlir::spirv::Version> tblgen_overall = ::llvm::None;
+  {
+    
+    { if (tblgen_overall.hasValue()) { tblgen_overall = static_cast<::mlir::spirv::Version>(std::min(*tblgen_overall, ::mlir::spirv::Version::V_1_5)); } else { tblgen_overall = ::mlir::spirv::Version::V_1_5; }};
+  }
+  return tblgen_overall;
+}
+::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> VectorTimesScalarOp::getExtensions() {
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> tblgen_overall = {};
   return tblgen_overall;
 }

@@ -38,4 +38,4 @@ public:
   };
 } // namespace pdl_interp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::PDLInterpDialect)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::pdl_interp::PDLInterpDialect)

@@ -191,7 +191,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_MemRefOps2(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_MemRefOps3(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); })); })))) {
+  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))); })))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: Array of 64-bit integer array attributes";
   }
@@ -272,7 +272,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_MemRefOps11(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_MemRefOps12(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); })))) {
+  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); })))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: 64-bit integer array attribute";
   }
@@ -470,8 +470,8 @@ void AssumeAlignmentOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
 }
 
 ::mlir::ParseResult AssumeAlignmentOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType memrefRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> memrefOperands(memrefRawOperands);  ::llvm::SMLoc memrefOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand memrefRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> memrefOperands(memrefRawOperands);  ::llvm::SMLoc memrefOperandsLoc;
   (void)memrefOperandsLoc;
   ::mlir::IntegerAttr alignmentAttr;
   ::mlir::Type memrefRawTypes[1];
@@ -523,7 +523,7 @@ void AssumeAlignmentOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace memref
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::AssumeAlignmentOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::AssumeAlignmentOp)
 
 namespace mlir {
 namespace memref {
@@ -780,13 +780,13 @@ void AtomicRMWOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 
 ::mlir::ParseResult AtomicRMWOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::arith::AtomicRMWKindAttr kindAttr;
-  ::mlir::OpAsmParser::OperandType valueRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand valueRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
   (void)valueOperandsLoc;
-  ::mlir::OpAsmParser::OperandType memrefRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> memrefOperands(memrefRawOperands);  ::llvm::SMLoc memrefOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand memrefRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> memrefOperands(memrefRawOperands);  ::llvm::SMLoc memrefOperandsLoc;
   (void)memrefOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> indicesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
   ::llvm::SMLoc indicesOperandsLoc;
   (void)indicesOperandsLoc;
   ::mlir::Type valueRawTypes[1];
@@ -935,7 +935,7 @@ void AtomicRMWOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace memref
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::AtomicRMWOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::AtomicRMWOp)
 
 namespace mlir {
 namespace memref {
@@ -1042,8 +1042,8 @@ void AtomicYieldOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
 }
 
 ::mlir::ParseResult AtomicYieldOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType resultRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> resultOperands(resultRawOperands);  ::llvm::SMLoc resultOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand resultRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> resultOperands(resultRawOperands);  ::llvm::SMLoc resultOperandsLoc;
   (void)resultOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -1087,7 +1087,7 @@ void AtomicYieldOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effe
 
 } // namespace memref
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::AtomicYieldOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::AtomicYieldOp)
 
 namespace mlir {
 namespace memref {
@@ -1214,11 +1214,11 @@ void CopyOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 }
 
 ::mlir::ParseResult CopyOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType sourceRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand sourceRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
   (void)sourceOperandsLoc;
-  ::mlir::OpAsmParser::OperandType targetRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> targetOperands(targetRawOperands);  ::llvm::SMLoc targetOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand targetRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> targetOperands(targetRawOperands);  ::llvm::SMLoc targetOperandsLoc;
   (void)targetOperandsLoc;
   ::mlir::Type sourceRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> sourceTypes(sourceRawTypes);
@@ -1297,7 +1297,7 @@ void CopyOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace memref
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::CopyOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::CopyOp)
 
 namespace mlir {
 namespace memref {
@@ -1469,7 +1469,7 @@ std::pair<unsigned, unsigned> GenericAtomicRMWOp::getODSResultIndexAndLength(uns
 
 } // namespace memref
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::GenericAtomicRMWOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::GenericAtomicRMWOp)
 
 namespace mlir {
 namespace memref {
@@ -1650,10 +1650,10 @@ void LoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 }
 
 ::mlir::ParseResult LoadOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType memrefRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> memrefOperands(memrefRawOperands);  ::llvm::SMLoc memrefOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand memrefRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> memrefOperands(memrefRawOperands);  ::llvm::SMLoc memrefOperandsLoc;
   (void)memrefOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> indicesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
   ::llvm::SMLoc indicesOperandsLoc;
   (void)indicesOperandsLoc;
   ::mlir::Type memrefRawTypes[1];
@@ -1721,7 +1721,7 @@ void LoadOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace memref
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::LoadOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::LoadOp)
 
 namespace mlir {
 namespace memref {
@@ -1972,10 +1972,10 @@ void AllocOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 ::mlir::ParseResult AllocOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> dynamicSizesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> dynamicSizesOperands;
   ::llvm::SMLoc dynamicSizesOperandsLoc;
   (void)dynamicSizesOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> symbolOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> symbolOperandsOperands;
   ::llvm::SMLoc symbolOperandsOperandsLoc;
   (void)symbolOperandsOperandsLoc;
   ::mlir::Type memrefRawTypes[1];
@@ -2045,7 +2045,7 @@ void AllocOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace memref
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::AllocOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::AllocOp)
 
 namespace mlir {
 namespace memref {
@@ -2296,10 +2296,10 @@ void AllocaOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::ParseResult AllocaOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> dynamicSizesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> dynamicSizesOperands;
   ::llvm::SMLoc dynamicSizesOperandsLoc;
   (void)dynamicSizesOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> symbolOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> symbolOperandsOperands;
   ::llvm::SMLoc symbolOperandsOperandsLoc;
   (void)symbolOperandsOperandsLoc;
   ::mlir::Type memrefRawTypes[1];
@@ -2369,7 +2369,7 @@ void AllocaOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace memref
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::AllocaOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::AllocaOp)
 
 namespace mlir {
 namespace memref {
@@ -2494,7 +2494,7 @@ void AllocaScopeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
 
 } // namespace memref
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::AllocaScopeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::AllocaScopeOp)
 
 namespace mlir {
 namespace memref {
@@ -2624,7 +2624,7 @@ void AllocaScopeReturnOp::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult AllocaScopeReturnOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> resultsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> resultsOperands;
   ::llvm::SMLoc resultsOperandsLoc;
   (void)resultsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> resultsTypes;
@@ -2662,7 +2662,7 @@ void AllocaScopeReturnOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects
 
 } // namespace memref
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::AllocaScopeReturnOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::AllocaScopeReturnOp)
 
 namespace mlir {
 namespace memref {
@@ -2781,8 +2781,8 @@ void CastOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 }
 
 ::mlir::ParseResult CastOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType sourceRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand sourceRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
   (void)sourceOperandsLoc;
   ::mlir::Type sourceRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> sourceTypes(sourceRawTypes);
@@ -2847,7 +2847,7 @@ void CastOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace memref
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::CastOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::CastOp)
 
 namespace mlir {
 namespace memref {
@@ -2899,7 +2899,7 @@ std::pair<unsigned, unsigned> CollapseShapeOpAdaptor::getODSOperandIndexAndLengt
     if (!tblgen_reassociation)
       return emitError(loc, "'memref.collapse_shape' op ""requires attribute 'reassociation'");
 
-    if (tblgen_reassociation && !(((tblgen_reassociation.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_reassociation.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); })); }))))
+    if (tblgen_reassociation && !(((tblgen_reassociation.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_reassociation.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))); }))))
       return emitError(loc, "'memref.collapse_shape' op ""attribute 'reassociation' failed to satisfy constraint: Array of 64-bit integer array attributes");
   }
   return ::mlir::success();
@@ -3031,8 +3031,8 @@ void CollapseShapeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult CollapseShapeOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType srcRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> srcOperands(srcRawOperands);  ::llvm::SMLoc srcOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand srcRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> srcOperands(srcRawOperands);  ::llvm::SMLoc srcOperandsLoc;
   (void)srcOperandsLoc;
   ::mlir::ArrayAttr reassociationAttr;
   ::mlir::Type srcRawTypes[1];
@@ -3105,7 +3105,7 @@ void CollapseShapeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Ef
 
 } // namespace memref
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::CollapseShapeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::CollapseShapeOp)
 
 namespace mlir {
 namespace memref {
@@ -3210,8 +3210,8 @@ void DeallocOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 }
 
 ::mlir::ParseResult DeallocOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType memrefRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> memrefOperands(memrefRawOperands);  ::llvm::SMLoc memrefOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand memrefRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> memrefOperands(memrefRawOperands);  ::llvm::SMLoc memrefOperandsLoc;
   (void)memrefOperandsLoc;
   ::mlir::Type memrefRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> memrefTypes(memrefRawTypes);
@@ -3257,7 +3257,7 @@ void DeallocOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace memref
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::DeallocOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::DeallocOp)
 
 namespace mlir {
 namespace memref {
@@ -3400,11 +3400,11 @@ void DimOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
 }
 
 ::mlir::ParseResult DimOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType sourceRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand sourceRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
   (void)sourceOperandsLoc;
-  ::mlir::OpAsmParser::OperandType indexRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> indexOperands(indexRawOperands);  ::llvm::SMLoc indexOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand indexRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> indexOperands(indexRawOperands);  ::llvm::SMLoc indexOperandsLoc;
   (void)indexOperandsLoc;
   ::mlir::Type sourceRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> sourceTypes(sourceRawTypes);
@@ -3461,7 +3461,7 @@ void DimOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace memref
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::DimOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::DimOp)
 
 namespace mlir {
 namespace memref {
@@ -3590,7 +3590,7 @@ void DmaStartOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 
 } // namespace memref
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::DmaStartOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::DmaStartOp)
 
 namespace mlir {
 namespace memref {
@@ -3769,14 +3769,14 @@ void DmaWaitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 }
 
 ::mlir::ParseResult DmaWaitOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType tagMemRefRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> tagMemRefOperands(tagMemRefRawOperands);  ::llvm::SMLoc tagMemRefOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand tagMemRefRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> tagMemRefOperands(tagMemRefRawOperands);  ::llvm::SMLoc tagMemRefOperandsLoc;
   (void)tagMemRefOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> tagIndicesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> tagIndicesOperands;
   ::llvm::SMLoc tagIndicesOperandsLoc;
   (void)tagIndicesOperandsLoc;
-  ::mlir::OpAsmParser::OperandType numElementsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> numElementsOperands(numElementsRawOperands);  ::llvm::SMLoc numElementsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand numElementsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> numElementsOperands(numElementsRawOperands);  ::llvm::SMLoc numElementsOperandsLoc;
   (void)numElementsOperandsLoc;
   ::mlir::Type tagMemRefRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> tagMemRefTypes(tagMemRefRawTypes);
@@ -3842,7 +3842,7 @@ void DmaWaitOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace memref
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::DmaWaitOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::DmaWaitOp)
 
 namespace mlir {
 namespace memref {
@@ -3894,7 +3894,7 @@ std::pair<unsigned, unsigned> ExpandShapeOpAdaptor::getODSOperandIndexAndLength(
     if (!tblgen_reassociation)
       return emitError(loc, "'memref.expand_shape' op ""requires attribute 'reassociation'");
 
-    if (tblgen_reassociation && !(((tblgen_reassociation.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_reassociation.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); })); }))))
+    if (tblgen_reassociation && !(((tblgen_reassociation.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_reassociation.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))); }))))
       return emitError(loc, "'memref.expand_shape' op ""attribute 'reassociation' failed to satisfy constraint: Array of 64-bit integer array attributes");
   }
   return ::mlir::success();
@@ -3945,13 +3945,6 @@ std::pair<unsigned, unsigned> ExpandShapeOp::getODSResultIndexAndLength(unsigned
 
 void ExpandShapeOp::reassociationAttr(::mlir::ArrayAttr attr) {
   (*this)->setAttr(reassociationAttrName(), attr);
-}
-
-void ExpandShapeOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value src, ArrayRef<ReassociationExprs> reassociation, ArrayRef<NamedAttribute> attrs) {
-      auto reassociationMaps =
-          convertReassociationMapsToIndices(odsBuilder, reassociation);
-      build(odsBuilder, odsState, src, reassociationMaps, attrs);
-    
 }
 
 void ExpandShapeOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Type resultType, Value src, ArrayRef<ReassociationIndices> reassociation, ArrayRef<NamedAttribute> attrs) {
@@ -4026,8 +4019,8 @@ void ExpandShapeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
 }
 
 ::mlir::ParseResult ExpandShapeOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType srcRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> srcOperands(srcRawOperands);  ::llvm::SMLoc srcOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand srcRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> srcOperands(srcRawOperands);  ::llvm::SMLoc srcOperandsLoc;
   (void)srcOperandsLoc;
   ::mlir::ArrayAttr reassociationAttr;
   ::mlir::Type srcRawTypes[1];
@@ -4100,7 +4093,7 @@ void ExpandShapeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effe
 
 } // namespace memref
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::ExpandShapeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::ExpandShapeOp)
 
 namespace mlir {
 namespace memref {
@@ -4290,7 +4283,7 @@ void GetGlobalOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace memref
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::GetGlobalOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::GetGlobalOp)
 
 namespace mlir {
 namespace memref {
@@ -4719,7 +4712,7 @@ void GlobalOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace memref
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::GlobalOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::GlobalOp)
 
 namespace mlir {
 namespace memref {
@@ -5021,7 +5014,7 @@ void PrefetchOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 
 } // namespace memref
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::PrefetchOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::PrefetchOp)
 
 namespace mlir {
 namespace memref {
@@ -5136,8 +5129,8 @@ void RankOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 }
 
 ::mlir::ParseResult RankOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType memrefRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> memrefOperands(memrefRawOperands);  ::llvm::SMLoc memrefOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand memrefRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> memrefOperands(memrefRawOperands);  ::llvm::SMLoc memrefOperandsLoc;
   (void)memrefOperandsLoc;
   ::mlir::Type memrefRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> memrefTypes(memrefRawTypes);
@@ -5183,7 +5176,7 @@ void RankOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace memref
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::RankOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::RankOp)
 
 namespace mlir {
 namespace memref {
@@ -5289,7 +5282,7 @@ std::pair<unsigned, unsigned> ReinterpretCastOpAdaptor::getODSOperandIndexAndLen
     if (!tblgen_static_offsets)
       return emitError(loc, "'memref.reinterpret_cast' op ""requires attribute 'static_offsets'");
 
-    if (tblgen_static_offsets && !(((tblgen_static_offsets.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_offsets.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))))
+    if (tblgen_static_offsets && !(((tblgen_static_offsets.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_offsets.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
       return emitError(loc, "'memref.reinterpret_cast' op ""attribute 'static_offsets' failed to satisfy constraint: 64-bit integer array attribute");
   }
   {
@@ -5297,7 +5290,7 @@ std::pair<unsigned, unsigned> ReinterpretCastOpAdaptor::getODSOperandIndexAndLen
     if (!tblgen_static_sizes)
       return emitError(loc, "'memref.reinterpret_cast' op ""requires attribute 'static_sizes'");
 
-    if (tblgen_static_sizes && !(((tblgen_static_sizes.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_sizes.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))))
+    if (tblgen_static_sizes && !(((tblgen_static_sizes.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_sizes.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
       return emitError(loc, "'memref.reinterpret_cast' op ""attribute 'static_sizes' failed to satisfy constraint: 64-bit integer array attribute");
   }
   {
@@ -5305,7 +5298,7 @@ std::pair<unsigned, unsigned> ReinterpretCastOpAdaptor::getODSOperandIndexAndLen
     if (!tblgen_static_strides)
       return emitError(loc, "'memref.reinterpret_cast' op ""requires attribute 'static_strides'");
 
-    if (tblgen_static_strides && !(((tblgen_static_strides.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_strides.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))))
+    if (tblgen_static_strides && !(((tblgen_static_strides.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_strides.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
       return emitError(loc, "'memref.reinterpret_cast' op ""attribute 'static_strides' failed to satisfy constraint: 64-bit integer array attribute");
   }
   return ::mlir::success();
@@ -5538,18 +5531,18 @@ void ReinterpretCastOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
 }
 
 ::mlir::ParseResult ReinterpretCastOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType sourceRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand sourceRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
   (void)sourceOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> offsetsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> offsetsOperands;
   ::llvm::SMLoc offsetsOperandsLoc;
   (void)offsetsOperandsLoc;
   ::mlir::ArrayAttr static_offsetsAttr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> sizesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> sizesOperands;
   ::llvm::SMLoc sizesOperandsLoc;
   (void)sizesOperandsLoc;
   ::mlir::ArrayAttr static_sizesAttr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> stridesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> stridesOperands;
   ::llvm::SMLoc stridesOperandsLoc;
   (void)stridesOperandsLoc;
   ::mlir::ArrayAttr static_stridesAttr;
@@ -5675,7 +5668,7 @@ void ReinterpretCastOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::
 
 } // namespace memref
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::ReinterpretCastOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::ReinterpretCastOp)
 
 namespace mlir {
 namespace memref {
@@ -5825,11 +5818,11 @@ void ReshapeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 }
 
 ::mlir::ParseResult ReshapeOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType sourceRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand sourceRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
   (void)sourceOperandsLoc;
-  ::mlir::OpAsmParser::OperandType shapeRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> shapeOperands(shapeRawOperands);  ::llvm::SMLoc shapeOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand shapeRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> shapeOperands(shapeRawOperands);  ::llvm::SMLoc shapeOperandsLoc;
   (void)shapeOperandsLoc;
   ::llvm::ArrayRef<::mlir::Type> allOperandTypes;
   ::llvm::ArrayRef<::mlir::Type> allResultTypes;
@@ -5856,7 +5849,7 @@ void ReshapeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   allOperandTypes = allOperand__allResult_functionType.getInputs();
   allResultTypes = allOperand__allResult_functionType.getResults();
   result.addTypes(allResultTypes);
-  if (parser.resolveOperands(::llvm::concat<const ::mlir::OpAsmParser::OperandType>(sourceOperands, shapeOperands), allOperandTypes, parser.getNameLoc(), result.operands))
+  if (parser.resolveOperands(::llvm::concat<const ::mlir::OpAsmParser::UnresolvedOperand>(sourceOperands, shapeOperands), allOperandTypes, parser.getNameLoc(), result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -5878,7 +5871,7 @@ void ReshapeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace memref
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::ReshapeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::ReshapeOp)
 
 namespace mlir {
 namespace memref {
@@ -6065,13 +6058,13 @@ void StoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 ::mlir::ParseResult StoreOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType valueRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand valueRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
   (void)valueOperandsLoc;
-  ::mlir::OpAsmParser::OperandType memrefRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> memrefOperands(memrefRawOperands);  ::llvm::SMLoc memrefOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand memrefRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> memrefOperands(memrefRawOperands);  ::llvm::SMLoc memrefOperandsLoc;
   (void)memrefOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> indicesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
   ::llvm::SMLoc indicesOperandsLoc;
   (void)indicesOperandsLoc;
   ::mlir::Type memrefRawTypes[1];
@@ -6149,7 +6142,7 @@ void StoreOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace memref
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::StoreOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::StoreOp)
 
 namespace mlir {
 namespace memref {
@@ -6325,7 +6318,7 @@ void TransposeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effect
 
 } // namespace memref
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::TransposeOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::TransposeOp)
 
 namespace mlir {
 namespace memref {
@@ -6514,13 +6507,13 @@ void ViewOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 }
 
 ::mlir::ParseResult ViewOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType sourceRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand sourceRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
   (void)sourceOperandsLoc;
-  ::mlir::OpAsmParser::OperandType byte_shiftRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> byte_shiftOperands(byte_shiftRawOperands);  ::llvm::SMLoc byte_shiftOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand byte_shiftRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> byte_shiftOperands(byte_shiftRawOperands);  ::llvm::SMLoc byte_shiftOperandsLoc;
   (void)byte_shiftOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> sizesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> sizesOperands;
   ::llvm::SMLoc sizesOperandsLoc;
   (void)sizesOperandsLoc;
   ::mlir::Type sourceRawTypes[1];
@@ -6602,7 +6595,7 @@ void ViewOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace memref
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::ViewOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::ViewOp)
 
 namespace mlir {
 namespace memref {
@@ -6708,7 +6701,7 @@ std::pair<unsigned, unsigned> SubViewOpAdaptor::getODSOperandIndexAndLength(unsi
     if (!tblgen_static_offsets)
       return emitError(loc, "'memref.subview' op ""requires attribute 'static_offsets'");
 
-    if (tblgen_static_offsets && !(((tblgen_static_offsets.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_offsets.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))))
+    if (tblgen_static_offsets && !(((tblgen_static_offsets.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_offsets.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
       return emitError(loc, "'memref.subview' op ""attribute 'static_offsets' failed to satisfy constraint: 64-bit integer array attribute");
   }
   {
@@ -6716,7 +6709,7 @@ std::pair<unsigned, unsigned> SubViewOpAdaptor::getODSOperandIndexAndLength(unsi
     if (!tblgen_static_sizes)
       return emitError(loc, "'memref.subview' op ""requires attribute 'static_sizes'");
 
-    if (tblgen_static_sizes && !(((tblgen_static_sizes.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_sizes.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))))
+    if (tblgen_static_sizes && !(((tblgen_static_sizes.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_sizes.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
       return emitError(loc, "'memref.subview' op ""attribute 'static_sizes' failed to satisfy constraint: 64-bit integer array attribute");
   }
   {
@@ -6724,7 +6717,7 @@ std::pair<unsigned, unsigned> SubViewOpAdaptor::getODSOperandIndexAndLength(unsi
     if (!tblgen_static_strides)
       return emitError(loc, "'memref.subview' op ""requires attribute 'static_strides'");
 
-    if (tblgen_static_strides && !(((tblgen_static_strides.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_strides.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return ((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64))); }))))
+    if (tblgen_static_strides && !(((tblgen_static_strides.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_strides.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
       return emitError(loc, "'memref.subview' op ""attribute 'static_strides' failed to satisfy constraint: 64-bit integer array attribute");
   }
   return ::mlir::success();
@@ -6957,18 +6950,18 @@ void SubViewOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 }
 
 ::mlir::ParseResult SubViewOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType sourceRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand sourceRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
   (void)sourceOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> offsetsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> offsetsOperands;
   ::llvm::SMLoc offsetsOperandsLoc;
   (void)offsetsOperandsLoc;
   ::mlir::ArrayAttr static_offsetsAttr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> sizesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> sizesOperands;
   ::llvm::SMLoc sizesOperandsLoc;
   (void)sizesOperandsLoc;
   ::mlir::ArrayAttr static_sizesAttr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> stridesOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> stridesOperands;
   ::llvm::SMLoc stridesOperandsLoc;
   (void)stridesOperandsLoc;
   ::mlir::ArrayAttr static_stridesAttr;
@@ -7066,7 +7059,7 @@ void SubViewOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIn
 
 } // namespace memref
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::SubViewOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::SubViewOp)
 
 namespace mlir {
 namespace memref {
@@ -7195,11 +7188,11 @@ void TensorStoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
 }
 
 ::mlir::ParseResult TensorStoreOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType tensorRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> tensorOperands(tensorRawOperands);  ::llvm::SMLoc tensorOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand tensorRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> tensorOperands(tensorRawOperands);  ::llvm::SMLoc tensorOperandsLoc;
   (void)tensorOperandsLoc;
-  ::mlir::OpAsmParser::OperandType memrefRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> memrefOperands(memrefRawOperands);  ::llvm::SMLoc memrefOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand memrefRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> memrefOperands(memrefRawOperands);  ::llvm::SMLoc memrefOperandsLoc;
   (void)memrefOperandsLoc;
   ::mlir::Type memrefRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> memrefTypes(memrefRawTypes);
@@ -7262,7 +7255,7 @@ void TensorStoreOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::Effe
 
 } // namespace memref
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::TensorStoreOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::memref::TensorStoreOp)
 
 
 #endif  // GET_OP_CLASSES

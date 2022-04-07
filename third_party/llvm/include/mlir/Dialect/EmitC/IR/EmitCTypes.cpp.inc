@@ -77,7 +77,7 @@ OpaqueType OpaqueType::get(::mlir::MLIRContext *context, ::llvm::StringRef value
 
 } // namespace emitc
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::emitc::OpaqueType)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::emitc::OpaqueType)
 namespace mlir {
 namespace emitc {
 namespace detail {
@@ -141,7 +141,7 @@ Type PointerType::getPointee() const {
 
 } // namespace emitc
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::emitc::PointerType)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::emitc::PointerType)
 namespace mlir {
 namespace emitc {
 

@@ -152,7 +152,7 @@ public:
 };
 } // namespace tensor
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::CastOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::CastOp)
 
 namespace mlir {
 namespace tensor {
@@ -260,7 +260,7 @@ public:
 };
 } // namespace tensor
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::CollapseShapeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::CollapseShapeOp)
 
 namespace mlir {
 namespace tensor {
@@ -331,7 +331,7 @@ public:
 };
 } // namespace tensor
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::DimOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::DimOp)
 
 namespace mlir {
 namespace tensor {
@@ -392,8 +392,6 @@ public:
   ::mlir::ArrayAttr reassociationAttr();
   ::mlir::ArrayAttr reassociation();
   void reassociationAttr(::mlir::ArrayAttr attr);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value src, ArrayRef<ReassociationIndices> reassociation, ArrayRef<NamedAttribute> attrs = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value src, ArrayRef<ReassociationExprs> reassociation, ArrayRef<NamedAttribute> attrs = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Type resultType, Value src, ArrayRef<ReassociationIndices> reassociation, ArrayRef<NamedAttribute> attrs = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Type resultType, Value src, ArrayRef<ReassociationExprs> reassociation, ArrayRef<NamedAttribute> attrs = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value src, ::mlir::ArrayAttr reassociation);
@@ -439,7 +437,7 @@ public:
 };
 } // namespace tensor
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::ExpandShapeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::ExpandShapeOp)
 
 namespace mlir {
 namespace tensor {
@@ -504,7 +502,7 @@ public:
 };
 } // namespace tensor
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::ExtractOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::ExtractOp)
 
 namespace mlir {
 namespace tensor {
@@ -699,7 +697,7 @@ public:
 };
 } // namespace tensor
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::ExtractSliceOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::ExtractSliceOp)
 
 namespace mlir {
 namespace tensor {
@@ -759,7 +757,7 @@ public:
 };
 } // namespace tensor
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::FromElementsOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::FromElementsOp)
 
 namespace mlir {
 namespace tensor {
@@ -787,7 +785,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class GenerateOp : public ::mlir::Op<GenerateOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::TensorType>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<mlir::tensor::YieldOp>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::HasRecursiveSideEffects> {
+class GenerateOp : public ::mlir::Op<GenerateOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::TensorType>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<mlir::tensor::YieldOp>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::HasRecursiveSideEffects, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -815,14 +813,16 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult verify();
+  ::mlir::LogicalResult verifyRegions();
   static void getCanonicalizationPatterns(::mlir::RewritePatternSet &results, ::mlir::MLIRContext *context);
+  ::mlir::LogicalResult reifyResultShapes(::mlir::OpBuilder &builder, ::mlir::ReifiedRankedShapedTypeDims &reifiedReturnShapes);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
 public:
 };
 } // namespace tensor
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::GenerateOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::GenerateOp)
 
 namespace mlir {
 namespace tensor {
@@ -890,7 +890,7 @@ public:
 };
 } // namespace tensor
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::InsertOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::InsertOp)
 
 namespace mlir {
 namespace tensor {
@@ -1056,7 +1056,7 @@ public:
 };
 } // namespace tensor
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::InsertSliceOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::InsertSliceOp)
 
 namespace mlir {
 namespace tensor {
@@ -1172,6 +1172,7 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult verify();
+  ::mlir::LogicalResult verifyRegions();
   static void getCanonicalizationPatterns(::mlir::RewritePatternSet &results, ::mlir::MLIRContext *context);
   ::mlir::OpFoldResult fold(::llvm::ArrayRef<::mlir::Attribute> operands);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
@@ -1252,7 +1253,7 @@ public:
 };
 } // namespace tensor
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::PadOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::PadOp)
 
 namespace mlir {
 namespace tensor {
@@ -1314,7 +1315,7 @@ public:
 };
 } // namespace tensor
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::RankOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::RankOp)
 
 namespace mlir {
 namespace tensor {
@@ -1379,7 +1380,7 @@ public:
 };
 } // namespace tensor
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::ReshapeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::ReshapeOp)
 
 namespace mlir {
 namespace tensor {
@@ -1440,7 +1441,7 @@ public:
 };
 } // namespace tensor
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::SplatOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::SplatOp)
 
 namespace mlir {
 namespace tensor {
@@ -1499,7 +1500,7 @@ public:
 };
 } // namespace tensor
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::YieldOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::tensor::YieldOp)
 
 
 #endif  // GET_OP_CLASSES

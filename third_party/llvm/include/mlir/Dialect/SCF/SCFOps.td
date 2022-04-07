@@ -56,7 +56,8 @@ def ConditionOp : SCF_Op<"condition", [
 // ExecuteRegionOp
 //===----------------------------------------------------------------------===//
 
-def ExecuteRegionOp : SCF_Op<"execute_region"> {
+def ExecuteRegionOp : SCF_Op<"execute_region", [
+    DeclareOpInterfaceMethods<RegionBranchOpInterface>]> {
   let summary = "operation that executes its region exactly once";
   let description = [{
     The `execute_region` operation is used to allow multiple blocks within SCF
@@ -105,7 +106,6 @@ def ExecuteRegionOp : SCF_Op<"execute_region"> {
   let hasCanonicalizer = 1;
   let hasCustomAssemblyFormat = 1;
 
-  let hasFolder = 0;
   let hasVerifier = 1;
 }
 
@@ -308,6 +308,7 @@ def ForOp : SCF_Op<"for",
   let hasCanonicalizer = 1;
   let hasCustomAssemblyFormat = 1;
   let hasVerifier = 1;
+  let hasRegionVerifier = 1;
 }
 
 def IfOp : SCF_Op<"if",
@@ -535,7 +536,7 @@ def ReduceOp : SCF_Op<"reduce", [HasParent<"ParallelOp">]> {
   let arguments = (ins AnyType:$operand);
   let hasCustomAssemblyFormat = 1;
   let regions = (region SizedRegion<1>:$reductionOperator);
-  let hasVerifier = 1;
+  let hasRegionVerifier = 1;
 }
 
 def ReduceReturnOp :
@@ -586,21 +587,21 @@ def WhileOp : SCF_Op<"while",
 
     ```mlir
     %res = scf.while (%arg1 = %init1) : (f32) -> f32 {
-      /* "Before" region.
-       * In a "while" loop, this region computes the condition. */
+      // "Before" region.
+      // In a "while" loop, this region computes the condition.
       %condition = call @evaluate_condition(%arg1) : (f32) -> i1
 
-      /* Forward the argument (as result or "after" region argument). */
+      // Forward the argument (as result or "after" region argument).
       scf.condition(%condition) %arg1 : f32
 
     } do {
     ^bb0(%arg2: f32):
-      /* "After region.
-       * In a "while" loop, this region is the loop body. */
+      // "After" region.
+      // In a "while" loop, this region is the loop body.
       %next = call @payload(%arg2) : (f32) -> f32
 
-      /* Forward the new value to the "before" region.
-       * The operand types must match the types of the `scf.while` operands. */
+      // Forward the new value to the "before" region.
+      // The operand types must match the types of the `scf.while` operands.
       scf.yield %next : f32
     }
     ```
@@ -610,20 +611,20 @@ def WhileOp : SCF_Op<"while",
 
     ```mlir
     %res = scf.while (%arg1 = %init1) : (f32) -> f32 {
-      /* "Before" region.
-       * In a "do-while" loop, this region contains the loop body. */
+      // "Before" region.
+      // In a "do-while" loop, this region contains the loop body.
       %next = call @payload(%arg1) : (f32) -> f32
 
-      /* And also evaluates the condition. */
+      // And also evaluates the condition.
       %condition = call @evaluate_condition(%arg1) : (f32) -> i1
 
-      /* Loop through the "after" region. */
+      // Loop through the "after" region.
       scf.condition(%condition) %next : f32
 
     } do {
     ^bb0(%arg2: f32):
-      /* "After" region.
-       * Forwards the values back to "before" region unmodified. */
+      // "After" region.
+      // Forwards the values back to "before" region unmodified.
       scf.yield %arg2 : f32
     }
     ```
@@ -638,27 +639,27 @@ def WhileOp : SCF_Op<"while",
 
     ```mlir
     %res = scf.while (%arg1 = %init1) : (f32) -> i64 {
-      /* One can perform some computations, e.g., necessary to evaluate the
-       * condition, in the "before" region and forward their results to the
-       * "after" region. */
+      // One can perform some computations, e.g., necessary to evaluate the
+      // condition, in the "before" region and forward their results to the
+      // "after" region.
       %shared = call @shared_compute(%arg1) : (f32) -> i64
 
-      /* Evaluate the condition. */
+      // Evaluate the condition.
       %condition = call @evaluate_condition(%arg1, %shared) : (f32, i64) -> i1
 
-      /* Forward the result of the shared computation to the "after" region.
-       * The types must match the arguments of the "after" region as well as
-       * those of the `scf.while` results. */
+      // Forward the result of the shared computation to the "after" region.
+      // The types must match the arguments of the "after" region as well as
+      // those of the `scf.while` results.
       scf.condition(%condition) %shared : i64
 
     } do {
     ^bb0(%arg2: i64) {
-      /* Use the partial result to compute the rest of the payload in the
-       * "after" region. */
+      // Use the partial result to compute the rest of the payload in the
+      // "after" region.
       %res = call @payload(%arg2) : (i64) -> f32
 
-      /* Forward the new value to the "before" region.
-       * The operand types must match the types of the `scf.while` operands. */
+      // Forward the new value to the "before" region.
+      // The operand types must match the types of the `scf.while` operands.
       scf.yield %res : f32
     }
     ```
@@ -688,7 +689,7 @@ def WhileOp : SCF_Op<"while",
 
   let hasCanonicalizer = 1;
   let hasCustomAssemblyFormat = 1;
-  let hasVerifier = 1;
+  let hasRegionVerifier = 1;
 }
 
 def YieldOp : SCF_Op<"yield", [NoSideEffect, ReturnLike, Terminator,

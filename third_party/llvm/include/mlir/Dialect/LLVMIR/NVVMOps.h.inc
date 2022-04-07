@@ -80,6 +80,11 @@ class LaneIdOp;
 } // namespace mlir
 namespace mlir {
 namespace NVVM {
+class LdMatrixOp;
+} // namespace NVVM
+} // namespace mlir
+namespace mlir {
+namespace NVVM {
 class MmaOp;
 } // namespace NVVM
 } // namespace mlir
@@ -190,7 +195,7 @@ public:
 };
 } // namespace NVVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::Barrier0Op)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::Barrier0Op)
 
 namespace mlir {
 namespace NVVM {
@@ -246,7 +251,7 @@ public:
 };
 } // namespace NVVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::BlockDimXOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::BlockDimXOp)
 
 namespace mlir {
 namespace NVVM {
@@ -302,7 +307,7 @@ public:
 };
 } // namespace NVVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::BlockDimYOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::BlockDimYOp)
 
 namespace mlir {
 namespace NVVM {
@@ -358,7 +363,7 @@ public:
 };
 } // namespace NVVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::BlockDimZOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::BlockDimZOp)
 
 namespace mlir {
 namespace NVVM {
@@ -414,7 +419,7 @@ public:
 };
 } // namespace NVVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::BlockIdXOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::BlockIdXOp)
 
 namespace mlir {
 namespace NVVM {
@@ -470,7 +475,7 @@ public:
 };
 } // namespace NVVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::BlockIdYOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::BlockIdYOp)
 
 namespace mlir {
 namespace NVVM {
@@ -526,7 +531,7 @@ public:
 };
 } // namespace NVVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::BlockIdZOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::BlockIdZOp)
 
 namespace mlir {
 namespace NVVM {
@@ -580,7 +585,7 @@ public:
 };
 } // namespace NVVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::CpAsyncCommitGroupOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::CpAsyncCommitGroupOp)
 
 namespace mlir {
 namespace NVVM {
@@ -667,7 +672,7 @@ public:
 };
 } // namespace NVVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::CpAsyncOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::CpAsyncOp)
 
 namespace mlir {
 namespace NVVM {
@@ -747,7 +752,7 @@ public:
 };
 } // namespace NVVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::CpAsyncWaitGroupOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::CpAsyncWaitGroupOp)
 
 namespace mlir {
 namespace NVVM {
@@ -803,7 +808,7 @@ public:
 };
 } // namespace NVVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::GridDimXOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::GridDimXOp)
 
 namespace mlir {
 namespace NVVM {
@@ -859,7 +864,7 @@ public:
 };
 } // namespace NVVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::GridDimYOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::GridDimYOp)
 
 namespace mlir {
 namespace NVVM {
@@ -915,7 +920,7 @@ public:
 };
 } // namespace NVVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::GridDimZOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::GridDimZOp)
 
 namespace mlir {
 namespace NVVM {
@@ -971,7 +976,105 @@ public:
 };
 } // namespace NVVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::LaneIdOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::LaneIdOp)
+
+namespace mlir {
+namespace NVVM {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::NVVM::LdMatrixOp declarations
+//===----------------------------------------------------------------------===//
+
+class LdMatrixOpAdaptor {
+public:
+  LdMatrixOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  LdMatrixOpAdaptor(LdMatrixOp &op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::Value ptr();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::IntegerAttr numAttr();
+  uint32_t num();
+  ::mlir::NVVM::MMALayoutAttr layoutAttr();
+  ::mlir::NVVM::MMALayout layout();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+};
+class LdMatrixOp : public ::mlir::Op<LdMatrixOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = LdMatrixOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("num"), ::llvm::StringRef("layout")};
+    return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr numAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr numAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
+  ::mlir::StringAttr layoutAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr layoutAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("nvvm.ldmatrix");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Value ptr();
+  ::mlir::MutableOperandRange ptrMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Value res();
+  ::mlir::IntegerAttr numAttr();
+  uint32_t num();
+  ::mlir::NVVM::MMALayoutAttr layoutAttr();
+  ::mlir::NVVM::MMALayout layout();
+  void numAttr(::mlir::IntegerAttr attr);
+  void layoutAttr(::mlir::NVVM::MMALayoutAttr attr);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value ptr, ::mlir::IntegerAttr num, ::mlir::NVVM::MMALayoutAttr layout);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value ptr, ::mlir::IntegerAttr num, ::mlir::NVVM::MMALayoutAttr layout);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value ptr, uint32_t num, ::mlir::NVVM::MMALayout layout);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value ptr, uint32_t num, ::mlir::NVVM::MMALayout layout);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  ::mlir::LogicalResult verify();
+  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
+  void print(::mlir::OpAsmPrinter &_odsPrinter);
+private:
+  ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
+    return getAttributeNameForIndex((*this)->getName(), index);
+  }
+
+  static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
+    assert(index < 2 && "invalid attribute index");
+    return name.getRegisteredInfo()->getAttributeNames()[index];
+  }
+
+public:
+};
+} // namespace NVVM
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::LdMatrixOp)
 
 namespace mlir {
 namespace NVVM {
@@ -989,22 +1092,103 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::ValueRange args();
+  ::mlir::ValueRange operandA();
+  ::mlir::ValueRange operandB();
+  ::mlir::ValueRange operandC();
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::NVVM::MMAShapeAttr shapeAttr();
+  ::mlir::NVVM::MMAShapeAttr shape();
+  ::mlir::NVVM::MMAB1OpAttr b1OpAttr();
+  ::llvm::Optional<::mlir::NVVM::MMAB1Op> b1Op();
+  ::mlir::NVVM::MMAIntOverflowAttr intOverflowBehaviorAttr();
+  ::llvm::Optional<::mlir::NVVM::MMAIntOverflow> intOverflowBehavior();
+  ::mlir::NVVM::MMALayoutAttr layoutAAttr();
+  ::mlir::NVVM::MMALayout layoutA();
+  ::mlir::NVVM::MMALayoutAttr layoutBAttr();
+  ::mlir::NVVM::MMALayout layoutB();
+  ::mlir::NVVM::MMATypesAttr multiplicandAPtxTypeAttr();
+  ::llvm::Optional<::mlir::NVVM::MMATypes> multiplicandAPtxType();
+  ::mlir::NVVM::MMATypesAttr multiplicandBPtxTypeAttr();
+  ::llvm::Optional<::mlir::NVVM::MMATypes> multiplicandBPtxType();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class MmaOp : public ::mlir::Op<MmaOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::OpInvariants> {
+class MmaOp : public ::mlir::Op<MmaOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = MmaOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    return {};
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("shape"), ::llvm::StringRef("b1Op"), ::llvm::StringRef("intOverflowBehavior"), ::llvm::StringRef("layoutA"), ::llvm::StringRef("layoutB"), ::llvm::StringRef("multiplicandAPtxType"), ::llvm::StringRef("multiplicandBPtxType"), ::llvm::StringRef("operand_segment_sizes")};
+    return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr shapeAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr shapeAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
+  ::mlir::StringAttr b1OpAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr b1OpAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr intOverflowBehaviorAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr intOverflowBehaviorAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
+  }
+
+  ::mlir::StringAttr layoutAAttrName() {
+    return getAttributeNameForIndex(3);
+  }
+
+  static ::mlir::StringAttr layoutAAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 3);
+  }
+
+  ::mlir::StringAttr layoutBAttrName() {
+    return getAttributeNameForIndex(4);
+  }
+
+  static ::mlir::StringAttr layoutBAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 4);
+  }
+
+  ::mlir::StringAttr multiplicandAPtxTypeAttrName() {
+    return getAttributeNameForIndex(5);
+  }
+
+  static ::mlir::StringAttr multiplicandAPtxTypeAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 5);
+  }
+
+  ::mlir::StringAttr multiplicandBPtxTypeAttrName() {
+    return getAttributeNameForIndex(6);
+  }
+
+  static ::mlir::StringAttr multiplicandBPtxTypeAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 6);
+  }
+
+  ::mlir::StringAttr operand_segment_sizesAttrName() {
+    return getAttributeNameForIndex(7);
+  }
+
+  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 7);
   }
 
   static constexpr ::llvm::StringLiteral getOperationName() {
@@ -1013,23 +1197,545 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Operation::operand_range args();
-  ::mlir::MutableOperandRange argsMutable();
+  ::mlir::Operation::operand_range operandA();
+  ::mlir::Operation::operand_range operandB();
+  ::mlir::Operation::operand_range operandC();
+  ::mlir::MutableOperandRange operandAMutable();
+  ::mlir::MutableOperandRange operandBMutable();
+  ::mlir::MutableOperandRange operandCMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value res();
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::ValueRange args);
+  ::mlir::NVVM::MMAShapeAttr shapeAttr();
+  ::mlir::NVVM::MMAShapeAttr shape();
+  ::mlir::NVVM::MMAB1OpAttr b1OpAttr();
+  ::llvm::Optional<::mlir::NVVM::MMAB1Op> b1Op();
+  ::mlir::NVVM::MMAIntOverflowAttr intOverflowBehaviorAttr();
+  ::llvm::Optional<::mlir::NVVM::MMAIntOverflow> intOverflowBehavior();
+  ::mlir::NVVM::MMALayoutAttr layoutAAttr();
+  ::mlir::NVVM::MMALayout layoutA();
+  ::mlir::NVVM::MMALayoutAttr layoutBAttr();
+  ::mlir::NVVM::MMALayout layoutB();
+  ::mlir::NVVM::MMATypesAttr multiplicandAPtxTypeAttr();
+  ::llvm::Optional<::mlir::NVVM::MMATypes> multiplicandAPtxType();
+  ::mlir::NVVM::MMATypesAttr multiplicandBPtxTypeAttr();
+  ::llvm::Optional<::mlir::NVVM::MMATypes> multiplicandBPtxType();
+  void shapeAttr(::mlir::NVVM::MMAShapeAttr attr);
+  void b1OpAttr(::mlir::NVVM::MMAB1OpAttr attr);
+  void intOverflowBehaviorAttr(::mlir::NVVM::MMAIntOverflowAttr attr);
+  void layoutAAttr(::mlir::NVVM::MMALayoutAttr attr);
+  void layoutBAttr(::mlir::NVVM::MMALayoutAttr attr);
+  void multiplicandAPtxTypeAttr(::mlir::NVVM::MMATypesAttr attr);
+  void multiplicandBPtxTypeAttr(::mlir::NVVM::MMATypesAttr attr);
+  ::mlir::Attribute removeB1OpAttr();
+  ::mlir::Attribute removeIntOverflowBehaviorAttr();
+  ::mlir::Attribute removeMultiplicandAPtxTypeAttr();
+  ::mlir::Attribute removeMultiplicandBPtxTypeAttr();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Type resultType, ValueRange operandA, ValueRange operandB, ValueRange operandC, ArrayRef<int64_t> shape, Optional<MMAB1Op> b1Op, Optional<MMAIntOverflow> intOverflow, Optional<std::array<MMATypes, 2>> multiplicandPtxTypes, Optional<std::array<MMALayout, 2>> multiplicandLayouts);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::NVVM::MMAShapeAttr shape, /*optional*/::mlir::NVVM::MMAB1OpAttr b1Op, /*optional*/::mlir::NVVM::MMAIntOverflowAttr intOverflowBehavior, ::mlir::NVVM::MMALayoutAttr layoutA, ::mlir::NVVM::MMALayoutAttr layoutB, /*optional*/::mlir::NVVM::MMATypesAttr multiplicandAPtxType, /*optional*/::mlir::NVVM::MMATypesAttr multiplicandBPtxType, ::mlir::ValueRange operandA, ::mlir::ValueRange operandB, ::mlir::ValueRange operandC);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::NVVM::MMAShapeAttr shape, /*optional*/::mlir::NVVM::MMAB1OpAttr b1Op, /*optional*/::mlir::NVVM::MMAIntOverflowAttr intOverflowBehavior, ::mlir::NVVM::MMALayoutAttr layoutA, ::mlir::NVVM::MMALayoutAttr layoutB, /*optional*/::mlir::NVVM::MMATypesAttr multiplicandAPtxType, /*optional*/::mlir::NVVM::MMATypesAttr multiplicandBPtxType, ::mlir::ValueRange operandA, ::mlir::ValueRange operandB, ::mlir::ValueRange operandC);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::NVVM::MMAShapeAttr shape, /*optional*/::mlir::NVVM::MMAB1OpAttr b1Op, /*optional*/::mlir::NVVM::MMAIntOverflowAttr intOverflowBehavior, ::mlir::NVVM::MMALayout layoutA, ::mlir::NVVM::MMALayout layoutB, /*optional*/::mlir::NVVM::MMATypesAttr multiplicandAPtxType, /*optional*/::mlir::NVVM::MMATypesAttr multiplicandBPtxType, ::mlir::ValueRange operandA, ::mlir::ValueRange operandB, ::mlir::ValueRange operandC);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::NVVM::MMAShapeAttr shape, /*optional*/::mlir::NVVM::MMAB1OpAttr b1Op, /*optional*/::mlir::NVVM::MMAIntOverflowAttr intOverflowBehavior, ::mlir::NVVM::MMALayout layoutA, ::mlir::NVVM::MMALayout layoutB, /*optional*/::mlir::NVVM::MMATypesAttr multiplicandAPtxType, /*optional*/::mlir::NVVM::MMATypesAttr multiplicandBPtxType, ::mlir::ValueRange operandA, ::mlir::ValueRange operandB, ::mlir::ValueRange operandC);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
+  void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult verify();
-  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
-  void print(::mlir::OpAsmPrinter &_odsPrinter);
+private:
+  ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
+    return getAttributeNameForIndex((*this)->getName(), index);
+  }
+
+  static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
+    assert(index < 8 && "invalid attribute index");
+    return name.getRegisteredInfo()->getAttributeNames()[index];
+  }
+
 public:
-};
+        static llvm::Intrinsic::ID getIntrinsicID(
+              int64_t m, int64_t n, uint64_t k,
+              llvm::Optional<MMAB1Op> b1Op, 
+              llvm::Optional<MMAIntOverflow> sat,
+              mlir::NVVM::MMALayout layoutAEnum, mlir::NVVM::MMALayout layoutBEnum,
+              mlir::NVVM::MMATypes eltypeAEnum, mlir::NVVM::MMATypes eltypeBEnum,
+              mlir::NVVM::MMATypes eltypeCEnum, mlir::NVVM::MMATypes eltypeDEnum) {
+          llvm::StringRef layoutA = stringifyEnum(layoutAEnum);
+          llvm::StringRef layoutB = stringifyEnum(layoutBEnum);
+          llvm::StringRef eltypeA = stringifyEnum(eltypeAEnum);
+          llvm::StringRef eltypeB = stringifyEnum(eltypeBEnum);
+          llvm::StringRef eltypeC = stringifyEnum(eltypeCEnum);
+          llvm::StringRef eltypeD = stringifyEnum(eltypeDEnum);
+
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 4    && "tf32" == eltypeA && "tf32" == eltypeB &&  "f32" == eltypeC &&  "f32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k4_row_col_tf32;
+
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 8    && "tf32" == eltypeA && "tf32" == eltypeB &&  "f32" == eltypeC &&  "f32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k8_row_col_tf32;
+
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "bf16" == eltypeA && "bf16" == eltypeB &&  "f32" == eltypeC &&  "f32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k16_row_col_bf16;
+
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 8    && "bf16" == eltypeA && "bf16" == eltypeB &&  "f32" == eltypeC &&  "f32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k8_row_col_bf16;
+
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 4    && "f64" == eltypeA && "f64" == eltypeB &&  "f64" == eltypeC &&  "f64" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m8n8k4_row_col_f64;
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "row" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f16" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m8n8k4_row_row_f16_f16;
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f16" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m8n8k4_row_col_f16_f16;
+
+  if (layoutA == "col" && layoutB == "row" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f16" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m8n8k4_col_row_f16_f16;
+
+  if (layoutA == "col" && layoutB == "col" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f16" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m8n8k4_col_col_f16_f16;
+
+  if (layoutA == "row" && layoutB == "row" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m8n8k4_row_row_f32_f16;
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m8n8k4_row_col_f32_f16;
+
+  if (layoutA == "col" && layoutB == "row" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m8n8k4_col_row_f32_f16;
+
+  if (layoutA == "col" && layoutB == "col" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m8n8k4_col_col_f32_f16;
+
+
+
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "row" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f32" == eltypeC &&  "f32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m8n8k4_row_row_f32_f32;
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f32" == eltypeC &&  "f32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m8n8k4_row_col_f32_f32;
+
+  if (layoutA == "col" && layoutB == "row" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f32" == eltypeC &&  "f32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m8n8k4_col_row_f32_f32;
+
+  if (layoutA == "col" && layoutB == "col" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f32" == eltypeC &&  "f32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m8n8k4_col_col_f32_f32;
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 8    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f16" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k8_row_col_f16_f16;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 8    && "f16" == eltypeA && "f16" == eltypeB &&  "f32" == eltypeC &&  "f32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k8_row_col_f32_f32;
+
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f16" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k16_row_col_f16_f16;
+
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k16_row_col_f32_f16;
+
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "f16" == eltypeA && "f16" == eltypeB &&  "f32" == eltypeC &&  "f16" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k16_row_col_f16_f32;
+
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "f16" == eltypeA && "f16" == eltypeB &&  "f32" == eltypeC &&  "f32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k16_row_col_f32_f32;
+
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 16    && "s8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m8n8k16_row_col_s8;
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 16    && "s8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m8n8k16_row_col_satfinite_s8;
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 16    && "s8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m8n8k16_row_col_s8_u8;
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 16    && "s8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m8n8k16_row_col_satfinite_s8_u8;
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 16    && "u8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m8n8k16_row_col_u8_s8;
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 16    && "u8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m8n8k16_row_col_satfinite_u8_s8;
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 16    && "u8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m8n8k16_row_col_u8;
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 16    && "u8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m8n8k16_row_col_satfinite_u8;
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "s8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k16_row_col_s8;
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "s8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k16_row_col_satfinite_s8;
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "s8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k16_row_col_s8_u8;
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "s8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k16_row_col_satfinite_s8_u8;
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "u8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k16_row_col_u8_s8;
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "u8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k16_row_col_satfinite_u8_s8;
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "u8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k16_row_col_u8;
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "u8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k16_row_col_satfinite_u8;
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "s8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_s8;
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "s8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_satfinite_s8;
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "s8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_s8_u8;
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "s8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_satfinite_s8_u8;
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "u8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_u8_s8;
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "u8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_satfinite_u8_s8;
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "u8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_u8;
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "u8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_satfinite_u8;
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 32    && "s4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m8n8k32_row_col_s4;
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 32    && "s4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m8n8k32_row_col_satfinite_s4;
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 32    && "s4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m8n8k32_row_col_s4_u4;
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 32    && "s4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m8n8k32_row_col_satfinite_s4_u4;
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 32    && "u4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m8n8k32_row_col_u4_s4;
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 32    && "u4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m8n8k32_row_col_satfinite_u4_s4;
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 32    && "u4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m8n8k32_row_col_u4;
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 32    && "u4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m8n8k32_row_col_satfinite_u4;
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "s4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_s4;
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "s4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_satfinite_s4;
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "s4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_s4_u4;
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "s4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_satfinite_s4_u4;
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "u4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_u4_s4;
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "u4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_satfinite_u4_s4;
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "u4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_u4;
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "u4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_satfinite_u4;
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 64    && "s4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k64_row_col_s4;
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 64    && "s4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k64_row_col_satfinite_s4;
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 64    && "s4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k64_row_col_s4_u4;
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 64    && "s4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k64_row_col_satfinite_s4_u4;
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 64    && "u4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k64_row_col_u4_s4;
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 64    && "u4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k64_row_col_satfinite_u4_s4;
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 64    && "u4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k64_row_col_u4;
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 64    && "u4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+    return llvm::Intrinsic::nvvm_mma_m16n8k64_row_col_satfinite_u4;
+
+
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 128    && "b1" == eltypeA && "b1" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true) && (b1Op.hasValue() ? MMAB1Op::xor_popc == b1Op.getValue() : true))
+    return llvm::Intrinsic::nvvm_mma_xor_popc_m8n8k128_row_col_b1;
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 128    && "b1" == eltypeA && "b1" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true) && (b1Op.hasValue() ? MMAB1Op::and_popc == b1Op.getValue() : true))
+    return llvm::Intrinsic::nvvm_mma_and_popc_m8n8k128_row_col_b1;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 128    && "b1" == eltypeA && "b1" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true) && (b1Op.hasValue() ? MMAB1Op::xor_popc == b1Op.getValue() : true))
+    return llvm::Intrinsic::nvvm_mma_xor_popc_m16n8k128_row_col_b1;
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 128    && "b1" == eltypeA && "b1" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true) && (b1Op.hasValue() ? MMAB1Op::and_popc == b1Op.getValue() : true))
+    return llvm::Intrinsic::nvvm_mma_and_popc_m16n8k128_row_col_b1;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 256    && "b1" == eltypeA && "b1" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true) && (b1Op.hasValue() ? MMAB1Op::xor_popc == b1Op.getValue() : true))
+    return llvm::Intrinsic::nvvm_mma_xor_popc_m16n8k256_row_col_b1;
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 256    && "b1" == eltypeA && "b1" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true) && (b1Op.hasValue() ? MMAB1Op::and_popc == b1Op.getValue() : true))
+    return llvm::Intrinsic::nvvm_mma_and_popc_m16n8k256_row_col_b1;
+
+
+
+
+
+
+
+
+
+
+          return 0;
+        }
+
+        static Optional<mlir::NVVM::MMATypes> inferOperandMMAType(Type operandElType,
+          bool isAccumulator);
+
+        MMATypes accumPtxType();
+        MMATypes resultPtxType();
+      };
 } // namespace NVVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::MmaOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::MmaOp)
 
 namespace mlir {
 namespace NVVM {
@@ -1137,7 +1843,7 @@ public:
 };
 } // namespace NVVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::ShflOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::ShflOp)
 
 namespace mlir {
 namespace NVVM {
@@ -1193,7 +1899,7 @@ public:
 };
 } // namespace NVVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::ThreadIdXOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::ThreadIdXOp)
 
 namespace mlir {
 namespace NVVM {
@@ -1249,7 +1955,7 @@ public:
 };
 } // namespace NVVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::ThreadIdYOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::ThreadIdYOp)
 
 namespace mlir {
 namespace NVVM {
@@ -1305,7 +2011,7 @@ public:
 };
 } // namespace NVVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::ThreadIdZOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::ThreadIdZOp)
 
 namespace mlir {
 namespace NVVM {
@@ -1366,7 +2072,7 @@ public:
 };
 } // namespace NVVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::VoteBallotOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::VoteBallotOp)
 
 namespace mlir {
 namespace NVVM {
@@ -1576,7 +2282,7 @@ public:
 };
 } // namespace NVVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::WMMALoadOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::WMMALoadOp)
 
 namespace mlir {
 namespace NVVM {
@@ -1770,7 +2476,7 @@ public:
   return 0;}};
 } // namespace NVVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::WMMAMmaOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::WMMAMmaOp)
 
 namespace mlir {
 namespace NVVM {
@@ -1938,7 +2644,7 @@ public:
   return 0;}};
 } // namespace NVVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::WMMAStoreOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::WMMAStoreOp)
 
 namespace mlir {
 namespace NVVM {
@@ -1994,7 +2700,7 @@ public:
 };
 } // namespace NVVM
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::WarpSizeOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::WarpSizeOp)
 
 
 #endif  // GET_OP_CLASSES

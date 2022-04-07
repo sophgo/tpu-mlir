@@ -123,7 +123,7 @@ public:
 };
 } // namespace scf
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::scf::ConditionOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::scf::ConditionOp)
 
 namespace mlir {
 namespace scf {
@@ -150,7 +150,7 @@ private:
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
 };
-class ExecuteRegionOp : public ::mlir::Op<ExecuteRegionOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants> {
+class ExecuteRegionOp : public ::mlir::Op<ExecuteRegionOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::RegionBranchOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -177,11 +177,12 @@ public:
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult verify();
   static void getCanonicalizationPatterns(::mlir::RewritePatternSet &results, ::mlir::MLIRContext *context);
+  void getSuccessorRegions(::mlir::Optional<unsigned> index, ::mlir::ArrayRef<::mlir::Attribute> operands, ::mlir::SmallVectorImpl<::mlir::RegionSuccessor> &regions);
 public:
 };
 } // namespace scf
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::scf::ExecuteRegionOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::scf::ExecuteRegionOp)
 
 namespace mlir {
 namespace scf {
@@ -246,10 +247,9 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult verify();
+  ::mlir::LogicalResult verifyRegions();
   static void getCanonicalizationPatterns(::mlir::RewritePatternSet &results, ::mlir::MLIRContext *context);
-  bool isDefinedOutsideOfLoop(::mlir::Value  value);
   ::mlir::Region &getLoopBody();
-  ::mlir::LogicalResult moveOutOfLoop(::mlir::ArrayRef<::mlir::Operation *> ops);
   ::mlir::Optional<::mlir::Value> getSingleInductionVar();
   ::mlir::Optional<::mlir::OpFoldResult> getSingleLowerBound();
   ::mlir::Optional<::mlir::OpFoldResult> getSingleStep();
@@ -342,7 +342,7 @@ public:
 };
 } // namespace scf
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::scf::ForOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::scf::ForOp)
 
 namespace mlir {
 namespace scf {
@@ -425,7 +425,7 @@ public:
 };
 } // namespace scf
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::scf::IfOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::scf::IfOp)
 
 namespace mlir {
 namespace scf {
@@ -501,9 +501,7 @@ public:
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult verify();
   static void getCanonicalizationPatterns(::mlir::RewritePatternSet &results, ::mlir::MLIRContext *context);
-  bool isDefinedOutsideOfLoop(::mlir::Value  value);
   ::mlir::Region &getLoopBody();
-  ::mlir::LogicalResult moveOutOfLoop(::mlir::ArrayRef<::mlir::Operation *> ops);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
     return getAttributeNameForIndex((*this)->getName(), index);
@@ -523,7 +521,7 @@ public:
 };
 } // namespace scf
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::scf::ParallelOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::scf::ParallelOp)
 
 namespace mlir {
 namespace scf {
@@ -577,12 +575,12 @@ public:
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  ::mlir::LogicalResult verify();
+  ::mlir::LogicalResult verifyRegions();
 public:
 };
 } // namespace scf
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::scf::ReduceOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::scf::ReduceOp)
 
 namespace mlir {
 namespace scf {
@@ -641,7 +639,7 @@ public:
 };
 } // namespace scf
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::scf::ReduceReturnOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::scf::ReduceReturnOp)
 
 namespace mlir {
 namespace scf {
@@ -698,7 +696,7 @@ public:
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  ::mlir::LogicalResult verify();
+  ::mlir::LogicalResult verifyRegions();
   static void getCanonicalizationPatterns(::mlir::RewritePatternSet &results, ::mlir::MLIRContext *context);
   void getSuccessorRegions(::mlir::Optional<unsigned> index, ::mlir::ArrayRef<::mlir::Attribute> operands, ::mlir::SmallVectorImpl<::mlir::RegionSuccessor> &regions);
 public:
@@ -710,7 +708,7 @@ public:
 };
 } // namespace scf
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::scf::WhileOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::scf::WhileOp)
 
 namespace mlir {
 namespace scf {
@@ -768,7 +766,7 @@ public:
 };
 } // namespace scf
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::scf::YieldOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::scf::YieldOp)
 
 
 #endif  // GET_OP_CLASSES

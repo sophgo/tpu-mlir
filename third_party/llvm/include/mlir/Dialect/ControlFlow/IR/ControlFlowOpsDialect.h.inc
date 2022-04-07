@@ -29,4 +29,4 @@ public:
 };
 } // namespace cf
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::cf::ControlFlowDialect)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::cf::ControlFlowDialect)

@@ -6,7 +6,7 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
-DEFINE_EXPLICIT_TYPE_ID(::mlir::ROCDL::ROCDLDialect)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::ROCDL::ROCDLDialect)
 namespace mlir {
 namespace ROCDL {
 

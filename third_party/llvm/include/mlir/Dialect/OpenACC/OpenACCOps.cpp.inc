@@ -585,50 +585,50 @@ void DataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 }
 
 ::mlir::ParseResult DataOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> ifCondOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> ifCondOperands;
   ::llvm::SMLoc ifCondOperandsLoc;
   (void)ifCondOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> copyOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> copyOperandsOperands;
   ::llvm::SMLoc copyOperandsOperandsLoc;
   (void)copyOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> copyOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> copyinOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> copyinOperandsOperands;
   ::llvm::SMLoc copyinOperandsOperandsLoc;
   (void)copyinOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> copyinOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> copyinReadonlyOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> copyinReadonlyOperandsOperands;
   ::llvm::SMLoc copyinReadonlyOperandsOperandsLoc;
   (void)copyinReadonlyOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> copyinReadonlyOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> copyoutOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> copyoutOperandsOperands;
   ::llvm::SMLoc copyoutOperandsOperandsLoc;
   (void)copyoutOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> copyoutOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> copyoutZeroOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> copyoutZeroOperandsOperands;
   ::llvm::SMLoc copyoutZeroOperandsOperandsLoc;
   (void)copyoutZeroOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> copyoutZeroOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> createOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> createOperandsOperands;
   ::llvm::SMLoc createOperandsOperandsLoc;
   (void)createOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> createOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> createZeroOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> createZeroOperandsOperands;
   ::llvm::SMLoc createZeroOperandsOperandsLoc;
   (void)createZeroOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> createZeroOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> noCreateOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> noCreateOperandsOperands;
   ::llvm::SMLoc noCreateOperandsOperandsLoc;
   (void)noCreateOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> noCreateOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> presentOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> presentOperandsOperands;
   ::llvm::SMLoc presentOperandsOperandsLoc;
   (void)presentOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> presentOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> deviceptrOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> deviceptrOperandsOperands;
   ::llvm::SMLoc deviceptrOperandsOperandsLoc;
   (void)deviceptrOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> deviceptrOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> attachOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> attachOperandsOperands;
   ::llvm::SMLoc attachOperandsOperandsLoc;
   (void)attachOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> attachOperandsTypes;
@@ -639,7 +639,7 @@ void DataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 
   {
     ifCondOperandsLoc = parser.getCurrentLocation();
-    ::mlir::OpAsmParser::OperandType operand;
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
     if (parseResult.hasValue()) {
@@ -965,7 +965,7 @@ void DataOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace acc
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::acc::DataOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::acc::DataOp)
 
 namespace mlir {
 namespace acc {
@@ -1426,34 +1426,34 @@ void EnterDataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 }
 
 ::mlir::ParseResult EnterDataOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> ifCondOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> ifCondOperands;
   ::llvm::SMLoc ifCondOperandsLoc;
   (void)ifCondOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> asyncOperandOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> asyncOperandOperands;
   ::llvm::SMLoc asyncOperandOperandsLoc;
   (void)asyncOperandOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> asyncOperandTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> waitDevnumOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> waitDevnumOperands;
   ::llvm::SMLoc waitDevnumOperandsLoc;
   (void)waitDevnumOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> waitDevnumTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> waitOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> waitOperandsOperands;
   ::llvm::SMLoc waitOperandsOperandsLoc;
   (void)waitOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> waitOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> copyinOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> copyinOperandsOperands;
   ::llvm::SMLoc copyinOperandsOperandsLoc;
   (void)copyinOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> copyinOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> createOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> createOperandsOperands;
   ::llvm::SMLoc createOperandsOperandsLoc;
   (void)createOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> createOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> createZeroOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> createZeroOperandsOperands;
   ::llvm::SMLoc createZeroOperandsOperandsLoc;
   (void)createZeroOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> createZeroOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> attachOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> attachOperandsOperands;
   ::llvm::SMLoc attachOperandsOperandsLoc;
   (void)attachOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> attachOperandsTypes;
@@ -1463,7 +1463,7 @@ void EnterDataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 
   {
     ifCondOperandsLoc = parser.getCurrentLocation();
-    ::mlir::OpAsmParser::OperandType operand;
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
     if (parseResult.hasValue()) {
@@ -1481,7 +1481,7 @@ void EnterDataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 
   {
     asyncOperandOperandsLoc = parser.getCurrentLocation();
-    ::mlir::OpAsmParser::OperandType operand;
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
     if (parseResult.hasValue()) {
@@ -1512,7 +1512,7 @@ void EnterDataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 
   {
     waitDevnumOperandsLoc = parser.getCurrentLocation();
-    ::mlir::OpAsmParser::OperandType operand;
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
     if (parseResult.hasValue()) {
@@ -1713,7 +1713,7 @@ void EnterDataOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace acc
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::acc::EnterDataOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::acc::EnterDataOp)
 
 namespace mlir {
 namespace acc {
@@ -2200,30 +2200,30 @@ void ExitDataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::ParseResult ExitDataOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> ifCondOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> ifCondOperands;
   ::llvm::SMLoc ifCondOperandsLoc;
   (void)ifCondOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> asyncOperandOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> asyncOperandOperands;
   ::llvm::SMLoc asyncOperandOperandsLoc;
   (void)asyncOperandOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> asyncOperandTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> waitDevnumOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> waitDevnumOperands;
   ::llvm::SMLoc waitDevnumOperandsLoc;
   (void)waitDevnumOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> waitDevnumTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> waitOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> waitOperandsOperands;
   ::llvm::SMLoc waitOperandsOperandsLoc;
   (void)waitOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> waitOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> copyoutOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> copyoutOperandsOperands;
   ::llvm::SMLoc copyoutOperandsOperandsLoc;
   (void)copyoutOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> copyoutOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> deleteOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> deleteOperandsOperands;
   ::llvm::SMLoc deleteOperandsOperandsLoc;
   (void)deleteOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> deleteOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> detachOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> detachOperandsOperands;
   ::llvm::SMLoc detachOperandsOperandsLoc;
   (void)detachOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> detachOperandsTypes;
@@ -2233,7 +2233,7 @@ void ExitDataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 
   {
     ifCondOperandsLoc = parser.getCurrentLocation();
-    ::mlir::OpAsmParser::OperandType operand;
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
     if (parseResult.hasValue()) {
@@ -2251,7 +2251,7 @@ void ExitDataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 
   {
     asyncOperandOperandsLoc = parser.getCurrentLocation();
-    ::mlir::OpAsmParser::OperandType operand;
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
     if (parseResult.hasValue()) {
@@ -2282,7 +2282,7 @@ void ExitDataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 
   {
     waitDevnumOperandsLoc = parser.getCurrentLocation();
-    ::mlir::OpAsmParser::OperandType operand;
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
     if (parseResult.hasValue()) {
@@ -2457,7 +2457,7 @@ void ExitDataOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace acc
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::acc::ExitDataOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::acc::ExitDataOp)
 
 namespace mlir {
 namespace acc {
@@ -2667,15 +2667,15 @@ void InitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 }
 
 ::mlir::ParseResult InitOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> deviceTypeOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> deviceTypeOperandsOperands;
   ::llvm::SMLoc deviceTypeOperandsOperandsLoc;
   (void)deviceTypeOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> deviceTypeOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> deviceNumOperandOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> deviceNumOperandOperands;
   ::llvm::SMLoc deviceNumOperandOperandsLoc;
   (void)deviceNumOperandOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> deviceNumOperandTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> ifCondOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> ifCondOperands;
   ::llvm::SMLoc ifCondOperandsLoc;
   (void)ifCondOperandsLoc;
   if (succeeded(parser.parseOptionalKeyword("device_type"))) {
@@ -2699,7 +2699,7 @@ void InitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 
   {
     deviceNumOperandOperandsLoc = parser.getCurrentLocation();
-    ::mlir::OpAsmParser::OperandType operand;
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
     if (parseResult.hasValue()) {
@@ -2730,7 +2730,7 @@ void InitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 
   {
     ifCondOperandsLoc = parser.getCurrentLocation();
-    ::mlir::OpAsmParser::OperandType operand;
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
     if (parseResult.hasValue()) {
@@ -2787,7 +2787,7 @@ void InitOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace acc
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::acc::InitOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::acc::InitOp)
 
 namespace mlir {
 namespace acc {
@@ -3236,7 +3236,9 @@ void LoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
   if (reductionOp) {
   odsState.addAttribute(reductionOpAttrName(odsState.name), reductionOp);
   }
+  if (exec_mapping) {
   odsState.addAttribute(exec_mappingAttrName(odsState.name), exec_mapping);
+  }
   (void)odsState.addRegion();
   odsState.addTypes(results);
 }
@@ -3415,7 +3417,7 @@ void LoopOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 
 } // namespace acc
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::acc::LoopOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::acc::LoopOp)
 
 namespace mlir {
 namespace acc {
@@ -4395,7 +4397,7 @@ void ParallelOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 
 } // namespace acc
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::acc::ParallelOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::acc::ParallelOp)
 
 namespace mlir {
 namespace acc {
@@ -4605,15 +4607,15 @@ void ShutdownOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::ParseResult ShutdownOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> deviceTypeOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> deviceTypeOperandsOperands;
   ::llvm::SMLoc deviceTypeOperandsOperandsLoc;
   (void)deviceTypeOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> deviceTypeOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> deviceNumOperandOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> deviceNumOperandOperands;
   ::llvm::SMLoc deviceNumOperandOperandsLoc;
   (void)deviceNumOperandOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> deviceNumOperandTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> ifCondOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> ifCondOperands;
   ::llvm::SMLoc ifCondOperandsLoc;
   (void)ifCondOperandsLoc;
   if (succeeded(parser.parseOptionalKeyword("device_type"))) {
@@ -4637,7 +4639,7 @@ void ShutdownOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 
   {
     deviceNumOperandOperandsLoc = parser.getCurrentLocation();
-    ::mlir::OpAsmParser::OperandType operand;
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
     if (parseResult.hasValue()) {
@@ -4668,7 +4670,7 @@ void ShutdownOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 
   {
     ifCondOperandsLoc = parser.getCurrentLocation();
-    ::mlir::OpAsmParser::OperandType operand;
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
     if (parseResult.hasValue()) {
@@ -4725,7 +4727,7 @@ void ShutdownOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace acc
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::acc::ShutdownOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::acc::ShutdownOp)
 
 namespace mlir {
 namespace acc {
@@ -4816,7 +4818,7 @@ void TerminatorOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace acc
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::acc::TerminatorOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::acc::TerminatorOp)
 
 namespace mlir {
 namespace acc {
@@ -5303,30 +5305,30 @@ void UpdateOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::ParseResult UpdateOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> ifCondOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> ifCondOperands;
   ::llvm::SMLoc ifCondOperandsLoc;
   (void)ifCondOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> asyncOperandOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> asyncOperandOperands;
   ::llvm::SMLoc asyncOperandOperandsLoc;
   (void)asyncOperandOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> asyncOperandTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> waitDevnumOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> waitDevnumOperands;
   ::llvm::SMLoc waitDevnumOperandsLoc;
   (void)waitDevnumOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> waitDevnumTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> deviceTypeOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> deviceTypeOperandsOperands;
   ::llvm::SMLoc deviceTypeOperandsOperandsLoc;
   (void)deviceTypeOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> deviceTypeOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> waitOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> waitOperandsOperands;
   ::llvm::SMLoc waitOperandsOperandsLoc;
   (void)waitOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> waitOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> hostOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> hostOperandsOperands;
   ::llvm::SMLoc hostOperandsOperandsLoc;
   (void)hostOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> hostOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> deviceOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> deviceOperandsOperands;
   ::llvm::SMLoc deviceOperandsOperandsLoc;
   (void)deviceOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> deviceOperandsTypes;
@@ -5336,7 +5338,7 @@ void UpdateOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 
   {
     ifCondOperandsLoc = parser.getCurrentLocation();
-    ::mlir::OpAsmParser::OperandType operand;
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
     if (parseResult.hasValue()) {
@@ -5354,7 +5356,7 @@ void UpdateOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 
   {
     asyncOperandOperandsLoc = parser.getCurrentLocation();
-    ::mlir::OpAsmParser::OperandType operand;
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
     if (parseResult.hasValue()) {
@@ -5385,7 +5387,7 @@ void UpdateOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 
   {
     waitDevnumOperandsLoc = parser.getCurrentLocation();
-    ::mlir::OpAsmParser::OperandType operand;
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
     if (parseResult.hasValue()) {
@@ -5560,7 +5562,7 @@ void UpdateOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace acc
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::acc::UpdateOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::acc::UpdateOp)
 
 namespace mlir {
 namespace acc {
@@ -5875,19 +5877,19 @@ void WaitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 }
 
 ::mlir::ParseResult WaitOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> waitOperandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> waitOperandsOperands;
   ::llvm::SMLoc waitOperandsOperandsLoc;
   (void)waitOperandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> waitOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> asyncOperandOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> asyncOperandOperands;
   ::llvm::SMLoc asyncOperandOperandsLoc;
   (void)asyncOperandOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> asyncOperandTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> waitDevnumOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> waitDevnumOperands;
   ::llvm::SMLoc waitDevnumOperandsLoc;
   (void)waitDevnumOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> waitDevnumTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> ifCondOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> ifCondOperands;
   ::llvm::SMLoc ifCondOperandsLoc;
   (void)ifCondOperandsLoc;
   if (succeeded(parser.parseOptionalLParen())) {
@@ -5909,7 +5911,7 @@ void WaitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 
   {
     asyncOperandOperandsLoc = parser.getCurrentLocation();
-    ::mlir::OpAsmParser::OperandType operand;
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
     if (parseResult.hasValue()) {
@@ -5940,7 +5942,7 @@ void WaitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 
   {
     waitDevnumOperandsLoc = parser.getCurrentLocation();
-    ::mlir::OpAsmParser::OperandType operand;
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
     if (parseResult.hasValue()) {
@@ -5971,7 +5973,7 @@ void WaitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 
   {
     ifCondOperandsLoc = parser.getCurrentLocation();
-    ::mlir::OpAsmParser::OperandType operand;
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
     if (parseResult.hasValue()) {
@@ -6039,7 +6041,7 @@ void WaitOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace acc
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::acc::WaitOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::acc::WaitOp)
 
 namespace mlir {
 namespace acc {
@@ -6169,7 +6171,7 @@ void YieldOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 ::mlir::ParseResult YieldOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::OperandType, 4> operandsOperands;
+  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> operandsOperands;
   ::llvm::SMLoc operandsOperandsLoc;
   (void)operandsOperandsLoc;
   ::mlir::SmallVector<::mlir::Type, 1> operandsTypes;
@@ -6204,7 +6206,7 @@ void YieldOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
 
 } // namespace acc
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::acc::YieldOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::acc::YieldOp)
 
 
 #endif  // GET_OP_CLASSES

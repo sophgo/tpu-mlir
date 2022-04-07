@@ -151,7 +151,7 @@ void ClauseDependAttr::print(::mlir::AsmPrinter &odsPrinter) const {
 
 } // namespace omp
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::ClauseDependAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::ClauseDependAttr)
 namespace mlir {
 namespace omp {
 namespace detail {
@@ -215,7 +215,7 @@ void ClauseMemoryOrderKindAttr::print(::mlir::AsmPrinter &odsPrinter) const {
 
 } // namespace omp
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::ClauseMemoryOrderKindAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::ClauseMemoryOrderKindAttr)
 namespace mlir {
 namespace omp {
 namespace detail {
@@ -279,7 +279,7 @@ void ClauseOrderKindAttr::print(::mlir::AsmPrinter &odsPrinter) const {
 
 } // namespace omp
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::ClauseOrderKindAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::ClauseOrderKindAttr)
 namespace mlir {
 namespace omp {
 namespace detail {
@@ -343,7 +343,7 @@ void ClauseProcBindKindAttr::print(::mlir::AsmPrinter &odsPrinter) const {
 
 } // namespace omp
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::ClauseProcBindKindAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::ClauseProcBindKindAttr)
 namespace mlir {
 namespace omp {
 namespace detail {
@@ -385,7 +385,7 @@ ClauseScheduleKindAttr ClauseScheduleKindAttr::get(::mlir::MLIRContext *context,
       auto maybeEnum = ::mlir::omp::symbolizeClauseScheduleKind(enumKeyword);
       if (maybeEnum)
         return *maybeEnum;
-      return {(::mlir::LogicalResult)odsParser.emitError(loc, "expected ::mlir::omp::ClauseScheduleKind to be one of: Static, Dynamic, Guided, Auto, Runtime")};
+      return {(::mlir::LogicalResult)odsParser.emitError(loc, "expected ::mlir::omp::ClauseScheduleKind to be one of: static, dynamic, guided, auto, runtime")};
     }();
   if (::mlir::failed(_result_value)) {
     odsParser.emitError(odsParser.getCurrentLocation(), "failed to parse ScheduleKindAttr parameter 'value' which is to be a `::mlir::omp::ClauseScheduleKind`");
@@ -407,7 +407,7 @@ void ClauseScheduleKindAttr::print(::mlir::AsmPrinter &odsPrinter) const {
 
 } // namespace omp
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::ClauseScheduleKindAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::ClauseScheduleKindAttr)
 namespace mlir {
 namespace omp {
 namespace detail {
@@ -471,7 +471,7 @@ void ScheduleModifierAttr::print(::mlir::AsmPrinter &odsPrinter) const {
 
 } // namespace omp
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::ScheduleModifierAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::ScheduleModifierAttr)
 namespace mlir {
 namespace omp {
 

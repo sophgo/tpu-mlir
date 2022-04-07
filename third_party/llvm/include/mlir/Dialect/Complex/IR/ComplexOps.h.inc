@@ -155,7 +155,7 @@ public:
 };
 } // namespace complex
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::AbsOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::AbsOp)
 
 namespace mlir {
 namespace complex {
@@ -219,7 +219,7 @@ public:
 };
 } // namespace complex
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::AddOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::AddOp)
 
 namespace mlir {
 namespace complex {
@@ -305,7 +305,7 @@ public:
 };
 } // namespace complex
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::ConstantOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::ConstantOp)
 
 namespace mlir {
 namespace complex {
@@ -368,7 +368,7 @@ public:
 };
 } // namespace complex
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::CreateOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::CreateOp)
 
 namespace mlir {
 namespace complex {
@@ -432,7 +432,7 @@ public:
 };
 } // namespace complex
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::DivOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::DivOp)
 
 namespace mlir {
 namespace complex {
@@ -497,7 +497,7 @@ public:
 };
 } // namespace complex
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::EqualOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::EqualOp)
 
 namespace mlir {
 namespace complex {
@@ -558,7 +558,7 @@ public:
 };
 } // namespace complex
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::ExpOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::ExpOp)
 
 namespace mlir {
 namespace complex {
@@ -618,7 +618,7 @@ public:
 };
 } // namespace complex
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::ImOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::ImOp)
 
 namespace mlir {
 namespace complex {
@@ -679,7 +679,7 @@ public:
 };
 } // namespace complex
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::Log1pOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::Log1pOp)
 
 namespace mlir {
 namespace complex {
@@ -740,7 +740,7 @@ public:
 };
 } // namespace complex
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::LogOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::LogOp)
 
 namespace mlir {
 namespace complex {
@@ -804,7 +804,7 @@ public:
 };
 } // namespace complex
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::MulOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::MulOp)
 
 namespace mlir {
 namespace complex {
@@ -865,7 +865,7 @@ public:
 };
 } // namespace complex
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::NegOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::NegOp)
 
 namespace mlir {
 namespace complex {
@@ -930,7 +930,7 @@ public:
 };
 } // namespace complex
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::NotEqualOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::NotEqualOp)
 
 namespace mlir {
 namespace complex {
@@ -990,7 +990,7 @@ public:
 };
 } // namespace complex
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::ReOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::ReOp)
 
 namespace mlir {
 namespace complex {
@@ -1051,7 +1051,7 @@ public:
 };
 } // namespace complex
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::SignOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::SignOp)
 
 namespace mlir {
 namespace complex {
@@ -1115,7 +1115,7 @@ public:
 };
 } // namespace complex
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::SubOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::complex::SubOp)
 
 
 #endif  // GET_OP_CLASSES

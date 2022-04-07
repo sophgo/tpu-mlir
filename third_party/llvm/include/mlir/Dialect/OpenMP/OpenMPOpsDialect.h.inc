@@ -37,4 +37,4 @@ public:
 };
 } // namespace omp
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::OpenMPDialect)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::OpenMPDialect)

@@ -52,8 +52,8 @@ public:
 };
 } // namespace acc
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::acc::ClauseDefaultValueAttr)
-DECLARE_EXPLICIT_TYPE_ID(::mlir::acc::ReductionOpAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::acc::ClauseDefaultValueAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::acc::ReductionOpAttr)
 
 #endif  // GET_ATTRDEF_CLASSES
 

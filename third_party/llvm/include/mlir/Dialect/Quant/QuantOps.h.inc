@@ -203,7 +203,7 @@ public:
 };
 } // namespace quant
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::quant::ConstFakeQuant)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::quant::ConstFakeQuant)
 
 namespace mlir {
 namespace quant {
@@ -353,7 +353,7 @@ public:
 };
 } // namespace quant
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::quant::ConstFakeQuantPerAxis)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::quant::ConstFakeQuantPerAxis)
 
 namespace mlir {
 namespace quant {
@@ -436,7 +436,7 @@ public:
 };
 } // namespace quant
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::quant::CoupledRefOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::quant::CoupledRefOp)
 
 namespace mlir {
 namespace quant {
@@ -492,7 +492,7 @@ public:
 };
 } // namespace quant
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::quant::DequantizeCastOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::quant::DequantizeCastOp)
 
 namespace mlir {
 namespace quant {
@@ -548,7 +548,7 @@ public:
 };
 } // namespace quant
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::quant::QuantizeCastOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::quant::QuantizeCastOp)
 
 namespace mlir {
 namespace quant {
@@ -659,7 +659,7 @@ public:
 };
 } // namespace quant
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::quant::QuantizeRegionOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::quant::QuantizeRegionOp)
 
 namespace mlir {
 namespace quant {
@@ -713,7 +713,7 @@ public:
 };
 } // namespace quant
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::quant::ReturnOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::quant::ReturnOp)
 
 namespace mlir {
 namespace quant {
@@ -823,7 +823,7 @@ public:
 };
 } // namespace quant
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::quant::StatisticsOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::quant::StatisticsOp)
 
 namespace mlir {
 namespace quant {
@@ -906,7 +906,7 @@ public:
 };
 } // namespace quant
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::quant::StatisticsRefOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::quant::StatisticsRefOp)
 
 namespace mlir {
 namespace quant {
@@ -963,7 +963,7 @@ public:
 };
 } // namespace quant
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::quant::StorageCastOp)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::quant::StorageCastOp)
 
 
 #endif  // GET_OP_CLASSES

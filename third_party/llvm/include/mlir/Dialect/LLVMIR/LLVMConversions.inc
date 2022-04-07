@@ -942,6 +942,19 @@ if (auto op = dyn_cast<::mlir::LLVM::StackSaveOp>(opInst)) {
     (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
+if (auto op = dyn_cast<::mlir::LLVM::StepVectorOp>(opInst)) {
+
+    llvm::Module *module = builder.GetInsertBlock()->getModule();
+    llvm::Function *fn = llvm::Intrinsic::getDeclaration(
+        module,
+        llvm::Intrinsic::experimental_stepvector,
+        { moduleTranslation.convertType(opInst.getResult(0).getType())
+        });
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    auto *inst = builder.CreateCall(fn, operands);
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
+  return success();
+}
 if (auto op = dyn_cast<::mlir::LLVM::StoreOp>(opInst)) {
 
     auto *inst = builder.CreateStore(moduleTranslation.lookupValue(op.getValue()), moduleTranslation.lookupValue(op.getAddr()), op.getVolatile_());
@@ -1063,6 +1076,240 @@ moduleTranslation.mapValue(op.getRes()) = llvm::UndefValue::get(moduleTranslatio
 }
 if (auto op = dyn_cast<::mlir::LLVM::UnreachableOp>(opInst)) {
  builder.CreateUnreachable(); 
+  return success();
+}
+if (auto op = dyn_cast<::mlir::LLVM::VPAShrOp>(opInst)) {
+
+    llvm::Module *module = builder.GetInsertBlock()->getModule();
+    llvm::Function *fn = llvm::Intrinsic::getDeclaration(
+        module,
+        llvm::Intrinsic::vp_ashr,
+        { moduleTranslation.convertType(opInst.getResult(0).getType())
+        });
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    auto *inst = builder.CreateCall(fn, operands);
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
+  return success();
+}
+if (auto op = dyn_cast<::mlir::LLVM::VPAddOp>(opInst)) {
+
+    llvm::Module *module = builder.GetInsertBlock()->getModule();
+    llvm::Function *fn = llvm::Intrinsic::getDeclaration(
+        module,
+        llvm::Intrinsic::vp_add,
+        { moduleTranslation.convertType(opInst.getResult(0).getType())
+        });
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    auto *inst = builder.CreateCall(fn, operands);
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
+  return success();
+}
+if (auto op = dyn_cast<::mlir::LLVM::VPAndOp>(opInst)) {
+
+    llvm::Module *module = builder.GetInsertBlock()->getModule();
+    llvm::Function *fn = llvm::Intrinsic::getDeclaration(
+        module,
+        llvm::Intrinsic::vp_and,
+        { moduleTranslation.convertType(opInst.getResult(0).getType())
+        });
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    auto *inst = builder.CreateCall(fn, operands);
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
+  return success();
+}
+if (auto op = dyn_cast<::mlir::LLVM::VPFAddOp>(opInst)) {
+
+    llvm::Module *module = builder.GetInsertBlock()->getModule();
+    llvm::Function *fn = llvm::Intrinsic::getDeclaration(
+        module,
+        llvm::Intrinsic::vp_fadd,
+        { moduleTranslation.convertType(opInst.getResult(0).getType())
+        });
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    auto *inst = builder.CreateCall(fn, operands);
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
+  return success();
+}
+if (auto op = dyn_cast<::mlir::LLVM::VPFDivOp>(opInst)) {
+
+    llvm::Module *module = builder.GetInsertBlock()->getModule();
+    llvm::Function *fn = llvm::Intrinsic::getDeclaration(
+        module,
+        llvm::Intrinsic::vp_fdiv,
+        { moduleTranslation.convertType(opInst.getResult(0).getType())
+        });
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    auto *inst = builder.CreateCall(fn, operands);
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
+  return success();
+}
+if (auto op = dyn_cast<::mlir::LLVM::VPFMulOp>(opInst)) {
+
+    llvm::Module *module = builder.GetInsertBlock()->getModule();
+    llvm::Function *fn = llvm::Intrinsic::getDeclaration(
+        module,
+        llvm::Intrinsic::vp_fmul,
+        { moduleTranslation.convertType(opInst.getResult(0).getType())
+        });
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    auto *inst = builder.CreateCall(fn, operands);
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
+  return success();
+}
+if (auto op = dyn_cast<::mlir::LLVM::VPFRemOp>(opInst)) {
+
+    llvm::Module *module = builder.GetInsertBlock()->getModule();
+    llvm::Function *fn = llvm::Intrinsic::getDeclaration(
+        module,
+        llvm::Intrinsic::vp_frem,
+        { moduleTranslation.convertType(opInst.getResult(0).getType())
+        });
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    auto *inst = builder.CreateCall(fn, operands);
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
+  return success();
+}
+if (auto op = dyn_cast<::mlir::LLVM::VPFSubOp>(opInst)) {
+
+    llvm::Module *module = builder.GetInsertBlock()->getModule();
+    llvm::Function *fn = llvm::Intrinsic::getDeclaration(
+        module,
+        llvm::Intrinsic::vp_fsub,
+        { moduleTranslation.convertType(opInst.getResult(0).getType())
+        });
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    auto *inst = builder.CreateCall(fn, operands);
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
+  return success();
+}
+if (auto op = dyn_cast<::mlir::LLVM::VPLShrOp>(opInst)) {
+
+    llvm::Module *module = builder.GetInsertBlock()->getModule();
+    llvm::Function *fn = llvm::Intrinsic::getDeclaration(
+        module,
+        llvm::Intrinsic::vp_lshr,
+        { moduleTranslation.convertType(opInst.getResult(0).getType())
+        });
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    auto *inst = builder.CreateCall(fn, operands);
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
+  return success();
+}
+if (auto op = dyn_cast<::mlir::LLVM::VPMulOp>(opInst)) {
+
+    llvm::Module *module = builder.GetInsertBlock()->getModule();
+    llvm::Function *fn = llvm::Intrinsic::getDeclaration(
+        module,
+        llvm::Intrinsic::vp_mul,
+        { moduleTranslation.convertType(opInst.getResult(0).getType())
+        });
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    auto *inst = builder.CreateCall(fn, operands);
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
+  return success();
+}
+if (auto op = dyn_cast<::mlir::LLVM::VPOrOp>(opInst)) {
+
+    llvm::Module *module = builder.GetInsertBlock()->getModule();
+    llvm::Function *fn = llvm::Intrinsic::getDeclaration(
+        module,
+        llvm::Intrinsic::vp_or,
+        { moduleTranslation.convertType(opInst.getResult(0).getType())
+        });
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    auto *inst = builder.CreateCall(fn, operands);
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
+  return success();
+}
+if (auto op = dyn_cast<::mlir::LLVM::VPSDivOp>(opInst)) {
+
+    llvm::Module *module = builder.GetInsertBlock()->getModule();
+    llvm::Function *fn = llvm::Intrinsic::getDeclaration(
+        module,
+        llvm::Intrinsic::vp_sdiv,
+        { moduleTranslation.convertType(opInst.getResult(0).getType())
+        });
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    auto *inst = builder.CreateCall(fn, operands);
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
+  return success();
+}
+if (auto op = dyn_cast<::mlir::LLVM::VPSRemOp>(opInst)) {
+
+    llvm::Module *module = builder.GetInsertBlock()->getModule();
+    llvm::Function *fn = llvm::Intrinsic::getDeclaration(
+        module,
+        llvm::Intrinsic::vp_srem,
+        { moduleTranslation.convertType(opInst.getResult(0).getType())
+        });
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    auto *inst = builder.CreateCall(fn, operands);
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
+  return success();
+}
+if (auto op = dyn_cast<::mlir::LLVM::VPShlOp>(opInst)) {
+
+    llvm::Module *module = builder.GetInsertBlock()->getModule();
+    llvm::Function *fn = llvm::Intrinsic::getDeclaration(
+        module,
+        llvm::Intrinsic::vp_shl,
+        { moduleTranslation.convertType(opInst.getResult(0).getType())
+        });
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    auto *inst = builder.CreateCall(fn, operands);
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
+  return success();
+}
+if (auto op = dyn_cast<::mlir::LLVM::VPSubOp>(opInst)) {
+
+    llvm::Module *module = builder.GetInsertBlock()->getModule();
+    llvm::Function *fn = llvm::Intrinsic::getDeclaration(
+        module,
+        llvm::Intrinsic::vp_sub,
+        { moduleTranslation.convertType(opInst.getResult(0).getType())
+        });
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    auto *inst = builder.CreateCall(fn, operands);
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
+  return success();
+}
+if (auto op = dyn_cast<::mlir::LLVM::VPUDivOp>(opInst)) {
+
+    llvm::Module *module = builder.GetInsertBlock()->getModule();
+    llvm::Function *fn = llvm::Intrinsic::getDeclaration(
+        module,
+        llvm::Intrinsic::vp_udiv,
+        { moduleTranslation.convertType(opInst.getResult(0).getType())
+        });
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    auto *inst = builder.CreateCall(fn, operands);
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
+  return success();
+}
+if (auto op = dyn_cast<::mlir::LLVM::VPURemOp>(opInst)) {
+
+    llvm::Module *module = builder.GetInsertBlock()->getModule();
+    llvm::Function *fn = llvm::Intrinsic::getDeclaration(
+        module,
+        llvm::Intrinsic::vp_urem,
+        { moduleTranslation.convertType(opInst.getResult(0).getType())
+        });
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    auto *inst = builder.CreateCall(fn, operands);
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
+  return success();
+}
+if (auto op = dyn_cast<::mlir::LLVM::VPXorOp>(opInst)) {
+
+    llvm::Module *module = builder.GetInsertBlock()->getModule();
+    llvm::Function *fn = llvm::Intrinsic::getDeclaration(
+        module,
+        llvm::Intrinsic::vp_xor,
+        { moduleTranslation.convertType(opInst.getResult(0).getType())
+        });
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    auto *inst = builder.CreateCall(fn, operands);
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::LLVM::XOrOp>(opInst)) {

@@ -197,8 +197,8 @@ void AbsOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
 }
 
 ::mlir::ParseResult AbsOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType complexRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> complexOperands(complexRawOperands);  ::llvm::SMLoc complexOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand complexRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> complexOperands(complexRawOperands);  ::llvm::SMLoc complexOperandsLoc;
   (void)complexOperandsLoc;
   ::mlir::Type complexRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> complexTypes(complexRawTypes);
@@ -249,7 +249,7 @@ void AbsOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace complex
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::AbsOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::AbsOp)
 
 namespace mlir {
 namespace complex {
@@ -404,11 +404,11 @@ void AddOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult AddOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -464,7 +464,7 @@ void AddOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace complex
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::AddOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::AddOp)
 
 namespace mlir {
 namespace complex {
@@ -645,7 +645,7 @@ void ConstantOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace complex
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::ConstantOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::ConstantOp)
 
 namespace mlir {
 namespace complex {
@@ -792,11 +792,11 @@ void CreateOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::ParseResult CreateOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType realRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> realOperands(realRawOperands);  ::llvm::SMLoc realOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand realRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> realOperands(realRawOperands);  ::llvm::SMLoc realOperandsLoc;
   (void)realOperandsLoc;
-  ::mlir::OpAsmParser::OperandType imaginaryRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> imaginaryOperands(imaginaryRawOperands);  ::llvm::SMLoc imaginaryOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand imaginaryRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> imaginaryOperands(imaginaryRawOperands);  ::llvm::SMLoc imaginaryOperandsLoc;
   (void)imaginaryOperandsLoc;
   ::mlir::Type complexRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> complexTypes(complexRawTypes);
@@ -858,7 +858,7 @@ void CreateOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectIns
 
 } // namespace complex
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::CreateOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::CreateOp)
 
 namespace mlir {
 namespace complex {
@@ -1013,11 +1013,11 @@ void DivOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult DivOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -1073,7 +1073,7 @@ void DivOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace complex
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::DivOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::DivOp)
 
 namespace mlir {
 namespace complex {
@@ -1254,11 +1254,11 @@ void EqualOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
 }
 
 ::mlir::ParseResult EqualOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type lhsRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> lhsTypes(lhsRawTypes);
@@ -1315,7 +1315,7 @@ void EqualOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace complex
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::EqualOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::EqualOp)
 
 namespace mlir {
 namespace complex {
@@ -1447,8 +1447,8 @@ void ExpOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult ExpOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType complexRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> complexOperands(complexRawOperands);  ::llvm::SMLoc complexOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand complexRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> complexOperands(complexRawOperands);  ::llvm::SMLoc complexOperandsLoc;
   (void)complexOperandsLoc;
   ::mlir::Type complexRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> complexTypes(complexRawTypes);
@@ -1493,7 +1493,7 @@ void ExpOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace complex
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::ExpOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::ExpOp)
 
 namespace mlir {
 namespace complex {
@@ -1614,8 +1614,8 @@ void ImOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::
 }
 
 ::mlir::ParseResult ImOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType complexRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> complexOperands(complexRawOperands);  ::llvm::SMLoc complexOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand complexRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> complexOperands(complexRawOperands);  ::llvm::SMLoc complexOperandsLoc;
   (void)complexOperandsLoc;
   ::mlir::Type complexRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> complexTypes(complexRawTypes);
@@ -1666,7 +1666,7 @@ void ImOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstanc
 
 } // namespace complex
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::ImOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::ImOp)
 
 namespace mlir {
 namespace complex {
@@ -1798,8 +1798,8 @@ void Log1pOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
 }
 
 ::mlir::ParseResult Log1pOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType complexRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> complexOperands(complexRawOperands);  ::llvm::SMLoc complexOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand complexRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> complexOperands(complexRawOperands);  ::llvm::SMLoc complexOperandsLoc;
   (void)complexOperandsLoc;
   ::mlir::Type complexRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> complexTypes(complexRawTypes);
@@ -1844,7 +1844,7 @@ void Log1pOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInst
 
 } // namespace complex
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::Log1pOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::Log1pOp)
 
 namespace mlir {
 namespace complex {
@@ -1976,8 +1976,8 @@ void LogOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult LogOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType complexRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> complexOperands(complexRawOperands);  ::llvm::SMLoc complexOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand complexRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> complexOperands(complexRawOperands);  ::llvm::SMLoc complexOperandsLoc;
   (void)complexOperandsLoc;
   ::mlir::Type complexRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> complexTypes(complexRawTypes);
@@ -2022,7 +2022,7 @@ void LogOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace complex
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::LogOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::LogOp)
 
 namespace mlir {
 namespace complex {
@@ -2177,11 +2177,11 @@ void MulOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult MulOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -2237,7 +2237,7 @@ void MulOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace complex
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::MulOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::MulOp)
 
 namespace mlir {
 namespace complex {
@@ -2369,8 +2369,8 @@ void NegOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult NegOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType complexRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> complexOperands(complexRawOperands);  ::llvm::SMLoc complexOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand complexRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> complexOperands(complexRawOperands);  ::llvm::SMLoc complexOperandsLoc;
   (void)complexOperandsLoc;
   ::mlir::Type complexRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> complexTypes(complexRawTypes);
@@ -2415,7 +2415,7 @@ void NegOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace complex
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::NegOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::NegOp)
 
 namespace mlir {
 namespace complex {
@@ -2596,11 +2596,11 @@ void NotEqualOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult NotEqualOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type lhsRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> lhsTypes(lhsRawTypes);
@@ -2657,7 +2657,7 @@ void NotEqualOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectI
 
 } // namespace complex
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::NotEqualOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::NotEqualOp)
 
 namespace mlir {
 namespace complex {
@@ -2778,8 +2778,8 @@ void ReOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::
 }
 
 ::mlir::ParseResult ReOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType complexRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> complexOperands(complexRawOperands);  ::llvm::SMLoc complexOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand complexRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> complexOperands(complexRawOperands);  ::llvm::SMLoc complexOperandsLoc;
   (void)complexOperandsLoc;
   ::mlir::Type complexRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> complexTypes(complexRawTypes);
@@ -2830,7 +2830,7 @@ void ReOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstanc
 
 } // namespace complex
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::ReOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::ReOp)
 
 namespace mlir {
 namespace complex {
@@ -2962,8 +2962,8 @@ void SignOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult SignOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType complexRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> complexOperands(complexRawOperands);  ::llvm::SMLoc complexOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand complexRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> complexOperands(complexRawOperands);  ::llvm::SMLoc complexOperandsLoc;
   (void)complexOperandsLoc;
   ::mlir::Type complexRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> complexTypes(complexRawTypes);
@@ -3008,7 +3008,7 @@ void SignOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 
 } // namespace complex
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::SignOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::SignOp)
 
 namespace mlir {
 namespace complex {
@@ -3163,11 +3163,11 @@ void SubOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 }
 
 ::mlir::ParseResult SubOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::OperandType lhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
   (void)lhsOperandsLoc;
-  ::mlir::OpAsmParser::OperandType rhsRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::OperandType> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
@@ -3223,7 +3223,7 @@ void SubOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 
 } // namespace complex
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::SubOp)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::SubOp)
 
 
 #endif  // GET_OP_CLASSES

@@ -12,8 +12,8 @@ bool mlir::LoopLikeOpInterface::isDefinedOutsideOfLoop(::mlir::Value  value) {
 ::mlir::Region &mlir::LoopLikeOpInterface::getLoopBody() {
       return getImpl()->getLoopBody(getImpl(), getOperation());
   }
-::mlir::LogicalResult mlir::LoopLikeOpInterface::moveOutOfLoop(::mlir::ArrayRef<::mlir::Operation *> ops) {
-      return getImpl()->moveOutOfLoop(getImpl(), getOperation(), ops);
+void mlir::LoopLikeOpInterface::moveOutOfLoop(::mlir::Operation * op) {
+      return getImpl()->moveOutOfLoop(getImpl(), getOperation(), op);
   }
 ::mlir::Optional<::mlir::Value> mlir::LoopLikeOpInterface::getSingleInductionVar() {
       return getImpl()->getSingleInductionVar(getImpl(), getOperation());

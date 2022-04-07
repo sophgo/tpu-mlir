@@ -62,11 +62,11 @@ namespace mlir {
 namespace omp {
 // MemoryOrderKind Clause
 enum class ClauseMemoryOrderKind : uint32_t {
-  seq_cst = 0,
-  acq_rel = 1,
-  acquire = 2,
-  release = 3,
-  relaxed = 4,
+  Seq_cst = 0,
+  Acq_rel = 1,
+  Acquire = 2,
+  Release = 3,
+  Relaxed = 4,
 };
 
 ::llvm::Optional<ClauseMemoryOrderKind> symbolizeClauseMemoryOrderKind(uint32_t);
@@ -117,7 +117,7 @@ namespace mlir {
 namespace omp {
 // OrderKind Clause
 enum class ClauseOrderKind : uint32_t {
-  concurrent = 1,
+  Concurrent = 1,
 };
 
 ::llvm::Optional<ClauseOrderKind> symbolizeClauseOrderKind(uint32_t);
@@ -168,10 +168,10 @@ namespace mlir {
 namespace omp {
 // ProcBindKind Clause
 enum class ClauseProcBindKind : uint32_t {
-  primary = 0,
-  master = 1,
-  close = 2,
-  spread = 3,
+  Primary = 0,
+  Master = 1,
+  Close = 2,
+  Spread = 3,
 };
 
 ::llvm::Optional<ClauseProcBindKind> symbolizeClauseProcBindKind(uint32_t);

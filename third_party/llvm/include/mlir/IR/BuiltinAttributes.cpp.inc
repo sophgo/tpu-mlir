@@ -61,7 +61,7 @@ AffineMap AffineMapAttr::getValue() const {
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::AffineMapAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::AffineMapAttr)
 namespace mlir {
 namespace detail {
 struct ArrayAttrStorage : public ::mlir::AttributeStorage {
@@ -94,10 +94,10 @@ ArrayAttr ArrayAttr::get(::mlir::MLIRContext *context, ::llvm::ArrayRef<Attribut
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::ArrayAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::ArrayAttr)
 namespace mlir {
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::DenseIntOrFPElementsAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::DenseIntOrFPElementsAttr)
 namespace mlir {
 DenseStringElementsAttr DenseStringElementsAttr::get(ShapedType type, ArrayRef<StringRef> values) {
   return Base::get(type.getContext(), type, values,
@@ -105,7 +105,7 @@ DenseStringElementsAttr DenseStringElementsAttr::get(ShapedType type, ArrayRef<S
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::DenseStringElementsAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::DenseStringElementsAttr)
 namespace mlir {
 namespace detail {
 struct DictionaryAttrStorage : public ::mlir::AttributeStorage {
@@ -134,7 +134,7 @@ struct DictionaryAttrStorage : public ::mlir::AttributeStorage {
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::DictionaryAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::DictionaryAttr)
 namespace mlir {
 namespace detail {
 struct FloatAttrStorage : public ::mlir::AttributeStorage {
@@ -199,7 +199,7 @@ FloatAttr FloatAttr::getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic(
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::FloatAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::FloatAttr)
 namespace mlir {
 namespace detail {
 struct IntegerAttrStorage : public ::mlir::AttributeStorage {
@@ -282,7 +282,7 @@ APInt IntegerAttr::getValue() const {
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::IntegerAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::IntegerAttr)
 namespace mlir {
 namespace detail {
 struct IntegerSetAttrStorage : public ::mlir::AttributeStorage {
@@ -314,7 +314,7 @@ IntegerSet IntegerSetAttr::getValue() const {
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::IntegerSetAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::IntegerSetAttr)
 namespace mlir {
 namespace detail {
 struct OpaqueAttrStorage : public ::mlir::AttributeStorage {
@@ -362,7 +362,7 @@ StringAttr OpaqueAttr::getDialectNamespace() const {
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::OpaqueAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::OpaqueAttr)
 namespace mlir {
 namespace detail {
 struct OpaqueElementsAttrStorage : public ::mlir::AttributeStorage {
@@ -422,7 +422,7 @@ ShapedType OpaqueElementsAttr::getType() const {
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::OpaqueElementsAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::OpaqueElementsAttr)
 namespace mlir {
 namespace detail {
 struct SparseElementsAttrStorage : public ::mlir::AttributeStorage {
@@ -481,10 +481,10 @@ DenseElementsAttr SparseElementsAttr::getValues() const {
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::SparseElementsAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::SparseElementsAttr)
 namespace mlir {
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::StringAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::StringAttr)
 namespace mlir {
 namespace detail {
 struct SymbolRefAttrStorage : public ::mlir::AttributeStorage {
@@ -523,7 +523,7 @@ StringAttr SymbolRefAttr::getRootReference() const {
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::SymbolRefAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::SymbolRefAttr)
 namespace mlir {
 namespace detail {
 struct TypeAttrStorage : public ::mlir::AttributeStorage {
@@ -555,10 +555,10 @@ Type TypeAttr::getValue() const {
 }
 
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::TypeAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::TypeAttr)
 namespace mlir {
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::UnitAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::UnitAttr)
 
 #endif  // GET_ATTRDEF_CLASSES
 

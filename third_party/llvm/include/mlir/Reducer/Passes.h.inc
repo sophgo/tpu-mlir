@@ -42,10 +42,15 @@ public:
     
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(OptReductionBase<DerivedT>)
+
 protected:
   ::mlir::Pass::Option<std::string> optPass{*this, "opt-pass", ::llvm::cl::desc("The optimization passes used for reduction, e.g., symbol-dce")};
   ::mlir::Pass::Option<std::string> testerName{*this, "test", ::llvm::cl::desc("The location of the tester which tests the file interestingness")};
-  ::mlir::Pass::ListOption<std::string> testerArgs{*this, "test-arg", ::llvm::cl::desc("arguments of the tester"), llvm::cl::ZeroOrMore, llvm::cl::MiscFlags::CommaSeparated};
+  ::mlir::Pass::ListOption<std::string> testerArgs{*this, "test-arg", ::llvm::cl::desc("arguments of the tester"), llvm::cl::ZeroOrMore};
 };
 
 //===----------------------------------------------------------------------===//
@@ -89,10 +94,15 @@ public:
     
   }
 
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ReductionTreeBase<DerivedT>)
+
 protected:
   ::mlir::Pass::Option<unsigned> traversalModeId{*this, "traversal-mode", ::llvm::cl::desc("The graph traversal mode, the default is single-path mode"), ::llvm::cl::init(0)};
   ::mlir::Pass::Option<std::string> testerName{*this, "test", ::llvm::cl::desc("The location of the tester which tests the file interestingness")};
-  ::mlir::Pass::ListOption<std::string> testerArgs{*this, "test-arg", ::llvm::cl::desc("arguments of the tester"), llvm::cl::ZeroOrMore, llvm::cl::MiscFlags::CommaSeparated};
+  ::mlir::Pass::ListOption<std::string> testerArgs{*this, "test-arg", ::llvm::cl::desc("arguments of the tester"), llvm::cl::ZeroOrMore};
 };
 #undef GEN_PASS_CLASSES
 #endif // GEN_PASS_CLASSES

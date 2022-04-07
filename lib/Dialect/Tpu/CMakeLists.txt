@@ -24,6 +24,8 @@ add_mlir_library(SophgoTpu
   MLIRSupport
   MLIRFunc
   MLIRQuant
+  MLIRRewrite
+  MLIRTransforms
   MLIRSideEffectInterfaces
   MLIRInferenceInterface
   MLIRWeightReorderInterface

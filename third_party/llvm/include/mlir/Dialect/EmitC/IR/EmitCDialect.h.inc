@@ -49,4 +49,4 @@ public:
 };
 } // namespace emitc
 } // namespace mlir
-DECLARE_EXPLICIT_TYPE_ID(::mlir::emitc::EmitCDialect)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::emitc::EmitCDialect)

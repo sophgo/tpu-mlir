@@ -106,7 +106,7 @@ void ClauseDefaultValueAttr::print(::mlir::AsmPrinter &odsPrinter) const {
 
 } // namespace acc
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::acc::ClauseDefaultValueAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::acc::ClauseDefaultValueAttr)
 namespace mlir {
 namespace acc {
 namespace detail {
@@ -170,7 +170,7 @@ void ReductionOpAttr::print(::mlir::AsmPrinter &odsPrinter) const {
 
 } // namespace acc
 } // namespace mlir
-DEFINE_EXPLICIT_TYPE_ID(::mlir::acc::ReductionOpAttr)
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::acc::ReductionOpAttr)
 namespace mlir {
 namespace acc {
 
