@@ -77,7 +77,7 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${PROJECT_BINARY_DIR}/include)
 
 execute_process(
-  COMMAND git describe --tags
+  COMMAND git describe --tags --always
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   RESULT_VARIABLE GIT_EXEC_RESULT
   OUTPUT_VARIABLE GIT_SHORT_HASH)
