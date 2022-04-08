@@ -26,11 +26,6 @@ cmake -G Ninja \
 cmake --build . --target install mlir-doc
 popd
 
-# simple test
-pushd regression
-./run.sh
-popd
-
 # Clean up some files for release build
 if [ "$1" = "RELEASE" ]; then
   # strip mlir tools

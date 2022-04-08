@@ -16,7 +16,7 @@ Get more info from [sophgo](http://sophgo.com).
 
     ``` shell
     # myname1234 just a example, you can set your own name
-    docker run --privileged --name myname1234 -v $PWD:/work -it sophgo/sophgo_dev:1.1-ubuntu-20.04
+    docker run --privileged --name myname1234 -v $PWD:/work -it sophgo/sophgo_dev:1.1-ubuntu-18.04
     ```
 
 ## Build
