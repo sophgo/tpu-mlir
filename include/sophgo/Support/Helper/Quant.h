@@ -10,6 +10,9 @@ using namespace mlir;
 namespace sophgo {
 namespace helper {
 struct Quant {
+
+  static constexpr double QMAX_INT8 = 127.0;
+  static constexpr int BITS_INT8 = 8;
   struct Type {
     static constexpr llvm::StringRef INT8 = "INT8";
     static constexpr llvm::StringRef UINT8 = "UINT8";

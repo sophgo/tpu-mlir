@@ -9,7 +9,9 @@
 
 #include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "sophgo/Dialect/Tpu/IR/TpuOps.h"
+#include "sophgo/Backend/BM168x/BM1684.h"
 #include "sophgo/Interfaces/WeightReorderInterface.h"
+#include "sophgo/Interfaces/CodegenInterface.h"
 #include "sophgo/Support/MathUtils.h"
 #include "sophgo/Support/Helper/Quant.h"
 #include "sophgo/Support/Helper/Module.h"
@@ -17,14 +19,11 @@
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/IR/TypeUtilities.h"
-#include "mlir/Support/LLVM.h"
-#include "llvm/ADT/StringMap.h"
-#include "llvm/Support/Casting.h"
-#include "dnnl.hpp"
 
 using namespace mlir;
 using namespace sophgo;
 using namespace sophgo::helper;
+using namespace sophgo::backend;
 
 #define ALIGN(x, a) ((((x) + (a)-1) / (a)) * (a))
 
