@@ -1,4 +1,12 @@
-file(GLOB _sources IR/*.cpp Transforms/*.cpp)
+file(GLOB _sources
+          IR/*.cpp
+          WeightReorder/*.cpp
+          WeightReorder/BM1684/*.cpp
+          WeightReorder/BM1686/*.cpp
+          Codegen/*.cpp
+          Codegen/BM1684/*.cpp
+          Codegen/BM1686/*.cpp
+          Transforms/*.cpp)
 
 add_mlir_library(SophgoTpu
   ${_sources}

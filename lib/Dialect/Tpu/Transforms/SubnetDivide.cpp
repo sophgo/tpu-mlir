@@ -23,7 +23,7 @@
 #include "sophgo/Support/MathUtils.h"
 #include "sophgo/Support/Helper/Module.h"
 #include "sophgo/Support/Helper/Quant.h"
-#include "sophgo/Backend/BM1684.h"
+#include "sophgo/Backend/BM168x/BM1684.h"
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinTypes.h"
@@ -112,19 +112,22 @@ void buildSubFunction(std::shared_ptr<SubFunction> sf, ModuleOp module) {
   OpBuilder builder(module.getContext());
   std::vector<NamedAttribute> attrs;
   attrs.push_back(builder.getNamedAttr("id", builder.getI64IntegerAttr(id)));
-  attrs.push_back(builder.getNamedAttr("mode", builder.getStringAttr(sf->mode)));
+  attrs.push_back(
+      builder.getNamedAttr("mode", builder.getStringAttr(sf->mode)));
   auto fnType = builder.getFunctionType(llvm::ArrayRef<Type>{argType},
                                         llvm::ArrayRef<Type>{resType});
-  auto fnOp = FuncOp::create(module.getLoc(), func_name, fnType,ArrayRef<NamedAttribute>(attrs));
+  auto fnOp = FuncOp::create(module.getLoc(), func_name, fnType,
+                             ArrayRef<NamedAttribute>(attrs));
   auto block = fnOp.addEntryBlock();
   builder.setInsertionPointAfterValue(fnOutputs.back());
   func::CallOp callOp = builder.create<func::CallOp>(module.getLoc(), func_name,
                                                      resType, fnInputs);
   for (auto it : llvm::enumerate(callOp.getResults())) {
-    fnOutputs[it.index()].replaceUsesWithIf(it.value(), [&](OpOperand &operand) {
-      Operation *user = operand.getOwner();
-      return find(sf->ops.begin(), sf->ops.end(), user) == sf->ops.end();
-    });
+    fnOutputs[it.index()].replaceUsesWithIf(
+        it.value(), [&](OpOperand &operand) {
+          Operation *user = operand.getOwner();
+          return find(sf->ops.begin(), sf->ops.end(), user) == sf->ops.end();
+        });
   }
   builder.setInsertionPointToStart(block);
   auto retOp = builder.create<func::ReturnOp>(module.getLoc(), fnOutputs);
@@ -161,9 +164,8 @@ public:
     auto mainFunc = Module::getMainFuncOp(module);
     std::shared_ptr<SubFunction> subf = nullptr;
     mainFunc.walk([&](Operation *op) {
-      if (isa<top::InputOp>(op) || isa<top::WeightOp>(op) || isa<FuncOp>(op) ||
-          isa<top::NoneOp>(op) || isa<func::ReturnOp>(op) ||
-          isa<func::CallOp>(op)) {
+      if (isa<top::InputOp, top::WeightOp, FuncOp, top::NoneOp, func::ReturnOp,
+              func::CallOp>(op)) {
         // do nothing
       } else {
         auto mode = getOpMode(op);

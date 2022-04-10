@@ -9,9 +9,8 @@
 
 #include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "sophgo/Interfaces/InferenceInterface.h"
-#include "sophgo/Support/Dnnl/Conv.h"
-#include "sophgo/Support/Dnnl/Pool.h"
-#include "sophgo/Support/Dnnl/MatMul.h"
+#include "sophgo/Support/Dnnl/Dnnl.h"
+#include "sophgo/Support/Helper/Module.h"
 
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
@@ -23,14 +22,8 @@
 #include "dnnl.hpp"
 
 using namespace sophgo;
+using namespace sophgo::helper;
 using namespace mlir;
-
-template <typename T> static void relu(T *src, T *dst, size_t size) {
-#pragma omp parallel for schedule(static, omp_schedule(size))
-  for (size_t i = 0; i < size; ++i) {
-    dst[i] = src[i] > 0 ? src[i] : 0;
-  }
-}
 
 LogicalResult top::ConvOp::init(InferenceParameter &p) {
   auto conv = new Conv();
@@ -64,13 +57,12 @@ LogicalResult top::ConvOp::inference(InferenceParameter &p) {
 }
 
 LogicalResult top::ReluOp::inference(InferenceParameter &p) {
-  auto num_elem = input().getType().cast<RankedTensorType>().getNumElements();
-  relu(p.inputs[0], p.outputs[0], num_elem);
+  relu(p.inputs[0], p.outputs[0], Module::getNumElements(input()));
   return success();
 }
 
 LogicalResult top::AddOp::inference(InferenceParameter &p) {
-  auto num_elem = output().getType().cast<RankedTensorType>().getNumElements();
+  auto num_elem = Module::getNumElements(output());
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
   for (int64_t i = 0; i < num_elem; i++) {
     p.outputs[0][i] = 0;
@@ -114,9 +106,7 @@ LogicalResult top::MaxPoolOp::inference(InferenceParameter &p) {
   auto pooling = (Pooling *)p.handle;
   pooling->run();
   if (do_relu()) {
-    size_t num_elem =
-        output().getType().cast<RankedTensorType>().getNumElements();
-    relu(p.outputs[0], p.outputs[0], num_elem);
+    relu(p.outputs[0], p.outputs[0], Module::getNumElements(output()));
   }
   return success();
 }
@@ -149,15 +139,13 @@ LogicalResult top::AvgPoolOp::inference(InferenceParameter &p) {
   auto pooling = (Pooling *)p.handle;
   pooling->run();
   if (do_relu()) {
-    size_t num_elem =
-        output().getType().cast<RankedTensorType>().getNumElements();
-    relu(p.outputs[0], p.outputs[0], num_elem);
+    relu(p.outputs[0], p.outputs[0], Module::getNumElements(output()));
   }
   return success();
 }
 
 LogicalResult top::ReshapeOp::inference(InferenceParameter &p) {
-  auto num_elem = output().getType().cast<RankedTensorType>().getNumElements();
+  auto num_elem = Module::getNumElements(output());
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
   for (int64_t i = 0; i < num_elem; i++) {
     p.outputs[0][i] = p.inputs[0][i];

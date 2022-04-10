@@ -161,6 +161,11 @@ size_t Module::getBytes(Value v) {
   return elm_count * elm_bytes;
 }
 
+int64_t Module::getNumElements(Value v) {
+  auto type = v.getType().cast<RankedTensorType>();
+  return type.getNumElements();
+}
+
 llvm::ArrayRef<int64_t> Module::getShape(Value v) {
   auto type = v.getType().cast<RankedTensorType>();
   return type.getShape();
@@ -172,6 +177,8 @@ Type Module::getStorageType(Value v) {
   if (auto qType = etype.dyn_cast<quant::CalibratedQuantizedType>()) {
     return qType.getExpressedType();
   } else if (auto qType = etype.dyn_cast<quant::UniformQuantizedType>()) {
+    return qType.getStorageType();
+  } else if (auto qType = etype.dyn_cast<quant::UniformQuantizedPerAxisType>()) {
     return qType.getStorageType();
   }
   return etype;
