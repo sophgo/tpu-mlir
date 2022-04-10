@@ -92,4 +92,16 @@ model_runner.py \
 #     resnet18_ref_outputs.npz \
 #     --tolerance 0.85,0.42 -v
 
+# tpu weight reorder
+sophgo-opt resnet18_int8_1686.mlir \
+    --weight-reorder \
+    --save-weight \
+    -o resnet18_int8_reorder_1686.mlir
+
+# tpu divide to subnets
+sophgo-opt resnet18_int8_reorder_1686.mlir \
+    --subnet-divide \
+    --save-weight \
+    -o resnet18_int8_divide_1686.mlir
+
 popd

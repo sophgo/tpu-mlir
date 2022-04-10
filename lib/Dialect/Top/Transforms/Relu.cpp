@@ -11,9 +11,7 @@ using namespace mlir;
 using namespace sophgo::top;
 
 static bool supportFuseRelu(Operation *op) {
-  if (matchPattern(op, m_Op<ConvOp>()) || matchPattern(op, m_Op<MaxPoolOp>()) ||
-      matchPattern(op, m_Op<AvgPoolOp>()) ||
-      matchPattern(op, m_Op<MatMulOp>()) || matchPattern(op, m_Op<AddOp>())) {
+  if (isa<ConvOp, MaxPoolOp, AvgPoolOp, MatMulOp, AddOp>(op)) {
     return true;
   }
   return false;

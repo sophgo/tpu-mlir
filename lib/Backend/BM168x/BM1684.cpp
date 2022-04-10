@@ -1,4 +1,4 @@
-#include "sophgo/Backend/BM1684.h"
+#include "sophgo/Backend/BM168x/BM1684.h"
 #include "sophgo/Support/Helper/Module.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Format.h"
@@ -7,48 +7,17 @@ using namespace sophgo::backend;
 using namespace sophgo::helper;
 using namespace mlir;
 
-template <typename FPtrTy> FPtrTy BM1684::CastToFPtr(const char *symbolName) {
-  assert(DL.isValid());
-  auto fPtr = DL.getAddressOfSymbol(symbolName);
-  if (fPtr == nullptr) {
-    llvm::errs() << "can't find symbol: " << symbolName << "\n";
-    llvm_unreachable(symbolName);
-  }
-  return reinterpret_cast<FPtrTy>(fPtr);
+uint64_t BM1684::get_gmem_start() {
+  return 0x100000000ull;
 }
 
-void *BM1684::get_gmem_addr(uint64_t addr) {
-  auto start = static_cast<char *>(this->dl_get_global_memaddr(0));
-  return start + addr - GLOBAL_MEM_START;
-}
-
-void *BM1684::get_gmem_addr(const bm_device_mem_t &mem) {
-  auto start = static_cast<char *>(this->dl_get_global_memaddr(0));
-  return start + mem.offset;
-}
-
-void BM1684::bm_memcpy_s2d(const bm_device_mem_t &dst, void *src) {
-  memcpy(get_gmem_addr(dst), src, dst.size);
-}
-
-void BM1684::bm_memcpy_d2s(void *dst, const bm_device_mem_t &src) {
-  memcpy(dst, get_gmem_addr(src), src.size);
-}
-
-void BM1684::value_s2d(Value v, void *src) {
-  auto addr = Module::getAddress(v);
-  auto bytes = Module::getBytes(v);
-  memcpy(get_gmem_addr(addr), src, bytes);
-}
-void BM1684::value_d2s(Value v, void *dst) {
-  auto addr = Module::getAddress(v);
-  auto bytes = Module::getBytes(v);
-  memcpy(dst, get_gmem_addr(addr), bytes);
+uint64_t BM1684::get_ctx_start_addr() {
+  return get_gmem_start() + 0x5000000 + 0x100000;
 }
 
 void BM1684::init() {
   // setup
-  dl_cmodel_init(0, CMODEL_GLOBAL_MEM_SIZE);
+  dl_cmodel_init(0, get_cmodel_gmem_size());
   cmdid_node = dl_create_cmd_id_node();
   bdc_node = dl_create_cmd_id_node();
   gdma_node = dl_create_cmd_id_node();
@@ -85,37 +54,14 @@ void BM1684::deinit() {
   }
 }
 
-bm_data_type_t BM1684::getType(mlir::Type type) {
-  if (type.isF32()) {
-    return DTYPE_FP32;
+template <typename FPtrTy> FPtrTy BM1684::CastToFPtr(const char *symbolName) {
+  assert(DL.isValid());
+  auto fPtr = DL.getAddressOfSymbol(symbolName);
+  if (fPtr == nullptr) {
+    llvm::errs() << "can't find symbol: " << symbolName << "\n";
+    llvm_unreachable(symbolName);
   }
-  if (type.isBF16()) {
-    return DTYPE_BFP16;
-  }
-  if (type.isF16()) {
-    return DTYPE_FP16;
-  }
-  if (type.isSignedInteger(8) || type.isSignlessInteger(8)) {
-    return DTYPE_INT8;
-  }
-  if (type.isSignedInteger(16) || type.isSignlessInteger(16)) {
-    return DTYPE_INT16;
-  }
-  if (type.isSignedInteger(32) || type.isSignlessInteger(32)) {
-    return DTYPE_INT32;
-  }
-  if (type.isUnsignedInteger(8)) {
-    return DTYPE_UINT8;
-  }
-  if (type.isUnsignedInteger(16)) {
-    return DTYPE_UINT16;
-  }
-  if (type.isUnsignedInteger(32)) {
-    return DTYPE_UINT32;
-  }
-  type.dump();
-  llvm_unreachable("unknow type");
-  return DTYPE_FP32;
+  return reinterpret_cast<FPtrTy>(fPtr);
 }
 
 #define CAST_FUNCTION(name) dl_##name = CastToFPtr<name>(#name)

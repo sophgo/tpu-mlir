@@ -11,6 +11,9 @@ using namespace llvm;
 using namespace mlir;
 namespace sophgo {
 namespace helper {
+
+constexpr double Quant::QMAX_INT8;
+constexpr int Quant::BITS_INT8;
 constexpr llvm::StringRef Quant::Type::INT8;
 constexpr llvm::StringRef Quant::Type::BF16;
 constexpr llvm::StringRef Quant::Type::FP16;
@@ -27,7 +30,7 @@ void Quant::setQuantInt8Type(Value v, bool asymmetric, bool sighType) {
   auto max = cali_type.getMax();
   auto min = cali_type.getMin();
   if (asymmetric) {
-    double scale = (max - min)/(127 - (-128));
+    double scale = (max - min) / (127 - (-128));
     int64_t zeropoint = std::round(-min * scale) - 127;
     auto uniform_type = quant::UniformQuantizedType();
     if (sighType) {
@@ -35,8 +38,9 @@ void Quant::setQuantInt8Type(Value v, bool asymmetric, bool sighType) {
           quant::QuantizationFlags::Signed, IntegerType::get(ctx, 8),
           cali_type.getExpressedType(), scale, zeropoint, -128, 127);
     } else {
-      uniform_type = quant::UniformQuantizedType::get(0, IntegerType::get(ctx, 8),
-          cali_type.getExpressedType(), scale, zeropoint, 0, 255);
+      uniform_type = quant::UniformQuantizedType::get(
+          0, IntegerType::get(ctx, 8), cali_type.getExpressedType(), scale,
+          zeropoint, 0, 255);
     }
     auto new_type = RankedTensorType::get(type.getShape(), uniform_type);
     v.setType(new_type);
@@ -51,13 +55,15 @@ void Quant::setQuantInt8Type(Value v, bool asymmetric, bool sighType) {
   }
 }
 
-void Quant::setQuantWeightInt8PerChannelType(Value v, ArrayRef<double> scales, ArrayRef<int64_t> zeroPoints,
-      int32_t quantizedDimension, mlir::FloatType exptype) {
+void Quant::setQuantWeightInt8PerChannelType(Value v, ArrayRef<double> scales,
+                                             ArrayRef<int64_t> zeroPoints,
+                                             int32_t quantizedDimension,
+                                             mlir::FloatType exptype) {
   auto type = v.getType().cast<RankedTensorType>();
   auto ctx = v.getContext();
   auto per_channel_int8_type = quant::UniformQuantizedPerAxisType::get(
-      quant::QuantizationFlags::Signed, IntegerType::get(ctx, 8),
-      exptype, scales, zeroPoints, quantizedDimension, -128, 127);
+      quant::QuantizationFlags::Signed, IntegerType::get(ctx, 8), exptype,
+      scales, zeroPoints, quantizedDimension, -128, 127);
   auto new_type = RankedTensorType::get(type.getShape(), per_channel_int8_type);
   v.setType(new_type);
 }

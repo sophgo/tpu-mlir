@@ -23,7 +23,7 @@
 #include "sophgo/Support/MathUtils.h"
 #include "sophgo/Support/Helper/Module.h"
 #include "sophgo/Support/Helper/Quant.h"
-#include "sophgo/Backend/BM1684.h"
+#include "sophgo/Backend/BM168x/BM1684.h"
 #include "sophgo/Builder/bmodel.hpp"
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/IR/Builders.h"

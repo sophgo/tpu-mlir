@@ -31,9 +31,7 @@ def CodegenInterface : OpInterface<"CodegenInterface"> {
         /*desc=*/[{}],
         /*retType=*/"void",
         /*methodName=*/"codegen_int8_bm1686",
-        /*args=*/(ins),
-        [{}],
-        [{llvm_unreachable("not support now");}]
+        /*args=*/(ins)
       >,
   ];
 }

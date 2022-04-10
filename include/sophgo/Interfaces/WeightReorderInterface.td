@@ -28,6 +28,13 @@ def WeightReorderInterface : OpInterface<"WeightReorderInterface"> {
         /*methodName=*/"weight_reorder_int8_bm1684",
         /*args=*/(ins)
       >,
+      InterfaceMethod<
+        /*desc=*/[{
+        }],
+        /*retType=*/"void",
+        /*methodName=*/"weight_reorder_int8_bm1686",
+        /*args=*/(ins)
+      >,
   ];
 }
 #endif // SOPHGO_WEIGHTREORDERINTERFACE

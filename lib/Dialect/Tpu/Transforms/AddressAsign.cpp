@@ -23,7 +23,7 @@
 #include "sophgo/Support/MathUtils.h"
 #include "sophgo/Support/Helper/Module.h"
 #include "sophgo/Support/Helper/Quant.h"
-#include "sophgo/Backend/BM1684.h"
+#include "sophgo/Backend/BM168x/BM1684.h"
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinTypes.h"
@@ -58,7 +58,7 @@ public:
     int64_t start_addr = 0;
     int64_t alignment = 0;
     if (Module::getChip(module) == Module::Chip::BM1684) {
-      start_addr = BM1684::CTX_START_ADDR;
+      start_addr = BM1684::instance().get_ctx_start_addr();
       alignment = BM1684::ALIGNMENT;
     } else {
       llvm_unreachable("chip not support now");
@@ -79,9 +79,8 @@ public:
     start_addr = addr;
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](Operation *op) {
-        if (isa<FuncOp>(op) || isa<top::NoneOp>(op) ||
-            isa<func::ReturnOp>(op) || isa<top::WeightOp>(op) ||
-            isa<func::CallOp>(op)) {
+        if (isa<FuncOp, top::NoneOp, func::ReturnOp, top::WeightOp,
+                func::CallOp>(op)) {
         } else {
           auto output = op->getResult(0);
           Module::setAddress(output, addr);
