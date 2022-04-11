@@ -93,5 +93,9 @@ class ImageFolderDataset:
             return self._transform(img)
         return img
 
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self[i]
+
     def __len__(self):
         return len(self.items)

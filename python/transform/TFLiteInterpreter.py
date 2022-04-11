@@ -23,12 +23,22 @@ class TFLiteInterpreter(TFLiteItp.Interpreter):
     def outputs(self):
         return self.get_output_details()
 
-    def run(self, **inputs):
+    def reshape(self, **inputs_shape):
+        need_reallocate = False
+        for name, shape in inputs_shape.items():
+            index = self.name2index[name]
+            if self.tensor(index)().shape != shape:
+                need_reallocate = True
+                self.resize_tensor_input(index, shape, strict=False)
+                # if the shape change, we need to reallocate the buffer
+        if need_reallocate:
+            self.allocate_tensors()
 
+    def forward(self, **inputs):
+
+        self.reshape(**{k: v.shape for k, v in inputs.items()})
         for k, v in inputs.items():
             index = self.name2index[k]
-            if self.tensor(index)().shape != v.shape:
-                self.resize_tensor_input(index, v.shape, strict=False)
             self.tensor(index)()[...] = v[...]
 
         self.invoke()

@@ -75,9 +75,12 @@ class Compose(object):
         return len(self.transforms)
 
     def __call__(self, x):
-        for fun in self.transforms:
-            x = fun(x)
-        return
+        if len(self) == 0:
+            return x
+        _x = self[0](x)
+        for fun in self.transforms[1:]:
+            _x = fun(_x)
+        return _x
 
 
 class Cast:

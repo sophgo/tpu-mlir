@@ -6,7 +6,7 @@ from transform.OnnxConverter import OnnxConverter
 from transform.BaseConverter import BaseConverter
 from transform.TFLiteConverter import TFLiteConverter
 from utils.mlir_shell import *
-from tools.model_runner import mlir_inference, onnx_inference
+from tools.model_runner import mlir_inference, onnx_inference, tflite_inference
 import pymlir
 
 class ModelTransformTool(object):
@@ -81,8 +81,9 @@ class TFLiteModelTransformTool(ModelTransformTool):
         self.converter = TFLiteConverter(
             self.model_name, self.model_def, self.input_shapes
         )
+
     def model_inference(self, inputs: dict):
-        raise Exception("Not implement!")
+        return tflite_inference(inputs, self.converter.tflite_file)
 
 
 def str2shape(v):
