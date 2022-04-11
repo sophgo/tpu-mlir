@@ -258,3 +258,7 @@ void BM1684::set_command_issue_flag(bool value) {
     dl_forbid_atomic_cmodel();
   }
 }
+
+int64_t BM1684::get_eu_num(int64_t dtype_bytes) {
+  return 32 * 4 / dtype_bytes;
+}

@@ -26,7 +26,7 @@ class Tpu_Op<string mnemonic, list<Trait> traits = []> :
     Op<Tpu_Dialect, mnemonic, traits> ;
 
 def Tpu_ConvOp: Tpu_Op<"Conv",[NoSideEffect,
-  DeclareOpInterfaceMethods<InferenceInterface,["init","deinit"]>,
+    DeclareOpInterfaceMethods<InferenceInterface,["init","deinit"]>,
     DeclareOpInterfaceMethods<WeightReorderInterface>,
     DeclareOpInterfaceMethods<CodegenInterface>]> {
   let summary = "convolution operator";
@@ -184,6 +184,19 @@ def Tpu_CastOp:Tpu_Op<"Cast",[NoSideEffect,
   }];
   let arguments = (ins
     AnyTensor:$input,
+    StrAttr:$name
+  );
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_RequantOp:Tpu_Op<"Requant",[NoSideEffect,
+  DeclareOpInterfaceMethods<CodegenInterface>]> {
+  let summary = "requant operation";
+  let description = [{
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$coeff,
     StrAttr:$name
   );
   let results = (outs AnyTensor:$output);

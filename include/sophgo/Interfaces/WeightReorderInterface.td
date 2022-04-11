@@ -35,6 +35,23 @@ def WeightReorderInterface : OpInterface<"WeightReorderInterface"> {
         /*methodName=*/"weight_reorder_int8_bm1686",
         /*args=*/(ins)
       >,
+      InterfaceMethod<
+        /*desc=*/[{
+        }],
+        /*retType=*/"void",
+        /*methodName=*/"weight_reorder",
+        /*args=*/(ins),
+        [{}],
+        [{
+          auto module = Module::getModuleOp($_op);
+          auto chip = Module::getChip(module);
+          if (chip == Module::Chip::BM1684) {
+            $_op.weight_reorder_int8_bm1684();
+          } else if (chip == Module::Chip::BM1686) {
+            $_op.weight_reorder_int8_bm1686();
+          }
+        }]
+      >,
   ];
 }
 #endif // SOPHGO_WEIGHTREORDERINTERFACE
