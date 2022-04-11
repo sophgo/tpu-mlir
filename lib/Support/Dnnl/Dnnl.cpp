@@ -16,8 +16,11 @@ memory::data_type getDnnlType(mlir::Value v) {
   if (type.isUnsignedInteger(8)) {
     return memory::data_type::u8;
   }
-  v.dump();
-  llvm_unreachable("unsupport type");
+  if (type.isInteger(16) || type.isInteger(32)) {
+    return memory::data_type::s32;
+  }
+  llvm::errs() << "Unsupport type: ";
+  type.dump();
   return memory::data_type::f32;
 }
 } // namespace sophgo

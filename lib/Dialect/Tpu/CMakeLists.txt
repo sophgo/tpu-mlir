@@ -1,5 +1,6 @@
 file(GLOB _sources
           IR/*.cpp
+          Inference/*.cpp
           WeightReorder/*.cpp
           WeightReorder/BM1684/*.cpp
           WeightReorder/BM1686/*.cpp
