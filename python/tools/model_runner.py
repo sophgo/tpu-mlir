@@ -4,6 +4,7 @@ import argparse
 import pymlir
 import onnx
 import onnxruntime
+from transform.TFLiteInterpreter import TFLiteInterpreter
 
 
 def mlir_inference(inputs: dict, mlir_file: str, dump_all:bool = True) -> dict:
@@ -75,6 +76,19 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all:bool=True) -> dict:
         return dict(zip(output_keys, map(np.ndarray.flatten, outs)))
 
 
+def tflite_inference(inputs: dict, tflite_file: str, dump_all: bool = True) -> dict:
+    session = TFLiteInterpreter(tflite_file)
+    data = {}
+    for input in session.inputs:
+        name = input["name"]
+        data[name] = inputs[name].astype(input["dtype"])
+    outputs = session.forward(**data)
+    if not dump_all:
+        return {k: v.astype(np.float32) for k, v in outputs.items()}
+    else:
+        return {t["name"]: v for t, v in session.get_all_tensors() if v is not None}
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True, help="input npz file")
@@ -90,6 +104,8 @@ if __name__ == '__main__':
         output = onnx_inference(data, args.model, args.dump_all_tensors)
     elif args.model.endswith('.mlir'):
         output = mlir_inference(data, args.model, args.dump_all_tensors)
+    elif args.model.endswith(".tflite"):
+        output = tflite_inference(data, args.model, args.dump_all_tensors)
     else:
         raise RuntimeError("not support modle file:{}".format(args.model))
     np.savez(args.output, **output)
