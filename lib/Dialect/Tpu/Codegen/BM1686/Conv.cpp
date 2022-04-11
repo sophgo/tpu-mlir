@@ -11,8 +11,6 @@ using namespace sophgo;
 using namespace sophgo::helper;
 using namespace sophgo::backend;
 
-#define ALIGN(x, a) ((((x) + (a)-1) / (a)) * (a))
-
 typedef struct {
   unsigned long long input_global_addr;
   unsigned long long weight_global_addr;
@@ -83,8 +81,8 @@ void tpu::ConvOp::codegen_int8_bm1686() {
   // param.output_c = oc;
   // param.if_relu = do_relu;
   // param.upper_limit = 0;
-  // param.idtype = DTYPE_INT8;
-  // param.wdtype = DTYPE_INT8;
+  // param.idtype = BM168x::getDataType(input());
+  // param.wdtype = BM168x::getDataType(filter());
   // param.merge_coeff = layer_param->layer_param_u.conv_param.merge_weight_bias;
   // param.if_relu = lp.with_requant
   //                     ? !net_graph_->get_tensor_sign(layer_out_tensors[0])

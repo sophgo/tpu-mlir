@@ -4,6 +4,7 @@
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Matchers.h"
 #include "mlir/IR/OpDefinition.h"
+#include "mlir/IR/Value.h"
 
 struct cmd_id_node;
 typedef struct cmd_id_node CMD_ID_NODE;
@@ -84,6 +85,7 @@ typedef void (*set_cmd_buffer_ptr)(void *gdma_buffer_ptr, void *bdc_buffer_ptr);
 namespace sophgo {
 namespace backend {
 class BM168x {
+
 public:
   virtual ~BM168x() = 0;
   cmodel_init dl_cmodel_init;
@@ -104,6 +106,8 @@ public:
   virtual uint64_t get_gmem_start() = 0;
   virtual uint64_t get_ctx_start_addr() = 0;
   uint64_t get_cmodel_gmem_size();
+
+  static bm_data_type_t getDataType(mlir::Value v);
 
 public:
   std::shared_ptr<std::vector<uint32_t>> bdc_buffer;

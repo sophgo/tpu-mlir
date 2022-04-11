@@ -198,7 +198,7 @@ CodegenPass::CreateCoeffMem(std::vector<top::WeightOp> &coeffs,
   for (auto weight : coeffs) {
     auto data = weight.read_as_byte();
     memcpy(data_u8->data() + offset, data->data(), data->size());
-    offset += ALIGN(data->size(), BM1684::ALIGNMENT);
+    offset += ALIGN((int64_t)data->size(), BM1684::ALIGNMENT);
   }
   assert(offset == coeff_size);
   std::vector<uint8_t> sha256(bmodel::SHA256_LEN, 0);

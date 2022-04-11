@@ -127,16 +127,10 @@ Value top::ConvOp::quantize_int8_bm1686() {
   if (weightsAllPositive) {
     auto new_filter =
         WeightOp::create(op, "filter_uint8", *filter_uint8, new_type);
-    Quant::setQuantWeightInt8PerChannelType(
-        new_filter, ArrayRef<double>{wScale_v}, ArrayRef<int64_t>{wzp_v}, 0,
-        builder.getF32Type()); // 0表示oc为量化轴
     operands.push_back(new_filter);
   } else {
     auto new_filter =
         WeightOp::create(op, "filter_int8", *filter_int8, new_type);
-    Quant::setQuantWeightInt8PerChannelType(
-        new_filter, ArrayRef<double>{wScale_v}, ArrayRef<int64_t>{wzp_v}, 0,
-        builder.getF32Type()); // 0表示oc为量化轴
     operands.push_back(new_filter);
   }
   Value new_bias = bias();
