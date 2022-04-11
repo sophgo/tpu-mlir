@@ -1,9 +1,11 @@
-from typing import Union, Iterable
-from .MLIRImporter import MLIRImporter,Top,State
+from typing import Union, Iterable, List
+from .MLIRImporter import MLIRImporter, Top, State
 from .BaseConverter import BaseConverter
 from mlir.ir import *
 import mlir.dialects.quant as quant
 import numpy as np
+from .tflite.TensorType import TensorType
+
 
 def _indent(sOrIt_: Union[str, Iterable], numSpaces: int) -> str:
     """Indent string"""
@@ -34,7 +36,6 @@ class TFLiteReader:
     def __init__(self, tflite_file):
         from .tflite.Model import Model
         from .tflite.BuiltinOperator import BuiltinOperator
-        from .tflite.TensorType import TensorType
 
         self.opType = {
             v: k
@@ -42,7 +43,7 @@ class TFLiteReader:
             if isinstance(k, str) and isinstance(v, int)
         }
 
-        self.tensorType = {
+        self.tensorTypeStr = {
             v: k
             for k, v in vars(TensorType).items()
             if isinstance(k, str) and isinstance(v, int)
@@ -55,7 +56,7 @@ class TFLiteReader:
         self.buffer = self.model.Buffers
         self.version = self.model.Version()
         if self.model.Description():
-            self.description = self.model.Description().decode()
+            self.description = self.model.Description().decode()  # type: ignore
         self.description = ""
 
     def __del__(self):
@@ -75,28 +76,30 @@ class TFLiteReader:
         ctx = self
 
         class Tensor:
+
             TFLType2Np = {
-                "FLOAT32": np.float32,
-                "INT8": np.int8,
-                "INT16": np.int16,
-                "INT32": np.int32,
-                "INT64": np.int64,
-                "UINT8": np.uint8,
-                "UINT16": np.uint16,
-                "UINT32": np.uint32,
-                "UINT64": np.uint64,
+                TensorType.FLOAT32: np.float32,
+                TensorType.INT8: np.int8,
+                TensorType.INT16: np.int16,
+                TensorType.INT32: np.int32,
+                TensorType.INT64: np.int64,
+                TensorType.UINT8: np.uint8,
+                TensorType.UINT16: np.uint16,
+                TensorType.UINT32: np.uint32,
+                TensorType.UINT64: np.uint64,
             }
 
             def __init__(self, T, id):
                 self.id = id
                 self.T = T
-                if not self.T.ShapeSignatureIsNone():
-                    self.shape = tuple(self.T.ShapeSignatureAsNumpy())
-                elif not self.T.ShapeIsNone():
+                # TensorFlow using "ShapeSignature" as shape. If we can not do shape inference,
+                # "shape" is a good start.
+                if not self.T.ShapeIsNone():
                     self.shape = tuple(self.T.ShapeAsNumpy())
                 else:
                     self.shape = None
-                self.type = ctx.tensorType[self.T.Type()]
+                self.type = self.T.Type()
+                self.type_str = ctx.tensorTypeStr[self.T.Type()]
                 self.name = self.T.Name().decode()
                 self.is_variable = self.T.IsVariable()
                 self.quantization = self.T.Quantization()
@@ -112,13 +115,13 @@ class TFLiteReader:
                     return None
                 return (
                     bf.DataAsNumpy()
-                    .view(self.TFLType2Np[self.type])
+                    .view(self.TFLType2Np[self.type])  # type: ignore
                     .reshape(self.shape)
                 )
 
             def __repr__(self):
                 s = "tensor (\n{modstr}\n)"
-                modstr = [self.name, tuple(self.shape), self.type, self.buffer]
+                modstr = [self.name, self.shape, self.type_str, self.buffer]
                 return s.format(modstr=_indent(modstr, 2))
 
         class Operator:
@@ -126,6 +129,7 @@ class TFLiteReader:
                 self.Op = Op
                 self.G = graph
                 opcode = ctx.operator(self.Op.OpcodeIndex())
+                assert opcode is not None
                 self.type = ctx.opType[
                     max(opcode.BuiltinCode(), opcode.DeprecatedBuiltinCode())
                 ]
@@ -184,26 +188,30 @@ class TFLiteReader:
 
 class TFLiteConverter(BaseConverter):
     TFLType2MLIRImporterTypeStr = {
-        "FLOAT32": "F32",
-        "INT8": "INT8",
-        "INT16": "INT16",
-        "INT32": "INT32",
-        "INT64": "INT64",
-        "UINT8": "UINT8",
-        "UINT16": None,
-        "UINT32": None,
-        "UINT64": None,
+        TensorType.FLOAT32: "F32",
+        TensorType.INT8: "INT8",
+        TensorType.INT16: "INT16",
+        TensorType.INT32: "INT32",
+        TensorType.INT64: "INT64",
+        TensorType.UINT8: "UINT8",
+        TensorType.UINT16: None,
+        TensorType.UINT32: None,
+        TensorType.UINT64: None,
     }
 
-    def __init__(self, model_name: str, tflite_file: str, input_shapes: list):
+    def __init__(self, model_name: str, tflite_file: str, input_shapes=None):
         super().__init__()
         self.model_name = model_name
+        self.tflite_file = tflite_file
         self.tflie = TFLiteReader(tflite_file)
         self.graph = next(self.tflie.subgraph)
+        self.shape_infer = self.__shape_infer(input_shapes)
+
         for x in self.graph.inputs:
             self.__nhwc2nchw(x)
         for x in self.graph.outputs:
             self.__nhwc2nchw(x)
+
         self.mlir = MLIRImporter(
             input_shapes=[x.shape for x in self.graph.inputs],
             output_shapes=[x.shape for x in self.graph.outputs],
@@ -214,11 +222,11 @@ class TFLiteConverter(BaseConverter):
             output_types=[
                 self.TFLType2MLIRImporterTypeStr[x.type] for x in self.graph.outputs
             ],
-            state = State.TOP_QUANTIZED
+            state=State.TOP_QUANTIZED,
         )
         self.weight_file = self.mlir.weight_file
         self.constant = {}
-        self.type_to_mlir = self.type2mlir(self.mlir.ctx)
+        self.type_to_mlir = self.__type2mlir(self.mlir.ctx)
         self.BuiltinOptionsToAttributes = {
             "ADD": lambda _: (Top.AddOp, {}),
             "PAD": self.pad_op,
@@ -234,6 +242,146 @@ class TFLiteConverter(BaseConverter):
     def __del__(self):
         if self.mlir != None:
             del self.mlir
+
+    def __type2mlir(self, mlir_ctx):
+        return {
+            TensorType.FLOAT32: F32Type.get(mlir_ctx),
+            TensorType.FLOAT16: F16Type.get(mlir_ctx),
+            TensorType.INT32: IntegerType.get_signless(32, mlir_ctx),
+            # tensorflow/tensorflow/compiler/mlir/lite/flatbuffer_import.cc::155
+            TensorType.UINT8: IntegerType.get_signless(8, mlir_ctx),
+            TensorType.INT64: IntegerType.get_signless(64, mlir_ctx),
+            TensorType.STRING: None,
+            TensorType.BOOL: IntegerType.get_signless(1, mlir_ctx),
+            TensorType.INT16: IntegerType.get_signless(16, mlir_ctx),
+            TensorType.COMPLEX64: ComplexType.get(F32Type.get(mlir_ctx)),
+            TensorType.INT8: IntegerType.get_unsigned(8, mlir_ctx),
+            TensorType.FLOAT64: F64Type.get(mlir_ctx),
+            TensorType.COMPLEX128: ComplexType.get(F64Type.get(mlir_ctx)),
+            TensorType.UINT64: IntegerType.get_unsigned(64, mlir_ctx),
+            TensorType.RESOURCE: None,
+            TensorType.VARIANT: None,
+            TensorType.UINT32: IntegerType.get_unsigned(32, mlir_ctx),
+            TensorType.UINT16: IntegerType.get_unsigned(16, mlir_ctx),
+        }
+
+    def __get_tensor_type(self, tensor):
+        def get_quantized_type(tensor):
+            quantParam = tensor.quantization
+            if quantParam.Details() is not None:
+                raise ValueError("Cannot handle experimental quantization")
+            is_signed = True
+            storage_type = self.type_to_mlir[tensor.type]
+            # TFlite uses narrow-range [u]int8 for constant buffers of quantized weights.
+            # Since we don't know which ones are weights, we represent this optimization
+            # as a change in the storage bounds for the type for all constants of this type.
+            is_constant = tensor.buffer is not None
+            is_weight_buffer = is_constant and (storage_type.width == 8)
+            storage_min = (
+                quant.QuantizedType.default_minimum_for_integer(  # type: ignore
+                    is_signed, storage_type.width
+                )
+                + is_weight_buffer
+            )
+            storage_max = quant.QuantizedType.default_maximum_for_integer(  # type: ignore
+                is_signed, storage_type.width
+            )
+            flags = 1 if is_signed else 0
+
+            scale = quantParam.ScaleAsNumpy()
+            zero_point = quantParam.ZeroPointAsNumpy()
+            quantized_dimension = quantParam.QuantizedDimension()
+            if len(scale) > 1:
+                return quant.UniformQuantizedPerAxisType.get(  # type: ignore
+                    flags,
+                    self.type_to_mlir[tensor.type],
+                    self.type_to_mlir[TensorType.FLOAT32],
+                    scale,
+                    zero_point,
+                    quantized_dimension,
+                    storage_min,
+                    storage_max,
+                )
+            return quant.UniformQuantizedType.get(  # type: ignore
+                flags,
+                self.type_to_mlir[tensor.type],
+                self.type_to_mlir[TensorType.FLOAT32],
+                scale[0],
+                zero_point[0],
+                storage_min,
+                storage_max,
+            )
+
+        def getCalibratedQuantizedType(tensor):
+            quantParam = tensor.quantization
+            raw_elem_type = self.type_to_mlir[tensor.type]
+            min = quantParam.MinAsNumpy()
+            max = quantParam.MaxAsNumpy()
+            return quant.CalibratedQuantizedType.get(raw_elem_type, min, max)  # type: ignore
+
+        is_intermediate = False
+        quantParam = tensor.quantization
+        elem_type = self.type_to_mlir[tensor.type]
+        if tensor.is_quantized:
+            elem_type = get_quantized_type(tensor)
+        # Intermediate tensors with calibration value (but not scale and zero points)
+        # should return calibrated quantized type.
+        if is_intermediate and quantParam is not None:
+            elem_type = getCalibratedQuantizedType(tensor)
+        if tensor.shape is not None:
+            return RankedTensorType.get(tensor.shape, elem_type)
+        return UnrankedTensorType.get(elem_type)
+
+    def __nhwc2nchw(self, tensor):
+        # "layout" is a marker to ensure process each tensor once.
+        if hasattr(tensor, "layout"):
+            return tensor
+        if self.shape_infer:
+            shape = self.shape_infer(tensor.id)
+            if shape:  # constant tensor does not offer shape
+                tensor.shape = shape
+
+        if len(tensor.shape) != 4:
+            return tensor
+        n, h, w, c = tensor.shape  # type: ignore
+        tensor.shape = (n, c, h, w)
+        if tensor.buffer is not None:
+            tensor.buffer = tensor.buffer.transpose([0, 3, 1, 2])
+        tensor.layout = "NCHW"
+        return tensor
+
+    def __shape_infer(self, input_shapes):
+        from .TFLiteInterpreter import TFLiteInterpreter
+
+        if input_shapes is None:
+            return None
+        input_shapes_ = input_shapes.copy()
+        for index, shape in enumerate(input_shapes_):
+            if len(shape) == 4:
+                n, c, h, w = shape
+                input_shapes_[index] = (n, h, w, c)
+
+        tfi = TFLiteInterpreter(self.tflite_file)
+        inputs = {
+            org_i["name"]: usr_i for org_i, usr_i in zip(tfi.inputs, input_shapes_)
+        }
+        tfi.reshape(**inputs)
+
+        def get_shape(index: int):
+            return tfi.tensor(index)().shape
+
+        return get_shape
+
+    def __create_weight_op(self, tensor):
+        # constant variable/op
+        tensor_type = self.__get_tensor_type(tensor)
+        attributes = {"name": StringAttr.get(tensor.name)}
+        op = Operation.create(
+            Top.WeightOp, results=[tensor_type], attributes=attributes
+        )
+        self.mlir.insert_point.insert(op)
+        self.constant[tensor.name] = tensor.buffer
+        return op.results[0]
 
     def pad_op(self, op):
         paddings = op.inputs[1].buffer
@@ -287,6 +435,7 @@ class TFLiteConverter(BaseConverter):
         f, c = op.inputs[1].shape
         op.inputs[1].shape = (c, f)
         op.inputs[1].buffer = op.inputs[1].buffer.transpose([1, 0])
+        op.inputs[1].layout = "NCHW"
         for x in op.outputs:
             self.__nhwc2nchw(x)
         op_options = op.builtin_options
@@ -314,117 +463,9 @@ class TFLiteConverter(BaseConverter):
             return Top.AvgPoolOp, attr
 
     def softmax_op(self, op):
-        return "top.Softmax", {"axis": IntegerAttr.get(self.type_to_mlir["INT64"], 1)}
-
-    def type2mlir(self, mlir_ctx):
-        return {
-            "FLOAT32": F32Type.get(mlir_ctx),
-            "FLOAT16": F16Type.get(mlir_ctx),
-            "INT32": IntegerType.get_signless(32, mlir_ctx),
-            # tensorflow/tensorflow/compiler/mlir/lite/flatbuffer_import.cc::155
-            "UINT8": IntegerType.get_signless(8, mlir_ctx),
-            "INT64": IntegerType.get_signless(64, mlir_ctx),
-            "STRING": None,
-            "BOOL": IntegerType.get_signless(1, mlir_ctx),
-            "INT16": IntegerType.get_signless(16, mlir_ctx),
-            "COMPLEX64": ComplexType.get(F32Type.get(mlir_ctx)),
-            "INT8": IntegerType.get_unsigned(8, mlir_ctx),
-            "FLOAT64": F64Type.get(mlir_ctx),
-            "COMPLEX128": ComplexType.get(F64Type.get(mlir_ctx)),
-            "UINT64": IntegerType.get_unsigned(64, mlir_ctx),
-            "RESOURCE": None,
-            "VARIANT": None,
-            "UINT32": IntegerType.get_unsigned(32, mlir_ctx),
-            "UINT16": IntegerType.get_unsigned(16, mlir_ctx),
+        return "top.Softmax", {
+            "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], 1)
         }
-
-    def __get_tensor_type(self, tensor):
-        def get_quantized_type(tensor):
-            quantParam = tensor.quantization
-            if quantParam.Details() is not None:
-                raise ValueError("Cannot handle experimental quantization")
-            is_signed = True
-            storage_type = self.type_to_mlir[tensor.type]
-            # TFlite uses narrow-range [u]int8 for constant buffers of quantized weights.
-            # Since we don't know which ones are weights, we represent this optimization
-            # as a change in the storage bounds for the type for all constants of this type.
-            is_constant = tensor.buffer is not None
-            is_weight_buffer = is_constant and (storage_type.width == 8)
-            storage_min = (
-                quant.QuantizedType.default_minimum_for_integer(
-                    is_signed, storage_type.width
-                )
-                + is_weight_buffer
-            )
-            storage_max = quant.QuantizedType.default_maximum_for_integer(
-                is_signed, storage_type.width
-            )
-            flags = 1 if is_signed else 0
-
-            scale = quantParam.ScaleAsNumpy()
-            zero_point = quantParam.ZeroPointAsNumpy()
-            quantized_dimension = quantParam.QuantizedDimension()
-            if len(scale) > 1:
-                return quant.UniformQuantizedPerAxisType.get(
-                    flags,
-                    self.type_to_mlir[tensor.type],
-                    self.type_to_mlir["FLOAT32"],
-                    scale,
-                    zero_point,
-                    quantized_dimension,
-                    storage_min,
-                    storage_max,
-                )
-            return quant.UniformQuantizedType.get(
-                flags,
-                self.type_to_mlir[tensor.type],
-                self.type_to_mlir["FLOAT32"],
-                scale[0],
-                zero_point[0],
-                storage_min,
-                storage_max,
-            )
-
-        def getCalibratedQuantizedType(tensor):
-            quantParam = tensor.quantization
-            raw_elem_type = self.type_to_mlir[tensor.type]
-            min = quantParam.MinAsNumpy()
-            max = quantParam.MaxAsNumpy()
-            return quant.CalibratedQuantizedType.get(raw_elem_type, min, max)
-
-        is_intermediate = False
-        quantParam = tensor.quantization
-        elem_type = self.type_to_mlir[tensor.type]
-        if tensor.is_quantized:
-            elem_type = get_quantized_type(tensor)
-        # Intermediate tensors with calibration value (but not scale and zero points)
-        # should return calibrated quantized type.
-        if is_intermediate and quantParam is not None:
-            elem_type = getCalibratedQuantizedType(tensor)
-        if tensor.shape is not None:
-            return RankedTensorType.get(tensor.shape, elem_type)
-        return UnrankedTensorType.get(elem_type)
-
-    def __create_weight_op(self, tensor):
-        # constant variable/op
-        tensor_type = self.__get_tensor_type(tensor)
-        attributes = {"name": StringAttr.get(tensor.name)}
-        op = Operation.create(
-            Top.WeightOp, results=[tensor_type], attributes=attributes
-        )
-        self.mlir.insert_point.insert(op)
-        self.constant[tensor.name] = tensor.buffer
-        return op.results[0]
-
-    def __nhwc2nchw(self, tensor):
-        shape = tensor.shape
-        if len(shape) != 4:
-            return tensor
-        n, h, w, c = tensor.shape
-        tensor.shape = (n, c, h, w)
-        if tensor.buffer is not None:
-            tensor.buffer = tensor.buffer.transpose([0, 3, 1, 2])
-        return tensor
 
     def convert_subgraph(self, subgraph):
         class valueMap:
@@ -473,7 +514,7 @@ class TFLiteConverter(BaseConverter):
                 attributes=attributes,
             )
             self.mlir.insert_point.insert(op)
-            vals_map.update(dict(zip((x.id for x in operation.outputs), op.results)))
+            vals_map.update(dict(zip((x.id for x in operation.outputs), op.results)))  # type: ignore
 
         for op in subgraph.operators:
             add_operation(op)

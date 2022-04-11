@@ -130,5 +130,28 @@ class TestAll:
             ]
         )
         img = np.random.uniform(0, 255, (320, 486, 3)).astype(dtype=np.uint8)
-        transform_fn(img)
+        img = transform_fn(img)
         img = np.expand_dims(img, axis=0)
+
+
+class TestDataLoader:
+    def test_dataset(self):
+        from .datasets import ImageFolderDataset
+        from . import transforms
+        import numpy as np
+
+        imgset = ImageFolderDataset("../../../../regression/image")
+
+        transform_fn = transforms.Compose(
+            [
+                transforms.Resize(224),
+                transforms.CenterCrop(224),
+                transforms.Cast(np.float32),
+                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+                lambda img: np.expand_dims(img, axis=0),
+            ]
+        )
+
+        img = transform_fn(imgset[0])
+        assert img.shape == (1, 224, 224, 3)
+        np.savez("resnet50_input.npz", **{"input_1": img})
