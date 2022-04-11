@@ -40,3 +40,9 @@ BM1686::BM1686() {
   CAST_FUNCTION(get_global_memaddr);
   CAST_FUNCTION(set_cmd_buffer_ptr);
 }
+
+BM1686::~BM1686() {}
+
+int64_t BM1686::get_eu_num(int64_t dtype_bytes) {
+  return 16 * 4 / dtype_bytes;
+}

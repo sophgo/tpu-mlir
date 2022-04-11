@@ -43,6 +43,9 @@ public:
   virtual uint64_t get_gmem_start() override;
   virtual uint64_t get_ctx_start_addr() override;
 
+  static const int64_t NPU_NUM = 64;
+  static int64_t get_eu_num(int64_t dtype_bytes);
+
 protected:
   BM1686();
   ~BM1686();

@@ -169,8 +169,6 @@ typedef void (*nodechip_const_binary)(uint64_t bottom_global_addr, uint64_t leng
 typedef void (*nodechip_global_int2float)(uint64_t bottom_global_offset, uint64_t top_global_offset, int input_n, int input_c, int input_h, int input_w, int sign_unsign, TENSOR_STORAGE_MODE mode, CMD_ID_NODE* id_node);
 typedef void (*nodechip_float2int8_v2)(uint64_t A_global_offset, uint64_t R_global_offset, int input_n, int input_c, int input_h, int input_w, int sign_unsign, TENSOR_STORAGE_MODE stmode, ROUND_MODE round_mode, CMD_ID_NODE* id_node);
 
-#define ALIGN(x, a) ((((x) + (a)-1) / (a)) * (a))
-
 namespace sophgo {
 namespace backend {
 class BM1684 : public BM168x {
@@ -361,6 +359,9 @@ public:
   static const int64_t BDC_CMD_ALIGNED_NUM = (1 << BDC_CMD_ALIGNED_BIT)/sizeof(uint32_t);
   static const int64_t GDMA_CMD_ALIGNED_BIT = 7;
   static const int64_t GDMA_CMD_ALIGNED_NUM = (1 << GDMA_CMD_ALIGNED_BIT)/sizeof(uint32_t);
+  static const int64_t NPU_NUM = 64;
+
+  static int64_t get_eu_num(int64_t dtype_bytes);
 
 protected:
   BM1684();

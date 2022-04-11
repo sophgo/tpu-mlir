@@ -74,3 +74,40 @@ void BM168x::value_d2s(Value v, void *dst) {
 uint64_t BM168x::get_cmodel_gmem_size() {
   return 0x100000000ull;
 }
+
+bm_data_type_t BM168x::getDataType(Value v) {
+  auto type = Module::getStorageType(v);
+  auto bits = type.getIntOrFloatBitWidth();
+  if (type.isUnsignedInteger()) {
+    switch(bits) {
+      case 8:
+        return DTYPE_UINT8;
+      case 16:
+        return DTYPE_UINT16;
+      case 32:
+        return DTYPE_UINT32;
+      default:
+        break;
+    }
+  } else if (type.isSignedInteger() || type.isSignlessInteger()) {
+    switch(bits) {
+      case 8:
+        return DTYPE_INT8;
+      case 16:
+        return DTYPE_INT16;
+      case 32:
+        return DTYPE_INT32;
+      default:
+        break;
+    }
+  } else if (type.isF32()) {
+    return DTYPE_FP32;
+  } else if (type.isBF16()) {
+    return DTYPE_BFP16;
+  } else if (type.isF16()) {
+    return DTYPE_FP16;
+  }
+  v.dump();
+  llvm_unreachable("Unsupport type \n");
+  return DTYPE_FP32;
+}

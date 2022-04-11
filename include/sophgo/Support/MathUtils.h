@@ -5,6 +5,18 @@
 #include "mlir/Support/LLVM.h"
 
 namespace sophgo {
+// =======================
+// alignment function
+// =======================
+template<typename T>
+static inline T ceiling_func(T numerator, T denominator) {
+  return (numerator + denominator - 1) / denominator;
+}
+
+template<typename T>
+static inline T ALIGN(T x, T a) {
+  return ceiling_func(x, a) * a;
+}
 
 // =======================
 // interfece for quantization

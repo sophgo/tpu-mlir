@@ -178,7 +178,8 @@ Type Module::getStorageType(Value v) {
     return qType.getExpressedType();
   } else if (auto qType = etype.dyn_cast<quant::UniformQuantizedType>()) {
     return qType.getStorageType();
-  } else if (auto qType = etype.dyn_cast<quant::UniformQuantizedPerAxisType>()) {
+  } else if (auto qType =
+                 etype.dyn_cast<quant::UniformQuantizedPerAxisType>()) {
     return qType.getStorageType();
   }
   return etype;
@@ -231,14 +232,19 @@ static void getNCHW_align_left(llvm::ArrayRef<int64_t> shape, int64_t &n,
   }
 }
 
-void Module::getNCHW(Value v, int64_t &n, int64_t &c, int64_t &h, int64_t &w,
-                     bool align_left) {
-  auto shape = v.getType().cast<RankedTensorType>().getShape();
-  if (align_left) {
+void Module::getNCHW(llvm::ArrayRef<int64_t> shape, int64_t &n, int64_t &c,
+                     int64_t &h, int64_t &w, bool left_align) {
+  if (left_align) {
     getNCHW_align_left(shape, n, c, h, w);
   } else {
     getNCHW_align_right(shape, n, c, h, w);
   }
+}
+
+void Module::getNCHW(Value v, int64_t &n, int64_t &c, int64_t &h, int64_t &w,
+                     bool left_align) {
+  auto shape = v.getType().cast<RankedTensorType>().getShape();
+  getNCHW(shape, n, c, h, w, left_align);
 }
 
 FuncOp Module::getFuncOp(ModuleOp module, StringRef func_name) {
