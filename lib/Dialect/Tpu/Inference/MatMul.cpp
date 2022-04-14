@@ -25,7 +25,7 @@ LogicalResult tpu::MatMulOp::init(InferenceParameter &p) {
   }
 
   matmul->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], batch, M,
-                K, N, do_relu(), rshift(), multipler(), ldt, rdt, bdt, odt);
+                K, N, do_relu(), rshift(), multiplier(), ldt, rdt, bdt, odt);
   p.handle = (void *)matmul;
   return success();
 }

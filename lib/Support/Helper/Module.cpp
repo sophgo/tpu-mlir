@@ -171,6 +171,23 @@ llvm::ArrayRef<int64_t> Module::getShape(Value v) {
   return type.getShape();
 }
 
+std::shared_ptr<std::vector<int64_t>> Module::getI64Array(ArrayAttr arrayAttr) {
+  auto data = std::make_shared<std::vector<int64_t>>();
+  for (auto en : llvm::enumerate(arrayAttr)) {
+    auto attr = en.value().dyn_cast<IntegerAttr>();
+    data->push_back(attr.getInt());
+  }
+  return data;
+}
+std::shared_ptr<std::vector<double>> Module::getF64Array(ArrayAttr arrayAttr) {
+  auto data = std::make_shared<std::vector<double>>();
+    for (auto en : llvm::enumerate(arrayAttr)) {
+    auto attr = en.value().dyn_cast<FloatAttr>();
+    data->push_back(attr.getValueAsDouble());
+  }
+  return data;
+}
+
 Type Module::getStorageType(Value v) {
   auto type = v.getType().cast<RankedTensorType>();
   auto etype = type.getElementType();

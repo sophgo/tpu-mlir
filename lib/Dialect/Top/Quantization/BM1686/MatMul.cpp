@@ -74,7 +74,7 @@ Value top::MatMulOp::quantize_int8_bm1686() {
   attrs.push_back(
       builder.getNamedAttr("rshift", builder.getI64IntegerAttr(shift)));
   attrs.push_back(
-      builder.getNamedAttr("multipler", builder.getI64IntegerAttr(scale)));
+      builder.getNamedAttr("multiplier", builder.getI64IntegerAttr(scale)));
   auto filter_type = right().getType().cast<RankedTensorType>();
   auto new_type =
       RankedTensorType::get(filter_type.getShape(), builder.getI8Type());
