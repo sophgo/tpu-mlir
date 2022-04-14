@@ -1,6 +1,7 @@
 file(GLOB _sources
           IR/*.cpp
           Inference/*.cpp
+          Canonicalize/*.cpp
           Transforms/*.cpp
           Quantization/*.cpp
           Quantization/BM1684/*.cpp

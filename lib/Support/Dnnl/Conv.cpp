@@ -10,7 +10,7 @@ Conv::Conv() {
 void Conv::setup(float *input, float *weight, float *bias, float *output, int n,
                  int ic, int ih, int iw, int oc, int oh, int ow, int kh, int kw,
                  int sh, int sw, int dh, int dw, int pt, int pb, int pl, int pr,
-                 int g, bool do_relu, int* rshift, int* multipler, memory::data_type idt,
+                 int g, bool do_relu, int* rshift, int* multiplier, memory::data_type idt,
                  memory::data_type wdt, memory::data_type bdt, memory::data_type odt, bool per_channel) {
   //printf("Conv para:%d,%d,%d,%d,%d\n", idt, wdt, bdt, odt, per_channel);
   src_shape = {n, ic, ih, iw};
@@ -41,7 +41,7 @@ void Conv::setup(float *input, float *weight, float *bias, float *output, int n,
     std::vector<float> conv_scales(oc);
     if (per_channel) {
       for (int o = 0; o < oc; o++) {
-          float scale = multipler[o];
+          float scale = multiplier[o];
           for (int i = 0; i < abs(rshift[o]); i++) {
             if (rshift > 0) {
               scale /= 2;
@@ -53,8 +53,8 @@ void Conv::setup(float *input, float *weight, float *bias, float *output, int n,
       }
     } else {
       float scale = 1;
-      if (multipler) {
-        scale = multipler[0];
+      if (multiplier) {
+        scale = multiplier[0];
       }
 
       for (int i = 0; i < abs(rshift[0]); i++) {

@@ -33,22 +33,22 @@ LogicalResult tpu::ConvOp::init(InferenceParameter &p) {
   }*/
 
   int *p_rshift = nullptr;
-  int *p_multipler = nullptr;
+  int *p_multiplier = nullptr;
   std::vector<int> rshift_v;
-  std::vector<int> multipler_v;
+  std::vector<int> multiplier_v;
   bool per_channel = false;
-  int size = multipler().hasValue() ? multipler().getValue().size() : 0;
+  int size = multiplier().hasValue() ? multiplier().getValue().size() : 0;
   if (size > 1) {
     per_channel = true;
   }
   if (size > 0) {
     for (size_t i = 0; i < oc; i++) {
       rshift_v.push_back(rshift().getValue()[i].cast<IntegerAttr>().getInt());
-      multipler_v.push_back(
-          multipler().getValue()[i].cast<IntegerAttr>().getInt());
+      multiplier_v.push_back(
+          multiplier().getValue()[i].cast<IntegerAttr>().getInt());
     }
     p_rshift = rshift_v.data();
-    p_multipler = multipler_v.data();
+    p_multiplier = multiplier_v.data();
   } else {
     rshift_v.push_back(rshift().getValue()[0].cast<IntegerAttr>().getInt());
     p_rshift = rshift_v.data();
@@ -57,7 +57,7 @@ LogicalResult tpu::ConvOp::init(InferenceParameter &p) {
   conv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], n, ic,
               ih, // fixme p.inputs[2] maybe null???
               iw, oc, oh, ow, kh, kw, sh, sw, dh, dw, pt, pb, pl, pr, g,
-              do_relu(), p_rshift, p_multipler, idt, wdt, bdt, odt,
+              do_relu(), p_rshift, p_multiplier, idt, wdt, bdt, odt,
               per_channel);
   p.handle = (void *)conv;
   return success();
