@@ -29,7 +29,7 @@
 #define DNNL_VERSION_PATCH 0
 
 /// Git commit hash
-#define DNNL_VERSION_HASH  "9636c49abf376d2144dace1c58247148a16960ab"
+#define DNNL_VERSION_HASH  "20261d29f547e5ff0cb451502fa628672fbd7ed5"
 
 // clang-format on
 
