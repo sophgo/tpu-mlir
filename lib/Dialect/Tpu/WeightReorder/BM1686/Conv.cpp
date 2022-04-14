@@ -68,9 +68,9 @@ void tpu::ConvOp::weight_reorder_int8_bm1686() {
   if (is_dw) {
     llvm_unreachable("depthwise should support !!");
   }
-  auto type = Module::getStorageType(filter());
+  auto elem_type = Module::getStorageType(filter());
   int64_t IC_PARALLEL = 64;
-  auto type_bytes = type.getIntOrFloatBitWidth() / 8;
+  auto type_bytes = elem_type.getIntOrFloatBitWidth() / 8;
   size_t new_bytes = ALIGN(ic, IC_PARALLEL) * oc * kh * kw * type_bytes;
   auto filter_i8 = filterOp.read_as_byte();
   auto filter_new = std::make_shared<std::vector<uint8_t>>(new_bytes, 0);
@@ -105,4 +105,39 @@ void tpu::ConvOp::weight_reorder_int8_bm1686() {
   if (with_bias) {
     // do nothing for int32
   }
+
+  // add requant op
+  auto op = getOperation();
+  OpBuilder builder(getContext());
+  auto out_type = getType().cast<RankedTensorType>();
+  auto qtype = Quant::getQuantizedType<quant::UniformQuantizedType>(output());
+  auto new_out_type = RankedTensorType::get(out_type.getShape(), builder.getI32Type());
+  output().setType(new_out_type);
+  std::vector<int64_t> quant_shape = {1, oc, 1, 3};
+  auto quant_data = std::make_shared<std::vector<int32_t>>(oc*3, 0);
+  auto m_data = Module::getI64Array(multiplier().getValue());
+  auto r_data = Module::getI64Array(rshift().getValue());
+  for (int i = 0; i < oc; i++) {
+    quant_data->at(i*3) = m_data->at(i);
+    quant_data->at(i*3+1) = r_data->at(i);
+    quant_data->at(i*3+2) = qtype.getZeroPoint();
+  }
+  auto op_name = Module::getName(op);
+  auto new_op_name = op_name.str() + "_int32";
+  auto quant_type = RankedTensorType::get(quant_shape, builder.getI32Type());
+  builder.setInsertionPointAfter(op);
+  auto quant_op = top::WeightOp::create(op, "requant",
+                                          *quant_data, quant_type);
+  op->setAttr("name", builder.getStringAttr(new_op_name));
+  op->removeAttr("rshift");
+  op->removeAttr("multiplier");
+  std::vector<Value> operands;
+  std::vector<NamedAttribute> attrs;
+  operands.push_back(output());
+  operands.push_back(quant_op);
+  attrs.push_back(builder.getNamedAttr("name", builder.getStringAttr(op_name)));
+  auto requant_op = builder.create<tpu::RequantOp>(op->getLoc(), out_type,
+                                            ArrayRef<Value>{operands},
+                                            ArrayRef<NamedAttribute>{attrs});
+  output().replaceAllUsesExcept(requant_op.output(), requant_op.getOperation());
 }

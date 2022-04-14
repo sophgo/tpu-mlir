@@ -52,8 +52,8 @@ Value top::ConvOp::quantize_int8_bm1684() {
   }
   std::vector<int64_t> rshift_v;
   rshift_v.push_back(rshift);
-  std::vector<int64_t> multipler_v;
-  multipler_v.push_back(1);
+  std::vector<int64_t> multiplier_v;
+  multiplier_v.push_back(1);
   float scale = 1.0 * (1 << rshift) * th_input / th_output;
   auto filter_int8 = std::make_shared<std::vector<int8_t>>(filter_f32->size());
   quantizeToInt8(filter_f32->data(), filter_int8->data(), filter_f32->size(),

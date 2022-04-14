@@ -60,10 +60,10 @@ Value top::ConvOp::quantize_int8_bm1686() {
   }
 
   std::vector<int64_t> rshift_v;
-  std::vector<int64_t> multipler_v;
+  std::vector<int64_t> multiplier_v;
   std::vector<double> wScale_v;
   std::vector<int64_t> wzp_v;
-  int int32_multipler, shift;
+  int int32_multiplier, shift;
   int dim = filter_f32->size() / oc;
   for (int c = 0; c < oc; c++) { // per-channel量化
     float w_max = findMaxabs(filter_f32->data() + c * dim, dim);
@@ -74,9 +74,9 @@ Value top::ConvOp::quantize_int8_bm1686() {
       w_min = 0.0; //用真实的大于0的最小权值，小概率事件
     float scale_w = (127 - (-127)) / (w_max - w_min);
     float scale_f = output_scale / (scale_w * input_scale);
-    get_scale_and_shift(scale_f, int32_multipler, shift, 32);
+    get_scale_and_shift(scale_f, int32_multiplier, shift, 32);
     wScale_v.push_back(1 / scale_w);
-    multipler_v.push_back(int32_multipler);
+    multiplier_v.push_back(int32_multiplier);
     rshift_v.push_back(shift);
     int w_zeropoint = 0; //权重用int8对称量化或用uint8表示，零点始终为0
     wzp_v.push_back(w_zeropoint);
@@ -149,7 +149,7 @@ Value top::ConvOp::quantize_int8_bm1686() {
   attrs.push_back(builder.getNamedAttr(
       "rshift", builder.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v})));
   attrs.push_back(builder.getNamedAttr(
-      "multipler", builder.getI64ArrayAttr(ArrayRef<int64_t>{multipler_v})));
+      "multiplier", builder.getI64ArrayAttr(ArrayRef<int64_t>{multiplier_v})));
   auto newOp = builder.create<tpu::ConvOp>(op->getLoc(), output().getType(),
                                            ArrayRef<Value>{operands},
                                            ArrayRef<NamedAttribute>{attrs});

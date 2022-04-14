@@ -12,7 +12,7 @@ MatMul::MatMul() {
 
 void MatMul::setup(float *left, float *right, float *bias, float *output,
                    int64_t batch, int64_t M, int64_t K, int64_t N,
-                   bool do_relu, int64_t rshift, int64_t multipler, memory::data_type ldt,
+                   bool do_relu, int64_t rshift, int64_t multiplier, memory::data_type ldt,
                    memory::data_type rdt,
                    memory::data_type bdt,
                    memory::data_type odt) {
@@ -33,7 +33,7 @@ void MatMul::setup(float *left, float *right, float *bias, float *output,
   matmul::primitive_desc matmul_pd;
   primitive_attr matmul_attr;
   if (memory::data_type::s32 == odt) {
-    float scale = multipler > 0?multipler:1;
+    float scale = multiplier > 0?multiplier:1;
     for (int i = 0; i < abs(rshift); i++) {
       if (rshift > 0) {
         scale /= 2;
