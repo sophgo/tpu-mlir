@@ -1,29 +1,10 @@
-//
-// Copyright 2019 The MLIR Authors.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//   http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-// =============================================================================
-//
-// This file implements the TPU dialect OP Stats pass.
-//
-//===----------------------------------------------------------------------===//
-
 #include "sophgo/Dialect/Tpu/Transforms/Passes.h"
 #include "sophgo/Dialect/Tpu/IR/TpuOps.h"
 #include "sophgo/Support/MathUtils.h"
 #include "sophgo/Support/Helper/Module.h"
 #include "sophgo/Support/Helper/Quant.h"
 #include "sophgo/Backend/BM168x/BM1684.h"
+#include "sophgo/Backend/BM168x/BM1686.h"
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinTypes.h"
@@ -55,11 +36,14 @@ public:
     if (state != Module::State::TPU_DIVIDED) {
       llvm_unreachable("module should be reordered");
     }
+    Module::removeUnusedOp(module);
     int64_t start_addr = 0;
-    int64_t alignment = 0;
-    if (Module::getChip(module) == Module::Chip::BM1684) {
+    int64_t alignment = BM168x::ALIGNMENT;
+    chip = Module::getChip(module);
+    if (chip == Module::Chip::BM1684) {
       start_addr = BM1684::instance().get_ctx_start_addr();
-      alignment = BM1684::ALIGNMENT;
+    } else if (chip == Module::Chip::BM1686) {
+      start_addr = BM1686::instance().get_ctx_start_addr();
     } else {
       llvm_unreachable("chip not support now");
     }
@@ -81,6 +65,8 @@ public:
       func.walk([&](Operation *op) {
         if (isa<FuncOp, top::NoneOp, func::ReturnOp, top::WeightOp,
                 func::CallOp>(op)) {
+        } else if (fuse_address(op)) {
+          // do nothing
         } else {
           auto output = op->getResult(0);
           Module::setAddress(output, addr);
@@ -94,6 +80,19 @@ public:
     Module::updateModuleTypes(module);
     Module::setState(module, Module::State::TPU_ADDRESSED);
   }
+
+protected:
+  bool fuse_address(Operation *op) {
+    if (auto castOp = dyn_cast<tpu::ReshapeOp>(op)) {
+      if (chip == Module::Chip::BM1686) {
+        auto addr = Module::getAddress(castOp.input());
+        Module::setAddress(castOp.output(), addr);
+        return true;
+      }
+    }
+    return false;
+  }
+  StringRef chip;
 };
 
 std::unique_ptr<OperationPass<ModuleOp>> createAddressAsignPass() {

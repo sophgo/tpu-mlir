@@ -10,8 +10,8 @@ using namespace mlir;
 LogicalResult top::MatMulOp::init(InferenceParameter &p) {
   auto matmul = new MatMul();
   int64_t batch, M, K, N;
-  bool with_bias;
-  parseParam(batch, M, K, N, with_bias);
+  bool with_bias, relu;
+  parseParam(batch, M, K, N, with_bias, relu);
   matmul->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], batch, M,
                 K, N, do_relu());
   p.handle = (void *)matmul;

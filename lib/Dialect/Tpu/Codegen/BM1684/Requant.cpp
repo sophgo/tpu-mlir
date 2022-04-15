@@ -12,5 +12,5 @@ using namespace sophgo::helper;
 using namespace sophgo::backend;
 
 void tpu::RequantOp::codegen_int8_bm1684() {
-  llvm_unreachable("not support");
+  llvm_unreachable("not support now");
 }

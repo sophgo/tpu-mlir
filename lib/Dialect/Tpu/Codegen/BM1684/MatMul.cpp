@@ -27,10 +27,10 @@ typedef struct {
 
 void tpu::MatMulOp::codegen_int8_bm1684() {
   int64_t batch, M, K, N;
-  bool with_bias;
-  parseParam(batch, M, K, N, with_bias);
+  bool with_bias, relu;
+  parseParam(batch, M, K, N, with_bias, relu);
   int using_bias = with_bias ? 1 : 0;
-  int if_relu = do_relu() ? 1 : 0;
+  int if_relu = relu ? 1 : 0;
   int if_right_active = isa<top::WeightOp>(right().getDefiningOp()) ? 0 : 1;
   FcQParams quant_param{0, 0, 0, 0, 0};
   BM1684::instance().dl_nodechip_fc_fix8b_forward_parallel(

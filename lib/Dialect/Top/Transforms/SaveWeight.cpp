@@ -50,10 +50,11 @@ public:
   SaveWeightPass() {}
   void runOnOperation() override {
     auto module = getOperation();
+    Module::removeUnusedOp(module);
     // check name conflict
     std::set<StringRef> all_names;
     for (auto func : module.getOps<FuncOp>()) {
-      func.walk([&](Operation* op) {
+      func.walk([&](Operation *op) {
         if (op->hasAttr("name")) {
           if (op->getUses().empty()) {
             op->erase();

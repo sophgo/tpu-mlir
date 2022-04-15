@@ -82,7 +82,7 @@ void MaxPoolOp::parseParam(int64_t &n, int64_t &c, int64_t &ih, int64_t &iw,
                            int64_t &oh, int64_t &ow, int64_t &kh, int64_t &kw,
                            int64_t &sh, int64_t &sw, int64_t &pt, int64_t &pb,
                            int64_t &pl, int64_t &pr, int64_t &pad_value,
-                           bool &is_global, bool &count_include_pad) {
+                           bool &relu, bool &is_global, bool &count_include_pad) {
   auto i_s = input().getType().cast<RankedTensorType>().getShape();
   auto o_s = output().getType().cast<RankedTensorType>().getShape();
 
@@ -90,7 +90,7 @@ void MaxPoolOp::parseParam(int64_t &n, int64_t &c, int64_t &ih, int64_t &iw,
   kw = kernel_shape().getValue()[1].cast<IntegerAttr>().getInt();
   sh = strides().getValue()[0].cast<IntegerAttr>().getInt();
   sw = strides().getValue()[1].cast<IntegerAttr>().getInt();
-
+  relu = do_relu();
   size_t num_dims = i_s.size();
   assert(num_dims == 4); // 4 dims now
   n = i_s[0];
@@ -115,7 +115,7 @@ void AvgPoolOp::parseParam(int64_t &n, int64_t &c, int64_t &ih, int64_t &iw,
                            int64_t &oh, int64_t &ow, int64_t &kh, int64_t &kw,
                            int64_t &sh, int64_t &sw, int64_t &pt, int64_t &pb,
                            int64_t &pl, int64_t &pr, int64_t &pad_value,
-                           bool &is_global, bool &count_include_pad) {
+                           bool &relu, bool &is_global, bool &count_include_pad) {
   auto i_s = input().getType().cast<RankedTensorType>().getShape();
   auto o_s = output().getType().cast<RankedTensorType>().getShape();
 
@@ -123,7 +123,7 @@ void AvgPoolOp::parseParam(int64_t &n, int64_t &c, int64_t &ih, int64_t &iw,
   kw = kernel_shape().getValue()[1].cast<IntegerAttr>().getInt();
   sh = strides().getValue()[0].cast<IntegerAttr>().getInt();
   sw = strides().getValue()[1].cast<IntegerAttr>().getInt();
-
+  relu = do_relu();
   size_t num_dims = i_s.size();
   assert(num_dims == 4); // 4 dims now
   n = i_s[0];
@@ -145,11 +145,12 @@ void AvgPoolOp::parseParam(int64_t &n, int64_t &c, int64_t &ih, int64_t &iw,
 }
 
 void MatMulOp::parseParam(int64_t &batch, int64_t &M, int64_t &K, int64_t &N,
-                          bool &with_bias) {
+                          bool &with_bias, bool &relu) {
   auto i_s = input().getType().cast<RankedTensorType>().getShape();
   auto r_s = right().getType().cast<RankedTensorType>().getShape();
   auto o_s = output().getType().cast<RankedTensorType>().getShape();
   with_bias = !bias().getType().isa<mlir::NoneType>();
+  relu = do_relu();
   auto r_dims = r_s.size();
   auto i_dims = i_s.size();
   N = r_s[r_dims - 1];
@@ -221,6 +222,12 @@ std::shared_ptr<std::vector<uint8_t>> WeightOp::read_as_byte() {
     auto bytes = data_i16->size() * sizeof(int16_t);
     auto data_u8 = std::make_shared<std::vector<uint8_t>>(bytes);
     memcpy(data_u8->data(), data_i16->data(), bytes);
+    return data_u8;
+  } else if (dtype.isInteger(32)) {
+    auto data_i32 = read<int32_t>();
+    auto bytes = data_i32->size() * sizeof(int32_t);
+    auto data_u8 = std::make_shared<std::vector<uint8_t>>(bytes);
+    memcpy(data_u8->data(), data_i32->data(), bytes);
     return data_u8;
   }
   dump();

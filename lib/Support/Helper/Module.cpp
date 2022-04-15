@@ -128,6 +128,19 @@ void Module::updateModuleTypes(ModuleOp module) {
   mainFunc.setType(fnType);
 }
 
+void Module::removeUnusedOp(ModuleOp module) {
+  for (auto func : module.getOps<FuncOp>()) {
+    func.walk([&](Operation *op) {
+      if (isa<func::ReturnOp, FuncOp>(op)) {
+      } else {
+        if (op->getUsers().empty()) {
+          op->erase();
+        }
+      }
+    });
+  }
+}
+
 std::string Module::genWeightFileName(ModuleOp module) {
   auto name = getName(module);
   auto state = getState(module);
@@ -181,7 +194,7 @@ std::shared_ptr<std::vector<int64_t>> Module::getI64Array(ArrayAttr arrayAttr) {
 }
 std::shared_ptr<std::vector<double>> Module::getF64Array(ArrayAttr arrayAttr) {
   auto data = std::make_shared<std::vector<double>>();
-    for (auto en : llvm::enumerate(arrayAttr)) {
+  for (auto en : llvm::enumerate(arrayAttr)) {
     auto attr = en.value().dyn_cast<FloatAttr>();
     data->push_back(attr.getValueAsDouble());
   }
@@ -194,7 +207,14 @@ Type Module::getStorageType(Value v) {
   if (auto qType = etype.dyn_cast<quant::CalibratedQuantizedType>()) {
     return qType.getExpressedType();
   } else if (auto qType = etype.dyn_cast<quant::UniformQuantizedType>()) {
-    return qType.getStorageType();
+    auto stype = qType.getStorageType();
+    bool isSign = qType.isSigned();
+    if (stype.isSignlessInteger()) {
+      auto bits = stype.getIntOrFloatBitWidth();
+      auto sign = isSign ? IntegerType::Signed : IntegerType::Unsigned;
+      return IntegerType::get(v.getContext(), bits, sign);
+    }
+    return stype;
   } else if (auto qType =
                  etype.dyn_cast<quant::UniformQuantizedPerAxisType>()) {
     return qType.getStorageType();

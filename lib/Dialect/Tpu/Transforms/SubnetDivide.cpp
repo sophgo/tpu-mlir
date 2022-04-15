@@ -77,6 +77,9 @@ void getInputsOutputs(std::vector<Operation *> &ops, std::vector<Value> &inputs,
         continue;
       }
       auto inOp = v.getDefiningOp();
+      if (isa<top::NoneOp>(inOp)) {
+        continue;
+      }
       if (find(allValues.begin(), allValues.end(), v) == allValues.end()) {
         inputs.push_back(v);
       }
@@ -130,8 +133,20 @@ void buildSubFunction(std::shared_ptr<SubFunction> sf, ModuleOp module) {
         });
   }
   builder.setInsertionPointToStart(block);
+  top::NoneOp noneOp;
+  if (sf->have_none) {
+    noneOp = builder.create<top::NoneOp>(module.getLoc(), builder.getNoneType());
+  }
   auto retOp = builder.create<func::ReturnOp>(module.getLoc(), fnOutputs);
   for (auto op : sf->ops) {
+    if (isa<top::NoneOp>(op)) {
+      continue;
+    }
+    for (auto it : llvm::enumerate(op->getOperands())) {
+      if (isa<top::NoneOp>(it.value().getDefiningOp())) {
+        op->setOperand(it.index(), noneOp);
+      }
+    }
     op->moveBefore(retOp);
   }
   module.push_back(fnOp);
@@ -150,6 +165,18 @@ static StringRef getOpMode(Operation *op) {
   } else {
     return FUNC_TPU;
   }
+}
+
+static void insert_subop(std::shared_ptr<SubFunction> &subf, Operation *op) {
+  for (auto opd : op->getOperands()) {
+    auto op_ = opd.getDefiningOp();
+    if (isa<top::WeightOp>(op_)) {
+      subf->ops.push_back(op_);
+    } else if(isa<top::NoneOp>(op_) && subf->have_none == false) {
+      subf->have_none = true;
+    }
+  }
+  subf->ops.push_back(op);
 }
 
 class SubnetDividePass : public SubnetDivideBase<SubnetDividePass> {
@@ -171,40 +198,13 @@ public:
         auto mode = getOpMode(op);
         if (subf == nullptr) {
           subf = std::make_shared<SubFunction>(mode);
-          for (auto opd : op->getOperands()) {
-            auto op_ = opd.getDefiningOp();
-            if (isa<top::WeightOp>(op_)) {
-              subf->ops.push_back(op_);
-            } else if (isa<top::NoneOp>(op_) && subf->have_none == false) {
-              subf->have_none = true;
-              subf->ops.push_back(op_);
-            }
-          }
-          subf->ops.push_back(op);
+          insert_subop(subf, op);
         } else if (subf->mode == mode) {
-          for (auto opd : op->getOperands()) {
-            auto op_ = opd.getDefiningOp();
-            if (isa<top::WeightOp>(op_)) {
-              subf->ops.push_back(op_);
-            } else if (isa<top::NoneOp>(op_) && subf->have_none == false) {
-              subf->have_none = true;
-              subf->ops.push_back(op_);
-            }
-          }
-          subf->ops.push_back(op);
+          insert_subop(subf, op);
         } else {
           buildSubFunction(subf, module);
           subf = std::make_shared<SubFunction>(mode);
-          for (auto opd : op->getOperands()) {
-            auto op_ = opd.getDefiningOp();
-            if (isa<top::WeightOp>(op_)) {
-              subf->ops.push_back(op_);
-            } else if (isa<top::NoneOp>(op_) && subf->have_none == false) {
-              subf->have_none = true;
-              subf->ops.push_back(op_);
-            }
-          }
-          subf->ops.push_back(op);
+          insert_subop(subf, op);
         }
       }
     });
@@ -212,6 +212,7 @@ public:
       buildSubFunction(subf, module);
       subf = nullptr;
     }
+    Module::removeUnusedOp(module);
     Module::setState(module, Module::State::TPU_DIVIDED);
   }
 };
