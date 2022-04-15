@@ -11,8 +11,8 @@ using namespace mlir;
 LogicalResult tpu::MatMulOp::init(InferenceParameter &p) {
   auto matmul = new MatMul();
   int64_t batch, M, K, N;
-  bool with_bias;
-  parseParam(batch, M, K, N, with_bias);
+  bool relu, with_bias;
+  parseParam(batch, M, K, N, with_bias, relu);
   auto ldt = getDnnlType(input());
   auto rdt = getDnnlType(right());
   auto bdt = memory::data_type::f32;
@@ -25,7 +25,7 @@ LogicalResult tpu::MatMulOp::init(InferenceParameter &p) {
   }
 
   matmul->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], batch, M,
-                K, N, do_relu(), rshift(), multiplier(), ldt, rdt, bdt, odt);
+                K, N, relu, rshift(), multiplier(), ldt, rdt, bdt, odt);
   p.handle = (void *)matmul;
   return success();
 }

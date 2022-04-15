@@ -19,8 +19,8 @@ Value top::MatMulOp::quantize_int8_bm1684() {
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
   int64_t batch, M, K, N;
-  bool with_bias;
-  parseParam(batch, M, K, N, with_bias);
+  bool with_bias, relu;
+  parseParam(batch, M, K, N, with_bias, relu);
   assert(batch == 1); // only for fullyconnected now
   const int nInputs = op->getNumOperands();
   auto th_output = Quant::getThreshold(output());

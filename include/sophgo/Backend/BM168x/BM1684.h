@@ -2,16 +2,6 @@
 
 #include "sophgo/Backend/BM168x/BM168x.h"
 
-typedef void * (*create_cmd_id_node)();
-typedef void (*destroy_cmd_id_node)(void *pid_node);
-typedef void (*set_cmd_id_cycle)(void *pid_node, int val);
-typedef int (*get_cmd_id_cycle)(void *pid_node);
-typedef void (*reset_cmd_id)(void *pid_node);
-typedef void (*allow_store_cmd)();
-typedef void (*forbid_store_cmd)();
-typedef void (*use_atomic_cmodel)();
-typedef void (*forbid_atomic_cmodel)();
-typedef void (*set_total_id_ptr)(uint32_t *gdma_total_id_ptr, uint32_t *bdc_total_id_ptr, void *cmdid_node, void *gdma_group_id_ptr, void *bdc_group_id_ptr, int *cmdid_groupnum);
 typedef void (*tensor_align_move_gen_cmd)(int local_mem_start_addr, int local_mem_idx, uint64_t sys_mem_start_addr, int src_N, int src_C, int src_H, int src_W, int src_format, int direction, int transpose, CMD_ID_NODE *pid_node);
 typedef void (*general_matrix_move_gen_cmd)(int local_mem_start_addr, int local_mem_idx, uint64_t sys_mem_start_addr, int sec_size, int row_num, int col_num, uint32_t row_stride, int src_format, int direction, int transpose, int result_add, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_conv_forward_local)(int bottom_local_offset, int weight_local_offset, int bias_local_offset, int top_local_offset, int imm_local_offset, int *bottom_dim, int *top_dim, int groups, int kh, int kw, int dh, int dw, int up_pad_h, int down_pad_h, int left_pad_w, int right_pad_w, int stride_h, int stride_w, int using_bias, int result_add, int if_relu, float relu_upper_limit, int unused_ht_for_input_tensor, int unused_hb_for_input_tensor, int unused_wl_for_input_tensor, int unused_wr_for_input_tensor, void *id_node);
@@ -167,7 +157,7 @@ typedef void (*nodechip_concat_local_v2)(uint32_t *p_bottom_local_offset, uint32
 typedef void (*nodechip_concat_fix8b_local_v2)(uint32_t *p_bottom_local_offset, uint32_t top_local_offset, int **bottom_dim, int bottom_num, int *is_st_concat_way, int *top_dim, int concat_axis, void *id_node, void *id_node_gdma);
 typedef void (*nodechip_const_binary)(uint64_t bottom_global_addr, uint64_t length, float bottom_val, uint64_t top_global_addr, int binary_op, int inversed, int if_relu, float relu_limit, CMD_ID_NODE *pid_node, int input_is_int32);
 typedef void (*nodechip_global_int2float)(uint64_t bottom_global_offset, uint64_t top_global_offset, int input_n, int input_c, int input_h, int input_w, int sign_unsign, TENSOR_STORAGE_MODE mode, CMD_ID_NODE* id_node);
-typedef void (*nodechip_float2int8_v2)(uint64_t A_global_offset, uint64_t R_global_offset, int input_n, int input_c, int input_h, int input_w, int sign_unsign, TENSOR_STORAGE_MODE stmode, ROUND_MODE round_mode, CMD_ID_NODE* id_node);
+typedef void (*nodechip_float2int8_v2)(uint64_t A_global_offset, uint64_t R_global_offset, int input_n, int input_c, int input_h, int input_w, int sign_unsign, TENSOR_STORAGE_MODE stmode, ROUND_MODE_T round_mode, CMD_ID_NODE* id_node);
 
 namespace sophgo {
 namespace backend {
@@ -178,23 +168,11 @@ public:
     return inst;
   }
 
-  void init();
-  void reset();
-  void deinit();
-
   // -------------------------------------------------------------------
   // functions from nodechip
   // -------------------------------------------------------------------
-  create_cmd_id_node dl_create_cmd_id_node;
-  destroy_cmd_id_node dl_destroy_cmd_id_node;
-  set_cmd_id_cycle dl_set_cmd_id_cycle;
-  get_cmd_id_cycle dl_get_cmd_id_cycle;
-  reset_cmd_id dl_reset_cmd_id;
   allow_store_cmd dl_allow_store_cmd;
   forbid_store_cmd dl_forbid_store_cmd;
-  use_atomic_cmodel dl_use_atomic_cmodel;
-  forbid_atomic_cmodel dl_forbid_atomic_cmodel;
-  set_total_id_ptr dl_set_total_id_ptr;
   tensor_align_move_gen_cmd dl_tensor_align_move_gen_cmd;
   general_matrix_move_gen_cmd dl_general_matrix_move_gen_cmd;
   nodechip_conv_forward_local dl_nodechip_conv_forward_local;
@@ -355,19 +333,23 @@ public:
 public:
   virtual uint64_t get_gmem_start() override;
   virtual uint64_t get_ctx_start_addr() override;
+  virtual uint32_t get_bdc_len(int bdc_num, int group_id) override;
+  virtual uint32_t get_gdma_len(int gdma_num, int group_id) override;
+  static int64_t get_eu_num(int64_t dtype_bytes);
+
+public:
   static const int64_t BDC_CMD_ALIGNED_BIT = 7;
   static const int64_t BDC_CMD_ALIGNED_NUM = (1 << BDC_CMD_ALIGNED_BIT)/sizeof(uint32_t);
   static const int64_t GDMA_CMD_ALIGNED_BIT = 7;
   static const int64_t GDMA_CMD_ALIGNED_NUM = (1 << GDMA_CMD_ALIGNED_BIT)/sizeof(uint32_t);
   static const int64_t NPU_NUM = 64;
-
-  static int64_t get_eu_num(int64_t dtype_bytes);
+  static const int64_t EU_BYTES = 128;
 
 protected:
   BM1684();
   ~BM1684();
-  void set_command_issue_flag(bool value);
   template <typename FPtrTy> FPtrTy CastToFPtr(const char *symbolName);
+  virtual void load_functions() override;
 
 };
 } // namespace backend

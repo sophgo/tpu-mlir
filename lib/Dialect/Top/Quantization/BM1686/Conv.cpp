@@ -146,6 +146,8 @@ Value top::ConvOp::quantize_int8_bm1686() {
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
+  attrs.push_back(
+      builder.getNamedAttr("with_bias", builder.getBoolAttr(with_bias)));
   attrs.push_back(builder.getNamedAttr(
       "rshift", builder.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v})));
   attrs.push_back(builder.getNamedAttr(
@@ -153,26 +155,6 @@ Value top::ConvOp::quantize_int8_bm1686() {
   auto newOp = builder.create<tpu::ConvOp>(op->getLoc(), output().getType(),
                                            ArrayRef<Value>{operands},
                                            ArrayRef<NamedAttribute>{attrs});
-  bool bUnsign = this->do_relu();
-  Quant::setQuantInt8Type(newOp.output(), true, bUnsign);
-  return newOp.output();
-}
-
-Value top::ReluOp::quantize_int8_bm1686() {
-  auto op = getOperation();
-  OpBuilder builder(op);
-  std::vector<Value> operands;
-  const int nInputs = op->getNumOperands();
-  for (auto i = 0; i < nInputs; ++i) {
-    operands.push_back(op->getOperand(i));
-  }
-  std::vector<NamedAttribute> attrs;
-  for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
-  }
-  auto newOp = builder.create<tpu::ReluOp>(op->getLoc(), output().getType(),
-                                           ArrayRef<Value>{operands},
-                                           ArrayRef<NamedAttribute>{attrs});
-  Quant::setQuantInt8Type(newOp.output(), true, true);
+  Quant::setQuantInt8Type(newOp.output(), true, !relu);
   return newOp.output();
 }

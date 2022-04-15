@@ -12,4 +12,5 @@ using namespace sophgo::helper;
 using namespace sophgo::backend;
 
 void tpu::ReshapeOp::codegen_int8_bm1686() {
+  // do nothing
 }

@@ -7,51 +7,18 @@ using namespace sophgo::backend;
 using namespace sophgo::helper;
 using namespace mlir;
 
-uint64_t BM1684::get_gmem_start() {
-  return 0x100000000ull;
-}
+uint64_t BM1684::get_gmem_start() { return 0x100000000ull; }
 
 uint64_t BM1684::get_ctx_start_addr() {
   return get_gmem_start() + 0x5000000 + 0x100000;
 }
 
-void BM1684::init() {
-  // setup
-  dl_cmodel_init(0, get_cmodel_gmem_size());
-  cmdid_node = dl_create_cmd_id_node();
-  bdc_node = dl_create_cmd_id_node();
-  gdma_node = dl_create_cmd_id_node();
-  bdc_buffer = std::make_shared<std::vector<uint32_t>>(0x1000000);
-  gdma_buffer = std::make_shared<std::vector<uint32_t>>(0x1000000);
-  dl_set_cmd_buffer_ptr((void *)gdma_buffer->data(),
-                        (void *)bdc_buffer->data());
-  dl_set_total_id_ptr(&gdma_total_id, &bdc_total_id, cmdid_node,
-                      (void *)&gdma_group_id, (void *)&bdc_group_id,
-                      &cmdid_groupnum);
-  dl_forbid_atomic_cmodel(); // TODO:(no compare)
+uint32_t BM1684::get_bdc_len(int bdc_num, int group_id) {
+  return bdc_num * BDC_CMD_ALIGNED_NUM * sizeof(uint32_t);
 }
 
-void BM1684::reset() {
-  dl_reset_cmd_id(cmdid_node);
-  dl_reset_cmd_id(bdc_node);
-  dl_reset_cmd_id(gdma_node);
-  set_command_issue_flag(true);
-  gdma_group_id.clear();
-  gdma_group_id.push_back(0);
-  bdc_group_id.clear();
-  bdc_group_id.push_back(0);
-  cmdid_groupnum = 1;
-}
-
-void BM1684::deinit() {
-  if (DL.isValid()) {
-    if (cmdid_node != nullptr) {
-      dl_destroy_cmd_id_node(gdma_node);
-      dl_destroy_cmd_id_node(bdc_node);
-      dl_destroy_cmd_id_node(cmdid_node);
-    }
-    dl_cmodel_deinit(0);
-  }
+uint32_t BM1684::get_gdma_len(int gdma_num, int group_id) {
+  return gdma_num * GDMA_CMD_ALIGNED_NUM * sizeof(uint32_t);
 }
 
 template <typename FPtrTy> FPtrTy BM1684::CastToFPtr(const char *symbolName) {
@@ -66,27 +33,8 @@ template <typename FPtrTy> FPtrTy BM1684::CastToFPtr(const char *symbolName) {
 
 #define CAST_FUNCTION(name) dl_##name = CastToFPtr<name>(#name)
 
-BM1684::BM1684() {
-  std::string Err;
-  DL = llvm::sys::DynamicLibrary::getPermanentLibrary("libbackend_1684.so",
-                                                      &Err);
-  if (DL.isValid() == false) {
-    llvm_unreachable(Err.c_str());
-  }
-  CAST_FUNCTION(cmodel_init);
-  CAST_FUNCTION(cmodel_deinit);
-  CAST_FUNCTION(create_cmd_id_node);
-  CAST_FUNCTION(destroy_cmd_id_node);
-  CAST_FUNCTION(set_cmd_id_cycle);
-  CAST_FUNCTION(get_cmd_id_cycle);
-  CAST_FUNCTION(reset_cmd_id);
-  CAST_FUNCTION(allow_store_cmd);
-  CAST_FUNCTION(forbid_store_cmd);
-  CAST_FUNCTION(use_atomic_cmodel);
-  CAST_FUNCTION(forbid_atomic_cmodel);
-  CAST_FUNCTION(get_global_memaddr);
-  CAST_FUNCTION(set_cmd_buffer_ptr);
-  CAST_FUNCTION(set_total_id_ptr);
+void BM1684::load_functions() {
+  BM168x::load_functions();
   CAST_FUNCTION(tensor_align_move_gen_cmd);
   CAST_FUNCTION(general_matrix_move_gen_cmd);
   CAST_FUNCTION(nodechip_conv_forward_local);
@@ -245,20 +193,18 @@ BM1684::BM1684() {
   CAST_FUNCTION(nodechip_float2int8_v2);
 }
 
-BM1684::~BM1684() {
+BM1684::BM1684() {
+  std::string Err;
+  DL = llvm::sys::DynamicLibrary::getPermanentLibrary("libbackend_1684.so",
+                                                      &Err);
+  if (DL.isValid() == false) {
+    llvm_unreachable(Err.c_str());
+  }
+  load_functions();
 }
 
-void BM1684::set_command_issue_flag(bool value) {
-  really_issue_command = value;
-  if (really_issue_command) {
-    dl_allow_store_cmd();
-    dl_use_atomic_cmodel();
-  } else {
-    dl_forbid_store_cmd();
-    dl_forbid_atomic_cmodel();
-  }
-}
+BM1684::~BM1684() {}
 
 int64_t BM1684::get_eu_num(int64_t dtype_bytes) {
-  return 32 * 4 / dtype_bytes;
+  return EU_BYTES / dtype_bytes;
 }

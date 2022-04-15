@@ -40,6 +40,7 @@ struct Module {
   static top::NoneOp getNoneOp(Operation *op);
   static ModuleOp getModuleOp(Operation *op);
   static void updateModuleTypes(ModuleOp module);
+  static void removeUnusedOp(ModuleOp module);
   static std::string genWeightFileName(ModuleOp module);
   static int64_t getAddress(Value v);
   static void setAddress(Value v, int64_t addr);

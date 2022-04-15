@@ -76,6 +76,8 @@ Value top::ConvOp::quantize_int8_bm1684() {
   }
   attrs.push_back(builder.getNamedAttr(
       "rshift", builder.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v})));
+  attrs.push_back(
+      builder.getNamedAttr("with_bias", builder.getBoolAttr(with_bias)));
   auto newOp = builder.create<tpu::ConvOp>(op->getLoc(), output().getType(),
                                            ArrayRef<Value>{operands},
                                            ArrayRef<NamedAttribute>{attrs});

@@ -19,8 +19,8 @@ Value top::MatMulOp::quantize_int8_bm1686() {
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
   int64_t batch, M, K, N;
-  bool with_bias;
-  parseParam(batch, M, K, N, with_bias);
+  bool with_bias, relu;
+  parseParam(batch, M, K, N, with_bias, relu);
   assert(batch == 1); // only for fullyconnected now
   const int nInputs = op->getNumOperands();
   auto filterOp = cast<top::WeightOp>(right().getDefiningOp());
@@ -95,6 +95,6 @@ Value top::MatMulOp::quantize_int8_bm1686() {
   auto newOp = builder.create<tpu::MatMulOp>(op->getLoc(), output().getType(),
                                              ArrayRef<Value>{operands},
                                              ArrayRef<NamedAttribute>{attrs});
-  Quant::setQuantInt8Type(newOp.output(), true, do_relu());
+  Quant::setQuantInt8Type(newOp.output(), true, !relu);
   return newOp.output();
 }

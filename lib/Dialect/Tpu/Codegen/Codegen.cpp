@@ -23,7 +23,7 @@
 #include "sophgo/Support/MathUtils.h"
 #include "sophgo/Support/Helper/Module.h"
 #include "sophgo/Support/Helper/Quant.h"
-#include "sophgo/Backend/BM168x/BM1684.h"
+#include "sophgo/Backend/BM168x/BM168x.h"
 #include "sophgo/Builder/bmodel.hpp"
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/IR/Builders.h"
@@ -56,12 +56,13 @@ public:
     state = Module::getState(module);
     assert(state == Module::State::TPU_ADDRESSED);
     chip = Module::getChip(module);
-    BM1684::instance().init();
+    bm168x = BM168x::instance(chip);
+    bm168x->init();
     // store all weight to gmem
     std::vector<top::WeightOp> weights;
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](top::WeightOp op) {
-        BM1684::instance().value_s2d(op.output(), op.read_as_byte()->data());
+        bm168x->value_s2d(op.output(), op.read_as_byte()->data());
         weights.push_back(op);
       });
     }
@@ -109,7 +110,7 @@ public:
       filename = Module::getName(module).str() + "_int8_bm1684.bmodel";
     }
     model_gen->Save(filename);
-    BM1684::instance().deinit();
+    bm168x->deinit();
   }
 
 private:
@@ -127,6 +128,7 @@ private:
   ModuleOp module;
   StringRef state;
   StringRef chip;
+  BM168x *bm168x;
   std::shared_ptr<bmodel::ModelGen> model_gen;
 };
 
@@ -158,7 +160,7 @@ CodegenPass::CreateTensorVector(const std::vector<Value> &values) {
     auto type = Module::getStorageType(v);
     auto shape = Module::getShape(v);
     auto typeBytes = type.getIntOrFloatBitWidth() / 8;
-    auto data_type = BM1684::getType(type);
+    auto data_type = BM168x::getDataType(type);
     auto gmem_stmode = STORE_MODE_1N;
     if (typeBytes == 1) {
       gmem_stmode = STORE_MODE_4N;
@@ -198,7 +200,7 @@ CodegenPass::CreateCoeffMem(std::vector<top::WeightOp> &coeffs,
   for (auto weight : coeffs) {
     auto data = weight.read_as_byte();
     memcpy(data_u8->data() + offset, data->data(), data->size());
-    offset += ALIGN((int64_t)data->size(), BM1684::ALIGNMENT);
+    offset += ALIGN((int64_t)data->size(), BM168x::ALIGNMENT);
   }
   assert(offset == coeff_size);
   std::vector<uint8_t> sha256(bmodel::SHA256_LEN, 0);
@@ -214,26 +216,25 @@ CodegenPass::CreateCoeffMem(std::vector<top::WeightOp> &coeffs,
 
 Offset<Vector<Offset<bmodel::CmdGroup>>> CodegenPass::CreateCmdGroupVector() {
   std::vector<Offset<bmodel::CmdGroup>> cmd_group_v;
-  auto gdma_ptr = (uint8_t *)BM1684::instance().gdma_buffer->data();
-  auto bdc_ptr = (uint8_t *)BM1684::instance().bdc_buffer->data();
+  auto gdma_ptr = (uint8_t *)bm168x->gdma_buffer->data();
+  auto bdc_ptr = (uint8_t *)bm168x->bdc_buffer->data();
   uint32_t gdma_size =
-      BM1684::instance().gdma_buffer->size() * sizeof(uint32_t);
-  uint32_t bdc_size = BM1684::instance().bdc_buffer->size() * sizeof(uint32_t);
+      bm168x->gdma_buffer->size() * sizeof(uint32_t);
+  uint32_t bdc_size = bm168x->bdc_buffer->size() * sizeof(uint32_t);
   int bdc_offset = 0, gdma_offset = 0;
-  for (int group_idx = 0; group_idx < BM1684::instance().cmdid_groupnum;
+  for (int group_idx = 0; group_idx < bm168x->cmdid_groupnum;
        group_idx++) {
-    auto bdc_num = BM1684::instance().bdc_group_id[group_idx];
-    auto gdma_num = BM1684::instance().gdma_group_id[group_idx];
-    uint32_t bdc_len = 0, gdma_len = 0;
+    auto bdc_num = bm168x->bdc_group_id[group_idx];
+    auto gdma_num = bm168x->gdma_group_id[group_idx];
     bmodel::Binary binary_bdc;
     bmodel::Binary binary_gdma;
-    if (bdc_num != 0) {
-      bdc_len = bdc_num * BM1684::BDC_CMD_ALIGNED_NUM * sizeof(uint32_t);
+    auto bdc_len = bm168x->get_bdc_len(bdc_num, group_idx);
+    if (bdc_len != 0) {
       binary_bdc = model_gen->WriteBinary(bdc_len, bdc_ptr + bdc_offset);
       bdc_offset += bdc_len;
     }
+    auto gdma_len = bm168x->get_gdma_len(gdma_num, group_idx);
     if (gdma_num != 0) {
-      gdma_len = gdma_num * BM1684::GDMA_CMD_ALIGNED_NUM * sizeof(uint32_t);
       binary_gdma = model_gen->WriteBinary(gdma_len, gdma_ptr + gdma_offset);
       gdma_offset += gdma_len;
     }
@@ -257,7 +258,7 @@ Offset<Vector<Offset<bmodel::CmdGroup>>> CodegenPass::CreateCmdGroupVector() {
 }
 
 Offset<bmodel::SubNet> CodegenPass::CreateSubNet(func::CallOp call) {
-  BM1684::instance().reset();
+  bm168x->before_codegen();
   auto func = Module::getFuncOp(module, call.getCallee());
   func.walk([&](CodegenInterface op) {
     if (chip == Module::Chip::BM1684) {
@@ -266,6 +267,7 @@ Offset<bmodel::SubNet> CodegenPass::CreateSubNet(func::CallOp call) {
       op.codegen_int8_bm1686();
     }
   });
+  bm168x->after_codegen();
   int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
   std::vector<Value> inputs;
   std::vector<Value> outputs;

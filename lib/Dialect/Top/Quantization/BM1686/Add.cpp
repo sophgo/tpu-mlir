@@ -51,6 +51,6 @@ Value top::AddOp::quantize_int8_bm1686() {
   auto newOp = builder.create<tpu::AddOp>(op->getLoc(), output().getType(),
                                           ArrayRef<Value>{operands},
                                           ArrayRef<NamedAttribute>{attrs});
-  Quant::setQuantInt8Type(newOp.output(), true, do_relu());
+  Quant::setQuantInt8Type(newOp.output(), true, !do_relu());
   return newOp.output();
 }

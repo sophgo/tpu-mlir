@@ -12,10 +12,10 @@ using namespace mlir;
 LogicalResult tpu::AvgPoolOp::init(InferenceParameter &p) {
   auto pooling = new Pooling();
   int64_t n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value;
-  bool is_global, count_include_pad;
+  bool relu, is_global, count_include_pad;
   auto dt = getDnnlType(input());
   parseParam(n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value,
-             is_global, count_include_pad);
+             relu, is_global, count_include_pad);
   pooling->setup(p.inputs[0], p.outputs[0], n, c, ih, iw, oh, ow, kh, kw, sh,
                  sw, pt, pb, pl, pr, true, count_include_pad, pad_value, dt);
   p.handle = (void *)pooling;

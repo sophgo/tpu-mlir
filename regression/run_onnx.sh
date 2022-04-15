@@ -46,26 +46,13 @@ npz_tool.py compare \
     resnet18_ref_outputs.npz \
     --tolerance 0.85,0.42 -v
 
-# tpu weight reorder
 sophgo-opt resnet18_int8_1684.mlir \
     --weight-reorder \
-    --save-weight \
-    -o resnet18_int8_reorder_1684.mlir
-
-# tpu divide to subnets
-sophgo-opt resnet18_int8_reorder_1684.mlir \
     --subnet-divide \
-    --save-weight \
-    -o resnet18_int8_divide_1684.mlir
-
-# tpu address asign
-sophgo-opt resnet18_int8_divide_1684.mlir \
     --address-asign \
     --save-weight \
+    --codegen="model_file=resnet18_int8_1684.bmodel" \
     -o resnet18_int8_addr_1684.mlir
-
-sophgo-opt resnet18_int8_addr_1684.mlir \
-    --codegen="model_file=resnet18_int8_1684.bmodel" > /dev/null
 
 #########################
 # BM1686
@@ -92,16 +79,12 @@ model_runner.py \
 #     resnet18_ref_outputs.npz \
 #     --tolerance 0.85,0.42 -v
 
-# tpu weight reorder
 sophgo-opt resnet18_int8_1686.mlir \
     --weight-reorder \
-    --save-weight \
-    -o resnet18_int8_reorder_1686.mlir
-
-# tpu divide to subnets
-sophgo-opt resnet18_int8_reorder_1686.mlir \
     --subnet-divide \
+    --address-asign \
     --save-weight \
-    -o resnet18_int8_divide_1686.mlir
+    --codegen="model_file=resnet18_int8_1686.bmodel" \
+    -o resnet18_int8_addr_1686.mlir
 
 popd
