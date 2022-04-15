@@ -45,7 +45,8 @@ def Tpu_ConvOp: Tpu_Op<"Conv",[NoSideEffect,
     OptionalAttr<I64ArrayAttr>:$dilations,
     OptionalAttr<I64ArrayAttr>:$inserts,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    //quant param
+    //new param
+    BoolAttr:$with_bias,
     OptionalAttr<I64ArrayAttr>:$rshift,
     OptionalAttr<I64ArrayAttr>:$multiplier,
     StrAttr:$name
@@ -86,7 +87,7 @@ class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,[NoSideEffect,
     void parseParam(
       int64_t &n, int64_t &c, int64_t &ih, int64_t &iw, int64_t &oh, int64_t &ow,
       int64_t &kh, int64_t &kw, int64_t &sh, int64_t &sw, int64_t &pt, int64_t &pb,
-      int64_t &pl, int64_t &pr, int64_t &pad_value,
+      int64_t &pl, int64_t &pr, int64_t &pad_value, bool &do_relu,
       bool &is_global, bool &count_include_pad);
   }];
 }
@@ -132,7 +133,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul",[NoSideEffect,
     AnyTensor:$right,
     AnyTensorOrNone:$bias,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    I64Attr:$rshift,
+    DefaultValuedAttr<I64Attr, "0">:$rshift,
     DefaultValuedAttr<I64Attr, "0">:$multiplier,
     StrAttr:$name
   );
@@ -140,7 +141,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul",[NoSideEffect,
   let results = (outs AnyTensor:$output);
   let extraClassDeclaration = [{
     void parseParam(
-      int64_t &batch, int64_t &M, int64_t &K, int64_t &N, bool &with_bias);
+      int64_t &batch, int64_t &M, int64_t &K, int64_t &N, bool &with_bias, bool &do_relu);
   }];
 }
 
@@ -197,6 +198,8 @@ def Tpu_RequantOp:Tpu_Op<"Requant",[NoSideEffect,
   let arguments = (ins
     AnyTensor:$input,
     AnyTensor:$quant,
+    OptionalAttr<I64Attr>:$multiplier,
+    OptionalAttr<I64Attr>:$rshift,
     StrAttr:$name
   );
   let results = (outs AnyTensor:$output);

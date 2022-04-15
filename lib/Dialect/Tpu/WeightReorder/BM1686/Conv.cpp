@@ -27,9 +27,11 @@ using namespace sophgo::helper;
 using namespace sophgo::backend;
 
 // convert (1, oc, 1, w) to (1, NPU_NUM, 1, DIV_UP(oc, NPU_NUM) * w)
-static void reshape_coeff_for_broadcast_channel(
-    std::shared_ptr<std::vector<uint8_t>> &filter_data,
-    std::vector<int64_t> &shape, bool align = false) {
+template <typename T>
+static void
+reshape_coeff_for_broadcast_channel(std::shared_ptr<std::vector<T>> &coeff,
+                                    std::vector<int64_t> &shape,
+                                    bool align = false) {
   int64_t n, c, h, w;
   Module::getNCHW(shape, n, c, h, w);
   if (n != 1 || h != 1 || c <= BM1686::NPU_NUM) {
@@ -37,23 +39,23 @@ static void reshape_coeff_for_broadcast_channel(
   }
   // convert (1, oc, 1, w) to (1, NPU_NUM, 1, DIV_UP(oc, NPU_NUM) * w)
   int64_t new_c = BM1686::NPU_NUM;
-  int type_len = 1; // int8
+  int type_len = sizeof(T);
   auto c2w = ceiling_func(c, new_c);
   auto old_w_align = ALIGN(w, BM1686::get_eu_num(type_len));
   int new_w = (align ? old_w_align : w) * (c2w - 1) + w;
   int64_t new_size = new_w * new_c * type_len;
-  auto filter_new = std::make_shared<std::vector<uint8_t>>(new_size, 0);
+  auto filter_new = std::make_shared<std::vector<T>>(new_size, 0);
   for (int i = 0; i < c2w; i++) {
     for (int j = 0; j < new_c; j++) {
       for (int k = 0; k < w; k++) {
         int src_idx = i * new_c * w + j * w + k;
         int dst_idx = j * new_w + i * (align ? old_w_align : w) + k;
-        filter_new->at(dst_idx) = filter_data->at(src_idx);
+        filter_new->at(dst_idx) = coeff->at(src_idx);
       }
     }
   }
   shape = {1, new_c, 1, new_w};
-  filter_data = filter_new;
+  coeff = filter_new;
 }
 
 // refer to net_compiler: bool BM1686CoeffArranger::ConvWeightArr(GraphEdge*
@@ -64,12 +66,13 @@ void tpu::ConvOp::weight_reorder_int8_bm1686() {
   bool is_dw, with_bias, relu;
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
              pl, pr, dh, dw, is_dw, with_bias, relu);
-  auto filterOp = cast<top::WeightOp>(filter().getDefiningOp());
+  auto filterOp = filter().getDefiningOp<top::WeightOp>();
   if (is_dw) {
     llvm_unreachable("depthwise should support !!");
   }
   auto elem_type = Module::getStorageType(filter());
   int64_t IC_PARALLEL = 64;
+  int64_t merge_w = 0;
   auto type_bytes = elem_type.getIntOrFloatBitWidth() / 8;
   size_t new_bytes = ALIGN(ic, IC_PARALLEL) * oc * kh * kw * type_bytes;
   auto filter_i8 = filterOp.read_as_byte();
@@ -96,48 +99,59 @@ void tpu::ConvOp::weight_reorder_int8_bm1686() {
   std::vector<int64_t> filter_shape = {1, oc, 1, new_ic * new_hw};
   // refer to net_compier: reshape_coeff_for_broadcast_channel(weight, false);
   reshape_coeff_for_broadcast_channel(filter_new, filter_shape);
-  auto new_type =
-      RankedTensorType::get(filter_shape, filter_type.getElementType());
-  auto new_filter = top::WeightOp::create(filter().getDefiningOp(), "reorderd",
-                                          *filter_new, new_type);
-  setOperand(1, new_filter);
 
+  auto filter_w_bytes = filter_shape[3];
+  merge_w += filter_w_bytes;
+  std::shared_ptr<std::vector<int32_t>> bias_new;
+  std::vector<int64_t> bias_shape = {1, oc, 1, 1};
+  int64_t bias_w_bytes = 0;
   if (with_bias) {
-    // do nothing for int32
+    auto biasOp = bias().getDefiningOp<top::WeightOp>();
+    bias_new = biasOp.read<int32_t>();
+    reshape_coeff_for_broadcast_channel(bias_new, bias_shape, false);
+    bias_w_bytes = bias_shape[3] * sizeof(int32_t);
+    merge_w += bias_w_bytes;
   }
 
   // add requant op
   auto op = getOperation();
-  OpBuilder builder(getContext());
-  auto out_type = getType().cast<RankedTensorType>();
   auto qtype = Quant::getQuantizedType<quant::UniformQuantizedType>(output());
-  auto new_out_type = RankedTensorType::get(out_type.getShape(), builder.getI32Type());
-  output().setType(new_out_type);
   std::vector<int64_t> quant_shape = {1, oc, 1, 3};
-  auto quant_data = std::make_shared<std::vector<int32_t>>(oc*3, 0);
+  auto quant_data = std::make_shared<std::vector<int32_t>>(oc * 3, 0);
   auto m_data = Module::getI64Array(multiplier().getValue());
   auto r_data = Module::getI64Array(rshift().getValue());
   for (int i = 0; i < oc; i++) {
-    quant_data->at(i*3) = m_data->at(i);
-    quant_data->at(i*3+1) = r_data->at(i);
-    quant_data->at(i*3+2) = qtype.getZeroPoint();
+    quant_data->at(i * 3) = m_data->at(i);
+    quant_data->at(i * 3 + 1) = r_data->at(i);
+    quant_data->at(i * 3 + 2) = qtype.getZeroPoint();
   }
-  auto op_name = Module::getName(op);
-  auto new_op_name = op_name.str() + "_int32";
-  auto quant_type = RankedTensorType::get(quant_shape, builder.getI32Type());
-  builder.setInsertionPointAfter(op);
-  auto quant_op = top::WeightOp::create(op, "requant",
-                                          *quant_data, quant_type);
-  op->setAttr("name", builder.getStringAttr(new_op_name));
+  reshape_coeff_for_broadcast_channel(quant_data, quant_shape, true);
+  auto quant_w_bytes = quant_shape[3] * sizeof(int32_t);
+  merge_w += quant_w_bytes;
+  // merge requant/bias/filter
+  auto new_coeff =
+      std::make_shared<std::vector<int8_t>>(BM1686::NPU_NUM * merge_w, 0);
+  std::vector<int64_t> coeff_shape = {1, BM1686::NPU_NUM, 1, merge_w};
+  for (int i = 0; i < BM1686::NPU_NUM; i++) {
+    auto coeff_ptr = new_coeff->data() + i * merge_w;
+    auto quant_ptr = quant_data->data() + i * quant_shape[3];
+    auto bias_ptr = with_bias ? bias_new->data() + i * bias_shape[3] : nullptr;
+    auto filter_ptr = filter_new->data() + i * filter_shape[3];
+    // copy quant
+    memcpy(coeff_ptr, quant_ptr, quant_w_bytes);
+    coeff_ptr += quant_w_bytes;
+    if (with_bias) {
+      memcpy(coeff_ptr, bias_ptr, bias_w_bytes);
+      coeff_ptr += bias_w_bytes;
+    }
+    memcpy(coeff_ptr, filter_ptr, filter_w_bytes);
+  }
+  OpBuilder builder(getContext());
+  auto coeff_type = RankedTensorType::get(coeff_shape, builder.getI8Type());
+  auto coeff_op = top::WeightOp::create(op, "merge", *new_coeff, coeff_type);
   op->removeAttr("rshift");
   op->removeAttr("multiplier");
-  std::vector<Value> operands;
-  std::vector<NamedAttribute> attrs;
-  operands.push_back(output());
-  operands.push_back(quant_op);
-  attrs.push_back(builder.getNamedAttr("name", builder.getStringAttr(op_name)));
-  auto requant_op = builder.create<tpu::RequantOp>(op->getLoc(), out_type,
-                                            ArrayRef<Value>{operands},
-                                            ArrayRef<NamedAttribute>{attrs});
-  output().replaceAllUsesExcept(requant_op.output(), requant_op.getOperation());
+  op->setOperand(1, coeff_op);
+  auto none = Module::getNoneOp(op);
+  op->setOperand(2, none.getResult());
 }

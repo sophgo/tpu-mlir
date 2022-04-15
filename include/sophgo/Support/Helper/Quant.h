@@ -53,7 +53,7 @@ struct Quant {
   }
 
 
-  static void setQuantInt8Type(Value v, bool asymmetric = false, bool sighType = false);
+  static void setQuantInt8Type(Value v, bool asymmetric = false, bool sighType = true);
   static void setQuantWeightInt8PerChannelType(Value v, ArrayRef<double> scales, ArrayRef<int64_t> zeroPoints, int32_t quantizedDimension, mlir::FloatType exptype);
   static void setQuantExpressType(Value v);
 };
