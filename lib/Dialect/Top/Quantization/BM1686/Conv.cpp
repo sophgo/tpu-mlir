@@ -19,9 +19,9 @@ Value top::ConvOp::quantize_int8_bm1686() {
   operands.push_back(input());
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
-  bool is_dw, with_bias, relu;
+  bool is_dw, with_bias, has_relu;
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-             pl, pr, dh, dw, is_dw, with_bias, relu);
+             pl, pr, dh, dw, is_dw, with_bias, has_relu);
   auto filterOp = cast<top::WeightOp>(filter().getDefiningOp());
   auto filter_f32 = filterOp.read<float>();
   auto th_input_min = Quant::getMin(input());
@@ -155,6 +155,6 @@ Value top::ConvOp::quantize_int8_bm1686() {
   auto newOp = builder.create<tpu::ConvOp>(op->getLoc(), output().getType(),
                                            ArrayRef<Value>{operands},
                                            ArrayRef<NamedAttribute>{attrs});
-  Quant::setQuantInt8Type(newOp.output(), true, !relu);
+  Quant::setQuantInt8Type(newOp.output(), true, !has_relu);
   return newOp.output();
 }

@@ -88,8 +88,7 @@ static void castOpToExpress(Value v, bool asymmetric = false) {
   std::string name = Module::getName(op).str();
   std::string qname = name + "_quantized";
   op->setAttr("name", builder.getStringAttr(qname));
-  attrs.push_back(
-      builder.getNamedAttr("name", builder.getStringAttr(name)));
+  attrs.push_back(builder.getNamedAttr("name", builder.getStringAttr(name)));
   auto castOp = builder.create<tpu::CastOp>(op->getLoc(), v.getType(),
                                             ArrayRef<Value>{operands},
                                             ArrayRef<NamedAttribute>{attrs});
@@ -157,6 +156,33 @@ struct BackwardCalibartion : public OpRewritePattern<TyOp> {
   }
 };
 
+// keep output storage type the same with input storage type
+template <typename TyOp>
+struct ForwardQuantType : public OpRewritePattern<TyOp> {
+  using OpRewritePattern<TyOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(TyOp op,
+                                PatternRewriter &rewriter) const override {
+    Value in = op.input();
+    Value out = op.output();
+    if (!Quant::isQuantizedType<quant::UniformQuantizedType>(in)) {
+      return failure();
+    }
+    if (!Quant::isQuantizedType<quant::UniformQuantizedType>(out)) {
+      return failure();
+    }
+    auto in_qtype = Quant::getQuantizedType<quant::UniformQuantizedType>(in);
+    auto out_qtype = Quant::getQuantizedType<quant::UniformQuantizedType>(out);
+    if (in_qtype == out_qtype) {
+      return failure();
+    }
+    auto out_type = out.getType().cast<RankedTensorType>();
+    auto new_type = RankedTensorType::get(out_type.getShape(), in_qtype);
+    out.setType(new_type);
+    return success();
+  }
+};
+
 struct QuantizationPattern : public RewritePattern {
   QuantizationPattern(MLIRContext *context)
       : RewritePattern(MatchAnyOpTypeTag(), 1, context) {}
@@ -191,27 +217,36 @@ public:
       module.dump();
       llvm_unreachable("Mlir state not support quantize");
     }
-    Module::setChip(module, this->chip);
+    StringRef chip_ = StringRef(chip).upper();
+    Module::setChip(module, chip_);
     auto ctx = module.getContext();
     RewritePatternSet patterns(ctx);
     patterns.add<BackwardCalibartion<top::ReluOp>,
                  BackwardCalibartion<top::MaxPoolOp>>(ctx);
     applyPatternsAndFoldGreedily(module, std::move(patterns));
     patterns.clear();
-    patterns.add<ForwardCalibartion<top::ReluOp>,
-                 ForwardCalibartion<top::MaxPoolOp>,
-                 ForwardCalibartion<top::AvgPoolOp>,
-                 ForwardCalibartion<top::ReshapeOp>>(ctx);
+    patterns.add<
+        ForwardCalibartion<top::ReluOp>, ForwardCalibartion<top::MaxPoolOp>,
+        ForwardCalibartion<top::AvgPoolOp>, ForwardCalibartion<top::ReshapeOp>>(
+        ctx);
     applyPatternsAndFoldGreedily(module, std::move(patterns));
     patterns.clear();
     patterns.add<QuantizationPattern>(ctx);
     applyPatternsAndFoldGreedily(module, std::move(patterns));
+    // sync sign type for special op
+    if (chip_ == Module::Chip::BM1686) {
+      patterns.clear();
+      patterns.add<ForwardQuantType<tpu::AvgPoolOp>,
+                  ForwardQuantType<tpu::MaxPoolOp>>(ctx);
+      applyPatternsAndFoldGreedily(module, std::move(patterns));
+    }
+    // cast input and output to fp32
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](InputOp op) { castOpToInt8(op); });
     }
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](func::ReturnOp op) {
-        for (auto opd:op.getOperands()) {
+        for (auto opd : op.getOperands()) {
           castOpToExpress(opd);
         }
       });
