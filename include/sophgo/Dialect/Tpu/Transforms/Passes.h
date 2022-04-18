@@ -14,7 +14,6 @@
 
 #include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "sophgo/Dialect/Tpu/IR/TpuOps.h"
-#include "mlir/Pass/Pass.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Quant/QuantOps.h"
 

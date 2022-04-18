@@ -19,18 +19,14 @@
 //===----------------------------------------------------------------------===//
 
 #include "sophgo/Dialect/Tpu/Transforms/Passes.h"
-#include "sophgo/Dialect/Tpu/IR/TpuOps.h"
 #include "sophgo/Support/MathUtils.h"
 #include "sophgo/Support/Helper/Module.h"
 #include "sophgo/Support/Helper/Quant.h"
 #include "sophgo/Backend/BM168x/BM168x.h"
 #include "sophgo/Builder/bmodel.hpp"
+
 #include "mlir/IR/BlockAndValueMapping.h"
-#include "mlir/IR/Builders.h"
-#include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/PatternMatch.h"
-#include "mlir/IR/Matchers.h"
-#include "mlir/Pass/Pass.h"
 #include "mlir/Dialect/Quant/QuantTypes.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "llvm/Support/raw_ostream.h"
@@ -200,7 +196,7 @@ CodegenPass::CreateCoeffMem(std::vector<top::WeightOp> &coeffs,
   for (auto weight : coeffs) {
     auto data = weight.read_as_byte();
     memcpy(data_u8->data() + offset, data->data(), data->size());
-    offset += ALIGN((int64_t)data->size(), BM168x::ALIGNMENT);
+    offset += align_up((int64_t)data->size(), BM168x::ALIGNMENT);
   }
   assert(offset == coeff_size);
   std::vector<uint8_t> sha256(bmodel::SHA256_LEN, 0);

@@ -1,11 +1,13 @@
 #include "sophgo/Dialect/Top/IR/TopOps.h"
-#include "sophgo/Interfaces/InferenceInterface.h"
 #include "sophgo/Support/Dnnl/Dnnl.h"
 #include "sophgo/Support/Helper/Module.h"
 
 using namespace sophgo;
 using namespace sophgo::helper;
 using namespace mlir;
+
+LogicalResult top::AddOp::init(InferenceParameter &p) { return success(); }
+void top::AddOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::AddOp::inference(InferenceParameter &p) {
   auto num_elem = Module::getNumElements(output());

@@ -3,14 +3,10 @@
 #include "sophgo/Support/MathUtils.h"
 #include "sophgo/Support/Helper/Quant.h"
 
-#include "mlir/IR/Builders.h"
-#include "mlir/IR/BuiltinOps.h"
-#include "mlir/IR/PatternMatch.h"
-#include "mlir/Support/LLVM.h"
-
 using namespace mlir;
 using namespace sophgo;
 using namespace sophgo::helper;
+
 Value top::ReshapeOp::quantize_int8_bm1684() {
   auto op = getOperation();
   OpBuilder builder(op);

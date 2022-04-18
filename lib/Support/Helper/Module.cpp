@@ -1,12 +1,8 @@
 #include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "sophgo/Support/Helper/Module.h"
 #include "sophgo/Support/Helper/Quant.h"
-#include "mlir/IR/Builders.h"
-#include "mlir/IR/BuiltinOps.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/PatternMatch.h"
-#include "mlir/IR/TypeUtilities.h"
-#include "mlir/Support/LLVM.h"
 #include "float.h"
 #include <map>
 using namespace llvm;
@@ -16,6 +12,7 @@ namespace helper {
 constexpr llvm::StringRef Module::Attr::NAME;
 constexpr llvm::StringRef Module::Attr::STATE;
 constexpr llvm::StringRef Module::Attr::CHIP;
+constexpr llvm::StringRef Module::Attr::FLOPS;
 constexpr llvm::StringRef Module::Attr::WEIGHT_FILE;
 constexpr llvm::StringRef Module::Attr::COEFF_ADDR;
 constexpr llvm::StringRef Module::Attr::COEFF_SIZE;

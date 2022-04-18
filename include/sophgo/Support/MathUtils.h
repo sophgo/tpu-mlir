@@ -2,7 +2,6 @@
 
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
-#include "mlir/Support/LLVM.h"
 
 namespace sophgo {
 // =======================
@@ -14,7 +13,7 @@ static inline T ceiling_func(T numerator, T denominator) {
 }
 
 template<typename T>
-static inline T ALIGN(T x, T a) {
+static inline T align_up(T x, T a) {
   return ceiling_func(x, a) * a;
 }
 
