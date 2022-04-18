@@ -1,9 +1,5 @@
 #include "sophgo/Support/MathUtils.h"
-#include "mlir/IR/Builders.h"
-#include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/PatternMatch.h"
-#include "mlir/IR/TypeUtilities.h"
-#include "mlir/Support/LLVM.h"
 #include "float.h"
 #include <map>
 

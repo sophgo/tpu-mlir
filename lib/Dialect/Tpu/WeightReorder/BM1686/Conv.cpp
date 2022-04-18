@@ -1,25 +1,9 @@
-//===----------------------------------------------------------------------===//
-//
-// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
-// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-// Also available under a BSD-style license. See LICENSE.
-//
-//===----------------------------------------------------------------------===//
-
 #include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "sophgo/Dialect/Tpu/IR/TpuOps.h"
 #include "sophgo/Backend/BM168x/BM1686.h"
-#include "sophgo/Interfaces/WeightReorderInterface.h"
-#include "sophgo/Interfaces/CodegenInterface.h"
 #include "sophgo/Support/MathUtils.h"
 #include "sophgo/Support/Helper/Quant.h"
 #include "sophgo/Support/Helper/Module.h"
-#include "mlir/IR/Builders.h"
-#include "mlir/IR/BuiltinOps.h"
-#include "mlir/IR/PatternMatch.h"
-#include "mlir/IR/TypeUtilities.h"
-#include "mlir/Support/LLVM.h"
 
 using namespace mlir;
 using namespace sophgo;
@@ -41,7 +25,7 @@ reshape_coeff_for_broadcast_channel(std::shared_ptr<std::vector<T>> &coeff,
   int64_t new_c = BM1686::NPU_NUM;
   int type_len = sizeof(T);
   auto c2w = ceiling_func(c, new_c);
-  auto old_w_align = ALIGN(w, BM1686::get_eu_num(type_len));
+  auto old_w_align = align_up(w, BM1686::get_eu_num(type_len));
   int new_w = (align ? old_w_align : w) * (c2w - 1) + w;
   int64_t new_size = new_w * new_c * type_len;
   auto filter_new = std::make_shared<std::vector<T>>(new_size, 0);
@@ -74,7 +58,7 @@ void tpu::ConvOp::weight_reorder_int8_bm1686() {
   int64_t IC_PARALLEL = 64;
   int64_t merge_w = 0;
   auto type_bytes = elem_type.getIntOrFloatBitWidth() / 8;
-  size_t new_bytes = ALIGN(ic, IC_PARALLEL) * oc * kh * kw * type_bytes;
+  size_t new_bytes = align_up(ic, IC_PARALLEL) * oc * kh * kw * type_bytes;
   auto filter_i8 = filterOp.read_as_byte();
   auto filter_new = std::make_shared<std::vector<uint8_t>>(new_bytes, 0);
   auto kernel_hw = kh * kw;

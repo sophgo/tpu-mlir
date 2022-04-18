@@ -1,22 +1,7 @@
-//===----------------------------------------------------------------------===//
-//
-// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
-// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-// Also available under a BSD-style license. See LICENSE.
-//
-//===----------------------------------------------------------------------===//
-
 #include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "sophgo/Support/Helper/Module.h"
 #include "sophgo/Support/Helper/Quant.h"
-#include "mlir/IR/Builders.h"
-#include "mlir/IR/BuiltinOps.h"
-#include "mlir/IR/PatternMatch.h"
-#include "mlir/IR/TypeUtilities.h"
-#include "mlir/Support/LLVM.h"
-#include "llvm/ADT/StringMap.h"
-#include "llvm/Support/Casting.h"
+
 #include <numeric>
 
 using namespace mlir;
@@ -93,12 +78,9 @@ void MaxPoolOp::parseParam(int64_t &n, int64_t &c, int64_t &ih, int64_t &iw,
   relu = do_relu();
   size_t num_dims = i_s.size();
   assert(num_dims == 4); // 4 dims now
-  n = i_s[0];
-  c = i_s[1];
+  Module::getNCHW(o_s, n, c, oh, ow);
   ih = i_s[2];
   iw = i_s[3];
-  oh = o_s[2];
-  ow = o_s[3];
   pt = pads().getValue()[0].cast<IntegerAttr>().getInt();
   pl = pads().getValue()[1].cast<IntegerAttr>().getInt();
   pb = pads().getValue()[2].cast<IntegerAttr>().getInt();
@@ -126,12 +108,9 @@ void AvgPoolOp::parseParam(int64_t &n, int64_t &c, int64_t &ih, int64_t &iw,
   relu = do_relu();
   size_t num_dims = i_s.size();
   assert(num_dims == 4); // 4 dims now
-  n = i_s[0];
-  c = i_s[1];
+  Module::getNCHW(o_s, n, c, oh, ow);
   ih = i_s[2];
   iw = i_s[3];
-  oh = o_s[2];
-  ow = o_s[3];
   pt = pads().getValue()[0].cast<IntegerAttr>().getInt();
   pl = pads().getValue()[1].cast<IntegerAttr>().getInt();
   pb = pads().getValue()[2].cast<IntegerAttr>().getInt();

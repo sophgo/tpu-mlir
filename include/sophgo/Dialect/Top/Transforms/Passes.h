@@ -14,7 +14,6 @@
 
 #include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "sophgo/Dialect/Tpu/IR/TpuOps.h"
-#include "mlir/Pass/Pass.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Quant/QuantOps.h"
 
@@ -24,6 +23,7 @@ namespace top {
 
 std::unique_ptr<OperationPass<ModuleOp>> createImportCalibrationTablePass();
 std::unique_ptr<OperationPass<ModuleOp>> createQuantizePass();
+std::unique_ptr<OperationPass<ModuleOp>> createMarkFLOPsPass();
 std::unique_ptr<OperationPass<ModuleOp>> createSaveWeightPass();
 #define GEN_PASS_REGISTRATION
 #define GEN_PASS_CLASSES

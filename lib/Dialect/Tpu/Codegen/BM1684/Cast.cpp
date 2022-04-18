@@ -2,9 +2,6 @@
 #include "sophgo/Backend/BM168x/BM1684.h"
 #include "sophgo/Support/Helper/Quant.h"
 #include "sophgo/Support/Helper/Module.h"
-#include "mlir/IR/Builders.h"
-#include "mlir/IR/BuiltinOps.h"
-#include "mlir/Support/LLVM.h"
 
 using namespace mlir;
 using namespace sophgo;

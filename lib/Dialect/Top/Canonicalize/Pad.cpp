@@ -1,10 +1,5 @@
-#include "mlir/Support/LLVM.h"
 #include "sophgo/Dialect/Top/IR/TopOps.h"
 
-#include "mlir/IR/BlockAndValueMapping.h"
-#include "mlir/IR/Builders.h"
-#include "mlir/IR/BuiltinTypes.h"
-#include "mlir/IR/Matchers.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
 

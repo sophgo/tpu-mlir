@@ -5,12 +5,8 @@
 #include "sophgo/Support/Helper/Quant.h"
 #include "sophgo/Backend/BM168x/BM1684.h"
 #include "sophgo/Backend/BM168x/BM1686.h"
+
 #include "mlir/IR/BlockAndValueMapping.h"
-#include "mlir/IR/Builders.h"
-#include "mlir/IR/BuiltinTypes.h"
-#include "mlir/IR/PatternMatch.h"
-#include "mlir/IR/Matchers.h"
-#include "mlir/Pass/Pass.h"
 #include "mlir/Dialect/Quant/QuantTypes.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "llvm/Support/raw_ostream.h"
@@ -54,7 +50,7 @@ public:
       func.walk([&](top::WeightOp op) {
         Module::setAddress(op.output(), addr);
         int64_t bytes = Module::getBytes(op.output());
-        addr += ALIGN(bytes, alignment);
+        addr += align_up(bytes, alignment);
       });
     }
     Module::setCoeffAddr(module, start_addr);
@@ -71,7 +67,7 @@ public:
           auto output = op->getResult(0);
           Module::setAddress(output, addr);
           int64_t bytes = Module::getBytes(output);
-          addr += ALIGN(bytes, alignment);
+          addr += align_up(bytes, alignment);
         }
       });
     }

@@ -5,7 +5,7 @@
 #include "sophgo/Dialect/Tpu/IR/TpuOps.h"
 #include "sophgo/Support/Helper/Quant.h"
 #include "sophgo/Support/Helper/Module.h"
-#include "mlir/IR/BuiltinOps.h"
+
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include <algorithm>
 #include <functional>

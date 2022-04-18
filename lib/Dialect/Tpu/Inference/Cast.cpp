@@ -1,5 +1,4 @@
 #include "sophgo/Dialect/Tpu/IR/TpuOps.h"
-#include "sophgo/Interfaces/InferenceInterface.h"
 #include "sophgo/Support/Dnnl/Dnnl.h"
 #include "sophgo/Support/Helper/Quant.h"
 #include "sophgo/Support/Helper/Module.h"
@@ -7,6 +6,9 @@
 using namespace sophgo;
 using namespace sophgo::helper;
 using namespace mlir;
+
+LogicalResult tpu::CastOp::init(InferenceParameter &p) { return success(); }
+void tpu::CastOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
   auto num_elem = output().getType().cast<RankedTensorType>().getNumElements();
@@ -47,4 +49,3 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
   }
   return success();
 }
-
