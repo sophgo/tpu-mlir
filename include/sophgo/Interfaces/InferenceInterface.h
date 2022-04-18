@@ -18,6 +18,8 @@
 #include "mlir/IR/Operation.h"
 #include "omp.h"
 
+//#define DEBUG_TPU_INFER
+
 namespace sophgo {
 struct InferenceParameter {
   std::vector<float *> inputs;
