@@ -41,9 +41,12 @@ LogicalResult tpu::AvgPoolOp::inference(InferenceParameter &p) {
     relu(p.outputs[0], p.outputs[0], Module::getNumElements(output()),
          Module::getStorageType(output()));
   }
-  // llvm::errs() << "AvgPoolOp inference:" << this->name() << "\n";
+#ifdef DEBUG_TPU_INFER
+  llvm::errs() << "AvgPoolOp inference:" << this->name() << "\n";
   for (int i = 0; i < 5; i++) {
-    // printf("%d  %f -> %f\n", i, p.inputs[0][i], p.outputs[0][i]);
+    printf("%d  %f -> %f\n", i, p.inputs[0][i], p.outputs[0][i]);
   }
+#endif
+
   return success();
 }

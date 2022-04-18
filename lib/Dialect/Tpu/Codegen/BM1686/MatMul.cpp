@@ -65,7 +65,7 @@ void tpu::MatMulOp::codegen_int8_bm1686() {
   }
   param.L_dtype = BM168x::getDataType(input());
   param.R_dtype = BM168x::getDataType(right());
-  param.Y_dtype = BM168x::getDataType(output());
+  param.Y_dtype = DTYPE_INT8;
   param.if_relu = relu;
   param.relu_upper_limit = 0;
   param.rshift = 0;

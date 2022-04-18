@@ -74,10 +74,10 @@ model_runner.py \
     --dump_all_tensors \
     --output resnet18_int8_outputs_1686.npz
 
-# npz_tool.py compare \
-#     resnet18_int8_outputs_1686.npz \
-#     resnet18_ref_outputs.npz \
-#     --tolerance 0.85,0.42 -v
+npz_tool.py compare \
+    resnet18_int8_outputs_1686.npz \
+    resnet18_ref_outputs.npz \
+    --tolerance 0.85,0.42 -v
 
 sophgo-opt resnet18_int8_1686.mlir \
     --weight-reorder \

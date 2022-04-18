@@ -24,23 +24,30 @@ Value top::AddOp::quantize_int8_bm1686() {
   auto th_output_max = Quant::getMax(output());
 
   if (coeff().hasValue()) {
+    int idx = 0;
     for (auto v : coeff().getValue()) {
-      coeff_v.push_back(v.cast<FloatAttr>().getValueAsDouble());
+      coeff_v[idx++] = v.cast<FloatAttr>().getValueAsDouble();
     }
   }
 
+  float bias = 0;
   for (int i = 0; i < nInputs; i++) {
     auto input = op->getOperand(i);
     operands.push_back(input);
     auto th_input_min = Quant::getMin(input);
     auto th_input_max = Quant::getMax(input);
+    double scale = (th_input_max - th_input_min) / (127 - (-128));
+    int64_t zeropoint = std::round(-th_input_min / scale);
     int scalei, shifti;
-    get_scale_and_shift(coeff_v[i] * (th_input_max - th_input_min) /
-                            (th_output_max - th_output_min),
+    float alpha = (th_input_max - th_input_min) /
+                            (th_output_max - th_output_min);
+    bias += alpha*zeropoint;
+    get_scale_and_shift(coeff_v[i] * alpha,
                         scalei, shifti, 8);
     coeff_v[i] = (char)scalei;
     rshift_v[i] = (char)shifti;
   }
+
   std::vector<NamedAttribute> attrs;
   attrs.push_back(builder.getNamedAttr("name", nameAttr()));
   attrs.push_back(builder.getNamedAttr("do_relu", do_reluAttr()));
@@ -48,9 +55,11 @@ Value top::AddOp::quantize_int8_bm1686() {
       builder.getNamedAttr("coeff", builder.getF64ArrayAttr(coeff_v)));
   attrs.push_back(
       builder.getNamedAttr("rshifts", builder.getI64ArrayAttr(rshift_v)));
+  attrs.push_back(
+      builder.getNamedAttr("rectified_bias", builder.getI64IntegerAttr(std::round(bias))));
   auto newOp = builder.create<tpu::AddOp>(op->getLoc(), output().getType(),
                                           ArrayRef<Value>{operands},
                                           ArrayRef<NamedAttribute>{attrs});
-  Quant::setQuantInt8Type(newOp.output(), true, !do_relu());
+  Quant::setQuantInt8Type(newOp.output(), true, false);
   return newOp.output();
 }

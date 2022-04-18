@@ -31,7 +31,7 @@ void Quant::setQuantInt8Type(Value v, bool asymmetric, bool sighType) {
   auto min = cali_type.getMin();
   if (asymmetric) {
     double scale = (max - min) / (127 - (-128));
-    int64_t zeropoint = std::round(-min * scale) - 127;
+    int64_t zeropoint = std::round(-min / scale);
     auto uniform_type = quant::UniformQuantizedType();
     if (sighType) {
       uniform_type = quant::UniformQuantizedType::get(

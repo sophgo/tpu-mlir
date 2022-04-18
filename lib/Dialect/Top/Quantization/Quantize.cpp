@@ -60,8 +60,10 @@ static void castOpToInt8(Value v) {
   auto module = Module::getModuleOp(op);
   auto chip = Module::getChip(module);
   bool asymmetric = false;
+  bool sign = true;
   if (chip == Module::Chip::BM1686) {
     asymmetric = true;
+    sign = false;
   }
   builder.setInsertionPointAfter(op);
   std::string name = Module::getName(op).str();
@@ -70,7 +72,7 @@ static void castOpToInt8(Value v) {
   auto castOp = builder.create<tpu::CastOp>(op->getLoc(), v.getType(),
                                             ArrayRef<Value>{operands},
                                             ArrayRef<NamedAttribute>{attrs});
-  Quant::setQuantInt8Type(castOp.output(), asymmetric);
+  Quant::setQuantInt8Type(castOp.output(), asymmetric, sign);
   v.replaceAllUsesExcept(castOp.output(), castOp);
 }
 
