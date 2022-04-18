@@ -10,9 +10,9 @@ Conv::Conv() {
 void Conv::setup(float *input, float *weight, float *bias, float *output, int n,
                  int ic, int ih, int iw, int oc, int oh, int ow, int kh, int kw,
                  int sh, int sw, int dh, int dw, int pt, int pb, int pl, int pr,
-                 int g, bool do_relu, int* rshift, int* multiplier, memory::data_type idt,
-                 memory::data_type wdt, memory::data_type bdt, memory::data_type odt, bool per_channel) {
-  //printf("Conv para:%d,%d,%d,%d,%d\n", idt, wdt, bdt, odt, per_channel);
+                 int g, bool do_relu, int izp, int ozp, int* rshift, int* multiplier, memory::data_type idt,
+                 memory::data_type wdt, memory::data_type bdt, memory::data_type odt, bool per_channel, int chip) {
+  //printf("Conv para:%d,%d,%d,%d,%d,%d,%d\n", idt, wdt, bdt, odt, per_channel, izp, ozp);
   src_shape = {n, ic, ih, iw};
   dst_shape = {n, oc, oh, ow};
   memory::dims filter_shape = (g != 1) ? memory::dims{g, oc / g, ic / g, kh, kw}
@@ -49,7 +49,7 @@ void Conv::setup(float *input, float *weight, float *bias, float *output, int n,
               scale *= 2;
             }
           }
-          conv_scales.push_back(scale);
+          conv_scales[o] = scale;
       }
     } else {
       float scale = 1;
@@ -67,21 +67,31 @@ void Conv::setup(float *input, float *weight, float *bias, float *output, int n,
       std::fill(conv_scales.begin(), conv_scales.end(), scale);
     }
 
+    if (izp) {
+      //conv_attr.set_zero_points(DNNL_ARG_SRC, 0, {izp}); //增加此句会导致conv输出cos降低很多，但非0零点的pad需要寻找解决方案 todo
+    }
     const float ops_scale = 1.f;
-    conv_attr.set_output_scales(2, conv_scales);
     float ops_alpha = 0.f; // relu negative slope
     float ops_beta = 0.f;
     if (do_relu) {
       ops.append_eltwise(ops_scale, algorithm::eltwise_relu, ops_alpha, ops_beta);
-      ops_alpha = 0; // relu negative slope
+      ops_alpha = 0;
       ops_beta = 255;
     } else {
-      ops_alpha = -128;
-      ops_beta = 127;
+      if (chip) { //1686时，这里均限制在0到255，后续考虑更好处理方式 wxctodo
+        ops_alpha = 0;
+        ops_beta = 255;
+      } else {
+        ops_alpha = -128;
+        ops_beta = 127;
+      }
     }
+    if (ozp)
+      ops.append_eltwise(1,dnnl::algorithm::eltwise_linear,1,ozp);
     ops.append_eltwise(ops_scale, algorithm::eltwise_clip, ops_alpha, ops_beta);
     ops.append_eltwise(ops_scale, algorithm::eltwise_round, 0, 0);
     conv_attr.set_post_ops(ops);
+    conv_attr.set_output_scales(2, conv_scales);
   } else {
     if (do_relu) {
       const float ops_scale = 1.f;

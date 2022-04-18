@@ -16,6 +16,7 @@ LogicalResult tpu::ConvOp::init(InferenceParameter &p) {
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
              pl, pr, dh, dw, is_dw, with_bias, relu);
 
+  //llvm::errs() << "ConvOp setup:" << this->name() << "\n";
   auto idt = getDnnlType(input());
   auto wdt = getDnnlType(filter());
   auto bdt = memory::data_type::f32;
@@ -26,11 +27,6 @@ LogicalResult tpu::ConvOp::init(InferenceParameter &p) {
   if (Quant::isUniformQuantized(output())) {
     odt = memory::data_type::s32;
   }
-
-  /*auto module = Module::getModuleOp(this);
-  if (Module::getChip(module) == Module::Chip::BM1686) {
-    newValue = quantize_op.quantize_int8_bm1686();
-  }*/
 
   int *p_rshift = nullptr;
   int *p_multiplier = nullptr;
@@ -54,11 +50,25 @@ LogicalResult tpu::ConvOp::init(InferenceParameter &p) {
     p_rshift = rshift_v.data();
   }
 
+  int izp = 0;
+  auto dtype = input().getType().cast<RankedTensorType>().getElementType();
+  if (dtype.isa<quant::UniformQuantizedType>()) {
+    izp = dtype.cast<quant::UniformQuantizedType>().getZeroPoint();
+  }
+
+  int ozp = 0;
+  dtype = output().getType().cast<RankedTensorType>().getElementType();
+  if (dtype.isa<quant::UniformQuantizedType>()) {
+    ozp = dtype.cast<quant::UniformQuantizedType>().getZeroPoint();
+  }
+
+  auto module = Module::getModuleOp(getOperation());
+  int chip = (Module::getChip(module) == Module::Chip::BM1686)?1:0;
   conv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], n, ic,
               ih, // fixme p.inputs[2] maybe null???
               iw, oc, oh, ow, kh, kw, sh, sw, dh, dw, pt, pb, pl, pr, g,
-              do_relu(), p_rshift, p_multiplier, idt, wdt, bdt, odt,
-              per_channel);
+              do_relu(), izp, ozp, p_rshift, p_multiplier, idt, wdt, bdt, odt,
+              per_channel, chip);
   p.handle = (void *)conv;
   return success();
 }
@@ -77,10 +87,12 @@ LogicalResult tpu::ConvOp::inference(InferenceParameter &p) {
   }
   auto conv = (Conv *)p.handle;
   conv->run();
-  // llvm::errs() << "ConvOp inference:" << this->name() << "\n";
+#ifdef DEBUG_TPU_INFER
+  llvm::errs() << "ConvOp inference:" << this->name() << "\n";
   for (int i = 0; i < 5; i++) {
-    // printf("%d  %f x %d +%f = %f\n", i, p.inputs[0][i],
-    // (int8_t)p.inputs[1][i], p.inputs[2][i], p.outputs[0][i]);
+    printf("%d  %f x %d +%f = %f\n", i, p.inputs[0][i],
+    (int8_t)p.inputs[1][i], p.inputs[2][i], p.outputs[0][i]);
   }
+#endif
   return success();
 }

@@ -23,8 +23,9 @@ Value top::AddOp::quantize_int8_bm1684() {
   auto th_output = Quant::getThreshold(output());
 
   if (coeff().hasValue()) {
+    int idx = 0;
     for (auto v : coeff().getValue()) {
-      coeff_v.push_back(v.cast<FloatAttr>().getValueAsDouble());
+      coeff_v[idx++] = v.cast<FloatAttr>().getValueAsDouble();
     }
   }
 

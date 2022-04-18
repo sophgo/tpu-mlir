@@ -45,10 +45,12 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
   }
   auto matmul = (MatMul *)p.handle;
   matmul->run();
-  // llvm::errs() << "MatMulOp inference:" << this->name() << "\n";
+#ifdef DEBUG_TPU_INFER
+  llvm::errs() << "MatMulOp inference:" << this->name() << "\n";
   for (int i = 0; i < 5; i++) {
-    // printf("%d  %f x %d +%f = %f\n", i, p.inputs[0][i],
-    // (int8_t)p.inputs[1][i], p.inputs[2][i], p.outputs[0][i]);
+    printf("%d  %f x %d +%f = %f\n", i, p.inputs[0][i],
+    (int8_t)p.inputs[1][i], p.inputs[2][i], p.outputs[0][i]);
   }
+#endif
   return success();
 }
