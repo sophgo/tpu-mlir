@@ -1,5 +1,4 @@
 #include "sophgo/Dialect/Tpu/IR/TpuOps.h"
-#include "sophgo/Interfaces/InferenceInterface.h"
 #include "sophgo/Support/Dnnl/Dnnl.h"
 #include "sophgo/Support/Helper/Quant.h"
 #include "sophgo/Support/Helper/Module.h"
@@ -12,9 +11,9 @@ LogicalResult tpu::ConvOp::init(InferenceParameter &p) {
   auto conv = new Conv();
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
-  bool is_dw, with_bias, relu;
+  bool is_dw, with_bias, has_relu;
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-             pl, pr, dh, dw, is_dw, with_bias, relu);
+             pl, pr, dh, dw, is_dw, with_bias, has_relu);
 
   //llvm::errs() << "ConvOp setup:" << this->name() << "\n";
   auto idt = getDnnlType(input());
@@ -67,7 +66,7 @@ LogicalResult tpu::ConvOp::init(InferenceParameter &p) {
   conv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], n, ic,
               ih, // fixme p.inputs[2] maybe null???
               iw, oc, oh, ow, kh, kw, sh, sw, dh, dw, pt, pb, pl, pr, g,
-              do_relu(), izp, ozp, p_rshift, p_multiplier, idt, wdt, bdt, odt,
+              has_relu, izp, ozp, p_rshift, p_multiplier, idt, wdt, bdt, odt,
               per_channel, chip);
   p.handle = (void *)conv;
   return success();

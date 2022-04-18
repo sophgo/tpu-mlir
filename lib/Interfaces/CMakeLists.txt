@@ -3,6 +3,7 @@ set(LLVM_OPTIONAL_SOURCES
   QuantizeInterface.cpp
   WeightReorderInterface.cpp
   CodegenInterface.cpp
+  FlopsInterface.cpp
   )
 
 function(add_mlir_interface_library name)
@@ -24,3 +25,4 @@ add_mlir_interface_library(InferenceInterface)
 add_mlir_interface_library(QuantizeInterface)
 add_mlir_interface_library(WeightReorderInterface)
 add_mlir_interface_library(CodegenInterface)
+add_mlir_interface_library(FlopsInterface)

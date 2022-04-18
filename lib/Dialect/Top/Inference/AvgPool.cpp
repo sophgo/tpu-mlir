@@ -1,5 +1,4 @@
 #include "sophgo/Dialect/Top/IR/TopOps.h"
-#include "sophgo/Interfaces/InferenceInterface.h"
 #include "sophgo/Support/Dnnl/Dnnl.h"
 #include "sophgo/Support/Helper/Module.h"
 

@@ -455,8 +455,9 @@ class TFLiteConverter(BaseConverter):
         args = op.inputs[1].buffer
         op.inputs = [op.inputs[0]]
         if args[0] == 1 and args[1] == 2:
+            kernel_shape = [op.inputs[0].shape[1], op.inputs[0].shape[2]]
             attr = {
-                "kernel_shape": self.mlir.ArrayAttr(args),
+                "kernel_shape": self.mlir.ArrayAttr(kernel_shape),
                 "strides": self.mlir.ArrayAttr([0, 0]),
                 "pads": self.mlir.ArrayAttr([0, 0, 0, 0]),
             }

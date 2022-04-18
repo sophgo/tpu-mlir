@@ -16,17 +16,17 @@ $$
 
 用于BM1686
 
-![](./assets/quantization.png)
+![](./assets/quant_asym.png)
 
 * Dequant
   $$
   \begin{align}
   公式:\quad & r = S(q-Z) \\
-  S:\quad & \frac{max-min}{256} \\
-  Z:\quad & -128\times \frac{max+min}{max-min}
+  S:\quad & \frac{max-min}{qmax-qmin} \\
+  Z:\quad & Round(- \frac{min}{S} + qmin)
   \end{align}
   $$
-  
+  当量化到INT8时，qmax=127,qmin=-128; UINT8时，qmax=255,qmin=0
 
 * Quant
 

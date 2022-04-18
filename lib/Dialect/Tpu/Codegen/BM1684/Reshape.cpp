@@ -3,9 +3,6 @@
 #include "sophgo/Support/Helper/Quant.h"
 #include "sophgo/Support/Helper/Module.h"
 #include "sophgo/Support/MathUtils.h"
-#include "mlir/IR/Builders.h"
-#include "mlir/IR/BuiltinOps.h"
-#include "mlir/Support/LLVM.h"
 
 using namespace mlir;
 using namespace sophgo;
@@ -24,7 +21,7 @@ void tpu::ReshapeOp::codegen_int8_bm1684() {
   if (on != in) {
     llvm_unreachable("not support now");
   } else {
-    int total_num = ALIGN(on, 4l) * oc * oh * ow;
+    int total_num = align_up(on, 4l) * oc * oh * ow;
     BM1684::instance().dl_nodechip_global_memcpy_ex(
         in_addr, out_addr, 1, total_num, total_num, DTYPE_FP32, DTYPE_FP32,
         total_num, BM1684::instance().get_cmd_id_node());

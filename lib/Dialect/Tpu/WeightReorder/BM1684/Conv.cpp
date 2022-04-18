@@ -1,24 +1,8 @@
-//===----------------------------------------------------------------------===//
-//
-// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
-// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-// Also available under a BSD-style license. See LICENSE.
-//
-//===----------------------------------------------------------------------===//
-
 #include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "sophgo/Dialect/Tpu/IR/TpuOps.h"
 #include "sophgo/Backend/BM168x/BM1684.h"
-#include "sophgo/Interfaces/WeightReorderInterface.h"
-#include "sophgo/Interfaces/CodegenInterface.h"
 #include "sophgo/Support/MathUtils.h"
-#include "sophgo/Support/Helper/Quant.h"
 #include "sophgo/Support/Helper/Module.h"
-#include "mlir/IR/Builders.h"
-#include "mlir/IR/BuiltinOps.h"
-#include "mlir/IR/PatternMatch.h"
-#include "mlir/IR/TypeUtilities.h"
 
 using namespace mlir;
 using namespace sophgo;
@@ -33,20 +17,20 @@ void tpu::ConvOp::weight_reorder_int8_bm1684() {
              pl, pr, dh, dw, is_dw, with_bias, relu);
   auto filterOp = cast<top::WeightOp>(filter().getDefiningOp());
   auto filter_int8 = filterOp.read<int8_t>();
-  int new_size = oc * (ALIGN(ic, 4l)) * kh * kw;
+  int new_size = oc * (align_up(ic, 4l)) * kh * kw;
   auto filter_new = std::make_shared<std::vector<int8_t>>(new_size, 0);
   for (int oc_idx = 0; oc_idx < oc; oc_idx++) {
     for (int ic_idx = 0; ic_idx < ic; ic_idx++) {
       for (int k_idx = 0; k_idx < kh * kw; k_idx++) {
         int orig_offset = ic_idx * kh * kw + k_idx + oc_idx * kh * kw * ic;
         int trans_offset =
-            ic_idx + k_idx * ALIGN(ic, 4l) + oc_idx * (kh * kw * ALIGN(ic, 4l));
+            ic_idx + k_idx * align_up(ic, 4l) + oc_idx * (kh * kw * align_up(ic, 4l));
         filter_new->at(trans_offset) = filter_int8->at(orig_offset);
       }
     }
   }
   auto filter_type = filterOp.getType().cast<RankedTensorType>();
-  std::vector<int64_t> new_shape = {1, oc, kh * kw * ALIGN(ic, 4l), 1};
+  std::vector<int64_t> new_shape = {1, oc, kh * kw * align_up(ic, 4l), 1};
   auto new_type =
       RankedTensorType::get(new_shape, filter_type.getElementType());
   auto new_filter = top::WeightOp::create(filter().getDefiningOp(), "reorderd",

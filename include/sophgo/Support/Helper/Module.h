@@ -15,6 +15,7 @@ struct Module {
     static constexpr llvm::StringRef STATE = "module.state";
     static constexpr llvm::StringRef CHIP = "module.chip";
     static constexpr llvm::StringRef WEIGHT_FILE = "module.weight_file";
+    static constexpr llvm::StringRef FLOPS = "module.FLOPs";
     static constexpr llvm::StringRef COEFF_ADDR = "module.coeff_addr";
     static constexpr llvm::StringRef COEFF_SIZE = "module.coeff_size";
     static constexpr llvm::StringRef NEURON_ADDR = "module.neuron_addr";
@@ -115,6 +116,13 @@ struct Module {
   static inline void setWeightFile(ModuleOp module, StringRef weight_file) {
     module->setAttr(Attr::WEIGHT_FILE,
                     StringAttr::get(module.getContext(), weight_file));
+  }
+  static inline int64_t getFLOPs(ModuleOp module) {
+    return module->getAttrOfType<IntegerAttr>(Attr::FLOPS).getInt();
+  }
+  static inline void setFLOPs(ModuleOp module, int64_t flops) {
+    auto intType = IntegerType::get(module.getContext(), 64);
+    module->setAttr(Attr::FLOPS, IntegerAttr::get(intType, flops));
   }
   static inline StringRef getState(ModuleOp module) {
     return module->getAttrOfType<StringAttr>(Attr::STATE).getValue();

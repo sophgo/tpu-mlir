@@ -23,12 +23,13 @@ def AnyTenor: AnyTypeOf<[AnyRankedTensor]>;
 def AnyTensorOrNone: AnyTypeOf<[AnyRankedTensor, NoneType]>;
 
 class Tpu_Op<string mnemonic, list<Trait> traits = []> :
-    Op<Tpu_Dialect, mnemonic, traits> ;
+    Op<Tpu_Dialect, mnemonic, !listconcat(traits,
+       [NoSideEffect,
+       DeclareOpInterfaceMethods<CodegenInterface>,
+       DeclareOpInterfaceMethods<InferenceInterface>])> ;
 
-def Tpu_ConvOp: Tpu_Op<"Conv",[NoSideEffect,
-    DeclareOpInterfaceMethods<InferenceInterface,["init","deinit"]>,
-    DeclareOpInterfaceMethods<WeightReorderInterface>,
-    DeclareOpInterfaceMethods<CodegenInterface>]> {
+def Tpu_ConvOp: Tpu_Op<"Conv",[
+    DeclareOpInterfaceMethods<WeightReorderInterface>]> {
   let summary = "convolution operator";
 
   let description = [{
@@ -61,9 +62,7 @@ def Tpu_ConvOp: Tpu_Op<"Conv",[NoSideEffect,
   }];
 }
 
-class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,[NoSideEffect,
-  DeclareOpInterfaceMethods<InferenceInterface,["init","deinit"]>,
-  DeclareOpInterfaceMethods<CodegenInterface>]> {
+class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic> {
   let summary = "pool operator";
 
   let description = [{
@@ -95,9 +94,7 @@ class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,[NoSideEffect,
 def Tpu_AvgPoolOp:Tpu_PoolOp<"AvgPool">;
 def Tpu_MaxPoolOp:Tpu_PoolOp<"MaxPool">;
 
-def Tpu_AddOp: Tpu_Op<"Add",[NoSideEffect,
-  DeclareOpInterfaceMethods<InferenceInterface>,
-  DeclareOpInterfaceMethods<CodegenInterface>]> {
+def Tpu_AddOp: Tpu_Op<"Add"> {
   let summary = "add operator";
 
   let description = [{
@@ -118,9 +115,7 @@ def Tpu_AddOp: Tpu_Op<"Add",[NoSideEffect,
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_MatMulOp: Tpu_Op<"MatMul",[NoSideEffect,
-  DeclareOpInterfaceMethods<InferenceInterface,["init","deinit"]>,
-  DeclareOpInterfaceMethods<CodegenInterface>]> {
+def Tpu_MatMulOp: Tpu_Op<"MatMul"> {
   let summary = "matmul operator";
 
   let description = [{
@@ -146,8 +141,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul",[NoSideEffect,
   }];
 }
 
-def Tpu_ReluOp: Tpu_Op<"Relu",[NoSideEffect,
-  DeclareOpInterfaceMethods<InferenceInterface>]>{
+def Tpu_ReluOp: Tpu_Op<"Relu">{
   let summary = "Relu operator";
 
   let description = [{
@@ -162,9 +156,7 @@ def Tpu_ReluOp: Tpu_Op<"Relu",[NoSideEffect,
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_ReshapeOp:Tpu_Op<"Reshape",[NoSideEffect,
-  DeclareOpInterfaceMethods<InferenceInterface>,
-  DeclareOpInterfaceMethods<CodegenInterface>]> {
+def Tpu_ReshapeOp:Tpu_Op<"Reshape"> {
   let summary = "Reshape operation";
   let description = [{
     Returns a tensor with the same type/values as the input, with a new shape
@@ -178,9 +170,7 @@ def Tpu_ReshapeOp:Tpu_Op<"Reshape",[NoSideEffect,
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_CastOp:Tpu_Op<"Cast",[NoSideEffect,
-  DeclareOpInterfaceMethods<InferenceInterface>,
-  DeclareOpInterfaceMethods<CodegenInterface>]> {
+def Tpu_CastOp:Tpu_Op<"Cast"> {
   let summary = "Cast operation";
   let description = [{
   }];
@@ -191,8 +181,7 @@ def Tpu_CastOp:Tpu_Op<"Cast",[NoSideEffect,
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_RequantOp:Tpu_Op<"Requant",[NoSideEffect,
-  DeclareOpInterfaceMethods<CodegenInterface>]> {
+def Tpu_RequantOp:Tpu_Op<"Requant"> {
   let summary = "requant operation";
   let description = [{
   }];

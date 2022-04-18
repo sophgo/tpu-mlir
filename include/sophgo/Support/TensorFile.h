@@ -25,7 +25,6 @@
 #define MLIR_SUPPORT_TENSORFILE_H_
 
 #include "cnpy.h"
-#include "mlir/Support/LLVM.h"
 #include "mlir/Support/LogicalResult.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/Dialect/Quant/QuantTypes.h"

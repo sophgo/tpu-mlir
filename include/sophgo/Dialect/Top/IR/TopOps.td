@@ -11,6 +11,7 @@ include "mlir/IR/OpBase.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "sophgo/Interfaces/InferenceInterface.td"
 include "sophgo/Interfaces/QuantizeInterface.td"
+include "sophgo/Interfaces/FlopsInterface.td"
 
 def Top_Dialect : Dialect {
   let name = "top";
@@ -27,10 +28,17 @@ def Top_Dialect : Dialect {
 def AnyTenor: AnyTypeOf<[AnyRankedTensor]>;
 def AnyTensorOrNone: AnyTypeOf<[AnyRankedTensor, NoneType]>;
 
-class Top_Op<string mnemonic, list<Trait> traits = []> :
-    Op<Top_Dialect, mnemonic, traits> ;
+class Top_BaseOp<string mnemonic, list<Trait> traits = []> :
+    Op<Top_Dialect, mnemonic, !listconcat(traits,[NoSideEffect])> ;
 
-def Top_NoneOp : Top_Op<"None", [NoSideEffect]> {
+class Top_Op<string mnemonic, list<Trait> traits = []> :
+    Op<Top_Dialect, mnemonic, !listconcat(traits,
+       [NoSideEffect,
+        DeclareOpInterfaceMethods<InferenceInterface>,
+        DeclareOpInterfaceMethods<QuantizeInterface>,
+        DeclareOpInterfaceMethods<FlopsInterface>])> ;
+
+def Top_NoneOp : Top_BaseOp<"None"> {
   let summary = "none operator";
 
   let description = [{
@@ -39,7 +47,7 @@ def Top_NoneOp : Top_Op<"None", [NoSideEffect]> {
   let results = (outs NoneType);
 }
 
-def Top_WeightOp : Top_Op<"Weight", [NoSideEffect]> {
+def Top_WeightOp : Top_BaseOp<"Weight"> {
   let summary = "load weight operator";
 
   let description = [{
@@ -67,7 +75,7 @@ def Top_WeightOp : Top_Op<"Weight", [NoSideEffect]> {
   }];
 }
 
-def Top_InputOp: Top_Op<"Input",[NoSideEffect]> {
+def Top_InputOp: Top_BaseOp<"Input"> {
   let summary = "Input operator";
 
   let description = [{
@@ -81,7 +89,7 @@ def Top_InputOp: Top_Op<"Input",[NoSideEffect]> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_BatchNormOp: Top_Op<"BatchNorm",[NoSideEffect]> {
+def Top_BatchNormOp: Top_Op<"BatchNorm"> {
   let summary = "BatchNormalization operation";
   let description = [{
     Applies Batch Normalization over a 4D input (a mini-batch of 2D inputs
@@ -111,9 +119,7 @@ def Top_BatchNormOp: Top_Op<"BatchNorm",[NoSideEffect]> {
   let hasCanonicalizer = 1;
 }
 
-def Top_ConvOp: Top_Op<"Conv",[NoSideEffect,
-  DeclareOpInterfaceMethods<InferenceInterface,["init","deinit"]>,
-  DeclareOpInterfaceMethods<QuantizeInterface>]> {
+def Top_ConvOp: Top_Op<"Conv"> {
   let summary = "convolution operator";
 
   let description = [{
@@ -190,10 +196,7 @@ def Top_ConvOp: Top_Op<"Conv",[NoSideEffect,
   }];
 }
 
-class Top_PoolOp <string mnemonic> : Top_Op<mnemonic,
-  [NoSideEffect,
-  DeclareOpInterfaceMethods<InferenceInterface,["init","deinit"]>,
-  DeclareOpInterfaceMethods<QuantizeInterface>]> {
+class Top_PoolOp <string mnemonic> : Top_Op<mnemonic> {
   let summary = "pool operator";
 
   let description = [{
@@ -225,9 +228,7 @@ class Top_PoolOp <string mnemonic> : Top_Op<mnemonic,
 def Top_AvgPoolOp:Top_PoolOp<"AvgPool">;
 def Top_MaxPoolOp:Top_PoolOp<"MaxPool">;
 
-def Top_AddOp: Top_Op<"Add",[NoSideEffect,
-  DeclareOpInterfaceMethods<InferenceInterface>,
-  DeclareOpInterfaceMethods<QuantizeInterface>]> {
+def Top_AddOp: Top_Op<"Add"> {
   let summary = "add operator";
 
   let description = [{
@@ -245,9 +246,7 @@ def Top_AddOp: Top_Op<"Add",[NoSideEffect,
   let results = (outs AnyTensor:$output);
 }
 
-def Top_MatMulOp: Top_Op<"MatMul",[NoSideEffect,
-  DeclareOpInterfaceMethods<InferenceInterface,["init","deinit"]>,
-  DeclareOpInterfaceMethods<QuantizeInterface>]> {
+def Top_MatMulOp: Top_Op<"MatMul"> {
   let summary = "matmul operator";
 
   let description = [{
@@ -271,9 +270,7 @@ def Top_MatMulOp: Top_Op<"MatMul",[NoSideEffect,
   }];
 }
 
-def Top_ReluOp: Top_Op<"Relu",[NoSideEffect,
-  DeclareOpInterfaceMethods<InferenceInterface>,
-  DeclareOpInterfaceMethods<QuantizeInterface>]> {
+def Top_ReluOp: Top_Op<"Relu"> {
   let summary = "Relu operator";
 
   let description = [{
@@ -290,9 +287,7 @@ def Top_ReluOp: Top_Op<"Relu",[NoSideEffect,
   let hasCanonicalizer = 1;
 }
 
-def Top_ReshapeOp:Top_Op<"Reshape",[NoSideEffect,
-  DeclareOpInterfaceMethods<InferenceInterface>,
-  DeclareOpInterfaceMethods<QuantizeInterface>]> {
+def Top_ReshapeOp:Top_Op<"Reshape"> {
   let summary = "Reshape operation";
   let description = [{
     Returns a tensor with the same type/values as the input, with a new shape
@@ -307,7 +302,7 @@ def Top_ReshapeOp:Top_Op<"Reshape",[NoSideEffect,
   let hasCanonicalizer = 1;
 }
 
-def Top_SoftmaxOp:Top_Op<"Softmax",[NoSideEffect]> {
+def Top_SoftmaxOp:Top_Op<"Softmax"> {
   let summary = "Softmax operation";
   let description = [{
     The operator computes the normalized exponential values for the given input.
@@ -320,7 +315,7 @@ def Top_SoftmaxOp:Top_Op<"Softmax",[NoSideEffect]> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_PadOp:Top_Op<"Pad",[NoSideEffect]> {
+def Top_PadOp:Top_Op<"Pad"> {
   let summary = "Pad operation";
   let description = [{
     This operation pads a tensor according to the paddings you specify.
