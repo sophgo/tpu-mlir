@@ -35,5 +35,6 @@ add_mlir_library(SophgoTop
   MLIRInferenceInterface
   MLIRQuantizeInterface
   SophgoSupport
+  SophgoTrait
 )
 

@@ -12,6 +12,7 @@ include "mlir/Interfaces/SideEffectInterfaces.td"
 include "sophgo/Interfaces/WeightReorderInterface.td"
 include "sophgo/Interfaces/CodegenInterface.td"
 include "sophgo/Interfaces/InferenceInterface.td"
+include "sophgo/Traits/Traits.td"
 
 def Tpu_Dialect : Dialect {
   let name = "tpu";
@@ -29,6 +30,7 @@ class Tpu_Op<string mnemonic, list<Trait> traits = []> :
        DeclareOpInterfaceMethods<InferenceInterface>])> ;
 
 def Tpu_ConvOp: Tpu_Op<"Conv",[
+    SupportFuseRelu,
     DeclareOpInterfaceMethods<WeightReorderInterface>]> {
   let summary = "convolution operator";
 
@@ -62,7 +64,7 @@ def Tpu_ConvOp: Tpu_Op<"Conv",[
   }];
 }
 
-class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic> {
+class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic, [SupportFuseRelu]> {
   let summary = "pool operator";
 
   let description = [{
@@ -94,7 +96,7 @@ class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic> {
 def Tpu_AvgPoolOp:Tpu_PoolOp<"AvgPool">;
 def Tpu_MaxPoolOp:Tpu_PoolOp<"MaxPool">;
 
-def Tpu_AddOp: Tpu_Op<"Add"> {
+def Tpu_AddOp: Tpu_Op<"Add", [SupportFuseRelu]> {
   let summary = "add operator";
 
   let description = [{
@@ -115,7 +117,7 @@ def Tpu_AddOp: Tpu_Op<"Add"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_MatMulOp: Tpu_Op<"MatMul"> {
+def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
   let summary = "matmul operator";
 
   let description = [{

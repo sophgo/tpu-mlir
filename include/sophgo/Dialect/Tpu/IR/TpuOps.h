@@ -11,6 +11,7 @@
 #include "sophgo/Interfaces/WeightReorderInterface.h"
 #include "sophgo/Interfaces/CodegenInterface.h"
 #include "sophgo/Support/TensorFile.h"
+#include "sophgo/Traits/Traits.h"
 #include "sophgo/Dialect/Tpu/IR/TpuOpsDialect.h.inc"
 #define GET_OP_CLASSES
 #include "sophgo/Dialect/Tpu/IR/TpuOps.h.inc"

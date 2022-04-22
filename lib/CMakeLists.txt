@@ -1,4 +1,5 @@
 add_subdirectory(Interfaces)
+add_subdirectory(Traits)
 add_subdirectory(Dialect)
 add_subdirectory(Support)
 add_subdirectory(Backend)
