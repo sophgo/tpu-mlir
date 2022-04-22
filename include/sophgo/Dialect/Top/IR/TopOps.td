@@ -12,6 +12,7 @@ include "mlir/Interfaces/SideEffectInterfaces.td"
 include "sophgo/Interfaces/InferenceInterface.td"
 include "sophgo/Interfaces/QuantizeInterface.td"
 include "sophgo/Interfaces/FlopsInterface.td"
+include "sophgo/Traits/Traits.td"
 
 def Top_Dialect : Dialect {
   let name = "top";
@@ -119,7 +120,7 @@ def Top_BatchNormOp: Top_Op<"BatchNorm"> {
   let hasCanonicalizer = 1;
 }
 
-def Top_ConvOp: Top_Op<"Conv"> {
+def Top_ConvOp: Top_Op<"Conv", [SupportFuseRelu]> {
   let summary = "convolution operator";
 
   let description = [{
@@ -196,7 +197,7 @@ def Top_ConvOp: Top_Op<"Conv"> {
   }];
 }
 
-class Top_PoolOp <string mnemonic> : Top_Op<mnemonic> {
+class Top_PoolOp <string mnemonic> : Top_Op<mnemonic,[SupportFuseRelu]> {
   let summary = "pool operator";
 
   let description = [{
@@ -228,7 +229,7 @@ class Top_PoolOp <string mnemonic> : Top_Op<mnemonic> {
 def Top_AvgPoolOp:Top_PoolOp<"AvgPool">;
 def Top_MaxPoolOp:Top_PoolOp<"MaxPool">;
 
-def Top_AddOp: Top_Op<"Add"> {
+def Top_AddOp: Top_Op<"Add", [SupportFuseRelu]> {
   let summary = "add operator";
 
   let description = [{
@@ -246,7 +247,7 @@ def Top_AddOp: Top_Op<"Add"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_MatMulOp: Top_Op<"MatMul"> {
+def Top_MatMulOp: Top_Op<"MatMul", [SupportFuseRelu]> {
   let summary = "matmul operator";
 
   let description = [{
