@@ -5,13 +5,7 @@
 
 using namespace mlir;
 using namespace sophgo::top;
-
-static bool supportFuseRelu(Operation *op) {
-  if (isa<ConvOp, MaxPoolOp, AvgPoolOp, MatMulOp, AddOp>(op)) {
-    return true;
-  }
-  return false;
-}
+using namespace sophgo::trait;
 
 struct TopFuseRelu : public OpRewritePattern<ReluOp> {
   using OpRewritePattern::OpRewritePattern;
@@ -22,7 +16,7 @@ struct TopFuseRelu : public OpRewritePattern<ReluOp> {
     if (!formerOp->getResult(0).hasOneUse())
       return failure();
 
-    if (false == supportFuseRelu(formerOp)) {
+    if (false == formerOp->hasTrait<SupportFuseRelu>()) {
       return failure();
     }
 
