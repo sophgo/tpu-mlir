@@ -9,6 +9,7 @@
 
 include "mlir/IR/OpBase.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
+include "sophgo/Interfaces/LayerGroupInterface.td"
 include "sophgo/Interfaces/WeightReorderInterface.td"
 include "sophgo/Interfaces/CodegenInterface.td"
 include "sophgo/Interfaces/InferenceInterface.td"
@@ -25,13 +26,14 @@ def AnyTensorOrNone: AnyTypeOf<[AnyRankedTensor, NoneType]>;
 
 class Tpu_Op<string mnemonic, list<Trait> traits = []> :
     Op<Tpu_Dialect, mnemonic, !listconcat(traits,
-       [NoSideEffect,
+       [NoSideEffect, HasCommonAttributes,
        DeclareOpInterfaceMethods<CodegenInterface>,
        DeclareOpInterfaceMethods<InferenceInterface>])> ;
 
 def Tpu_ConvOp: Tpu_Op<"Conv",[
     SupportFuseRelu,
-    DeclareOpInterfaceMethods<WeightReorderInterface>]> {
+    DeclareOpInterfaceMethods<WeightReorderInterface>,
+    DeclareOpInterfaceMethods<LayerGroupInterface, ["BackwardH"]>]> {
   let summary = "convolution operator";
 
   let description = [{
@@ -64,7 +66,9 @@ def Tpu_ConvOp: Tpu_Op<"Conv",[
   }];
 }
 
-class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic, [SupportFuseRelu]> {
+class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,
+  [SupportFuseRelu,
+   DeclareOpInterfaceMethods<LayerGroupInterface, ["Verify","BackwardH"]>]> {
   let summary = "pool operator";
 
   let description = [{
@@ -96,7 +100,8 @@ class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic, [SupportFuseRelu]> {
 def Tpu_AvgPoolOp:Tpu_PoolOp<"AvgPool">;
 def Tpu_MaxPoolOp:Tpu_PoolOp<"MaxPool">;
 
-def Tpu_AddOp: Tpu_Op<"Add", [SupportFuseRelu]> {
+def Tpu_AddOp: Tpu_Op<"Add", [SupportFuseRelu,
+  DeclareOpInterfaceMethods<LayerGroupInterface>]> {
   let summary = "add operator";
 
   let description = [{
@@ -143,7 +148,8 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
   }];
 }
 
-def Tpu_ReluOp: Tpu_Op<"Relu">{
+def Tpu_ReluOp: Tpu_Op<"Relu",
+  [DeclareOpInterfaceMethods<LayerGroupInterface>]>{
   let summary = "Relu operator";
 
   let description = [{
@@ -172,7 +178,8 @@ def Tpu_ReshapeOp:Tpu_Op<"Reshape"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_CastOp:Tpu_Op<"Cast"> {
+def Tpu_CastOp:Tpu_Op<"Cast",
+  [DeclareOpInterfaceMethods<LayerGroupInterface>]> {
   let summary = "Cast operation";
   let description = [{
   }];
@@ -183,7 +190,8 @@ def Tpu_CastOp:Tpu_Op<"Cast"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_RequantOp:Tpu_Op<"Requant"> {
+def Tpu_RequantOp:Tpu_Op<"Requant",
+  [DeclareOpInterfaceMethods<LayerGroupInterface>]> {
   let summary = "requant operation";
   let description = [{
   }];

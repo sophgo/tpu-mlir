@@ -33,8 +33,8 @@ class Top_BaseOp<string mnemonic, list<Trait> traits = []> :
     Op<Top_Dialect, mnemonic, !listconcat(traits,[NoSideEffect])> ;
 
 class Top_Op<string mnemonic, list<Trait> traits = []> :
-    Op<Top_Dialect, mnemonic, !listconcat(traits,
-       [NoSideEffect,
+    Top_BaseOp<mnemonic, !listconcat(traits,
+       [HasCommonAttributes,
         DeclareOpInterfaceMethods<InferenceInterface>,
         DeclareOpInterfaceMethods<QuantizeInterface>,
         DeclareOpInterfaceMethods<FlopsInterface>])> ;

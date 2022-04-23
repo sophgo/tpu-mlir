@@ -4,6 +4,7 @@ set(LLVM_OPTIONAL_SOURCES
   WeightReorderInterface.cpp
   CodegenInterface.cpp
   FlopsInterface.cpp
+  LayerGroupInterface.cpp
   )
 
 function(add_mlir_interface_library name)
@@ -26,3 +27,4 @@ add_mlir_interface_library(QuantizeInterface)
 add_mlir_interface_library(WeightReorderInterface)
 add_mlir_interface_library(CodegenInterface)
 add_mlir_interface_library(FlopsInterface)
+add_mlir_interface_library(LayerGroupInterface)
