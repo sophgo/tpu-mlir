@@ -25,6 +25,7 @@ std::unique_ptr<OperationPass<ModuleOp>> createWeightReorderPass();
 std::unique_ptr<OperationPass<ModuleOp>> createSubnetDividePass();
 std::unique_ptr<OperationPass<ModuleOp>> createAddressAsignPass();
 std::unique_ptr<OperationPass<ModuleOp>> createCodegenPass();
+std::unique_ptr<OperationPass<FuncOp>> createLayerGroupPass();
 
 #define GEN_PASS_REGISTRATION
 #define GEN_PASS_CLASSES

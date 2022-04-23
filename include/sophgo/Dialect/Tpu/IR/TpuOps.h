@@ -9,6 +9,7 @@
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 #include "sophgo/Interfaces/InferenceInterface.h"
 #include "sophgo/Interfaces/WeightReorderInterface.h"
+#include "sophgo/Interfaces/LayerGroupInterface.h"
 #include "sophgo/Interfaces/CodegenInterface.h"
 #include "sophgo/Support/TensorFile.h"
 #include "sophgo/Traits/Traits.h"

@@ -23,17 +23,23 @@ namespace trait {
 // this op
 template <typename ConcreteType>
 class SupportFuseRelu
-    : public ::mlir::OpTrait::TraitBase<ConcreteType, SupportFuseRelu> {
-// public:
-//   static mlir::LogicalResult verifyTrait(mlir::Operation *op) {
-//     static constexpr llvm::StringRef kDoReluAttr = "do_relu";
-//     if (!op->hasAttrOfType<mlir::BoolAttr>(kDoReluAttr)) {
-//       return op->emitError("expected operation to have attribute: " +
-//                            kDoReluAttr);
-//     }
-//     return mlir::success();
-//   }
+    : public ::mlir::OpTrait::TraitBase<ConcreteType, SupportFuseRelu> {};
+
+// If a op has this trait, it should have nameAttr
+template <typename ConcreteType>
+class HasCommonAttributes
+    : public ::mlir::OpTrait::TraitBase<ConcreteType, HasCommonAttributes> {
+public:
+  static mlir::LogicalResult verifyTrait(mlir::Operation *op) {
+    static constexpr llvm::StringRef commonAttrs[] = {"name"};
+    for (auto attr : commonAttrs) {
+      if (!op->hasAttrOfType<mlir::StringAttr>(attr)) {
+        return op->emitError("expected operation to have attribute: " + attr);
+      }
+    }
+    return mlir::success();
+  }
 };
 
-} // namespace OpTrait
+} // namespace trait
 } // namespace sophgo
