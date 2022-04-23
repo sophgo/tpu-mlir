@@ -9,5 +9,5 @@ class SophgoOpTrait<string name> : NativeOpTrait<name> {
 }
 
 def SupportFuseRelu : SophgoOpTrait<"SupportFuseRelu">;
-
+def HasCommonAttributes : SophgoOpTrait<"HasCommonAttributes">;
 #endif

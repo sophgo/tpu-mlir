@@ -27,6 +27,12 @@ def SubnetDivide : Pass<"subnet-divide", "ModuleOp"> {
   let dependentDialects = ["TpuDialect"];
 }
 
+def LayerGroup : Pass<"layer-group", "FuncOp"> {
+  let summary = "convert to layer group in tpu by sophgo-opt";
+  let constructor = "createLayerGroupPass()";
+  let dependentDialects = ["TpuDialect"];
+}
+
 def AddressAsign : Pass<"address-asign", "ModuleOp"> {
   let summary = "assign address in tpu by sophgo-opt";
   let constructor = "createAddressAsignPass()";

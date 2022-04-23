@@ -7,6 +7,8 @@ file(GLOB _sources
           Codegen/*.cpp
           Codegen/BM1684/*.cpp
           Codegen/BM1686/*.cpp
+          LayerGroup/*.cpp
+          LayerGroup/Common/*.cpp
           Transforms/*.cpp)
 
 add_mlir_library(SophgoTpu
@@ -24,6 +26,7 @@ add_mlir_library(SophgoTpu
   MLIRWeightReorderInterfaceIncGen
   MLIRCodegenInterfaceIncGen
   MLIRFlopsInterfaceIncGen
+  MLIRLayerGroupInterfaceIncGen
 
   LINK_COMPONENTS
   Core
@@ -41,6 +44,7 @@ add_mlir_library(SophgoTpu
   MLIRWeightReorderInterface
   MLIRCodegenInterface
   MLIRFlopsInterface
+  MLIRLayerGroupInterface
   SophgoSupport
   SophgoTrait
   SophgoBackend
