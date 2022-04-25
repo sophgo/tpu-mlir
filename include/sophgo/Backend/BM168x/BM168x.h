@@ -129,9 +129,16 @@ public:
   // arch info
   virtual uint64_t get_gmem_start() = 0;
   virtual uint64_t get_ctx_start_addr() = 0;
+  virtual int64_t get_npu_num() = 0;
+  virtual int64_t get_eu_bytes() = 0;
+  virtual int64_t get_lmem_bytes() = 0;
+  virtual int64_t get_lmem_banks() = 0;
+  virtual int64_t get_lmem_bank_bytes() { get_lmem_bytes() / get_lmem_banks();}
   virtual uint32_t get_bdc_len(int bdc_num, int group_id) = 0;
   virtual uint32_t get_gdma_len(int gdma_num, int group_id) = 0;
-  uint64_t get_cmodel_gmem_size();
+  uint64_t get_cmodel_gmem_size() { return 0x100000000ull; }
+  int64_t get_eu_num(int64_t dtype_bytes) { get_eu_bytes() / dtype_bytes;}
+  virtual int64_t get_n_align(int64_t dtype_bytes) { return 1;}
 
   static bm_data_type_t getDataType(mlir::Type type);
   static bm_data_type_t getDataType(mlir::Value v);
@@ -150,6 +157,7 @@ public:
   static const int64_t ALIGNMENT = 0x1000;
 
 protected:
+  virtual const char *get_lib_name() = 0;
   virtual void load_functions();
   void set_command_issue_flag(bool value);
   template <typename FPtrTy> FPtrTy CastToFPtr(const char *symbolName);

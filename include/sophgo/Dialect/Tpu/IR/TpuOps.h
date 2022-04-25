@@ -14,6 +14,8 @@
 #include "sophgo/Support/TensorFile.h"
 #include "sophgo/Traits/Traits.h"
 #include "sophgo/Dialect/Tpu/IR/TpuOpsDialect.h.inc"
+
+#include "sophgo/Dialect/Tpu/IR/TpuAttr.h.inc"
 #define GET_OP_CLASSES
 #include "sophgo/Dialect/Tpu/IR/TpuOps.h.inc"
 

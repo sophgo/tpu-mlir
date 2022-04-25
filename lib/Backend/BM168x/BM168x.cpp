@@ -38,8 +38,6 @@ void BM168x::value_d2s(Value v, void *dst) {
   memcpy(dst, get_gmem_addr(addr), bytes);
 }
 
-uint64_t BM168x::get_cmodel_gmem_size() { return 0x100000000ull; }
-
 bm_data_type_t BM168x::getDataType(Value v) {
   auto type = Module::getStorageType(v);
   return getDataType(type);
@@ -111,6 +109,15 @@ void BM168x::load_functions() {
 }
 
 void BM168x::init() {
+  if (!DL.isValid()) {
+    std::string Err;
+    DL = llvm::sys::DynamicLibrary::getPermanentLibrary(get_lib_name(),
+                                                        &Err);
+    if (DL.isValid() == false) {
+      llvm_unreachable(Err.c_str());
+    }
+    load_functions();
+  }
   dl_cmodel_init(0, get_cmodel_gmem_size());
   cmdid_node = dl_create_cmd_id_node();
   bdc_node = dl_create_cmd_id_node();
