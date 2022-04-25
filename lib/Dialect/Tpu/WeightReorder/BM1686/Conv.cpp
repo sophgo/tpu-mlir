@@ -25,7 +25,7 @@ reshape_coeff_for_broadcast_channel(std::shared_ptr<std::vector<T>> &coeff,
   int64_t new_c = BM1686::NPU_NUM;
   int type_len = sizeof(T);
   auto c2w = ceiling_func(c, new_c);
-  auto old_w_align = align_up(w, BM1686::get_eu_num(type_len));
+  auto old_w_align = align_up(w, BM1686::instance().get_eu_num(type_len));
   int new_w = (align ? old_w_align : w) * (c2w - 1) + w;
   int64_t new_size = new_w * new_c * type_len;
   auto filter_new = std::make_shared<std::vector<T>>(new_size, 0);

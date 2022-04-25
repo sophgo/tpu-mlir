@@ -4,26 +4,27 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef TPU_OPS
-#define TPU_OPS
+#ifndef SOPHGO_TPU_OPS
+#define SOPHGO_TPU_OPS
 
-include "mlir/IR/OpBase.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
+include "sophgo/Dialect/Tpu/IR/TpuAttr.td"
 include "sophgo/Interfaces/LayerGroupInterface.td"
 include "sophgo/Interfaces/WeightReorderInterface.td"
 include "sophgo/Interfaces/CodegenInterface.td"
 include "sophgo/Interfaces/InferenceInterface.td"
 include "sophgo/Traits/Traits.td"
 
-def Tpu_Dialect : Dialect {
-  let name = "tpu";
-  let summary = "A tpu dialect for the SOPHGO AI chips";
-  let cppNamespace = "::sophgo::tpu";
-}
+// ----------
+// type
+// ----------
 
 def AnyTenor: AnyTypeOf<[AnyRankedTensor]>;
 def AnyTensorOrNone: AnyTypeOf<[AnyRankedTensor, NoneType]>;
 
+// ----------
+// op definition
+// ----------
 class Tpu_Op<string mnemonic, list<Trait> traits = []> :
     Op<Tpu_Dialect, mnemonic, !listconcat(traits,
        [NoSideEffect, HasCommonAttributes,
@@ -54,6 +55,7 @@ def Tpu_ConvOp: Tpu_Op<"Conv",[
     BoolAttr:$with_bias,
     OptionalAttr<I64ArrayAttr>:$rshift,
     OptionalAttr<I64ArrayAttr>:$multiplier,
+    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
     StrAttr:$name
   );
 
@@ -84,6 +86,7 @@ class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,
     DefaultValuedAttr<I64Attr, "0">:$pad_value,
     DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
     StrAttr:$name
   );
 
@@ -116,11 +119,29 @@ def Tpu_AddOp: Tpu_Op<"Add", [SupportFuseRelu,
     // quant param
     I64ArrayAttr:$rshifts,
     DefaultValuedAttr<SI32Attr, "0">:$rectified_bias,
+    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
     StrAttr:$name
   );
 
   let results = (outs AnyTensor:$output);
 }
+
+// def Tpu_ConcatOp: Tpu_Op<"Concat", [SupportFuseRelu,
+//   DeclareOpInterfaceMethods<LayerGroupInterface>]> {
+//   let summary = "concat operator";
+
+//   let description = [{
+//   }];
+
+//   let arguments = (ins
+//     Variadic<AnyTensor>:$inputs,
+//     DefaultValuedAttr<I32Attr, "1">:$axis,
+//     OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
+//     StrAttr:$name
+//   );
+
+//   let results = (outs AnyTensor:$output);
+// }
 
 def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
   let summary = "matmul operator";
@@ -138,6 +159,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<I64Attr, "0">:$rshift,
     DefaultValuedAttr<I64Attr, "0">:$multiplier,
+    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
     StrAttr:$name
   );
 
@@ -158,6 +180,7 @@ def Tpu_ReluOp: Tpu_Op<"Relu",
 
   let arguments = (
     ins AnyTensor:$input,
+    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
     StrAttr:$name
   );
 
@@ -185,6 +208,7 @@ def Tpu_CastOp:Tpu_Op<"Cast",
   }];
   let arguments = (ins
     AnyTensor:$input,
+    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
     StrAttr:$name
   );
   let results = (outs AnyTensor:$output);
@@ -200,6 +224,7 @@ def Tpu_RequantOp:Tpu_Op<"Requant",
     AnyTensor:$quant,
     OptionalAttr<I64Attr>:$multiplier,
     OptionalAttr<I64Attr>:$rshift,
+    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
     StrAttr:$name
   );
   let results = (outs AnyTensor:$output);

@@ -22,6 +22,7 @@ add_mlir_library(SophgoTpu
   MLIRTopOpsIncGen
   MLIRTpuOpsIncGen
   MLIRTpuPassIncGen
+  MLIRTpuAttrGen
   MLIRInferenceInterfaceIncGen
   MLIRWeightReorderInterfaceIncGen
   MLIRCodegenInterfaceIncGen

@@ -7,6 +7,8 @@ using namespace sophgo::backend;
 using namespace sophgo::helper;
 using namespace mlir;
 
+constexpr llvm::StringRef BM1686::LIB_NAME;
+
 uint64_t BM1686::get_gmem_start() { return 0x100000000ull; }
 
 uint64_t BM1686::get_ctx_start_addr() { return get_gmem_start(); }
@@ -53,18 +55,6 @@ void BM1686::load_functions() {
   CAST_FUNCTION(set_cmd_len_ptr);
 }
 
-BM1686::BM1686() {
-  std::string Err;
-  DL = llvm::sys::DynamicLibrary::getPermanentLibrary("libbackend_1686.so",
-                                                      &Err);
-  if (DL.isValid() == false) {
-    llvm_unreachable(Err.c_str());
-  }
-  load_functions();
-}
-
-BM1686::~BM1686() {}
-
 void BM1686::init() {
   BM168x::init();
   dl_set_cmd_len_ptr((void *)&gdma_bytes, (void *)&bdc_bytes);
@@ -73,8 +63,4 @@ void BM1686::init() {
 void BM1686::after_codegen() {
   BM168x::after_codegen();
   dl_store_cmd_end();
-}
-
-int64_t BM1686::get_eu_num(int64_t dtype_bytes) {
-  return EU_BYTES / dtype_bytes;
 }

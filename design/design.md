@@ -77,6 +77,8 @@ gdb --args python /work/python/tools/model_runner.py --input resnet18_in_f32.npz
 
 * 目前1684用batch 4验证，避免在4N存储的细节上花费太多时间；后续需要补上4N的逻辑
 
+* BM前缀是否都需要改成SG前缀？
+
 ## 一些思考
 
 #### 是否第一层用TOSA Dialect ?

@@ -136,11 +136,10 @@ void buildSubFunction(std::shared_ptr<SubFunction> sf, ModuleOp module) {
 }
 
 static StringRef getOpMode(Operation *op) {
-  if (isa<tpu::MaxPoolOp>(op)) {
-    return FUNC_CPU; // here just simulate
-  } else {
-    return FUNC_TPU;
-  }
+  // if (isa<tpu::MaxPoolOp>(op)) {
+  //   return FUNC_CPU; // here just simulate
+  // }
+  return FUNC_TPU;
 }
 
 static void insert_subop(std::shared_ptr<SubFunction> &subf, Operation *op) {
