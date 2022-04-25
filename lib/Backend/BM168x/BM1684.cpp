@@ -7,6 +7,8 @@ using namespace sophgo::backend;
 using namespace sophgo::helper;
 using namespace mlir;
 
+constexpr llvm::StringRef BM1684::LIB_NAME;
+
 uint64_t BM1684::get_gmem_start() { return 0x100000000ull; }
 
 uint64_t BM1684::get_ctx_start_addr() {
@@ -193,18 +195,3 @@ void BM1684::load_functions() {
   CAST_FUNCTION(nodechip_float2int8_v2);
 }
 
-BM1684::BM1684() {
-  std::string Err;
-  DL = llvm::sys::DynamicLibrary::getPermanentLibrary("libbackend_1684.so",
-                                                      &Err);
-  if (DL.isValid() == false) {
-    llvm_unreachable(Err.c_str());
-  }
-  load_functions();
-}
-
-BM1684::~BM1684() {}
-
-int64_t BM1684::get_eu_num(int64_t dtype_bytes) {
-  return EU_BYTES / dtype_bytes;
-}

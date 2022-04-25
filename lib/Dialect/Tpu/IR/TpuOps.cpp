@@ -10,6 +10,7 @@ using namespace sophgo::tpu;
 // Dialect initialize method.
 //===----------------------------------------------------------------------===//
 #include "sophgo/Dialect/Tpu/IR/TpuOpsDialect.cpp.inc"
+#include "sophgo/Dialect/Tpu/IR/TpuAttr.cpp.inc"
 
 void TpuDialect::initialize() {
   addOperations<
