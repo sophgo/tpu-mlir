@@ -26,7 +26,8 @@ Value top::MatMulOp::quantize_int8_bm1686() {
   auto th_output_max = Quant::getMax(output());
   float input_scale = (127 - (-128)) / (th_input_max - th_input_min);
   float output_scale = (127 - (-128)) / (th_output_max - th_output_min);
-  int input_zeropoint = std::round(-th_input_min * input_scale);
+  int input_zeropoint = std::round(-th_input_min * input_scale) - 128;
+  input_zeropoint = Quant::clip_to_int8(input_zeropoint);
 
   double w_max = findMaxabs(filter_f32->data(), filter_f32->size());
   float w_min = -w_max;
@@ -95,7 +96,7 @@ Value top::MatMulOp::quantize_int8_bm1686() {
   auto newOp = builder.create<tpu::MatMulOp>(op->getLoc(), output().getType(),
                                              ArrayRef<Value>{operands},
                                              ArrayRef<NamedAttribute>{attrs});
-  Quant::setQuantInt8Type(newOp.output(), true, false);
+  Quant::setQuantInt8Type(newOp.output(), true);
   return newOp.output();
 }
 
@@ -183,7 +184,7 @@ Value top::MatMulOp::quantize_int8_bm1686() {
   auto newOp = builder.create<tpu::MatMulOp>(op->getLoc(), output().getType(),
                                              ArrayRef<Value>{operands},
                                              ArrayRef<NamedAttribute>{attrs});
-  Quant::setQuantInt8Type(newOp.output(), true, false);
+  Quant::setQuantInt8Type(newOp.output(), true);
   return newOp.output();
 }
 

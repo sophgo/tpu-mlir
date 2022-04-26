@@ -52,6 +52,13 @@ struct Quant {
     return type.getMin();
   }
 
+  static inline int8_t clip_to_int8(int value) {
+    return value > 127?127:value < -128?-128:value;
+  }
+
+  static inline uint8_t clip_to_uint8(int value) {
+    return value > 255?255:value < 0?0:value;
+  }
 
   static void setQuantInt8Type(Value v, bool asymmetric = false, bool sighType = true);
   static void setQuantWeightInt8PerChannelType(Value v, ArrayRef<double> scales, ArrayRef<int64_t> zeroPoints, int32_t quantizedDimension, mlir::FloatType exptype);

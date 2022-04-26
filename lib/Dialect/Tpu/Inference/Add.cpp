@@ -24,14 +24,11 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
     for (auto in : p.inputs) {
       if (in != nullptr) {
         int rshift = rshifts().getValue()[idx].cast<IntegerAttr>().getInt();
-        int multiplier = (int8_t)coeff()
-                             .getValue()[idx]
-                             .cast<FloatAttr>()
-                             .getValueAsDouble();
+        int multiplier = (int)coeff().getValue()[idx].cast<FloatAttr>().getValueAsDouble();
         if (chip == Module::Chip::BM1686) {
-          int tmp = in[i] * multiplier;
-          int half_data = 1 << (rshift - 1);
+          int tmp = ((int32_t)in[i]) * multiplier;
           if (rshift > 0) {
+            int half_data = 1 << (rshift - 1);
             p.outputs[0][i] += (tmp + half_data) >> rshift;
           } else {
             p.outputs[0][i] += tmp << -rshift;
@@ -44,18 +41,20 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
     }
 
     if (chip == Module::Chip::BM1686) {
-      p.outputs[0][i] -=b;
+      p.outputs[0][i] -=(float)b;
+      if (do_relu()) {
+        p.outputs[0][i] = p.outputs[0][i] > 0? p.outputs[0][i]:0;
+      }
       p.outputs[0][i] +=zp;
-      p.outputs[0][i] = std::round(p.outputs[0][i]);
     }
     if (do_relu()) { // relu输出
-      p.outputs[0][i] = p.outputs[0][i] > 255 ? 255
-                        : p.outputs[0][i] < 0 ? 0
-                                              : p.outputs[0][i];
+      if (chip == Module::Chip::BM1686) {
+        p.outputs[0][i] = Quant::clip_to_int8(p.outputs[0][i]);
+      } else {
+        p.outputs[0][i] = Quant::clip_to_uint8(p.outputs[0][i]); //1684量化这里要设为uint8才有过 todo
+      }
     } else {
-      p.outputs[0][i] = p.outputs[0][i] > 127    ? 127
-                        : p.outputs[0][i] < -128 ? -128
-                                                 : p.outputs[0][i];
+        p.outputs[0][i] = Quant::clip_to_int8(p.outputs[0][i]);
     }
   }
 #ifdef DEBUG_TPU_INFER

@@ -1,10 +1,53 @@
+#include<string.h>
 #include "sophgo/Support/Dnnl/Conv.h"
+#include "sophgo/Support/MathUtils.h"
 
 using namespace dnnl;
 using namespace sophgo;
 Conv::Conv() {
   eng = dnnl::engine(engine::kind::cpu, 0);
   eng_stream = dnnl::stream(eng);
+  _input_paded1 = nullptr;
+  _input_paded2 = nullptr;
+  _pt = _pb = _pr = _pl = 0;
+  _izp = 0;
+}
+
+Conv::~Conv() {
+  if (_izp && (_pt > 0 || _pb > 0 || _pr > 0 || _pl > 0)) {
+    if (_input_paded1) {
+      delete []_input_paded1;
+      _input_paded1 = nullptr;
+    }
+
+    if (_input_paded2) {
+      delete []_input_paded2;
+      _input_paded2 = nullptr;
+    }
+  }
+}
+
+void Conv::pad_init(float *input, int n, int ic, int ih, int iw, int& pt, int& pb, int& pl, int& pr, int izp) {
+  _input = input;
+  _pt = pt;
+  _pb = pb;
+  _pr = pr;
+  _pl = pl;
+  _izp = izp;
+  if (izp && (_pt > 0 || _pb > 0 || _pr > 0 || _pl > 0)) {
+    int input_paded_size = n*ic*(ih+pt+pb)*(iw+pr+pl);
+    _input_paded1 = new float[input_paded_size];
+    _input_paded2 = new float[input_paded_size];
+    for (int i = 0; i < input_paded_size; i++) {
+      _input_paded1[i] = izp;
+      _input_paded2[i] = izp;
+    }
+    src_shape = {n, ic, ih+pt+pb, iw+pr+pl};
+    pt = pb = pr = pl = 0;
+  } else {
+    src_shape = {n, ic, ih, iw};
+    _input_paded2 = input;
+  }
 }
 
 void Conv::setup(float *input, float *weight, float *bias, float *output, int n,
@@ -12,8 +55,8 @@ void Conv::setup(float *input, float *weight, float *bias, float *output, int n,
                  int sh, int sw, int dh, int dw, int pt, int pb, int pl, int pr,
                  int g, bool do_relu, int izp, int ozp, int* rshift, int* multiplier, memory::data_type idt,
                  memory::data_type wdt, memory::data_type bdt, memory::data_type odt, bool per_channel, int chip) {
-  //printf("Conv para:%d,%d,%d,%d,%d,%d,%d\n", idt, wdt, bdt, odt, per_channel, izp, ozp);
-  src_shape = {n, ic, ih, iw};
+  //printf("Conv para:%d,%d,%d,%d,%d,%d,%d,%d\n", idt, wdt, bdt, odt, per_channel, izp, ozp, do_relu);
+  pad_init(input, n, ic, ih, iw, pt, pb, pl, pr, izp);
   dst_shape = {n, oc, oh, ow};
   memory::dims filter_shape = (g != 1) ? memory::dims{g, oc / g, ic / g, kh, kw}
                                        : memory::dims{oc, ic, kh, kw};
@@ -75,23 +118,24 @@ void Conv::setup(float *input, float *weight, float *bias, float *output, int n,
     float ops_beta = 0.f;
     if (do_relu) {
       ops.append_eltwise(ops_scale, algorithm::eltwise_relu, ops_alpha, ops_beta);
-      ops_alpha = 0;
-      ops_beta = 255;
-    } else {
-      if (chip) { //1686时，这里均限制在0到255，后续考虑更好处理方式 wxctodo
-        ops_alpha = 0;
-        ops_beta = 255;
-      } else {
+      if (chip) {
         ops_alpha = -128;
         ops_beta = 127;
+      } else {
+        ops_alpha = 0;
+        ops_beta = 255;
       }
+    } else {
+        //1686时，这里需要限制在0到255，后续考虑更好处理方式 wxctodo
+      ops_alpha = -128;
+      ops_beta = 127;
     }
     if (ozp)
       ops.append_eltwise(1,dnnl::algorithm::eltwise_linear,1,ozp);
     ops.append_eltwise(ops_scale, algorithm::eltwise_clip, ops_alpha, ops_beta);
     ops.append_eltwise(ops_scale, algorithm::eltwise_round, 0, 0);
-    conv_attr.set_post_ops(ops);
     conv_attr.set_output_scales(2, conv_scales);
+    conv_attr.set_post_ops(ops);
   } else {
     if (do_relu) {
       const float ops_scale = 1.f;
@@ -130,7 +174,7 @@ void Conv::setup(float *input, float *weight, float *bias, float *output, int n,
 
   auto src_memory =
       memory({{src_shape}, memory::data_type::f32, memory::format_tag::nchw},
-             eng, input);
+             eng, _input_paded2);
   auto prim_src_memory = src_memory;
   if (conv_prim_desc.src_desc() != src_memory.get_desc()) {
     prim_src_memory = memory(conv_prim_desc.src_desc(), eng);
@@ -162,7 +206,10 @@ void Conv::setup(float *input, float *weight, float *bias, float *output, int n,
   }
 }
 
+
 void Conv::run() {
+  if (_izp)
+    pad_tensor(_input, _input_paded1, _input_paded2, src_shape[0], src_shape[1], src_shape[2], src_shape[3], _pt, _pb, _pl, _pr);
   for (size_t i = 0; i < net.size(); ++i)
     net.at(i).execute(eng_stream, net_args.at(i));
   eng_stream.wait();
