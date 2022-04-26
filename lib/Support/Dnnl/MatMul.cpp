@@ -50,6 +50,8 @@ void MatMul::setup(float *left, float *right, float *bias, float *output,
       ops.append_eltwise(ops_scale, algorithm::eltwise_relu, ops_alpha, ops_beta);
       ops_alpha = 0;
       ops_beta = 255;
+      ops_alpha = -128; //wxc
+      ops_beta = 127;
     } else {
       ops_alpha = -128;
       ops_beta = 127;
