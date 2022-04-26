@@ -22,6 +22,6 @@ Value top::ReshapeOp::quantize_int8_bm1686() {
   auto newOp = builder.create<tpu::ReshapeOp>(op->getLoc(), output().getType(),
                                               ArrayRef<Value>{operands},
                                               ArrayRef<NamedAttribute>{attrs});
-  Quant::setQuantInt8Type(newOp.output(), true, false);
+  Quant::setQuantInt8Type(newOp.output(), true);
   return newOp.output();
 }

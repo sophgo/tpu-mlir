@@ -26,17 +26,37 @@ void Quant::setQuantInt8Type(Value v, bool asymmetric, bool sighType) {
   auto max = cali_type.getMax();
   auto min = cali_type.getMin();
   if (asymmetric) {
+    const double qminDouble = -128;
+    const double qmaxDouble = 127;
     double scale = (max - min) / (127 - (-128));
-    int64_t zeropoint = std::round(-min / scale);
+    const double zeroPointFromMin = qminDouble - min / scale;
+    const double zeroPointFromMinError =
+        std::abs(qminDouble) + std::abs(min / scale);
+    const double zeroPointFromMax = qmaxDouble - max / scale;
+    const double zeroPointFromMaxError =
+        std::abs(qmaxDouble) + std::abs(max / scale);
+    const double zeroPointDouble = (zeroPointFromMinError < zeroPointFromMaxError)
+                                        ? zeroPointFromMin
+                                        : zeroPointFromMax;
+    //printf("zeroPointFromMin:%f, zeroPointFromMax:%f, MinError:%f, %f\n", zeroPointFromMin, zeroPointFromMax, zeroPointFromMinError, zeroPointFromMaxError);
+    int64_t nudgedZeroPoint = 0;
+    if (zeroPointDouble < qminDouble) {
+      nudgedZeroPoint = -128;
+    } else if (zeroPointDouble > qmaxDouble) {
+      nudgedZeroPoint = 127;
+    } else {
+      nudgedZeroPoint = std::round(zeroPointDouble);
+    }
+    //int64_t zeropoint = std::round(-min / scale) - 128;
     auto uniform_type = quant::UniformQuantizedType();
     if (sighType) {
       uniform_type = quant::UniformQuantizedType::get(
           quant::QuantizationFlags::Signed, IntegerType::get(ctx, 8),
-          cali_type.getExpressedType(), scale, zeropoint, -128, 127);
+          cali_type.getExpressedType(), scale, nudgedZeroPoint, -128, 127);
     } else {
       uniform_type = quant::UniformQuantizedType::get(
           0, IntegerType::get(ctx, 8), cali_type.getExpressedType(), scale,
-          zeropoint, 0, 255);
+          nudgedZeroPoint, 0, 255);
     }
     auto new_type = RankedTensorType::get(type.getShape(), uniform_type);
     v.setType(new_type);

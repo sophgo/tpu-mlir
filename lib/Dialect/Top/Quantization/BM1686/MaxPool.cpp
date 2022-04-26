@@ -22,6 +22,7 @@ Value top::MaxPoolOp::quantize_int8_bm1686() {
   auto newOp = builder.create<tpu::MaxPoolOp>(op->getLoc(), output().getType(),
                                               ArrayRef<Value>{operands},
                                               ArrayRef<NamedAttribute>{attrs});
-  Quant::setQuantInt8Type(newOp.output(), true, false);
+  llvm::errs() << "maxpool:" << this->name() << "\n";
+  Quant::setQuantInt8Type(newOp.output(), true);
   return newOp.output();
 }

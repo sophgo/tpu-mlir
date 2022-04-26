@@ -32,15 +32,15 @@ Value top::AddOp::quantize_int8_bm1686() {
     auto th_input_min = Quant::getMin(input);
     auto th_input_max = Quant::getMax(input);
     double scale = (th_input_max - th_input_min) / (127 - (-128));
-    int64_t zeropoint = std::round(-th_input_min / scale);
+    int64_t zeropoint = std::round(-th_input_min / scale) - 128;
     int scalei, shifti;
     float alpha = (th_input_max - th_input_min) /
                             (th_output_max - th_output_min);
     bias += alpha*zeropoint;
     get_scale_and_shift(coeff_v[i] * alpha,
                         scalei, shifti, 8);
-    coeff_v[i] = (char)scalei;
-    rshift_v[i] = (char)shifti;
+    coeff_v[i] = (double)scalei;
+    rshift_v[i] = shifti; //
   }
 
   std::vector<NamedAttribute> attrs;
@@ -55,6 +55,6 @@ Value top::AddOp::quantize_int8_bm1686() {
   auto newOp = builder.create<tpu::AddOp>(op->getLoc(), output().getType(),
                                           ArrayRef<Value>{operands},
                                           ArrayRef<NamedAttribute>{attrs});
-  Quant::setQuantInt8Type(newOp.output(), true, false);
+  Quant::setQuantInt8Type(newOp.output(), true);
   return newOp.output();
 }

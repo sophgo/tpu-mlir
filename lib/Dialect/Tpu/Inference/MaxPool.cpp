@@ -14,8 +14,15 @@ LogicalResult tpu::MaxPoolOp::init(InferenceParameter &p) {
   auto dt = getDnnlType(input());
   parseParam(n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value,
              relu, is_global, count_include_pad);
+
+  int izp = 0;
+  auto dtype = input().getType().cast<RankedTensorType>().getElementType();
+  if (dtype.isa<quant::UniformQuantizedType>()) {
+    izp = dtype.cast<quant::UniformQuantizedType>().getZeroPoint();
+  }
+
   pooling->setup(p.inputs[0], p.outputs[0], n, c, ih, iw, oh, ow, kh, kw, sh,
-                 sw, pt, pb, pl, pr, false, count_include_pad, pad_value, dt);
+                 sw, pt, pb, pl, pr, false, count_include_pad, izp, pad_value, dt);
   p.handle = (void *)pooling;
   return success();
 }

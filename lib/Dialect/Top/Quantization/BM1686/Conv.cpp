@@ -30,7 +30,8 @@ Value top::ConvOp::quantize_int8_bm1686() {
     th_input_max = 0;
   }
   float input_scale = (127 - (-128)) / (th_input_max - th_input_min);
-  int input_zeropoint = std::round(-th_input_min * input_scale);
+  int input_zeropoint = std::round(-th_input_min * input_scale) - 128;
+  input_zeropoint = Quant::clip_to_int8(input_zeropoint);
 
   std::shared_ptr<std::vector<int32_t>> bias_int32;
   std::shared_ptr<std::vector<float>> bias_fp32;
@@ -141,7 +142,8 @@ Value top::ConvOp::quantize_int8_bm1686() {
   auto newOp = builder.create<tpu::ConvOp>(op->getLoc(), output().getType(),
                                            ArrayRef<Value>{operands},
                                            ArrayRef<NamedAttribute>{attrs});
-  Quant::setQuantInt8Type(newOp.output(), true, false);
+  //llvm::errs() << "conv:" << this->name() << "\n";
+  Quant::setQuantInt8Type(newOp.output(), true);
   return newOp.output();
 }
 
