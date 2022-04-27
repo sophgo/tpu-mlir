@@ -51,7 +51,7 @@ Value top::AddOp::quantize_int8_bm1686() {
   attrs.push_back(
       builder.getNamedAttr("rshifts", builder.getI64ArrayAttr(rshift_v)));
   attrs.push_back(
-      builder.getNamedAttr("rectified_bias", builder.getI64IntegerAttr(std::round(bias))));
+      builder.getNamedAttr("rectified_bias", builder.getSI32IntegerAttr(std::round(bias))));
   auto newOp = builder.create<tpu::AddOp>(op->getLoc(), output().getType(),
                                           ArrayRef<Value>{operands},
                                           ArrayRef<NamedAttribute>{attrs});
