@@ -29,6 +29,8 @@ uint32_t BM1686::get_gdma_len(int gdma_num, int group_id) {
   return gdma_bytes[group_id];
 }
 
+BM1686::BM1686() { chip = Module::Chip::BM1686; }
+
 template <typename FPtrTy> FPtrTy BM1686::CastToFPtr(const char *symbolName) {
   assert(DL.isValid());
   auto fPtr = DL.getAddressOfSymbol(symbolName);
