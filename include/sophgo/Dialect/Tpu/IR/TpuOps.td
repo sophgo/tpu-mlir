@@ -289,4 +289,26 @@ def Tpu_YieldOp : Tpu_BaseOp<"Yield", [NoSideEffect,
   let assemblyFormat = "attr-dict ($operands^ `:` type($operands))?";
 }
 
+def Tpu_SoftmaxOp: Tpu_Op<"Softmax"> {
+  let summary = "softmax operator";
+
+  let description = [{
+  The softmax function, also known as softargmax or normalized exponential
+  function, is a generalization of the logistic function to multiple dimensions.
+}];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    // quant param
+    I64Attr:$rshift,
+    I64Attr:$multiplier,
+    I64ArrayAttr:$table,
+    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
+    StrAttr:$name
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 #endif // TPU_OPS

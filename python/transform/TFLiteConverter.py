@@ -228,7 +228,7 @@ class TFLiteConverter(BaseConverter):
         self.constant = {}
         self.type_to_mlir = self.__type2mlir(self.mlir.ctx)
         self.BuiltinOptionsToAttributes = {
-            "ADD": lambda _: (Top.AddOp, {}),
+            "ADD": self.add_op,
             "PAD": self.pad_op,
             "SOFTMAX": self.softmax_op,
             "MEAN": self.mean_op,
@@ -391,6 +391,20 @@ class TFLiteConverter(BaseConverter):
         attr = {"paddings": self.mlir.ArrayAttr(paddings.flatten())}
         return "top.Pad", attr
 
+    def add_op(self, op):
+        from .tflite.AddOptions import AddOptions
+
+        op_options = op.builtin_options
+        param = AddOptions()
+        param.Init(op_options.Bytes, op_options.Pos)
+        fused_active = param.FusedActivationFunction()
+        if fused_active not in [0, 1]:
+            raise Exception(
+                "Not supported ActivationFunctionType: {}!".format(fused_active)
+            )
+        attr = {"do_relu": BoolAttr.get(fused_active == 1)}
+        return Top.AddOp, attr
+
     def maxpool_op(self, op):
         from .tflite.Pool2DOptions import Pool2DOptions
 
@@ -408,23 +422,50 @@ class TFLiteConverter(BaseConverter):
 
     def conv_2d_op(self, op):
         from .tflite.Conv2DOptions import Conv2DOptions
+        from .tflite.Padding import Padding
 
         op_options = op.builtin_options
         param = Conv2DOptions()
         param.Init(op_options.Bytes, op_options.Pos)
-        kernel_shape = list(op.inputs)[1].shape
+        kernel_shape = op.inputs[1].shape
         fused_active = param.FusedActivationFunction()
+        padding = [0, 0, 0, 0]  # VALID padding
+        if param.Padding() == Padding.SAME:
+            # high, width
+            stride = np.array([param.StrideH(), param.StrideW()])
+            dilation_rate = np.array(
+                [param.DilationHFactor(), param.DilationWFactor()], dtype=np.int64
+            )
+            kernel_size = np.array(kernel_shape[1:3], dtype=np.int64)
+            input_size = np.array(op.inputs[0].shape[1:3], dtype=np.int64)  # NHWC
+            effective_filter_size = (kernel_size - 1) * dilation_rate + 1
+            output_size = (input_size + stride - 1) // stride
+            padding_needed = np.int64(
+                (output_size - 1) * stride + effective_filter_size - input_size
+            )
+            padding_needed = padding_needed.clip(min=0)
+            # For odd values of total padding, add more padding at the 'right'
+            # side of the given dimension.
+            padding_before = padding_needed // 2
+            padding_after = padding_needed - padding_before
+            padding = [
+                padding_before[0],
+                padding_before[1],
+                padding_after[0],
+                padding_after[1],
+            ]
+
         if fused_active not in [0, 1]:
             raise Exception(
                 "Not supported ActivationFunctionType: {}!".format(fused_active)
             )
         attr = {
             "kernel_shape": self.mlir.ArrayAttr(kernel_shape[1:-1]),
-            "strides": self.mlir.ArrayAttr([param.StrideW(), param.StrideH()]),
+            "strides": self.mlir.ArrayAttr([param.StrideH(), param.StrideW()]),
             "dilations": self.mlir.ArrayAttr(
-                [param.DilationWFactor(), param.DilationHFactor()]
+                [param.DilationHFactor(), param.DilationWFactor()]
             ),
-            "pads": self.mlir.ArrayAttr([0, 0, 0, 0]),
+            "pads": self.mlir.ArrayAttr(padding),
             "do_relu": BoolAttr.get(fused_active == 1),
         }
         return Top.ConvOp, attr
@@ -454,14 +495,16 @@ class TFLiteConverter(BaseConverter):
     def mean_op(self, op):
         args = op.inputs[1].buffer
         op.inputs = [op.inputs[0]]
-        if args[0] == 1 and args[1] == 2:
+        if args[0] == 1 and args[1] == 2:  # dimension reduced
             kernel_shape = [op.inputs[0].shape[1], op.inputs[0].shape[2]]
             attr = {
                 "kernel_shape": self.mlir.ArrayAttr(kernel_shape),
-                "strides": self.mlir.ArrayAttr([0, 0]),
+                "strides": self.mlir.ArrayAttr([1, 1]),
                 "pads": self.mlir.ArrayAttr([0, 0, 0, 0]),
             }
             return Top.AvgPoolOp, attr
+        else:
+            raise ValueError("Only support reduction in H and W dimensions.")
 
     def softmax_op(self, op):
         return "top.Softmax", {
@@ -469,14 +512,14 @@ class TFLiteConverter(BaseConverter):
         }
 
     def convert_subgraph(self, subgraph):
-        class valueMap:
-            vals_map = {}
+        class symbolTable:
+            symbol_table = {}
 
             def __init__(self, gen_value_func):
                 self.gen_value_func = gen_value_func
 
             def __getitem__(self, tensor):
-                if tensor.id not in self.vals_map:
+                if tensor.id not in self.symbol_table:
                     if tensor.buffer is None:
                         raise Exception(
                             "Tensor '{}' is not constant!".format(tensor.name)
@@ -488,22 +531,23 @@ class TFLiteConverter(BaseConverter):
                             )
                         )
                     op = self.gen_value_func(tensor)
-                    self.vals_map[tensor.id] = op
+                    self.symbol_table[tensor.id] = op
                     return op
-                return self.vals_map[tensor.id]
+                return self.symbol_table[tensor.id]
 
             def update(self, other):
-                self.vals_map.update(other)
+                self.symbol_table.update(other)
 
-        vals_map = valueMap(self.__create_weight_op)
-        vals_map.update(dict(zip((x.id for x in subgraph.inputs), self.mlir.func_args)))
+        symbol_table = symbolTable(self.__create_weight_op)
+        for idx, input in enumerate(subgraph.inputs):
+            symbol_table.update({input.id: self.mlir.create_input_op(input.name, idx)})
 
         def add_operation(operation):
             op_type, attributes = self.BuiltinOptionsToAttributes[operation.type](
                 operation
             )
 
-            operands = [vals_map[self.__nhwc2nchw(x)] for x in operation.inputs]
+            operands = [symbol_table[self.__nhwc2nchw(x)] for x in operation.inputs]
             rst_type = [
                 self.__get_tensor_type(self.__nhwc2nchw(x)) for x in operation.outputs
             ]
@@ -515,12 +559,12 @@ class TFLiteConverter(BaseConverter):
                 attributes=attributes,
             )
             self.mlir.insert_point.insert(op)
-            vals_map.update(dict(zip((x.id for x in operation.outputs), op.results)))  # type: ignore
+            symbol_table.update(dict(zip((x.id for x in operation.outputs), op.results)))  # type: ignore
 
         for op in subgraph.operators:
             add_operation(op)
 
-        return [vals_map[x] for x in subgraph.outputs]
+        return [symbol_table[x] for x in subgraph.outputs]
 
     def generate_mlir(self, mlir_file: str):
         return_op = self.convert_subgraph(self.graph)

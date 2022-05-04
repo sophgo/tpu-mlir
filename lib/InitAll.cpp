@@ -12,6 +12,7 @@
 #include "sophgo/Dialect/Tpu/IR/TpuOps.h"
 #include "sophgo/Dialect/Top/Transforms/Passes.h"
 #include "sophgo/Dialect/Tpu/Transforms/Passes.h"
+#include "sophgo/Conversion/Passes.h"
 #include "mlir/Transforms/Passes.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Quant/QuantOps.h"
@@ -25,6 +26,7 @@ void registerAllDialects(mlir::DialectRegistry &registry) {
 
 void registerAllPasses() {
   registerCanonicalizerPass();
+  registerConversionPasses();
   top::registerTopPasses();
   tpu::registerTpuPasses();
 }

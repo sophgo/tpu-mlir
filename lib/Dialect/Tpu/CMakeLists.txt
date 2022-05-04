@@ -28,6 +28,7 @@ add_mlir_library(SophgoTpu
   MLIRCodegenInterfaceIncGen
   MLIRFlopsInterfaceIncGen
   MLIRLayerGroupInterfaceIncGen
+  Builder
 
   LINK_COMPONENTS
   Core

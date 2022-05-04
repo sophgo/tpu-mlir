@@ -4,6 +4,7 @@ add_subdirectory(Dialect)
 add_subdirectory(Support)
 add_subdirectory(Backend)
 add_subdirectory(Builder)
+add_subdirectory(Conversion)
 
 add_mlir_library(SophgoInitAll
   InitAll.cpp
@@ -20,5 +21,5 @@ add_mlir_library(SophgoInitAll
   SophgoTop
   SophgoTpu
   SophgoSupport
+  SophgoTopTFLiteToTpu
 )
-
