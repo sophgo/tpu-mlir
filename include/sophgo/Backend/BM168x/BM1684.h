@@ -357,10 +357,10 @@ public:
   static constexpr llvm::StringRef LIB_NAME = "libbackend_1684.so";
 
 protected:
-  BM1684() {};
-  ~BM1684() {};
+  BM1684();
+  ~BM1684(){};
   template <typename FPtrTy> FPtrTy CastToFPtr(const char *symbolName);
-  virtual const char * get_lib_name() override { return LIB_NAME.data();};
+  virtual const char *get_lib_name() override { return LIB_NAME.data(); };
   virtual void load_functions() override;
 };
 } // namespace backend

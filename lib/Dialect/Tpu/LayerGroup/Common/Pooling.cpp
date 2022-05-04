@@ -15,7 +15,7 @@ LogicalResult tpu::AvgPoolOp::Verify() {
   if (is_global == false && (sh > 15 || sw > 15)) {
     return failure();
   }
-  return  success();
+  return success();
 }
 
 LogicalResult tpu::AvgPoolOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
@@ -26,6 +26,7 @@ LogicalResult tpu::AvgPoolOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
              relu, is_global, count_include_pad);
   in_slice = (out_slice - 1) * sh + kh;
   in_idx = out_idx * sh - pt;
+  LayerGroupInterface::fixSlice(in_idx, in_slice, ih);
   return success();
 }
 
@@ -37,7 +38,7 @@ LogicalResult tpu::MaxPoolOp::Verify() {
   if (is_global == false && (sh > 15 || sw > 15)) {
     return failure();
   }
-  return  success();
+  return success();
 }
 
 LogicalResult tpu::MaxPoolOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
@@ -48,5 +49,6 @@ LogicalResult tpu::MaxPoolOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
              relu, is_global, count_include_pad);
   in_slice = (out_slice - 1) * sh + kh;
   in_idx = out_idx * sh - pt;
+  LayerGroupInterface::fixSlice(in_idx, in_slice, ih);
   return success();
 }

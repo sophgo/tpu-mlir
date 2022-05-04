@@ -33,6 +33,8 @@ template <typename FPtrTy> FPtrTy BM1684::CastToFPtr(const char *symbolName) {
   return reinterpret_cast<FPtrTy>(fPtr);
 }
 
+BM1684::BM1684() { chip = Module::Chip::BM1684; }
+
 #define CAST_FUNCTION(name) dl_##name = CastToFPtr<name>(#name)
 
 void BM1684::load_functions() {
@@ -194,4 +196,3 @@ void BM1684::load_functions() {
   CAST_FUNCTION(nodechip_global_int2float);
   CAST_FUNCTION(nodechip_float2int8_v2);
 }
-
