@@ -9,7 +9,10 @@ except ModuleNotFoundError:
 
 class TFLiteInterpreter(TFLiteItp.Interpreter):
     def __init__(self, model_path=None):
-        super().__init__(model_path=model_path)
+        super().__init__(
+            model_path=model_path,
+            experimental_op_resolver_type=TFLiteItp.experimental.OpResolverType.BUILTIN_REF,
+        )
         self.allocate_tensors()
         self.name2index = {
             t["name"]: t["index"] for t in self.get_tensor_details() if t["name"]
