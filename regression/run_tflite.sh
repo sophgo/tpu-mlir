@@ -10,4 +10,12 @@ model_transform.py \
     --input_shapes [[4,3,224,224]] \
     --model_def  ../resnet50_quant_int8.tflite \
     --mlir resnet50_tflite.mlir
+
+#########################
+# TFLite to TPU BM1686
+#########################
+sophgo-opt resnet50_tflite.mlir \
+    --toptflite-to-tpu \
+    -o resnet50_int8_1686.mlir
+
 popd
