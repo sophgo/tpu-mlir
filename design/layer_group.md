@@ -1,5 +1,13 @@
 # Layer Group
 
+
+
+* content
+{:toc}
+
+
+
+
 ## 基本思想
 
 **要解决的问题：** 如何使Layer数据保持在有限的Local Memory进行运算，而不是反复进行Local与Global Memory之间的拷贝？
@@ -32,6 +40,16 @@
 
 
 
+## Local Memory分配
+
+n和h有切分的情况下，weight常驻local mem，可以先分配，如下图：
+
+![](./assets/lg_nh_alloc.png)
+
+当n和h都没有切分的情况下，weight和tensor一样，不使用时直接释放，如下：
+
+![](./assets/lg_alloc.png)
+
 ## 一些细节
 
 #### 如何划分最优Group ?
@@ -57,6 +75,4 @@
 如上场景，从输出Slice倒推到交汇的Conv，Slice采用**并集**。这就导致每个tensor不仅要记录当期的`h_idx`(可理解为偏移)和`h_slice`(可理解为长度)，还要记录Op需要的`h_idx`和`h_slice`。
 
 
-
-#### Local Memory如何最优分配？
 

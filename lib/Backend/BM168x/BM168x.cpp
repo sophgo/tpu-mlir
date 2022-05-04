@@ -2,9 +2,11 @@
 #include "sophgo/Backend/BM168x/BM1684.h"
 #include "sophgo/Backend/BM168x/BM1686.h"
 #include "sophgo/Support/Helper/Module.h"
+#include "sophgo/Support/MathUtils.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Format.h"
 
+using namespace sophgo;
 using namespace sophgo::backend;
 using namespace sophgo::helper;
 
@@ -79,6 +81,38 @@ bm_data_type_t BM168x::getDataType(mlir::Type type) {
   return DTYPE_FP32;
 }
 
+int64_t BM168x::get_lmem_bytes(int64_t n, int64_t c, int64_t h, int64_t w,
+                               mlir::Type type, bool eu_align, bool is_4N) {
+  int64_t npu_num = get_npu_num();
+  int64_t dbytes = type.getIntOrFloatBitWidth() / 8;
+  int64_t eu_num = get_eu_num(dbytes);
+  int64_t c_per_npu = ceiling_func(c, npu_num);
+  int64_t n_align = is_4N ? 1 : get_n_align(dbytes);
+  int64_t n_aligned = align_up(n, n_align);
+  int64_t eu_aligned =
+      eu_align ? align_up(h * w, eu_num) * dbytes : (h * w * dbytes);
+  return n_aligned * c_per_npu * eu_aligned;
+}
+
+int64_t BM168x::get_tensor_lmem_bytes(mlir::Value v, int64_t slice_n,
+                                      int64_t slice_h, bool eu_align) {
+  int64_t n, c, h, w;
+  Module::getNCHW(v, n, c, h, w);
+  auto type = Module::getStorageType(v);
+  bool is_4N = false;
+  if (chip == Module::Chip::BM1684) {
+    is_4N = true;
+  }
+  return get_lmem_bytes(slice_n, c, slice_h, w, type, eu_align, is_4N);
+}
+
+int64_t BM168x::get_weight_lmem_bytes(mlir::Value v, bool eu_align) {
+  int64_t n, c, h, w;
+  Module::getNCHW(v, n, c, h, w);
+  auto type = Module::getStorageType(v);
+  return get_lmem_bytes(n, c, h, w, type, eu_align);
+}
+
 template <typename FPtrTy> FPtrTy BM168x::CastToFPtr(const char *symbolName) {
   assert(DL.isValid());
   auto fPtr = DL.getAddressOfSymbol(symbolName);
@@ -111,8 +145,7 @@ void BM168x::load_functions() {
 void BM168x::init() {
   if (!DL.isValid()) {
     std::string Err;
-    DL = llvm::sys::DynamicLibrary::getPermanentLibrary(get_lib_name(),
-                                                        &Err);
+    DL = llvm::sys::DynamicLibrary::getPermanentLibrary(get_lib_name(), &Err);
     if (DL.isValid() == false) {
       llvm_unreachable(Err.c_str());
     }

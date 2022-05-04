@@ -34,7 +34,7 @@ class Tpu_Op<string mnemonic, list<Trait> traits = []> :
 def Tpu_ConvOp: Tpu_Op<"Conv",[
     SupportFuseRelu,
     DeclareOpInterfaceMethods<WeightReorderInterface>,
-    DeclareOpInterfaceMethods<LayerGroupInterface, ["BackwardH"]>]> {
+    DeclareOpInterfaceMethods<LayerGroupInterface, ["BackwardH","getBufferSize"]>]> {
   let summary = "convolution operator";
 
   let description = [{
@@ -53,6 +53,7 @@ def Tpu_ConvOp: Tpu_Op<"Conv",[
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     //new param
     BoolAttr:$with_bias,
+    DefaultValuedAttr<BoolAttr, "false">:$coeff_merged,
     OptionalAttr<I64ArrayAttr>:$rshift,
     OptionalAttr<I64ArrayAttr>:$multiplier,
     OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,

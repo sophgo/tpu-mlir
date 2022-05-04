@@ -6,14 +6,14 @@ struct cmd_id_node;
 typedef struct cmd_id_node CMD_ID_NODE;
 
 typedef enum {
-  STORAGE_MODE_1N_FP32    = 0,
-  STORAGE_MODE_1N_INT8    = 1,
-  STORAGE_MODE_1N_INT16   = 2,
-  STORAGE_MODE_2N_INT16   = 3,
-  STORAGE_MODE_4N_INT8    = 4,
-  STORAGE_MODE_2IC_FP32   = 5,  // special for 2IC weight
+  STORAGE_MODE_1N_FP32 = 0,
+  STORAGE_MODE_1N_INT8 = 1,
+  STORAGE_MODE_1N_INT16 = 2,
+  STORAGE_MODE_2N_INT16 = 3,
+  STORAGE_MODE_4N_INT8 = 4,
+  STORAGE_MODE_2IC_FP32 = 5, // special for 2IC weight
   STORAGE_MODE_4N_4IC_4OC = 6,
-  STORAGE_MODE_4N_INT16   = 7,
+  STORAGE_MODE_4N_INT16 = 7,
   STORAGE_MODE_UNINITILIZED,
   STORAGE_MODE_END
 } TENSOR_STORAGE_MODE;
@@ -54,29 +54,29 @@ typedef enum {
 typedef DATA_TYPE_T bm_data_type_t;
 
 typedef enum {
-  ROUND_INF = 0,     // 1.5 -> 2   -1.5 -> -2
-  ROUND_UP = 1,      // 1.5 -> 2   -1.5 -> -1
-  ROUND_DOWN = 2,    // 1.5 -> 1   -1.5 -> -2
-  ROUND_EVEN = 3,    // 1.5 -> 2    2.5 -> 2
-  ROUND_ODD = 4,     // 1.5 -> 1    0.5 -> 1
-  ROUND_ZERO = 5,    // 1.5 -> 1   -1.5 -> -1
-  TRIM_ZERO = 6,     // 1.6 -> 1   -1.6 -> -1
-  TRIM_INF = 7,      // 1.4 -> 2   -1.4 -> -2
-  TRIM_UP = 8,       // 1.4 -> 2   -1.6 -> -1
-  TRIM_DOWN = 9,     // 1.6 -> 1   -1.4 -> -2
+  ROUND_INF = 0,  // 1.5 -> 2   -1.5 -> -2
+  ROUND_UP = 1,   // 1.5 -> 2   -1.5 -> -1
+  ROUND_DOWN = 2, // 1.5 -> 1   -1.5 -> -2
+  ROUND_EVEN = 3, // 1.5 -> 2    2.5 -> 2
+  ROUND_ODD = 4,  // 1.5 -> 1    0.5 -> 1
+  ROUND_ZERO = 5, // 1.5 -> 1   -1.5 -> -1
+  TRIM_ZERO = 6,  // 1.6 -> 1   -1.6 -> -1
+  TRIM_INF = 7,   // 1.4 -> 2   -1.4 -> -2
+  TRIM_UP = 8,    // 1.4 -> 2   -1.6 -> -1
+  TRIM_DOWN = 9,  // 1.6 -> 1   -1.4 -> -2
 } ROUND_MODE_T;
 typedef ROUND_MODE_T bm_round_mode_t;
 
 typedef struct bmcompiler_mem_info {
-    uint64_t addr;
-    uint64_t size;
-    uint64_t offset;
+  uint64_t addr;
+  uint64_t size;
+  uint64_t offset;
 } bm_mem_desc_t;
 typedef struct bmcompiler_mem_info bm_device_mem_t;
 
 typedef int (*cmodel_init)(int node_idx, unsigned long long global_mem_size);
 typedef void (*cmodel_deinit)(int node_idx);
-typedef void * (*create_cmd_id_node)();
+typedef void *(*create_cmd_id_node)();
 typedef void (*destroy_cmd_id_node)(void *pid_node);
 typedef void (*set_cmd_id_cycle)(void *pid_node, int val);
 typedef int (*get_cmd_id_cycle)(void *pid_node);
@@ -87,8 +87,10 @@ typedef void (*use_atomic_cmodel)();
 typedef void (*forbid_atomic_cmodel)();
 typedef void *(*get_global_memaddr)(int node_idx);
 typedef void (*set_cmd_buffer_ptr)(void *gdma_buffer_ptr, void *bdc_buffer_ptr);
-typedef void (*set_total_id_ptr)(uint32_t *gdma_total_id_ptr, uint32_t *bdc_total_id_ptr, void *cmdid_node, void *gdma_group_id_ptr, void *bdc_group_id_ptr, int *cmdid_groupnum);
-
+typedef void (*set_total_id_ptr)(uint32_t *gdma_total_id_ptr,
+                                 uint32_t *bdc_total_id_ptr, void *cmdid_node,
+                                 void *gdma_group_id_ptr,
+                                 void *bdc_group_id_ptr, int *cmdid_groupnum);
 
 namespace sophgo {
 namespace backend {
@@ -99,7 +101,7 @@ public:
   virtual void before_codegen();
   virtual void after_codegen();
   virtual void deinit();
-  static BM168x * instance(const llvm::StringRef chip);
+  static BM168x *instance(const llvm::StringRef chip);
   // -------------------------------------------------------------------
   // functions from nodechip
   // -------------------------------------------------------------------
@@ -133,12 +135,18 @@ public:
   virtual int64_t get_eu_bytes() = 0;
   virtual int64_t get_lmem_bytes() = 0;
   virtual int64_t get_lmem_banks() = 0;
-  virtual int64_t get_lmem_bank_bytes() { get_lmem_bytes() / get_lmem_banks();}
+  virtual int64_t get_lmem_bank_bytes() { get_lmem_bytes() / get_lmem_banks(); }
   virtual uint32_t get_bdc_len(int bdc_num, int group_id) = 0;
   virtual uint32_t get_gdma_len(int gdma_num, int group_id) = 0;
   uint64_t get_cmodel_gmem_size() { return 0x100000000ull; }
-  int64_t get_eu_num(int64_t dtype_bytes) { get_eu_bytes() / dtype_bytes;}
-  virtual int64_t get_n_align(int64_t dtype_bytes) { return 1;}
+  int64_t get_eu_num(int64_t dtype_bytes) { get_eu_bytes() / dtype_bytes; }
+  virtual int64_t get_n_align(int64_t dtype_bytes) { return 1; }
+  int64_t get_lmem_bytes(int64_t n, int64_t c, int64_t h, int64_t w,
+                         mlir::Type type, bool eu_align = true,
+                         bool is_4N = false);
+  int64_t get_tensor_lmem_bytes(mlir::Value v, int64_t slice_n, int64_t slice_h,
+                                bool eu_align = true);
+  int64_t get_weight_lmem_bytes(mlir::Value v, bool eu_align = true);
 
   static bm_data_type_t getDataType(mlir::Type type);
   static bm_data_type_t getDataType(mlir::Value v);
@@ -167,8 +175,9 @@ protected:
   void *bdc_node;
   void *gdma_node;
   bool really_issue_command;
+  llvm::StringRef chip;
   llvm::sys::DynamicLibrary DL;
 };
 
-}
-}
+} // namespace backend
+} // namespace sophgo

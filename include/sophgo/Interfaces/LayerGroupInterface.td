@@ -46,7 +46,7 @@ def LayerGroupInterface : OpInterface<"LayerGroupInterface"> {
         /*desc=*/[{}],
         /*retType=*/"int64_t",
         /*methodName=*/"getBufferSize",
-        /*args=*/(ins "int64_t":$out_n, "int64_t":$out_c, "int64_t":$out_h, "int64_t":$out_w),
+        /*args=*/(ins "int64_t":$out_n, "int64_t":$out_c, "int64_t":$out_h, "int64_t":$out_w, "int64_t":$out_lmem_bytes),
         /*methodBody=*/"",
         /*defaultImplementation=*/[{
           return 0;
@@ -55,6 +55,7 @@ def LayerGroupInterface : OpInterface<"LayerGroupInterface"> {
   ];
   let extraClassDeclaration = [{
   static constexpr llvm::StringRef kLayerGroupAttrName = "layer_group";
+  static void fixSlice(int64_t &in_idx, int64_t &in_slice, int64_t in_length);
   }];
 }
 #endif // SOPHGO_LAYERGROUPINTERFACE

@@ -135,6 +135,7 @@ void tpu::ConvOp::weight_reorder_int8_bm1686() {
   auto coeff_op = top::WeightOp::create(op, "merge", *new_coeff, coeff_type);
   op->removeAttr("rshift");
   op->removeAttr("multiplier");
+  op->setAttr("coeff_merged", builder.getBoolAttr(true));
   op->setOperand(1, coeff_op);
   auto none = Module::getNoneOp(op);
   op->setOperand(2, none.getResult());

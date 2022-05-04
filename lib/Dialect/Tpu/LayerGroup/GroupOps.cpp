@@ -89,6 +89,9 @@ group_lmem_t GroupOps::list_lmems(int64_t start_idx, int64_t end_idx) {
         break;
       }
     }
+    if (linfo.is_output) {
+      linfo.end_id = -1; // resident in lmem
+    }
   }
   return lmems;
 }
@@ -223,22 +226,20 @@ group_lmem_t GroupOps::CreateGroup(int64_t start_idx, int64_t end_idx,
   int64_t max_hsecs = h;
   new_start_idx = start_idx;
   while (end_idx > new_start_idx) {
+    no_more_try_secs = false;
     hsecs = 1;
-    for (nsecs = 2; nsecs <= max_nsecs; nsecs++) {
+    for (nsecs = 2; no_more_try_secs == false && nsecs <= max_nsecs; nsecs++) {
       auto group_lmem = CreateGroupBySecs(new_start_idx, end_idx, nsecs, hsecs);
       if (group_lmem) {
         return group_lmem;
       }
     }
+
     nsecs = max_nsecs;
-    no_more_try_hsecs = false;
-    for (hsecs = 2; hsecs <= max_hsecs; hsecs++) {
+    for (hsecs = 2; no_more_try_secs == false && hsecs <= max_hsecs; hsecs++) {
       auto group_lmem = CreateGroupBySecs(new_start_idx, end_idx, nsecs, hsecs);
       if (group_lmem) {
         return group_lmem;
-      }
-      if (no_more_try_hsecs) {
-        break;
       }
     }
     new_start_idx++;
@@ -359,7 +360,7 @@ bool GroupOps::backward_from_tensor(group_lmem_t group_lmem, Value v) {
       union_slice(si->h, slice_h);
     }
     if (false == check_hsecs(*in_info)) {
-      no_more_try_hsecs = true;
+      no_more_try_secs = true;
       return false;
     }
     if (in_info->is_input) {
@@ -383,31 +384,11 @@ bool GroupOps::backward_entry(group_lmem_t group_lmem) {
       return false;
     }
   }
-  // checkout all values have been sliced
-  int64_t nsecs = 0, hsecs = 0;
-  for (auto &linfo : *group_lmem) {
-    if (linfo.type != LMEM_TENSOR) {
-      continue;
-    }
-    auto si = linfo.slice_info;
-    if (nsecs == 0) {
-      nsecs = si.n.size();
-      assert(nsecs > 0);
-    } else {
-      assert(nsecs == si.n.size());
-    }
-    if (hsecs == 0) {
-      hsecs = si.h.size();
-      assert(hsecs > 0);
-    } else {
-      assert(hsecs == si.h.size());
-    }
-  }
   return true;
 }
 
 void get_max_slice_nh(const lmem_info_t &lmem_info, int64_t &max_n,
-                        int64_t &max_h) {
+                      int64_t &max_h) {
   auto &si = lmem_info.slice_info;
   max_n = 0;
   max_h = 0;
@@ -423,20 +404,27 @@ void get_max_slice_nh(const lmem_info_t &lmem_info, int64_t &max_n,
   }
 }
 
-void GroupOps::get_op_buffer_size(group_lmem_t group_lmem) {
+void GroupOps::set_lmem_size(group_lmem_t group_lmem) {
+  // set size
+  int64_t n, c, h, w, slice_n, slice_h;
   for (auto &linfo : *group_lmem) {
-    if (linfo.type != LMEM_OPERATION) {
-      continue;
+    if (LMEM_WEIGHT == linfo.type) {
+      linfo.size = bm168x->get_weight_lmem_bytes(linfo.value);
+    } else if (LMEM_TENSOR == linfo.type) {
+      get_max_slice_nh(linfo, slice_n, slice_h);
+      linfo.size = bm168x->get_tensor_lmem_bytes(linfo.value, slice_n, slice_h);
     }
-    auto lg_op = cast<LayerGroupInterface>(linfo.op);
-    auto out = linfo.op->getResult(0);
-    int64_t n, c, h, w;
-    Module::getNCHW(out, n, c, h, w);
-    auto out_info = find_lmem_info(group_lmem, out);
-    assert(out_info != nullptr);
-    int64_t slice_n, slice_h;
-    get_max_slice_nh(*out_info, slice_n, slice_h);
-    linfo.size = lg_op.getBufferSize(slice_n, c, slice_h, w);
+  }
+  for (auto &linfo : *group_lmem) {
+    if (LMEM_OPERATION == linfo.type) {
+      auto lg_op = cast<LayerGroupInterface>(linfo.op);
+      auto out = linfo.op->getResult(0);
+      Module::getNCHW(out, n, c, h, w);
+      auto out_info = find_lmem_info(group_lmem, out);
+      assert(out_info != nullptr);
+      get_max_slice_nh(*out_info, slice_n, slice_h);
+      linfo.size = lg_op.getBufferSize(slice_n, c, slice_h, w, out_info->size);
+    }
   }
 }
 
@@ -452,9 +440,154 @@ group_lmem_t GroupOps::CreateGroupBySecs(int64_t start_idx, int64_t end_idx,
   if (ret == false) {
     return nullptr;
   }
-  // update op buffer size
-  get_op_buffer_size(group_lmem);
+  // checkout all values have been sliced
+  for (auto &linfo : *group_lmem) {
+    if (linfo.type != LMEM_TENSOR) {
+      continue;
+    }
+    auto si = linfo.slice_info;
+    assert(nsecs == si.n.size());
+    assert(hsecs == si.h.size());
+  }
+  // ajust weight timestep
+  if (nsecs != 1 || hsecs != 1) {
+    for (auto &linfo : *group_lmem) {
+      if (linfo.type == LMEM_WEIGHT) {
+        linfo.end_id = -1;
+      }
+    }
+  }
+  // update lmem size and addr
+  set_lmem_size(group_lmem);
+  ret = assign_lmem_addr(group_lmem, nsecs, hsecs);
+  if (ret == false) {
+    return nullptr;
+  }
   return group_lmem;
+}
+
+lmem_info_t *find_max_unalloc_lmem(group_lmem_t group_lmem, int64_t op_id,
+                                   lmem_type_t type) {
+  int64_t size = 0;
+  int64_t term = 0;
+  lmem_info_t *p_li = nullptr;
+  for (auto &linfo : *group_lmem) {
+    if (linfo.addr != -1) {
+      continue;
+    }
+    if (op_id >= 0) {
+      if (linfo.start_id > op_id ||
+          (linfo.end_id < op_id && linfo.end_id != -1)) {
+        continue;
+      }
+    }
+    if (type != LMEM_ANY) {
+      if (type != linfo.type) {
+        continue;
+      }
+    }
+    auto term_ = linfo.end_id - linfo.start_id;
+    if ((term_ < 0 && term >= 0) || ((term_ * term) >= 0 && term_ > term) ||
+        (term_ == term && linfo.size > size)) {
+      term = term_;
+      size = linfo.size;
+      p_li = &linfo;
+    }
+  }
+  return p_li;
+}
+
+bool GroupOps::assign_lmem_addr(group_lmem_t group_lmem, int64_t nsecs,
+                                int64_t hsecs) {
+  int64_t start_addr = 0, end_addr = bm168x->get_lmem_bytes();
+  if (nsecs != 1 || hsecs != 1) {
+    // weight first
+    lmem_info_t *p_li = nullptr;
+    do {
+      p_li = find_max_unalloc_lmem(group_lmem, -1, LMEM_WEIGHT);
+      p_li->addr = alloc_lmem(p_li->size);
+      if (p_li->addr < 0) {
+        no_more_try_secs = true;
+        return false;
+      }
+    } while (p_li != nullptr);
+  }
+  std::vector<int64_t> op_ids;
+  for (auto &linfo : *group_lmem) {
+    if (linfo.type == LMEM_OPERATION) {
+      op_ids.push_back(linfo.id);
+    }
+  }
+  for (auto op_id : op_ids) {
+    free_unuse_lmem(group_lmem, op_id);
+    lmem_info_t *p_li = nullptr;
+    do {
+      p_li = find_max_unalloc_lmem(group_lmem, op_id);
+      if (p_li != nullptr) {
+        p_li->addr = alloc_lmem(p_li->size);
+        if (p_li->addr < 0) {
+          return false;
+        }
+      }
+    } while (p_li != nullptr);
+  }
+}
+
+int64_t GroupOps::alloc_lmem(int64_t size) {
+  bool in_bank[] = {true, false};
+  if (size > bm168x->get_lmem_bytes()) {
+    return -1;
+  }
+  for (auto align_bank : in_bank) {
+    if (size > bm168x->get_lmem_bank_bytes()) {
+      continue;
+    }
+    int64_t addr = 0;
+    for (auto it = allocated_lmems.begin(); it != allocated_lmems.end(); ++it) {
+      if (addr + size <= it->first) {
+        auto pair = lmem_pair_t(addr, size);
+        allocated_lmems.insert(it, pair);
+        return addr;
+      }
+      addr = align_up(it->first + it->second, bm168x->get_eu_bytes());
+      if (align_bank) {
+        auto bank0 = ceiling_func(addr, bm168x->get_lmem_bank_bytes());
+        auto bank1 =
+            ceiling_func(addr + size - 1, bm168x->get_lmem_bank_bytes());
+        if (bank0 != bank1) {
+          addr = align_up(addr, bm168x->get_lmem_bank_bytes());
+        }
+      }
+    }
+    if (addr + size > bm168x->get_lmem_bytes()) {
+      continue;
+    }
+    auto pair = lmem_pair_t(addr, size);
+    allocated_lmems.push_back(pair);
+    return addr;
+  }
+}
+
+void GroupOps::free_lmem(int64_t addr) {
+  for (auto it = allocated_lmems.begin(); it != allocated_lmems.end(); ++it) {
+    if (it->first == addr) {
+      allocated_lmems.erase(it);
+      return;
+    }
+  }
+  llvm_unreachable("can't find addr");
+}
+
+void GroupOps::free_unuse_lmem(group_lmem_t group_lmem, int64_t op_id) {
+  for (auto &linfo : *group_lmem) {
+    if (linfo.addr == -1 || linfo.end_id == -1) {
+      continue;
+    }
+    if (linfo.start_id <= op_id && linfo.end_id >= op_id) {
+      continue;
+    }
+    free_lmem(linfo.addr);
+  }
 }
 
 bool GroupOps::check_hsecs(lmem_info_t &lmem_info) {
