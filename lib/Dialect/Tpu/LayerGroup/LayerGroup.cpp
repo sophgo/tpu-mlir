@@ -7,6 +7,7 @@
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Format.h"
+#include "GroupOps.h"
 
 #include <sstream>
 #include <fstream>
@@ -53,10 +54,10 @@ struct OpReorderPattern : public RewritePattern {
     if (num_opds != 0) {
       for (auto it = opds.rbegin(); it != opds.rend(); ++it) {
         if ((*it)->getNextNode() != last_op) {
-          (*it)->moveBefore(op);
-          last_op = *it;
+          (*it)->moveBefore(last_op);
           fixed = true;
         }
+        last_op = *it;
       }
     }
     return fixed ? success() : failure();
@@ -75,6 +76,8 @@ public:
     RewritePatternSet patterns(ctx);
     patterns.add<OpReorderPattern>(ctx);
     applyPatternsAndFoldGreedily(func, std::move(patterns));
+    GroupOps gOps(func);
+    gOps.process();
   }
 };
 

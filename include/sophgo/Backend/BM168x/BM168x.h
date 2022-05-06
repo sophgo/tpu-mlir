@@ -135,7 +135,7 @@ public:
   virtual int64_t get_eu_bytes() = 0;
   virtual int64_t get_lmem_bytes() = 0;
   virtual int64_t get_lmem_banks() = 0;
-  virtual int64_t get_lmem_bank_bytes() { get_lmem_bytes() / get_lmem_banks(); }
+  virtual int64_t get_lmem_bank_bytes() { return get_lmem_bytes() / get_lmem_banks(); }
   virtual uint32_t get_bdc_len(int bdc_num, int group_id) = 0;
   virtual uint32_t get_gdma_len(int gdma_num, int group_id) = 0;
   uint64_t get_cmodel_gmem_size() { return 0x100000000ull; }
