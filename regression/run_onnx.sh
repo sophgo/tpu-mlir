@@ -82,8 +82,14 @@ model_runner.py \
 sophgo-opt resnet18_int8_1686.mlir \
     --weight-reorder \
     --subnet-divide \
-    --address-asign \
     --layer-group \
+    --save-weight \
+    -o resnet18_int8_lg_1686.mlir
+
+sophgo-opt resnet18_int8_1686.mlir \
+    --weight-reorder \
+    --subnet-divide \
+    --address-asign \
     --save-weight \
     --codegen="model_file=resnet18_int8_1686.bmodel" \
     -o resnet18_int8_addr_1686.mlir

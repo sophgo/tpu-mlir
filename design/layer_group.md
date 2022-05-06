@@ -24,6 +24,8 @@
 
 ## Group划分
 
+#### 划分TimeStep
+
 如何划分group? 首先把每一层Layer需要的lmem罗列出来，大体可以归为三类：
 
 1. Activation Tensor，用于保存输入输出结果，没有使用者后直接释放
@@ -38,21 +40,9 @@
 
 ![](./assets/lg_timestep.png)
 
+#### 划分最优Group
 
-
-## Local Memory分配
-
-n和h有切分的情况下，weight常驻local mem，可以先分配，如下图：
-
-![](./assets/lg_nh_alloc.png)
-
-当n和h都没有切分的情况下，weight和tensor一样，不使用时直接释放，如下：
-
-![](./assets/lg_alloc.png)
-
-## 一些细节
-
-#### 如何划分最优Group ?
+当前策略：
 
 1. 优先不做任何切分的情况下将尽可能多的Layer做group。因为不切时weight用完是可以释放的。
 
@@ -73,6 +63,24 @@ n和h有切分的情况下，weight常驻local mem，可以先分配，如下图
 ![](./assets/lg_branch.png)
 
 如上场景，从输出Slice倒推到交汇的Conv，Slice采用**并集**。这就导致每个tensor不仅要记录当期的`h_idx`(可理解为偏移)和`h_slice`(可理解为长度)，还要记录Op需要的`h_idx`和`h_slice`。
+
+
+
+## Local Memory分配
+
+n和h有切分的情况下，weight常驻local mem，可以先分配，如下图：
+
+![](./assets/lg_nh_alloc.png)
+
+当n和h都没有切分的情况下，weight和tensor一样，不使用时直接释放，如下：
+
+![](./assets/lg_alloc.png)
+
+那么Lmem分配问题就可以转换成这些方块如何摆放问题（注意方块只能左右移动，不能上下移动）。另外lmem分配时优先不要跨bank。
+
+目前策略是按照op顺序依次分配，优先分配timestep长的，次分配lmem大的。目前不是最优策略，后续**待优化**。
+
+
 
 
 
