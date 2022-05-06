@@ -1,4 +1,5 @@
 #include "sophgo/Dialect/Top/IR/TopOps.h"
+#include "sophgo/Dialect/Tpu/IR/TpuOps.h"
 #include "sophgo/Support/Helper/Module.h"
 #include "sophgo/Support/Helper/Quant.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
@@ -128,7 +129,7 @@ void Module::updateModuleTypes(ModuleOp module) {
 void Module::removeUnusedOp(ModuleOp module) {
   for (auto func : module.getOps<FuncOp>()) {
     func.walk([&](Operation *op) {
-      if (isa<func::ReturnOp, FuncOp>(op)) {
+      if (isa<func::ReturnOp, FuncOp, tpu::YieldOp>(op)) {
       } else {
         if (op->getUsers().empty()) {
           op->erase();

@@ -25,6 +25,9 @@ def AnyTensorOrNone: AnyTypeOf<[AnyRankedTensor, NoneType]>;
 // ----------
 // op definition
 // ----------
+class Tpu_BaseOp<string mnemonic, list<Trait> traits = []> :
+    Op<Tpu_Dialect, mnemonic, !listconcat(traits,[NoSideEffect])> ;
+
 class Tpu_Op<string mnemonic, list<Trait> traits = []> :
     Op<Tpu_Dialect, mnemonic, !listconcat(traits,
        [NoSideEffect, HasCommonAttributes,
@@ -216,6 +219,32 @@ def Tpu_CastOp:Tpu_Op<"Cast",
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_LoadOp:Tpu_Op<"Load",
+  [DeclareOpInterfaceMethods<LayerGroupInterface>]> {
+  let summary = "Load operation";
+  let description = [{
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
+    StrAttr:$name
+  );
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_StoreOp:Tpu_Op<"Store",
+  [DeclareOpInterfaceMethods<LayerGroupInterface>]> {
+  let summary = "Store operation";
+  let description = [{
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
+    StrAttr:$name
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 def Tpu_RequantOp:Tpu_Op<"Requant",
   [DeclareOpInterfaceMethods<LayerGroupInterface>]> {
   let summary = "requant operation";
@@ -230,6 +259,34 @@ def Tpu_RequantOp:Tpu_Op<"Requant",
     StrAttr:$name
   );
   let results = (outs AnyTensor:$output);
+}
+
+def Tpu_GroupOp:Tpu_BaseOp<"Group"> {
+  let summary = "Group operation";
+  let description = [{
+  }];
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs,
+    I64Attr:$nsecs,
+    I64Attr:$hsecs
+  );
+  let results = (outs Variadic<AnyTensor>:$outputs);
+  let regions = (region SizedRegion<1>:$body);
+}
+
+def Tpu_YieldOp : Tpu_BaseOp<"Yield", [NoSideEffect,
+    Terminator, HasParent<"GroupOp">]> {
+  let summary = "Yield values to parent operation";
+  let description = [{
+  }];
+
+  let arguments = (ins Variadic<AnyType>:$operands);
+
+  let builders = [
+    OpBuilder<(ins), [{ build($_builder, $_state, llvm::None); }]>
+  ];
+
+  let assemblyFormat = "attr-dict ($operands^ `:` type($operands))?";
 }
 
 #endif // TPU_OPS

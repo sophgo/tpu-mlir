@@ -41,8 +41,8 @@ struct lmem_info_t {
   explicit lmem_info_t(lmem_type_t type, int64_t id, int64_t start_id,
                        int64_t end_id, Value v = nullptr,
                        Operation *op = nullptr)
-      : addr(-1), size(0), id(id), start_id(start_id), end_id(end_id), value(v),
-        op(op), is_input(false), is_output(false) {}
+      : addr(-1), size(0), id(id), start_id(start_id), end_id(end_id),
+        type(type), value(v), op(op), is_input(false), is_output(false) {}
 };
 
 typedef std::shared_ptr<std::vector<lmem_info_t>> group_lmem_t;
@@ -61,14 +61,15 @@ protected:
   group_lmem_t CreateGroupBySecs(int64_t start_idx, int64_t end_idx,
                                  int64_t nsecs, int64_t hsecs);
   bool isWeightValue(mlir::Value v);
-  void group_search();
+  void buildGroups();
+  void buildMlir();
   bool isLgSupport(int64_t op_idx);
   bool check_group(int64_t start_idx, int64_t end_idx);
   bool check_hsecs(lmem_info_t &lmem_info);
   void slice_all_outputs(group_lmem_t group_lmem, int64_t nsecs, int64_t hsecs);
   bool backward_entry(group_lmem_t group_lmem);
-  bool backward_from_tensor(group_lmem_t group_lmem, Value v);
-  void get_max_slice_nh(const lmem_info_t &lmem_info, int64_t &max_n,
+  bool backward_from_tensor(group_lmem_t group_lmem, lmem_info_t *linfo);
+  void get_max_slice_nh(const lmem_info_t &linfo, int64_t &max_n,
                         int64_t &max_h);
   lmem_info_t *find_max_unalloc_lmem(group_lmem_t group_lmem,
                                      int64_t op_id = -1,
@@ -78,17 +79,32 @@ protected:
   bool assign_lmem_addr(group_lmem_t group_lmem, int64_t nsecs, int64_t hsecs);
   int64_t alloc_lmem(int64_t size);
   void free_lmem(int64_t addr);
-  void union_slice(slice_pair_t &target, slice_pair_t &from);
-  void union_slice(std::vector<slice_pair_t> &targets,
-                   std::vector<slice_pair_t> &froms);
+  inline bool is_same_slice(const slice_pair_t &a, const slice_pair_t &b) {
+    return a.first == b.first && a.second == b.second;
+  }
+  bool is_same_slice(const std::vector<slice_pair_t> &a,
+                     const std::vector<slice_pair_t> &b);
   lmem_info_t *find_lmem_info(group_lmem_t group_lmem, mlir::Value v);
   lmem_info_t *find_lmem_info(group_lmem_t group_lmem, mlir::Operation *op);
+  tpu::LoadOp CreateLoadOp(lmem_info_t &linfo,
+                           const std::vector<mlir::Operation *> &ops,
+                           mlir::BlockArgument arg = nullptr);
+  tpu::StoreOp CreateStoreOp(lmem_info_t &linfo);
+  void UpdateOpLgParam(group_lmem_t group_lmem, lmem_info_t &linfo);
+  tpu::LayerGroup getLgParam(lmem_info_t &linfo, int64_t buffer_addr = 0,
+                             int64_t buffer_size = 0);
+  bool need_none(group_lmem_t group_lmem);
+  void buildGroupOp(group_lmem_t group_lmem);
+
+protected:
   std::vector<group_lmem_t> all_lmems;
   std::vector<mlir::Operation *> all_ops;
   std::vector<group_pair_t> groups;
   std::list<lmem_pair_t> allocated_lmems;
   int64_t n_align;
   bool no_more_try_secs;
+  mlir::MLIRContext *ctx;
+  Operation * current_op;
 };
 
 } // namespace tpu
