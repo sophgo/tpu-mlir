@@ -13,7 +13,7 @@ Value top::AddOp::quantize_int8_bm1684() {
   std::vector<Value> operands;
   const int nInputs = op->getNumOperands();
   std::vector<int64_t> rshift_v(nInputs);
-  std::vector<int64_t> multiplier_v(nInputs);
+  std::vector<int64_t> multiplier_v(nInputs, 1);
   std::vector<double> coeff_v(nInputs, 1.0);
   auto th_output = Quant::getThreshold(output());
 
@@ -34,13 +34,13 @@ Value top::AddOp::quantize_int8_bm1684() {
     int8_t multiplier_int8 = 0;
     float coeff = coeff_v[i];
     quantizeToInt8(&coeff, &multiplier_int8, 1, scale);
-    coeff_v[i] = (double)multiplier_int8;
+    multiplier_v[i] = (double)multiplier_int8;
   }
   std::vector<NamedAttribute> attrs;
   attrs.push_back(builder.getNamedAttr("name", nameAttr()));
   attrs.push_back(builder.getNamedAttr("do_relu", do_reluAttr()));
   attrs.push_back(
-      builder.getNamedAttr("coeff", builder.getF64ArrayAttr(coeff_v)));
+      builder.getNamedAttr("multipliers", builder.getI64ArrayAttr(multiplier_v)));
   attrs.push_back(
       builder.getNamedAttr("rshifts", builder.getI64ArrayAttr(rshift_v)));
   auto newOp = builder.create<tpu::AddOp>(op->getLoc(), output().getType(),

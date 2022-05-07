@@ -119,7 +119,8 @@ def Tpu_AddOp: Tpu_Op<"Add", [SupportFuseRelu,
     OptionalAttr<F64ArrayAttr>:$coeff,
     // quant param
     I64ArrayAttr:$rshifts,
-    DefaultValuedAttr<SI32Attr, "0">:$rectified_bias,
+    I64ArrayAttr:$multipliers,
+    DefaultValuedAttr<F64Attr, "0">:$rectified_bias,
     OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
     StrAttr:$name
   );
