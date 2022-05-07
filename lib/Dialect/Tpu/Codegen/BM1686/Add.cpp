@@ -90,10 +90,10 @@ void tpu::AddOp::codegen_int8_bm1686() {
   p.h = (int)h;
   p.w = (int)w;
   p.op_code = 1; // (0: Product; 1: Sum; 2: Max)
-  auto coeff_v = Module::getF64Array(coeff().getValue());
+  auto multipliers_v = Module::getI64Array(multipliers());
   auto rshift_v = Module::getI64Array(rshifts());
-  p.scale_A = (int)coeff_v->at(0);
-  p.scale_B = (int)coeff_v->at(1);
+  p.scale_A = (int)multipliers_v->at(0);
+  p.scale_B = (int)multipliers_v->at(1);
   p.rshift_A = (int)rshift_v->at(0);
   p.rshift_B = (int)rshift_v->at(1);
   p.if_relu = do_relu();
