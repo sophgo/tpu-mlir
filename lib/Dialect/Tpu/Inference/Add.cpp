@@ -20,12 +20,13 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
   auto chip = Module::getChip(module);
 
   int idx = 0;
-  int alg_type = 0; //0:normal, 1:only rightshift the output, 2:use fp32 compute
+  int alg_type = 0; // 0:normal, 1:only rightshift the output, 2:use fp32
+                    // compute
   if (chip == Module::Chip::BM1686) {
     alg_type = 2;
   }
   std::vector<std::string> input_names;
-  std::vector<float*> inputs;
+  std::vector<float *> inputs;
   if (alg_type == 2) {
     auto op = getOperation();
     for (int i = 0; i < p.inputs.size(); i++) {
@@ -33,10 +34,10 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
       inputs.push_back(tmp_buf->data());
       auto input = op->getOperand(i);
       if (Quant::isUniformQuantized(input)) {
-        auto qtype =
-            Quant::getQuantizedType<quant::UniformQuantizedType>(input);
+        auto qtype = Quant::getUniformQuantizedType(input);
         for (int64_t j = 0; j < num_elem; j++) {
-          tmp_buf->data()[j] = (p.inputs[i][j] - qtype.getZeroPoint()) * qtype.getScale();
+          tmp_buf->data()[j] =
+              (p.inputs[i][j] - qtype.getZeroPoint()) * qtype.getScale();
         }
       }
     }
@@ -50,13 +51,14 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
   for (int i = 0; i < p.inputs.size(); i++) {
     auto input = op->getOperand(i);
     if (Quant::isUniformQuantized(input)) {
-      auto qtype =
-          Quant::getQuantizedType<quant::UniformQuantizedType>(input);
-      printf("i:%d, zp:%d, scale:%f\n", i, qtype.getZeroPoint(), qtype.getScale());
+      auto qtype = Quant::getUniformQuantizedType(input);
+      printf("i:%d, zp:%d, scale:%f\n", i, qtype.getZeroPoint(),
+             qtype.getScale());
     }
     int rshift = rshifts().getValue()[i].cast<IntegerAttr>().getInt();
     int multiplier = multipliers().getValue()[i].cast<IntegerAttr>().getInt();
-    printf("i:%d, multiplier:%d, rshift:%d, rectified_bias:%f\n", i, multiplier, rshift, b.convertToDouble());
+    printf("i:%d, multiplier:%d, rshift:%d, rectified_bias:%f\n", i, multiplier,
+           rshift, b.convertToDouble());
   }
 #endif
 
@@ -67,7 +69,8 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
     for (auto in : inputs) {
       if (in != nullptr) {
         int64_t rshift = rshifts().getValue()[idx].cast<IntegerAttr>().getInt();
-        int64_t multiplier = multipliers().getValue()[idx].cast<IntegerAttr>().getInt();
+        int64_t multiplier =
+            multipliers().getValue()[idx].cast<IntegerAttr>().getInt();
         if (chip == Module::Chip::BM1686) {
           if (alg_type == 1) {
             p.outputs[0][i] += ((int64_t)in[i]) * multiplier;
@@ -91,24 +94,24 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
 
     if (chip == Module::Chip::BM1686) {
       if (alg_type == 1) {
-        p.outputs[0][i] -=b.convertToDouble();
+        p.outputs[0][i] -= b.convertToDouble();
         int64_t rshift = rshifts().getValue()[0].cast<IntegerAttr>().getInt();
         int64_t tmp = std::round(p.outputs[0][i]);
         p.outputs[0][i] = tmp >> rshift;
       } else if (alg_type != 2) {
-        p.outputs[0][i] -=b.convertToDouble();
+        p.outputs[0][i] -= b.convertToDouble();
       }
     }
 
     if (do_relu()) {
-      p.outputs[0][i] = p.outputs[0][i] > 0? p.outputs[0][i]:0;
+      p.outputs[0][i] = p.outputs[0][i] > 0 ? p.outputs[0][i] : 0;
     }
 
     if (chip == Module::Chip::BM1686) {
       if (alg_type == 2) {
-        p.outputs[0][i] = std::round(p.outputs[0][i]/scale) + zp;
+        p.outputs[0][i] = std::round(p.outputs[0][i] / scale) + zp;
       } else {
-        p.outputs[0][i] +=zp;
+        p.outputs[0][i] += zp;
         p.outputs[0][i] = std::round(p.outputs[0][i]);
       }
     }
@@ -117,10 +120,11 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
       if (chip == Module::Chip::BM1686) {
         p.outputs[0][i] = Quant::clip_to_int8(p.outputs[0][i]);
       } else {
-        p.outputs[0][i] = Quant::clip_to_uint8(p.outputs[0][i]); //1684量化这里要设为uint8才能过 todo
+        p.outputs[0][i] = Quant::clip_to_uint8(
+            p.outputs[0][i]); // 1684量化这里要设为uint8才能过 todo
       }
     } else {
-        p.outputs[0][i] = Quant::clip_to_int8(p.outputs[0][i]);
+      p.outputs[0][i] = Quant::clip_to_int8(p.outputs[0][i]);
     }
   }
 
@@ -128,7 +132,7 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
   llvm::errs() << "AddOp inference:" << this->name() << "\n";
   for (int i = 0; i < 5; i++) {
     printf("%d, %f+%f = %f\n", i, p.inputs[0][i], p.inputs[1][i],
-    p.outputs[0][i]);
+           p.outputs[0][i]);
   }
 #endif
 

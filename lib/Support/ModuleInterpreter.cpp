@@ -117,8 +117,7 @@ void ModuleInterpreter::invoke(bool express_type) {
       auto mem = mem_map.at(name);
       auto value = value_map.at(name);
       if (Quant::isUniformQuantized(value)) {
-        auto qtype =
-            Quant::getQuantizedType<quant::UniformQuantizedType>(value);
+        auto qtype = Quant::getUniformQuantizedType(value);
         for (auto &data : *mem) {
           data = (data - qtype.getZeroPoint()) * qtype.getScale();
         }

@@ -19,6 +19,10 @@
 namespace sophgo {
 namespace trait {
 
+namespace impl {
+mlir::LogicalResult verifyTpuTypeRestrictTrait(mlir::Operation *op);
+} // namespace impl
+
 // If a op has this trait, it means that relu follow this op can be fused to
 // this op
 template <typename ConcreteType>
@@ -40,6 +44,16 @@ public:
     return mlir::success();
   }
 };
+
+template <typename ConcreteType>
+class TpuTypeRestrict
+    : public ::mlir::OpTrait::TraitBase<ConcreteType, TpuTypeRestrict> {
+public:
+  static mlir::LogicalResult verifyTrait(mlir::Operation *op) {
+    return impl::verifyTpuTypeRestrictTrait(op);
+  }
+};
+
 
 } // namespace trait
 } // namespace sophgo
