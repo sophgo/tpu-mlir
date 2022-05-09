@@ -276,7 +276,7 @@ void GroupOps::buildGroupOp(group_lmem_t group_lmem) {
                                               ArrayRef<NamedAttribute>{attrs});
   auto *body = new Block();
   groupOp.body().push_back(body);
-  body->addArguments(in_types, in_locs);
+  //body->addArguments(in_types, in_locs);
   // replace outputs
   for (auto it : llvm::enumerate(groupOp.getResults())) {
     outputs[it.index()].replaceUsesWithIf(it.value(), [&](OpOperand &operand) {
@@ -311,7 +311,7 @@ void GroupOps::buildGroupOp(group_lmem_t group_lmem) {
       current_op = linfo.op;
       CreateLoadOp(linfo, ops);
     } else if (linfo.is_input) {
-      CreateLoadOp(linfo, ops, body->getArgument(input_idx));
+      CreateLoadOp(linfo, ops, operands[input_idx]);
       input_idx++;
     } else if (linfo.is_output) {
       auto op = CreateStoreOp(linfo);
@@ -331,7 +331,7 @@ void GroupOps::UpdateOpLgParam(group_lmem_t group_lmem, lmem_info_t &linfo) {
 
 LoadOp GroupOps::CreateLoadOp(lmem_info_t &linfo,
                               const std::vector<mlir::Operation *> &ops,
-                              BlockArgument arg) {
+                              Value arg) {
   auto builder = OpBuilder(ctx);
   auto input = linfo.value;
   auto inputOp = input.getDefiningOp();

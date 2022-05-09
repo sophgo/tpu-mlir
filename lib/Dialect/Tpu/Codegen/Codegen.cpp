@@ -174,7 +174,7 @@ CodegenPass::CreateTensorVector(const std::vector<Value> &values) {
     tb.add_mem_type(MEM_TYPE_TPU);
     float scale = 1.0f;
     if (Quant::isUniformQuantized(v)) {
-      auto qtype = Quant::getQuantizedType<quant::UniformQuantizedType>(v);
+      auto qtype = Quant::getUniformQuantizedType(v);
       scale = qtype.getScale();
       if (isa<top::InputOp>(v.getDefiningOp())) {
         scale = 1 / scale;

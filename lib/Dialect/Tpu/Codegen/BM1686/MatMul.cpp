@@ -70,7 +70,7 @@ void tpu::MatMulOp::codegen_int8_bm1686() {
   param.mul_val = multiplier();
   param.shift_val = rshift();
   auto output_type =
-      Quant::getQuantizedType<quant::UniformQuantizedType>(output());
+      Quant::getUniformQuantizedType(output());
   param.offset_val = output_type.getZeroPoint();
   BM1686::instance().call_global_func("backend_api_fc", &param,
                                       sizeof(fc_global_param_t));

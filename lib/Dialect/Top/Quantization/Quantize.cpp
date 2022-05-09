@@ -17,10 +17,12 @@ namespace sophgo {
 namespace top {
 
 static void castOpToInt8(Value v) {
-  if (!Quant::isQuantizedType<quant::CalibratedQuantizedType>(v)) {
+  auto type = v.getType().cast<RankedTensorType>();
+  auto etype = type.getElementType();
+  if (!etype.isa<quant::CalibratedQuantizedType>()) {
     return;
   }
-
+  auto qtype = etype.cast<quant::CalibratedQuantizedType>();
   auto ctx = v.getContext();
   OpBuilder builder(ctx);
   std::vector<Value> operands;
@@ -37,15 +39,17 @@ static void castOpToInt8(Value v) {
   std::string name = Module::getName(op).str();
   attrs.push_back(
       builder.getNamedAttr("name", builder.getStringAttr(name + "_to_int8")));
-  auto castOp = builder.create<tpu::CastOp>(op->getLoc(), v.getType(),
+  auto castOp = builder.create<tpu::CastOp>(op->getLoc(), type,
                                             ArrayRef<Value>{operands},
                                             ArrayRef<NamedAttribute>{attrs});
   Quant::setQuantInt8Type(castOp.output(), asymmetric);
+  auto new_type = RankedTensorType::get(type.getShape(), qtype.getExpressedType());
+  v.setType(new_type);
   v.replaceAllUsesExcept(castOp.output(), castOp);
 }
 
 static void castOpToExpress(Value v, bool asymmetric = false) {
-  if (!Quant::isQuantizedType<quant::UniformQuantizedType>(v)) {
+  if (!Quant::isUniformQuantized(v)) {
     return;
   }
   auto ctx = v.getContext();
@@ -74,15 +78,15 @@ struct ForwardCalibartion : public OpRewritePattern<TyOp> {
                                 PatternRewriter &rewriter) const override {
     Value in = op.input();
     Value out = op.output();
-    if (!Quant::isQuantizedType<quant::CalibratedQuantizedType>(in)) {
+    if (!Quant::isCalibratedType(in)) {
       return failure();
     }
-    if (!Quant::isQuantizedType<quant::CalibratedQuantizedType>(out)) {
+    if (!Quant::isCalibratedType(out)) {
       return failure();
     }
-    auto in_qtype = Quant::getQuantizedType<quant::CalibratedQuantizedType>(in);
+    auto in_qtype = Quant::getCalibratedType(in);
     auto out_qtype =
-        Quant::getQuantizedType<quant::CalibratedQuantizedType>(out);
+        Quant::getCalibratedType(out);
     if (in_qtype.getMax() == out_qtype.getMax() &&
         in_qtype.getMin() == out_qtype.getMin()) {
       return failure();
@@ -102,19 +106,19 @@ struct BackwardCalibartion : public OpRewritePattern<TyOp> {
                                 PatternRewriter &rewriter) const override {
     Value in = op->getOperand(0);
     Value out = op.output();
-    if (!Quant::isQuantizedType<quant::CalibratedQuantizedType>(in)) {
+    if (!Quant::isCalibratedType(in)) {
       return failure();
     }
-    if (!Quant::isQuantizedType<quant::CalibratedQuantizedType>(out)) {
+    if (!Quant::isCalibratedType(out)) {
       return failure();
     }
     if (in.hasOneUse() == false) {
       return failure();
     }
 
-    auto in_qtype = Quant::getQuantizedType<quant::CalibratedQuantizedType>(in);
+    auto in_qtype = Quant::getCalibratedType(in);
     auto out_qtype =
-        Quant::getQuantizedType<quant::CalibratedQuantizedType>(out);
+        Quant::getCalibratedType(out);
     if (in_qtype.getMax() == out_qtype.getMax() &&
         in_qtype.getMin() == out_qtype.getMin()) {
       return failure();
@@ -135,14 +139,14 @@ struct ForwardQuantType : public OpRewritePattern<TyOp> {
                                 PatternRewriter &rewriter) const override {
     Value in = op.input();
     Value out = op.output();
-    if (!Quant::isQuantizedType<quant::UniformQuantizedType>(in)) {
+    if (!Quant::isUniformQuantized(in)) {
       return failure();
     }
-    if (!Quant::isQuantizedType<quant::UniformQuantizedType>(out)) {
+    if (!Quant::isUniformQuantized(out)) {
       return failure();
     }
-    auto in_qtype = Quant::getQuantizedType<quant::UniformQuantizedType>(in);
-    auto out_qtype = Quant::getQuantizedType<quant::UniformQuantizedType>(out);
+    auto in_qtype = Quant::getUniformQuantizedType(in);
+    auto out_qtype = Quant::getUniformQuantizedType(out);
     if (in_qtype == out_qtype) {
       return failure();
     }
