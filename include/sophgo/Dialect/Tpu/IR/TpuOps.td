@@ -26,11 +26,11 @@ def AnyTensorOrNone: AnyTypeOf<[AnyRankedTensor, NoneType]>;
 // op definition
 // ----------
 class Tpu_BaseOp<string mnemonic, list<Trait> traits = []> :
-    Op<Tpu_Dialect, mnemonic, !listconcat(traits,[NoSideEffect])> ;
+    Op<Tpu_Dialect, mnemonic, !listconcat(traits,[NoSideEffect, TpuTypeRestrict])> ;
 
 class Tpu_Op<string mnemonic, list<Trait> traits = []> :
     Op<Tpu_Dialect, mnemonic, !listconcat(traits,
-       [NoSideEffect, HasCommonAttributes,
+       [NoSideEffect, HasCommonAttributes, TpuTypeRestrict,
        DeclareOpInterfaceMethods<CodegenInterface>,
        DeclareOpInterfaceMethods<InferenceInterface>])> ;
 

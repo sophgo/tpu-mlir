@@ -99,7 +99,7 @@ void tpu::ConvOp::weight_reorder_int8_bm1686() {
 
   // add requant op
   auto op = getOperation();
-  auto qtype = Quant::getQuantizedType<quant::UniformQuantizedType>(output());
+  auto qtype = Quant::getUniformQuantizedType(output());
   std::vector<int64_t> quant_shape = {1, oc, 1, 3};
   auto quant_data = std::make_shared<std::vector<int32_t>>(oc * 3, 0);
   auto m_data = Module::getI64Array(multiplier().getValue());

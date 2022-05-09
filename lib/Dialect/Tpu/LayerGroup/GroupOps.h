@@ -88,7 +88,7 @@ protected:
   lmem_info_t *find_lmem_info(group_lmem_t group_lmem, mlir::Operation *op);
   tpu::LoadOp CreateLoadOp(lmem_info_t &linfo,
                            const std::vector<mlir::Operation *> &ops,
-                           mlir::BlockArgument arg = nullptr);
+                           mlir::Value arg = nullptr);
   tpu::StoreOp CreateStoreOp(lmem_info_t &linfo);
   void UpdateOpLgParam(group_lmem_t group_lmem, lmem_info_t &linfo);
   tpu::LayerGroup getLgParam(lmem_info_t &linfo, int64_t buffer_addr = 0,

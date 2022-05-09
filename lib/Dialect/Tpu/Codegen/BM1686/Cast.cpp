@@ -45,7 +45,7 @@ void tpu::CastOp::codegen_int8_bm1686() {
   int64_t n, c, h, w;
   Module::getNCHW(input(), n, c, h, w);
   if (!qInput && qOutput) {
-    auto qtype = Quant::getQuantizedType<quant::UniformQuantizedType>(output());
+    auto qtype = Quant::getUniformQuantizedType(output());
     requant_fp_param_t param = {0};
     param.input_addr = Module::getAddress(input());
     param.output_addr = Module::getAddress(output());
@@ -62,7 +62,7 @@ void tpu::CastOp::codegen_int8_bm1686() {
     BM1686::instance().call_global_func("backend_api_requant_float_global",
                                         &param, sizeof(param));
   } else {
-    auto qtype = Quant::getQuantizedType<quant::UniformQuantizedType>(input());
+    auto qtype = Quant::getUniformQuantizedType(input());
     dequant_fp_param_t param = {0};
     param.input_addr = Module::getAddress(input());
     param.output_addr = Module::getAddress(output());

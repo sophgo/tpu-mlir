@@ -43,7 +43,7 @@ void tpu::RequantOp::codegen_int8_bm1686() {
     param.requant_addr = Module::getAddress(quant());
     param.reshaped_coeff = false;
   } else {
-    auto qtype = Quant::getQuantizedType<quant::UniformQuantizedType>(output());
+    auto qtype = Quant::getUniformQuantizedType(output());
     param.mul_value = multiplier().getValue();
     param.shift_value = rshift().getValue();
     param.offset_value = qtype.getZeroPoint();

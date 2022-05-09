@@ -15,14 +15,10 @@ constexpr llvm::StringRef Quant::Type::BF16;
 constexpr llvm::StringRef Quant::Type::FP16;
 constexpr llvm::StringRef Quant::Type::FP32;
 
-template bool Quant::isQuantizedType<quant::CalibratedQuantizedType>(Value v);
-template quant::CalibratedQuantizedType
-Quant::getQuantizedType<quant::CalibratedQuantizedType>(Value v);
-
 void Quant::setQuantInt8Type(Value v, bool asymmetric, bool sighType) {
   auto type = v.getType().cast<RankedTensorType>();
   auto ctx = v.getContext();
-  auto cali_type = type.getElementType().cast<quant::CalibratedQuantizedType>();
+  auto cali_type = getCalibratedType(v);
   auto max = cali_type.getMax();
   auto min = cali_type.getMin();
   if (asymmetric) {
@@ -35,10 +31,12 @@ void Quant::setQuantInt8Type(Value v, bool asymmetric, bool sighType) {
     const double zeroPointFromMax = qmaxDouble - max / scale;
     const double zeroPointFromMaxError =
         std::abs(qmaxDouble) + std::abs(max / scale);
-    const double zeroPointDouble = (zeroPointFromMinError < zeroPointFromMaxError)
-                                        ? zeroPointFromMin
-                                        : zeroPointFromMax;
-    //printf("zeroPointFromMin:%f, zeroPointFromMax:%f, MinError:%f, %f\n", zeroPointFromMin, zeroPointFromMax, zeroPointFromMinError, zeroPointFromMaxError);
+    const double zeroPointDouble =
+        (zeroPointFromMinError < zeroPointFromMaxError) ? zeroPointFromMin
+                                                        : zeroPointFromMax;
+    // printf("zeroPointFromMin:%f, zeroPointFromMax:%f, MinError:%f, %f\n",
+    // zeroPointFromMin, zeroPointFromMax, zeroPointFromMinError,
+    // zeroPointFromMaxError);
     int64_t nudgedZeroPoint = 0;
     if (zeroPointDouble < qminDouble) {
       nudgedZeroPoint = -128;
@@ -47,7 +45,7 @@ void Quant::setQuantInt8Type(Value v, bool asymmetric, bool sighType) {
     } else {
       nudgedZeroPoint = std::round(zeroPointDouble);
     }
-    //int64_t zeropoint = std::round(-min / scale) - 128;
+    // int64_t zeropoint = std::round(-min / scale) - 128;
     auto uniform_type = quant::UniformQuantizedType();
     if (sighType) {
       uniform_type = quant::UniformQuantizedType::get(
@@ -69,19 +67,6 @@ void Quant::setQuantInt8Type(Value v, bool asymmetric, bool sighType) {
     auto new_type = RankedTensorType::get(type.getShape(), uniform_type);
     v.setType(new_type);
   }
-}
-
-void Quant::setQuantWeightInt8PerChannelType(Value v, ArrayRef<double> scales,
-                                             ArrayRef<int64_t> zeroPoints,
-                                             int32_t quantizedDimension,
-                                             mlir::FloatType exptype) {
-  auto type = v.getType().cast<RankedTensorType>();
-  auto ctx = v.getContext();
-  auto per_channel_int8_type = quant::UniformQuantizedPerAxisType::get(
-      quant::QuantizationFlags::Signed, IntegerType::get(ctx, 8), exptype,
-      scales, zeroPoints, quantizedDimension, -128, 127);
-  auto new_type = RankedTensorType::get(type.getShape(), per_channel_int8_type);
-  v.setType(new_type);
 }
 
 void Quant::setQuantExpressType(Value v) {
