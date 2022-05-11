@@ -1,8 +1,7 @@
 #include "sophgo/Dialect/Tpu/IR/TpuOps.h"
 #include "sophgo/Support/Dnnl/Dnnl.h"
-#include "sophgo/Support/Helper/Quant.h"
 #include "sophgo/Support/Helper/Module.h"
-
+#include "sophgo/Support/Helper/Quant.h"
 using namespace sophgo;
 using namespace sophgo::helper;
 using namespace mlir;
@@ -11,63 +10,13 @@ LogicalResult tpu::ConvOp::init(InferenceParameter &p) {
   auto conv = new Conv();
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
-  bool is_dw, with_bias, has_relu;
+  bool is_dw, with_bias, relu;
+  auto in_qtype = Quant::getUniformQuantizedType(input());
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-             pl, pr, dh, dw, is_dw, with_bias, has_relu);
-
-  //llvm::errs() << "ConvOp setup:" << this->name() << "\n";
-  auto idt = getDnnlType(input());
-  auto wdt = getDnnlType(filter());
-  auto bdt = memory::data_type::f32;
-  auto odt = memory::data_type::f32;
-  if (with_bias) {
-    bdt = getDnnlType(bias());
-  }
-  if (Quant::isUniformQuantized(output())) {
-    odt = memory::data_type::s32;
-  }
-
-  int *p_rshift = nullptr;
-  int *p_multiplier = nullptr;
-  std::vector<int> rshift_v;
-  std::vector<int> multiplier_v;
-  bool per_channel = false;
-  int size = multiplier().hasValue() ? multiplier().getValue().size() : 0;
-  if (size > 1) {
-    per_channel = true;
-  }
-  if (size > 0) {
-    for (size_t i = 0; i < oc; i++) {
-      rshift_v.push_back(rshift().getValue()[i].cast<IntegerAttr>().getInt());
-      multiplier_v.push_back(
-          multiplier().getValue()[i].cast<IntegerAttr>().getInt());
-    }
-    p_rshift = rshift_v.data();
-    p_multiplier = multiplier_v.data();
-  } else {
-    rshift_v.push_back(rshift().getValue()[0].cast<IntegerAttr>().getInt());
-    p_rshift = rshift_v.data();
-  }
-
-  int izp = 0;
-  auto dtype = input().getType().cast<RankedTensorType>().getElementType();
-  if (dtype.isa<quant::UniformQuantizedType>()) {
-    izp = dtype.cast<quant::UniformQuantizedType>().getZeroPoint();
-  }
-
-  int ozp = 0;
-  dtype = output().getType().cast<RankedTensorType>().getElementType();
-  if (dtype.isa<quant::UniformQuantizedType>()) {
-    ozp = dtype.cast<quant::UniformQuantizedType>().getZeroPoint();
-  }
-
-  auto module = Module::getModuleOp(getOperation());
-  int chip = (Module::getChip(module) == Module::Chip::BM1686)?1:0;
-  conv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], n, ic,
-              ih, // fixme p.inputs[2] maybe null???
+             pl, pr, dh, dw, is_dw, with_bias, relu);
+  conv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], n, ic, ih,
               iw, oc, oh, ow, kh, kw, sh, sw, dh, dw, pt, pb, pl, pr, g,
-              has_relu, izp, ozp, p_rshift, p_multiplier, idt, wdt, bdt, odt,
-              per_channel, chip);
+              do_relu(), in_qtype.getZeroPoint());
   p.handle = (void *)conv;
   return success();
 }
@@ -86,12 +35,30 @@ LogicalResult tpu::ConvOp::inference(InferenceParameter &p) {
   }
   auto conv = (Conv *)p.handle;
   conv->run();
-#ifdef DEBUG_TPU_INFER
-  llvm::errs() << "ConvOp inference:" << this->name() << "\n";
-  for (int i = 0; i < 5; i++) {
-    printf("%d  %f x %d +%f = %f\n", i, p.inputs[0][i],
-    (int8_t)p.inputs[1][i], p.inputs[2][i], p.outputs[0][i]);
+  // requant
+  int64_t n, c, h, w;
+  Module::getNCHW(output(), n, c, h, w);
+  auto o_qtype = Quant::getUniformQuantizedType(output());
+  auto rshift_v = Module::getI64Array(rshift().getValue());
+  bool peraxis = rshift_v->size() == c;
+  std::shared_ptr<std::vector<int64_t>> multiplier_v;
+  if (multiplier().hasValue()) {
+    multiplier_v = Module::getI64Array(multiplier().getValue());
+  } else {
+    multiplier_v = std::make_shared<std::vector<int64_t>>(rshift_v->size(), 1);
   }
-#endif
+#pragma omp parallel for schedule(static, omp_schedule(c))
+  for (int ic = 0; ic < c; ic++) {
+    int64_t shift = peraxis ? rshift_v->at(ic) : rshift_v->at(0);
+    int64_t multi = peraxis ? multiplier_v->at(ic) : multiplier_v->at(0);
+    for (int in = 0; in < n; in++) {
+      for (int hw = 0; hw < h * w; hw++) {
+        int offset = (in * c + ic) * h * w + hw;
+        auto v = (((int64_t)(p.outputs[0][offset] * multi)) >> shift) +
+                 o_qtype.getZeroPoint();
+        p.outputs[0][offset] = Quant::clip_to_int8(v);
+      }
+    }
+  }
   return success();
 }

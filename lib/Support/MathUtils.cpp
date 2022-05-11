@@ -8,10 +8,9 @@ namespace sophgo {
 void get_scale_and_shift(float scale_f, int &scale, int &shift, int bitwidth) {
   float min_err = FLT_MAX;
   int m_limit = (bitwidth == 32) ? INT_MAX : CHAR_MAX;
-  for (
-      int n = -32; n < 31;
-      n++) { //若scale_f大于等于1，这里循环上限要设为31(而不是32)，且越大则需减少越多，暂只考虑scale_f小于等于1的情形
-             // wxc 20220119
+  for (int n = -32; n < 31; n++) {
+    //若scale_f大于等于1，这里循环上限要设为31(而不是32)，且越大则需减少越多，暂只考虑scale_f小于等于1的情形
+    // wxc 20220119
     int m = (int)std::round(scale_f * std::pow(2, n));
     float err = std::abs(m / std::pow(2, n) - scale_f);
     if (err < min_err && abs(m) < m_limit) {
@@ -203,9 +202,30 @@ void quantizeToInt8(const float *pSrc, int8_t *pDst, int len, float scale) {
   }
 }
 
-void pad_tensor(float* input,  float* input_paded1,  float* input_paded2, int n, int ic, int ih, int iw, int pt, int pb, int pl, int pr) {
-  float* _input_paded1 = input_paded1;
-  float* _input_paded2 = input_paded2;
+void pad_tensor(float *p_after_pad, float *src, int n, int c, int h, int w,
+                int pt, int pb, int pl, int pr, float pad_value) {
+  int nc = n * c;
+  int oh = h + pt + pb;
+  int ow = w + pl + pr;
+  for (int i = 0; i < nc; i++) {
+    for (int j = 0; j < oh; j++) {
+      for (int k = 0; k < ow; k++) {
+        int d_offset = (i * oh + j) * ow + k;
+        if (j < pt || j >= (pt + h) || k < pl || k >= (pl + w)) {
+          p_after_pad[d_offset] = pad_value;
+        } else {
+          int s_offset = (i * h + j - pt) * w + k - pl;
+          p_after_pad[d_offset] = src[s_offset];
+        }
+      }
+    }
+  }
+}
+
+void pad_tensor(float *input, float *input_paded1, float *input_paded2, int n,
+                int ic, int ih, int iw, int pt, int pb, int pl, int pr) {
+  float *_input_paded1 = input_paded1;
+  float *_input_paded2 = input_paded2;
   int _ih = ih - pt - pb;
   int _iw = iw - pl - pr;
 
@@ -220,14 +240,14 @@ void pad_tensor(float* input,  float* input_paded1,  float* input_paded2, int n,
         printf("***\n");
     }*/
 
-    for (int i= 0; i< n*ic; i++) {
+    for (int i = 0; i < n * ic; i++) {
       _input_paded1 += pt * _iw;
       memcpy(_input_paded1, input + _ih * _iw * i, sizeof(float) * _ih * _iw);
       _input_paded1 += _ih * _iw;
       _input_paded1 += pb * _iw;
     }
 
-    for (int i= 0; i< n*ic*(_ih+pt+pb); i++) {
+    for (int i = 0; i < n * ic * (_ih + pt + pb); i++) {
       _input_paded2 += pl;
       memcpy(_input_paded2, input_paded1 + _iw * i, sizeof(float) * _iw);
       _input_paded2 += _iw;
@@ -243,40 +263,6 @@ void pad_tensor(float* input,  float* input_paded1,  float* input_paded2, int n,
         printf("***\n");
     }*/
   }
-
-#if 0
-  if (_pt > 0 || _pb > 0 || _pr > 0 || _pl > 0) {
-    int n = src_shape[0];
-    int ic = src_shape[1];
-    int ih = src_shape[2];
-    int iw = src_shape[3];
-    for (int j = 0; j < n*ic; j++) {
-      // Padding on the low end
-      mem_set(_pt * iw, _izp, _input_paded1);
-      _input_paded1 += _pt * iw;
-      // Copy the original value
-      const float *input_data = _input + ih * iw * j;
-      mem_copy(ih * iw, input_data, _input_paded1);
-      _input_paded1 += ih * iw;
-      // Padding on the high end
-      mem_set(_pb * iw, _izp, _input_paded1);
-      _input_paded1 += _pb * iw;
-    }
-
-    for (int j = 0; j < n*ic*(ih+_pt+_pb); j++) {
-      // Padding on the low end
-      mem_set(_pl, _izp, _input_paded2);
-      _input_paded2 += _pl;
-      // Copy the original value
-      const auto *input_data = _input_paded1 + iw * j;
-      ufw_copy(iw, input_data, _input_paded2);
-      _input_paded2 += iw;
-      // Padding on the high end
-      mem_set(_pr, _izp, _input_paded2);
-      _input_paded2 += _pr;
-    }
-  }
-#endif
 }
 
 } // namespace sophgo

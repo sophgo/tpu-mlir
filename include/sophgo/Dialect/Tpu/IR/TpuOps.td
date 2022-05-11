@@ -163,7 +163,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
     AnyTensorOrNone:$bias,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<I64Attr, "0">:$rshift,
-    DefaultValuedAttr<I64Attr, "0">:$multiplier,
+    DefaultValuedAttr<I64Attr, "1">:$multiplier,
     OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
     StrAttr:$name
   );
