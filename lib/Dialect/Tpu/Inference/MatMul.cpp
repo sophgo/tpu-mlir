@@ -12,19 +12,9 @@ LogicalResult tpu::MatMulOp::init(InferenceParameter &p) {
   int64_t batch, M, K, N;
   bool relu, with_bias;
   parseParam(batch, M, K, N, with_bias, relu);
-  auto ldt = getDnnlType(input());
-  auto rdt = getDnnlType(right());
-  auto bdt = memory::data_type::f32;
-  auto odt = memory::data_type::f32;
-  if (with_bias) {
-    bdt = getDnnlType(bias());
-  }
-  if (Quant::isUniformQuantized(output())) {
-    odt = memory::data_type::s32;
-  }
 
   matmul->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], batch, M,
-                K, N, relu, rshift(), multiplier(), ldt, rdt, bdt, odt);
+                K, N, relu);
   p.handle = (void *)matmul;
   return success();
 }
@@ -44,12 +34,15 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
   }
   auto matmul = (MatMul *)p.handle;
   matmul->run();
-#ifdef DEBUG_TPU_INFER
-  llvm::errs() << "MatMulOp inference:" << this->name() << "\n";
-  for (int i = 0; i < 5; i++) {
-    printf("%d  %f x %d +%f = %f\n", i, p.inputs[0][i],
-    (int8_t)p.inputs[1][i], p.inputs[2][i], p.outputs[0][i]);
+  auto o_qtype = Quant::getUniformQuantizedType(output());
+  auto rft = rshift();
+  auto mlti = multiplier();
+  auto num_output = Module::getNumElements(output());
+#pragma omp parallel for schedule(static, omp_schedule(num_output))
+  for (int64_t i = 0; i < num_output; i++) {
+    auto v =
+        (((int64_t)(p.outputs[0][i] * mlti)) >> rft) + o_qtype.getZeroPoint();
+    p.outputs[0][i] = Quant::clip_to_int8(v);
   }
-#endif
   return success();
 }
