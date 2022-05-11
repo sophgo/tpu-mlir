@@ -7,13 +7,11 @@ namespace sophgo {
 // =======================
 // alignment function
 // =======================
-template<typename T>
-static inline T ceiling_func(T numerator, T denominator) {
+template <typename T> static inline T ceiling_func(T numerator, T denominator) {
   return (numerator + denominator - 1) / denominator;
 }
 
-template<typename T>
-static inline T align_up(T x, T a) {
+template <typename T> static inline T align_up(T x, T a) {
   return ceiling_func(x, a) * a;
 }
 
@@ -42,6 +40,9 @@ float quantizeToInt15(const float *pSrc, int16_t *pDst, int len, float scale,
                       int rshift = 0);
 void quantizeToInt8(const float *pSrc, int8_t *pDst, int len, float scale);
 
-void pad_tensor(float* input,  float* input_paded1,  float* input_paded2,
-                int n, int ic, int ih, int iw, int pt, int pb, int pl, int pr);
+void pad_tensor(float *input, float *input_paded1, float *input_paded2, int n,
+                int ic, int ih, int iw, int pt, int pb, int pl, int pr);
+
+void pad_tensor(float *p_after_pad, float *src, int n, int c, int h, int w,
+                int pt, int pb, int pl, int pr, float pad_value);
 } // namespace sophgo

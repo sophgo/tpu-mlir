@@ -29,7 +29,10 @@ struct Quant {
   }
 
   static inline bool isUniformQuantized(Value v) {
-    return v.getType().cast<RankedTensorType>().getElementType().isa<quant::UniformQuantizedType>();
+    return v.getType()
+        .cast<RankedTensorType>()
+        .getElementType()
+        .isa<quant::UniformQuantizedType>();
   }
 
   static inline quant::CalibratedQuantizedType getCalibratedType(Value v) {
@@ -61,6 +64,10 @@ struct Quant {
     auto type = getCalibratedType(v);
     return type.getMin();
   }
+
+  static void getScaleAndZeroPoint(int64_t qmin, int64_t qmax, double rmin,
+                                   double rmax, double &scale,
+                                   int64_t &zeroPoint);
 
   static inline int8_t clip_to_int8(int value) {
     return value > 127 ? 127 : value < -128 ? -128 : value;
