@@ -55,26 +55,15 @@ struct Quant {
     return type.getMax();
   }
 
-  static inline double getMax(Value v) {
-    auto type = getCalibratedType(v);
-    return type.getMax();
-  }
-
-  static inline double getMin(Value v) {
-    auto type = getCalibratedType(v);
-    return type.getMin();
-  }
-
   static void getScaleAndZeroPoint(int64_t qmin, int64_t qmax, double rmin,
                                    double rmax, double &scale,
                                    int64_t &zeroPoint);
+  static void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint);
 
-  static inline int8_t clip_to_int8(int value) {
-    return value > 127 ? 127 : value < -128 ? -128 : value;
-  }
-
-  static inline uint8_t clip_to_uint8(int value) {
-    return value > 255 ? 255 : value < 0 ? 0 : value;
+  template<typename T>
+  static inline int8_t to_int8(T value) {
+    auto v = std::round(value);
+    return v > 127 ? 127 : v < -128 ? -128 : v;
   }
 
   static void setQuantInt8Type(Value v, bool asymmetric = false,

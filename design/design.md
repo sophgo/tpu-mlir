@@ -22,6 +22,7 @@
 
   * operation的资源申请与forward过程分离；
   * interpet能用oneDNN的，用oneDNN；不能用oneDNN的，尽量用OMP
+  * oneDNN做int8推理的时候也用fp32运算，避免其他类型运算难以定位
 
 * mlir默认整型是INT64，默认浮点型是F64。 attribute的类型尽量用默认类型。好处如下：
 
