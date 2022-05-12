@@ -56,7 +56,7 @@ LogicalResult tpu::ConvOp::inference(InferenceParameter &p) {
         int offset = (in * c + ic) * h * w + hw;
         auto v = (((int64_t)(p.outputs[0][offset] * multi)) >> shift) +
                  o_qtype.getZeroPoint();
-        p.outputs[0][offset] = Quant::clip_to_int8(v);
+        p.outputs[0][offset] = Quant::to_int8(v);
       }
     }
   }

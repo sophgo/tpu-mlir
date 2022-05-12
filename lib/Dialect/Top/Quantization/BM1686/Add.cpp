@@ -15,8 +15,9 @@ Value top::AddOp::quantize_int8_bm1686() {
   std::vector<int64_t> rshift_v(nInputs);
   std::vector<int64_t> multiplier_v(nInputs, 1);
   std::shared_ptr<std::vector<double>> coeff_v;
-  auto output_min = Quant::getMin(output());
-  auto output_max = Quant::getMax(output());
+  int64_t o_zp;
+  double o_scale;
+  Quant::getScaleAndZeroPoint(output(), o_scale, o_zp);
 
   if (coeff().hasValue()) {
     coeff_v = Module::getF64Array(coeff().getValue());
@@ -31,14 +32,11 @@ Value top::AddOp::quantize_int8_bm1686() {
   for (int i = 0; i < nInputs; i++) {
     auto input = op->getOperand(i);
     operands.push_back(input);
-    auto input_min = Quant::getMin(input);
-    auto input_max = Quant::getMax(input);
-    Quant::getScaleAndZeroPoint(-128, 127, input_min, input_max, scale,
-                                zeropoint);
+    Quant::getScaleAndZeroPoint(input, scale, zeropoint);
     int scalei, shifti;
-    double alpha = (input_max - input_min) / (output_max - output_min);
-    bias += alpha * zeropoint;
-    get_scale_and_shift(coeff_v->at(i) * alpha, scalei, shifti, 8);
+    auto scale_f = scale / o_scale;
+    bias += scale_f * zeropoint;
+    get_scale_and_shift(coeff_v->at(i) * scale_f, scalei, shifti, 8);
     multiplier_v[i] = scalei;
     rshift_v[i] = shifti;
   }
@@ -46,8 +44,8 @@ Value top::AddOp::quantize_int8_bm1686() {
   std::vector<NamedAttribute> attrs;
   attrs.push_back(builder.getNamedAttr("name", nameAttr()));
   attrs.push_back(builder.getNamedAttr("do_relu", do_reluAttr()));
-  attrs.push_back(
-      builder.getNamedAttr("multipliers", builder.getI64ArrayAttr(multiplier_v)));
+  attrs.push_back(builder.getNamedAttr("multipliers",
+                                       builder.getI64ArrayAttr(multiplier_v)));
   attrs.push_back(
       builder.getNamedAttr("rshifts", builder.getI64ArrayAttr(rshift_v)));
   attrs.push_back(

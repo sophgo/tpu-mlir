@@ -19,14 +19,10 @@ Value top::ConvOp::quantize_int8_bm1686() {
              pl, pr, dh, dw, is_dw, with_bias, relu);
   auto filterOp = cast<top::WeightOp>(filter().getDefiningOp());
   auto filter_f32 = filterOp.read<float>();
-  auto in_qtype = Quant::getCalibratedType(input());
-  auto out_qtype = Quant::getCalibratedType(output());
   double in_scale, out_scale;
   int64_t in_zp, out_zp;
-  Quant::getScaleAndZeroPoint(-128, 127, in_qtype.getMin(), in_qtype.getMax(),
-                              in_scale, in_zp);
-  Quant::getScaleAndZeroPoint(-128, 127, out_qtype.getMin(), out_qtype.getMax(),
-                              out_scale, out_zp);
+  Quant::getScaleAndZeroPoint(input(), in_scale, in_zp);
+  Quant::getScaleAndZeroPoint(output(), out_scale, out_zp);
 
   std::shared_ptr<std::vector<int32_t>> bias_int32;
   std::shared_ptr<std::vector<float>> bias_fp32;
@@ -54,8 +50,7 @@ Value top::ConvOp::quantize_int8_bm1686() {
     rshift_v.push_back(shift);
 
     for (int t = 0; t < dim; t++) {
-      int quant_weight = std::round(p_filter[t] / scale_w);
-      filter_int8->data()[c * dim + t] = Quant::clip_to_int8(quant_weight);
+      filter_int8->data()[c * dim + t] = Quant::to_int8(p_filter[t] / scale_w);
     }
 
     double bias_w_xz = 0;

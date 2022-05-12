@@ -17,7 +17,7 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (size_t i = 0; i < num_elem; i++) {
       auto v = p.inputs[0][i] / qtype.getScale() + qtype.getZeroPoint();
-      p.outputs[0][i] = Quant::clip_to_int8(std::round(v));
+      p.outputs[0][i] = Quant::to_int8(v);
     }
   } else if (Quant::isUniformQuantized(input())) {
     auto qtype = Quant::getUniformQuantizedType(input());

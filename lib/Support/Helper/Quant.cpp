@@ -34,6 +34,21 @@ void Quant::getScaleAndZeroPoint(int64_t qmin, int64_t qmax, double rmin,
   }
 }
 
+void Quant::getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint) {
+  if (isCalibratedType(v)) {
+    auto qtype = getCalibratedType(v);
+    getScaleAndZeroPoint(-128, 127, qtype.getMin(), qtype.getMax(), scale,
+                         zeropoint);
+  } else if (isUniformQuantized(v)) {
+    auto qtype = getUniformQuantizedType(v);
+    scale = qtype.getScale();
+    zeropoint = qtype.getZeroPoint();
+  } else {
+    v.dump();
+    llvm_unreachable("can't get scale and zeropoint");
+  }
+}
+
 void Quant::setQuantInt8Type(Value v, bool asymmetric, bool signType) {
   auto type = v.getType().cast<RankedTensorType>();
   auto ctx = v.getContext();

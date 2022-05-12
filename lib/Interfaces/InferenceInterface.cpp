@@ -17,7 +17,7 @@ void relu(float *src, float *dst, int64_t size, mlir::Type elem_type) {
     if (elem_type && elem_type.isInteger(8)) {
       //float max = elem_type.isUnsignedInteger(8) ? 255.0: 127.0;
       //dst[i] = std::min(dst[i], max);
-      dst[i] = Quant::clip_to_int8(dst[i]);
+      dst[i] = Quant::to_int8(dst[i]);
     }
   }
 }

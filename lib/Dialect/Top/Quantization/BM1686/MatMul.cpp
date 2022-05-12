@@ -20,21 +20,16 @@ Value top::MatMulOp::quantize_int8_bm1686() {
   const int nInputs = op->getNumOperands();
   auto filterOp = cast<top::WeightOp>(right().getDefiningOp());
   auto filter_f32 = filterOp.read<float>();
-  auto in_qtype = Quant::getCalibratedType(input());
-  auto out_qtype = Quant::getCalibratedType(output());
   int64_t in_zp, out_zp;
   double in_scale, out_scale;
-  Quant::getScaleAndZeroPoint(-128, 127, in_qtype.getMin(), in_qtype.getMax(),
-                              in_scale, in_zp);
-  Quant::getScaleAndZeroPoint(-128, 127, out_qtype.getMin(), out_qtype.getMax(),
-                              out_scale, out_zp);
+  Quant::getScaleAndZeroPoint(input(), in_scale, in_zp);
+  Quant::getScaleAndZeroPoint(output(), out_scale, out_zp);
 
   double w_max = findMaxabs(filter_f32->data(), filter_f32->size());
   double w_scale = w_max / 127.0;
   auto filter_int8 = std::make_shared<std::vector<int8_t>>(filter_f32->size());
   for (int t = 0; t < filter_f32->size(); t++) {
-    int quant_weight = std::round(filter_f32->data()[t] / w_scale);
-    filter_int8->data()[t] = Quant::clip_to_int8(quant_weight);
+    filter_int8->data()[t] = Quant::to_int8(filter_f32->data()[t] / w_scale);
   }
 
   std::shared_ptr<std::vector<int32_t>> bias_int32;

@@ -42,8 +42,7 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
       if (do_relu()) {
         p.outputs[0][i] = std::max(0.0f, p.outputs[0][i]);
       }
-      p.outputs[0][i] =
-          Quant::clip_to_int8(std::round(p.outputs[0][i] / scale + zp));
+      p.outputs[0][i] = Quant::to_int8(p.outputs[0][i] / scale + zp);
     }
     return success();
   }
@@ -63,7 +62,7 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
     } else if (do_relu()) {
       p.outputs[0][i] = p.outputs[0][i] > 0 ? p.outputs[0][i] : 0;
     }
-    p.outputs[0][i] = Quant::clip_to_int8(p.outputs[0][i]);
+    p.outputs[0][i] = Quant::to_int8(p.outputs[0][i]);
   }
 
   return success();
