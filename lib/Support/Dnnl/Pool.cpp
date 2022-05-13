@@ -8,48 +8,37 @@ using namespace sophgo;
 Pooling::Pooling() {
   eng = dnnl::engine(engine::kind::cpu, 0);
   eng_stream = dnnl::stream(eng);
-  _input_paded1 = nullptr;
-  _input_paded2 = nullptr;
   _pt = _pb = _pr = _pl = 0;
   _izp = 0;
 }
 
-Pooling::~Pooling() {
-  if (_izp && (_pt > 0 || _pb > 0 || _pr > 0 || _pl > 0)) {
-    if (_input_paded1) {
-      delete []_input_paded1;
-      _input_paded1 = nullptr;
-    }
-
-    if (_input_paded2) {
-      delete []_input_paded2;
-      _input_paded2 = nullptr;
-    }
-  }
-}
+Pooling::~Pooling() {}
 
 void Pooling::pad_init(float *input, int n, int ic, int ih, int iw, int& pt, int& pb, int& pl, int& pr, int izp) {
-  _input = input;
+  origin_input = input;
   _pt = pt;
   _pb = pb;
   _pr = pr;
   _pl = pl;
   _izp = izp;
-  if (_izp && (pt > 0 || pb > 0 || pr > 0 || pl > 0)) {
-    int input_paded_size = n*ic*(ih+pt+pb)*(iw+pr+pl);
-    _input_paded1 = new float[input_paded_size];
-    _input_paded2 = new float[input_paded_size];
-    for (int i = 0; i < input_paded_size; i++) {
-      _input_paded1[i] = izp;
-      _input_paded2[i] = izp;
-    }
-    src_shape = {n, ic, ih+pt+pb, iw+pr+pl};
+  _n = n;
+  _c = ic;
+  _h = ih;
+  _w = iw;
+  if (izp && (_pt > 0 || _pb > 0 || _pr > 0 || _pl > 0)) {
+    int input_paded_size = n * ic * (ih + pt + pb) * (iw + pr + pl);
+    input_after_pad = std::make_shared<std::vector<float>>(input_paded_size);
+    src_shape = {n, ic, ih + pt + pb, iw + pr + pl};
     pt = pb = pr = pl = 0;
+    p_input = input_after_pad->data();
   } else {
     src_shape = {n, ic, ih, iw};
-    _input_paded2 = input;
+    p_input = input;
   }
 }
+
+
+
 
 void Pooling::setup(float *input, float *output, int n, int c, int ih, int iw,
                     int oh, int ow, int kh, int kw, int sh, int sw, int pt,
@@ -77,7 +66,7 @@ void Pooling::setup(float *input, float *output, int n, int c, int ih, int iw,
   prim_desc = pooling_forward::primitive_desc(pool_desc, eng);
   memory src_memory =
       memory({{src_shape}, memory::data_type::f32, memory::format_tag::nchw},
-             eng, _input_paded2);
+             eng, p_input);
   memory dst_memory =
       memory({{dst_shape}, memory::data_type::f32, memory::format_tag::nchw},
              eng, output);
@@ -102,8 +91,9 @@ void Pooling::setup(float *input, float *output, int n, int c, int ih, int iw,
 }
 
 void Pooling::run() {
-  if (_izp)
-    pad_tensor(_input, _input_paded1, _input_paded2, src_shape[0], src_shape[1], src_shape[2], src_shape[3], _pt, _pb, _pl, _pr);
+  if (input_after_pad) {
+    pad_tensor(input_after_pad->data(), origin_input, _n, _c, _h, _w, _pt, _pb, _pl, _pr, _izp);
+  }
   for (size_t i = 0; i < net.size(); ++i)
     net.at(i).execute(eng_stream, net_args.at(i));
   eng_stream.wait();

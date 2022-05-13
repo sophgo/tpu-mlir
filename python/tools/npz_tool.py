@@ -3,6 +3,7 @@
 from numpy_helper import *
 npz_tool_func = {
     "compare": npz_compare,
+    "visualize_diff": npz_visualize_diff,
     'dump':npz_dump,
     "extract": npz_extract,
     "rename": npz_rename,

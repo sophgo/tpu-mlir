@@ -40,8 +40,6 @@ float quantizeToInt15(const float *pSrc, int16_t *pDst, int len, float scale,
                       int rshift = 0);
 void quantizeToInt8(const float *pSrc, int8_t *pDst, int len, float scale);
 
-void pad_tensor(float *input, float *input_paded1, float *input_paded2, int n,
-                int ic, int ih, int iw, int pt, int pb, int pl, int pr);
 
 void pad_tensor(float *p_after_pad, float *src, int n, int c, int h, int w,
                 int pt, int pb, int pl, int pr, float pad_value);

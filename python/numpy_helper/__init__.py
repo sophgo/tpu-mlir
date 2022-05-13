@@ -1,4 +1,5 @@
 from .npz_compare import npz_compare, load_op_info, dequantize
+from .npz_visualize_diff import npz_visualize_diff
 from .npz_dump import npz_dump
 from .npz_predict import npz_predict
 import numpy as np
