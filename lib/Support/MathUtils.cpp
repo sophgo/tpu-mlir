@@ -222,47 +222,4 @@ void pad_tensor(float *p_after_pad, float *src, int n, int c, int h, int w,
   }
 }
 
-void pad_tensor(float *input, float *input_paded1, float *input_paded2, int n,
-                int ic, int ih, int iw, int pt, int pb, int pl, int pr) {
-  float *_input_paded1 = input_paded1;
-  float *_input_paded2 = input_paded2;
-  int _ih = ih - pt - pb;
-  int _iw = iw - pl - pr;
-
-  if (pt > 0 || pb > 0 || pr > 0 || pl > 0) {
-    /*int chan_idx = 10;
-    int chan_offset = chan_idx*_ih*_iw;
-    printf("N:0 C:0 input tensor(%d,%d):\n", _ih, _iw);
-    for (int i= 0; i< _ih; i++) {
-        for (int j= 0; j< _iw; j++) {
-          printf("%d ", (int)(*(input+chan_offset+i*_iw+j)));
-        }
-        printf("***\n");
-    }*/
-
-    for (int i = 0; i < n * ic; i++) {
-      _input_paded1 += pt * _iw;
-      memcpy(_input_paded1, input + _ih * _iw * i, sizeof(float) * _ih * _iw);
-      _input_paded1 += _ih * _iw;
-      _input_paded1 += pb * _iw;
-    }
-
-    for (int i = 0; i < n * ic * (_ih + pt + pb); i++) {
-      _input_paded2 += pl;
-      memcpy(_input_paded2, input_paded1 + _iw * i, sizeof(float) * _iw);
-      _input_paded2 += _iw;
-      _input_paded2 += pr;
-    }
-
-    /*chan_offset = chan_idx*ih*iw;
-    printf("N:0 C:0 after paded tensor(%d,%d):\n", ih, iw);
-    for (int i= 0; i< ih; i++) {
-        for (int j= 0; j< iw; j++) {
-          printf("%d ", (int)(*(input_paded2+chan_offset+i*iw+j)));
-        }
-        printf("***\n");
-    }*/
-  }
-}
-
 } // namespace sophgo

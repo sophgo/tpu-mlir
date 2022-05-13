@@ -25,13 +25,11 @@ private:
   pooling_forward::primitive_desc prim_desc;
   memory::dims src_shape;
   memory::dims dst_shape;
-  float* _input;
-  float* _input_paded1;
-  float* _input_paded2;
-  int _pt;
-  int _pb;
-  int _pl;
-  int _pr;
+  float *p_input;
+  float *origin_input;
+  std::shared_ptr<std::vector<float>> input_after_pad;
+  int _n, _c, _h, _w;
+  int _pt, _pb, _pl, _pr;
   int _izp;
 };
 } // namespace dnnl
