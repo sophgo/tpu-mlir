@@ -274,45 +274,28 @@ void GroupOps::buildGroupOp(group_lmem_t group_lmem) {
   auto groupOp = builder.create<tpu::GroupOp>(func.getLoc(), ret_types,
                                               ArrayRef<Value>{operands},
                                               ArrayRef<NamedAttribute>{attrs});
-  auto *body = new Block();
+  body = new Block();
   groupOp.body().push_back(body);
-  //body->addArguments(in_types, in_locs);
-  // replace outputs
+  //  replace outputs
   for (auto it : llvm::enumerate(groupOp.getResults())) {
     outputs[it.index()].replaceUsesWithIf(it.value(), [&](OpOperand &operand) {
       Operation *user = operand.getOwner();
       return find(ops.begin(), ops.end(), user) == ops.end();
     });
   }
-  builder.setInsertionPointToStart(body);
+
   current_op = nullptr;
-  top::NoneOp noneOp;
-  if (need_none(group_lmem)) {
-    noneOp = builder.create<top::NoneOp>(func.getLoc(), builder.getNoneType());
-    current_op = noneOp;
-  }
-  //auto retOp = builder.create<func::ReturnOp>(func.getLoc(), outputs);
   llvm::SmallVector<Value, 4> stores;
-  int input_idx = 0;
-  int output_idx = 0;
   for (auto &linfo : *group_lmem) {
     if (linfo.type == LMEM_OPERATION) {
       auto op = linfo.op;
-      for (auto it : llvm::enumerate(op->getOperands())) {
-        if (isa<top::NoneOp>(it.value().getDefiningOp())) {
-          op->setOperand(it.index(), noneOp);
-        }
-      }
       UpdateOpLgParam(group_lmem, linfo);
-      op->moveAfter(current_op);
+      if (current_op != nullptr) {
+        op->moveAfter(current_op);
+      }
       current_op = op;
-    } else if (linfo.type == LMEM_WEIGHT) {
-      linfo.op->moveAfter(current_op);
-      current_op = linfo.op;
+    } else if (linfo.is_input || linfo.type == LMEM_WEIGHT) {
       CreateLoadOp(linfo, ops);
-    } else if (linfo.is_input) {
-      CreateLoadOp(linfo, ops, operands[input_idx]);
-      input_idx++;
     } else if (linfo.is_output) {
       auto op = CreateStoreOp(linfo);
       stores.push_back(op->getResult(0));
@@ -326,21 +309,17 @@ void GroupOps::UpdateOpLgParam(group_lmem_t group_lmem, lmem_info_t &linfo) {
   assert(linfo.type == LMEM_OPERATION);
   auto op = linfo.op;
   auto output = find_lmem_info(group_lmem, linfo.value);
-  op->setAttr("layer_group", getLgParam(*output, linfo.addr, linfo.size));
+  op->setAttr(LayerGroupInterface::kLayerGroupAttrName,
+              getLgParam(*output, linfo.addr, linfo.size));
 }
 
-LoadOp GroupOps::CreateLoadOp(lmem_info_t &linfo,
-                              const std::vector<mlir::Operation *> &ops,
-                              Value arg) {
+void GroupOps::CreateLoadOp(lmem_info_t &linfo,
+                            const std::vector<mlir::Operation *> &ops) {
   auto builder = OpBuilder(ctx);
   auto input = linfo.value;
   auto inputOp = input.getDefiningOp();
   std::vector<Value> operands;
-  if (arg != nullptr) {
-    operands.push_back(arg);
-  } else {
-    operands.push_back(input);
-  }
+  operands.push_back(input);
   std::vector<NamedAttribute> attrs;
   std::string name = "load_";
   if (inputOp != nullptr) {
@@ -349,9 +328,12 @@ LoadOp GroupOps::CreateLoadOp(lmem_info_t &linfo,
     name = name + std::to_string(input.cast<BlockArgument>().getArgNumber());
   }
   attrs.push_back(builder.getNamedAttr("name", builder.getStringAttr(name)));
-  attrs.push_back(builder.getNamedAttr("layer_group", getLgParam(linfo)));
+  attrs.push_back(builder.getNamedAttr(LayerGroupInterface::kLayerGroupAttrName,
+                                       getLgParam(linfo)));
   if (current_op != nullptr) {
     builder.setInsertionPointAfter(current_op);
+  } else {
+    builder.setInsertionPointToStart(body);
   }
   auto loadOp = builder.create<tpu::LoadOp>(func.getLoc(), input.getType(),
                                             ArrayRef<Value>{operands},
@@ -361,7 +343,6 @@ LoadOp GroupOps::CreateLoadOp(lmem_info_t &linfo,
     return find(ops.begin(), ops.end(), user) != ops.end();
   });
   current_op = loadOp;
-  return loadOp;
 }
 
 StoreOp GroupOps::CreateStoreOp(lmem_info_t &linfo) {
@@ -373,7 +354,8 @@ StoreOp GroupOps::CreateStoreOp(lmem_info_t &linfo) {
   operands.push_back(output);
   std::string name = "store_" + Module::getName(outputOp).str();
   attrs.push_back(builder.getNamedAttr("name", builder.getStringAttr(name)));
-  attrs.push_back(builder.getNamedAttr("layer_group", getLgParam(linfo)));
+  attrs.push_back(builder.getNamedAttr(LayerGroupInterface::kLayerGroupAttrName,
+                                       getLgParam(linfo)));
   builder.setInsertionPointAfter(current_op);
   auto storeOp = builder.create<tpu::StoreOp>(func.getLoc(), output.getType(),
                                               ArrayRef<Value>{operands},
@@ -398,13 +380,17 @@ LayerGroup GroupOps::getLgParam(lmem_info_t &linfo, int64_t buffer_addr,
     n_idxs.push_back(n.first);
     n_slices.push_back(n.second);
   }
+  if (buffer_size == 0) {
+    buffer_addr = 0;
+  }
   return LayerGroup::get(
       builder.getI64IntegerAttr(linfo.addr),
       builder.getI64IntegerAttr(linfo.size),
       builder.getI64IntegerAttr(buffer_addr),
       builder.getI64IntegerAttr(buffer_size), builder.getI64ArrayAttr(h_idxs),
       builder.getI64ArrayAttr(h_slices), builder.getI64ArrayAttr(n_idxs),
-      builder.getI64ArrayAttr(n_slices), ctx);
+      builder.getI64ArrayAttr(n_slices),
+      builder.getI64IntegerAttr(linfo.timestep), ctx);
 }
 
 group_lmem_t GroupOps::CreateGroup(int64_t start_idx, int64_t end_idx,
@@ -458,16 +444,6 @@ void GroupOps::slice_all_outputs(group_lmem_t group_lmem, int64_t nsecs,
     if (linfo.is_output == false) {
       continue;
     }
-    // bool user_in_group = false;
-    // for (auto user : linfo.value.getUsers()) {
-    //   if (find_lmem_info(group_lmem, user) != nullptr) {
-    //     user_in_group = true;
-    //     break;
-    //   }
-    // }
-    // if (user_in_group) {
-    //   continue;
-    // }
     int64_t n, c, h, w;
     Module::getNCHW(linfo.value, n, c, h, w);
     slice_pair_t slice_pair;
@@ -658,7 +634,7 @@ group_lmem_t GroupOps::CreateGroupBySecs(int64_t start_idx, int64_t end_idx,
     assert(nsecs == si.n.size());
     assert(hsecs == si.h.size());
   }
-  // ajust weight timestep
+  // ajust weight end
   if (nsecs != 1 || hsecs != 1) {
     for (auto &linfo : *group_lmem) {
       if (linfo.type == LMEM_WEIGHT) {
@@ -671,6 +647,24 @@ group_lmem_t GroupOps::CreateGroupBySecs(int64_t start_idx, int64_t end_idx,
   ret = assign_lmem_addr(group_lmem, nsecs, hsecs);
   if (ret == false) {
     return nullptr;
+  }
+  // TODO: if output in middle, how to set timestep
+  // assign timestep
+  int64_t timestep = 0;
+  for (auto &linfo : *group_lmem) {
+    switch (linfo.type) {
+    case LMEM_OPERATION:
+      timestep++;
+      break;
+    case LMEM_TENSOR:
+      if (linfo.is_output) {
+        timestep++;
+      }
+      break;
+    default:
+      break;
+    }
+    linfo.timestep = timestep;
   }
   return group_lmem;
 }

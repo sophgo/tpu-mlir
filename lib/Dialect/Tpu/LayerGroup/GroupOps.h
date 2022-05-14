@@ -29,6 +29,7 @@ struct lmem_info_t {
   int64_t id;
   int64_t start_id;
   int64_t end_id;
+  int64_t timestep;
   // memory for value or operation
   lmem_type_t type;
   Value value;
@@ -86,9 +87,8 @@ protected:
                      const std::vector<slice_pair_t> &b);
   lmem_info_t *find_lmem_info(group_lmem_t group_lmem, mlir::Value v);
   lmem_info_t *find_lmem_info(group_lmem_t group_lmem, mlir::Operation *op);
-  tpu::LoadOp CreateLoadOp(lmem_info_t &linfo,
-                           const std::vector<mlir::Operation *> &ops,
-                           mlir::Value arg = nullptr);
+  void CreateLoadOp(lmem_info_t &linfo,
+                    const std::vector<mlir::Operation *> &ops);
   tpu::StoreOp CreateStoreOp(lmem_info_t &linfo);
   void UpdateOpLgParam(group_lmem_t group_lmem, lmem_info_t &linfo);
   tpu::LayerGroup getLgParam(lmem_info_t &linfo, int64_t buffer_addr = 0,
@@ -104,7 +104,8 @@ protected:
   int64_t n_align;
   bool no_more_try_secs;
   mlir::MLIRContext *ctx;
-  Operation * current_op;
+  Operation *current_op;
+  Block * body;
 };
 
 } // namespace tpu

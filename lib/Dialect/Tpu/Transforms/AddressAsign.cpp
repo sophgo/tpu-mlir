@@ -60,15 +60,24 @@ public:
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](Operation *op) {
         if (isa<FuncOp, top::NoneOp, func::ReturnOp, top::WeightOp,
-                func::CallOp>(op)) {
+                func::CallOp, tpu::YieldOp>(op)) {
         } else if (fuse_address(op)) {
           // do nothing
         } else {
-          auto output = op->getResult(0);
-          Module::setAddress(output, addr);
-          int64_t bytes = Module::getBytes(output);
-          addr += align_up(bytes, alignment);
+          for (auto out : op->getResults()) {
+            Module::setAddress(out, addr);
+            int64_t bytes = Module::getBytes(out);
+            addr += align_up(bytes, alignment);
+          }
         }
+      });
+      // sync StoreOp addr
+      func.walk([&](tpu::GroupOp gOp) {
+        int idx = 0;
+        gOp.body().walk([&](tpu::StoreOp sOp) {
+          auto addr = Module::getAddress(gOp.getResult(idx));
+          Module::setAddress(sOp.output(), addr);
+        });
       });
     }
     Module::setNeuronAddr(module, start_addr);
@@ -79,6 +88,9 @@ public:
 
 protected:
   bool fuse_address(Operation *op) {
+    if (Module::isOpInGroup(op)) {
+      return true;
+    }
     if (auto castOp = dyn_cast<tpu::ReshapeOp>(op)) {
       if (chip == Module::Chip::BM1686) {
         auto addr = Module::getAddress(castOp.input());

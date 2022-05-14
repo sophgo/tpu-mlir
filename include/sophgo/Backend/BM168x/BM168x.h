@@ -91,6 +91,10 @@ typedef void (*set_total_id_ptr)(uint32_t *gdma_total_id_ptr,
                                  uint32_t *bdc_total_id_ptr, void *cmdid_node,
                                  void *gdma_group_id_ptr,
                                  void *bdc_group_id_ptr, int *cmdid_groupnum);
+typedef void (*cmd_id_divide)(void *p_cmd_src, void *p_cmd_dst0,
+                              void *p_cmd_dst1);
+typedef void (*cmd_id_merge)(void *p_cmd_dst, void *p_cmd_src0,
+                             void *p_cmd_src1);
 
 namespace sophgo {
 namespace backend {
@@ -119,6 +123,8 @@ public:
   get_global_memaddr dl_get_global_memaddr;
   set_cmd_buffer_ptr dl_set_cmd_buffer_ptr;
   set_total_id_ptr dl_set_total_id_ptr;
+  cmd_id_divide dl_cmd_id_divide;
+  cmd_id_merge dl_cmd_id_merge;
 
   CMD_ID_NODE *get_cmd_id_node() { return (CMD_ID_NODE *)cmdid_node; }
   void *get_gmem_addr(uint64_t addr);
@@ -127,6 +133,8 @@ public:
   void bm_memcpy_d2s(void *dst, const bm_device_mem_t &src);
   void value_s2d(mlir::Value v, void *src);
   void value_d2s(mlir::Value v, void *dst);
+  void divide_sync_id();
+  void merge_sync_id();
 
   // arch info
   virtual uint64_t get_gmem_start() = 0;
@@ -135,7 +143,9 @@ public:
   virtual int64_t get_eu_bytes() = 0;
   virtual int64_t get_lmem_bytes() = 0;
   virtual int64_t get_lmem_banks() = 0;
-  virtual int64_t get_lmem_bank_bytes() { return get_lmem_bytes() / get_lmem_banks(); }
+  virtual int64_t get_lmem_bank_bytes() {
+    return get_lmem_bytes() / get_lmem_banks();
+  }
   virtual uint32_t get_bdc_len(int bdc_num, int group_id) = 0;
   virtual uint32_t get_gdma_len(int gdma_num, int group_id) = 0;
   uint64_t get_cmodel_gmem_size() { return 0x100000000ull; }

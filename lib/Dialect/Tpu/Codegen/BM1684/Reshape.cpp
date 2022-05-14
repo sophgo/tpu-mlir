@@ -9,7 +9,7 @@ using namespace sophgo;
 using namespace sophgo::helper;
 using namespace sophgo::backend;
 
-void tpu::ReshapeOp::codegen_int8_bm1684() {
+void tpu::ReshapeOp::codegen_global_int8_bm1684() {
   auto in_addr = Module::getAddress(input());
   auto out_addr = Module::getAddress(output());
   if (in_addr == out_addr) {
@@ -26,4 +26,8 @@ void tpu::ReshapeOp::codegen_int8_bm1684() {
         in_addr, out_addr, 1, total_num, total_num, DTYPE_FP32, DTYPE_FP32,
         total_num, BM1684::instance().get_cmd_id_node());
   }
+}
+
+void tpu::ReshapeOp::codegen_local_int8_bm1684(int64_t n_step, int64_t h_step) {
+  llvm_unreachable("support later");
 }

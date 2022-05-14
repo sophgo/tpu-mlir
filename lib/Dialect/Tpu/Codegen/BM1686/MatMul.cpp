@@ -38,7 +38,7 @@ typedef struct {
   int offset_val;
 } fc_global_param_t;
 
-void tpu::MatMulOp::codegen_int8_bm1686() {
+void tpu::MatMulOp::codegen_global_int8_bm1686() {
   int64_t batch, M, K, N;
   bool with_bias, relu;
   parseParam(batch, M, K, N, with_bias, relu);
@@ -74,4 +74,8 @@ void tpu::MatMulOp::codegen_int8_bm1686() {
   param.offset_val = output_type.getZeroPoint();
   BM1686::instance().call_global_func("backend_api_fc", &param,
                                       sizeof(fc_global_param_t));
+}
+
+void tpu::MatMulOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
+  llvm_unreachable("support later");
 }

@@ -58,7 +58,7 @@ struct Module {
   }
   static std::shared_ptr<std::vector<int64_t>> getI64Array(ArrayAttr arrayAttr);
   static std::shared_ptr<std::vector<double>> getF64Array(ArrayAttr arrayAttr);
-
+  static bool isOpInGroup(Operation *Op);
   static FuncOp getFuncOp(ModuleOp module, StringRef func_name);
   static func::CallOp getCallOp(ModuleOp module, FuncOp func);
   static inline llvm::StringRef getName(ModuleOp module) {

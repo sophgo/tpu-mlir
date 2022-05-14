@@ -9,7 +9,7 @@ using namespace sophgo;
 using namespace sophgo::helper;
 using namespace sophgo::backend;
 
-void tpu::AddOp::codegen_int8_bm1684() {
+void tpu::AddOp::codegen_global_int8_bm1684() {
   int input_num = inputs().size();
   assert(input_num == 2);
   int64_t n, c, h, w;
@@ -47,4 +47,8 @@ void tpu::AddOp::codegen_int8_bm1684() {
       do_relu() ? 1 : 0,                   // int    do_relu(),
       BM1684::instance().get_cmd_id_node() // CMD_ID_NODE *id_node
   );
+}
+
+void tpu::AddOp::codegen_local_int8_bm1684(int64_t n_step, int64_t h_step) {
+  llvm_unreachable("support later");
 }

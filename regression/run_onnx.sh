@@ -83,6 +83,7 @@ sophgo-opt resnet18_int8_1686.mlir \
     --weight-reorder \
     --subnet-divide \
     --layer-group \
+    --address-asign \
     --save-weight \
     -o resnet18_int8_lg_1686.mlir
 

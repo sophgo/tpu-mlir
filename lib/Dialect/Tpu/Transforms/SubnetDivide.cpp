@@ -111,7 +111,8 @@ void buildSubFunction(std::shared_ptr<SubFunction> sf, ModuleOp module) {
   builder.setInsertionPointToStart(block);
   top::NoneOp noneOp;
   if (sf->have_none) {
-    noneOp = builder.create<top::NoneOp>(module.getLoc(), builder.getNoneType());
+    noneOp =
+        builder.create<top::NoneOp>(module.getLoc(), builder.getNoneType());
   }
   auto retOp = builder.create<func::ReturnOp>(module.getLoc(), fnOutputs);
   for (auto op : sf->ops) {
@@ -147,7 +148,7 @@ static void insert_subop(std::shared_ptr<SubFunction> &subf, Operation *op) {
     auto op_ = opd.getDefiningOp();
     if (isa<top::WeightOp>(op_)) {
       subf->ops.push_back(op_);
-    } else if(isa<top::NoneOp>(op_) && subf->have_none == false) {
+    } else if (isa<top::NoneOp>(op_) && subf->have_none == false) {
       subf->have_none = true;
     }
   }
