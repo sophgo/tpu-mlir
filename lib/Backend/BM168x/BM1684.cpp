@@ -36,9 +36,12 @@ template <typename FPtrTy> FPtrTy BM1684::CastToFPtr(const char *symbolName) {
 BM1684::BM1684() { chip = Module::Chip::BM1684; }
 
 #define CAST_FUNCTION(name) dl_##name = CastToFPtr<name>(#name)
+#define CAST_FUNCTION_WITH_SYM(name, sym) dl_##name = CastToFPtr<name>(#sym)
 
 void BM1684::load_functions() {
   BM168x::load_functions();
+  CAST_FUNCTION_WITH_SYM(cmd_id_divide, __cmd_id_divide);
+  CAST_FUNCTION_WITH_SYM(cmd_id_merge, __cmd_id_merge);
   CAST_FUNCTION(tensor_align_move_gen_cmd);
   CAST_FUNCTION(general_matrix_move_gen_cmd);
   CAST_FUNCTION(nodechip_conv_forward_local);

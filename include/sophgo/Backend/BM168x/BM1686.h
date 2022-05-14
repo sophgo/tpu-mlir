@@ -14,6 +14,7 @@ public:
     static BM1686 inst;
     return inst;
   }
+
 public:
   // -------------------------------------------------------------------
   // functions from nodechip
@@ -25,12 +26,13 @@ public:
 public:
   virtual void init() override;
   virtual void after_codegen() override;
-  void call_global_func(const char * symbolName, void *params, int param_size);
+  void call_global_func(const char *symbolName, void *params, int param_size);
+  void call_local_func(const char *symbolName, void *params, int param_size);
 
   // arch info
   virtual uint64_t get_gmem_start() override;
   virtual uint64_t get_ctx_start_addr() override;
-  virtual int64_t get_npu_num() override { return NPU_NUM;}
+  virtual int64_t get_npu_num() override { return NPU_NUM; }
   virtual int64_t get_eu_bytes() override { return EU_BYTES; }
   virtual int64_t get_lmem_bytes() override { return LMEM_BYTES; }
   virtual int64_t get_lmem_banks() override { return LMEM_BANKS; }
@@ -52,5 +54,5 @@ protected:
   virtual const char *get_lib_name() override { return LIB_NAME.data(); };
   virtual void load_functions() override;
 };
-}
-}
+} // namespace backend
+} // namespace sophgo

@@ -119,7 +119,8 @@ private:
   Offset<bmodel::CoeffMem> CreateCoeffMem(std::vector<top::WeightOp> &coeffs,
                                           uint64_t coeff_addr,
                                           uint64_t coeff_size);
-
+  void codegen(Operation * op);
+  void codegen_for_group(tpu::GroupOp gOP);
 private:
   ModuleOp module;
   StringRef state;
@@ -253,15 +254,53 @@ Offset<Vector<Offset<bmodel::CmdGroup>>> CodegenPass::CreateCmdGroupVector() {
   return model_gen->Builder().CreateVector(cmd_group_v);
 }
 
+void CodegenPass::codegen_for_group(tpu::GroupOp gOp) {
+  auto nsecs = gOp.nsecs();
+  auto hsecs = gOp.hsecs();
+  auto &body = gOp.body().front();
+  int64_t timestep = -1;
+  bm168x->divide_sync_id();
+  for(uint64_t nstep = 0; nstep < nsecs; nstep++) {
+    for (uint64_t hstep = 0; hstep < hsecs; hstep++) {
+      body.walk([&](Operation * op) {
+        auto lgOp = cast<LayerGroupInterface>(op);
+        auto ginfo = lgOp.getGroupInfo(nstep, hstep);
+        if (ginfo.timestep != timestep) {
+          bm168x->merge_sync_id();
+          bm168x->divide_sync_id();
+          timestep = ginfo.timestep;
+        }
+        auto cgOp = cast<CodegenInterface>(op);
+        if (chip == Module::Chip::BM1684) {
+          cgOp.codegen_local_int8_bm1684(nstep, hstep);
+        } else if (chip == Module::Chip::BM1686) {
+          cgOp.codegen_local_int8_bm1686(nstep, hstep);
+        }
+      });
+    }
+  }
+  bm168x->merge_sync_id();
+}
+
+void CodegenPass::codegen(Operation * op) {
+  if (auto castOp = dyn_cast<tpu::GroupOp>(op)) {
+    codegen_for_group(castOp);
+  } else if(Module::isOpInGroup(op)) {
+    return;
+  } else if (auto castOp = dyn_cast<CodegenInterface>(op)) {
+    if (chip == Module::Chip::BM1684) {
+      castOp.codegen_global_int8_bm1684();
+    } else if (chip == Module::Chip::BM1686) {
+      castOp.codegen_global_int8_bm1686();
+    }
+  }
+}
+
 Offset<bmodel::SubNet> CodegenPass::CreateSubNet(func::CallOp call) {
   bm168x->before_codegen();
   auto func = Module::getFuncOp(module, call.getCallee());
-  func.walk([&](CodegenInterface op) {
-    if (chip == Module::Chip::BM1684) {
-      op.codegen_int8_bm1684();
-    } else if (chip == Module::Chip::BM1686) {
-      op.codegen_int8_bm1686();
-    }
+  func.walk([&](Operation * op) {
+    codegen(op);
   });
   bm168x->after_codegen();
   int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();

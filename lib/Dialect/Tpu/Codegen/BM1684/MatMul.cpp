@@ -22,7 +22,7 @@ typedef struct {
   int if_bias_float;
 } FcQParams;
 
-void tpu::MatMulOp::codegen_int8_bm1684() {
+void tpu::MatMulOp::codegen_global_int8_bm1684() {
   int64_t batch, M, K, N;
   bool with_bias, relu;
   parseParam(batch, M, K, N, with_bias, relu);
@@ -38,3 +38,6 @@ void tpu::MatMulOp::codegen_int8_bm1684() {
       BM1684::instance().get_cmd_id_node());
 }
 
+void tpu::MatMulOp::codegen_local_int8_bm1684(int64_t n_step, int64_t h_step) {
+  llvm_unreachable("support later");
+}

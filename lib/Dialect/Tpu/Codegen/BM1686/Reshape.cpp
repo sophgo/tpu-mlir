@@ -8,6 +8,10 @@ using namespace sophgo;
 using namespace sophgo::helper;
 using namespace sophgo::backend;
 
-void tpu::ReshapeOp::codegen_int8_bm1686() {
+void tpu::ReshapeOp::codegen_global_int8_bm1686() {
   // do nothing
+}
+
+void tpu::ReshapeOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
+  llvm_unreachable("support later");
 }

@@ -9,7 +9,7 @@ using namespace sophgo;
 using namespace sophgo::helper;
 using namespace sophgo::backend;
 
-void tpu::ConvOp::codegen_int8_bm1684() {
+void tpu::ConvOp::codegen_global_int8_bm1684() {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
   bool is_dw, with_bias, relu;
@@ -33,4 +33,8 @@ void tpu::ConvOp::codegen_int8_bm1684() {
         0, 1, 0, 0, rshift().getValue()[0].cast<IntegerAttr>().getInt(), 1, 1, 1, 3, 0, 0, 0, 0, 0,
         BM1684::instance().get_cmd_id_node());
   }
+}
+
+void tpu::ConvOp::codegen_local_int8_bm1684(int64_t n_step, int64_t h_step) {
+  llvm_unreachable("support later");
 }
