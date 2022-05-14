@@ -282,6 +282,17 @@ void Module::getNCHW(Value v, int64_t &n, int64_t &c, int64_t &h, int64_t &w,
   getNCHW(shape, n, c, h, w, left_align);
 }
 
+bool Module::isOpInGroup(Operation *Op) {
+  if (Op == nullptr) {
+    return false;
+  }
+  auto parent = Op->getParentOp();
+  if (parent != nullptr && isa<tpu::GroupOp>(parent)) {
+    return true;
+  }
+  return false;
+}
+
 FuncOp Module::getFuncOp(ModuleOp module, StringRef func_name) {
   for (auto func : module.getOps<FuncOp>()) {
     if (func.getName() == func_name) {

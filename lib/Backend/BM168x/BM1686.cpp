@@ -48,10 +48,18 @@ void BM1686::call_global_func(const char *symbolName, void *params,
   func(params, param_size, cmdid_node);
 }
 
+void BM1686::call_local_func(const char *symbolName, void *params,
+                             int param_size) {
+  auto func = CastToFPtr<backend_api_t>(symbolName);
+  func(params, param_size, bdc_node);
+}
+
 #define CAST_FUNCTION(name) dl_##name = CastToFPtr<name>(#name)
 
 void BM1686::load_functions() {
   BM168x::load_functions();
+  CAST_FUNCTION(cmd_id_divide);
+  CAST_FUNCTION(cmd_id_merge);
   CAST_FUNCTION(load_lookup_tables);
   CAST_FUNCTION(store_cmd_end);
   CAST_FUNCTION(set_cmd_len_ptr);

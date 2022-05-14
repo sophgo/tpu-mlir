@@ -8,7 +8,7 @@ using namespace sophgo;
 using namespace sophgo::helper;
 using namespace sophgo::backend;
 
-void tpu::CastOp::codegen_int8_bm1684() {
+void tpu::CastOp::codegen_global_int8_bm1684() {
   bool qInput = Quant::isUniformQuantized(input());
   bool qOutput = Quant::isUniformQuantized(output());
   int64_t n, c, h, w;
@@ -38,4 +38,8 @@ void tpu::CastOp::codegen_int8_bm1684() {
     dump();
     llvm_unreachable("CastOp type error");
   }
+}
+
+void tpu::CastOp::codegen_local_int8_bm1684(int64_t n_step, int64_t h_step) {
+  llvm_unreachable("support later");
 }

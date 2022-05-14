@@ -59,7 +59,7 @@ def Tpu_ConvOp: Tpu_Op<"Conv",[
     DefaultValuedAttr<BoolAttr, "false">:$coeff_merged,
     OptionalAttr<I64ArrayAttr>:$rshift,
     OptionalAttr<I64ArrayAttr>:$multiplier,
-    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
     StrAttr:$name
   );
 
@@ -90,7 +90,7 @@ class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,
     DefaultValuedAttr<I64Attr, "0">:$pad_value,
     DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
     StrAttr:$name
   );
 
@@ -124,7 +124,7 @@ def Tpu_AddOp: Tpu_Op<"Add", [SupportFuseRelu,
     I64ArrayAttr:$rshifts,
     I64ArrayAttr:$multipliers,
     DefaultValuedAttr<F64Attr, "0">:$rectified_bias,
-    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
     StrAttr:$name
   );
 
@@ -141,7 +141,7 @@ def Tpu_AddOp: Tpu_Op<"Add", [SupportFuseRelu,
 //   let arguments = (ins
 //     Variadic<AnyTensor>:$inputs,
 //     DefaultValuedAttr<I32Attr, "1">:$axis,
-//     OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
+//     OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
 //     StrAttr:$name
 //   );
 
@@ -164,7 +164,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<I64Attr, "0">:$rshift,
     DefaultValuedAttr<I64Attr, "1">:$multiplier,
-    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
     StrAttr:$name
   );
 
@@ -185,7 +185,7 @@ def Tpu_ReluOp: Tpu_Op<"Relu",
 
   let arguments = (
     ins AnyTensor:$input,
-    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
     StrAttr:$name
   );
 
@@ -213,7 +213,7 @@ def Tpu_CastOp:Tpu_Op<"Cast",
   }];
   let arguments = (ins
     AnyTensor:$input,
-    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
     StrAttr:$name
   );
   let results = (outs AnyTensor:$output);
@@ -226,7 +226,7 @@ def Tpu_LoadOp:Tpu_Op<"Load",
   }];
   let arguments = (ins
     AnyTensor:$input,
-    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
     StrAttr:$name
   );
   let results = (outs AnyTensor:$output);
@@ -239,7 +239,7 @@ def Tpu_StoreOp:Tpu_Op<"Store",
   }];
   let arguments = (ins
     AnyTensor:$input,
-    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
     StrAttr:$name
   );
   let results = (outs AnyTensor:$output);
@@ -255,7 +255,7 @@ def Tpu_RequantOp:Tpu_Op<"Requant",
     AnyTensor:$quant,
     OptionalAttr<I64Attr>:$multiplier,
     OptionalAttr<I64Attr>:$rshift,
-    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
     StrAttr:$name
   );
   let results = (outs AnyTensor:$output);

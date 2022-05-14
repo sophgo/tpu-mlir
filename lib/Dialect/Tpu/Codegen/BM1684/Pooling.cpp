@@ -8,7 +8,7 @@ using namespace sophgo;
 using namespace sophgo::helper;
 using namespace sophgo::backend;
 
-void tpu::AvgPoolOp::codegen_int8_bm1684() {
+void tpu::AvgPoolOp::codegen_global_int8_bm1684() {
   int64_t n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value;
   bool is_global, count_include_pad, relu;
   parseParam(n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value,
@@ -19,7 +19,7 @@ void tpu::AvgPoolOp::codegen_int8_bm1684() {
       relu ? 1 : 0, BM1684::instance().get_cmd_id_node());
 }
 
-void tpu::MaxPoolOp::codegen_int8_bm1684() {
+void tpu::MaxPoolOp::codegen_global_int8_bm1684() {
   int64_t n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value;
   bool is_global, count_include_pad, relu;
   parseParam(n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value,
@@ -28,4 +28,12 @@ void tpu::MaxPoolOp::codegen_int8_bm1684() {
       Module::getAddress(input()), Module::getAddress(output()), n, c, ih, iw,
       kh, kw, pt, pb, pl, pr, sh, sw, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1,
       relu ? 1 : 0, BM1684::instance().get_cmd_id_node());
+}
+
+void tpu::AvgPoolOp::codegen_local_int8_bm1684(int64_t n_step, int64_t h_step) {
+  llvm_unreachable("support later");
+}
+
+void tpu::MaxPoolOp::codegen_local_int8_bm1684(int64_t n_step, int64_t h_step) {
+  llvm_unreachable("support later");
 }

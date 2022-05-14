@@ -27,7 +27,7 @@ typedef struct {
   int reshaped_coeff;
 } requant_int_param_t;
 
-void tpu::RequantOp::codegen_int8_bm1686() {
+void tpu::RequantOp::codegen_global_int8_bm1686() {
   requant_int_param_t param = {0};
   int64_t n, c, h, w;
   Module::getNCHW(input(), n, c, h, w);
@@ -51,4 +51,8 @@ void tpu::RequantOp::codegen_int8_bm1686() {
   param.mode = 2;
   BM1686::instance().call_global_func("backend_api_requant_int_global", &param,
                                       sizeof(param));
+}
+
+void tpu::RequantOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
+  llvm_unreachable("support later");
 }

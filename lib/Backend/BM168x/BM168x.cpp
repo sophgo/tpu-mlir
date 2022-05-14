@@ -40,6 +40,14 @@ void BM168x::value_d2s(Value v, void *dst) {
   memcpy(dst, get_gmem_addr(addr), bytes);
 }
 
+void BM168x::divide_sync_id() {
+  dl_cmd_id_divide(cmdid_node, bdc_node, gdma_node);
+}
+
+void BM168x::merge_sync_id() {
+  dl_cmd_id_merge(cmdid_node, bdc_node, gdma_node);
+}
+
 bm_data_type_t BM168x::getDataType(Value v) {
   auto type = Module::getStorageType(v);
   return getDataType(type);
