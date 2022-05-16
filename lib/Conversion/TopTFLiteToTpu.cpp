@@ -108,6 +108,9 @@ void QuantizeMultiplier(double double_multiplier, int64_t *quantized_multiplier,
     *shift = 30;
     q_fixed = (1LL << 31) - 1;
   }
+  // Sophgo expects right shift to be positive, and embed (1 << 31) into right
+  // shift bits.
+  *shift = (-*shift) + 31;
   *quantized_multiplier = static_cast<int32_t>(q_fixed);
 }
 
@@ -249,7 +252,7 @@ class AddOpLowering : public OpConversionPattern<top::AddOp> {
 //===----------------------------------------------------------------------===//
 // tensorflow/lite/kernels/reduce.cc::376
 // tensorflow/lite/kernels/internal/reference/integer_ops/mean.h::24
-class AvgPoolOpTypeLowering : public OpConversionPattern<top::AvgPoolOp> {
+class AvgPoolOpLowering : public OpConversionPattern<top::AvgPoolOp> {
   using OpConversionPattern<top::AvgPoolOp>::OpConversionPattern;
 
   LogicalResult
@@ -263,13 +266,18 @@ class AvgPoolOpTypeLowering : public OpConversionPattern<top::AvgPoolOp> {
     auto output_qtype =
         getRankedTensorElementType<quant::UniformQuantizedType>(op.getResult());
 
-    const double real_multiplier =
-        input_qtype.getScale() / output_qtype.getScale();
+    int64_t num_elements = 1;
+    for (auto x : adaptor.kernel_shape())
+      num_elements *= x.cast<IntegerAttr>().getInt();
+
+    const double real_multiplier = 1.0 / static_cast<double>(num_elements) *
+                                   input_qtype.getScale() /
+                                   output_qtype.getScale();
     int64_t multiplier, shift;
     QuantizeMultiplier(real_multiplier, &multiplier, &shift);
     NamedAttrList attributes(adaptor.getAttributes());
-    // attributes.set("rshifts", rewriter.getI64ArrayAttr(shift));
-    // attributes.set("multipliers", rewriter.getI64ArrayAttr(multiplier));
+    attributes.set("rshift", rewriter.getI64IntegerAttr(shift));
+    attributes.set("multiplier", rewriter.getI64IntegerAttr(multiplier));
     auto avg_in_type = adaptor.input().getType().cast<RankedTensorType>();
     auto avg_out_type = op.getResult().getType().cast<RankedTensorType>();
 
@@ -300,7 +308,7 @@ class AvgPoolOpTypeLowering : public OpConversionPattern<top::AvgPoolOp> {
 //===----------------------------------------------------------------------===//
 // TopTFLiteToTpuLoweringPass RewritePatterns: max_pooling operations
 //===----------------------------------------------------------------------===//
-class MaxPoolOpTypeLowering : public OpConversionPattern<top::MaxPoolOp> {
+class MaxPoolOpLowering : public OpConversionPattern<top::MaxPoolOp> {
   using OpConversionPattern<top::MaxPoolOp>::OpConversionPattern;
 
   LogicalResult
@@ -320,7 +328,7 @@ class MaxPoolOpTypeLowering : public OpConversionPattern<top::MaxPoolOp> {
 //===----------------------------------------------------------------------===//
 // tensorflow/lite/kernels/internal/reference/integer_ops/fully_connected.h::23
 // tensorflow/tensorflow/lite/kernels/fully_connected.cc::239
-class MatMulOpTypeLowering : public OpConversionPattern<top::MatMulOp> {
+class MatMulOpLowering : public OpConversionPattern<top::MatMulOp> {
   using OpConversionPattern<top::MatMulOp>::OpConversionPattern;
 
   LogicalResult
@@ -356,7 +364,7 @@ class MatMulOpTypeLowering : public OpConversionPattern<top::MatMulOp> {
 //===----------------------------------------------------------------------===//
 // tensorflow/lite/kernels/internal/reference/softmax.h::67
 // tensorflow/compiler/mlir/tosa/transforms/legalize_common.cc::1313
-class SoftmaxOpTypeLowering : public OpConversionPattern<top::SoftmaxOp> {
+class SoftmaxOpLowering : public OpConversionPattern<top::SoftmaxOp> {
   using OpConversionPattern<top::SoftmaxOp>::OpConversionPattern;
   // softmax = exp(logits) / reduce_sum(exp(logits), -1)
   //
@@ -401,16 +409,45 @@ class SoftmaxOpTypeLowering : public OpConversionPattern<top::SoftmaxOp> {
     attributes.set("rshift", rewriter.getI64IntegerAttr(shift));
     attributes.set("multiplier", rewriter.getI64IntegerAttr(multiplier));
     attributes.set("table", rewriter.getI64ArrayAttr(table));
+
+#ifdef SOFTMAX_USE_INT
     rewriter.replaceOpWithNewOp<tpu::SoftmaxOp>(op, op->getResultTypes(),
                                                 adaptor.input(), attributes);
     return success();
+#else
+    // use float computation
+    auto input_type = adaptor.input().getType().cast<RankedTensorType>();
+    auto cast_type = RankedTensorType::get(
+        input_type.getShape(),
+        getRankedTensorElementType<quant::UniformQuantizedType>(adaptor.input())
+            .getExpressedType());
+
+    std::string cast_name_prefix(adaptor.name());
+    NamedAttrList cast_name;
+    cast_name.set("name",
+                  rewriter.getStringAttr(cast_name_prefix + "/CastToFloat"));
+    auto pre_cast_op = rewriter.create<tpu::CastOp>(op->getLoc(), cast_type,
+                                                    adaptor.input(), cast_name);
+
+    auto softmax_op = rewriter.create<tpu::SoftmaxOp>(
+        op->getLoc(), cast_type, pre_cast_op.getResult(), attributes);
+
+    cast_name.set("name",
+                  rewriter.getStringAttr(cast_name_prefix + "/CastToInt8"));
+    auto post_cast_op =
+        rewriter.create<tpu::CastOp>(op->getLoc(), op.getResult().getType(),
+                                     softmax_op.getResult(), cast_name);
+
+    rewriter.replaceOp(op, post_cast_op.getResult());
+    return success();
+#endif
   }
 };
 
 //===----------------------------------------------------------------------===//
 // TopTFLiteToTpuLoweringPass RewritePatterns: weight operations
 //===----------------------------------------------------------------------===//
-class WeightOpTypeLowering : public OpConversionPattern<top::WeightOp> {
+class WeightOpLowering : public OpConversionPattern<top::WeightOp> {
   using OpConversionPattern<top::WeightOp>::OpConversionPattern;
 
   LogicalResult
@@ -488,14 +525,14 @@ void populateTopToTpuConversionPatterns(RewritePatternSet &patterns) {
   // clang-format off
     patterns.add<
         AddOpLowering,
-        AvgPoolOpTypeLowering,
+        AvgPoolOpLowering,
         ConvOpLovering,
         DequantizeCastOpLowering,
-        MatMulOpTypeLowering,
-        MaxPoolOpTypeLowering,
+        MatMulOpLowering,
+        MaxPoolOpLowering,
         QuantizeCastOpLowering,
-        WeightOpTypeLowering,
-        SoftmaxOpTypeLowering>(patterns.getContext());
+        WeightOpLowering,
+        SoftmaxOpLowering>(patterns.getContext());
   // clang-format on
 }
 
@@ -515,6 +552,7 @@ class LoweringTopTFLitePass
     if (failed(applyPartialConversion(getOperation(), target,
                                       std::move(patterns))))
       signalPassFailure();
+
     auto module = getOperation();
     module->setAttr(
         Module::Attr::STATE,
