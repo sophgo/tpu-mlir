@@ -104,8 +104,22 @@ class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,
   }];
 }
 
-def Tpu_AvgPoolOp:Tpu_PoolOp<"AvgPool">;
 def Tpu_MaxPoolOp:Tpu_PoolOp<"MaxPool">;
+def Tpu_AvgPoolOp:Tpu_PoolOp<"AvgPool"> {
+  let arguments = (ins
+    AnyTensor:$input,
+    I64ArrayAttr:$kernel_shape,
+    I64ArrayAttr:$strides,
+    I64ArrayAttr:$pads,
+    DefaultValuedAttr<I64Attr, "0">:$pad_value,
+    DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<I64Attr, "0">:$rshift,
+    DefaultValuedAttr<I64Attr, "1">:$multiplier,
+    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
+    StrAttr:$name
+  );
+}
 
 def Tpu_AddOp: Tpu_Op<"Add", [SupportFuseRelu,
   DeclareOpInterfaceMethods<LayerGroupInterface>]> {
@@ -217,6 +231,7 @@ def Tpu_CastOp:Tpu_Op<"Cast",
     StrAttr:$name
   );
   let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
 }
 
 def Tpu_LoadOp:Tpu_Op<"Load",
