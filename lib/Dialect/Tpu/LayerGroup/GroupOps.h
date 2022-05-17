@@ -17,7 +17,7 @@ typedef enum {
 
 typedef std::pair<int64_t, int64_t> slice_pair_t; // idx and slice
 typedef std::pair<int64_t, int64_t> group_pair_t; // start_idx, and end_idx
-typedef std::pair<int64_t, int64_t> lmem_pair_t;  // lmem addr, and size
+typedef std::pair<int64_t, int64_t> addr_pair_t;  // lmem addr, and size
 struct slice_info_t {
   std::vector<slice_pair_t> h; // h_idx and h_slice
   std::vector<slice_pair_t> n; // h_idx and n_slice
@@ -77,6 +77,8 @@ protected:
                                      lmem_type_t type = LMEM_ANY);
   void free_unuse_lmem(group_lmem_t group_lmem, int64_t op_id);
   void set_lmem_size(group_lmem_t group_lmem);
+  void assign_timestep(group_lmem_t group_lmem);
+  void adjust_lmem_id(group_lmem_t group_lmem, int64_t nsecs, int64_t hsecs);
   bool assign_lmem_addr(group_lmem_t group_lmem, int64_t nsecs, int64_t hsecs);
   int64_t alloc_lmem(int64_t size);
   void free_lmem(int64_t addr);
@@ -100,12 +102,12 @@ protected:
   std::vector<group_lmem_t> all_lmems;
   std::vector<mlir::Operation *> all_ops;
   std::vector<group_pair_t> groups;
-  std::list<lmem_pair_t> allocated_lmems;
+  std::list<addr_pair_t> allocated_lmems;
   int64_t n_align;
   bool no_more_try_secs;
   mlir::MLIRContext *ctx;
   Operation *current_op;
-  Block * body;
+  Block *body;
 };
 
 } // namespace tpu
