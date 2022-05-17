@@ -613,6 +613,54 @@ void GroupOps::set_lmem_size(group_lmem_t group_lmem) {
   }
 }
 
+void GroupOps::assign_timestep(group_lmem_t group_lmem) {
+  int64_t timestep = 0;
+  for (auto &linfo : *group_lmem) {
+    switch (linfo.type) {
+    case LMEM_OPERATION:
+      timestep++;
+      break;
+    case LMEM_TENSOR:
+      if (linfo.is_output) {
+        timestep++;
+      }
+      break;
+    default:
+      break;
+    }
+    linfo.timestep = timestep;
+  }
+}
+
+void GroupOps::adjust_lmem_id(group_lmem_t group_lmem, int64_t nsecs,
+                              int64_t hsecs) {
+  bool no_slice = (nsecs == 1 && hsecs == 1);
+  std::vector<int64_t> ops_v;
+  int idx = 0;
+  for (auto &linfo : *group_lmem) {
+    if (linfo.type == LMEM_WEIGHT && no_slice == false) {
+      // ajust weight end
+      linfo.end_id = -1;
+    }
+    if (linfo.type == LMEM_OPERATION) {
+      // get op pos
+      ops_v.push_back(idx);
+    }
+    idx++;
+  }
+  for (auto &linfo : *group_lmem) {
+    if (linfo.type == LMEM_WEIGHT || linfo.is_input) {
+      for (auto id : ops_v) {
+        auto &op_info = group_lmem->at(id);
+        if (op_info.timestep == linfo.timestep && op_info.id < linfo.start_id) {
+          linfo.start_id = op_info.id;
+          break;
+        }
+      }
+    }
+  }
+}
+
 group_lmem_t GroupOps::CreateGroupBySecs(int64_t start_idx, int64_t end_idx,
                                          int64_t nsecs, int64_t hsecs) {
   std::vector<Operation *> group_ops;
@@ -634,37 +682,15 @@ group_lmem_t GroupOps::CreateGroupBySecs(int64_t start_idx, int64_t end_idx,
     assert(nsecs == si.n.size());
     assert(hsecs == si.h.size());
   }
-  // ajust weight end
-  if (nsecs != 1 || hsecs != 1) {
-    for (auto &linfo : *group_lmem) {
-      if (linfo.type == LMEM_WEIGHT) {
-        linfo.end_id = -1;
-      }
-    }
-  }
+  // update timestep
+  assign_timestep(group_lmem);
+  adjust_lmem_id(group_lmem, nsecs, hsecs);
+
   // update lmem size and addr
   set_lmem_size(group_lmem);
   ret = assign_lmem_addr(group_lmem, nsecs, hsecs);
   if (ret == false) {
     return nullptr;
-  }
-  // TODO: if output in middle, how to set timestep
-  // assign timestep
-  int64_t timestep = 0;
-  for (auto &linfo : *group_lmem) {
-    switch (linfo.type) {
-    case LMEM_OPERATION:
-      timestep++;
-      break;
-    case LMEM_TENSOR:
-      if (linfo.is_output) {
-        timestep++;
-      }
-      break;
-    default:
-      break;
-    }
-    linfo.timestep = timestep;
   }
   return group_lmem;
 }
@@ -752,7 +778,7 @@ int64_t GroupOps::alloc_lmem(int64_t size) {
     int64_t addr = 0;
     for (auto it = allocated_lmems.begin(); it != allocated_lmems.end(); ++it) {
       if (addr + size <= it->first) {
-        auto pair = lmem_pair_t(addr, size);
+        auto pair = addr_pair_t(addr, size);
         allocated_lmems.insert(it, pair);
         return addr;
       }
@@ -769,7 +795,7 @@ int64_t GroupOps::alloc_lmem(int64_t size) {
     if (addr + size > bm168x->get_lmem_bytes()) {
       continue;
     }
-    auto pair = lmem_pair_t(addr, size);
+    auto pair = addr_pair_t(addr, size);
     allocated_lmems.push_back(pair);
     return addr;
   }

@@ -22,7 +22,7 @@
 
 ## Group划分
 
-#### 划分TimeStep
+#### 划分Mem周期
 
 如何划分group? 首先把每一层Layer需要的lmem罗列出来，大体可以归为三类：
 
@@ -34,7 +34,7 @@
 
 ![](./assets/lg_lmem.png)
 
-然后在配置timestep，配置方法如下：
+然后在配置周期，配置方法如下：
 
 ![](./assets/lg_timestep.png)
 
@@ -58,9 +58,15 @@
 
 #### 分叉Layer如何Group ?
 
+
+
 ![](./assets/lg_branch.png)
 
-如上场景，从输出Slice倒推到交汇的Conv，Slice采用**并集**。这就导致每个tensor不仅要记录当期的`h_idx`(可理解为偏移)和`h_slice`(可理解为长度)，还要记录Op需要的`h_idx`和`h_slice`。
+如上场景，从输出Slice倒推到交汇的Conv。
+
+**当前实现**：如果slice不一致则出错
+
+**未来实现**：Slice采用**并集**。这就导致每个tensor不仅要记录当期的`h_idx`(可理解为偏移)和`h_slice`(可理解为长度)，还要记录Op需要的`h_idx`和`h_slice`。
 
 
 
