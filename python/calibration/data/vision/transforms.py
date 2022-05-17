@@ -143,7 +143,9 @@ class Normalize:
         self._std = std
 
     def __call__(self, x):
-        return (x - self._mean) / self._std
+        mean = np.array(self._mean, dtype=x.dtype)
+        std = np.array(self._std, dtype=x.dtype)
+        return (x - mean) / std
 
 
 class Rotate:

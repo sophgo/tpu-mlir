@@ -8,10 +8,14 @@ except ModuleNotFoundError:
 
 
 class TFLiteInterpreter(TFLiteItp.Interpreter):
-    def __init__(self, model_path=None):
+    def __init__(self, model_path=None, **args):
+        __args = {
+            "experimental_op_resolver_type": TFLiteItp.experimental.OpResolverType.BUILTIN_REF,
+        }
+        __args.update(args)
         super().__init__(
             model_path=model_path,
-            experimental_op_resolver_type=TFLiteItp.experimental.OpResolverType.BUILTIN_REF,
+            **__args,
         )
         self.allocate_tensors()
         self.name2index = {
@@ -37,12 +41,12 @@ class TFLiteInterpreter(TFLiteItp.Interpreter):
         if need_reallocate:
             self.allocate_tensors()
 
-    def forward(self, **inputs):
+    def run(self, **inputs):
 
         self.reshape(**{k: v.shape for k, v in inputs.items()})
         for k, v in inputs.items():
             index = self.name2index[k]
-            self.tensor(index)()[...] = v[...]
+            self.set_tensor(index, v)
 
         self.invoke()
         output = {}
