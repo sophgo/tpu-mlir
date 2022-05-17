@@ -77,10 +77,32 @@ LogicalResult tpu::AvgPoolOp::inference(InferenceParameter &p) {
   }
   auto pooling = (Pooling *)p.handle;
   pooling->run();
-  if (do_relu()) {
-    relu(p.outputs[0], p.outputs[0], Module::getNumElements(output()),
-         Module::getStorageType(output()));
+
+  if (Quant::isUniformQuantized(input())) {
+    auto i_qtype = Quant::getUniformQuantizedType(input());
+    auto o_qtype = Quant::getUniformQuantizedType(output());
+    auto num_elem = Module::getNumElements(output());
+    double scale = i_qtype.getScale() / o_qtype.getScale();
+#pragma omp parallel for schedule(static, omp_schedule(num_elem))
+    for (int64_t i = 0; i < num_elem; ++i) {
+      p.outputs[0][i] = (p.outputs[0][i] - i_qtype.getZeroPoint()) * scale;
+    }
   }
+
+  if (do_relu()) {
+    relu(p.outputs[0], p.outputs[0], Module::getNumElements(output()));
+  }
+
+  if (Quant::isUniformQuantized(input())) {
+    int64_t num_elem = Module::getNumElements(output());
+    auto o_qtype = Quant::getUniformQuantizedType(output());
+#pragma omp parallel for schedule(static, omp_schedule(num_elem))
+    for (int64_t i = 0; i < num_elem; ++i) {
+      p.outputs[0][i] =
+          Quant::to_int8(p.outputs[0][i] + o_qtype.getZeroPoint());
+    }
+  }
+
 #ifdef DEBUG_TPU_INFER
   llvm::errs() << "AvgPoolOp inference:" << this->name() << "\n";
   for (int i = 0; i < 5; i++) {

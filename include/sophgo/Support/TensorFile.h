@@ -181,7 +181,23 @@ public:
       llvm::errs() << "size does not match for tensor " << name.str() << "\n";
       return failure();
     }
-    memcpy(data, arr.data_holder->data(), arr.num_bytes());
+    if (arr.fortran_order) {
+      // provide col-major to row-major
+      size_t src_cout = 0;
+      for (auto src_it = arr.data_holder->begin();
+           src_it < arr.data_holder->end();
+           src_it += arr.word_size, ++src_cout) {
+        size_t des_offset = 0;
+        size_t ind_n /*ind(0)*/ = src_cout, sub_n /*sub(0)*/ = 0;
+        for (auto n : arr.shape) {
+          sub_n = ind_n % n; //  sub(n) = ind(n) % n
+          des_offset = des_offset * n + sub_n;
+          ind_n = (ind_n - sub_n) / n; // ind(n+1) = (ind(n) - sub(n)) / n
+        }
+        memcpy(data + des_offset, &(*src_it), arr.word_size);
+      }
+    } else
+      memcpy(data, arr.data_holder->data(), arr.num_bytes());
     return success();
   }
 

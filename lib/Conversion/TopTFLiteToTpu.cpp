@@ -20,6 +20,8 @@
 #include "mlir/Transforms/Passes.h"
 #include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "sophgo/Dialect/Tpu/IR/TpuOps.h"
+#include "sophgo/Support/Helper/Module.h"
+#include "sophgo/Support/Helper/Quant.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/Support/Alignment.h"
 
@@ -454,7 +456,8 @@ class WeightOpLowering : public OpConversionPattern<top::WeightOp> {
   matchAndRewrite(top::WeightOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const final {
     auto input_tensor_type = getRankedTensorElementType(op.getResult());
-    if (!input_tensor_type.isa<UniformQuantizedPerAxisType, QuantizedType>())
+    if (!input_tensor_type
+             .isa<UniformQuantizedPerAxisType, UniformQuantizedType>())
       return failure();
     Type storage_type;
     if (auto quant_type =
@@ -554,11 +557,8 @@ class LoweringTopTFLitePass
       signalPassFailure();
 
     auto module = getOperation();
-    module->setAttr(
-        Module::Attr::STATE,
-        StringAttr::get(module->getContext(), Module::State::TPU_LOWERED));
-    module->setAttr(Module::Attr::CHIP, StringAttr::get(module->getContext(),
-                                                        Module::Chip::BM1686));
+    Module::setState(module, Module::State::TPU_LOWERED);
+    Module::setChip(module, Module::Chip::BM1686);
   }
 };
 } // namespace
