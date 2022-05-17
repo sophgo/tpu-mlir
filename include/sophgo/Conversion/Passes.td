@@ -15,7 +15,7 @@ include "mlir/Pass/PassBase.td"
 // TopTFLiteToTpu
 //===----------------------------------------------------------------------===//
 
-def ConvertTopTFLiteToTpu : Pass<"toptflite-to-tpu"> {
+def ConvertTopTFLiteToTpu : Pass<"toptflite-to-tpu", "ModuleOp"> {
   let summary = "Lower TOP quantize operations to TPU operations";
   let description = [{
 
