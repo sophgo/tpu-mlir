@@ -1,5 +1,5 @@
 add_mlir_interface(InferenceInterface)
-add_mlir_interface(QuantizeInterface)
+add_mlir_interface(LoweringInterface)
 add_mlir_interface(WeightReorderInterface)
 add_mlir_interface(CodegenInterface)
 add_mlir_interface(FlopsInterface)

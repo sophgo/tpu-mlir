@@ -5,5 +5,5 @@
 #include "mlir/IR/Operation.h"
 
 /// Include the ODS generated interface header files.
-#include "sophgo/Interfaces/QuantizeInterface.h.inc"
+#include "sophgo/Interfaces/LoweringInterface.h.inc"
 

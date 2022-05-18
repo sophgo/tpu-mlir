@@ -10,7 +10,7 @@ using namespace mlir;
 using namespace sophgo;
 using namespace sophgo::helper;
 
-Value top::MatMulOp::quantize_int8_bm1684() {
+Value top::MatMulOp::lowering_int8_bm1684() {
   // refer quantize_convlike_layer_int8
   auto op = getOperation();
   OpBuilder builder(op);
@@ -71,5 +71,34 @@ Value top::MatMulOp::quantize_int8_bm1684() {
                                              ArrayRef<Value>{operands},
                                              ArrayRef<NamedAttribute>{attrs});
   Quant::setQuantInt8Type(newOp.output());
+  return newOp.output();
+}
+
+
+Value top::MatMulOp::lowering_fp32_bm1684() {
+  // refer quantize_convlike_layer_int8
+  auto op = getOperation();
+  OpBuilder builder(op);
+  std::vector<Value> operands;
+  std::vector<NamedAttribute> attrs;
+  int64_t batch, M, K, N;
+  bool relu, with_bias;
+  parseParam(batch, M, K, N, with_bias, relu);
+
+  operands.push_back(input());
+  operands.push_back(right());
+  if (with_bias) {
+    operands.push_back(bias());
+  } else {
+    auto none = Module::getNoneOp(op);
+    operands.push_back(none);
+  }
+
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  auto newOp = builder.create<tpu::MatMulOp>(op->getLoc(), output().getType(),
+                                             ArrayRef<Value>{operands},
+                                             ArrayRef<NamedAttribute>{attrs});
   return newOp.output();
 }

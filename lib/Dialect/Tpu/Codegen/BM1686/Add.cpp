@@ -61,6 +61,7 @@ typedef struct {
 } eltwise_float_local_param_t;
 
 void tpu::AddOp::codegen_global_int8_bm1686() {
+  int input_num = inputs().size();
   eltwise_fixed_global_param_t p;
   p.input_A_global_addr = Module::getAddress(inputs()[0]);
   p.input_B_global_addr = Module::getAddress(inputs()[1]);
@@ -72,8 +73,16 @@ void tpu::AddOp::codegen_global_int8_bm1686() {
   p.h = (int)h;
   p.w = (int)w;
   p.op_code = 1; // (0: Product; 1: Sum; 2: Max)
-  auto multipliers_v = Module::getI64Array(multipliers());
-  auto rshift_v = Module::getI64Array(rshifts());
+  auto multipliers_v = Module::getI64Array(multipliers().getValue());
+  if (!multipliers_v->size()) {
+    multipliers_v = std::make_shared<std::vector<int64_t>>(input_num, 1);
+  }
+
+  auto rshift_v = Module::getI64Array(rshifts().getValue());
+  if (!rshift_v->size()) {
+    rshift_v = std::make_shared<std::vector<int64_t>>(input_num, 0);
+  }
+
   p.scale_A = (int)multipliers_v->at(0);
   p.scale_B = (int)multipliers_v->at(1);
   p.rshift_A = (int)rshift_v->at(0);

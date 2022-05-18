@@ -16,17 +16,14 @@ void tpu::AddOp::codegen_global_int8_bm1684() {
   Module::getNCHW(output(), n, c, h, w);
   int op_code = 1; // (0: Product; 1: Sum; 2: Max)
 
-  std::vector<float> coeff_v;
+  auto multiplier_v = std::make_shared<std::vector<double>>(input_num, 0);
   if (coeff().hasValue()) {
-    for (auto data : coeff().getValue()) {
-      coeff_v.push_back(data.cast<FloatAttr>().getValueAsDouble());
-    }
-  } else {
-    coeff_v = {0, 0};
+    multiplier_v = Module::getF64Array(multipliers().getValue());
   }
-  std::vector<int> rshift_v;
-  for (auto data : rshifts()) {
-    rshift_v.push_back(data.cast<IntegerAttr>().getInt());
+
+  auto rshift_v = std::make_shared<std::vector<int64_t>>(input_num, 0);
+  if (rshifts().hasValue()) {
+    rshift_v = Module::getI64Array(rshifts().getValue());
   }
 
   BM1684::instance().dl_nodechip_eltwise_fix8b_forward_parallel(
@@ -38,12 +35,12 @@ void tpu::AddOp::codegen_global_int8_bm1684() {
       h,                                   // int    tensor_h,
       w,                                   // int    tensor_w,
       op_code,                             // int    op_code,
-      (int8_t)coeff_v[0],                  // int    scale_A,
-      (int8_t)coeff_v[1],                  // int    scale_B,
+      (int8_t)multiplier_v->at(0),         // int    scale_A,
+      (int8_t)multiplier_v->at(1),         // int    scale_B,
       1,                                   // int    sign_A,
       1,                                   // int    sign_B,
-      rshift_v[0],                         // int    rshift_A,
-      rshift_v[1],                         // int    rshift_B,
+      rshift_v->at(0),                         // int    rshift_A,
+      rshift_v->at(1),                         // int    rshift_B,
       do_relu() ? 1 : 0,                   // int    do_relu(),
       BM1684::instance().get_cmd_id_node() // CMD_ID_NODE *id_node
   );

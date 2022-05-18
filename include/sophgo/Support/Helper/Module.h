@@ -20,6 +20,7 @@ struct Module {
     static constexpr llvm::StringRef COEFF_SIZE = "module.coeff_size";
     static constexpr llvm::StringRef NEURON_ADDR = "module.neuron_addr";
     static constexpr llvm::StringRef NEURON_SIZE = "module.neuron_size";
+    static constexpr llvm::StringRef MODE = "module.mode";
   };
 
   struct State {
@@ -109,6 +110,13 @@ struct Module {
   static inline void setChip(ModuleOp module, StringRef chip) {
     module->setAttr(Attr::CHIP,
                     StringAttr::get(module.getContext(), chip.upper()));
+  }
+  static inline llvm::StringRef getMode(ModuleOp module) {
+    return module->getAttrOfType<StringAttr>(Attr::MODE).getValue();
+  }
+  static inline void setMode(ModuleOp module, StringRef mode) {
+    module->setAttr(Attr::MODE,
+                    StringAttr::get(module.getContext(), mode.upper()));
   }
   static inline StringRef getWeightFile(ModuleOp module) {
     return module->getAttrOfType<StringAttr>(Attr::WEIGHT_FILE).getValue();

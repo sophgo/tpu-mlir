@@ -3,9 +3,9 @@ file(GLOB _sources
           Inference/*.cpp
           Canonicalize/*.cpp
           Transforms/*.cpp
-          Quantization/*.cpp
-          Quantization/BM1684/*.cpp
-          Quantization/BM1686/*.cpp
+          Lowering/*.cpp
+          Lowering/BM1684/*.cpp
+          Lowering/BM1686/*.cpp
     )
 
 add_mlir_library(SophgoTop
@@ -18,7 +18,7 @@ add_mlir_library(SophgoTop
   MLIRTopOpsIncGen
   MLIRTopPassIncGen
   MLIRInferenceInterfaceIncGen
-  MLIRQuantizeInterfaceIncGen
+  MLIRLoweringInterfaceIncGen
 
   LINK_COMPONENTS
   Core
@@ -33,7 +33,7 @@ add_mlir_library(SophgoTop
   MLIRTransforms
   MLIRSideEffectInterfaces
   MLIRInferenceInterface
-  MLIRQuantizeInterface
+  MLIRLoweringInterface
   SophgoSupport
   SophgoTrait
 )

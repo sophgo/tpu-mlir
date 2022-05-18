@@ -12,6 +12,38 @@ model_transform.py \
     --input $INPUT \
     --mlir resnet18.mlir
 
+sophgo-opt resnet18.mlir \
+    --lowering="mode=FP32 asymmetric=false chip=bm1684" \
+    --save-weight \
+    -o resnet18_fp32_1684.mlir
+
+model_runner.py \
+    --model resnet18_fp32_1684.mlir \
+    --input $INPUT \
+    --dump_all_tensors \
+    --output resnet18_fp32_outputs_1684.npz
+
+npz_tool.py compare \
+    resnet18_fp32_outputs_1684.npz \
+    resnet18_ref_outputs.npz \
+    --tolerance 0.90,0.54 -v
+
+sophgo-opt resnet18.mlir \
+    '--lowering=mode=FP32 asymmetric=false chip=bm1686' \
+    --save-weight \
+    -o resnet18_fp32_1686.mlir
+
+model_runner.py \
+    --model resnet18_fp32_1686.mlir \
+    --input $INPUT \
+    --dump_all_tensors \
+    --output resnet18_fp32_outputs_1686.npz
+
+npz_tool.py compare \
+    resnet18_fp32_outputs_1686.npz \
+    resnet18_ref_outputs.npz \
+    --tolerance 0.90,0.54 -v
+
 # do calibration
 mkdir -p dataset
 cp $INPUT dataset/
@@ -31,7 +63,7 @@ sophgo-opt resnet18.mlir \
 
 # quantize mlir
 sophgo-opt resnet18_cali_1684.mlir \
-    --quantize="mode=INT8 asymmetric=false chip=bm1684" \
+    --lowering="mode=INT8 asymmetric=false chip=bm1684" \
     --save-weight \
     -o resnet18_int8_1684.mlir
 
@@ -64,7 +96,7 @@ sophgo-opt resnet18.mlir \
 
 # quantize mlir for 1686 asymmetric
 sophgo-opt resnet18_cali_1686.mlir \
-    --quantize="mode=INT8 asymmetric=true chip=bm1686" \
+    --lowering="mode=INT8 asymmetric=true chip=bm1686" \
     --save-weight \
     -o resnet18_int8_1686.mlir
 

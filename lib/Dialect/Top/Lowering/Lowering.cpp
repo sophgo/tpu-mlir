@@ -157,81 +157,110 @@ struct ForwardQuantType : public OpRewritePattern<TyOp> {
   }
 };
 
-struct QuantizationPattern : public RewritePattern {
-  QuantizationPattern(MLIRContext *context)
+struct LoweringPattern : public RewritePattern {
+  LoweringPattern(MLIRContext *context)
       : RewritePattern(MatchAnyOpTypeTag(), 1, context) {}
   LogicalResult matchAndRewrite(Operation *op,
                                 PatternRewriter &rewriter) const override {
-    auto quantize_op = dyn_cast<sophgo::QuantizeInterface>(op);
-    if (!quantize_op) {
+    auto lowering_op = dyn_cast<sophgo::LoweringInterface>(op);
+    if (!lowering_op) {
       return failure();
     }
     auto module = Module::getModuleOp(op);
     auto chip = Module::getChip(module);
+    auto mode = Module::getMode(module);
+    //llvm::errs() << "LoweringPattern mode:" << mode <<" op name:"<<Module::getName(op)<<" chip:"<<chip<<"\n";
     Value newValue;
     if (chip == Module::Chip::BM1684) {
-      newValue = quantize_op.quantize_int8_bm1684();
+      if (mode == Quant::Type::FP32) {
+        newValue = lowering_op.lowering_fp32_bm1684();
+      } else {
+        newValue = lowering_op.lowering_int8_bm1684();
+      }
     } else if (chip == Module::Chip::BM1686) {
-      newValue = quantize_op.quantize_int8_bm1686();
+      if (mode == Quant::Type::FP32) {
+        newValue = lowering_op.lowering_fp32_bm1686();
+      } else {
+        newValue = lowering_op.lowering_int8_bm1686();
+      }
     }
+
     rewriter.replaceOp(op, {newValue});
     return success();
   }
 };
 
-class QuantizePass : public QuantizeBase<QuantizePass> {
+class LoweringPass : public LoweringBase<LoweringPass> {
 public:
-  QuantizePass() {}
+  LoweringPass() {}
+
   void runOnOperation() override {
-    llvm::errs() << "default quantize mode:" << this->mode << ", is asymmetric "
-                 << this->isAsymmetric << ", chip :" << this->chip << "\n";
     auto module = getOperation();
     auto state = Module::getState(module);
-    if (state != Module::State::TOP_CALIBRATED || mode != Quant::Type::INT8) {
-      module.dump();
-      llvm_unreachable("Mlir state not support quantize");
+    llvm::errs() << "default quantize mode:" << this->mode << ", is asymmetric "
+                 << this->isAsymmetric << ", chip :" << this->chip <<", state:"<<state<< "\n";
+    if (mode == Quant::Type::FP32) {
+      if (state != Module::State::TOP_F32) {
+        module.dump();
+        llvm_unreachable("Mlir state not support quantize");
+      }
+    } else {
+      if (state != Module::State::TOP_CALIBRATED || mode != Quant::Type::INT8) {
+        module.dump();
+        llvm_unreachable("Mlir state not support quantize");
+      }
     }
+
     StringRef chip_ = StringRef(chip).upper();
     Module::setChip(module, chip_);
+    StringRef mode_ = StringRef(mode).upper();
+    Module::setMode(module, mode_);
     auto ctx = module.getContext();
     RewritePatternSet patterns(ctx);
-    patterns.add<BackwardCalibartion<top::ReluOp>,
-                 BackwardCalibartion<top::MaxPoolOp>>(ctx);
-    applyPatternsAndFoldGreedily(module, std::move(patterns));
-    patterns.clear();
-    patterns.add<
-        ForwardCalibartion<top::ReluOp>, ForwardCalibartion<top::MaxPoolOp>,
-        ForwardCalibartion<top::AvgPoolOp>, ForwardCalibartion<top::ReshapeOp>>(
-        ctx);
-    applyPatternsAndFoldGreedily(module, std::move(patterns));
-    patterns.clear();
-    patterns.add<QuantizationPattern>(ctx);
-    applyPatternsAndFoldGreedily(module, std::move(patterns));
-    // sync sign type for special op
-    if (chip_ == Module::Chip::BM1686) {
+
+    if (mode != Quant::Type::FP32) {
+      patterns.add<BackwardCalibartion<top::ReluOp>,
+                  BackwardCalibartion<top::MaxPoolOp>>(ctx);
+      applyPatternsAndFoldGreedily(module, std::move(patterns));
       patterns.clear();
-      patterns.add<ForwardQuantType<tpu::AvgPoolOp>,
-                  ForwardQuantType<tpu::MaxPoolOp>>(ctx);
+      patterns.add<
+          ForwardCalibartion<top::ReluOp>, ForwardCalibartion<top::MaxPoolOp>,
+          ForwardCalibartion<top::AvgPoolOp>, ForwardCalibartion<top::ReshapeOp>>(
+          ctx);
       applyPatternsAndFoldGreedily(module, std::move(patterns));
     }
-    // cast input and output to fp32
-    for (auto func : module.getOps<FuncOp>()) {
-      func.walk([&](InputOp op) { castOpToInt8(op); });
+    patterns.clear();
+    patterns.add<LoweringPattern>(ctx);
+    applyPatternsAndFoldGreedily(module, std::move(patterns));
+
+    if (mode != Quant::Type::FP32) {
+      // sync sign type for special op
+      if (chip_ == Module::Chip::BM1686) {
+        patterns.clear();
+        patterns.add<ForwardQuantType<tpu::AvgPoolOp>,
+                    ForwardQuantType<tpu::MaxPoolOp>>(ctx);
+        applyPatternsAndFoldGreedily(module, std::move(patterns));
+      }
+      // cast input and output to fp32
+      for (auto func : module.getOps<FuncOp>()) {
+        func.walk([&](InputOp op) { castOpToInt8(op); });
+      }
+      for (auto func : module.getOps<FuncOp>()) {
+        func.walk([&](func::ReturnOp op) {
+          for (auto opd : op.getOperands()) {
+            castOpToExpress(opd);
+          }
+        });
+      }
     }
-    for (auto func : module.getOps<FuncOp>()) {
-      func.walk([&](func::ReturnOp op) {
-        for (auto opd : op.getOperands()) {
-          castOpToExpress(opd);
-        }
-      });
-    }
+
     Module::updateModuleTypes(module);
     Module::setState(module, Module::State::TPU_QUANTIZED);
   }
 };
 
-std::unique_ptr<OperationPass<ModuleOp>> createQuantizePass() {
-  return std::make_unique<QuantizePass>();
+std::unique_ptr<OperationPass<ModuleOp>> createLoweringPass() {
+  return std::make_unique<LoweringPass>();
 }
 } // namespace top
 } // namespace sophgo
