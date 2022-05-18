@@ -19,7 +19,7 @@ namespace sophgo {
 ModuleInterpreter::ModuleInterpreter(ModuleOp module) : module(module) {
   state = Module::getState(module);
   if (state != Module::State::TOP_F32 &&
-      state != Module::State::TPU_QUANTIZED) {
+      state != Module::State::TPU_LOWERED) {
     llvm_unreachable("mlir state not support");
   }
 }
@@ -112,7 +112,7 @@ void ModuleInterpreter::invoke(bool express_type) {
       }
     });
   }
-  if (express_type && state == Module::State::TPU_QUANTIZED) {
+  if (express_type && state == Module::State::TPU_LOWERED) {
     for (auto &name : all_tensor_names) {
       auto mem = mem_map.at(name);
       auto value = value_map.at(name);

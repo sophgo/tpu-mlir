@@ -39,6 +39,18 @@ typedef enum {
 #define MEM_TYPE_CPU (1 << 1)
 #define MEM_TYPE_ALL (MEM_TYPE_TPU | MEM_TYPE_CPU)
 
+#define GDMA_VALUE_DIR_S2L  0
+#define GDMA_VALUE_DIR_L2S  1
+#define GDMA_VALUE_DIR_S2S  2
+#define GDMA_VALUE_DIR_L2L  3
+
+#define GDMA_VALUE_FORMAT_INT8     0
+#define GDMA_VALUE_FORMAT_FLOAT16  1
+#define GDMA_VALUE_FORMAT_FLOAT32  2
+#define GDMA_VALUE_FORMAT_INT16    3
+#define GDMA_VALUE_FORMAT_INT32    4
+#define GDMA_VALUE_FORMAT_BFLOAT16 5
+
 typedef enum {
   DTYPE_FP32 = 0,
   DTYPE_FP16 = 1,
@@ -126,7 +138,6 @@ public:
   cmd_id_divide dl_cmd_id_divide;
   cmd_id_merge dl_cmd_id_merge;
 
-  CMD_ID_NODE *get_cmd_id_node() { return (CMD_ID_NODE *)cmdid_node; }
   void *get_gmem_addr(uint64_t addr);
   void *get_gmem_addr(const bm_device_mem_t &mem);
   void bm_memcpy_s2d(const bm_device_mem_t &dst, void *src);
@@ -171,6 +182,9 @@ public:
   std::vector<uint32_t> gdma_bytes;
   std::vector<uint32_t> bdc_bytes;
   int cmdid_groupnum;
+  void *cmdid_node;
+  void *bdc_node;
+  void *gdma_node;
 
   static const int64_t ALIGNMENT = 0x1000;
 
@@ -181,9 +195,6 @@ protected:
   template <typename FPtrTy> FPtrTy CastToFPtr(const char *symbolName);
 
 protected:
-  void *cmdid_node;
-  void *bdc_node;
-  void *gdma_node;
   bool really_issue_command;
   llvm::StringRef chip;
   llvm::sys::DynamicLibrary DL;

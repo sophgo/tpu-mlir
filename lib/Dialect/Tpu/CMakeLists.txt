@@ -8,7 +8,8 @@ file(GLOB _sources
           Codegen/BM1684/*.cpp
           Codegen/BM1686/*.cpp
           LayerGroup/*.cpp
-          LayerGroup/Common/*.cpp
+          LayerGroup/BM1684/*.cpp
+          LayerGroup/BM1686/*.cpp
           Transforms/*.cpp)
 
 add_mlir_library(SophgoTpu

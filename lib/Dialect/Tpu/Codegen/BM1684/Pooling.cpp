@@ -16,7 +16,7 @@ void tpu::AvgPoolOp::codegen_global_int8_bm1684() {
   BM1684::instance().dl_nodechip_pooling_fix8b_forward_parallel_with_data_split(
       Module::getAddress(input()), Module::getAddress(output()), n, c, ih, iw,
       kh, kw, pt, pb, pl, pr, sh, sw, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1,
-      relu ? 1 : 0, BM1684::instance().get_cmd_id_node());
+      relu ? 1 : 0, (CMD_ID_NODE*)BM1684::instance().cmdid_node);
 }
 
 void tpu::MaxPoolOp::codegen_global_int8_bm1684() {
@@ -27,7 +27,7 @@ void tpu::MaxPoolOp::codegen_global_int8_bm1684() {
   BM1684::instance().dl_nodechip_pooling_fix8b_forward_parallel_with_data_split(
       Module::getAddress(input()), Module::getAddress(output()), n, c, ih, iw,
       kh, kw, pt, pb, pl, pr, sh, sw, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1,
-      relu ? 1 : 0, BM1684::instance().get_cmd_id_node());
+      relu ? 1 : 0, (CMD_ID_NODE*)BM1684::instance().cmdid_node);
 }
 
 void tpu::AvgPoolOp::codegen_local_int8_bm1684(int64_t n_step, int64_t h_step) {
