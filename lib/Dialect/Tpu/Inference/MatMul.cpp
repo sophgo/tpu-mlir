@@ -34,14 +34,18 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
   }
   auto matmul = (MatMul *)p.handle;
   matmul->run();
-  auto o_qtype = Quant::getUniformQuantizedType(output());
-  auto rft = rshift();
-  auto mlti = multiplier();
-  auto num_output = Module::getNumElements(output());
-#pragma omp parallel for schedule(static, omp_schedule(num_output))
-  for (int64_t i = 0; i < num_output; i++) {
-    auto v = (((int64_t)(p.outputs[0][i] * mlti)) >> rft);
-    p.outputs[0][i] = Quant::to_int8(v + o_qtype.getZeroPoint());
+  auto mode = Module::getMode(Module::getModuleOp(getOperation()));
+  if (mode != Quant::Type::FP32) {
+    auto o_qtype = Quant::getUniformQuantizedType(output());
+    auto rft = rshift();
+    auto mlti = multiplier();
+    auto num_output = Module::getNumElements(output());
+  #pragma omp parallel for schedule(static, omp_schedule(num_output))
+    for (int64_t i = 0; i < num_output; i++) {
+      auto v = (((int64_t)(p.outputs[0][i] * mlti)) >> rft);
+      p.outputs[0][i] = Quant::to_int8(v + o_qtype.getZeroPoint());
+    }
   }
+
   return success();
 }

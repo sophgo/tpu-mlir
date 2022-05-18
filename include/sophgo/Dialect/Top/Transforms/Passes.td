@@ -27,12 +27,12 @@ def ImportCalibrationTable : Pass<"import-calibration-table", "ModuleOp"> {
   let dependentDialects = ["top::TopDialect", "mlir::quant::QuantizationDialect"];
 }
 
-def Quantize : Pass<"quantize", "ModuleOp"> {
-  let summary = "quantize mlir by sophgo-opt";
-  let constructor = "createQuantizePass()";
+def Lowering : Pass<"lowering", "ModuleOp"> {
+  let summary = "lowering mlir by sophgo-opt";
+  let constructor = "createLoweringPass()";
   let options = [
     Option<"mode", "mode", "std::string", /*default=*/"",
-           "default quantization mode: INT8/BF16">,
+           "default quantization mode: INT8/BF16/FP32">,
     Option<"chip", "chip", "std::string", /*default=*/"",
            "chip: cv183x/cv182x/bm1684/bm1686">,
     Option<"isAsymmetric", "asymmetric", "bool", /*default=*/"true",

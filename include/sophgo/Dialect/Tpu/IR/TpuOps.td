@@ -135,8 +135,8 @@ def Tpu_AddOp: Tpu_Op<"Add", [SupportFuseRelu,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     OptionalAttr<F64ArrayAttr>:$coeff,
     // quant param
-    I64ArrayAttr:$rshifts,
-    I64ArrayAttr:$multipliers,
+    OptionalAttr<I64ArrayAttr>:$rshifts,
+    OptionalAttr<I64ArrayAttr>:$multipliers,
     DefaultValuedAttr<F64Attr, "0">:$rectified_bias,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
     StrAttr:$name
@@ -316,8 +316,8 @@ def Tpu_SoftmaxOp: Tpu_Op<"Softmax"> {
     AnyTensor:$input,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     // quant param
-    I64Attr:$rshift,
-    I64Attr:$multiplier,
+    OptionalAttr<I64Attr>:$rshift,
+    OptionalAttr<I64Attr>:$multiplier,
     I64ArrayAttr:$table,
     OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
     StrAttr:$name

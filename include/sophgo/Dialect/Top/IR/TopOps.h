@@ -8,7 +8,7 @@
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 #include "sophgo/Interfaces/InferenceInterface.h"
-#include "sophgo/Interfaces/QuantizeInterface.h"
+#include "sophgo/Interfaces/LoweringInterface.h"
 #include "sophgo/Interfaces/FlopsInterface.h"
 #include "sophgo/Support/TensorFile.h"
 #include "sophgo/Traits/Traits.h"
