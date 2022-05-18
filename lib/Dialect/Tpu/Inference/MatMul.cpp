@@ -34,8 +34,7 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
   }
   auto matmul = (MatMul *)p.handle;
   matmul->run();
-  auto mode = Module::getMode(Module::getModuleOp(getOperation()));
-  if (mode != Quant::Type::FP32) {
+  if (Quant::isUniformQuantized(output())) {
     auto o_qtype = Quant::getUniformQuantizedType(output());
     auto rft = rshift();
     auto mlti = multiplier();

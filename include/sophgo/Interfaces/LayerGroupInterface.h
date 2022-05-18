@@ -19,5 +19,8 @@ typedef struct {
 } group_info_t;
 } // namespace sophgo
 
+#include "sophgo/Support/Helper/Module.h"
+using namespace sophgo::helper;
+
 /// Include the ODS generated interface header files.
 #include "sophgo/Interfaces/LayerGroupInterface.h.inc"

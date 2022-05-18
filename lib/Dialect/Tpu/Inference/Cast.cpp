@@ -11,10 +11,11 @@ LogicalResult tpu::CastOp::init(InferenceParameter &p) { return success(); }
 void tpu::CastOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
-  auto mode = Module::getMode(Module::getModuleOp(getOperation()));
   auto num_elem = Module::getNumElements(output());
-  if (mode == Quant::Type::FP32) {
-    memcpy(p.outputs[0], p.inputs[0], num_elem*sizeof(float));
+  auto in_type = Module::getStorageType(input());
+  auto out_type = Module::getStorageType(output());
+  if (in_type.isF32() && out_type.isF32()) {
+    llvm_unreachable("shouldn't be exist");
   } else {
     if (Quant::isUniformQuantized(output())) {
       auto qtype = Quant::getUniformQuantizedType(output());

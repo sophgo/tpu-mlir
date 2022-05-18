@@ -24,7 +24,7 @@ void tpu::ReshapeOp::codegen_global_int8_bm1684() {
     int total_num = align_up(on, 4l) * oc * oh * ow;
     BM1684::instance().dl_nodechip_global_memcpy_ex(
         in_addr, out_addr, 1, total_num, total_num, DTYPE_FP32, DTYPE_FP32,
-        total_num, BM1684::instance().get_cmd_id_node());
+        total_num, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
   }
 }
 
