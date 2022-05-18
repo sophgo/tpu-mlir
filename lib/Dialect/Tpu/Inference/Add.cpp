@@ -14,8 +14,8 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
   auto module = Module::getModuleOp(getOperation());
   int nInputs = inputs().size();
   auto num_elem = Module::getNumElements(output());
-  auto mode = Module::getMode(module);
-  if (mode == Quant::Type::FP32) {
+  auto out_type = Module::getStorageType(output());
+  if (out_type.isF32()) {
     memset(p.outputs[0], 0 ,num_elem*sizeof(float));
 
   #pragma omp parallel for schedule(static, omp_schedule(num_elem))

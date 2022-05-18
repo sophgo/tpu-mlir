@@ -24,7 +24,7 @@ public:
   void runOnOperation() override {
     auto module = getOperation();
     auto state = Module::getState(module);
-    if (state != Module::State::TPU_QUANTIZED) {
+    if (state != Module::State::TPU_LOWERED) {
       llvm_unreachable("module should be tpu quantized");
     }
     for (auto func : module.getOps<FuncOp>()) {

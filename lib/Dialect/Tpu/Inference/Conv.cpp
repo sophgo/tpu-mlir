@@ -7,13 +7,12 @@ using namespace sophgo::helper;
 using namespace mlir;
 
 LogicalResult tpu::ConvOp::init(InferenceParameter &p) {
-  auto mode = Module::getMode(Module::getModuleOp(getOperation()));
   auto conv = new Conv();
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
   bool is_dw, with_bias, relu;
   int izp = 0;
-  if (mode != Quant::Type::FP32) {
+  if (Quant::isUniformQuantized(input())) {
     izp = Quant::getUniformQuantizedType(input()).getZeroPoint();
   }
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
@@ -39,9 +38,8 @@ LogicalResult tpu::ConvOp::inference(InferenceParameter &p) {
   }
   auto conv = (Conv *)p.handle;
   conv->run();
-  auto mode = Module::getMode(Module::getModuleOp(getOperation()));
   // requant
-  if (mode != Quant::Type::FP32) {
+  if (Quant::isUniformQuantized(output())) {
     int64_t n, c, h, w;
     Module::getNCHW(output(), n, c, h, w);
     auto o_qtype = Quant::getUniformQuantizedType(output());

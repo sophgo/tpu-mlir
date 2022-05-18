@@ -24,7 +24,7 @@ constexpr llvm::StringRef Module::Attr::MODE;
 constexpr llvm::StringRef Module::State::TOP_F32;
 constexpr llvm::StringRef Module::State::TOP_CALIBRATED;
 constexpr llvm::StringRef Module::State::TOP_QUANTIZED;
-constexpr llvm::StringRef Module::State::TPU_QUANTIZED;
+constexpr llvm::StringRef Module::State::TPU_LOWERED;
 constexpr llvm::StringRef Module::State::TPU_REORDERED;
 constexpr llvm::StringRef Module::State::TPU_DIVIDED;
 constexpr llvm::StringRef Module::State::TPU_ADDRESSED;

@@ -35,7 +35,7 @@ void tpu::MatMulOp::codegen_global_int8_bm1684() {
       with_bias ? Module::getAddress(bias()) : 0, Module::getAddress(output()),
       0, M, K, N, 0, using_bias, 1, 1, 1, rshift(), 0, if_relu, 1,
       if_right_active, 1, 0, FcPerLayerShift, &quant_param,
-      BM1684::instance().get_cmd_id_node());
+      (CMD_ID_NODE *)BM1684::instance().cmdid_node);
 }
 
 void tpu::MatMulOp::codegen_local_int8_bm1684(int64_t n_step, int64_t h_step) {

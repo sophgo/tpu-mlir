@@ -158,6 +158,7 @@ typedef void (*nodechip_concat_fix8b_local_v2)(uint32_t *p_bottom_local_offset, 
 typedef void (*nodechip_const_binary)(uint64_t bottom_global_addr, uint64_t length, float bottom_val, uint64_t top_global_addr, int binary_op, int inversed, int if_relu, float relu_limit, CMD_ID_NODE *pid_node, int input_is_int32);
 typedef void (*nodechip_global_int2float)(uint64_t bottom_global_offset, uint64_t top_global_offset, int input_n, int input_c, int input_h, int input_w, int sign_unsign, TENSOR_STORAGE_MODE mode, CMD_ID_NODE* id_node);
 typedef void (*nodechip_float2int8_v2)(uint64_t A_global_offset, uint64_t R_global_offset, int input_n, int input_c, int input_h, int input_w, int sign_unsign, TENSOR_STORAGE_MODE stmode, ROUND_MODE_T round_mode, CMD_ID_NODE* id_node);
+typedef void (*nodechip_const_binary_local)(uint32_t bottom0_lo, uint32_t *bottom0_shape, float bottom1_val, uint32_t top_lo, int binary_op, int inversed, int if_relu, float relu_limit, CMD_ID_NODE *pid_node);
 
 namespace sophgo {
 namespace backend {
@@ -329,6 +330,7 @@ public:
   nodechip_const_binary dl_nodechip_const_binary;
   nodechip_global_int2float dl_nodechip_global_int2float;
   nodechip_float2int8_v2 dl_nodechip_float2int8_v2;
+  nodechip_const_binary_local dl_nodechip_const_binary_local;
 
 public:
   virtual uint64_t get_gmem_start() override;

@@ -27,7 +27,7 @@ struct Module {
     static constexpr llvm::StringRef TOP_F32 = "TOP_F32";
     static constexpr llvm::StringRef TOP_CALIBRATED = "TOP_CALIBRATED";
     static constexpr llvm::StringRef TOP_QUANTIZED = "TOP_QUANTIED";
-    static constexpr llvm::StringRef TPU_QUANTIZED = "TPU_QUANTIED";
+    static constexpr llvm::StringRef TPU_LOWERED = "TPU_LOWERED";
     static constexpr llvm::StringRef TPU_REORDERED = "TPU_REORDERED";
     static constexpr llvm::StringRef TPU_DIVIDED = "TPU_DIVIDED";
     static constexpr llvm::StringRef TPU_ADDRESSED = "TPU_ADDRESSED";
@@ -110,13 +110,6 @@ struct Module {
   static inline void setChip(ModuleOp module, StringRef chip) {
     module->setAttr(Attr::CHIP,
                     StringAttr::get(module.getContext(), chip.upper()));
-  }
-  static inline llvm::StringRef getMode(ModuleOp module) {
-    return module->getAttrOfType<StringAttr>(Attr::MODE).getValue();
-  }
-  static inline void setMode(ModuleOp module, StringRef mode) {
-    module->setAttr(Attr::MODE,
-                    StringAttr::get(module.getContext(), mode.upper()));
   }
   static inline StringRef getWeightFile(ModuleOp module) {
     return module->getAttrOfType<StringAttr>(Attr::WEIGHT_FILE).getValue();

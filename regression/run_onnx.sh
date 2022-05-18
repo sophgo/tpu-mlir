@@ -12,6 +12,18 @@ model_transform.py \
     --input $INPUT \
     --mlir resnet18.mlir
 
+# do calibration
+mkdir -p dataset
+cp $INPUT dataset/
+run_calibration.py resnet18.mlir \
+    --dataset dataset \
+    --input_num 1 \
+    -o resnet18_cali_table
+
+#########################
+# BM1684
+#########################
+# convert to fp32
 sophgo-opt resnet18.mlir \
     --lowering="mode=FP32 asymmetric=false chip=bm1684" \
     --save-weight \
@@ -26,35 +38,8 @@ model_runner.py \
 npz_tool.py compare \
     resnet18_fp32_outputs_1684.npz \
     resnet18_ref_outputs.npz \
-    --tolerance 0.90,0.54 -v
+    --tolerance 0.99,0.99 -v
 
-sophgo-opt resnet18.mlir \
-    '--lowering=mode=FP32 asymmetric=false chip=bm1686' \
-    --save-weight \
-    -o resnet18_fp32_1686.mlir
-
-model_runner.py \
-    --model resnet18_fp32_1686.mlir \
-    --input $INPUT \
-    --dump_all_tensors \
-    --output resnet18_fp32_outputs_1686.npz
-
-npz_tool.py compare \
-    resnet18_fp32_outputs_1686.npz \
-    resnet18_ref_outputs.npz \
-    --tolerance 0.90,0.54 -v
-
-# do calibration
-mkdir -p dataset
-cp $INPUT dataset/
-run_calibration.py resnet18.mlir \
-    --dataset dataset \
-    --input_num 1 \
-    -o resnet18_cali_table
-
-#########################
-# BM1684
-#########################
 # import calibration
 sophgo-opt resnet18.mlir \
     --import-calibration-table='file=resnet18_cali_table asymmetric=false' \
@@ -89,6 +74,24 @@ sophgo-opt resnet18_int8_1684.mlir \
 #########################
 # BM1686
 #########################
+# convert fp32
+sophgo-opt resnet18.mlir \
+    '--lowering=mode=FP32 asymmetric=false chip=bm1686' \
+    --save-weight \
+    -o resnet18_fp32_1686.mlir
+
+model_runner.py \
+    --model resnet18_fp32_1686.mlir \
+    --input $INPUT \
+    --dump_all_tensors \
+    --output resnet18_fp32_outputs_1686.npz
+
+npz_tool.py compare \
+    resnet18_fp32_outputs_1686.npz \
+    resnet18_ref_outputs.npz \
+    --tolerance 0.99,0.99 -v
+
+# convert to int8
 sophgo-opt resnet18.mlir \
     --import-calibration-table='file=resnet18_cali_table asymmetric=true' \
     --save-weight \

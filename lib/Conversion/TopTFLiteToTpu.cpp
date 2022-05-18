@@ -556,7 +556,7 @@ class LoweringTopTFLitePass
     auto module = getOperation();
     module->setAttr(
         Module::Attr::STATE,
-        StringAttr::get(module->getContext(), Module::State::TPU_QUANTIZED));
+        StringAttr::get(module->getContext(), Module::State::TPU_LOWERED));
     module->setAttr(Module::Attr::CHIP, StringAttr::get(module->getContext(),
                                                         Module::Chip::BM1686));
   }
