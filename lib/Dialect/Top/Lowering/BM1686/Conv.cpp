@@ -7,7 +7,7 @@ using namespace mlir;
 using namespace sophgo;
 using namespace sophgo::helper;
 
-Value top::ConvOp::quantize_int8_bm1686() {
+Value top::ConvOp::lowering_int8_bm1686() {
   auto op = getOperation();
   OpBuilder builder(op);
   std::vector<Value> operands;
@@ -100,5 +100,32 @@ Value top::ConvOp::quantize_int8_bm1686() {
                                            ArrayRef<Value>{operands},
                                            ArrayRef<NamedAttribute>{attrs});
   Quant::setQuantInt8Type(newOp.output(), true);
+  return newOp.output();
+}
+
+
+Value top::ConvOp::lowering_fp32_bm1686() {
+  auto op = getOperation();
+  OpBuilder builder(op);
+  std::vector<Value> operands;
+  operands.push_back(input());
+  operands.push_back(filter());
+  operands.push_back(bias());
+  int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
+      pl, pr, dh, dw;
+  bool is_dw, with_bias, relu;
+  parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
+             pl, pr, dh, dw, is_dw, with_bias, relu);
+
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  attrs.push_back(
+      builder.getNamedAttr("with_bias", builder.getBoolAttr(with_bias)));
+
+  auto newOp = builder.create<tpu::ConvOp>(op->getLoc(), output().getType(),
+                                           ArrayRef<Value>{operands},
+                                           ArrayRef<NamedAttribute>{attrs});
   return newOp.output();
 }

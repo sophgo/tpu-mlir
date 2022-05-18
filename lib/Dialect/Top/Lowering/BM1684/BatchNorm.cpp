@@ -6,7 +6,12 @@ using namespace sophgo;
 using namespace sophgo::helper;
 using namespace mlir;
 
-Value top::BatchNormOp::quantize_int8_bm1686() {
+Value top::BatchNormOp::lowering_int8_bm1684() {
+  llvm_unreachable("BatchNormOp to be supported");
+  return nullptr;
+}
+
+Value top::BatchNormOp::lowering_fp32_bm1684() {
   llvm_unreachable("BatchNormOp to be supported");
   return nullptr;
 }
