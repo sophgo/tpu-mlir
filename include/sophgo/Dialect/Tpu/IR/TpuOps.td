@@ -9,9 +9,9 @@
 
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "sophgo/Dialect/Tpu/IR/TpuAttr.td"
-include "sophgo/Interfaces/LayerGroupInterface.td"
+include "sophgo/Interfaces/LocalGenInterface.td"
 include "sophgo/Interfaces/WeightReorderInterface.td"
-include "sophgo/Interfaces/CodegenInterface.td"
+include "sophgo/Interfaces/GlobalGenInterface.td"
 include "sophgo/Interfaces/InferenceInterface.td"
 include "sophgo/Traits/Traits.td"
 
@@ -31,13 +31,13 @@ class Tpu_BaseOp<string mnemonic, list<Trait> traits = []> :
 class Tpu_Op<string mnemonic, list<Trait> traits = []> :
     Op<Tpu_Dialect, mnemonic, !listconcat(traits,
        [NoSideEffect, HasCommonAttributes, TpuTypeRestrict,
-       DeclareOpInterfaceMethods<CodegenInterface>,
+       DeclareOpInterfaceMethods<GlobalGenInterface>,
        DeclareOpInterfaceMethods<InferenceInterface>])> ;
 
 def Tpu_ConvOp: Tpu_Op<"Conv",[
     SupportFuseRelu,
     DeclareOpInterfaceMethods<WeightReorderInterface>,
-    DeclareOpInterfaceMethods<LayerGroupInterface, ["BackwardH"]>]> {
+    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH"]>]> {
   let summary = "convolution operator";
 
   let description = [{
@@ -74,7 +74,7 @@ def Tpu_ConvOp: Tpu_Op<"Conv",[
 
 class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,
   [SupportFuseRelu,
-   DeclareOpInterfaceMethods<LayerGroupInterface, ["Verify","BackwardH"]>]> {
+   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport","BackwardH"]>]> {
   let summary = "pool operator";
 
   let description = [{
@@ -122,7 +122,7 @@ def Tpu_AvgPoolOp:Tpu_PoolOp<"AvgPool"> {
 }
 
 def Tpu_AddOp: Tpu_Op<"Add", [SupportFuseRelu,
-  DeclareOpInterfaceMethods<LayerGroupInterface>]> {
+  DeclareOpInterfaceMethods<LocalGenInterface>]> {
   let summary = "add operator";
 
   let description = [{
@@ -146,7 +146,7 @@ def Tpu_AddOp: Tpu_Op<"Add", [SupportFuseRelu,
 }
 
 // def Tpu_ConcatOp: Tpu_Op<"Concat", [SupportFuseRelu,
-//   DeclareOpInterfaceMethods<LayerGroupInterface>]> {
+//   DeclareOpInterfaceMethods<LocalGenInterface>]> {
 //   let summary = "concat operator";
 
 //   let description = [{
@@ -190,7 +190,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
 }
 
 def Tpu_ReluOp: Tpu_Op<"Relu",
-  [DeclareOpInterfaceMethods<LayerGroupInterface>]>{
+  [DeclareOpInterfaceMethods<LocalGenInterface>]>{
   let summary = "Relu operator";
 
   let description = [{
@@ -221,7 +221,7 @@ def Tpu_ReshapeOp:Tpu_Op<"Reshape"> {
 }
 
 def Tpu_CastOp:Tpu_Op<"Cast",
-  [DeclareOpInterfaceMethods<LayerGroupInterface>]> {
+  [DeclareOpInterfaceMethods<LocalGenInterface>]> {
   let summary = "Cast operation";
   let description = [{
   }];
@@ -235,7 +235,7 @@ def Tpu_CastOp:Tpu_Op<"Cast",
 }
 
 def Tpu_LoadOp:Tpu_Op<"Load",
-  [DeclareOpInterfaceMethods<LayerGroupInterface>]> {
+  [DeclareOpInterfaceMethods<LocalGenInterface>]> {
   let summary = "Load operation";
   let description = [{
   }];
@@ -248,7 +248,7 @@ def Tpu_LoadOp:Tpu_Op<"Load",
 }
 
 def Tpu_StoreOp:Tpu_Op<"Store",
-  [DeclareOpInterfaceMethods<LayerGroupInterface>]> {
+  [DeclareOpInterfaceMethods<LocalGenInterface>]> {
   let summary = "Store operation";
   let description = [{
   }];
@@ -261,7 +261,7 @@ def Tpu_StoreOp:Tpu_Op<"Store",
 }
 
 def Tpu_RequantOp:Tpu_Op<"Requant",
-  [DeclareOpInterfaceMethods<LayerGroupInterface>]> {
+  [DeclareOpInterfaceMethods<LocalGenInterface>]> {
   let summary = "requant operation";
   let description = [{
   }];
