@@ -1,6 +1,6 @@
 file(GLOB _sources
           IR/*.cpp
-          Inference/*.cpp
+          Interfaces/*.cpp
           Canonicalize/*.cpp
           Transforms/*.cpp
           Lowering/*.cpp

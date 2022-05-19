@@ -16,7 +16,7 @@
 
 ## Backward
 
-对网络切分的时候，大多数Layer输入和输出的shape是一致的。但是对于Conv、Pool等等需要特别计算：
+对网络进行H切分的时候，大多数Layer输入和输出的H是一致的。但是对于Conv、Pool等等需要特别计算：
 
 ![](./assets/lg_backward.png)
 

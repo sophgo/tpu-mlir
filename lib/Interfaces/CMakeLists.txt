@@ -2,9 +2,9 @@ set(LLVM_OPTIONAL_SOURCES
   InferenceInterface.cpp
   LoweringInterface.cpp
   WeightReorderInterface.cpp
-  CodegenInterface.cpp
+  GlobalGenInterface.cpp
   FlopsInterface.cpp
-  LayerGroupInterface.cpp
+  LocalGenInterface.cpp
   )
 
 function(add_mlir_interface_library name)
@@ -25,6 +25,6 @@ endfunction(add_mlir_interface_library)
 add_mlir_interface_library(InferenceInterface)
 add_mlir_interface_library(LoweringInterface)
 add_mlir_interface_library(WeightReorderInterface)
-add_mlir_interface_library(CodegenInterface)
+add_mlir_interface_library(GlobalGenInterface)
 add_mlir_interface_library(FlopsInterface)
-add_mlir_interface_library(LayerGroupInterface)
+add_mlir_interface_library(LocalGenInterface)
