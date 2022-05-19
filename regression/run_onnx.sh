@@ -114,6 +114,7 @@ npz_tool.py compare \
     resnet18_ref_outputs.npz \
     --tolerance 0.90,0.54 -v
 
+# with layer-group
 sophgo-opt resnet18_int8_1686.mlir \
     --weight-reorder \
     --subnet-divide \
@@ -121,7 +122,10 @@ sophgo-opt resnet18_int8_1686.mlir \
     --address-asign \
     --save-weight \
     -o resnet18_int8_lg_1686.mlir
+#    --codegen="model_file=resnet18_int8_1686_lg.bmodel" \
 
+
+# no layer-group
 sophgo-opt resnet18_int8_1686.mlir \
     --weight-reorder \
     --subnet-divide \

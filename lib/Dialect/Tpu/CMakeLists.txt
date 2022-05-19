@@ -1,6 +1,5 @@
 file(GLOB _sources
           IR/*.cpp
-          Inference/*.cpp
           Interfaces/BM1684/*.cpp
           Interfaces/BM1686/*.cpp
           Interfaces/Common/*.cpp

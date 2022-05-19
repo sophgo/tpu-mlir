@@ -39,16 +39,16 @@ typedef enum {
 #define MEM_TYPE_CPU (1 << 1)
 #define MEM_TYPE_ALL (MEM_TYPE_TPU | MEM_TYPE_CPU)
 
-#define GDMA_VALUE_DIR_S2L  0
-#define GDMA_VALUE_DIR_L2S  1
-#define GDMA_VALUE_DIR_S2S  2
-#define GDMA_VALUE_DIR_L2L  3
+#define GDMA_VALUE_DIR_S2L 0
+#define GDMA_VALUE_DIR_L2S 1
+#define GDMA_VALUE_DIR_S2S 2
+#define GDMA_VALUE_DIR_L2L 3
 
-#define GDMA_VALUE_FORMAT_INT8     0
-#define GDMA_VALUE_FORMAT_FLOAT16  1
-#define GDMA_VALUE_FORMAT_FLOAT32  2
-#define GDMA_VALUE_FORMAT_INT16    3
-#define GDMA_VALUE_FORMAT_INT32    4
+#define GDMA_VALUE_FORMAT_INT8 0
+#define GDMA_VALUE_FORMAT_FLOAT16 1
+#define GDMA_VALUE_FORMAT_FLOAT32 2
+#define GDMA_VALUE_FORMAT_INT16 3
+#define GDMA_VALUE_FORMAT_INT32 4
 #define GDMA_VALUE_FORMAT_BFLOAT16 5
 
 typedef enum {
@@ -86,6 +86,10 @@ typedef struct bmcompiler_mem_info {
 } bm_mem_desc_t;
 typedef struct bmcompiler_mem_info bm_device_mem_t;
 
+typedef struct stride {
+  int64_t N, C, H, W;
+} stride_4D_t;
+
 typedef int (*cmodel_init)(int node_idx, unsigned long long global_mem_size);
 typedef void (*cmodel_deinit)(int node_idx);
 typedef void *(*create_cmd_id_node)();
@@ -99,6 +103,14 @@ typedef void (*use_atomic_cmodel)();
 typedef void (*forbid_atomic_cmodel)();
 typedef void *(*get_global_memaddr)(int node_idx);
 typedef void (*set_cmd_buffer_ptr)(void *gdma_buffer_ptr, void *bdc_buffer_ptr);
+typedef void (*set_cmd_id_prefix)(void *pid_node, const char *name_prefix);
+typedef void (*tensor_stride_move_gen_cmd)(
+    int local_mem_start_addr, int local_mem_idx, uint64_t sys_mem_start_addr,
+    int src_N, int src_C, int src_H, int src_W, uint32_t src_N_stride,
+    uint32_t src_C_stride, uint32_t src_H_stride, uint32_t src_W_stride,
+    uint32_t dst_N_stride, uint32_t dst_C_stride, uint32_t dst_H_stride,
+    uint32_t dst_W_stride, int src_format, int direction, int transpose,
+    CMD_ID_NODE *pid_node);
 typedef void (*set_total_id_ptr)(uint32_t *gdma_total_id_ptr,
                                  uint32_t *bdc_total_id_ptr, void *cmdid_node,
                                  void *gdma_group_id_ptr,
@@ -134,6 +146,8 @@ public:
   forbid_atomic_cmodel dl_forbid_atomic_cmodel;
   get_global_memaddr dl_get_global_memaddr;
   set_cmd_buffer_ptr dl_set_cmd_buffer_ptr;
+  set_cmd_id_prefix dl_set_cmd_id_prefix;
+  tensor_stride_move_gen_cmd dl_tensor_stride_move_gen_cmd;
   set_total_id_ptr dl_set_total_id_ptr;
   cmd_id_divide dl_cmd_id_divide;
   cmd_id_merge dl_cmd_id_merge;
@@ -171,6 +185,12 @@ public:
 
   static bm_data_type_t getDataType(mlir::Type type);
   static bm_data_type_t getDataType(mlir::Value v);
+  static int getGdmaFormat(DATA_TYPE_T data_type);
+  static int getFmtBytes(bm_data_type_t data_type);
+  static stride_4D_t getGlobalStride(int64_t N, int64_t C, int64_t H,
+                                     int64_t W);
+  stride_4D_t getLocalStride(int64_t N, int64_t C, int64_t H, int64_t W,
+                             int fmtBytes);
 
 public:
   std::shared_ptr<std::vector<uint32_t>> bdc_buffer;

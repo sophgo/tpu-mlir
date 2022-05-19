@@ -60,6 +60,9 @@ typedef struct {
   DATA_TYPE_T dtype;
 } eltwise_float_local_param_t;
 
+// =========================================
+// GlobalGenInterface
+// =========================================
 void tpu::AddOp::codegen_global_int8_bm1686() {
   int input_num = inputs().size();
   eltwise_fixed_global_param_t p;
@@ -95,6 +98,10 @@ void tpu::AddOp::codegen_global_int8_bm1686() {
                                       sizeof(eltwise_fixed_global_param_t));
 }
 
+// =========================================
+// LocalGenInterface
+// =========================================
+
 typedef struct {
   unsigned int *input_local_addr;
   unsigned int output_local_addr;
@@ -118,7 +125,6 @@ int64_t tpu::AddOp::getBufferSize_bm1686(int64_t out_n, int64_t out_c,
                                          int64_t out_lmem_bytes) {
   auto out_type = Module::getStorageType(output());
   if (out_type.isBF16() || out_type.isF16()) {
-
   }
   return 0;
 }
@@ -130,7 +136,8 @@ void tpu::AddOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
   // int depth = p_tensor_in_param->d_slice;
   // DATA_TYPE_T *p_bottom_dtype = new DATA_TYPE_T[bottom_num];
   // for (int i = 0; i < bottom_num; ++i)
-  //   p_bottom_dtype[i] = net_graph_->get_tensor_data_type(layer_in_tensors[i]);
+  //   p_bottom_dtype[i] =
+  //   net_graph_->get_tensor_data_type(layer_in_tensors[i]);
   // if (p_bottom_dtype[0] == DTYPE_FP32 || p_bottom_dtype[0] == DTYPE_FP16 ||
   //     p_bottom_dtype[0] == DTYPE_BFP16) {
   //   eltwise_float_local_param_t p;
