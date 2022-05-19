@@ -16,6 +16,7 @@ typedef struct {
   int64_t h_idx;
   int64_t h_slice;
   int64_t timestep;
+  bool overstepped;
 } group_info_t;
 } // namespace sophgo
 

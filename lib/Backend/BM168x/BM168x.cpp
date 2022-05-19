@@ -89,6 +89,67 @@ bm_data_type_t BM168x::getDataType(mlir::Type type) {
   return DTYPE_FP32;
 }
 
+int BM168x::getGdmaFormat(DATA_TYPE_T data_type) {
+  int gdma_format = GDMA_VALUE_FORMAT_FLOAT32;
+  switch (data_type) {
+  case DTYPE_INT8:
+  case DTYPE_UINT8:
+    gdma_format = GDMA_VALUE_FORMAT_INT8;
+    break;
+  case DTYPE_INT16:
+  case DTYPE_UINT16:
+  case DTYPE_FP16:
+  case DTYPE_BFP16:
+    gdma_format = GDMA_VALUE_FORMAT_INT16;
+    break;
+  default:
+    gdma_format = GDMA_VALUE_FORMAT_FLOAT32;
+    break;
+  }
+  return gdma_format;
+}
+
+int BM168x::getFmtBytes(bm_data_type_t data_type) {
+  int data_byte_size = 0;
+  switch (data_type) {
+  case DTYPE_FP32:
+    data_byte_size = 4;
+    break;
+  case DTYPE_FP16:
+  case DTYPE_BFP16:
+  case DTYPE_INT16:
+  case DTYPE_UINT16:
+    data_byte_size = 2;
+    break;
+  case DTYPE_INT8:
+  case DTYPE_UINT8:
+    data_byte_size = 1;
+    break;
+  default:
+    data_byte_size = 4;
+    break;
+  }
+  return data_byte_size;
+}
+
+stride_4D_t BM168x::getGlobalStride(int64_t N, int64_t C, int64_t H,
+                                    int64_t W) {
+  stride_4D_t s;
+  s.N = C * H * W;
+  s.C = H * W;
+  s.H = W;
+  s.W = 1;
+  return s;
+}
+stride_4D_t BM168x::getLocalStride(int64_t N, int64_t C, int64_t H, int64_t W,
+                                   int fmtBytes) {
+  stride_4D_t s;
+  s.W = 1;
+  s.H = W;
+  s.C = align_up(H * W, get_eu_num(fmtBytes));
+  s.N = ceiling_func(C, get_npu_num()) * s.C;
+}
+
 int64_t BM168x::get_lmem_bytes(int64_t n, int64_t c, int64_t h, int64_t w,
                                mlir::Type type, bool eu_align, bool is_4N) {
   int64_t npu_num = get_npu_num();
@@ -147,6 +208,8 @@ void BM168x::load_functions() {
   CAST_FUNCTION(forbid_atomic_cmodel);
   CAST_FUNCTION(get_global_memaddr);
   CAST_FUNCTION(set_cmd_buffer_ptr);
+  CAST_FUNCTION(set_cmd_id_prefix);
+  CAST_FUNCTION(tensor_stride_move_gen_cmd);
   CAST_FUNCTION(set_total_id_ptr);
 }
 
