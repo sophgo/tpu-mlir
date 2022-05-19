@@ -1,16 +1,11 @@
 file(GLOB _sources
           IR/*.cpp
           Inference/*.cpp
-          WeightReorder/*.cpp
-          WeightReorder/BM1684/*.cpp
-          WeightReorder/BM1686/*.cpp
-          Codegen/*.cpp
-          Codegen/BM1684/*.cpp
-          Codegen/BM1686/*.cpp
-          LayerGroup/*.cpp
-          LayerGroup/BM1684/*.cpp
-          LayerGroup/BM1686/*.cpp
-          Transforms/*.cpp)
+          Interfaces/BM1684/*.cpp
+          Interfaces/BM1686/*.cpp
+          Interfaces/Common/*.cpp
+          Transforms/*.cpp
+          Transforms/LayerGroup/*.cpp)
 
 add_mlir_library(SophgoTpu
   ${_sources}
@@ -26,9 +21,9 @@ add_mlir_library(SophgoTpu
   MLIRTpuAttrGen
   MLIRInferenceInterfaceIncGen
   MLIRWeightReorderInterfaceIncGen
-  MLIRCodegenInterfaceIncGen
+  MLIRGlobalGenInterfaceIncGen
   MLIRFlopsInterfaceIncGen
-  MLIRLayerGroupInterfaceIncGen
+  MLIRLocalGenInterfaceIncGen
   Builder
 
   LINK_COMPONENTS
@@ -45,9 +40,9 @@ add_mlir_library(SophgoTpu
   MLIRSideEffectInterfaces
   MLIRInferenceInterface
   MLIRWeightReorderInterface
-  MLIRCodegenInterface
+  MLIRGlobalGenInterface
   MLIRFlopsInterface
-  MLIRLayerGroupInterface
+  MLIRLocalGenInterface
   SophgoSupport
   SophgoTrait
   SophgoBackend

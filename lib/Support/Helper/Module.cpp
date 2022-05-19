@@ -58,8 +58,7 @@ top::NoneOp Module::getNoneOp(Operation *op) {
 }
 
 ModuleOp Module::getModuleOp(Operation *op) {
-  assert(op != nullptr);
-  auto moduleOp = op->getParentOp();
+  auto moduleOp = op;
   while (moduleOp && !isa<mlir::ModuleOp>(moduleOp)) {
     moduleOp = moduleOp->getParentOp();
   }
