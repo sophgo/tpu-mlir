@@ -121,9 +121,8 @@ sophgo-opt resnet18_int8_1686.mlir \
     --layer-group \
     --address-asign \
     --save-weight \
+    --codegen="model_file=resnet18_int8_1686_lg.bmodel" \
     -o resnet18_int8_lg_1686.mlir
-#    --codegen="model_file=resnet18_int8_1686_lg.bmodel" \
-
 
 # no layer-group
 sophgo-opt resnet18_int8_1686.mlir \

@@ -148,6 +148,7 @@ stride_4D_t BM168x::getLocalStride(int64_t N, int64_t C, int64_t H, int64_t W,
   s.H = W;
   s.C = align_up(H * W, get_eu_num(fmtBytes));
   s.N = ceiling_func(C, get_npu_num()) * s.C;
+  return s;
 }
 
 int64_t BM168x::get_lmem_bytes(int64_t n, int64_t c, int64_t h, int64_t w,
