@@ -119,8 +119,9 @@ private:
   Offset<bmodel::CoeffMem> CreateCoeffMem(std::vector<top::WeightOp> &coeffs,
                                           uint64_t coeff_addr,
                                           uint64_t coeff_size);
-  void codegen(Operation * op);
+  void codegen(Operation *op);
   void codegen_for_group(tpu::GroupOp gOP);
+
 private:
   ModuleOp module;
   StringRef state;
@@ -215,12 +216,10 @@ Offset<Vector<Offset<bmodel::CmdGroup>>> CodegenPass::CreateCmdGroupVector() {
   std::vector<Offset<bmodel::CmdGroup>> cmd_group_v;
   auto gdma_ptr = (uint8_t *)bm168x->gdma_buffer->data();
   auto bdc_ptr = (uint8_t *)bm168x->bdc_buffer->data();
-  uint32_t gdma_size =
-      bm168x->gdma_buffer->size() * sizeof(uint32_t);
+  uint32_t gdma_size = bm168x->gdma_buffer->size() * sizeof(uint32_t);
   uint32_t bdc_size = bm168x->bdc_buffer->size() * sizeof(uint32_t);
   int bdc_offset = 0, gdma_offset = 0;
-  for (int group_idx = 0; group_idx < bm168x->cmdid_groupnum;
-       group_idx++) {
+  for (int group_idx = 0; group_idx < bm168x->cmdid_groupnum; group_idx++) {
     auto bdc_num = bm168x->bdc_group_id[group_idx];
     auto gdma_num = bm168x->gdma_group_id[group_idx];
     bmodel::Binary binary_bdc;
@@ -260,27 +259,28 @@ void CodegenPass::codegen_for_group(tpu::GroupOp gOp) {
   auto &body = gOp.body().front();
   int64_t timestep = -1;
   bm168x->divide_sync_id();
-  for(uint64_t nstep = 0; nstep < nsecs; nstep++) {
+  for (uint64_t nstep = 0; nstep < nsecs; nstep++) {
     for (uint64_t hstep = 0; hstep < hsecs; hstep++) {
-      body.walk([&](Operation * op) {
-        auto lgOp = cast<LocalGenInterface>(op);
+      body.walk([&](LocalGenInterface lgOp) {
         auto ginfo = lgOp.getGroupInfo(nstep, hstep);
-        if (ginfo.timestep != timestep) {
-          bm168x->merge_sync_id();
-          bm168x->divide_sync_id();
-          timestep = ginfo.timestep;
+        if (ginfo.overstepped == false) {
+          if (ginfo.timestep != timestep) {
+            bm168x->merge_sync_id();
+            bm168x->divide_sync_id();
+            timestep = ginfo.timestep;
+          }
+          lgOp.codegen_local(nstep, hstep);
         }
-        lgOp.codegen_local(nstep, hstep);
       });
     }
   }
   bm168x->merge_sync_id();
 }
 
-void CodegenPass::codegen(Operation * op) {
+void CodegenPass::codegen(Operation *op) {
   if (auto castOp = dyn_cast<tpu::GroupOp>(op)) {
     codegen_for_group(castOp);
-  } else if(Module::isOpInGroup(op)) {
+  } else if (Module::isOpInGroup(op)) {
     return;
   } else if (auto castOp = dyn_cast<GlobalGenInterface>(op)) {
     castOp.codegen_global();
@@ -290,9 +290,7 @@ void CodegenPass::codegen(Operation * op) {
 Offset<bmodel::SubNet> CodegenPass::CreateSubNet(func::CallOp call) {
   bm168x->before_codegen();
   auto func = Module::getFuncOp(module, call.getCallee());
-  func.walk([&](Operation * op) {
-    codegen(op);
-  });
+  func.walk([&](Operation *op) { codegen(op); });
   bm168x->after_codegen();
   int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
   std::vector<Value> inputs;

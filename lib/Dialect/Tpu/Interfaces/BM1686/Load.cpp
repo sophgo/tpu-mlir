@@ -23,9 +23,7 @@ void tpu::LoadOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
   char prefix[64];
   CMD_ID_NODE *pid_node = (CMD_ID_NODE *)BM1686::instance().gdma_node;
   auto gi = getGroupInfo(n_step, h_step);
-  if (gi.overstepped) {
-    return;
-  }
+  assert(false == gi.overstepped);
   sprintf(prefix, "LD_%s", name().data());
   BM1686::instance().dl_set_cmd_id_prefix(pid_node, prefix);
   auto data_type = BM168x::getDataType(output());

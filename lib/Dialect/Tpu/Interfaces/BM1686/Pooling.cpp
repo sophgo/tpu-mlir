@@ -121,9 +121,9 @@ int64_t tpu::MaxPoolOp::getBufferSize_bm1686(int64_t out_n, int64_t out_c,
 }
 
 void tpu::MaxPoolOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
-  llvm_unreachable("support later");
+  //llvm_unreachable("support later");
 }
 
 void tpu::AvgPoolOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
-  llvm_unreachable("support later");
+  //llvm_unreachable("support later");
 }
