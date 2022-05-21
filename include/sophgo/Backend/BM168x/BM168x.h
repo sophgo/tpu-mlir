@@ -2,6 +2,10 @@
 #include "llvm/Support/DynamicLibrary.h"
 #include "mlir/IR/Builders.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct cmd_id_node;
 typedef struct cmd_id_node CMD_ID_NODE;
 
@@ -86,11 +90,50 @@ typedef struct bmcompiler_mem_info {
 } bm_mem_desc_t;
 typedef struct bmcompiler_mem_info bm_device_mem_t;
 
+static constexpr int MAX_SHAPE_DIMS = 8;
+
+typedef struct local_tensor_spec {
+  uint32_t addr;
+  int32_t dtype;
+  int32_t dims;
+  int32_t shape[MAX_SHAPE_DIMS];
+  uint8_t consume_num;
+} local_tensor_spec_t;
+
+typedef struct global_tensor_spec {
+  uint64_t addr;
+  int32_t dtype;
+  int32_t dims;
+  int32_t shape[MAX_SHAPE_DIMS];
+  int *host_data;
+} global_tensor_spec_t;
+
+typedef struct local_sec_info {
+  int32_t n_slice;
+  int32_t out_n_slice;
+
+  int32_t d_slice;
+
+  int32_t is_h_split;
+  int32_t h_idx;
+  int32_t h_slice;
+  int32_t out_h_slice;
+
+  int32_t is_w_split;
+  int32_t w_idx;
+  int32_t w_slice;
+  int32_t out_w_slice;
+} local_sec_info_t;
+
 typedef struct stride {
   int64_t N, C, H, W;
 } stride_4D_t;
 
-typedef int (*cmodel_init)(int node_idx, unsigned long long global_mem_size);
+#ifdef __cplusplus
+}
+#endif
+
+typedef int (*cmodel_init)(int node_idx, uint64_t global_mem_size);
 typedef void (*cmodel_deinit)(int node_idx);
 typedef void *(*create_cmd_id_node)();
 typedef void (*destroy_cmd_id_node)(void *pid_node);
@@ -187,6 +230,11 @@ public:
   static bm_data_type_t getDataType(mlir::Value v);
   static int getGdmaFormat(DATA_TYPE_T data_type);
   static int getFmtBytes(bm_data_type_t data_type);
+  static global_tensor_spec_t value_to_global(mlir::Value v);
+  static std::shared_ptr<std::vector<global_tensor_spec_t>>
+  get_input_global_spec(mlir::Operation *op);
+  static std::shared_ptr<std::vector<global_tensor_spec_t>>
+  get_output_global_spec(mlir::Operation *op);
   static stride_4D_t getGlobalStride(int64_t N, int64_t C, int64_t H,
                                      int64_t W);
   stride_4D_t getLocalStride(int64_t N, int64_t C, int64_t H, int64_t W,

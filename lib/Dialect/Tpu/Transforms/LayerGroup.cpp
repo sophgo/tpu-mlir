@@ -28,8 +28,8 @@ struct OpReorderPattern : public RewritePattern {
     if (isa<FuncOp, top::WeightOp, top::NoneOp>(op)) {
       return failure();
     }
-    llvm::SmallVector<Operation *, 4> opds;
-    llvm::SmallVector<Operation *, 4> weights;
+    llvm::SmallVector<Operation *, 8> opds;
+    llvm::SmallVector<Operation *, 8> weights;
     for (auto opd : op->getOperands()) {
       auto op_ = opd.getDefiningOp();
       if (op_ == nullptr || isa<top::NoneOp, FuncOp>(op_)) {

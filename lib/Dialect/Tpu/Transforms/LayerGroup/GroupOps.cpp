@@ -98,7 +98,7 @@ group_lmem_t GroupOps::list_lmems(int64_t start_idx, int64_t end_idx) {
       linfo.end_id = -1; // resident in lmem
     }
   }
-  return lmems;
+  return std::move(lmems);
 }
 
 GroupOps::GroupOps(::mlir::func::FuncOp func_) {
@@ -245,12 +245,12 @@ bool GroupOps::need_none(group_lmem_t group_lmem) {
 
 void GroupOps::buildGroupOp(group_lmem_t group_lmem) {
   auto builder = OpBuilder(ctx);
-  llvm::SmallVector<Value, 4> operands;
-  llvm::SmallVector<Value, 4> outputs;
-  llvm::SmallVector<NamedAttribute, 4> attrs;
-  llvm::SmallVector<Type, 4> in_types;
-  llvm::SmallVector<Location, 4> in_locs;
-  llvm::SmallVector<Type, 4> ret_types;
+  llvm::SmallVector<Value, 8> operands;
+  llvm::SmallVector<Value, 8> outputs;
+  llvm::SmallVector<NamedAttribute, 8> attrs;
+  llvm::SmallVector<Type, 8> in_types;
+  llvm::SmallVector<Location, 8> in_locs;
+  llvm::SmallVector<Type, 8> ret_types;
   std::vector<Operation *> ops;
   int64_t nsecs = group_lmem->back().slice_info.n.size();
   int64_t hsecs = group_lmem->back().slice_info.h.size();
@@ -285,7 +285,7 @@ void GroupOps::buildGroupOp(group_lmem_t group_lmem) {
   }
 
   current_op = nullptr;
-  llvm::SmallVector<Value, 4> stores;
+  llvm::SmallVector<Value, 8> stores;
   for (auto &linfo : *group_lmem) {
     if (linfo.type == LMEM_OPERATION) {
       auto op = linfo.op;
@@ -692,7 +692,7 @@ group_lmem_t GroupOps::CreateGroupBySecs(int64_t start_idx, int64_t end_idx,
   if (ret == false) {
     return nullptr;
   }
-  return group_lmem;
+  return std::move(group_lmem);
 }
 
 lmem_info_t *GroupOps::find_max_unalloc_lmem(group_lmem_t group_lmem,

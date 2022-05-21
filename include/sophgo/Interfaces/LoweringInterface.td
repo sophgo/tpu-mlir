@@ -26,14 +26,14 @@ def LoweringInterface : OpInterface<"LoweringInterface"> {
         /*desc=*/[{
         }],
         /*retType=*/"mlir::Value",
-        /*methodName=*/"lowering_fp32_bm1686",
+        /*methodName=*/"lowering_f32_bm1686",
         /*args=*/(ins)
       >,
       InterfaceMethod<
         /*desc=*/[{
         }],
         /*retType=*/"mlir::Value",
-        /*methodName=*/"lowering_fp32_bm1684",
+        /*methodName=*/"lowering_f32_bm1684",
         /*args=*/(ins)
       >,
       InterfaceMethod<

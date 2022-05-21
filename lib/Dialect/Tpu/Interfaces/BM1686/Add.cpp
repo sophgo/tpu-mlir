@@ -8,10 +8,13 @@ using namespace sophgo;
 using namespace sophgo::helper;
 using namespace sophgo::backend;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 typedef struct {
-  unsigned long long input_A_global_addr;
-  unsigned long long input_B_global_addr;
-  unsigned long long output_global_addr;
+  uint64_t input_A_global_addr;
+  uint64_t input_B_global_addr;
+  uint64_t output_global_addr;
   int n;
   int c;
   int h;
@@ -28,9 +31,9 @@ typedef struct {
 } eltwise_fixed_global_param_t;
 
 typedef struct {
-  unsigned long long *input_global_addr;
-  unsigned long long output_global_addr;
-  unsigned long long mask_global_addr;
+  uint64_t *input_global_addr;
+  uint64_t output_global_addr;
+  uint64_t mask_global_addr;
   int input_num;
   int n;
   int c;
@@ -45,9 +48,9 @@ typedef struct {
 } eltwise_float_global_param_t;
 
 typedef struct {
-  unsigned int *input_local_addr;
-  unsigned int output_local_addr;
-  unsigned int buffer_local_addr;
+  uint32_t *input_local_addr;
+  uint32_t output_local_addr;
+  uint32_t buffer_local_addr;
   int input_num;
   int n;
   int c;
@@ -60,9 +63,14 @@ typedef struct {
   DATA_TYPE_T dtype;
 } eltwise_float_local_param_t;
 
+#ifdef __cplusplus
+}
+#endif
 // =========================================
 // GlobalGenInterface
 // =========================================
+
+// int8
 void tpu::AddOp::codegen_global_int8_bm1686() {
   int input_num = inputs().size();
   eltwise_fixed_global_param_t p;
@@ -76,15 +84,8 @@ void tpu::AddOp::codegen_global_int8_bm1686() {
   p.h = (int)h;
   p.w = (int)w;
   p.op_code = 1; // (0: Product; 1: Sum; 2: Max)
-  auto multipliers_v = Module::getI64Array(multipliers().getValue());
-  if (!multipliers_v->size()) {
-    multipliers_v = std::make_shared<std::vector<int64_t>>(input_num, 1);
-  }
-
-  auto rshift_v = Module::getI64Array(rshifts().getValue());
-  if (!rshift_v->size()) {
-    rshift_v = std::make_shared<std::vector<int64_t>>(input_num, 0);
-  }
+  auto multipliers_v = Module::getI64Array(multipliers(), input_num, 1);
+  auto rshift_v = Module::getI64Array(rshifts(), input_num, 0);
 
   p.scale_A = (int)multipliers_v->at(0);
   p.scale_B = (int)multipliers_v->at(1);
@@ -98,14 +99,48 @@ void tpu::AddOp::codegen_global_int8_bm1686() {
                                       sizeof(eltwise_fixed_global_param_t));
 }
 
+// f32
+void tpu::AddOp::codegen_global_float_bm1686() {
+  int num_inputs = inputs().size();
+  llvm::SmallVector<float, 8> coeffs;
+  llvm::SmallVector<float, 8> mask_index(num_inputs, 0.0f);
+  llvm::SmallVector<uint64_t, 8> input_addr(num_inputs);
+  int64_t n, c, h, w;
+  Module::getNCHW(output(), n, c, h, w);
+  auto coeff_v = Module::getF64Array(coeff(), num_inputs, 1.0);
+  coeffs.assign(coeff_v->begin(), coeff_v->end());
+
+  for (int i = 0; i < num_inputs; ++i) {
+    mask_index[i] = i;
+    input_addr[i] = Module::getAddress(inputs()[i]);
+  }
+  eltwise_float_global_param_t p;
+  p.input_global_addr = input_addr.data();
+  p.output_global_addr = Module::getAddress(output());
+  p.mask_global_addr = 0;
+  p.input_num = num_inputs;
+  p.n = n;
+  p.c = c;
+  p.h = h;
+  p.w = w;
+  p.op_code = 1;
+  p.coeff = (int *)coeffs.data();
+  p.need_mask = 0;
+  p.mask_index = (int *)mask_index.data();
+  p.if_relu = do_relu();
+  p.dtype = BM168x::getDataType(output());
+  BM1686::instance().call_global_func("backend_api_eltwise_float_global", &p,
+                                      sizeof(eltwise_float_global_param_t));
+}
+
 // =========================================
 // LocalGenInterface
 // =========================================
 
 typedef struct {
-  unsigned int *input_local_addr;
-  unsigned int output_local_addr;
-  unsigned int buffer_local_addr;
+  uint32_t *input_local_addr;
+  uint32_t output_local_addr;
+  uint32_t buffer_local_addr;
   int n;
   int c;
   int h;

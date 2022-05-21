@@ -10,7 +10,12 @@ using namespace sophgo::helper;
 using namespace sophgo::backend;
 
 void tpu::LoadOp::codegen_global_int8_bm1686() {
-  llvm_unreachable("not support now");
+  llvm_unreachable("global not support");
+}
+
+// f32
+void tpu::LoadOp::codegen_global_float_bm1686() {
+  llvm_unreachable("global not support");
 }
 
 int64_t tpu::LoadOp::getBufferSize_bm1686(int64_t out_n, int64_t out_c,

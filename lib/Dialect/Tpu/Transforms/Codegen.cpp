@@ -54,11 +54,12 @@ public:
     chip = Module::getChip(module);
     bm168x = BM168x::instance(chip);
     bm168x->init();
-    // store all weight to gmem
+
     std::vector<top::WeightOp> weights;
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](top::WeightOp op) {
-        bm168x->value_s2d(op.output(), op.read_as_byte()->data());
+        // TODO: store all weight to gmem for compare
+        // bm168x->value_s2d(op.output(), op.read_as_byte()->data());
         weights.push_back(op);
       });
     }

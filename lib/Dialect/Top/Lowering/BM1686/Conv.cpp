@@ -104,7 +104,7 @@ Value top::ConvOp::lowering_int8_bm1686() {
 }
 
 
-Value top::ConvOp::lowering_fp32_bm1686() {
+Value top::ConvOp::lowering_f32_bm1686() {
   auto op = getOperation();
   OpBuilder builder(op);
   std::vector<Value> operands;

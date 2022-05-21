@@ -81,7 +81,7 @@ Value top::ConvOp::lowering_int8_bm1684() {
 }
 
 
-Value top::ConvOp::lowering_fp32_bm1684() {
+Value top::ConvOp::lowering_f32_bm1684() {
   auto op = getOperation();
   OpBuilder builder(op);
 

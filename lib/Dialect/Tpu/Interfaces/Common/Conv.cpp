@@ -78,18 +78,12 @@ LogicalResult tpu::ConvOp::inference(InferenceParameter &p) {
     Module::getNCHW(output(), n, c, h, w);
     auto o_qtype = Quant::getUniformQuantizedType(output());
     auto rshift_v = Module::getI64Array(rshift().getValue());
-    bool peraxis = rshift_v->size() == c;
-    std::shared_ptr<std::vector<int64_t>> multiplier_v;
-    if (multiplier().hasValue()) {
-      multiplier_v = Module::getI64Array(multiplier().getValue());
-    } else {
-      multiplier_v =
-          std::make_shared<std::vector<int64_t>>(rshift_v->size(), 1);
-    }
+    auto multiplier_v = Module::getI64Array(multiplier(), rshift_v->size(), 1);
+    bool per_axis = rshift_v->size() == c;
 #pragma omp parallel for schedule(static, omp_schedule(c))
     for (int ic = 0; ic < c; ic++) {
-      int64_t shift = peraxis ? rshift_v->at(ic) : rshift_v->at(0);
-      int64_t multi = peraxis ? multiplier_v->at(ic) : multiplier_v->at(0);
+      int64_t shift = per_axis ? rshift_v->at(ic) : rshift_v->at(0);
+      int64_t multi = per_axis ? multiplier_v->at(ic) : multiplier_v->at(0);
       for (int in = 0; in < n; in++) {
         for (int hw = 0; hw < h * w; hw++) {
           int offset = (in * c + ic) * h * w + hw;

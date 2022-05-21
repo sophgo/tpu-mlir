@@ -9,10 +9,10 @@ using namespace sophgo::helper;
 using namespace sophgo::backend;
 
 typedef struct {
-  unsigned long long input_addr;
-  unsigned long long output_addr;
-  unsigned long long requant_addr;
-  unsigned int buffer_local_addr;
+  uint64_t input_addr;
+  uint64_t output_addr;
+  uint64_t requant_addr;
+  uint32_t buffer_local_addr;
   int n;
   int c;
   int h;
@@ -26,6 +26,10 @@ typedef struct {
   int mode;
   int reshaped_coeff;
 } requant_int_param_t;
+
+// =========================================
+// GlobalGenInterface
+// =========================================
 
 void tpu::RequantOp::codegen_global_int8_bm1686() {
   requant_int_param_t param = {0};
@@ -52,6 +56,14 @@ void tpu::RequantOp::codegen_global_int8_bm1686() {
   BM1686::instance().call_global_func("backend_api_requant_int_global", &param,
                                       sizeof(param));
 }
+
+void tpu::RequantOp::codegen_global_float_bm1686() {
+  codegen_global_int8_bm1686();
+}
+
+// =========================================
+// LocalGenInterface
+// =========================================
 
 int64_t tpu::RequantOp::getBufferSize_bm1686(int64_t out_n, int64_t out_c,
                                              int64_t out_h, int64_t out_w,

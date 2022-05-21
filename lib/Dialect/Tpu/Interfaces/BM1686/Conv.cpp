@@ -105,8 +105,8 @@ void tpu::ConvOp::weight_reorder_int8_bm1686() {
   auto qtype = Quant::getUniformQuantizedType(output());
   std::vector<int64_t> quant_shape = {1, oc, 1, 3};
   auto quant_data = std::make_shared<std::vector<int32_t>>(oc * 3, 0);
-  auto m_data = Module::getI64Array(multiplier().getValue());
-  auto r_data = Module::getI64Array(rshift().getValue());
+  auto m_data = Module::getI64Array(multiplier(), oc, 1);
+  auto r_data = Module::getI64Array(rshift(), oc, 0);
   for (int i = 0; i < oc; i++) {
     quant_data->at(i * 3) = m_data->at(i);
     quant_data->at(i * 3 + 1) = r_data->at(i);
@@ -148,13 +148,16 @@ void tpu::ConvOp::weight_reorder_int8_bm1686() {
 // GlobalGenInterface
 // ======================================
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 typedef struct {
-  unsigned long long input_global_addr;
-  unsigned long long weight_global_addr;
-  unsigned long long bias_global_addr;
-  unsigned long long kzp_global_addr;
-  unsigned long long pad_global_addr;
-  unsigned long long output_global_addr;
+  uint64_t input_global_addr;
+  uint64_t weight_global_addr;
+  uint64_t bias_global_addr;
+  uint64_t kzp_global_addr;
+  uint64_t pad_global_addr;
+  uint64_t output_global_addr;
   int batch_num;
   int input_c;
   int input_h;
@@ -227,16 +230,19 @@ typedef struct conv_common_spec {
 } conv_common_spec_t;
 
 typedef struct conv_global_spec {
-    conv_common_spec_t common;
-    /**
-     * merge_coeff:
-     *    0: Not merge and not reshape weight and bias
-     *    1. reshape and merge weight and bias as (bias, weight) align to (4, 1) bytes for depthwise_fix8b or (4, 64) bytes for conv_fix8b
-     *    2. reshape and merge weight, bias and requant as has bias-(requant, bias, weight) align to (64, 4, 1) bytes for depthwise_fix8b or (64, 4, 64) bytes for conv_fix8b
-     *                                                   or no bias-(requant, weight) align to (64, 1) bytes for depthwise_fix8b or (64, 64) bytes for conv_fix8b
-     */
-    int32_t merge_coeff;
-    int32_t weight_is_tensor;
+  conv_common_spec_t common;
+  /**
+   * merge_coeff:
+   *    0: Not merge and not reshape weight and bias
+   *    1. reshape and merge weight and bias as (bias, weight) align to (4, 1)
+   * bytes for depthwise_fix8b or (4, 64) bytes for conv_fix8b
+   *    2. reshape and merge weight, bias and requant as has bias-(requant,
+   * bias, weight) align to (64, 4, 1) bytes for depthwise_fix8b or (64, 4, 64)
+   * bytes for conv_fix8b or no bias-(requant, weight) align to (64, 1) bytes
+   * for depthwise_fix8b or (64, 64) bytes for conv_fix8b
+   */
+  int32_t merge_coeff;
+  int32_t weight_is_tensor;
 } conv_global_spec_t;
 
 typedef struct conv_local_spec {
@@ -262,62 +268,106 @@ typedef struct conv_local_param {
   conv_local_spec_t spec;
 } conv_local_param_t;
 
+#ifdef __cplusplus
+}
+#endif
+
 void tpu::ConvOp::codegen_global_int8_bm1686() {
-//   conv_global_param_t param = {0};
-//   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-//       pl, pr, dh, dw;
-//   bool is_dw, with_bias, do_relu;
-//   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-//              pl, pr, dh, dw, is_dw, with_bias, do_relu);
-//   param.input_global_addr = Module::getAddress(input());
-//   param.weight_global_addr = Module::getAddress(filter());
-//   param.output_global_addr = Module::getAddress(output());
-//   param.has_bias = with_bias;
-//   param.batch_num = n;
-//   param.input_c = ic;
-//   param.input_h = ih;
-//   param.input_w = iw;
-//   param.groups = g;
-//   param.output_c = oc;
-//   param.if_relu = do_relu;
-//   param.upper_limit = 0;
-//   param.idtype = BM168x::getDataType(input());
-//   param.wdtype = BM168x::getDataType(filter());
-//   param.merge_coeff = 2;
-//   param.bdtype = DTYPE_INT32;
-//   param.bias_global_addr = 0;
-//   param.odtype = BM168x::getDataType(output());
-//   param.kh = kh;
-//   param.kw = kw;
-//   param.dh = dh;
-//   param.dw = dw;
-//   param.stride_h = sh;
-//   param.stride_w = sw;
-//   param.pad_h = pt;
-//   param.pad_h_after = pb;
-//   param.pad_w = pl;
-//   param.pad_w_after = pr;
-//   param.rshift = 0;
-//   param.round_mode = ROUND_UP;
-//   param.is_asym = true;
-//   param.kdtype = DTYPE_INT8;
-//   param.kzp_global_addr = 0;
-//   param.pad_global_addr = 0;
-//   param.kzp_is_const = 1;
-//   param.kzp_val = 0;
-//   param.pad_is_const = 1;
-//   auto input_type = Quant::getUniformQuantizedType(input());
-//   param.pad_val = input_type.getZeroPoint();
-//   BM1686::instance().call_global_func("backend_api_conv_global", &param,
-//                                       sizeof(conv_global_param_t));
+  //   conv_global_param_t param = {0};
+  //   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt,
+  //   pb,
+  //       pl, pr, dh, dw;
+  //   bool is_dw, with_bias, do_relu;
+  //   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw,
+  //   pt, pb,
+  //              pl, pr, dh, dw, is_dw, with_bias, do_relu);
+  //   param.input_global_addr = Module::getAddress(input());
+  //   param.weight_global_addr = Module::getAddress(filter());
+  //   param.output_global_addr = Module::getAddress(output());
+  //   param.has_bias = with_bias;
+  //   param.batch_num = n;
+  //   param.input_c = ic;
+  //   param.input_h = ih;
+  //   param.input_w = iw;
+  //   param.groups = g;
+  //   param.output_c = oc;
+  //   param.if_relu = do_relu;
+  //   param.upper_limit = 0;
+  //   param.idtype = BM168x::getDataType(input());
+  //   param.wdtype = BM168x::getDataType(filter());
+  //   param.merge_coeff = 2;
+  //   param.bdtype = DTYPE_INT32;
+  //   param.bias_global_addr = 0;
+  //   param.odtype = BM168x::getDataType(output());
+  //   param.kh = kh;
+  //   param.kw = kw;
+  //   param.dh = dh;
+  //   param.dw = dw;
+  //   param.stride_h = sh;
+  //   param.stride_w = sw;
+  //   param.pad_h = pt;
+  //   param.pad_h_after = pb;
+  //   param.pad_w = pl;
+  //   param.pad_w_after = pr;
+  //   param.rshift = 0;
+  //   param.round_mode = ROUND_UP;
+  //   param.is_asym = true;
+  //   param.kdtype = DTYPE_INT8;
+  //   param.kzp_global_addr = 0;
+  //   param.pad_global_addr = 0;
+  //   param.kzp_is_const = 1;
+  //   param.kzp_val = 0;
+  //   param.pad_is_const = 1;
+  //   auto input_type = Quant::getUniformQuantizedType(input());
+  //   param.pad_val = input_type.getZeroPoint();
+  //   BM1686::instance().call_global_func("backend_api_conv_global", &param,
+  //                                       sizeof(conv_global_param_t));
+}
+
+// f32
+void tpu::ConvOp::codegen_global_float_bm1686() {
+  int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
+      pl, pr, dh, dw;
+  bool is_dw, with_bias, do_relu;
+  parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
+             pl, pr, dh, dw, is_dw, with_bias, do_relu);
+  auto op = getOperation();
+  auto input_spec = BM1686::get_input_global_spec(op);
+  auto output_spec = BM1686::get_output_global_spec(op);
+  conv_global_spec_t spec = {0};
+  auto &common = spec.common;
+  common.input_c = ic;
+  common.output_c = oc;
+  common.if_relu = do_relu;
+  common.upper_limit = 0;
+  common.kh = kh;
+  common.kw = kw;
+  common.dh = dh;
+  common.dw = dw;
+  common.stride_h = sh;
+  common.stride_w = sw;
+  common.groups = g;
+  common.pad_h_t = pt;
+  common.pad_h_b = pb;
+  common.pad_w_l = pl;
+  common.pad_w_r = pr;
+  common.round_mode = ROUND_UP;
+  common.has_bias = with_bias;
+  common.bias_sign = true;
+  common.ipad_is_const = true;
+  common.ipad_value = 0;
+  BM1686::instance().call_global_func("backend_api_conv_global", &spec,
+                                      sizeof(spec), input_spec->data(),
+                                      output_spec->data());
 }
 
 // ======================================
 // LocalGenInterface
 // ======================================
 
-int64_t tpu::ConvOp::getBufferSize_bm1686(int64_t out_n, int64_t out_c, int64_t out_h,
-                                   int64_t out_w, int64_t out_lmem_bytes) {
+int64_t tpu::ConvOp::getBufferSize_bm1686(int64_t out_n, int64_t out_c,
+                                          int64_t out_h, int64_t out_w,
+                                          int64_t out_lmem_bytes) {
   if (coeff_merged() == false) {
     return 0;
   }
@@ -328,7 +378,8 @@ void tpu::ConvOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
   // int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
   //     pl, pr, dh, dw;
   // bool is_dw, with_bias, do_relu;
-  // parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
+  // parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt,
+  // pb,
   //            pl, pr, dh, dw, is_dw, with_bias, do_relu);
   // auto in_ginfo = LocalGenInterface::getGroupInfo(input());
   // auto weight_ginfo = LocalGenInterface::getGroupInfo(filter());

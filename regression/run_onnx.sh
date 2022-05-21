@@ -23,20 +23,20 @@ run_calibration.py resnet18.mlir \
 #########################
 # BM1684
 #########################
-# convert to fp32
+# convert to f32
 sophgo-opt resnet18.mlir \
-    --lowering="mode=FP32 asymmetric=false chip=bm1684" \
+    --lowering="mode=F32 chip=bm1684" \
     --save-weight \
-    -o resnet18_fp32_1684.mlir
+    -o resnet18_f32_1684.mlir
 
 model_runner.py \
-    --model resnet18_fp32_1684.mlir \
+    --model resnet18_f32_1684.mlir \
     --input $INPUT \
     --dump_all_tensors \
-    --output resnet18_fp32_outputs_1684.npz
+    --output resnet18_f32_outputs_1684.npz
 
 npz_tool.py compare \
-    resnet18_fp32_outputs_1684.npz \
+    resnet18_f32_outputs_1684.npz \
     resnet18_ref_outputs.npz \
     --tolerance 0.99,0.99 -v
 
@@ -74,22 +74,30 @@ sophgo-opt resnet18_int8_1684.mlir \
 #########################
 # BM1686
 #########################
-# convert fp32
+# convert f32
 sophgo-opt resnet18.mlir \
-    '--lowering=mode=FP32 asymmetric=false chip=bm1686' \
+    '--lowering=mode=F32 chip=bm1686' \
     --save-weight \
-    -o resnet18_fp32_1686.mlir
+    -o resnet18_f32_1686.mlir
 
 model_runner.py \
-    --model resnet18_fp32_1686.mlir \
+    --model resnet18_f32_1686.mlir \
     --input $INPUT \
     --dump_all_tensors \
-    --output resnet18_fp32_outputs_1686.npz
+    --output resnet18_f32_outputs_1686.npz
 
 npz_tool.py compare \
-    resnet18_fp32_outputs_1686.npz \
+    resnet18_f32_outputs_1686.npz \
     resnet18_ref_outputs.npz \
     --tolerance 0.99,0.99 -v
+
+sophgo-opt resnet18_f32_1686.mlir \
+    --weight-reorder \
+    --subnet-divide \
+    --address-asign \
+    --save-weight \
+    --codegen="model_file=resnet18_f32_1686.bmodel" \
+    -o resnet18_f32_addr_1686.mlir
 
 # convert to int8
 sophgo-opt resnet18.mlir \

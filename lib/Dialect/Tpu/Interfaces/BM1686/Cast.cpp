@@ -9,10 +9,10 @@ using namespace sophgo::helper;
 using namespace sophgo::backend;
 
 typedef struct {
-  unsigned long long input_addr;
-  unsigned long long output_addr;
-  unsigned long long requant_addr;
-  unsigned int buffer_local_addr;
+  uint64_t input_addr;
+  uint64_t output_addr;
+  uint64_t requant_addr;
+  uint32_t buffer_local_addr;
   int n;
   int c;
   int h;
@@ -26,9 +26,9 @@ typedef struct {
 } requant_fp_param_t;
 
 typedef struct {
-  unsigned long long input_addr;
-  unsigned long long output_addr;
-  unsigned long long dequant_addr;
+  uint64_t input_addr;
+  uint64_t output_addr;
+  uint64_t dequant_addr;
   int n;
   int c;
   int h;
@@ -43,6 +43,7 @@ typedef struct {
 // GlobalGenInterface
 // =========================================
 
+// int8
 void tpu::CastOp::codegen_global_int8_bm1686() {
   bool qInput = Quant::isUniformQuantized(input());
   bool qOutput = Quant::isUniformQuantized(output());
@@ -81,6 +82,12 @@ void tpu::CastOp::codegen_global_int8_bm1686() {
     BM1686::instance().call_global_func("backend_api_dequant_float_global",
                                         &param, sizeof(param));
   }
+}
+
+// f32
+void tpu::CastOp::codegen_global_float_bm1686() {
+  // same with int8
+  codegen_global_int8_bm1686();
 }
 
 // =========================================

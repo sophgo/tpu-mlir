@@ -50,17 +50,12 @@ Value top::AddOp::lowering_int8_bm1684() {
   return newOp.output();
 }
 
-Value top::AddOp::lowering_fp32_bm1684() {
+Value top::AddOp::lowering_f32_bm1684() {
   auto op = getOperation();
   OpBuilder builder(op);
   std::vector<Value> operands;
   const int nInputs = op->getNumOperands();
-  std::shared_ptr<std::vector<double>> coeff_v;
-  if (coeff().hasValue()) {
-    coeff_v = Module::getF64Array(coeff().getValue());
-  } else {
-    coeff_v = std::make_shared<std::vector<double>>(nInputs, 1.0);
-  }
+  auto coeff_v = Module::getF64Array(coeff(), nInputs, 1.0);
 
   for (int i = 0; i < nInputs; i++) {
     auto input = op->getOperand(i);
