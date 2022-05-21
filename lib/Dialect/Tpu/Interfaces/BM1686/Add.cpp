@@ -159,7 +159,11 @@ int64_t tpu::AddOp::getBufferSize_bm1686(int64_t out_n, int64_t out_c,
                                          int64_t out_h, int64_t out_w,
                                          int64_t out_lmem_bytes) {
   auto out_type = Module::getStorageType(output());
-  if (out_type.isBF16() || out_type.isF16()) {
+  if (out_type.isInteger(8)) {
+    // INT16 as middle result
+    return out_lmem_bytes * sizeof(short);
+  } else if (out_type.isBF16() || out_type.isF16()) {
+    return out_lmem_bytes;
   }
   return 0;
 }
@@ -216,4 +220,32 @@ void tpu::AddOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
   //                   sizeof(eltwise_fixed_local_param_t));
   // }
   // delete[] p_bottom_dtype;
+}
+
+void tpu::AddOp::codegen_local_float_bm1686(int64_t n_step, int64_t h_step) {
+  auto in0_gi = LocalGenInterface::getGroupInfo(inputs()[0], n_step, h_step);
+  auto in1_gi = LocalGenInterface::getGroupInfo(inputs()[1], n_step, h_step);
+  auto gi = getGroupInfo(n_step, h_step);
+  uint32_t input_offset[] = {(uint32_t)in0_gi.out_addr,
+                             (uint32_t)in1_gi.out_addr};
+  int64_t n, c, h, w;
+  Module::getNCHW(output(), n, c, h, w);
+  auto coeff_v = Module::getF64Array(coeff(), 2, 1.0);
+  SmallVector<float, 2> coeff_(coeff_v->begin(), coeff_v->end());
+  eltwise_float_local_param_t p;
+  p.input_local_addr = input_offset;
+  p.buffer_local_addr = gi.buffer_addr;
+  p.output_local_addr = gi.out_addr;
+  p.input_num = 2;
+  p.n = gi.n_slice;
+  p.c = c;
+  p.h = gi.h_slice;
+  p.w = w;
+  p.op_code = 1;
+  p.coeff = coeff_.data();
+  p.input_local_cstride = NULL;
+  p.if_relu = do_relu();
+  p.dtype = BM168x::getDataType(output());
+  BM1686::instance().call_local_func("backend_api_eltwise_float_local", &p,
+                                     sizeof(eltwise_float_local_param_t));
 }

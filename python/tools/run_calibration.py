@@ -40,8 +40,5 @@ if __name__ == '__main__':
     selector.dump('{}_calibration_list.txt'.format(args.calibration_table.split('.')[0]))
 
     # calibration
-    calibrator = ActivationCalibrator(args.mlir_file,
-                                      selector.data_list,
-                                      args.histogram_bin_num)
+    calibrator = ActivationCalibrator(args.mlir_file, selector.data_list, args.histogram_bin_num)
     calibrator.run(args.calibration_table)
-

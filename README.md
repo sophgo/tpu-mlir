@@ -36,18 +36,35 @@ popd
 
 ## How to use toolchain
 
-#### transform model to mlir (top)
+### transform model to mlir (top)
 
 ``` shell
 model_transform.py \
     --model_type onnx \
     --model_name resnet18 \
-    --model_def  ../resnet18.onnx \
-    --input ../resnet18_in_f32.npz \
+    --input_shapes [[1,3,224,224]] \
+    --model_def  resnet18.onnx \
+    --test_input resnet18_in.npz \
+    --test_result resnet18_top_outputs.npz \
     --mlir resnet18.mlir
 ```
 
-#### do calibration
+### deploy mlir to bmodel
+
+##### To fp32 model
+
+``` shell
+model_deploy.py \
+  --mlir resnet18.mlir \
+  --quantize F32 \
+  --chip bm1686 \
+  --test_input resnet18_in.npz \
+  --test_reference resnet18_top_outputs.npz \
+  --tolerance 0.99,0.99 \
+  --model resnet18_1686_f32.bmodel
+```
+
+##### To int8 model
 
 prepare inputs in forder "dataset", and run:
 
@@ -57,5 +74,3 @@ run_calibration.py resnet18.mlir \
     --input_num 1 \
     -o resnet18_cali_table
 ```
-
-#### deploy mlir to bmodel

@@ -1,6 +1,7 @@
 #include "sophgo/Backend/BM168x/BM168x.h"
 #include "sophgo/Backend/BM168x/BM1684.h"
 #include "sophgo/Backend/BM168x/BM1686.h"
+#include "sophgo/Interfaces/LocalGenInterface.h"
 #include "sophgo/Support/Helper/Module.h"
 #include "sophgo/Support/MathUtils.h"
 #include "llvm/Support/raw_ostream.h"
@@ -133,7 +134,8 @@ int BM168x::getFmtBytes(bm_data_type_t data_type) {
 }
 
 global_tensor_spec_t BM168x::value_to_global(mlir::Value v) {
-  global_tensor_spec_t spec = {0};
+  global_tensor_spec_t spec;
+  memset(&spec, sizeof(spec), 0);
   spec.addr = Module::getAddress(v);
   spec.dtype = getDataType(v);
   auto shape = Module::getShape(v);
@@ -167,6 +169,46 @@ BM168x::get_output_global_spec(Operation *op) {
   std::transform(outputs.begin(), outputs.end(), global_specs->begin(),
                  value_to_global);
   return std::move(global_specs);
+}
+
+local_tensor_spec_t BM168x::value_to_local(mlir::Value v) {
+  local_tensor_spec_t spec;
+  memset(&spec, sizeof(spec), 0);
+  auto gi = LocalGenInterface::getGroupInfo(v);
+  spec.addr = gi.out_addr;
+  spec.dtype = getDataType(v);
+  auto shape = Module::getShape(v);
+  spec.dims = shape.size();
+  for (int i = 0; i < spec.dims; i++) {
+    spec.shape[i] = shape[i];
+  }
+  return spec;
+}
+
+std::shared_ptr<std::vector<local_tensor_spec_t>>
+BM168x::get_input_local_spec(mlir::Operation *op) {
+  std::vector<Value> inputs;
+  for (auto in : op->getOperands()) {
+    if (in.getType().isa<NoneType>()) {
+      continue;
+    }
+    inputs.push_back(in);
+  }
+  auto local_specs =
+      std::make_shared<std::vector<local_tensor_spec_t>>(inputs.size());
+  std::transform(inputs.begin(), inputs.end(), local_specs->begin(),
+                 value_to_local);
+  return std::move(local_specs);
+}
+
+std::shared_ptr<std::vector<local_tensor_spec_t>>
+BM168x::get_output_local_spec(mlir::Operation *op) {
+  auto outputs = op->getResults();
+  auto local_specs =
+      std::make_shared<std::vector<local_tensor_spec_t>>(outputs.size());
+  std::transform(outputs.begin(), outputs.end(), local_specs->begin(),
+                 value_to_local);
+  return std::move(local_specs);
 }
 
 stride_4D_t BM168x::getGlobalStride(int64_t N, int64_t C, int64_t H,

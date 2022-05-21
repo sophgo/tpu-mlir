@@ -33,6 +33,12 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
       InterfaceMethod<
         /*desc=*/[{}],
         /*retType=*/"void",
+        /*methodName=*/"codegen_local_float_bm1686",
+        /*args=*/(ins "int64_t":$n_step, "int64_t":$h_step)
+      >,
+      InterfaceMethod<
+        /*desc=*/[{}],
+        /*retType=*/"void",
         /*methodName=*/"codegen_local",
         /*args=*/(ins "int64_t":$n_step, "int64_t":$h_step),
         [{}],
@@ -42,7 +48,11 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
           if (chip == Module::Chip::BM1684) {
             $_op.codegen_local_int8_bm1684(n_step, h_step);
           } else if (chip == Module::Chip::BM1686) {
-            $_op.codegen_local_int8_bm1686(n_step, h_step);
+            if (Module::isFloatType($_op.getResult())) {
+              $_op.codegen_local_float_bm1686(n_step, h_step);
+            } else {
+              $_op.codegen_local_int8_bm1686(n_step, h_step);
+            }
           }
         }]
       >,

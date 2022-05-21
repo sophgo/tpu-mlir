@@ -197,3 +197,89 @@ void tpu::MaxPoolOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
 void tpu::AvgPoolOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
   // llvm_unreachable("support later");
 }
+
+void tpu::MaxPoolOp::codegen_local_float_bm1686(int64_t n_step,
+                                                int64_t h_step) {
+  int64_t n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value;
+  bool relu, is_global, count_include_pad;
+  parseParam(n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value,
+             relu, is_global, count_include_pad);
+  auto op = getOperation();
+  auto input_spec = BM1686::get_input_local_spec(op);
+  auto output_spec = BM1686::get_output_local_spec(op);
+  pooling_common_spec_t spec;
+  spec.kh = kh;
+  spec.kw = kw;
+  spec.pad_h_t = pt;
+  spec.pad_h_b = pb;
+  spec.pad_w_l = pl;
+  spec.pad_w_r = pr;
+  spec.stride_h = sh;
+  spec.stride_w = sw;
+  spec.dh = 1;
+  spec.dw = 1;
+  spec.is_global_pooling = is_global;
+  spec.is_avg_pooling = false;
+  spec.avg_pooling_mode = count_include_pad ? 0 : 1;
+  spec.if_relu = relu;
+  spec.relu_upper_limit = 0;
+  spec.ceil_mode = 0;
+  spec.round_mode = ROUND_UP;
+  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  auto gi = getGroupInfo(n_step, h_step);
+  local_sec_info_t sec_info;
+  memset(&sec_info, 0, sizeof(sec_info));
+  sec_info.n_slice = in_gi.n_slice;
+  sec_info.h_slice = in_gi.h_slice;
+  sec_info.h_idx = in_gi.h_idx;
+  sec_info.is_h_split =
+      (in_gi.h_idx == 0 && (in_gi.h_idx + in_gi.h_slice) == ih);
+  sec_info.out_n_slice = gi.n_slice;
+  sec_info.out_h_slice = gi.h_slice;
+  BM1686::instance().call_local_func("backend_api_pooling_local", &spec,
+                                     sizeof(spec), &sec_info,
+                                     input_spec->data(), output_spec->data());
+}
+
+void tpu::AvgPoolOp::codegen_local_float_bm1686(int64_t n_step,
+                                                int64_t h_step) {
+  int64_t n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value;
+  bool relu, is_global, count_include_pad;
+  parseParam(n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value,
+             relu, is_global, count_include_pad);
+  auto op = getOperation();
+  auto input_spec = BM1686::get_input_local_spec(op);
+  auto output_spec = BM1686::get_output_local_spec(op);
+  pooling_common_spec_t spec;
+  spec.kh = kh;
+  spec.kw = kw;
+  spec.pad_h_t = pt;
+  spec.pad_h_b = pb;
+  spec.pad_w_l = pl;
+  spec.pad_w_r = pr;
+  spec.stride_h = sh;
+  spec.stride_w = sw;
+  spec.dh = 1;
+  spec.dw = 1;
+  spec.is_global_pooling = is_global;
+  spec.is_avg_pooling = true;
+  spec.avg_pooling_mode = count_include_pad ? 0 : 1;
+  spec.if_relu = relu;
+  spec.relu_upper_limit = 0;
+  spec.ceil_mode = 0;
+  spec.round_mode = ROUND_UP;
+  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  auto gi = getGroupInfo(n_step, h_step);
+  local_sec_info_t sec_info;
+  memset(&sec_info, 0, sizeof(sec_info));
+  sec_info.n_slice = in_gi.n_slice;
+  sec_info.h_slice = in_gi.h_slice;
+  sec_info.h_idx = in_gi.h_idx;
+  sec_info.is_h_split =
+      (in_gi.h_idx == 0 && (in_gi.h_idx + in_gi.h_slice) == ih);
+  sec_info.out_n_slice = gi.n_slice;
+  sec_info.out_h_slice = gi.h_slice;
+  BM1686::instance().call_local_func("backend_api_pooling_local", &spec,
+                                     sizeof(spec), &sec_info,
+                                     input_spec->data(), output_spec->data());
+}

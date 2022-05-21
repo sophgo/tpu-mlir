@@ -235,6 +235,12 @@ public:
   get_input_global_spec(mlir::Operation *op);
   static std::shared_ptr<std::vector<global_tensor_spec_t>>
   get_output_global_spec(mlir::Operation *op);
+
+  static local_tensor_spec_t value_to_local(mlir::Value v);
+  static std::shared_ptr<std::vector<local_tensor_spec_t>>
+  get_input_local_spec(mlir::Operation *op);
+  static std::shared_ptr<std::vector<local_tensor_spec_t>>
+  get_output_local_spec(mlir::Operation *op);
   static stride_4D_t getGlobalStride(int64_t N, int64_t C, int64_t H,
                                      int64_t W);
   stride_4D_t getLocalStride(int64_t N, int64_t C, int64_t H, int64_t W,

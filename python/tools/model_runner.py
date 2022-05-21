@@ -7,7 +7,7 @@ import onnxruntime
 from transform.TFLiteInterpreter import TFLiteInterpreter
 
 
-def mlir_inference(inputs: dict, mlir_file: str, dump_all:bool = True) -> dict:
+def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True) -> dict:
     module = pymlir.module()
     module.load(mlir_file)
     for name in module.input_names:
@@ -16,10 +16,10 @@ def mlir_inference(inputs: dict, mlir_file: str, dump_all:bool = True) -> dict:
     module.invoke()
     tensors = module.get_all_tensor()
     if dump_all:
-       return tensors
+        return tensors
     outputs = dict()
     for name in module.output_names:
-       outputs[name] = tensors[name]
+        outputs[name] = tensors[name]
     return outputs
 
 
@@ -48,7 +48,7 @@ def generate_onnx_with_all(onnx_file: str):
     return output_keys, dump_all_tensors_onnx
 
 
-def onnx_inference(inputs: dict, onnx_file: str, dump_all:bool=True) -> dict:
+def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
     output_keys = []
     if dump_all:
         output_keys, onnx_file = generate_onnx_with_all(onnx_file)

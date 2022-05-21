@@ -9,6 +9,7 @@ from utils.mlir_shell import *
 from tools.model_runner import mlir_inference, onnx_inference, tflite_inference
 import pymlir
 
+
 class ModelTransformTool(object):
 
     def __init__(self, model_name):
@@ -22,12 +23,12 @@ class ModelTransformTool(object):
         self.mlir_file = mlir_file
         mlir_origin = mlir_file.replace('.mlir', '_origin.mlir', 1)
         self.converter.generate_mlir(mlir_origin)
-        ret = mlir_opt(mlir_origin, self.mlir_file)
+        ret = mlir_opt_for_top(mlir_origin, self.mlir_file)
         if ret != 0:
             raise RuntimeError("mlir graph optimize fail")
         print("Mlir file generated:{}".format(mlir_file))
 
-    def model_validate(self, file_list: str, tolerance, excepts):
+    def model_validate(self, file_list: str, tolerance, excepts, test_result):
         in_f32_npz = self.model_name + '_in_f32.npz'
         inputs = dict()
         if len(file_list) == 1 and file_list[0].endswith('.npz'):
@@ -49,11 +50,10 @@ class ModelTransformTool(object):
 
         # inference of mlir model
         f32_outputs = mlir_inference(inputs, self.mlir_file)
-        f32_npz = self.model_name + '_f32_outputs.npz'
-        np.savez(f32_npz, **f32_outputs)
+        np.savez(test_result, **f32_outputs)
 
         # compare all blobs layer by layers
-        ret = f32_blobs_compare(f32_npz, ref_npz, tolerance, excepts=excepts)
+        ret = f32_blobs_compare(test_result, ref_npz, tolerance, excepts=excepts)
         if ret != 0:
             raise RuntimeError("validate fail")
 
@@ -73,14 +73,14 @@ class OnnxModelTransformTool(ModelTransformTool):
     def model_inference(self, inputs: dict):
         return onnx_inference(inputs, self.converter.onnx_file)
 
+
 class TFLiteModelTransformTool(ModelTransformTool):
+
     def __init__(self, model_name, model_def, input_shapes: list = []):
         super().__init__(model_name)
         self.model_def = model_def
         self.input_shapes = input_shapes
-        self.converter = TFLiteConverter(
-            self.model_name, self.model_def, self.input_shapes
-        )
+        self.converter = TFLiteConverter(self.model_name, self.model_def, self.input_shapes)
 
     def model_inference(self, inputs: dict):
         return tflite_inference(inputs, self.converter.tflite_file)
@@ -122,11 +122,13 @@ if __name__ == '__main__':
                         type=str2shape,
                         default=list(),
                         help="list of input shapes, like:[[2,3],[1,2]]")
-    parser.add_argument("--input",
+    parser.add_argument("--test_input",
                         default=None,
                         type=str2list,
                         help="input npy/npz file for inference, "
                         "if has more than one input, join npy with semicolon")
+    parser.add_argument("--test_result", default="", type=str,
+                        help="if input is set, result is mlir inference result")
     parser.add_argument("--tolerance",
                         default='0.99,0.99',
                         help="minimum similarity tolerance to model transform")
@@ -144,6 +146,7 @@ if __name__ == '__main__':
         # TODO: support more AI model types
         raise RuntimeError("unsupport model type:{}".format(args.model_type))
     tool.model_transform(args.mlir)
-    if args.input:
-        tool.model_validate(args.input, args.tolerance, args.excepts)
+    if args.test_input:
+        assert(args.test_result)
+        tool.model_validate(args.test_input, args.tolerance, args.excepts, args.test_result)
     tool.cleanup()
