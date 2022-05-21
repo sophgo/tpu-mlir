@@ -26,6 +26,13 @@ def WeightReorderInterface : OpInterface<"WeightReorderInterface"> {
         /*desc=*/[{
         }],
         /*retType=*/"void",
+        /*methodName=*/"weight_reorder_float_bm1686",
+        /*args=*/(ins)
+      >,
+      InterfaceMethod<
+        /*desc=*/[{
+        }],
+        /*retType=*/"void",
         /*methodName=*/"weight_reorder",
         /*args=*/(ins),
         [{}],
@@ -39,6 +46,7 @@ def WeightReorderInterface : OpInterface<"WeightReorderInterface"> {
             }
           } else if (chip == Module::Chip::BM1686) {
             if (Module::isFloatType($_op.getResult())) {
+              $_op.weight_reorder_float_bm1686();
             } else {
               $_op.weight_reorder_int8_bm1686();
             }

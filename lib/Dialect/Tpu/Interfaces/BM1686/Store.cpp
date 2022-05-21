@@ -41,3 +41,7 @@ void tpu::StoreOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
       s_stride.N, s_stride.C, s_stride.H, s_stride.W, g_stride.N, g_stride.C,
       g_stride.H, g_stride.W, gdma_format, GDMA_VALUE_DIR_L2S, 0, pid_node);
 }
+
+void tpu::StoreOp::codegen_local_float_bm1686(int64_t n_step, int64_t h_step) {
+  codegen_local_int8_bm1686(n_step, h_step);
+}

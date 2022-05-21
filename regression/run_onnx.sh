@@ -9,7 +9,8 @@ model_transform.py \
     --model_name resnet18 \
     --input_shapes [[4,3,224,224]] \
     --model_def  ../resnet18.onnx \
-    --input $INPUT \
+    --test_input $INPUT \
+    --test_result resnet18_f32_outputs.npz \
     --mlir resnet18.mlir
 
 # do calibration
@@ -37,7 +38,7 @@ model_runner.py \
 
 npz_tool.py compare \
     resnet18_f32_outputs_1684.npz \
-    resnet18_ref_outputs.npz \
+    resnet18_f32_outputs.npz \
     --tolerance 0.99,0.99 -v
 
 # import calibration

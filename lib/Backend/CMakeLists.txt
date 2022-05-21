@@ -5,6 +5,7 @@ add_llvm_library(SophgoBackend
   ${_sources}
   LINK_LIBS PUBLIC
   SophgoSupport
+  MLIRLocalGenInterface
 )
 
 install(FILES BM168x/libbackend_1684.so
