@@ -32,7 +32,7 @@ def Lowering : Pass<"lowering", "ModuleOp"> {
   let constructor = "createLoweringPass()";
   let options = [
     Option<"mode", "mode", "std::string", /*default=*/"",
-           "default quantization mode: INT8/BF16/FP32">,
+           "default quantization mode: INT8/BF16/F32">,
     Option<"chip", "chip", "std::string", /*default=*/"",
            "chip: cv183x/cv182x/bm1684/bm1686">,
     Option<"isAsymmetric", "asymmetric", "bool", /*default=*/"true",

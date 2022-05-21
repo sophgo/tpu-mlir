@@ -57,19 +57,19 @@ std::shared_ptr<std::vector<uint8_t>> WeightOp::read_as_byte() {
     auto bytes = data_f32->size() * sizeof(float);
     auto data_u8 = std::make_shared<std::vector<uint8_t>>(bytes);
     memcpy(data_u8->data(), data_f32->data(), bytes);
-    return data_u8;
+    return std::move(data_u8);
   } else if (dtype.isInteger(16)) {
     auto data_i16 = read<int16_t>();
     auto bytes = data_i16->size() * sizeof(int16_t);
     auto data_u8 = std::make_shared<std::vector<uint8_t>>(bytes);
     memcpy(data_u8->data(), data_i16->data(), bytes);
-    return data_u8;
+    return std::move(data_u8);
   } else if (dtype.isInteger(32)) {
     auto data_i32 = read<int32_t>();
     auto bytes = data_i32->size() * sizeof(int32_t);
     auto data_u8 = std::make_shared<std::vector<uint8_t>>(bytes);
     memcpy(data_u8->data(), data_i32->data(), bytes);
-    return data_u8;
+    return std::move(data_u8);
   }
   dump();
   llvm_unreachable("weight data not support read now");

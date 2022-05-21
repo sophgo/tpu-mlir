@@ -17,8 +17,8 @@ struct Quant {
     static constexpr llvm::StringRef INT8 = "INT8";
     static constexpr llvm::StringRef UINT8 = "UINT8";
     static constexpr llvm::StringRef BF16 = "BF16";
-    static constexpr llvm::StringRef FP16 = "FP16";
-    static constexpr llvm::StringRef FP32 = "FP32";
+    static constexpr llvm::StringRef F16 = "F16";
+    static constexpr llvm::StringRef F32 = "F32";
   };
 
   static bool isCalibratedType(Value v) {

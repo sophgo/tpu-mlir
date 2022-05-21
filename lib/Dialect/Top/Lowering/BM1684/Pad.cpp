@@ -11,7 +11,7 @@ Value top::PadOp::lowering_int8_bm1684() {
   return nullptr;
 }
 
-Value top::PadOp::lowering_fp32_bm1684() {
+Value top::PadOp::lowering_f32_bm1684() {
   llvm_unreachable("BatchNormOp to be supported");
   return nullptr;
 }

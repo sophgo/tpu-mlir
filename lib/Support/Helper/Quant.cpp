@@ -13,8 +13,8 @@ constexpr double Quant::QMAX_INT8;
 constexpr int Quant::BITS_INT8;
 constexpr llvm::StringRef Quant::Type::INT8;
 constexpr llvm::StringRef Quant::Type::BF16;
-constexpr llvm::StringRef Quant::Type::FP16;
-constexpr llvm::StringRef Quant::Type::FP32;
+constexpr llvm::StringRef Quant::Type::F16;
+constexpr llvm::StringRef Quant::Type::F32;
 
 void Quant::getScaleAndZeroPoint(int64_t qmin, int64_t qmax, double rmin,
                                  double rmax, double &scale,

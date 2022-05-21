@@ -26,7 +26,7 @@ Value top::MaxPoolOp::lowering_int8_bm1686() {
   return newOp.output();
 }
 
-Value top::MaxPoolOp::lowering_fp32_bm1686() {
+Value top::MaxPoolOp::lowering_f32_bm1686() {
   auto op = getOperation();
   OpBuilder builder(op);
   std::vector<Value> operands;

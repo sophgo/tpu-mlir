@@ -54,6 +54,23 @@ void BM1686::call_local_func(const char *symbolName, void *params,
   func(params, param_size, bdc_node);
 }
 
+typedef int (*global_backend_api_t)(void *params, int param_size, void *input,
+                                    void *output, void *pid_node);
+void BM1686::call_global_func(const char *symbolName, void *params,
+                              int param_size, void *input, void *output) {
+  auto func = CastToFPtr<global_backend_api_t>(symbolName);
+  func(params, param_size, input, output, cmdid_node);
+}
+
+typedef int (*local_backend_api_t)(void *params, int param_size, void *input,
+                                   void *info, void *output, void *pid_node);
+void BM1686::call_local_func(const char *symbolName, void *params,
+                             int param_size, void *info, void *input,
+                             void *output) {
+  auto func = CastToFPtr<local_backend_api_t>(symbolName);
+  func(params, param_size, info, input, output, bdc_node);
+}
+
 #define CAST_FUNCTION(name) dl_##name = CastToFPtr<name>(#name)
 
 void BM1686::load_functions() {

@@ -28,6 +28,10 @@ public:
   virtual void after_codegen() override;
   void call_global_func(const char *symbolName, void *params, int param_size);
   void call_local_func(const char *symbolName, void *params, int param_size);
+  void call_global_func(const char *symbolName, void *params, int param_size,
+                        void *input, void *output);
+  void call_local_func(const char *symbolName, void *params, int param_size,
+                       void *info, void *input, void *output);
 
   // arch info
   virtual uint64_t get_gmem_start() override;

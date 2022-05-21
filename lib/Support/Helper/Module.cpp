@@ -188,15 +188,38 @@ std::shared_ptr<std::vector<int64_t>> Module::getI64Array(ArrayAttr arrayAttr) {
     auto attr = en.value().dyn_cast<IntegerAttr>();
     data->push_back(attr.getInt());
   }
-  return data;
+  return std::move(data);
 }
+
+std::shared_ptr<std::vector<int64_t>>
+Module::getI64Array(Optional<ArrayAttr> arrayAttr, int64_t num_elem,
+                    int64_t default_value) {
+  if (arrayAttr.hasValue()) {
+    auto arr = getI64Array(arrayAttr.getValue());
+    assert(arr->size() == num_elem);
+    return std::move(arr);
+  }
+  return std::make_shared<std::vector<int64_t>>(num_elem, default_value);
+}
+
 std::shared_ptr<std::vector<double>> Module::getF64Array(ArrayAttr arrayAttr) {
   auto data = std::make_shared<std::vector<double>>();
   for (auto en : llvm::enumerate(arrayAttr)) {
     auto attr = en.value().dyn_cast<FloatAttr>();
     data->push_back(attr.getValueAsDouble());
   }
-  return data;
+  return std::move(data);
+}
+
+std::shared_ptr<std::vector<double>>
+Module::getF64Array(Optional<ArrayAttr> arrayAttr, int64_t num_elem,
+                    double default_value) {
+  if (arrayAttr.hasValue()) {
+    auto arr = getF64Array(arrayAttr.getValue());
+    assert(arr->size() == num_elem);
+    return std::move(arr);
+  }
+  return std::make_shared<std::vector<double>>(num_elem, default_value);
 }
 
 Type Module::getStorageType(Value v) {

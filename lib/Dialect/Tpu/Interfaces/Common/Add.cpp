@@ -61,8 +61,8 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
       return success();
     }
     std::vector<float *> input_data = p.inputs;
-    auto multiplier_v = Module::getI64Array(multipliers().getValue());
-    auto rshift_v = Module::getI64Array(rshifts().getValue());
+    auto multiplier_v = Module::getI64Array(multipliers(), nInputs, 1);
+    auto rshift_v = Module::getI64Array(rshifts(), nInputs, 0);
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int64_t i = 0; i < num_elem; i++) {
       p.outputs[0][i] = 0;

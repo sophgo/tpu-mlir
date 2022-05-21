@@ -33,9 +33,15 @@ def WeightReorderInterface : OpInterface<"WeightReorderInterface"> {
           auto module = Module::getModuleOp($_op);
           auto chip = Module::getChip(module);
           if (chip == Module::Chip::BM1684) {
-            $_op.weight_reorder_int8_bm1684();
+            if (Module::isFloatType($_op.getResult())) {
+            } else {
+              $_op.weight_reorder_int8_bm1684();
+            }
           } else if (chip == Module::Chip::BM1686) {
-            $_op.weight_reorder_int8_bm1686();
+            if (Module::isFloatType($_op.getResult())) {
+            } else {
+              $_op.weight_reorder_int8_bm1686();
+            }
           }
         }]
       >,

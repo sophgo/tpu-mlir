@@ -93,7 +93,7 @@ Value top::MatMulOp::lowering_int8_bm1686() {
 }
 
 
-Value top::MatMulOp::lowering_fp32_bm1686() {
+Value top::MatMulOp::lowering_f32_bm1686() {
   // refer quantize_convlike_layer_int8
   auto op = getOperation();
   OpBuilder builder(op);

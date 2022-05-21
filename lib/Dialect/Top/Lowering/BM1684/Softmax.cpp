@@ -11,7 +11,7 @@ Value top::SoftmaxOp::lowering_int8_bm1684() {
   return nullptr;
 }
 
-Value top::SoftmaxOp::lowering_fp32_bm1684() {
+Value top::SoftmaxOp::lowering_f32_bm1684() {
   llvm_unreachable("SoftmaxOp to be supported");
   return nullptr;
 }
