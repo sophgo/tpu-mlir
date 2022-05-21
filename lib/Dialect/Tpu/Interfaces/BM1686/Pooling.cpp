@@ -8,36 +8,39 @@ using namespace sophgo;
 using namespace sophgo::helper;
 using namespace sophgo::backend;
 
-typedef struct {
-  bool is_local;
-  /* for common */
-  unsigned long long input_addr;
-  unsigned long long output_addr;
-  const int *input_shape;
-  int output_h;
-  int output_w;
-  int kh;
-  int kw;
-  int pad_h_t;
-  int pad_h_b;
-  int pad_w_l;
-  int pad_w_r;
-  int stride_h;
-  int stride_w;
-  int dh;
-  int dw;
-  int is_avg_pooling;
-  int avg_pooling_mode;
-  DATA_TYPE_T idtype;
-  DATA_TYPE_T odtype;
+#ifdef __cplusplus
+extern "C" {
+#endif
+typedef struct pooling_common_spec {
+  int32_t kh;
+  int32_t kw;
+  int32_t pad_h_t;
+  int32_t pad_h_b;
+  int32_t pad_w_l;
+  int32_t pad_w_r;
+  int32_t stride_h;
+  int32_t stride_w;
+  int32_t dh;
+  int32_t dw;
+  int32_t is_global_pooling;
+  int32_t is_avg_pooling;
+  int32_t avg_pooling_mode;
   /* for float */
-  int if_relu;
+  int32_t if_relu;
   float relu_upper_limit;
   /* for fix8b */
-  int ceil_mode;
-  ROUND_MODE_T round_mode;
-} pooling_param_t;
+  int32_t ceil_mode;
+  int32_t round_mode;
+} pooling_common_spec_t;
 
+#ifdef __cplusplus
+}
+#endif
+
+// =========================================
+// GlobalGenInterface
+// =========================================
+// int8
 void tpu::MaxPoolOp::codegen_global_int8_bm1686() {
   // int64_t n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value;
   // bool relu, is_global, count_include_pad;
@@ -108,6 +111,73 @@ void tpu::AvgPoolOp::codegen_global_int8_bm1686() {
   //                                     sizeof(pooling_param_t));
 }
 
+// f32
+void tpu::AvgPoolOp::codegen_global_float_bm1686() {
+  int64_t n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value;
+  bool relu, is_global, count_include_pad;
+  parseParam(n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value,
+             relu, is_global, count_include_pad);
+  auto op = getOperation();
+  auto input_spec = BM1686::get_input_global_spec(op);
+  auto output_spec = BM1686::get_output_global_spec(op);
+  pooling_common_spec_t spec;
+  spec.kh = kh;
+  spec.kw = kw;
+  spec.pad_h_t = pt;
+  spec.pad_h_b = pb;
+  spec.pad_w_l = pl;
+  spec.pad_w_r = pr;
+  spec.stride_h = sh;
+  spec.stride_w = sw;
+  spec.dh = 1;
+  spec.dw = 1;
+  spec.is_global_pooling = is_global;
+  spec.is_avg_pooling = true;
+  spec.avg_pooling_mode = count_include_pad ? 0 : 1;
+  spec.if_relu = relu;
+  spec.relu_upper_limit = 0;
+  spec.ceil_mode = 0;
+  spec.round_mode = ROUND_UP;
+  BM1686::instance().call_global_func("backend_api_pooling_global", &spec,
+                                      sizeof(spec), input_spec->data(),
+                                      output_spec->data());
+}
+
+void tpu::MaxPoolOp::codegen_global_float_bm1686() {
+  int64_t n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value;
+  bool relu, is_global, count_include_pad;
+  parseParam(n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value,
+             relu, is_global, count_include_pad);
+  auto op = getOperation();
+  auto input_spec = BM1686::get_input_global_spec(op);
+  auto output_spec = BM1686::get_output_global_spec(op);
+  pooling_common_spec_t spec;
+  spec.kh = kh;
+  spec.kw = kw;
+  spec.pad_h_t = pt;
+  spec.pad_h_b = pb;
+  spec.pad_w_l = pl;
+  spec.pad_w_r = pr;
+  spec.stride_h = sh;
+  spec.stride_w = sw;
+  spec.dh = 1;
+  spec.dw = 1;
+  spec.is_global_pooling = is_global;
+  spec.is_avg_pooling = false;
+  spec.avg_pooling_mode = count_include_pad ? 0 : 1;
+  spec.if_relu = relu;
+  spec.relu_upper_limit = 0;
+  spec.ceil_mode = 0;
+  spec.round_mode = ROUND_UP;
+  BM1686::instance().call_global_func("backend_api_pooling_global", &spec,
+                                      sizeof(spec), input_spec->data(),
+                                      output_spec->data());
+}
+
+// =========================================
+// LocalGenInterface
+// =========================================
+
 int64_t tpu::AvgPoolOp::getBufferSize_bm1686(int64_t out_n, int64_t out_c,
                                              int64_t out_h, int64_t out_w,
                                              int64_t out_lmem_bytes) {
@@ -121,9 +191,9 @@ int64_t tpu::MaxPoolOp::getBufferSize_bm1686(int64_t out_n, int64_t out_c,
 }
 
 void tpu::MaxPoolOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
-  //llvm_unreachable("support later");
+  // llvm_unreachable("support later");
 }
 
 void tpu::AvgPoolOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
-  //llvm_unreachable("support later");
+  // llvm_unreachable("support later");
 }

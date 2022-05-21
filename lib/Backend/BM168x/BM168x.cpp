@@ -132,6 +132,43 @@ int BM168x::getFmtBytes(bm_data_type_t data_type) {
   return data_byte_size;
 }
 
+global_tensor_spec_t BM168x::value_to_global(mlir::Value v) {
+  global_tensor_spec_t spec = {0};
+  spec.addr = Module::getAddress(v);
+  spec.dtype = getDataType(v);
+  auto shape = Module::getShape(v);
+  spec.dims = shape.size();
+  for (int i = 0; i < spec.dims; i++) {
+    spec.shape[i] = shape[i];
+  }
+  return spec;
+}
+std::shared_ptr<std::vector<global_tensor_spec_t>>
+BM168x::get_input_global_spec(Operation *op) {
+  std::vector<Value> inputs;
+  for (auto in : op->getOperands()) {
+    if (in.getType().isa<NoneType>()) {
+      continue;
+    }
+    inputs.push_back(in);
+  }
+  auto global_specs =
+      std::make_shared<std::vector<global_tensor_spec_t>>(inputs.size());
+  std::transform(inputs.begin(), inputs.end(), global_specs->begin(),
+                 value_to_global);
+  return std::move(global_specs);
+}
+
+std::shared_ptr<std::vector<global_tensor_spec_t>>
+BM168x::get_output_global_spec(Operation *op) {
+  auto outputs = op->getResults();
+  auto global_specs =
+      std::make_shared<std::vector<global_tensor_spec_t>>(outputs.size());
+  std::transform(outputs.begin(), outputs.end(), global_specs->begin(),
+                 value_to_global);
+  return std::move(global_specs);
+}
+
 stride_4D_t BM168x::getGlobalStride(int64_t N, int64_t C, int64_t H,
                                     int64_t W) {
   stride_4D_t s;

@@ -12,3 +12,6 @@ void tpu::SoftmaxOp::codegen_global_int8_bm1686() {
   llvm_unreachable("Codegen to be supported");
 }
 
+void tpu::SoftmaxOp::codegen_global_float_bm1686() {
+  llvm_unreachable("Codegen to be supported");
+}

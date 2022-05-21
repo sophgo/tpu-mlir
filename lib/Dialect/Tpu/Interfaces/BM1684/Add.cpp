@@ -15,16 +15,8 @@ void tpu::AddOp::codegen_global_int8_bm1684() {
   int64_t n, c, h, w;
   Module::getNCHW(output(), n, c, h, w);
   int op_code = 1; // (0: Product; 1: Sum; 2: Max)
-
-  auto multiplier_v = std::make_shared<std::vector<double>>(input_num, 0);
-  if (coeff().hasValue()) {
-    multiplier_v = Module::getF64Array(multipliers().getValue());
-  }
-
-  auto rshift_v = std::make_shared<std::vector<int64_t>>(input_num, 0);
-  if (rshifts().hasValue()) {
-    rshift_v = Module::getI64Array(rshifts().getValue());
-  }
+  auto multiplier_v = Module::getI64Array(multipliers(), input_num, 1);
+  auto rshift_v = Module::getI64Array(rshifts(), input_num, 0);
 
   BM1684::instance().dl_nodechip_eltwise_fix8b_forward_parallel(
       Module::getAddress(inputs()[0]), // u64    bottom_A_global_addr,
@@ -60,14 +52,15 @@ void tpu::AddOp::codegen_local_int8_bm1684(int64_t n_step, int64_t h_step) {
   auto out_ginfo = LocalGenInterface::getGroupInfo(output());
   int64_t n, c, h, w;
   Module::getNCHW(output(), n, c, h, w);
-  auto muls = Module::getI64Array(multipliers().getValue());
-  auto rs = Module::getI64Array(rshifts().getValue());
   int num_inputs = inputs().size();
-  llvm::SmallVector<int, 4> input_addrs;
-  llvm::SmallVector<int, 4> input_signs;
-  llvm::SmallVector<int, 4> input_strides(num_inputs * 2, 0);
-  llvm::SmallVector<int, 4> mul_v(muls->begin(), muls->end());
-  llvm::SmallVector<int, 4> rshift_v(rs->begin(), rs->end());
+  auto muls = Module::getI64Array(multipliers(), num_inputs, 1);
+  auto rs = Module::getI64Array(rshifts(), num_inputs, 0);
+
+  llvm::SmallVector<int, 8> input_addrs;
+  llvm::SmallVector<int, 8> input_signs;
+  llvm::SmallVector<int, 8> input_strides(num_inputs * 2, 0);
+  llvm::SmallVector<int, 8> mul_v(muls->begin(), muls->end());
+  llvm::SmallVector<int, 8> rshift_v(rs->begin(), rs->end());
   for (int i = 0; i < num_inputs; i++) {
     auto in_ginfo = LocalGenInterface::getGroupInfo(inputs()[i]);
     input_addrs.push_back(in_ginfo.out_addr);

@@ -52,13 +52,22 @@ struct Module {
                       int64_t &h, int64_t &w, bool left_align = true);
   static size_t getBytes(Value v);
   static int64_t getNumElements(Value v);
-  static Type getStorageType(Value v); // storage type
+  static Type getStorageType(Value v);      // storage type
+  static inline bool isFloatType(Value v) { // f32/bf16/f16/...
+    return getStorageType(v).isa<FloatType>();
+  }
   static llvm::ArrayRef<int64_t> getShape(Value v);
   static inline FuncOp getMainFuncOp(ModuleOp module) {
     return getFuncOp(module, "main");
   }
   static std::shared_ptr<std::vector<int64_t>> getI64Array(ArrayAttr arrayAttr);
+  static std::shared_ptr<std::vector<int64_t>>
+  getI64Array(llvm::Optional<ArrayAttr> arrayAttr, int64_t num_elem,
+              int64_t default_value);
   static std::shared_ptr<std::vector<double>> getF64Array(ArrayAttr arrayAttr);
+  static std::shared_ptr<std::vector<double>>
+  getF64Array(llvm::Optional<ArrayAttr> arrayAttr, int64_t num_elem,
+              double default_value);
   static bool isOpInGroup(Operation *Op);
   static FuncOp getFuncOp(ModuleOp module, StringRef func_name);
   static func::CallOp getCallOp(ModuleOp module, FuncOp func);

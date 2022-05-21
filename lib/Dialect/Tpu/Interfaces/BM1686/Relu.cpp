@@ -8,9 +8,22 @@ using namespace sophgo;
 using namespace sophgo::helper;
 using namespace sophgo::backend;
 
+// =========================================
+// GlobalGenInterface
+// =========================================
+
 void tpu::ReluOp::codegen_global_int8_bm1686() {
   llvm_unreachable("Codegen to be supported");
 }
+
+void tpu::ReluOp::codegen_global_float_bm1686() {
+  llvm_unreachable("Codegen to be supported");
+}
+
+
+// =========================================
+// LocalGenInterface
+// =========================================
 
 int64_t tpu::ReluOp::getBufferSize_bm1686(int64_t out_n, int64_t out_c,
                                           int64_t out_h, int64_t out_w,

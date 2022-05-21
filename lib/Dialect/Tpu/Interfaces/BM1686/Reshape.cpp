@@ -12,3 +12,6 @@ void tpu::ReshapeOp::codegen_global_int8_bm1686() {
   // do nothing
 }
 
+void tpu::ReshapeOp::codegen_global_float_bm1686() {
+  // do nothing
+}

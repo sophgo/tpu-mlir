@@ -26,7 +26,7 @@ Value top::AvgPoolOp::lowering_int8_bm1684() {
   return newOp.output();
 }
 
-Value top::AvgPoolOp::lowering_fp32_bm1684() {
+Value top::AvgPoolOp::lowering_f32_bm1684() {
   auto op = getOperation();
   OpBuilder builder(op);
   std::vector<Value> operands;

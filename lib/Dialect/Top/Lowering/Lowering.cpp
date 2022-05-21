@@ -171,14 +171,14 @@ struct LoweringPattern : public RewritePattern {
     // name:"<<Module::getName(op)<<" chip:"<<chip<<"\n";
     Value newValue;
     if (chip == Module::Chip::BM1684) {
-      if (mode == Quant::Type::FP32) {
-        newValue = lowering_op.lowering_fp32_bm1684();
+      if (mode == Quant::Type::F32) {
+        newValue = lowering_op.lowering_f32_bm1684();
       } else {
         newValue = lowering_op.lowering_int8_bm1684();
       }
     } else if (chip == Module::Chip::BM1686) {
-      if (mode == Quant::Type::FP32) {
-        newValue = lowering_op.lowering_fp32_bm1686();
+      if (mode == Quant::Type::F32) {
+        newValue = lowering_op.lowering_f32_bm1686();
       } else {
         newValue = lowering_op.lowering_int8_bm1686();
       }
@@ -210,7 +210,7 @@ public:
 
     if (mode_ == Quant::Type::INT8) {
       lowering_to_int8();
-    } else if (mode_ == Quant::Type::FP32) {
+    } else if (mode_ == Quant::Type::F32) {
       lowering_to_fp32();
     } else {
       llvm_unreachable("unsupport mode");

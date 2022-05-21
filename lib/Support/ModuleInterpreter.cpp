@@ -150,7 +150,7 @@ ModuleInterpreter::getTensor(const std::string &name) {
     llvm::errs() << "Can't find op name: " << name << "\n";
     llvm_unreachable("Error, setTensor failed");
   }
-  return it->second;
+  return std::move(it->second);
 }
 
 llvm::ArrayRef<int64_t>
