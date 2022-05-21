@@ -70,7 +70,7 @@ group_lmem_t GroupOps::list_lmems(int64_t start_idx, int64_t end_idx) {
         continue;
       }
 
-      lmem_info_t li(LMEM_TENSOR, id, op_id, op_id, opd, nullptr);
+      lmem_info_t li(LMEM_TENSOR, id, op_id, op_id, opd, in_op_);
       li.is_input = true;
       lmems->emplace_back(li);
       id++;
@@ -85,7 +85,7 @@ group_lmem_t GroupOps::list_lmems(int64_t start_idx, int64_t end_idx) {
   }
   // mark output
   for (auto &linfo : *lmems) {
-    if (linfo.type != LMEM_TENSOR) {
+    if (linfo.type != LMEM_TENSOR || linfo.is_input) {
       continue;
     }
     for (auto user : linfo.value.getUsers()) {
@@ -93,9 +93,6 @@ group_lmem_t GroupOps::list_lmems(int64_t start_idx, int64_t end_idx) {
         linfo.is_output = true;
         break;
       }
-    }
-    if (linfo.is_output) {
-      linfo.end_id = -1; // resident in lmem
     }
   }
   return std::move(lmems);

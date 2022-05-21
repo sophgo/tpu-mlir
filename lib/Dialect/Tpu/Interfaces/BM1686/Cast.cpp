@@ -144,3 +144,7 @@ void tpu::CastOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
                                        &param, sizeof(param));
   }
 }
+
+void tpu::CastOp::codegen_local_float_bm1686(int64_t n_step, int64_t h_step) {
+  codegen_local_int8_bm1686(n_step, h_step);
+}

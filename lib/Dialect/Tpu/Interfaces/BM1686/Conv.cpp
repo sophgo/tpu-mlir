@@ -144,6 +144,35 @@ void tpu::ConvOp::weight_reorder_int8_bm1686() {
   op->setOperand(2, none.getResult());
 }
 
+void tpu::ConvOp::weight_reorder_float_bm1686() {
+  int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
+      pl, pr, dh, dw;
+  bool is_dw, with_bias, relu;
+  parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
+             pl, pr, dh, dw, is_dw, with_bias, relu);
+  if (is_dw) {
+    llvm_unreachable("depthwise should support !!");
+  }
+  auto out_type = Module::getStorageType(output());
+  auto filterOp = filter().getDefiningOp<top::WeightOp>();
+  int64_t filter_shape[4];
+  if (out_type.isF32()) {
+     filter_shape[0] = 1;
+     filter_shape[1] = oc;
+     filter_shape[2] = ic/g;
+     filter_shape[3] = kh*kw;
+  } else if (out_type.isBF16() || out_type.isF16()) {
+    assert(g == 1); // ??
+    int64_t IC_PARALLEL = 32;
+    int64_t fmt_bytes = 2;
+    int64_t new_bytes = align_up(ic, IC_PARALLEL) * oc * kh * kw * fmt_bytes;
+    std::vector<int8_t> weight_trans(new_bytes, 0);
+  } else {
+    dump();
+    llvm_unreachable("op type not support");
+  }
+}
+
 // ======================================
 // GlobalGenInterface
 // ======================================
@@ -442,4 +471,53 @@ void tpu::ConvOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
   // }
   // BM1686::instance().call_local_func("backend_api_conv_local", &param,
   //                                    sizeof(conv_local_param_t));
+}
+
+void tpu::ConvOp::codegen_local_float_bm1686(int64_t n_step, int64_t h_step) {
+  int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
+      pl, pr, dh, dw;
+  bool is_dw, with_bias, do_relu;
+  parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
+             pl, pr, dh, dw, is_dw, with_bias, do_relu);
+  auto op = getOperation();
+  auto input_spec = BM1686::get_input_local_spec(op);
+  auto output_spec = BM1686::get_output_local_spec(op);
+  auto gi = getGroupInfo(n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  conv_local_param_t p;
+  memset(&p, sizeof(p), 0);
+  p.spec.buffer_local_addr = gi.buffer_addr;
+  auto &common = p.spec.common;
+  common.input_c = ic;
+  common.output_c = oc;
+  common.if_relu = do_relu;
+  common.upper_limit = 0;
+  common.kh = kh;
+  common.kw = kw;
+  common.dh = dh;
+  common.dw = dw;
+  common.stride_h = sh;
+  common.stride_w = sw;
+  common.groups = g;
+  common.pad_h_t = pt; // judge inner ? (in_gi.h_idx == 0 ? pt : 0);
+  common.pad_h_b = pb; // (in_gi.h_idx + in_gi.h_slice == ih ? pb : 0);
+  common.pad_w_l = pl;
+  common.pad_w_r = pr;
+  common.round_mode = ROUND_UP;
+  common.has_bias = with_bias;
+  common.bias_sign = true;
+  common.ipad_is_const = true;
+  common.ipad_value = 0;
+  local_sec_info_t sec_info;
+  memset(&sec_info, 0, sizeof(sec_info));
+  sec_info.n_slice = in_gi.n_slice;
+  sec_info.h_slice = in_gi.h_slice;
+  sec_info.h_idx = in_gi.h_idx;
+  sec_info.is_h_split =
+      (in_gi.h_idx == 0 && (in_gi.h_idx + in_gi.h_slice) == ih);
+  sec_info.out_n_slice = gi.n_slice;
+  sec_info.out_h_slice = gi.h_slice;
+  BM1686::instance().call_local_func("backend_api_conv_local", &p, sizeof(p),
+                                     &sec_info, input_spec->data(),
+                                     output_spec->data());
 }
