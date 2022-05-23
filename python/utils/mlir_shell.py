@@ -56,7 +56,7 @@ def mlir_lowering(top_mlir: str,
 def mlir_to_model(tpu_mlir: str, model: str, final_mlir: str):
     codegen_param = "--codegen=\"model_file={}\"".format(model)
     cmd = [
-        "sophgo-opt", tpu_mlir, "--weight-reorder", "--subnet-divide", #"--layer-group",
+        "sophgo-opt", tpu_mlir, "--weight-reorder", "--subnet-divide", "--layer-group",
         "--address-asign", "--save-weight", codegen_param, "-o", final_mlir
     ]
     return _os_system(cmd)

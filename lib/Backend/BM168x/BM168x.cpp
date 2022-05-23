@@ -135,7 +135,7 @@ int BM168x::getFmtBytes(bm_data_type_t data_type) {
 
 global_tensor_spec_t BM168x::value_to_global(mlir::Value v) {
   global_tensor_spec_t spec;
-  memset(&spec, sizeof(spec), 0);
+  memset(&spec, 0, sizeof(spec));
   spec.addr = Module::getAddress(v);
   spec.dtype = getDataType(v);
   auto shape = Module::getShape(v);
@@ -173,7 +173,7 @@ BM168x::get_output_global_spec(Operation *op) {
 
 local_tensor_spec_t BM168x::value_to_local(mlir::Value v) {
   local_tensor_spec_t spec;
-  memset(&spec, sizeof(spec), 0);
+  memset(&spec, 0, sizeof(spec));
   auto gi = LocalGenInterface::getGroupInfo(v);
   spec.addr = gi.out_addr;
   spec.dtype = getDataType(v);

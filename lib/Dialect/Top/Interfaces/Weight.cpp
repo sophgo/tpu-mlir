@@ -101,6 +101,7 @@ Value WeightOp::create(Operation *OwnerOp, llvm::StringRef suffix,
 template std::shared_ptr<std::vector<float>> WeightOp::read();
 template std::shared_ptr<std::vector<int8_t>> WeightOp::read();
 template std::shared_ptr<std::vector<int16_t>> WeightOp::read();
+template std::shared_ptr<std::vector<uint16_t>> WeightOp::read();
 template std::shared_ptr<std::vector<uint8_t>> WeightOp::read();
 template std::shared_ptr<std::vector<int32_t>> WeightOp::read();
 template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
@@ -108,6 +109,9 @@ template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
                                 RankedTensorType &type);
 template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
                                 const std::vector<int16_t> &data,
+                                RankedTensorType &type);
+template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
+                                const std::vector<uint16_t> &data,
                                 RankedTensorType &type);
 template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
                                 const std::vector<int8_t> &data,
