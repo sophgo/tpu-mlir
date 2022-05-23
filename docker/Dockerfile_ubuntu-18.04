@@ -62,7 +62,7 @@ RUN pip3 install --no-cache-dir \
     wheel leveldb decorator networkx nose python-dateutil \
     protobuf pyyaml Pillow six lmdb tqdm enum34 \
     termcolor opencv-python-headless argcomplete jupyterlab \
-    paramiko jedi ipython kaleido
+    paramiko jedi ipython kaleido plotly
 RUN pip3 install --no-cache-dir \
     torch torchvision onnx onnxruntime \
     onnx-simplifier tensorflow packaging Jinja2 \
