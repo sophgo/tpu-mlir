@@ -31,7 +31,7 @@ def cos_sim(vector_a, vector_b):
     return sim
 
 def npz_visualize_diff(args_list):
-  os.system('mkdir -p tensor_diff/')
+  os.system('mkdir -p tensor_diff_fp32_vs_int8/')
   args = parse_args(args_list)
   f1 = args.target_file
   f2 = args.ref_file
@@ -60,7 +60,7 @@ def npz_visualize_diff(args_list):
 
     blob_COS = cos_sim(blob_fp.reshape(-1), blob_int.reshape(-1))
     data_size = blob_fp.size
-    max_sampling = 1000
+    max_sampling = 10000
     if data_size > max_sampling:
         step = data_size//max_sampling
     else:
@@ -108,7 +108,7 @@ def npz_visualize_diff(args_list):
                     row=2,
                     col=1)
     fig.update_layout(height=400*rows, width=900)
-    #fig.write_html('./tensor_diff_fp32_vs_int8/{:0>4d}_{}'.format(i, name.replace('/','_'))+'.html')
+    fig.write_html('./tensor_diff_fp32_vs_int8/{:0>4d}_{}'.format(i, name.replace('/','_'))+'.html')
     fig.write_image('./tensor_diff_fp32_vs_int8/{:0>4d}_{}'.format(i, name.replace('/','_'))+'.png')
 
 if __name__ == '__main__':
