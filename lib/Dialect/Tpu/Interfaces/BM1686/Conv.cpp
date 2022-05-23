@@ -153,20 +153,56 @@ void tpu::ConvOp::weight_reorder_float_bm1686() {
   if (is_dw) {
     llvm_unreachable("depthwise should support !!");
   }
+  auto op = getOperation();
   auto out_type = Module::getStorageType(output());
+  // filter reorder
   auto filterOp = filter().getDefiningOp<top::WeightOp>();
   int64_t filter_shape[4];
   if (out_type.isF32()) {
-     filter_shape[0] = 1;
-     filter_shape[1] = oc;
-     filter_shape[2] = ic/g;
-     filter_shape[3] = kh*kw;
+    filter_shape[0] = 1;
+    filter_shape[1] = oc;
+    filter_shape[2] = ic / g;
+    filter_shape[3] = kh * kw;
+    auto new_type = RankedTensorType::get(filter_shape, out_type);
+    filter().setType(new_type);
   } else if (out_type.isBF16() || out_type.isF16()) {
     assert(g == 1); // ??
     int64_t IC_PARALLEL = 32;
     int64_t fmt_bytes = 2;
-    int64_t new_bytes = align_up(ic, IC_PARALLEL) * oc * kh * kw * fmt_bytes;
-    std::vector<int8_t> weight_trans(new_bytes, 0);
+    int64_t new_count = align_up(ic, IC_PARALLEL) * oc * kh * kw;
+    std::vector<uint16_t> weight_trans(new_count, 0);
+    auto p_weight_trans = weight_trans.data();
+    auto weight_data = filterOp.read_as_byte();
+    auto p_weight = (uint16_t *)weight_data->data();
+    int64_t new_ic = ic;
+    int64_t new_kernel = kh * kw;
+    for (int oc_idx = 0; oc_idx < oc; oc_idx++) {
+      for (int ic_idx = 0; ic_idx < ceiling_func(new_ic, IC_PARALLEL);
+           ic_idx++) {
+        for (int k_idx = 0; k_idx < new_kernel; k_idx++) {
+          for (int inner = 0; inner < IC_PARALLEL; inner++) {
+            if (ic_idx * IC_PARALLEL + inner >= new_ic)
+              break;
+            int orig_offset = oc_idx * ic * kh * kw +
+                              (ic_idx * IC_PARALLEL + inner) * new_kernel +
+                              k_idx;
+            int trans_offset = oc_idx * ceiling_func(new_ic, IC_PARALLEL) *
+                                   new_kernel * IC_PARALLEL +
+                               ic_idx * new_kernel * IC_PARALLEL +
+                               k_idx * IC_PARALLEL + inner;
+            *(p_weight_trans + trans_offset) = *(p_weight + orig_offset);
+          }
+        }
+      }
+    }
+    filter_shape[0] = 1;
+    filter_shape[1] = oc;
+    filter_shape[2] = ceiling_func(new_ic, IC_PARALLEL);
+    filter_shape[3] = new_kernel * IC_PARALLEL;
+    auto new_type = RankedTensorType::get(filter_shape, out_type);
+    auto new_filter_op =
+        top::WeightOp::create(op, "_reordered", weight_trans, new_type);
+    op->setOperand(1, new_filter_op);
   } else {
     dump();
     llvm_unreachable("op type not support");
@@ -485,7 +521,7 @@ void tpu::ConvOp::codegen_local_float_bm1686(int64_t n_step, int64_t h_step) {
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   conv_local_param_t p;
-  memset(&p, sizeof(p), 0);
+  memset(&p, 0, sizeof(p));
   p.spec.buffer_local_addr = gi.buffer_addr;
   auto &common = p.spec.common;
   common.input_c = ic;
@@ -515,8 +551,10 @@ void tpu::ConvOp::codegen_local_float_bm1686(int64_t n_step, int64_t h_step) {
   sec_info.h_idx = in_gi.h_idx;
   sec_info.is_h_split =
       (in_gi.h_idx == 0 && (in_gi.h_idx + in_gi.h_slice) == ih);
+  sec_info.w_slice = iw;
   sec_info.out_n_slice = gi.n_slice;
   sec_info.out_h_slice = gi.h_slice;
+  sec_info.out_w_slice = ow;
   BM1686::instance().call_local_func("backend_api_conv_local", &p, sizeof(p),
                                      &sec_info, input_spec->data(),
                                      output_spec->data());

@@ -232,7 +232,7 @@ void tpu::AddOp::codegen_local_float_bm1686(int64_t n_step, int64_t h_step) {
   Module::getNCHW(output(), n, c, h, w);
   auto coeff_v = Module::getF64Array(coeff(), 2, 1.0);
   SmallVector<float, 2> coeff_(coeff_v->begin(), coeff_v->end());
-  eltwise_float_local_param_t p;
+  eltwise_float_local_param_t p = {0};
   p.input_local_addr = input_offset;
   p.buffer_local_addr = gi.buffer_addr;
   p.output_local_addr = gi.out_addr;
