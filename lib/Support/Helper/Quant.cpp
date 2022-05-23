@@ -67,7 +67,7 @@ void Quant::setQuantInt8Type(Value v, bool asymmetric, bool signType) {
     }
     getScaleAndZeroPoint(qmin, qmax, min, max, scale, zeropoint);
   } else {
-    assert(max == -min);
+    assert(max == -min); //ufw 1686实现不是完全对称
     scale = max / 127.0;
   }
   auto qtype = quant::UniformQuantizedType::get(flag, IntegerType::get(ctx, 8),

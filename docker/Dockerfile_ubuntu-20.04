@@ -54,7 +54,7 @@ RUN pip3 install --no-cache-dir \
     Cython numpy scipy scikit-image matplotlib \
     wheel leveldb decorator networkx nose python-dateutil \
     protobuf pyyaml Pillow six lmdb tqdm enum34 \
-    termcolor opencv-python-headless argcomplete jupyterlab \
+    termcolor opencv-python-headless argcomplete jupyterlab kaleido \
     paramiko jedi ipython torch torchvision onnx onnxruntime \
     onnx-simplifier tensorflow packaging Jinja2 \
     tf2onnx pycocotools ply gitpython pybind11[global]
