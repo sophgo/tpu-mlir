@@ -83,7 +83,7 @@ void tpu::AddOp::codegen_global_int8_bm1686() {
   p.c = (int)c;
   p.h = (int)h;
   p.w = (int)w;
-  p.op_code = 1; // (0: Product; 1: Sum; 2: Max)
+  p.op_code = ELTWISE_ADD;
   auto multipliers_v = Module::getI64Array(multipliers(), input_num, 1);
   auto rshift_v = Module::getI64Array(rshifts(), input_num, 0);
 
@@ -123,7 +123,7 @@ void tpu::AddOp::codegen_global_float_bm1686() {
   p.c = c;
   p.h = h;
   p.w = w;
-  p.op_code = 1;
+  p.op_code = ELTWISE_ADD;
   p.coeff = (int *)coeffs.data();
   p.need_mask = 0;
   p.mask_index = (int *)mask_index.data();
@@ -169,57 +169,33 @@ int64_t tpu::AddOp::getBufferSize_bm1686(int64_t out_n, int64_t out_c,
 }
 
 void tpu::AddOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
-  // int bottom_num = layer_in_tensors.size();
-  // const TENSOR_PARAM_T *p_tensor_in_param =
-  //     net_graph_->get_tensor_param(layer_in_tensors[0]);
-  // int depth = p_tensor_in_param->d_slice;
-  // DATA_TYPE_T *p_bottom_dtype = new DATA_TYPE_T[bottom_num];
-  // for (int i = 0; i < bottom_num; ++i)
-  //   p_bottom_dtype[i] =
-  //   net_graph_->get_tensor_data_type(layer_in_tensors[i]);
-  // if (p_bottom_dtype[0] == DTYPE_FP32 || p_bottom_dtype[0] == DTYPE_FP16 ||
-  //     p_bottom_dtype[0] == DTYPE_BFP16) {
-  //   eltwise_float_local_param_t p;
-  //   p.input_local_addr = p_bottom_local_offset_;
-  //   p.buffer_local_addr = imm_buffer_local_offset_;
-  //   p.output_local_addr = top_local_offset_;
-  //   p.input_num = bottom_num;
-  //   p.n = bottom_local_dim_[0] * depth;
-  //   p.c = bottom_local_dim_[1];
-  //   p.h = bottom_local_dim_[2];
-  //   p.w = bottom_local_dim_[3];
-  //   p.op_code = layer_param->layer_param_u.eltwise_param.op_code;
-  //   p.coeff = (float *)layer_param->layer_param_u.eltwise_param.bottom_coeff;
-  //   p.input_local_cstride =
-  //       bottom_chstride_en_ ? p_bottom_local_chstride_ : NULL;
-  //   p.if_relu = layer_param->if_relu ? 1 : 0;
-  //   p.dtype = p_bottom_dtype[0];
-  //   call_local_func("backend_api_eltwise_float_local", &p,
-  //                   sizeof(eltwise_float_local_param_t));
-  // } else if (p_bottom_dtype[0] == DTYPE_INT8 ||
-  //            p_bottom_dtype[0] == DTYPE_UINT8) {
-  //   eltwise_fixed_local_param_t p;
-  //   p.output_local_addr = top_local_offset_;
-  //   p.input_local_addr = p_bottom_local_offset_;
-  //   p.buffer_local_addr = imm_buffer_local_offset_;
-  //   p.n = bottom_local_dim_[0];
-  //   p.c = bottom_local_dim_[1] * depth;
-  //   p.h = bottom_local_dim_[2];
-  //   p.w = bottom_local_dim_[3];
-  //   p.op_code = layer_param->layer_param_u.eltwise_param.op_code;
-  //   p.input_local_cstride =
-  //       bottom_chstride_en_ ? p_bottom_local_chstride_ : NULL;
-  //   p.scale_weight =
-  //       (int *)layer_param->layer_param_u.eltwise_param.bottom_coeff;
-  //   p.rshift = (int *)layer_param->layer_param_u.eltwise_param.in_rshift_num;
-  //   p.input_dtype = p_bottom_dtype;
-  //   p.input_num = bottom_num;
-  //   p.if_relu = layer_param->if_relu ? 1 : 0;
-  //   p.round_mode = ROUND_UP;
-  //   call_local_func("backend_api_eltwise_fixed_local", &p,
-  //                   sizeof(eltwise_fixed_local_param_t));
-  // }
-  // delete[] p_bottom_dtype;
+  auto in0_gi = LocalGenInterface::getGroupInfo(inputs()[0], n_step, h_step);
+  auto in1_gi = LocalGenInterface::getGroupInfo(inputs()[1], n_step, h_step);
+  auto gi = getGroupInfo(n_step, h_step);
+  uint32_t input_offset[] = {(uint32_t)in0_gi.out_addr,
+                             (uint32_t)in1_gi.out_addr};
+  int64_t n, c, h, w;
+  Module::getNCHW(output(), n, c, h, w);
+  auto multiplier_v = Module::getI64Array(multipliers(), 2, 1);
+  auto rshift_v = Module::getI64Array(rshifts(), 2, 0);
+  SmallVector<int, 2> multi_v(multiplier_v->begin(), multiplier_v->end());
+  SmallVector<int, 2> r_v(rshift_v->begin(), rshift_v->end());
+  eltwise_fixed_local_param_t p = {0};
+  p.input_local_addr = input_offset;
+  p.buffer_local_addr = gi.buffer_addr;
+  p.output_local_addr = gi.out_addr;
+  p.input_num = 2;
+  p.n = gi.n_slice;
+  p.c = c;
+  p.h = gi.h_slice;
+  p.w = w;
+  p.op_code = ELTWISE_ADD;
+  p.scale_weight = multi_v.data();
+  p.rshift = r_v.data();
+  p.if_relu = do_relu();
+  p.round_mode = ROUND_UP;
+  BM1686::instance().call_local_func("backend_api_eltwise_fixed_local", &p,
+                                     sizeof(eltwise_float_local_param_t));
 }
 
 void tpu::AddOp::codegen_local_float_bm1686(int64_t n_step, int64_t h_step) {
@@ -241,7 +217,7 @@ void tpu::AddOp::codegen_local_float_bm1686(int64_t n_step, int64_t h_step) {
   p.c = c;
   p.h = gi.h_slice;
   p.w = w;
-  p.op_code = 1;
+  p.op_code = ELTWISE_ADD;
   p.coeff = coeff_.data();
   p.input_local_cstride = NULL;
   p.if_relu = do_relu();

@@ -49,12 +49,12 @@ void BM168x::merge_sync_id() {
   dl_cmd_id_merge(cmdid_node, bdc_node, gdma_node);
 }
 
-bm_data_type_t BM168x::getDataType(Value v) {
+DATA_TYPE_T BM168x::getDataType(Value v) {
   auto type = Module::getStorageType(v);
   return getDataType(type);
 }
 
-bm_data_type_t BM168x::getDataType(mlir::Type type) {
+DATA_TYPE_T BM168x::getDataType(mlir::Type type) {
   auto bits = type.getIntOrFloatBitWidth();
   if (type.isUnsignedInteger()) {
     switch (bits) {
@@ -110,7 +110,7 @@ int BM168x::getGdmaFormat(DATA_TYPE_T data_type) {
   return gdma_format;
 }
 
-int BM168x::getFmtBytes(bm_data_type_t data_type) {
+int BM168x::getFmtBytes(DATA_TYPE_T data_type) {
   int data_byte_size = 0;
   switch (data_type) {
   case DTYPE_FP32:

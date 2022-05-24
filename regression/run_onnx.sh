@@ -64,13 +64,13 @@ npz_tool.py compare \
     resnet18_ref_outputs.npz \
     --tolerance 0.85,0.42 -v
 
-sophgo-opt resnet18_int8_1684.mlir \
-    --weight-reorder \
-    --subnet-divide \
-    --address-asign \
-    --save-weight \
-    --codegen="model_file=resnet18_int8_1684.bmodel" \
-    -o resnet18_int8_addr_1684.mlir
+# sophgo-opt resnet18_int8_1684.mlir \
+#     --weight-reorder \
+#     --subnet-divide \
+#     --address-asign \
+#     --save-weight \
+#     --codegen="model_file=resnet18_int8_1684.bmodel" \
+#     -o resnet18_int8_addr_1684.mlir
 
 #########################
 # BM1686
@@ -92,13 +92,13 @@ npz_tool.py compare \
     resnet18_ref_outputs.npz \
     --tolerance 0.99,0.99 -v
 
-sophgo-opt resnet18_f32_1686.mlir \
-    --weight-reorder \
-    --subnet-divide \
-    --address-asign \
-    --save-weight \
-    --codegen="model_file=resnet18_f32_1686.bmodel" \
-    -o resnet18_f32_addr_1686.mlir
+# sophgo-opt resnet18_f32_1686.mlir \
+#     --weight-reorder \
+#     --subnet-divide \
+#     --address-asign \
+#     --save-weight \
+#     --codegen="model_file=resnet18_f32_1686.bmodel" \
+#     -o resnet18_f32_addr_1686.mlir
 
 # convert to int8
 sophgo-opt resnet18.mlir \
@@ -123,24 +123,24 @@ npz_tool.py compare \
     resnet18_ref_outputs.npz \
     --tolerance 0.90,0.54 -v
 
-# with layer-group
-sophgo-opt resnet18_int8_1686_asym.mlir \
-    --weight-reorder \
-    --subnet-divide \
-    --layer-group \
-    --address-asign \
-    --save-weight \
-    --codegen="model_file=resnet18_int8_1686_lg.bmodel" \
-    -o resnet18_int8_lg_1686_asym.mlir
+# # with layer-group
+# sophgo-opt resnet18_int8_1686_asym.mlir \
+#     --weight-reorder \
+#     --subnet-divide \
+#     --layer-group \
+#     --address-asign \
+#     --save-weight \
+#     --codegen="model_file=resnet18_int8_1686_lg.bmodel" \
+#     -o resnet18_int8_lg_1686_asym.mlir
 
-# no layer-group
-sophgo-opt resnet18_int8_1686_asym.mlir \
-    --weight-reorder \
-    --subnet-divide \
-    --address-asign \
-    --save-weight \
-    --codegen="model_file=resnet18_int8_1686.bmodel" \
-    -o resnet18_int8_addr_1686_asym.mlir
+# # no layer-group
+# sophgo-opt resnet18_int8_1686_asym.mlir \
+#     --weight-reorder \
+#     --subnet-divide \
+#     --address-asign \
+#     --save-weight \
+#     --codegen="model_file=resnet18_int8_1686.bmodel" \
+#     -o resnet18_int8_addr_1686_asym.mlir
 
 sophgo-opt resnet18.mlir \
     --import-calibration-table='file=resnet18_cali_table asymmetric=false' \
