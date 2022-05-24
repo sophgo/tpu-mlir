@@ -35,7 +35,7 @@ def Lowering : Pass<"lowering", "ModuleOp"> {
            "default quantization mode: INT8/BF16/F32">,
     Option<"chip", "chip", "std::string", /*default=*/"",
            "chip: cv183x/cv182x/bm1684/bm1686">,
-    Option<"isAsymmetric", "asymmetric", "bool", /*default=*/"true",
+    Option<"isAsymmetric", "asymmetric", "bool", /*default=*/"false",
            "true for asymmetric quantization, or false for symmetric">,
   ];
   let dependentDialects = ["TopDialect", "::sophgo::tpu::TpuDialect", "mlir::quant::QuantizationDialect"];

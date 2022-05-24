@@ -20,7 +20,7 @@ struct Module {
     static constexpr llvm::StringRef COEFF_SIZE = "module.coeff_size";
     static constexpr llvm::StringRef NEURON_ADDR = "module.neuron_addr";
     static constexpr llvm::StringRef NEURON_SIZE = "module.neuron_size";
-    static constexpr llvm::StringRef MODE = "module.mode";
+    static constexpr llvm::StringRef ASYMMETRIC = "module.asymmetric";
   };
 
   struct State {
@@ -133,6 +133,16 @@ struct Module {
   static inline void setFLOPs(ModuleOp module, int64_t flops) {
     auto intType = IntegerType::get(module.getContext(), 64);
     module->setAttr(Attr::FLOPS, IntegerAttr::get(intType, flops));
+  }
+  static inline bool getAsymmetric(ModuleOp module) {
+    if (module->hasAttrOfType<BoolAttr>(Attr::ASYMMETRIC)) {
+      return module->getAttrOfType<BoolAttr>(Attr::ASYMMETRIC).getValue();
+    }
+    return false;
+  }
+  static inline void setAsymmetric(ModuleOp module, bool is_asymmetric) {
+    module->setAttr(Attr::ASYMMETRIC,
+                    BoolAttr::get(module.getContext(), is_asymmetric));
   }
   static inline StringRef getState(ModuleOp module) {
     return module->getAttrOfType<StringAttr>(Attr::STATE).getValue();

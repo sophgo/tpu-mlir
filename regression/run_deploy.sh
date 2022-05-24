@@ -17,9 +17,8 @@ model_transform.py \
     --mlir resnet18.mlir
 
 #########################
-# deploy to bmodel
+# deploy to float bmodel
 #########################
-# to fp32 model
 model_deploy.py \
   --mlir resnet18.mlir \
   --quantize F32 \
@@ -46,5 +45,39 @@ model_deploy.py \
 #   --test_reference resnet18_top_outputs.npz \
 #   --tolerance 0.99,0.99 \
 #   --model resnet18_1686_bf16.bmodel
+
+#########################
+# deploy to int8 bmodel
+#########################
+mkdir -p dataset
+cp $INPUT dataset/
+# run calibration first
+run_calibration.py resnet18.mlir \
+    --dataset dataset \
+    --input_num 1 \
+    -o resnet18_cali_table
+
+# to symmetric
+model_deploy.py \
+  --mlir resnet18.mlir \
+  --quantize INT8 \
+  --calibration_table resnet18_cali_table \
+  --chip bm1686 \
+  --test_input $INPUT \
+  --test_reference resnet18_top_outputs.npz \
+  --tolerance 0.97,0.75 \
+  --model resnet18_1686_int8_sym.bmodel
+
+# to asymmetric
+model_deploy.py \
+  --mlir resnet18.mlir \
+  --quantize INT8 \
+  --asymmetric \
+  --calibration_table resnet18_cali_table \
+  --chip bm1686 \
+  --test_input $INPUT \
+  --test_reference resnet18_top_outputs.npz \
+  --tolerance 0.97,0.75 \
+  --model resnet18_1686_int8_asym.bmodel
 
 popd

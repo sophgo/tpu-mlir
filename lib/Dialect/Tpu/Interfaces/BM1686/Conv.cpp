@@ -338,55 +338,40 @@ typedef struct conv_local_param {
 #endif
 
 void tpu::ConvOp::codegen_global_int8_bm1686() {
-  //   conv_global_param_t param = {0};
-  //   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt,
-  //   pb,
-  //       pl, pr, dh, dw;
-  //   bool is_dw, with_bias, do_relu;
-  //   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw,
-  //   pt, pb,
-  //              pl, pr, dh, dw, is_dw, with_bias, do_relu);
-  //   param.input_global_addr = Module::getAddress(input());
-  //   param.weight_global_addr = Module::getAddress(filter());
-  //   param.output_global_addr = Module::getAddress(output());
-  //   param.has_bias = with_bias;
-  //   param.batch_num = n;
-  //   param.input_c = ic;
-  //   param.input_h = ih;
-  //   param.input_w = iw;
-  //   param.groups = g;
-  //   param.output_c = oc;
-  //   param.if_relu = do_relu;
-  //   param.upper_limit = 0;
-  //   param.idtype = BM168x::getDataType(input());
-  //   param.wdtype = BM168x::getDataType(filter());
-  //   param.merge_coeff = 2;
-  //   param.bdtype = DTYPE_INT32;
-  //   param.bias_global_addr = 0;
-  //   param.odtype = BM168x::getDataType(output());
-  //   param.kh = kh;
-  //   param.kw = kw;
-  //   param.dh = dh;
-  //   param.dw = dw;
-  //   param.stride_h = sh;
-  //   param.stride_w = sw;
-  //   param.pad_h = pt;
-  //   param.pad_h_after = pb;
-  //   param.pad_w = pl;
-  //   param.pad_w_after = pr;
-  //   param.rshift = 0;
-  //   param.round_mode = ROUND_UP;
-  //   param.is_asym = true;
-  //   param.kdtype = DTYPE_INT8;
-  //   param.kzp_global_addr = 0;
-  //   param.pad_global_addr = 0;
-  //   param.kzp_is_const = 1;
-  //   param.kzp_val = 0;
-  //   param.pad_is_const = 1;
-  //   auto input_type = Quant::getUniformQuantizedType(input());
-  //   param.pad_val = input_type.getZeroPoint();
-  //   BM1686::instance().call_global_func("backend_api_conv_global", &param,
-  //                                       sizeof(conv_global_param_t));
+  int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
+      pl, pr, dh, dw;
+  bool is_dw, with_bias, do_relu;
+  parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
+             pl, pr, dh, dw, is_dw, with_bias, do_relu);
+  auto op = getOperation();
+  auto input_spec = BM1686::get_input_global_spec(op);
+  auto output_spec = BM1686::get_output_global_spec(op);
+  conv_global_spec_t spec = {0};
+  spec.merge_coeff = 2;
+  auto &common = spec.common;
+  common.input_c = ic;
+  common.output_c = oc;
+  common.if_relu = false; // do_relu  = !output sign ?
+  common.upper_limit = 0;
+  common.kh = kh;
+  common.kw = kw;
+  common.dh = dh;
+  common.dw = dw;
+  common.stride_h = sh;
+  common.stride_w = sw;
+  common.groups = g;
+  common.pad_h_t = pt;
+  common.pad_h_b = pb;
+  common.pad_w_l = pl;
+  common.pad_w_r = pr;
+  common.round_mode = ROUND_UP;
+  common.has_bias = with_bias;
+  common.bias_sign = true;
+  common.ipad_is_const = true;
+  common.ipad_value = 0;
+  BM1686::instance().call_global_func("backend_api_conv_global", &spec,
+                                      sizeof(spec), input_spec->data(),
+                                      output_spec->data());
 }
 
 // f32
@@ -443,70 +428,52 @@ void tpu::ConvOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
   // int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
   //     pl, pr, dh, dw;
   // bool is_dw, with_bias, do_relu;
-  // parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt,
-  // pb,
+  // parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
   //            pl, pr, dh, dw, is_dw, with_bias, do_relu);
-  // auto in_ginfo = LocalGenInterface::getGroupInfo(input());
-  // auto weight_ginfo = LocalGenInterface::getGroupInfo(filter());
-  // auto out_ginfo = LocalGenInterface::getGroupInfo(output());
-  // conv_local_param_t param;
-  // memset(&param, 0, sizeof(param));
-  // auto &p = param.spec.common;
-  // p.has_bias = with_bias;
-  // p.input_local_addr = in_ginfo.out_addr;
-  // p.weight_local_addr = weight_ginfo.out_addr;
-  // param.output_local_addr = out_ginfo.out_addr;
-  // param.buffer_local_addr = out_ginfo.buffer_addr;
-  // param.batch_num = in_ginfo.n_slice;
-  // param.input_c = ic;
-  // param.input_h = in_ginfo.h_slice;
-  // param.input_w = iw;
-  // param.output_c = oc;
-  // param.if_relu = do_relu;
-  // param.upper_limit = 0;
-  // param.result_add = 0;
-  // param.idtype = BM168x::getDataType(input());
-  // param.wdtype = BM168x::getDataType(filter());
-  // param.with_requant = true;
-  // param.odtype = BM168x::getDataType(output());
-  // param.kh = kh;
-  // param.kw = kw;
-  // param.dh = dh;
-  // param.dw = dw;
-  // param.stride_h = sh;
-  // param.stride_w = sw;
-  // param.groups = g;
-  // param.rshift = 0;
-  // param.pad_h_t = (in_ginfo.h_idx == 0 ? pt : 0);
-  // param.pad_h_b = (in_ginfo.h_idx + in_ginfo.h_slice == ih ? pb : 0);
-  // param.pad_w_l = pl;
-  // param.pad_w_r = pr;
-  // param.unused_ht_for_input = 0, param.unused_hb_for_input = 0,
-  // param.unused_wl_for_input = 0, param.unused_wr_for_input = 0,
-  // param.use_3ic_optimize = 0;
-  // param.group_one_conv = false;
-  // param.round_mode = ROUND_UP;
-  // param.is_asym = true;
-
-  // bool is_depthwise = (param.groups > 1 && param.groups == param.input_c &&
-  //                      param.groups == param.output_c);
-  // param.bdtype = DTYPE_INT32;
-  // param.bias_local_addr = param.weight_local_addr;
-  // int rq_wsize = (ceiling_func(param.output_c, (int)BM1686::NPU_NUM) - 1) *
-  //                    BM1686::EU_BYTES +
-  //                3 * sizeof(int32_t);
-  // if (param.has_bias) {
-  //   int bias_wsize =
-  //       ceiling_func(param.output_c, (int)BM1686::NPU_NUM) * sizeof(int32_t);
-  //   int offset = is_depthwise ? rq_wsize + bias_wsize
-  //                             : align_up(rq_wsize + bias_wsize, 64);
-  //   param.weight_local_addr = param.weight_local_addr + offset;
-  // } else {
-  //   int offset = is_depthwise ? rq_wsize : align_up(rq_wsize, 64);
-  //   param.weight_local_addr = param.weight_local_addr + offset;
-  // }
-  // BM1686::instance().call_local_func("backend_api_conv_local", &param,
-  //                                    sizeof(conv_local_param_t));
+  // auto op = getOperation();
+  // auto input_spec = BM1686::get_input_local_spec(op);
+  // auto output_spec = BM1686::get_output_local_spec(op);
+  // auto gi = getGroupInfo(n_step, h_step);
+  // auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  // conv_local_param_t p;
+  // memset(&p, 0, sizeof(p));
+  // p.spec.buffer_local_addr = gi.buffer_addr;
+  // p.spec.merge_coeff = 2;
+  // auto &common = p.spec.common;
+  // common.input_c = ic;
+  // common.output_c = oc;
+  // common.if_relu = false; //do_relu  = ! output sign ???
+  // common.upper_limit = 0;
+  // common.kh = kh;
+  // common.kw = kw;
+  // common.dh = dh;
+  // common.dw = dw;
+  // common.stride_h = sh;
+  // common.stride_w = sw;
+  // common.groups = g;
+  // common.pad_h_t = pt; // judge inner ? (in_gi.h_idx == 0 ? pt : 0);
+  // common.pad_h_b = pb; // (in_gi.h_idx + in_gi.h_slice == ih ? pb : 0);
+  // common.pad_w_l = pl;
+  // common.pad_w_r = pr;
+  // common.round_mode = ROUND_UP;
+  // common.has_bias = with_bias;
+  // common.bias_sign = true;
+  // common.ipad_is_const = true;
+  // common.ipad_value = 0;
+  // local_sec_info_t sec_info;
+  // memset(&sec_info, 0, sizeof(sec_info));
+  // sec_info.n_slice = in_gi.n_slice;
+  // sec_info.h_slice = in_gi.h_slice;
+  // sec_info.h_idx = in_gi.h_idx;
+  // sec_info.is_h_split =
+  //     (in_gi.h_idx == 0 && (in_gi.h_idx + in_gi.h_slice) == ih);
+  // sec_info.w_slice = iw;
+  // sec_info.out_n_slice = gi.n_slice;
+  // sec_info.out_h_slice = gi.h_slice;
+  // sec_info.out_w_slice = ow;
+  // BM1686::instance().call_local_func("backend_api_conv_local", &p, sizeof(p),
+  //                                    &sec_info, input_spec->data(),
+  //                                    output_spec->data());
 }
 
 void tpu::ConvOp::codegen_local_float_bm1686(int64_t n_step, int64_t h_step) {

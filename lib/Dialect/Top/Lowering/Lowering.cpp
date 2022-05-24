@@ -205,6 +205,7 @@ public:
 
     chip_ = StringRef(chip).upper();
     Module::setChip(module, chip_);
+    Module::setAsymmetric(module, isAsymmetric);
     mode_ = StringRef(mode).upper();
     ctx_ = module.getContext();
 

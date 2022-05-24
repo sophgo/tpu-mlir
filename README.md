@@ -36,6 +36,8 @@ popd
 
 ## How to use toolchain
 
+you can refer to regression/run_deploy.sh
+
 ### transform model to mlir (top)
 
 ``` shell
@@ -66,11 +68,39 @@ model_deploy.py \
 
 ##### To int8 model
 
-prepare inputs in forder "dataset", and run:
+prepare inputs in forder "dataset", and run calibration:
 
 ``` shell
 run_calibration.py resnet18.mlir \
     --dataset dataset \
     --input_num 1 \
     -o resnet18_cali_table
+```
+###### to symmetric
+
+``` shell
+model_deploy.py \
+  --mlir resnet18.mlir \
+  --quantize INT8 \
+  --calibration_table resnet18_cali_table \
+  --chip bm1686 \
+  --test_input resnet18_in.npz \
+  --test_reference resnet18_top_outputs.npz \
+  --tolerance 0.97,0.75 \
+  --model resnet18_1686_int8_sym.bmodel
+```
+
+###### to asymmetric
+
+``` shell
+model_deploy.py \
+  --mlir resnet18.mlir \
+  --quantize INT8 \
+  --asymmetric \
+  --calibration_table resnet18_cali_table \
+  --chip bm1686 \
+  --test_input resnet18_in.npz \
+  --test_reference resnet18_top_outputs.npz \
+  --tolerance 0.97,0.75 \
+  --model resnet18_1686_int8_asym.bmodel
 ```

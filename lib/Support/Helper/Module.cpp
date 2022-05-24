@@ -19,7 +19,7 @@ constexpr llvm::StringRef Module::Attr::COEFF_ADDR;
 constexpr llvm::StringRef Module::Attr::COEFF_SIZE;
 constexpr llvm::StringRef Module::Attr::NEURON_ADDR;
 constexpr llvm::StringRef Module::Attr::NEURON_SIZE;
-constexpr llvm::StringRef Module::Attr::MODE;
+constexpr llvm::StringRef Module::Attr::ASYMMETRIC;
 
 constexpr llvm::StringRef Module::State::TOP_F32;
 constexpr llvm::StringRef Module::State::TOP_CALIBRATED;
@@ -186,7 +186,12 @@ std::shared_ptr<std::vector<int64_t>> Module::getI64Array(ArrayAttr arrayAttr) {
   auto data = std::make_shared<std::vector<int64_t>>();
   for (auto en : llvm::enumerate(arrayAttr)) {
     auto attr = en.value().dyn_cast<IntegerAttr>();
-    data->push_back(attr.getInt());
+    if (attr) {
+      data->push_back(attr.getInt());
+    } else {
+      arrayAttr.dump();
+      llvm_unreachable("not int64_t type");
+    }
   }
   return std::move(data);
 }
