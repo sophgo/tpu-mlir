@@ -67,7 +67,6 @@ typedef enum {
   DTYPE_BFP16 = 8,
   DTYPE_UNKNOWN = -1,
 } DATA_TYPE_T;
-typedef DATA_TYPE_T bm_data_type_t;
 
 typedef enum {
   ROUND_INF = 0,  // 1.5 -> 2   -1.5 -> -2
@@ -81,7 +80,12 @@ typedef enum {
   TRIM_UP = 8,    // 1.4 -> 2   -1.6 -> -1
   TRIM_DOWN = 9,  // 1.6 -> 1   -1.4 -> -2
 } ROUND_MODE_T;
-typedef ROUND_MODE_T bm_round_mode_t;
+
+typedef enum {
+  ELTWISE_PRODUCT = 0,
+  ELTWISE_ADD = 1,
+  ELTWISE_MAX = 2,
+} ELTWISE_OPCODE_T;
 
 typedef struct bmcompiler_mem_info {
   uint64_t addr;
@@ -226,10 +230,10 @@ public:
                                 bool eu_align = true);
   int64_t get_weight_lmem_bytes(mlir::Value v, bool eu_align = true);
 
-  static bm_data_type_t getDataType(mlir::Type type);
-  static bm_data_type_t getDataType(mlir::Value v);
+  static DATA_TYPE_T getDataType(mlir::Type type);
+  static DATA_TYPE_T getDataType(mlir::Value v);
   static int getGdmaFormat(DATA_TYPE_T data_type);
-  static int getFmtBytes(bm_data_type_t data_type);
+  static int getFmtBytes(DATA_TYPE_T data_type);
   static global_tensor_spec_t value_to_global(mlir::Value v);
   static std::shared_ptr<std::vector<global_tensor_spec_t>>
   get_input_global_spec(mlir::Operation *op);
