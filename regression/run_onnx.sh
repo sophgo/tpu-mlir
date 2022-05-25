@@ -92,13 +92,18 @@ npz_tool.py compare \
     resnet18_ref_outputs.npz \
     --tolerance 0.99,0.99 -v
 
-# sophgo-opt resnet18_f32_1686.mlir \
-#     --weight-reorder \
-#     --subnet-divide \
-#     --address-asign \
-#     --save-weight \
-#     --codegen="model_file=resnet18_f32_1686.bmodel" \
-#     -o resnet18_f32_addr_1686.mlir
+sophgo-opt resnet18_f32_1686.mlir \
+    --weight-reorder \
+    --subnet-divide \
+    --address-asign \
+    --save-weight \
+    --codegen="model_file=resnet18_f32_1686.bmodel" \
+    -o resnet18_f32_addr_1686.mlir
+
+model_runner.py \
+    --model resnet18_f32_1686.bmodel \
+    --input $INPUT \
+    --output resnet18_f32_outputs_1686_model.npz
 
 # convert to int8
 sophgo-opt resnet18.mlir \

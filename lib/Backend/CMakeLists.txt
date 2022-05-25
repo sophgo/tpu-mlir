@@ -8,6 +8,3 @@ add_llvm_library(SophgoBackend
   MLIRLocalGenInterface
 )
 
-install(FILES BM168x/libbackend_1684.so
-              BM168x/libbackend_1686.so
-        DESTINATION lib)

@@ -2,10 +2,24 @@
 import numpy as np
 import argparse
 import pymlir
+import pyruntime
 import onnx
 import onnxruntime
 from transform.TFLiteInterpreter import TFLiteInterpreter
 
+def model_inference(inputs: dict, model_file: str) -> dict:
+    outputs = dict()
+    model = pyruntime.Model(model_file)
+    net = model.Net(model.networks[0])
+    for i in net.inputs:
+        assert(i.name in inputs)
+        assert(i.data.shape == inputs[i.name].shape)
+        assert(i.data.dtype == inputs[i.name].dtype)
+        i.data[:] = inputs[i.name]
+    net.forward()
+    for i in net.outputs:
+        outputs[i.name] = i.data
+    return outputs
 
 def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True) -> dict:
     module = pymlir.module()
@@ -171,6 +185,8 @@ if __name__ == '__main__':
         output = mlir_inference(data, args.model, args.dump_all_tensors)
     elif args.model.endswith(".tflite"):
         output = tflite_inference(data, args.model, args.dump_all_tensors)
+    elif args.model.endswith(".bmodel"):
+        output = model_inference(data, args.model)
     else:
         raise RuntimeError("not support modle file:{}".format(args.model))
     np.savez(args.output, **output)

@@ -5,19 +5,15 @@ if (POLICY CMP0048)
   cmake_policy(SET CMP0048 NEW)
 endif()
 
-project(pymlir)
+project(pyruntime)
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 SET(CMAKE_INSTALL_RPATH "\${ORIGIN}/")
 
 find_package(pybind11 REQUIRED CONFIG)
-pybind11_add_module(pymlir pymlir.cpp)
+pybind11_add_module(pyruntime pyruntime.cpp)
 
-target_link_libraries(pymlir PRIVATE
-  SophgoInitAll
-  MLIRTransforms
-  MLIRParser
-  LLVMCore
-  LLVMSupport
+target_link_libraries(pyruntime PRIVATE
+  bmrt
 )
-install(TARGETS pymlir DESTINATION python)
+install(TARGETS pyruntime DESTINATION python)
 
