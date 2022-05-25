@@ -42,6 +42,7 @@ include_directories(${LLVM_INCLUDE_DIRS})
 include_directories(${MLIR_INCLUDE_DIRS})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/include)
+include_directories(${CMAKE_INSTALL_PREFIX}/include)
 message(STATUS "Using LLVM_INCLUDE_DIRS in: ${LLVM_INCLUDE_DIRS}")
 message(STATUS "Using MLIR_INCLUDE_DIRS in: ${MLIR_INCLUDE_DIRS}")
 #-------------------------------------------------------------------------------
@@ -63,6 +64,12 @@ include_directories(${CNPY_PATH})
 set(FLATBUFFERS_PATH ${PROJECT_SOURCE_DIR}/third_party/flatbuffers)
 include_directories(${FLATBUFFERS_PATH}/include)
 link_directories(${FLATBUFFERS_PATH}/lib)
+#-------------------------------------------------------------------------------
+# nntoolchain Configuration
+#-------------------------------------------------------------------------------
+set(NNTOOLCHAIN_PATH ${PROJECT_SOURCE_DIR}/third_party/nntoolchain)
+include_directories(${NNTOOLCHAIN_PATH}/include)
+link_directories(${NNTOOLCHAIN_PATH}/lib)
 
 OPTION (USE_OpenMP "Use OpenMP" ON)
 IF(USE_OpenMP)

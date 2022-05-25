@@ -31,7 +31,7 @@ using namespace std;
 static void usage(void)
 {
   cout << "Usage:" << endl;
-  cout << "  bm_model.bin" << endl
+  cout << "  model_tool" << endl
        << "    --info model_file : show brief model info" << endl
        << "    --print model_file : show detailed model info" << endl
        << "    --extract model_file : extract one multi-net bmodel to multi one-net bmodels" << endl
