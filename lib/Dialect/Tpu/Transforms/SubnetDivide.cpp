@@ -86,7 +86,7 @@ void buildSubFunction(std::shared_ptr<SubFunction> sf, ModuleOp module) {
   for (auto output : fnOutputs) {
     resType.push_back(output.getType());
   }
-  int64_t id = SubFunction::count;
+  int64_t id = SubFunction::count - 1;
   std::string func_name = "subfunc_" + std::to_string(id);
   OpBuilder builder(module.getContext());
   std::vector<NamedAttribute> attrs;

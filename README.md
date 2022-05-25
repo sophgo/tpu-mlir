@@ -104,3 +104,34 @@ model_deploy.py \
   --tolerance 0.97,0.75 \
   --model resnet18_1686_int8_asym.bmodel
 ```
+
+## Tools
+
+### model_runner.py
+
+To inference model, support bmodel/mlir/onnx/tflite
+
+``` shell
+model_runner.py \
+  --input resnet18_in_f32.npz \
+  --model resnet18_1686_f32.bmodel \
+  --output resnet18_output.npz
+```
+
+### model_tool
+
+To do operation for model file, Usage:
+
+  model_tool
+    --info model_file : show brief model info
+    --print model_file : show detailed model info
+    --extract model_file : extract one multi-net bmodel to multi one-net bmodels
+    --combine file1 .. fileN -o new_file: combine bmodels to one bmodel by filepath
+    --combine_dir dir1 .. dirN -o new_dir: combine bmodels to one bmodel by directory path
+    --dump model_file start_offset byte_size out_file: dump binary data to file from bmodel
+
+for example, get model info:
+
+``` shell
+model_tool --info resnet18_1686_f32.bmodel
+```

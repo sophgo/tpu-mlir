@@ -1,3 +1,3 @@
 add_subdirectory(sophgo-opt)
-add_subdirectory(bm_model)
+add_subdirectory(model_tool)
 
