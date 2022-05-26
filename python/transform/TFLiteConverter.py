@@ -468,15 +468,6 @@ class TFLiteConverter(BaseConverter):
             "pads": self.mlir.ArrayAttr(padding),
             "do_relu": BoolAttr.get(fused_active == 1),
         }
-        # merge input_zero_pint to bias following 1686
-        # TODO: move this to TOPTFLiteToTPU conversion
-        bias = op.inputs[2].buffer
-        if issubclass(bias.dtype.type, np.integer):
-            filter = op.inputs[1].buffer
-            quantParam = op.inputs[0].quantization
-            zero_point = quantParam.ZeroPointAsNumpy()
-            zp_bias = filter.sum(axis=(1, 2, 3)) * zero_point
-            op.inputs[2].buffer = (bias - zp_bias).astype(bias.dtype)
         return Top.ConvOp, attr
 
     def fully_connected_op(self, op):
@@ -499,15 +490,6 @@ class TFLiteConverter(BaseConverter):
         attr = {
             "do_relu": BoolAttr.get(fused_active == 1),
         }
-        # merge input_zero_pint to bias following 1686
-        # TODO: move this to TOPTFLiteToTPU conversion
-        bias = op.inputs[2].buffer
-        if issubclass(bias.dtype.type, np.integer):
-            kernel = op.inputs[1].buffer
-            quantParam = op.inputs[0].quantization
-            zero_point = quantParam.ZeroPointAsNumpy()
-            zp_bias = kernel.sum(axis=(0)) * zero_point
-            op.inputs[2].buffer = (bias - zp_bias).astype(bias.dtype)
         return Top.MatMulOp, attr
 
     def mean_op(self, op):
