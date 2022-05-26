@@ -182,20 +182,9 @@ public:
       return failure();
     }
     if (arr.fortran_order) {
-      // provide col-major to row-major
-      size_t src_cout = 0;
-      for (auto src_it = arr.data_holder->begin();
-           src_it < arr.data_holder->end();
-           src_it += arr.word_size, ++src_cout) {
-        size_t des_offset = 0;
-        size_t ind_n /*ind(0)*/ = src_cout, sub_n /*sub(0)*/ = 0;
-        for (auto n : arr.shape) {
-          sub_n = ind_n % n; //  sub(n) = ind(n) % n
-          des_offset = des_offset * n + sub_n;
-          ind_n = (ind_n - sub_n) / n; // ind(n+1) = (ind(n) - sub(n)) / n
-        }
-        memcpy(data + des_offset, &(*src_it), arr.word_size);
-      }
+      llvm::MutableArrayRef<char> data_holder((char *)data,
+                                              (char *)(data + arr.num_vals));
+      colMajorToRowMajor(data_holder, arr);
     } else
       memcpy(data, arr.data_holder->data(), arr.num_bytes());
     return success();
@@ -260,6 +249,26 @@ public:
 
   bool changed() { return cnt_add + cnt_del > 0; }
 
+  template <typename T>
+  void colMajorToRowMajor(T &des, const cnpy::NpyArray &src) {
+    static_assert(std::is_same<typename T::value_type, char>::value,
+                  "container value should be char");
+    assert(des.size() == src.num_bytes());
+    size_t word_size = src.word_size;
+    for (size_t src_offset = 0, src_size = src.num_vals; src_offset < src_size;
+         ++src_offset) {
+      size_t des_offset = 0;
+      size_t ind_n /*ind(0)*/ = src_offset, sub_n /*sub(0)*/ = 0;
+      for (auto n : src.shape) {
+        sub_n = ind_n % n; //  sub(n) = ind(n) % n
+        des_offset = des_offset * n + sub_n;
+        ind_n = (ind_n - sub_n) / n; // ind(n+1) = (ind(n) - sub(n)) / n
+      }
+      memcpy(des.data() + des_offset * word_size,
+             src.data_holder->data() + src_offset * word_size, word_size);
+    }
+  }
+
   void save(const std::string &file = "") {
     assert(!readOnly);
     if (cnt_add + cnt_del == 0) {
@@ -267,6 +276,16 @@ public:
     }
     if (!file.empty()) {
       filename = file;
+    }
+    for (auto &it : map) {
+      cnpy::NpyArray &array = it.second;
+      if (array.fortran_order == true) {
+        auto data_holder = std::shared_ptr<std::vector<char>>(
+            new std::vector<char>(array.num_bytes()));
+        colMajorToRowMajor(*data_holder.get(), array);
+        array.data_holder = data_holder;
+        array.fortran_order = false;
+      }
     }
 
     cnpy::npz_save_all(filename, map);

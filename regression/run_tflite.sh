@@ -18,6 +18,7 @@ model_transform.py \
 sophgo-opt resnet50_tflite.mlir \
     --toptflite-to-tpu \
     --canonicalize \
+    --save-weight \
     -o resnet50_int8_1686.mlir
 
 #########################

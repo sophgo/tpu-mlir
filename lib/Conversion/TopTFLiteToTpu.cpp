@@ -127,6 +127,9 @@ public:
                   ConversionPatternRewriter &rewriter) const final {
     if (!isQuantized(op.input(), op.filter(), op.getResult()))
       return failure();
+    if (isQuantized(adaptor.filter()) || isQuantized(adaptor.bias()))
+      return failure(); // make sure filter and bias are storage type
+
     auto input_elem_type = getRankedTensorElementType(op.input());
     auto filter_elm_type = getRankedTensorElementType(op.filter());
     auto output_elm_type = getRankedTensorElementType(op.getResult());
@@ -136,10 +139,8 @@ public:
       return failure();
     bool is_per_channel = filter_elm_type.isa<UniformQuantizedPerAxisType>();
 
-    const double input_scale =
-        input_elem_type.cast<UniformQuantizedType>().getScale();
-    const double output_scale =
-        output_elm_type.cast<UniformQuantizedType>().getScale();
+    auto input_qtype = input_elem_type.cast<UniformQuantizedType>();
+    auto output_qtype = output_elm_type.cast<UniformQuantizedType>();
     ArrayRef<double> filter_scales;
 
     if (is_per_channel) {
@@ -155,6 +156,8 @@ public:
 
     // tensorflow/lite/kernels/kernel_util.cc::PopulateConvolutionQuantizationParams
     // Populate multiplier and shift using affine quantization.
+    const double input_scale = input_qtype.getScale();
+    const double output_scale = output_qtype.getScale();
     for (auto filter : llvm::enumerate(filter_scales)) {
       const double effective_output_scale =
           input_scale * filter.value() / output_scale;
@@ -169,9 +172,45 @@ public:
       attributes.set("with_bias", rewriter.getBoolAttr(true));
     else
       attributes.set("with_bias", rewriter.getBoolAttr(false));
+
+    int32_t input_zeroPoint = input_qtype.getZeroPoint();
+    if (input_zeroPoint != 0 &&
+        isa<top::WeightOp>(adaptor.filter().getDefiningOp()) &&
+        isa<top::WeightOp, top::NoneOp>(adaptor.bias().getDefiningOp())) {
+      // merge input_zeroPoint to bias
+      std::shared_ptr<std::vector<int32_t>> bias_quant;
+      std::shared_ptr<std::vector<int8_t>> filter_quant;
+      filter_quant =
+          cast<top::WeightOp>(adaptor.filter().getDefiningOp()).read<int8_t>();
+      if (isa<top::WeightOp>(adaptor.bias().getDefiningOp())) {
+        bias_quant =
+            cast<top::WeightOp>(adaptor.bias().getDefiningOp()).read<int32_t>();
+      }
+      auto filter_type = adaptor.filter().getType().cast<RankedTensorType>();
+      int64_t oc = filter_type.getShape()[0];
+      int64_t kernel_size = filter_type.getNumElements() / oc;
+      bias_quant->resize(oc, 0);
+      for (size_t oc_ind = 0; oc_ind < oc; ++oc_ind) {
+        for (size_t kernel_ind = 0; kernel_ind < kernel_size; ++kernel_ind) {
+          bias_quant->data()[oc_ind] -=
+              input_zeroPoint *
+              filter_quant->at(kernel_ind + oc_ind * kernel_size);
+        }
+      }
+      auto bias_type = RankedTensorType::get({oc}, rewriter.getI32Type());
+      auto new_bias =
+          top::WeightOp::create(adaptor.bias().getDefiningOp(),
+                                "MergedInputZeroPoint", *bias_quant, bias_type);
+      rewriter.replaceOpWithNewOp<tpu::ConvOp>(
+          op, op->getResultTypes(),
+          ValueRange({adaptor.input(), adaptor.filter(), new_bias}),
+          attributes);
+
+      return success();
+    }
+
     rewriter.replaceOpWithNewOp<tpu::ConvOp>(op, op->getResultTypes(),
                                              adaptor.getOperands(), attributes);
-
     return success();
   }
 };
@@ -339,6 +378,8 @@ class MatMulOpLowering : public OpConversionPattern<top::MatMulOp> {
     if (!isQuantized<quant::UniformQuantizedType>(op.input(), op.right(),
                                                   op.getResult()))
       return failure();
+    if (isQuantized(adaptor.right()) || isQuantized(adaptor.bias()))
+      return failure(); // make sure filter and bias are storage type
 
     auto input_qtype =
         getRankedTensorElementType<quant::UniformQuantizedType>(op.input());
@@ -355,6 +396,38 @@ class MatMulOpLowering : public OpConversionPattern<top::MatMulOp> {
     NamedAttrList attributes(adaptor.getAttributes());
     attributes.set("rshift", rewriter.getI64IntegerAttr(shift));
     attributes.set("multiplier", rewriter.getI64IntegerAttr(multiplier));
+    int32_t input_zeroPoint = input_qtype.getZeroPoint();
+    if (input_zeroPoint != 0 &&
+        isa<top::WeightOp>(adaptor.right().getDefiningOp()) &&
+        isa<top::WeightOp, top::NoneOp>(adaptor.bias().getDefiningOp())) {
+      // merge input_zeroPoint to bias
+      std::shared_ptr<std::vector<int32_t>> bias_quant;
+      std::shared_ptr<std::vector<int8_t>> right_quant;
+      right_quant =
+          cast<top::WeightOp>(adaptor.right().getDefiningOp()).read<int8_t>();
+      if (isa<top::WeightOp>(adaptor.bias().getDefiningOp())) {
+        bias_quant =
+            cast<top::WeightOp>(adaptor.bias().getDefiningOp()).read<int32_t>();
+      }
+      auto right_type = adaptor.right().getType().cast<RankedTensorType>();
+      int64_t row_size = right_type.getShape()[0];
+      int64_t col_size = right_type.getShape()[1];
+      bias_quant->resize(col_size, 0);
+      for (size_t r_ind = 0; r_ind < row_size; ++r_ind) {
+        for (size_t c_ind = 0; c_ind < col_size; ++c_ind) {
+          bias_quant->data()[c_ind] -=
+              input_zeroPoint * right_quant->at(c_ind + r_ind * col_size);
+        }
+      }
+      auto bias_type = RankedTensorType::get({col_size}, rewriter.getI32Type());
+      auto new_bias =
+          top::WeightOp::create(adaptor.bias().getDefiningOp(),
+                                "MergedInputZeroPoint", *bias_quant, bias_type);
+      rewriter.replaceOpWithNewOp<tpu::MatMulOp>(
+          op, op->getResultTypes(),
+          ValueRange({adaptor.input(), adaptor.right(), new_bias}), attributes);
+      return success();
+    }
     rewriter.replaceOpWithNewOp<tpu::MatMulOp>(
         op, op->getResultTypes(), adaptor.getOperands(), attributes);
     return success();
