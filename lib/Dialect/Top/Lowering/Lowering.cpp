@@ -177,10 +177,10 @@ struct LoweringPattern : public RewritePattern {
         newValue = lowering_op.lowering_int8_bm1684();
       }
     } else if (chip == Module::Chip::BM1686) {
-      if (mode == Quant::Type::F32) {
-        newValue = lowering_op.lowering_f32_bm1686();
-      } else {
+      if (mode == Quant::Type::INT8) {
         newValue = lowering_op.lowering_int8_bm1686();
+      } else {
+        newValue = lowering_op.lowering_fp(mode);
       }
     }
 
@@ -211,8 +211,9 @@ public:
 
     if (mode_ == Quant::Type::INT8) {
       lowering_to_int8();
-    } else if (mode_ == Quant::Type::F32) {
-      lowering_to_fp32();
+    } else if (mode_ == Quant::Type::F32 || mode_ == Quant::Type::F16 ||
+               mode_ == Quant::Type::BF16) {
+      lowering_to_fp();
     } else {
       llvm_unreachable("unsupport mode");
     }
@@ -257,7 +258,7 @@ protected:
       });
     }
   }
-  void lowering_to_fp32() {
+  void lowering_to_fp() {
     RewritePatternSet patterns(ctx_);
     patterns.add<LoweringPattern>(ctx_, mode_);
     applyPatternsAndFoldGreedily(module, std::move(patterns));
