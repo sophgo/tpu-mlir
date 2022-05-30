@@ -51,7 +51,7 @@ Value top::AddOp::lowering_int8_bm1686() {
   return newOp.output();
 }
 
-Value top::AddOp::lowering_f32_bm1686() {
+Value top::AddOp::lowering_fp(llvm::StringRef mode) {
   auto op = getOperation();
   OpBuilder builder(op);
   std::vector<Value> operands;

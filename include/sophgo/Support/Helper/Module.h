@@ -21,6 +21,7 @@ struct Module {
     static constexpr llvm::StringRef NEURON_ADDR = "module.neuron_addr";
     static constexpr llvm::StringRef NEURON_SIZE = "module.neuron_size";
     static constexpr llvm::StringRef ASYMMETRIC = "module.asymmetric";
+    static constexpr llvm::StringRef MODE = "module.mode";
   };
 
   struct State {

@@ -43,7 +43,7 @@ model_deploy.py \
 #   --chip bm1686 \
 #   --test_input $INPUT \
 #   --test_reference resnet18_top_outputs.npz \
-#   --tolerance 0.99,0.99 \
+#   --tolerance 0.99,0.98 \
 #   --model resnet18_1686_bf16.bmodel
 
 #########################

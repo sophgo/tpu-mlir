@@ -56,7 +56,7 @@ template <typename T> static bool check_type(Type eltType) {
   }
 
   bool same;
-  if (eltType.isBF16()) {
+  if (eltType.isBF16() || eltType.isF16()) {
     // we use uint16_t to represent BF16 (same as tensorflow)
     same = std::is_same<T, uint16_t>::value;
   } else if (eltType.isF32()) {
