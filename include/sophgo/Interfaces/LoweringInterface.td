@@ -26,8 +26,8 @@ def LoweringInterface : OpInterface<"LoweringInterface"> {
         /*desc=*/[{
         }],
         /*retType=*/"mlir::Value",
-        /*methodName=*/"lowering_f32_bm1686",
-        /*args=*/(ins)
+        /*methodName=*/"lowering_fp",
+        /*args=*/(ins "llvm::StringRef":$mode)
       >,
       InterfaceMethod<
         /*desc=*/[{
@@ -35,20 +35,7 @@ def LoweringInterface : OpInterface<"LoweringInterface"> {
         /*retType=*/"mlir::Value",
         /*methodName=*/"lowering_f32_bm1684",
         /*args=*/(ins)
-      >,
-      InterfaceMethod<
-        /*desc=*/[{
-        }],
-        /*retType=*/"mlir::Value",
-        /*methodName=*/"lowering_bf16_bm1686",
-        /*args=*/(ins),
-        [{}],
-        [{
-          llvm_unreachable("not support now");
-          return nullptr;
-        }]
-      >,
-  ];
+      >  ];
 
 }
 #endif // SOPHGO_LOWERINGINTERFACE

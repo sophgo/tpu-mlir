@@ -20,6 +20,7 @@ constexpr llvm::StringRef Module::Attr::COEFF_SIZE;
 constexpr llvm::StringRef Module::Attr::NEURON_ADDR;
 constexpr llvm::StringRef Module::Attr::NEURON_SIZE;
 constexpr llvm::StringRef Module::Attr::ASYMMETRIC;
+constexpr llvm::StringRef Module::Attr::MODE;
 
 constexpr llvm::StringRef Module::State::TOP_F32;
 constexpr llvm::StringRef Module::State::TOP_CALIBRATED;

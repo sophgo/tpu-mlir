@@ -1,7 +1,8 @@
 #include "sophgo/Dialect/Top/IR/TopOps.h"
 #include "sophgo/Dialect/Tpu/IR/TpuOps.h"
-#include "sophgo/Support/MathUtils.h"
 #include "sophgo/Support/Helper/Quant.h"
+#include "sophgo/Support/MathUtils.h"
+#include "sophgo/Support/fp16_bf16.h"
 
 using namespace mlir;
 using namespace sophgo;
@@ -103,19 +104,86 @@ Value top::ConvOp::lowering_int8_bm1686() {
   return newOp.output();
 }
 
-
-Value top::ConvOp::lowering_f32_bm1686() {
-  auto op = getOperation();
-  OpBuilder builder(op);
-  std::vector<Value> operands;
-  operands.push_back(input());
-  operands.push_back(filter());
-  operands.push_back(bias());
+Value top::ConvOp::lowering_fp(llvm::StringRef mode) {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
   bool is_dw, with_bias, relu;
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
              pl, pr, dh, dw, is_dw, with_bias, relu);
+
+  auto op = getOperation();
+  OpBuilder builder(op);
+  std::vector<Value> operands;
+  operands.push_back(input());
+  if (mode == Quant::Type::F32) {
+    operands.push_back(filter());
+  } else {
+    auto filterOp = cast<top::WeightOp>(filter().getDefiningOp());
+    auto filter_f32 = filterOp.read<float>();
+    auto filter_ui16 =
+        std::make_shared<std::vector<uint16_t>>(filter_f32->size());
+    unsigned int *filter_uint32 = (unsigned int *)filter_f32->data();
+    for (int i = 0; i < filter_f32->size(); i++) {
+      if (mode == Quant::Type::F16) {
+        filter_ui16->data()[i] =
+            float_to_fp16_uint16_nvidia(filter_f32->data()[i]);
+      } else {
+        filter_ui16->data()[i] =
+            (uint16_t)((filter_uint32[i] & 0xFFFF0000) >> 16);
+      }
+      /*if (i < 128) {
+        printf("filter i:%d, %f, 0x%x, 0x%x\n", i, filter_f32->data()[i],
+               filter_ui16->data()[i],
+               float_to_fp16_uint16(filter_f32->data()[i]));
+      }*/
+    }
+    auto filter_type = filter().getType().cast<RankedTensorType>();
+    Type elementType = (mode == Quant::Type::F16) ? builder.getF16Type()
+                                                  : builder.getBF16Type();
+    llvm::StringRef suffix =
+        (mode == Quant::Type::F16) ? "filter_f16" : "filter_bf16";
+    auto new_type = RankedTensorType::get(filter_type.getShape(), elementType);
+    auto new_filter = WeightOp::create(op, suffix, *filter_ui16, new_type);
+    operands.push_back(new_filter);
+  }
+
+  if (mode == Quant::Type::F32) {
+    operands.push_back(bias());
+  } else {
+    if (with_bias) {
+      auto biasOp = cast<top::WeightOp>(bias().getDefiningOp());
+      auto bias_fp32 = biasOp.read<float>();
+      auto bias_ui16 =
+          std::make_shared<std::vector<uint16_t>>(bias_fp32->size());
+      unsigned int *bias_uint32 = (unsigned int *)bias_fp32->data();
+      for (int i = 0; i < bias_fp32->size(); i++) {
+        if (mode == Quant::Type::F16) {
+          bias_ui16->data()[i] =
+              float_to_fp16_uint16_nvidia(bias_fp32->data()[i]);
+        } else {
+          bias_ui16->data()[i] =
+              (uint16_t)((bias_uint32[i] & 0xFFFF0000) >> 16);
+        }
+        /*if (i < 128) {
+          printf("bias i:%d, %f, 0x%x, 0x%x\n", i, bias_fp32->data()[i],
+                 bias_ui16->data()[i],
+                 float_to_fp16_uint16(bias_fp32->data()[i]));
+        }*/
+      }
+
+      auto bias_type = bias().getType().cast<RankedTensorType>();
+      Type elementType = (mode == Quant::Type::F16) ? builder.getF16Type()
+                                                    : builder.getBF16Type();
+      llvm::StringRef suffix =
+          (mode == Quant::Type::F16) ? "bias_f16" : "bias_bf16";
+      auto new_type = RankedTensorType::get(bias_type.getShape(), elementType);
+      auto new_bias = WeightOp::create(op, suffix, *bias_ui16, new_type);
+      operands.push_back(new_bias);
+    } else {
+      auto none = Module::getNoneOp(op);
+      operands.push_back(none);
+    }
+  }
 
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
@@ -123,7 +191,6 @@ Value top::ConvOp::lowering_f32_bm1686() {
   }
   attrs.push_back(
       builder.getNamedAttr("with_bias", builder.getBoolAttr(with_bias)));
-
   auto newOp = builder.create<tpu::ConvOp>(op->getLoc(), output().getType(),
                                            ArrayRef<Value>{operands},
                                            ArrayRef<NamedAttribute>{attrs});

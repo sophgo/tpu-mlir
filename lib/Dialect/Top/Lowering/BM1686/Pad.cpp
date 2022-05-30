@@ -7,11 +7,11 @@ using namespace sophgo::helper;
 using namespace mlir;
 
 Value top::PadOp::lowering_int8_bm1686() {
-  llvm_unreachable("BatchNormOp to be supported");
+  llvm_unreachable("PadOp to be supported");
   return nullptr;
 }
 
-Value top::PadOp::lowering_f32_bm1686() {
-  llvm_unreachable("BatchNormOp to be supported");
+Value top::PadOp::lowering_fp(llvm::StringRef mode) {
+  llvm_unreachable("PadOp to be supported");
   return nullptr;
 }

@@ -15,7 +15,7 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
   int nInputs = inputs().size();
   auto num_elem = Module::getNumElements(output());
   auto out_type = Module::getStorageType(output());
-  if (out_type.isF32()) {
+  if (out_type.isF32() || out_type.isBF16() || out_type.isF16()) {
     memset(p.outputs[0], 0, num_elem * sizeof(float));
 
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
@@ -67,16 +67,19 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
     for (int64_t i = 0; i < num_elem; i++) {
       p.outputs[0][i] = 0;
       for (int64_t j = 0; j < nInputs; j++) {
-        p.outputs[0][i] += ((int64_t)(p.inputs[j][i] * multiplier_v->at(j))) >>
+        int half_data = 1 << (rshift_v->at(j) - 1);
+        p.outputs[0][i] += ((int64_t)(p.inputs[j][i] * multiplier_v->at(j)) + half_data) >>
                            rshift_v->at(j);
       }
 
       if (chip == Module::Chip::BM1686) {
         p.outputs[0][i] -= b;
-      } else if (do_relu()) {
+      }
+
+      if (do_relu()) {
         p.outputs[0][i] = p.outputs[0][i] > 0 ? p.outputs[0][i] : 0;
       }
-      p.outputs[0][i] = Quant::to_int8(p.outputs[0][i]);
+      p.outputs[0][i] = Quant::to_int8(p.outputs[0][i] + zp);
     }
   }
 
