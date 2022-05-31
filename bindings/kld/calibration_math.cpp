@@ -1,11 +1,13 @@
+//===----------------------------------------------------------------------===//
+//
+// Copyright (c) 2020-2030 by Sophgo Technologies Inc. All rights reserved.
+//
+// Licensed under the Apache License v2.0.
+// See http://www.apache.org/licenses/LICENSE-2.0 for license information.
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
 /*
- * Copyright (C) Bitmain Technologies Inc.
- * All Rights Reserved.
- */
-/*
- * tool/calibration/calibration_math.c
- *
- * Copyright Bitmain Technologies Inc.
  * Written by:
  *   Wanwei CAI <wanwei.cai@bitmain.com>
  * Created Time: 2018-02-06 15:43
