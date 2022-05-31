@@ -1,8 +1,10 @@
 //===- Passes.h - Conversion Pass Construction and Registration -----------===//
 //
-// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
-// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+// Copyright (c) 2020-2030 by Sophgo Technologies Inc. All rights reserved.
+//
+// Licensed under the Apache License v2.0.
+// See http://www.apache.org/licenses/LICENSE-2.0 for license information.
+// SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
 
