@@ -1,3 +1,11 @@
+# Copyright (c) 2020-2030 by Sophgo Technologies Inc. All rights reserved.
+#
+# Licensed under the Apache License v2.0.
+# See http://www.apache.org/licenses/LICENSE-2.0 for license information.
+# SPDX-License-Identifier: Apache-2.0
+#
+# ==============================================================================
+
 from .npz_compare import npz_compare, load_op_info, dequantize
 from .npz_visualize_diff import npz_visualize_diff
 from .npz_dump import npz_dump
