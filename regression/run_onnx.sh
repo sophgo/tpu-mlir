@@ -170,23 +170,23 @@ npz_tool.py compare \
     --tolerance 0.90,0.54 -v
 
 # convert f16
-# sophgo-opt resnet18.mlir \
-#     '--lowering=mode=F16 chip=bm1686' \
-#     --save-weight \
-#     -o resnet18_f16_1686.mlir
+sophgo-opt resnet18.mlir \
+    '--lowering=mode=F16 chip=bm1686' \
+    --save-weight \
+    -o resnet18_f16_1686.mlir
 
-# model_runner.py \
-#     --model resnet18_f16_1686.mlir \
-#     --input $INPUT \
-#     --dump_all_tensors \
-#     --output resnet18_f16_outputs_1686.npz
+model_runner.py \
+    --model resnet18_f16_1686.mlir \
+    --input $INPUT \
+    --dump_all_tensors \
+    --output resnet18_f16_outputs_1686.npz
 
-# npz_tool.py compare \
-#     resnet18_f16_outputs_1686.npz \
-#     resnet18_ref_outputs.npz \
-#     --tolerance 0.99,0.98 -v
+npz_tool.py compare \
+    resnet18_f16_outputs_1686.npz \
+    resnet18_ref_outputs.npz \
+    --tolerance 0.99,0.98 -v
 
-# convert f16
+# convert bf16
 sophgo-opt resnet18.mlir \
     '--lowering=mode=BF16 chip=bm1686' \
     --save-weight \
