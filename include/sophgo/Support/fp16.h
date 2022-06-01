@@ -1,23 +1,22 @@
-//===----------------------------------------------------------------------===//
-//
-// Copyright (c) 2020-2030 by Sophgo Technologies Inc. All rights reserved.
-//
-// Licensed under the Apache License v2.0.
-// See http://www.apache.org/licenses/LICENSE-2.0 for license information.
-// SPDX-License-Identifier: Apache-2.0
-//
-//===----------------------------------------------------------------------===//
-
 #pragma once
-#ifndef FP16_CONVERT_H_
-#define FP16_CONVERT_H_
+#ifndef FP16_FP16_H
+#define FP16_FP16_H
 
-#include <cstdint>
-#include <cmath>
-#include "bitcasts.h"
+#if defined(__cplusplus) && (__cplusplus >= 201103L)
+	#include <cstdint>
+	#include <cmath>
+#elif !defined(__OPENCL_VERSION__)
+	#include <stdint.h>
+	#include <math.h>
+#endif
+
 #ifdef _MSC_VER
 	#include <intrin.h>
 #endif
+
+#include "bitcasts.h"
+
+
 /*
  * Convert a 16-bit floating-point number in IEEE half-precision format, in bit representation, to
  * a 32-bit floating-point number in IEEE single-precision format, in bit representation.
@@ -449,4 +448,47 @@ static inline uint16_t fp16_alt_from_fp32_value(float f) {
 	return (sign >> 16) | ((exp_f & UINT32_C(0x00007C00)) + (fp32_to_bits(base) & UINT32_C(0x00000FFF)));
 }
 
-#endif
+
+static uint16_t float_to_bf16_uint16_simple(float x)
+{
+    unsigned int* p = (unsigned int*)&x;
+    return (uint16_t)((*p & 0xFFFF0000) >> 16);
+}
+
+static float bf16_uint16_to_float_simple(uint16_t x)
+{
+  unsigned int tmp1 = x;
+  tmp1=tmp1<<16;
+  return *((float*)&tmp1);
+}
+
+static uint16_t  float_to_fp16_uint16_nvidia(float m)
+{
+    unsigned long m2 = *(unsigned long*)(&m);
+    // 强制把float转为unsigned long
+    // 截取后23位尾数，右移13位，剩余10位；符号位直接右移16位；
+    // 指数位麻烦一些，截取指数的8位先右移13位(左边多出3位不管了)
+    // 之前是0~255表示-127~128, 调整之后变成0~31表示-15~16
+    // 因此要减去127-15=112(在左移10位的位置).
+    uint16_t t = ((m2 & 0x007fffff) >> 13) | ((m2 & 0x80000000) >> 16)
+        | (((m2 & 0x7f800000) >> 13) - (112 << 10));
+    if(m2 & 0x1000)
+        t++;  // 四舍五入(尾数被截掉部分的最高位为1, 则尾数剩余部分+1)
+    return t ;
+}
+
+static float fp16_uint16_to_float_nvidia(uint16_t n)
+{
+    uint16_t frac = (n & 0x3ff) | 0x400;
+    int exp = ((n & 0x7c00) >> 10) - 25;
+    float m;
+    if(frac == 0 && exp == 0x1f)
+        m = INFINITY;
+    else if (frac || exp)
+        m = frac * pow(2, exp);
+    else
+        m = 0;
+    return (n & 0x8000) ? -m : m;
+}
+
+#endif /* FP16_FP16_H */

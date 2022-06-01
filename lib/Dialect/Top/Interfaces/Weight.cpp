@@ -12,7 +12,7 @@
 #include "sophgo/Support/Dnnl/Dnnl.h"
 #include "sophgo/Support/Helper/Module.h"
 #include "sophgo/Support/Helper/Quant.h"
-#include "sophgo/Support/fp16_bf16.h"
+#include "sophgo/Support/fp16.h"
 
 using namespace sophgo;
 using namespace sophgo::helper;
@@ -45,16 +45,14 @@ std::shared_ptr<std::vector<float>> WeightOp::read_as_float() {
     auto data_u16 = read<uint16_t>();
     auto data_f32 = std::make_shared<std::vector<float>>(data_u16->size());
     for (int i = 0; i < data_u16->size(); i++) {
-      data_f32->data()[i] = fp16_uint16_to_float_nvidia(data_u16->data()[i]);
+      data_f32->data()[i] = fp16_alt_to_fp32_value(data_u16->data()[i]);
     }
     return data_f32;
   } else if (dtype.isBF16()) {
     auto data_u16 = read<uint16_t>();
     auto data_f32 = std::make_shared<std::vector<float>>(data_u16->size());
     for (int i = 0; i < data_u16->size(); i++) {
-      unsigned int tmp1 = data_u16->data()[i];
-      tmp1=tmp1<<16;
-      data_f32->data()[i] = *((float*)&tmp1);
+      data_f32->data()[i] = bf16_uint16_to_float_simple(data_u16->data()[i]);
     }
     return data_f32;
   } else if (Quant::isUniformQuantized(output())) {

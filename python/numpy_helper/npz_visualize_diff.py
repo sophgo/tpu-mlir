@@ -26,6 +26,8 @@ def parse_args(args_list):
     parser.add_argument('--verbose', '-v', action='count', default=0)
     parser.add_argument("--excepts", type=str,
                         help="List of tensors except from comparing")
+    parser.add_argument("--max_sampling", type=int, default=10000,
+                        help="max sampling points")
     args = parser.parse_args(args_list)
     return args
 
@@ -53,6 +55,8 @@ def npz_visualize_diff(args_list):
 
   npz1 = np.load(f1)
   npz2 = np.load(f2)
+  print('npz1.files:', npz1.files)
+  print('npz2.files:', npz2.files)
   common = list()
   for name in npz1.files:
     if name in npz2.files and name not in excepts:
@@ -69,9 +73,8 @@ def npz_visualize_diff(args_list):
 
     blob_COS = cos_sim(blob_fp.reshape(-1), blob_int.reshape(-1))
     data_size = blob_fp.size
-    max_sampling = 10000
-    if data_size > max_sampling:
-        step = data_size//max_sampling
+    if data_size > args.max_sampling:
+        step = data_size//args.max_sampling
     else:
         step = 1
 

@@ -12,7 +12,7 @@
 #include "sophgo/Dialect/Tpu/IR/TpuOps.h"
 #include "sophgo/Support/Helper/Quant.h"
 #include "sophgo/Support/MathUtils.h"
-#include "sophgo/Support/fp16_bf16.h"
+#include "sophgo/Support/fp16.h"
 
 using namespace mlir;
 using namespace sophgo;
@@ -132,21 +132,14 @@ Value top::ConvOp::lowering_fp(llvm::StringRef mode) {
     auto filter_f32 = filterOp.read<float>();
     auto filter_ui16 =
         std::make_shared<std::vector<uint16_t>>(filter_f32->size());
-    unsigned int *filter_uint32 = (unsigned int *)filter_f32->data();
     for (int i = 0; i < filter_f32->size(); i++) {
       if (mode == Quant::Type::F16) {
-        filter_ui16->data()[i] =
-            float_to_fp16_uint16_nvidia(filter_f32->data()[i]);
+        filter_ui16->data()[i] = fp16_alt_from_fp32_value(filter_f32->data()[i]);
       } else {
-        filter_ui16->data()[i] =
-            (uint16_t)((filter_uint32[i] & 0xFFFF0000) >> 16);
+        filter_ui16->data()[i] = float_to_bf16_uint16_simple(filter_f32->data()[i]);
       }
-      /*if (i < 128) {
-        printf("filter i:%d, %f, 0x%x, 0x%x\n", i, filter_f32->data()[i],
-               filter_ui16->data()[i],
-               float_to_fp16_uint16(filter_f32->data()[i]));
-      }*/
     }
+
     auto filter_type = filter().getType().cast<RankedTensorType>();
     Type elementType = (mode == Quant::Type::F16) ? builder.getF16Type()
                                                   : builder.getBF16Type();
@@ -165,20 +158,12 @@ Value top::ConvOp::lowering_fp(llvm::StringRef mode) {
       auto bias_fp32 = biasOp.read<float>();
       auto bias_ui16 =
           std::make_shared<std::vector<uint16_t>>(bias_fp32->size());
-      unsigned int *bias_uint32 = (unsigned int *)bias_fp32->data();
       for (int i = 0; i < bias_fp32->size(); i++) {
         if (mode == Quant::Type::F16) {
-          bias_ui16->data()[i] =
-              float_to_fp16_uint16_nvidia(bias_fp32->data()[i]);
+          bias_ui16->data()[i] = fp16_alt_from_fp32_value(bias_fp32->data()[i]);
         } else {
-          bias_ui16->data()[i] =
-              (uint16_t)((bias_uint32[i] & 0xFFFF0000) >> 16);
+          bias_ui16->data()[i] = float_to_bf16_uint16_simple(bias_fp32->data()[i]);
         }
-        /*if (i < 128) {
-          printf("bias i:%d, %f, 0x%x, 0x%x\n", i, bias_fp32->data()[i],
-                 bias_ui16->data()[i],
-                 float_to_fp16_uint16(bias_fp32->data()[i]));
-        }*/
       }
 
       auto bias_type = bias().getType().cast<RankedTensorType>();
