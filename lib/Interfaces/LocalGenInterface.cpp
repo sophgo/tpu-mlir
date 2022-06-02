@@ -8,12 +8,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Interfaces/LocalGenInterface.h"
-#include "sophgo/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Interfaces/LocalGenInterface.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
 using namespace mlir;
 
-namespace sophgo {
+namespace tpu_mlir {
 
 constexpr llvm::StringRef LocalGenInterface::kLayerGroupAttrName;
 void LocalGenInterface::fixSlice(int64_t &in_idx, int64_t &in_slice,
@@ -62,6 +62,6 @@ group_info_t LocalGenInterface::getGroupInfo(mlir::Operation *op,
   return ginfo;
 }
 
-} // namespace sophgo
+} // namespace tpu_mlir
 
-#include "sophgo/Interfaces/LocalGenInterface.cpp.inc"
+#include "tpu_mlir/Interfaces/LocalGenInterface.cpp.inc"

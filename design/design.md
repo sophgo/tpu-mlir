@@ -52,7 +52,7 @@ gdb --args python /work/python/tools/model_runner.py --input resnet18_in_f32.npz
 
 * 目前所有op都认为是一个输出，后续支持多输出op ?
 
-* sophgo-opt能否需要实现python版本？
+* tpuc-opt能否需要实现python版本？
 
 * top的pass只有一个：Fuse Relu到conv和add，其他pass需要补充完整
 
@@ -60,7 +60,7 @@ gdb --args python /work/python/tools/model_runner.py --input resnet18_in_f32.npz
 
 * vscode的pybind11路径配置没有配好，Python.h也没有定位好
 
-* sophgo-opt为什么编译时间这么久，需要研究一下
+* tpuc-opt为什么编译时间这么久，需要研究一下
 
 * 为了省时间，直接用晶视的npz_tool/calibation_tool，后续再做优化。其中cali的min和max直接取最小值和最大值，是否也应该做kld算法求min/max？另外tune没有加入，作用很大，后续再加入。
 

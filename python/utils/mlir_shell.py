@@ -20,10 +20,10 @@ def checkReturnValue(ret, func: str):
 
 def mlir_opt_for_top(mlirfile, opt_mlirfile):
     ret = subprocess.run([
-        "sophgo-opt", "--canonicalize", "--mark-FLOPs", "--save-weight", mlirfile, "-o",
+        "tpuc-opt", "--canonicalize", "--mark-FLOPs", "--save-weight", mlirfile, "-o",
         opt_mlirfile
     ])
-    checkReturnValue(ret, "sophgo-opt")
+    checkReturnValue(ret, "tpuc-opt")
     return ret.returncode
 
 
@@ -46,7 +46,7 @@ def mlir_lowering(top_mlir: str,
                   cali_table=None,
                   asymmetric: bool = False,
                   quantize_table=None):
-    cmd = ["sophgo-opt", top_mlir]
+    cmd = ["tpuc-opt", top_mlir]
     if cali_table != None:
         cali_param = "--import-calibration-table=\"file={} asymmetric={}\"".format(
             cali_table, asymmetric)
@@ -56,19 +56,19 @@ def mlir_lowering(top_mlir: str,
     cmd.extend([lower_param, "--save-weight", "-o", tpu_mlir])
     return _os_system(cmd)
     #ret = subprocess.run(cmd)
-    #checkReturnValue(ret, "sophgo-opt")
+    #checkReturnValue(ret, "tpuc-opt")
     #return ret
 
 
 def mlir_to_model(tpu_mlir: str, model: str, final_mlir: str):
     codegen_param = "--codegen=\"model_file={}\"".format(model)
     cmd = [
-        "sophgo-opt", tpu_mlir, "--weight-reorder", "--subnet-divide", "--layer-group",
+        "tpuc-opt", tpu_mlir, "--weight-reorder", "--subnet-divide", "--layer-group",
         "--address-asign", "--save-weight", codegen_param, "-o", final_mlir
     ]
     return _os_system(cmd)
     #ret = subprocess.run(cmd)
-    #checkReturnValue(ret, "sophgo-opt")
+    #checkReturnValue(ret, "tpuc-opt")
     # return ret
 
 

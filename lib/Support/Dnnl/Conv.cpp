@@ -9,11 +9,11 @@
 //===----------------------------------------------------------------------===//
 
 #include <string.h>
-#include "sophgo/Support/Dnnl/Conv.h"
-#include "sophgo/Support/MathUtils.h"
+#include "tpu_mlir/Support/Dnnl/Conv.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace dnnl;
-using namespace sophgo;
+using namespace tpu_mlir;
 Conv::Conv() {
   eng = dnnl::engine(engine::kind::cpu, 0);
   eng_stream = dnnl::stream(eng);

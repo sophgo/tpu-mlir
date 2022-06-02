@@ -25,7 +25,7 @@ run_calibration.py resnet18.mlir \
 # BM1684
 #########################
 # convert to f32
-sophgo-opt resnet18.mlir \
+tpuc-opt resnet18.mlir \
     --lowering="mode=F32 chip=bm1684" \
     --save-weight \
     -o resnet18_f32_1684.mlir
@@ -42,13 +42,13 @@ npz_tool.py compare \
     --tolerance 0.99,0.99 -v
 
 # import calibration
-sophgo-opt resnet18.mlir \
+tpuc-opt resnet18.mlir \
     --import-calibration-table='file=resnet18_cali_table asymmetric=false' \
     --save-weight \
     -o resnet18_cali_1684.mlir
 
 # quantize mlir
-sophgo-opt resnet18_cali_1684.mlir \
+tpuc-opt resnet18_cali_1684.mlir \
     --lowering="mode=INT8 asymmetric=false chip=bm1684" \
     --save-weight \
     -o resnet18_int8_1684.mlir
@@ -64,7 +64,7 @@ npz_tool.py compare \
     resnet18_ref_outputs.npz \
     --tolerance 0.85,0.42 -v
 
-# sophgo-opt resnet18_int8_1684.mlir \
+# tpuc-opt resnet18_int8_1684.mlir \
 #     --weight-reorder \
 #     --subnet-divide \
 #     --address-asign \
@@ -76,7 +76,7 @@ npz_tool.py compare \
 # BM1686
 #########################
 # convert f32
-sophgo-opt resnet18.mlir \
+tpuc-opt resnet18.mlir \
     '--lowering=mode=F32 chip=bm1686' \
     --save-weight \
     -o resnet18_f32_1686.mlir
@@ -92,7 +92,7 @@ npz_tool.py compare \
     resnet18_ref_outputs.npz \
     --tolerance 0.99,0.99 -v
 
-sophgo-opt resnet18_f32_1686.mlir \
+tpuc-opt resnet18_f32_1686.mlir \
     --weight-reorder \
     --subnet-divide \
     --address-asign \
@@ -106,13 +106,13 @@ model_runner.py \
     --output resnet18_f32_outputs_1686_model.npz
 
 # convert to int8
-sophgo-opt resnet18.mlir \
+tpuc-opt resnet18.mlir \
     --import-calibration-table='file=resnet18_cali_table asymmetric=true' \
     --save-weight \
     -o resnet18_cali_1686.mlir
 
 # quantize mlir for 1686 asymmetric
-sophgo-opt resnet18_cali_1686.mlir \
+tpuc-opt resnet18_cali_1686.mlir \
     --lowering="mode=INT8 asymmetric=true chip=bm1686" \
     --save-weight \
     -o resnet18_int8_1686_asym.mlir
@@ -129,7 +129,7 @@ npz_tool.py compare \
     --tolerance 0.90,0.54 -v
 
 # # with layer-group
-# sophgo-opt resnet18_int8_1686_asym.mlir \
+# tpuc-opt resnet18_int8_1686_asym.mlir \
 #     --weight-reorder \
 #     --subnet-divide \
 #     --layer-group \
@@ -139,7 +139,7 @@ npz_tool.py compare \
 #     -o resnet18_int8_lg_1686_asym.mlir
 
 # # no layer-group
-# sophgo-opt resnet18_int8_1686_asym.mlir \
+# tpuc-opt resnet18_int8_1686_asym.mlir \
 #     --weight-reorder \
 #     --subnet-divide \
 #     --address-asign \
@@ -147,13 +147,13 @@ npz_tool.py compare \
 #     --codegen="model_file=resnet18_int8_1686.bmodel" \
 #     -o resnet18_int8_addr_1686_asym.mlir
 
-sophgo-opt resnet18.mlir \
+tpuc-opt resnet18.mlir \
     --import-calibration-table='file=resnet18_cali_table asymmetric=false' \
     --save-weight \
     -o resnet18_cali_1686_sym.mlir
 
 # quantize mlir for 1686 symmetric
-sophgo-opt resnet18_cali_1686_sym.mlir \
+tpuc-opt resnet18_cali_1686_sym.mlir \
     --lowering="mode=INT8 asymmetric=false chip=bm1686" \
     --save-weight \
     -o resnet18_int8_1686_sym.mlir
@@ -170,7 +170,7 @@ npz_tool.py compare \
     --tolerance 0.90,0.54 -v
 
 # convert f16
-sophgo-opt resnet18.mlir \
+tpuc-opt resnet18.mlir \
     '--lowering=mode=F16 chip=bm1686' \
     --save-weight \
     -o resnet18_f16_1686.mlir
@@ -187,7 +187,7 @@ npz_tool.py compare \
     --tolerance 0.99,0.98 -v
 
 # convert bf16
-sophgo-opt resnet18.mlir \
+tpuc-opt resnet18.mlir \
     '--lowering=mode=BF16 chip=bm1686' \
     --save-weight \
     -o resnet18_bf16_1686.mlir

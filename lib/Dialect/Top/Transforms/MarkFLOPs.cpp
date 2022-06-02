@@ -8,14 +8,14 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Dialect/Top/Transforms/Passes.h"
+#include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
 
 #include "mlir/IR/PatternMatch.h"
 
 using namespace llvm;
 using namespace mlir;
-using namespace sophgo::helper;
-namespace sophgo {
+using namespace tpu_mlir::helper;
+namespace tpu_mlir {
 namespace top {
 
 class MarkFLOPsPass : public MarkFLOPsBase<MarkFLOPsPass> {
@@ -35,4 +35,4 @@ std::unique_ptr<OperationPass<ModuleOp>> createMarkFLOPsPass() {
   return std::make_unique<MarkFLOPsPass>();
 }
 } // namespace top
-} // namespace sophgo
+} // namespace tpu_mlir

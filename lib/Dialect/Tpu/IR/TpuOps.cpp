@@ -8,24 +8,24 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Dialect/Tpu/IR/TpuOps.h"
-#include "sophgo/Support/MathUtils.h"
-#include "sophgo/Support/Helper/Quant.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
 #include <numeric>
 
 using namespace mlir;
-using namespace sophgo::tpu;
+using namespace tpu_mlir::tpu;
 
 //===----------------------------------------------------------------------===//
 // Dialect initialize method.
 //===----------------------------------------------------------------------===//
-#include "sophgo/Dialect/Tpu/IR/TpuOpsDialect.cpp.inc"
-#include "sophgo/Dialect/Tpu/IR/TpuAttr.cpp.inc"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOpsDialect.cpp.inc"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuAttr.cpp.inc"
 
 void TpuDialect::initialize() {
   addOperations<
 #define GET_OP_LIST
-#include "sophgo/Dialect/Tpu/IR/TpuOps.cpp.inc"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.cpp.inc"
       >();
 }
 
@@ -34,4 +34,4 @@ void TpuDialect::initialize() {
 //===----------------------------------------------------------------------===//
 
 #define GET_OP_CLASSES
-#include "sophgo/Dialect/Tpu/IR/TpuOps.cpp.inc"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.cpp.inc"

@@ -8,13 +8,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
 
 using namespace mlir;
-using namespace sophgo::top;
+using namespace tpu_mlir::top;
 
 struct TopFusePad : public OpRewritePattern<PadOp> {
   using OpRewritePattern::OpRewritePattern;

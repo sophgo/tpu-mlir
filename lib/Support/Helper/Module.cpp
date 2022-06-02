@@ -8,17 +8,17 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Dialect/Top/IR/TopOps.h"
-#include "sophgo/Dialect/Tpu/IR/TpuOps.h"
-#include "sophgo/Support/Helper/Module.h"
-#include "sophgo/Support/Helper/Quant.h"
+#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/PatternMatch.h"
 #include "float.h"
 #include <map>
 using namespace llvm;
 using namespace mlir;
-namespace sophgo {
+namespace tpu_mlir {
 namespace helper {
 constexpr llvm::StringRef Module::Attr::NAME;
 constexpr llvm::StringRef Module::Attr::STATE;
@@ -396,4 +396,4 @@ void Module::getInputsOutputs(func::CallOp call, std::vector<Value> &inputs,
 }
 
 } // namespace helper
-} // namespace sophgo
+} // namespace tpu_mlir

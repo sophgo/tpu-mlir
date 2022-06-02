@@ -8,11 +8,11 @@ file(GLOB _sources
           Lowering/BM1686/*.cpp
     )
 
-add_mlir_library(SophgoTop
+add_mlir_library(TPUMLIRTop
   ${_sources}
 
   ADDITIONAL_HEADER_DIRS
-  ${PROJECT_SOURCE_DIR}/include/sophgo/Dialect/Top
+  ${PROJECT_SOURCE_DIR}/include/tpu_mlir/Dialect/Top
 
   DEPENDS
   MLIRTopOpsIncGen
@@ -34,7 +34,6 @@ add_mlir_library(SophgoTop
   MLIRSideEffectInterfaces
   MLIRInferenceInterface
   MLIRLoweringInterface
-  SophgoSupport
-  SophgoTrait
+  TPUMLIRSupport
+  TPUMLIRTrait
 )
-

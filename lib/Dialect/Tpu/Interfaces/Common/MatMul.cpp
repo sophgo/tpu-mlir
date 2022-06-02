@@ -8,13 +8,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Dialect/Tpu/IR/TpuOps.h"
-#include "sophgo/Support/Dnnl/Dnnl.h"
-#include "sophgo/Support/Helper/Quant.h"
-#include "sophgo/Support/Helper/Module.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Support/Dnnl/Dnnl.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Helper/Module.h"
 
-using namespace sophgo;
-using namespace sophgo::helper;
+using namespace tpu_mlir;
+using namespace tpu_mlir::helper;
 using namespace mlir;
 
 void tpu::MatMulOp::parseParam(int64_t &batch, int64_t &M, int64_t &K,

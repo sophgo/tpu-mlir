@@ -8,18 +8,18 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/InitAll.h"
-#include "sophgo/Dialect/Top/IR/TopOps.h"
-#include "sophgo/Dialect/Tpu/IR/TpuOps.h"
-#include "sophgo/Dialect/Top/Transforms/Passes.h"
-#include "sophgo/Dialect/Tpu/Transforms/Passes.h"
-#include "sophgo/Conversion/Passes.h"
+#include "tpu_mlir/InitAll.h"
+#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
+#include "tpu_mlir/Conversion/Passes.h"
 #include "mlir/Transforms/Passes.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Quant/QuantOps.h"
 #include "mlir/IR/Dialect.h"
 
-namespace sophgo {
+namespace tpu_mlir {
 void registerAllDialects(mlir::DialectRegistry &registry) {
   registry.insert<mlir::func::FuncDialect, top::TopDialect, tpu::TpuDialect,
                   mlir::quant::QuantizationDialect>();
@@ -31,4 +31,4 @@ void registerAllPasses() {
   top::registerTopPasses();
   tpu::registerTpuPasses();
 }
-} // namespace sophgo
+} // namespace tpu_mlir

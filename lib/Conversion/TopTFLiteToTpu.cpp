@@ -8,7 +8,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Conversion/TopTFLiteToTpu.h"
+#include "tpu_mlir/Conversion/TopTFLiteToTpu.h"
 #include "mlir/Dialect/Quant/QuantOps.h"
 #include "mlir/Dialect/Quant/QuantTypes.h"
 #include "mlir/IR/BuiltinTypes.h"
@@ -21,19 +21,19 @@
 #include "mlir/Support/LogicalResult.h"
 #include "mlir/Transforms/DialectConversion.h"
 #include "mlir/Transforms/Passes.h"
-#include "sophgo/Dialect/Top/IR/TopOps.h"
-#include "sophgo/Dialect/Tpu/IR/TpuOps.h"
-#include "sophgo/Support/Helper/Module.h"
-#include "sophgo/Support/Helper/Quant.h"
+#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/Support/Alignment.h"
 
 using namespace mlir;
 using namespace llvm;
 using namespace mlir::quant;
-namespace sophgo {
+namespace tpu_mlir {
 #define GEN_PASS_CLASSES
-#include "sophgo/Conversion/Passes.h.inc"
+#include "tpu_mlir/Conversion/Passes.h.inc"
 
 Type getRankedTensorElementType(Value input) {
   return input.getType().cast<RankedTensorType>().getElementType();
@@ -643,4 +643,4 @@ std::unique_ptr<Pass> createLowerTopTFLitePass() {
   return std::make_unique<LoweringTopTFLitePass>();
 }
 
-} // namespace sophgo
+} // namespace tpu_mlir

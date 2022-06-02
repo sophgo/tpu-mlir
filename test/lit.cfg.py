@@ -16,7 +16,7 @@ from lit.llvm.subst import FindTool
 # Configuration file for the 'lit' test runner.
 
 # name: The name of this test suite.
-config.name = "Sophgo"
+config.name = "TPUMLIR"
 
 config.test_format = lit.formats.ShTest(not llvm_config.use_lit_shell)
 
@@ -58,13 +58,13 @@ config.test_source_root = os.path.dirname(__file__)
 config.test_exec_root = os.path.join(config.mlir_obj_root, "test")
 
 # Tweak the PATH to include the tools dir.
-llvm_config.with_environment("PATH", config.sophgo_tools_dir, append_path=True)
+llvm_config.with_environment("PATH", config.tpu_mlir_tools_dir, append_path=True)
 llvm_config.with_environment("PATH", config.llvm_tools_dir, append_path=True)
-# llvm_config.with_environment("PATH", config.sophgo_py_tools_dir, append_path=True)
+# llvm_config.with_environment("PATH", config.tpu_mlir_py_tools_dir, append_path=True)
 
-tool_dirs = [config.sophgo_tools_dir, config.llvm_tools_dir]
+tool_dirs = [config.tpu_mlir_tools_dir, config.llvm_tools_dir]
 tools = [
-    "sophgo-opt",
+    "tpuc-opt",
     # "model_transform.py",
 ]
 
