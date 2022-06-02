@@ -17,9 +17,9 @@
 // -------------
 // pure C++ code
 // -------------
-#include "sophgo/Dialect/Top/IR/TopOps.h"
-#include "sophgo/Dialect/Tpu/IR/TpuOps.h"
-#include "sophgo/Support/ModuleInterpreter.h"
+#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Support/ModuleInterpreter.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/Dialect.h"
 #include "mlir/Pass/PassManager.h"
@@ -37,7 +37,7 @@
 #include "llvm/Support/SourceMgr.h"
 
 using namespace mlir;
-using namespace sophgo;
+using namespace tpu_mlir;
 
 typedef std::map<std::string, std::shared_ptr<std::vector<float>>> tensor_map_t;
 typedef std::map<std::string, std::vector<int64_t>> shape_map_t;

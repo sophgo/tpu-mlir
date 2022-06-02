@@ -12,12 +12,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Dialect/Tpu/Transforms/Passes.h"
-#include "sophgo/Support/MathUtils.h"
-#include "sophgo/Support/Helper/Module.h"
-#include "sophgo/Support/Helper/Quant.h"
-#include "sophgo/Backend/BM168x/BM168x.h"
-#include "sophgo/Builder/bmodel.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
+#include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Backend/BM168x/BM168x.h"
+#include "tpu_mlir/Builder/bmodel.hpp"
 
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/IR/PatternMatch.h"
@@ -32,10 +32,10 @@
 
 using namespace llvm;
 using namespace mlir;
-using namespace sophgo::backend;
-using namespace sophgo::helper;
+using namespace tpu_mlir::backend;
+using namespace tpu_mlir::helper;
 using namespace flatbuffers;
-namespace sophgo {
+namespace tpu_mlir {
 namespace tpu {
 
 class CodegenPass : public CodegenBase<CodegenPass> {
@@ -322,4 +322,4 @@ Offset<bmodel::SubNet> CodegenPass::CreateSubNet(func::CallOp call) {
 }
 
 } // namespace tpu
-} // namespace sophgo
+} // namespace tpu_mlir

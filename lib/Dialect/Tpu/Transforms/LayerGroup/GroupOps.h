@@ -8,14 +8,14 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Dialect/Tpu/IR/TpuOps.h"
-#include "sophgo/Support/Helper/Module.h"
-#include "sophgo/Backend/BM168x/BM168x.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "mlir/Support/LLVM.h"
 #include <map>
 #include <set>
 #include <list>
-namespace sophgo {
+namespace tpu_mlir {
 namespace tpu {
 
 typedef enum {
@@ -121,4 +121,4 @@ protected:
 };
 
 } // namespace tpu
-} // namespace sophgo
+} // namespace tpu_mlir

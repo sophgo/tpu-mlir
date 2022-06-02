@@ -16,7 +16,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED YES)
 
 set(MLIR_DIR ${PROJECT_SOURCE_DIR}/third_party/llvm/lib/cmake/mlir)
 
-# Fix Me. try to use cmake module to define customized sophgo function.
 # reference https://github.com/llvm/circt/blob/main/cmake/modules/AddCIRCT.cmake
 set(MLIR_BINARY_DIR ${CMAKE_INSTALL_PREFIX})
 

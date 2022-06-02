@@ -8,13 +8,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Interfaces/InferenceInterface.h"
-#include "sophgo/Support/Helper/Quant.h"
+#include "tpu_mlir/Interfaces/InferenceInterface.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
 
 using namespace mlir;
-using namespace sophgo::helper;
+using namespace tpu_mlir::helper;
 
-namespace sophgo {
+namespace tpu_mlir {
 
 int omp_schedule(int count) {
   return (count + omp_get_num_threads() - 1) / omp_get_num_threads();
@@ -32,6 +32,6 @@ void relu(float *src, float *dst, int64_t size, mlir::Type elem_type) {
   }
 }
 
-} // namespace sophgo
+} // namespace tpu_mlir
 
-#include "sophgo/Interfaces/InferenceInterface.cpp.inc"
+#include "tpu_mlir/Interfaces/InferenceInterface.cpp.inc"

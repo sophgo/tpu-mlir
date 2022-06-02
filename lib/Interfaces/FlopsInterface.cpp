@@ -8,8 +8,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Interfaces/FlopsInterface.h"
+#include "tpu_mlir/Interfaces/FlopsInterface.h"
 
 using namespace mlir;
 
-#include "sophgo/Interfaces/FlopsInterface.cpp.inc"
+#include "tpu_mlir/Interfaces/FlopsInterface.cpp.inc"

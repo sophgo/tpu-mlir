@@ -1,5 +1,5 @@
 set(LIBS
-  SophgoBuilder
+  TPUMLIRBuilder
   flatbuffers
   )
 

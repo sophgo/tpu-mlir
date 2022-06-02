@@ -1,32 +1,40 @@
-## sophgo-mlir
+![](./design/assets/sophgo_chip.png)
 
-This project provides compiler to transform NN model into sophgo graph with sophgo runtime support.
+# TPU-MLIR
 
-Get more info from [sophgo](http://sophgo.com).
+本项目是算能智能AI芯片的TPU编译器工程。该工程提供了一套完整的工具链，其可以将不
+同框架下预训练的神经网络，转化为可以在算能TPU上高效运算的二进制文件`bmodel`。
 
-## start docker
+算能承续了比特大陆在AI领域沉淀多年的技术、专利、产品和客户，以成为全球领先的通用
+算力提供商为愿景，智算赋能数字世界为使命，专注于人工智能芯片、RISC-V指令集高性能
+CPU服务器以及相关产品的研发与销售。旗下算丰全系列人工智能产品包括智算芯片、智算
+模组、智算盒子、智算卡、智算服务器等，丰富的产品形态为各型数据中心提供高效能的计
+算平台。公司具备全球领先的先进制程设计能力，现已成功量产云端、边端人工智能芯片并
+规模化商业落地。
 
-* pull docker image from dockerhub
+更多关于**TPU-MLIR**的信息可以参考[TPU-MLIR设计文档](./design/design.md)。
 
-    ``` shell
-    docker pull sophgo/sophgo_dev:1.1-ubuntu-18.04
-    ```
+# 编译工程
 
-* create a container, and run
+* 从[dockerhub](https://hub.docker.com/r/sophgo/sophgo_dev)下载所需的镜像。
 
-    ``` shell
-    # myname1234 just a example, you can set your own name
-    docker run --privileged --name myname1234 -v $PWD:/work -it sophgo/sophgo_dev:1.1-ubuntu-18.04
-    ```
+``` shell
+docker pull sophgo/sophgo_dev:1.1-ubuntu-18.04
 
-## Build
+# myname1234 just a example, you can set your own name
+docker run --privileged --name myname1234 -v $PWD:/work -it sophgo/sophgo_dev:1.1-ubuntu-18.04
+```
+
+* 编译代码
+
+克隆本工程，并在工程目录下运行以下命令：
 
 ``` shell
 source ./envsetup.sh
 ./build.sh
 ```
 
-## Test
+# 代码验证
 
 ``` shell
 pushd regression
@@ -34,11 +42,11 @@ pushd regression
 popd
 ```
 
-## How to use toolchain
+# 使用方法
 
-you can refer to regression/run_deploy.sh
+工具链相关串通流程可以参考：[regression](./regression/run_deploy.sh)
 
-### transform model to mlir (top)
+## 将外部框架的模型转化为`mlir`(top)模型
 
 ``` shell
 model_transform.py \
@@ -51,9 +59,11 @@ model_transform.py \
     --mlir resnet18.mlir
 ```
 
-### deploy mlir to bmodel
+## 部署
 
-##### To fp32 model
+将`mlir`模型转化为`bmodel`流程
+
+### 转化为 fp32 `bmodel`
 
 ``` shell
 model_deploy.py \
@@ -66,9 +76,11 @@ model_deploy.py \
   --model resnet18_1686_f32.bmodel
 ```
 
-##### To int8 model
+### 转化为int8 `bmodel`
 
-prepare inputs in forder "dataset", and run calibration:
+该过程需要经过量化。
+
+准备输入数据：将图片放置到单独文件夹下，此处为 "dataset"，然后进行量化标定。
 
 ``` shell
 run_calibration.py resnet18.mlir \
@@ -76,7 +88,10 @@ run_calibration.py resnet18.mlir \
     --input_num 1 \
     -o resnet18_cali_table
 ```
-###### to symmetric
+
+使用上述的量化表，将模型转化为int8 `bmodel`。
+
+### 对称量化
 
 ``` shell
 model_deploy.py \
@@ -90,7 +105,7 @@ model_deploy.py \
   --model resnet18_1686_int8_sym.bmodel
 ```
 
-###### to asymmetric
+### 非对称量化
 
 ``` shell
 model_deploy.py \
@@ -105,11 +120,11 @@ model_deploy.py \
   --model resnet18_1686_int8_asym.bmodel
 ```
 
-## Tools
+## 辅助工具
 
-### model_runner.py
+### 模型推理工具`model_runner.py`
 
-To inference model, support bmodel/mlir/onnx/tflite
+支持 bmodel/mlir/onnx/tflite
 
 ``` shell
 model_runner.py \
@@ -118,10 +133,11 @@ model_runner.py \
   --output resnet18_output.npz
 ```
 
-### model_tool
+### `bmodel`模型工具
 
-To do operation for model file, Usage:
+可以通过`model_tool`工具来查看和编辑`bmodel`文件, 用法参考以下列表:
 
+```
   model_tool
     --info model_file : show brief model info
     --print model_file : show detailed model info
@@ -129,8 +145,9 @@ To do operation for model file, Usage:
     --combine file1 .. fileN -o new_file: combine bmodels to one bmodel by filepath
     --combine_dir dir1 .. dirN -o new_dir: combine bmodels to one bmodel by directory path
     --dump model_file start_offset byte_size out_file: dump binary data to file from bmodel
+```
 
-for example, get model info:
+例如, 获取`umodel`的基本信息：
 
 ``` shell
 model_tool --info resnet18_1686_f32.bmodel

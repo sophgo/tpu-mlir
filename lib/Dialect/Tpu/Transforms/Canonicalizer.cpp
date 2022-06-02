@@ -8,10 +8,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
 using namespace mlir;
-using namespace sophgo::tpu;
+using namespace tpu_mlir::tpu;
 
 struct SimplifyRedundantCast : public OpRewritePattern<CastOp> {
   SimplifyRedundantCast(mlir::MLIRContext *context)
