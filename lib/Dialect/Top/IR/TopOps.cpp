@@ -8,25 +8,25 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Dialect/Top/IR/TopOps.h"
-#include "sophgo/Support/Helper/Module.h"
+#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Support/Helper/Module.h"
 
 #include <numeric>
 
 using namespace mlir;
-using namespace sophgo;
-using namespace sophgo::top;
-using namespace sophgo::helper;
+using namespace tpu_mlir;
+using namespace tpu_mlir::top;
+using namespace tpu_mlir::helper;
 
 //===----------------------------------------------------------------------===//
 // Dialect initialize method.
 //===----------------------------------------------------------------------===//
-#include "sophgo/Dialect/Top/IR/TopOpsDialect.cpp.inc"
+#include "tpu_mlir/Dialect/Top/IR/TopOpsDialect.cpp.inc"
 
 void TopDialect::initialize() {
   addOperations<
 #define GET_OP_LIST
-#include "sophgo/Dialect/Top/IR/TopOps.cpp.inc"
+#include "tpu_mlir/Dialect/Top/IR/TopOps.cpp.inc"
       >();
   wFile = nullptr;
 }
@@ -36,4 +36,4 @@ void TopDialect::initialize() {
 //===----------------------------------------------------------------------===//
 
 #define GET_OP_CLASSES
-#include "sophgo/Dialect/Top/IR/TopOps.cpp.inc"
+#include "tpu_mlir/Dialect/Top/IR/TopOps.cpp.inc"

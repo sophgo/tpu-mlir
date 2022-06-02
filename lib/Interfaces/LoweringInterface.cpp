@@ -8,8 +8,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Interfaces/LoweringInterface.h"
+#include "tpu_mlir/Interfaces/LoweringInterface.h"
 
 using namespace mlir;
 
-#include "sophgo/Interfaces/LoweringInterface.cpp.inc"
+#include "tpu_mlir/Interfaces/LoweringInterface.cpp.inc"

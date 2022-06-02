@@ -8,8 +8,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Dialect/Top/Transforms/Passes.h"
-#include "sophgo/Support/Helper/Module.h"
+#include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
+#include "tpu_mlir/Support/Helper/Module.h"
 
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/IR/PatternMatch.h"
@@ -19,8 +19,8 @@
 
 using namespace llvm;
 using namespace mlir;
-using namespace sophgo::helper;
-namespace sophgo {
+using namespace tpu_mlir::helper;
+namespace tpu_mlir {
 namespace top {
 
 class SaveWeightPass : public SaveWeightBase<SaveWeightPass> {
@@ -84,4 +84,4 @@ std::unique_ptr<OperationPass<ModuleOp>> createSaveWeightPass() {
   return std::make_unique<SaveWeightPass>();
 }
 } // namespace top
-} // namespace sophgo
+} // namespace tpu_mlir

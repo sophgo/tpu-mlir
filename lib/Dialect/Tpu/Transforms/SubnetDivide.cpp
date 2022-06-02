@@ -8,12 +8,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Dialect/Tpu/Transforms/Passes.h"
-#include "sophgo/Dialect/Tpu/IR/TpuOps.h"
-#include "sophgo/Support/MathUtils.h"
-#include "sophgo/Support/Helper/Module.h"
-#include "sophgo/Support/Helper/Quant.h"
-#include "sophgo/Backend/BM168x/BM1684.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Backend/BM168x/BM1684.h"
 
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/Dialect/Quant/QuantTypes.h"
@@ -27,9 +27,9 @@
 
 using namespace llvm;
 using namespace mlir;
-using namespace sophgo::helper;
-using namespace sophgo::backend;
-namespace sophgo {
+using namespace tpu_mlir::helper;
+using namespace tpu_mlir::backend;
+namespace tpu_mlir {
 namespace tpu {
 
 static constexpr llvm::StringRef FUNC_TPU = "TPU";
@@ -207,4 +207,4 @@ std::unique_ptr<OperationPass<ModuleOp>> createSubnetDividePass() {
   return std::make_unique<SubnetDividePass>();
 }
 } // namespace tpu
-} // namespace sophgo
+} // namespace tpu_mlir

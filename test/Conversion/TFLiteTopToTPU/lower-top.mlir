@@ -1,4 +1,4 @@
-// RUN: sophgo-opt --split-input-file --toptflite-to-tpu --canonicalize --verify-each %s | FileCheck %s
+// RUN: tpuc-opt --split-input-file --toptflite-to-tpu --canonicalize --verify-each %s | FileCheck %s
 
 // -----
 

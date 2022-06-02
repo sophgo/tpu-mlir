@@ -8,16 +8,16 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Dialect/Tpu/IR/TpuOps.h"
-#include "sophgo/Backend/BM168x/BM1684.h"
-#include "sophgo/Support/Helper/Quant.h"
-#include "sophgo/Support/Helper/Module.h"
-#include "sophgo/Support/MathUtils.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Backend/BM168x/BM1684.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace mlir;
-using namespace sophgo;
-using namespace sophgo::helper;
-using namespace sophgo::backend;
+using namespace tpu_mlir;
+using namespace tpu_mlir::helper;
+using namespace tpu_mlir::backend;
 
 void tpu::ReluOp::codegen_global_int8_bm1684() {
   llvm_unreachable("Codegen to be supported");

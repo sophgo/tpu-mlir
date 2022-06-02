@@ -8,7 +8,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Dialect/Quant/FakeQuantSupport.h"
 #include "mlir/Dialect/Quant/QuantizeUtils.h"
@@ -16,7 +16,7 @@
 #include <map>
 using namespace llvm;
 using namespace mlir;
-namespace sophgo {
+namespace tpu_mlir {
 namespace helper {
 
 constexpr double Quant::QMAX_INT8;
@@ -99,4 +99,4 @@ void Quant::setQuantExpressType(Value v) {
 }
 
 } // namespace helper
-} // namespace sophgo
+} // namespace tpu_mlir

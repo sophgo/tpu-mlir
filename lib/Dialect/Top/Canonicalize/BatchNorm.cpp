@@ -8,10 +8,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 
 using namespace mlir;
-using namespace sophgo::top;
+using namespace tpu_mlir::top;
 
 struct TopFuseBatchNorm : public OpRewritePattern<BatchNormOp> {
   using OpRewritePattern::OpRewritePattern;

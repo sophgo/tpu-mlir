@@ -6,7 +6,7 @@ add_subdirectory(Backend)
 add_subdirectory(Builder)
 add_subdirectory(Conversion)
 
-add_mlir_library(SophgoInitAll
+add_mlir_library(TPUMLIRInitAll
   InitAll.cpp
 
   LINK_COMPONENTS
@@ -18,8 +18,8 @@ add_mlir_library(SophgoInitAll
   MLIRFunc
   MLIRQuant
   MLIRInferenceInterface
-  SophgoTop
-  SophgoTpu
-  SophgoSupport
-  SophgoTopTFLiteToTpu
+  TPUMLIRTop
+  TPUMLIRTpu
+  TPUMLIRSupport
+  TPUMLIRTopTFLiteToTpu
 )

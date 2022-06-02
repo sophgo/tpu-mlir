@@ -8,9 +8,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Dialect/Top/Transforms/Passes.h"
-#include "sophgo/Support/MathUtils.h"
-#include "sophgo/Support/Helper/Module.h"
+#include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
+#include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Helper/Module.h"
 
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Dialect/Quant/QuantTypes.h"
@@ -22,8 +22,8 @@
 
 using namespace llvm;
 using namespace mlir;
-using namespace sophgo::helper;
-namespace sophgo {
+using namespace tpu_mlir::helper;
+namespace tpu_mlir {
 namespace top {
 
 typedef struct {
@@ -79,7 +79,7 @@ public:
 
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](Operation *op) {
-        if (isa<sophgo::InferenceInterface>(op) || isa<InputOp>(op)) {
+        if (isa<tpu_mlir::InferenceInterface>(op) || isa<InputOp>(op)) {
           auto name = op->getAttrOfType<StringAttr>("name").str();
           auto value = op->getResult(0);
           auto &info = calibration_map[name];
@@ -101,4 +101,4 @@ std::unique_ptr<OperationPass<ModuleOp>> createImportCalibrationTablePass() {
 }
 
 } // namespace top
-} // namespace sophgo
+} // namespace tpu_mlir

@@ -8,13 +8,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Backend/BM168x/BM1684.h"
-#include "sophgo/Support/Helper/Module.h"
+#include "tpu_mlir/Backend/BM168x/BM1684.h"
+#include "tpu_mlir/Support/Helper/Module.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Format.h"
 
-using namespace sophgo::backend;
-using namespace sophgo::helper;
+using namespace tpu_mlir::backend;
+using namespace tpu_mlir::helper;
 using namespace mlir;
 
 constexpr llvm::StringRef BM1684::LIB_NAME;

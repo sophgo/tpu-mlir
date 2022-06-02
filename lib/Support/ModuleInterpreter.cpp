@@ -8,12 +8,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Support/ModuleInterpreter.h"
-#include "sophgo/Support/MathUtils.h"
-#include "sophgo/Dialect/Top/IR/TopOps.h"
-#include "sophgo/Dialect/Tpu/IR/TpuOps.h"
-#include "sophgo/Support/Helper/Quant.h"
-#include "sophgo/Support/Helper/Module.h"
+#include "tpu_mlir/Support/ModuleInterpreter.h"
+#include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Helper/Module.h"
 
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include <algorithm>
@@ -22,9 +22,9 @@
 #include <numeric>
 
 using namespace mlir;
-using namespace sophgo::helper;
+using namespace tpu_mlir::helper;
 
-namespace sophgo {
+namespace tpu_mlir {
 ModuleInterpreter::ModuleInterpreter(ModuleOp module) : module(module) {
   state = Module::getState(module);
   if (state != Module::State::TOP_F32 &&
@@ -172,4 +172,4 @@ ModuleInterpreter::getTensorShape(const std::string &name) {
   return it->second.getType().cast<RankedTensorType>().getShape();
 }
 
-} // namespace sophgo
+} // namespace tpu_mlir

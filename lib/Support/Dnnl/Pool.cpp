@@ -8,11 +8,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Support/Dnnl/Pool.h"
-#include "sophgo/Support/MathUtils.h"
+#include "tpu_mlir/Support/Dnnl/Pool.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace dnnl;
-using namespace sophgo;
+using namespace tpu_mlir;
 
 Pooling::Pooling() {
   eng = dnnl::engine(engine::kind::cpu, 0);

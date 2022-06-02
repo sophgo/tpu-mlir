@@ -8,12 +8,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Dialect/Top/IR/TopOps.h"
-#include "sophgo/Support/Dnnl/Dnnl.h"
-#include "sophgo/Support/Helper/Module.h"
+#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Support/Dnnl/Dnnl.h"
+#include "tpu_mlir/Support/Helper/Module.h"
 
-using namespace sophgo;
-using namespace sophgo::helper;
+using namespace tpu_mlir;
+using namespace tpu_mlir::helper;
 using namespace mlir;
 
 int64_t top::BatchNormOp::getFLOPs() {

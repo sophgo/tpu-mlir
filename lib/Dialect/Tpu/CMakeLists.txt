@@ -6,12 +6,12 @@ file(GLOB _sources
           Transforms/*.cpp
           Transforms/LayerGroup/*.cpp)
 
-add_mlir_library(SophgoTpu
+add_mlir_library(TPUMLIRTpu
   ${_sources}
 
   ADDITIONAL_HEADER_DIRS
-  ${PROJECT_SOURCE_DIR}/include/sophgo/Dialect/Top
-  ${PROJECT_SOURCE_DIR}/include/sophgo/Dialect/Tpu
+  ${PROJECT_SOURCE_DIR}/include/tpu_mlir/Dialect/Top
+  ${PROJECT_SOURCE_DIR}/include/tpu_mlir/Dialect/Tpu
 
   DEPENDS
   MLIRTopOpsIncGen
@@ -42,9 +42,8 @@ add_mlir_library(SophgoTpu
   MLIRGlobalGenInterface
   MLIRFlopsInterface
   MLIRLocalGenInterface
-  SophgoSupport
-  SophgoTrait
-  SophgoBackend
-  SophgoBuilder
+  TPUMLIRSupport
+  TPUMLIRTrait
+  TPUMLIRBackend
+  TPUMLIRBuilder
 )
-

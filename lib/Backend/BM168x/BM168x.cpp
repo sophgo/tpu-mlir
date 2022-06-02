@@ -8,18 +8,18 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Backend/BM168x/BM168x.h"
-#include "sophgo/Backend/BM168x/BM1684.h"
-#include "sophgo/Backend/BM168x/BM1686.h"
-#include "sophgo/Interfaces/LocalGenInterface.h"
-#include "sophgo/Support/Helper/Module.h"
-#include "sophgo/Support/MathUtils.h"
+#include "tpu_mlir/Backend/BM168x/BM168x.h"
+#include "tpu_mlir/Backend/BM168x/BM1684.h"
+#include "tpu_mlir/Backend/BM168x/BM1686.h"
+#include "tpu_mlir/Interfaces/LocalGenInterface.h"
+#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/MathUtils.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Format.h"
 
-using namespace sophgo;
-using namespace sophgo::backend;
-using namespace sophgo::helper;
+using namespace tpu_mlir;
+using namespace tpu_mlir::backend;
+using namespace tpu_mlir::helper;
 
 void *BM168x::get_gmem_addr(uint64_t addr) {
   auto start = static_cast<char *>(this->dl_get_global_memaddr(0));

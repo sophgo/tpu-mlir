@@ -22,7 +22,7 @@ configure_lit_site_cfg(
 
 set(
   MLIR_TEST_DEPENDS
-  sophgo-opt
+  tpuc-opt
 )
 
 # if(MLIR_ENABLE_BINDINGS_PYTHON)
@@ -37,20 +37,20 @@ set(
 # This is useful for bots when splitting the build step
 # from the testing step.
 add_custom_target(
-  check-sophgo-mlir-build-only
+  check-tpu-mlir-build-only
   DEPENDS ${MLIR_TEST_DEPENDS}
 )
 
 include(llvm-lit.cmake)
 
 add_lit_testsuite(
-  check-sophgo-mlir "Running the SOPHGO-MLIR regression tests"
+  check-tpu-mlir "Running the tpu-MLIR regression tests"
   ${CMAKE_CURRENT_BINARY_DIR}
   DEPENDS ${MLIR_TEST_DEPENDS}
 )
-set_target_properties(check-sophgo-mlir PROPERTIES FOLDER "Tests")
+set_target_properties(check-tpu-mlir PROPERTIES FOLDER "Tests")
 
 add_lit_testsuites(
-  Sophgo-MLIR ${CMAKE_CURRENT_SOURCE_DIR}
+  TPU-MLIR ${CMAKE_CURRENT_SOURCE_DIR}
   DEPENDS ${MLIR_TEST_DEPENDS}
 )

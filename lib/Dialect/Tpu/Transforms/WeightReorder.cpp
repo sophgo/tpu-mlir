@@ -8,9 +8,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Dialect/Tpu/Transforms/Passes.h"
-#include "sophgo/Dialect/Tpu/IR/TpuOps.h"
-#include "sophgo/Support/Helper/Module.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Support/Helper/Module.h"
 
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/Dialect/Quant/QuantTypes.h"
@@ -24,8 +24,8 @@
 
 using namespace llvm;
 using namespace mlir;
-using namespace sophgo::helper;
-namespace sophgo {
+using namespace tpu_mlir::helper;
+namespace tpu_mlir {
 namespace tpu {
 
 class WeightReorderPass : public WeightReorderBase<WeightReorderPass> {
@@ -50,4 +50,4 @@ std::unique_ptr<OperationPass<ModuleOp>> createWeightReorderPass() {
   return std::make_unique<WeightReorderPass>();
 }
 } // namespace top
-} // namespace sophgo
+} // namespace tpu_mlir

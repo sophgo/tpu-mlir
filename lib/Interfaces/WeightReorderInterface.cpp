@@ -8,8 +8,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Interfaces/WeightReorderInterface.h"
+#include "tpu_mlir/Interfaces/WeightReorderInterface.h"
 
 using namespace mlir;
 
-#include "sophgo/Interfaces/WeightReorderInterface.cpp.inc"
+#include "tpu_mlir/Interfaces/WeightReorderInterface.cpp.inc"

@@ -8,15 +8,15 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Dialect/Tpu/IR/TpuOps.h"
-#include "sophgo/Backend/BM168x/BM1684.h"
-#include "sophgo/Support/Helper/Quant.h"
-#include "sophgo/Support/Helper/Module.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Backend/BM168x/BM1684.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Helper/Module.h"
 
 using namespace mlir;
-using namespace sophgo;
-using namespace sophgo::helper;
-using namespace sophgo::backend;
+using namespace tpu_mlir;
+using namespace tpu_mlir::helper;
+using namespace tpu_mlir::backend;
 
 void tpu::AvgPoolOp::codegen_global_int8_bm1684() {
   int64_t n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value;

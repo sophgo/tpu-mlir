@@ -8,13 +8,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Support/Dnnl/MatMul.h"
+#include "tpu_mlir/Support/Dnnl/MatMul.h"
 
 using namespace dnnl;
 using tag = memory::format_tag;
 using dt = memory::data_type;
 
-namespace sophgo {
+namespace tpu_mlir {
 MatMul::MatMul() {
   eng = dnnl::engine(engine::kind::cpu, 0);
   engine_stream = dnnl::stream(eng);
@@ -118,4 +118,4 @@ void MatMul::run() {
   engine_stream.wait();
 }
 
-} // namespace sophgo
+} // namespace tpu_mlir

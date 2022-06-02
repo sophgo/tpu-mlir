@@ -8,14 +8,14 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Dialect/Top/IR/TopOps.h"
-#include "sophgo/Dialect/Tpu/IR/TpuOps.h"
-#include "sophgo/Support/MathUtils.h"
-#include "sophgo/Support/Helper/Quant.h"
+#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
 
 using namespace mlir;
-using namespace sophgo;
-using namespace sophgo::helper;
+using namespace tpu_mlir;
+using namespace tpu_mlir::helper;
 
 Value top::ReshapeOp::lowering_int8_bm1686() {
   auto op = getOperation();

@@ -8,15 +8,15 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Dialect/Top/IR/TopOps.h"
-#include "sophgo/Support/Dnnl/Dnnl.h"
-#include "sophgo/Support/Helper/Module.h"
-#include "sophgo/Support/Helper/Quant.h"
-#include "sophgo/Support/fp16.h"
+#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Support/Dnnl/Dnnl.h"
+#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/fp16.h"
 
-using namespace sophgo;
-using namespace sophgo::helper;
-using namespace sophgo::top;
+using namespace tpu_mlir;
+using namespace tpu_mlir::helper;
+using namespace tpu_mlir::top;
 using namespace mlir;
 
 template <typename T> std::shared_ptr<std::vector<T>> WeightOp::read() {

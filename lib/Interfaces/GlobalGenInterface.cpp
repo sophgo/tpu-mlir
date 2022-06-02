@@ -8,8 +8,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Interfaces/GlobalGenInterface.h"
+#include "tpu_mlir/Interfaces/GlobalGenInterface.h"
 
 using namespace mlir;
 
-#include "sophgo/Interfaces/GlobalGenInterface.cpp.inc"
+#include "tpu_mlir/Interfaces/GlobalGenInterface.cpp.inc"

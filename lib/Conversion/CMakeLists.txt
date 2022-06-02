@@ -1,5 +1,5 @@
 add_mlir_conversion_library(
-  SophgoTopTFLiteToTpu
+  TPUMLIRTopTFLiteToTpu
   TopTFLiteToTpu.cpp
 
 
@@ -8,12 +8,12 @@ add_mlir_conversion_library(
   ${CMAKE_BINARY_DIR}/include
 
   DEPENDS
-  SophgoConversionPassIncGen
+  TPUMLIRConversionPassIncGen
 
   LINK_LIBS PUBLIC
   MLIRIR
   MLIRPass
   MLIRInferenceInterface
-  SophgoTop
-  SophgoTpu
+  TPUMLIRTop
+  TPUMLIRTpu
 )

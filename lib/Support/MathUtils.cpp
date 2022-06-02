@@ -8,12 +8,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Support/MathUtils.h"
+#include "tpu_mlir/Support/MathUtils.h"
 #include "mlir/IR/PatternMatch.h"
 #include "float.h"
 #include <map>
 
-namespace sophgo {
+namespace tpu_mlir {
 
 void get_scale_and_shift(float scale_f, int &scale, int &shift, int bitwidth) {
   float min_err = FLT_MAX;
@@ -232,4 +232,4 @@ void pad_tensor(float *p_after_pad, float *src, int n, int c, int h, int w,
   }
 }
 
-} // namespace sophgo
+} // namespace tpu_mlir

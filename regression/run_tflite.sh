@@ -15,7 +15,7 @@ model_transform.py \
 #########################
 # TFLite to TPU BM1686
 #########################
-sophgo-opt resnet50_tflite.mlir \
+tpuc-opt resnet50_tflite.mlir \
     --toptflite-to-tpu \
     --canonicalize \
     --save-weight \

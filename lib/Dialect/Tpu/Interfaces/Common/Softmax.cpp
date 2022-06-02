@@ -8,11 +8,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Dialect/Tpu/IR/TpuOps.h"
-#include "sophgo/Support/Dnnl/Dnnl.h"
-#include "sophgo/Support/Helper/Module.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Support/Dnnl/Dnnl.h"
+#include "tpu_mlir/Support/Helper/Module.h"
 
-using namespace sophgo;
+using namespace tpu_mlir;
 using namespace mlir;
 
 LogicalResult tpu::SoftmaxOp::init(InferenceParameter &p) { return success(); }

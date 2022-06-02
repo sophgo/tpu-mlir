@@ -9,12 +9,12 @@
 //===----------------------------------------------------------------------===//
 
 #include "GroupOps.h"
-#include "sophgo/Support/MathUtils.h"
+#include "tpu_mlir/Support/MathUtils.h"
 #include <numeric>
 
 using namespace mlir;
-using namespace sophgo::tpu;
-using namespace sophgo::backend;
+using namespace tpu_mlir::tpu;
+using namespace tpu_mlir::backend;
 
 lmem_info_t *GroupOps::find_lmem_info(group_lmem_t group_lmem, mlir::Value v) {
   if (group_lmem == nullptr || v == nullptr) {
@@ -131,7 +131,7 @@ bool GroupOps::isLgSupport(int64_t op_idx) {
   if (isa<top::WeightOp>(op)) {
     return true;
   }
-  auto lg_if = dyn_cast<sophgo::LocalGenInterface>(op);
+  auto lg_if = dyn_cast<tpu_mlir::LocalGenInterface>(op);
   if (!lg_if || mlir::failed(lg_if.LocalGenSupport())) {
     return false;
   }

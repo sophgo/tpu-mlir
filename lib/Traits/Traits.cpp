@@ -8,12 +8,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Traits/Traits.h"
+#include "tpu_mlir/Traits/Traits.h"
 #include "mlir/Dialect/Quant/QuantTypes.h"
 
 using namespace mlir;
 
-namespace sophgo {
+namespace tpu_mlir {
 
 namespace trait {
 namespace impl {
@@ -48,4 +48,4 @@ LogicalResult verifyTpuTypeRestrictTrait(Operation *op) {
 } // namespace impl
 } // namespace trait
 
-} // namespace sophgo
+} // namespace tpu_mlir

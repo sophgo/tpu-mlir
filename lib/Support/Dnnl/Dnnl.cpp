@@ -8,13 +8,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Support/Dnnl/Dnnl.h"
-#include "sophgo/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Dnnl/Dnnl.h"
+#include "tpu_mlir/Support/Helper/Module.h"
 
-using namespace sophgo::helper;
+using namespace tpu_mlir::helper;
 using namespace dnnl;
 
-namespace sophgo {
+namespace tpu_mlir {
 memory::data_type getDnnlType(mlir::Value v) {
   auto type = Module::getStorageType(v);
   if (type.isF32()) {
@@ -33,4 +33,4 @@ memory::data_type getDnnlType(mlir::Value v) {
   type.dump();
   return memory::data_type::f32;
 }
-} // namespace sophgo
+} // namespace tpu_mlir

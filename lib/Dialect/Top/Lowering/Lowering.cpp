@@ -8,10 +8,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "sophgo/Dialect/Top/Transforms/Passes.h"
-#include "sophgo/Support/MathUtils.h"
-#include "sophgo/Support/Helper/Module.h"
-#include "sophgo/Support/Helper/Quant.h"
+#include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
+#include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
 
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Dialect/Quant/QuantTypes.h"
@@ -21,8 +21,8 @@
 
 using namespace llvm;
 using namespace mlir;
-using namespace sophgo::helper;
-namespace sophgo {
+using namespace tpu_mlir::helper;
+namespace tpu_mlir {
 namespace top {
 
 static void castOpToInt8(Value v) {
@@ -170,7 +170,7 @@ struct LoweringPattern : public RewritePattern {
       : RewritePattern(MatchAnyOpTypeTag(), 1, context), mode(mode) {}
   LogicalResult matchAndRewrite(Operation *op,
                                 PatternRewriter &rewriter) const override {
-    auto lowering_op = dyn_cast<sophgo::LoweringInterface>(op);
+    auto lowering_op = dyn_cast<tpu_mlir::LoweringInterface>(op);
     if (!lowering_op) {
       return failure();
     }
@@ -285,4 +285,4 @@ std::unique_ptr<OperationPass<ModuleOp>> createLoweringPass() {
   return std::make_unique<LoweringPass>();
 }
 } // namespace top
-} // namespace sophgo
+} // namespace tpu_mlir
