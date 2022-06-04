@@ -106,15 +106,15 @@ struct PythonNet {
       }
     }
   }
+
   void forward() {
     auto ret =
         bmrt_launch_data(p_bmrt, name.c_str(), input_datas.data(),
                          input_shapes.data(), num_input, output_datas.data(),
-                         output_shapes.data(), num_output, false);
+                         output_shapes.data(), num_output, true);
     assert(true == ret);
-    auto status = bm_thread_sync(bm_handle);
-    assert(BM_SUCCESS == status);
   }
+
   void dump() { bmrt_print_network_info(info); }
 
   std::string name;

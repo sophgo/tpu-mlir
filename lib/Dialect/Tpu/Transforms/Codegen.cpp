@@ -75,6 +75,7 @@ public:
     std::vector<uint64_t> neuron_sizes = {(uint64_t)neuron_size};
     auto neuron_sizes_fb = builder.CreateVector(neuron_sizes);
     // codegen all subnet
+    cmd_group_all = std::make_shared<std::vector<Offset<bmodel::CmdGroup>>>();
     auto main_func = Module::getMainFuncOp(module);
     std::vector<Offset<bmodel::SubNet>> subnet_v;
     main_func.walk([&](func::CallOp call) {
@@ -82,6 +83,7 @@ public:
       subnet_v.push_back(subnet);
     });
     auto subnets = builder.CreateVector(subnet_v);
+    auto cmd_group = model_gen->Builder().CreateVector(*cmd_group_all);
     bmodel::NetParameterBuilder npb(builder);
     npb.add_input_tensor(input_tensor);
     npb.add_output_tensor(output_tensor);
@@ -92,6 +94,7 @@ public:
     npb.add_is_dynamic(false);
     npb.add_n_dynamic(false);
     npb.add_h_w_dynamic(false);
+    npb.add_cmd_group(cmd_group);
     // create subnet
     npb.add_sub_net(subnets);
     model_gen->AddNet(Module::getName(module).str(), npb.Finish());
@@ -110,7 +113,7 @@ private:
   Offset<Vector<Offset<bmodel::Tensor>>>
   CreateTensorVector(const std::vector<Value> &values);
   Offset<bmodel::SubNet> CreateSubNet(func::CallOp call);
-  Offset<Vector<Offset<bmodel::CmdGroup>>> CreateCmdGroupVector();
+  std::shared_ptr<std::vector<Offset<bmodel::CmdGroup>>> CreateCmdGroupVector();
   Offset<bmodel::CoeffMem> CreateCoeffMem(std::vector<top::WeightOp> &coeffs,
                                           uint64_t coeff_addr,
                                           uint64_t coeff_size);
@@ -123,6 +126,7 @@ private:
   StringRef chip;
   BM168x *bm168x;
   std::shared_ptr<bmodel::ModelGen> model_gen;
+  std::shared_ptr<std::vector<Offset<bmodel::CmdGroup>>> cmd_group_all;
 };
 
 std::unique_ptr<OperationPass<ModuleOp>> createCodegenPass() {
@@ -207,12 +211,10 @@ CodegenPass::CreateCoeffMem(std::vector<top::WeightOp> &coeffs,
   return cmb.Finish();
 }
 
-Offset<Vector<Offset<bmodel::CmdGroup>>> CodegenPass::CreateCmdGroupVector() {
-  std::vector<Offset<bmodel::CmdGroup>> cmd_group_v;
-  auto gdma_ptr = (uint8_t *)bm168x->gdma_buffer->data();
-  auto bdc_ptr = (uint8_t *)bm168x->bdc_buffer->data();
-  uint32_t gdma_size = bm168x->gdma_buffer->size() * sizeof(uint32_t);
-  uint32_t bdc_size = bm168x->bdc_buffer->size() * sizeof(uint32_t);
+std::shared_ptr<std::vector<Offset<bmodel::CmdGroup>>> CodegenPass::CreateCmdGroupVector() {
+  auto cmd_group_v = std::make_shared<std::vector<Offset<bmodel::CmdGroup>>>();
+  auto gdma_ptr = (uint8_t *)bm168x->gdma_buffer.data();
+  auto bdc_ptr = (uint8_t *)bm168x->bdc_buffer.data();
   int bdc_offset = 0, gdma_offset = 0;
   for (int group_idx = 0; group_idx < bm168x->cmdid_groupnum; group_idx++) {
     auto bdc_num = bm168x->bdc_group_id[group_idx];
@@ -220,7 +222,7 @@ Offset<Vector<Offset<bmodel::CmdGroup>>> CodegenPass::CreateCmdGroupVector() {
     bmodel::Binary binary_bdc;
     bmodel::Binary binary_gdma;
     auto bdc_len = bm168x->get_bdc_len(bdc_num, group_idx);
-    if (bdc_len != 0) {
+    if (bdc_num != 0) {
       binary_bdc = model_gen->WriteBinary(bdc_len, bdc_ptr + bdc_offset);
       bdc_offset += bdc_len;
     }
@@ -240,12 +242,12 @@ Offset<Vector<Offset<bmodel::CmdGroup>>> CodegenPass::CreateCmdGroupVector() {
     if (gdma_num != 0) {
       cgb.add_binary_gdma(&binary_gdma);
     }
-    cmd_group_v.push_back(cgb.Finish());
+    cmd_group_v->push_back(cgb.Finish());
   }
-  if (cmd_group_v.size() == 0) {
+  if (cmd_group_v->size() == 0) {
     return 0;
   }
-  return model_gen->Builder().CreateVector(cmd_group_v);
+  return std::move(cmd_group_v);
 }
 
 void CodegenPass::codegen_for_group(tpu::GroupOp gOp) {
@@ -309,7 +311,11 @@ Offset<bmodel::SubNet> CodegenPass::CreateSubNet(func::CallOp call) {
   }
   auto &builder = model_gen->Builder();
   auto next_ids = builder.CreateVector(next_id_v);
-  auto cmd_group = CreateCmdGroupVector();
+  auto cmd_group_v = CreateCmdGroupVector();
+  for(auto &c : *cmd_group_v) {
+    cmd_group_all->push_back(c);
+  }
+  auto cmd_group = model_gen->Builder().CreateVector(*cmd_group_v);
   bmodel::SubNetBuilder snb(builder);
   snb.add_cmd_group(cmd_group);
   snb.add_is_dynamic(false);
