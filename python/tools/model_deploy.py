@@ -38,7 +38,6 @@ class DeployTool:
         self.tolerance = args.tolerance
         self.correctness = args.correctness
         self.test_input = args.test_input
-        self.test_ref = args.test_reference
         self.quantize = args.quantize.lower()
         self.asymmetric = args.asymmetric
         self.cali_table = args.calibration_table
@@ -51,7 +50,7 @@ class DeployTool:
         self.module = MlirParser(args.mlir)
         self.module_name = eval(self.module.attrs['module.name'])
         self.state = eval(self.module.attrs['module.state'])
-        self.in_fp32_npz = self.module_name + "_in_fp32.npz"
+        self.in_f32_npz = self.module_name + "_in_f32.npz"
         self._prepare_input_npz()
 
     def lowering(self):
@@ -79,7 +78,7 @@ class DeployTool:
                 assert (infile.endswith(".npy"))
                 data = np.load(infile)
                 self.inputs[op.name] = data
-        np.savez(str(self.in_fp32_npz), **self.inputs)
+        np.savez(str(self.in_f32_npz), **self.inputs)
         if len(self.ref_npz) == 0:
             self.ref_npz = self.module_name + "_top_outputs.npz"
             top_outputs = mlir_inference(self.inputs, self.mlir_file)
@@ -135,12 +134,12 @@ if __name__ == '__main__':
                         choices=['AUTO', 'F32'],
                         help="set outputs type. if AUTO, use output layer quantize type")
     parser.add_argument("--test_input",
-                        default=None,
+                        default="",
                         type=str2list,
                         help="input npy/npz file for inference, "
                         "if has more than one input, join npy with semicolon")
     parser.add_argument("--test_reference",
-                        default=None,
+                        default="",
                         help="reference npz file; if none, will run inner")
     parser.add_argument("--model", required=True, help='output model')
     args = parser.parse_args()

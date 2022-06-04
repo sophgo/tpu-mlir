@@ -161,6 +161,9 @@ typedef void (*forbid_atomic_cmodel)();
 typedef void *(*get_global_memaddr)(int node_idx);
 typedef void (*set_cmd_buffer_ptr)(void *gdma_buffer_ptr, void *bdc_buffer_ptr);
 typedef void (*set_cmd_id_prefix)(void *pid_node, const char *name_prefix);
+typedef void (*allow_atomic_cmodel_assert)();
+typedef void (*forbid_atomic_cmodel_assert)();
+
 typedef void (*tensor_stride_move_gen_cmd)(
     int local_mem_start_addr, int local_mem_idx, uint64_t sys_mem_start_addr,
     int src_N, int src_C, int src_H, int src_W, uint32_t src_N_stride,
@@ -204,6 +207,8 @@ public:
   get_global_memaddr dl_get_global_memaddr;
   set_cmd_buffer_ptr dl_set_cmd_buffer_ptr;
   set_cmd_id_prefix dl_set_cmd_id_prefix;
+  allow_atomic_cmodel_assert dl_allow_atomic_cmodel_assert;
+  forbid_atomic_cmodel_assert dl_forbid_atomic_cmodel_assert;
   tensor_stride_move_gen_cmd dl_tensor_stride_move_gen_cmd;
   set_total_id_ptr dl_set_total_id_ptr;
   cmd_id_divide dl_cmd_id_divide;
@@ -261,8 +266,8 @@ public:
                              int fmtBytes);
 
 public:
-  std::shared_ptr<std::vector<uint32_t>> bdc_buffer;
-  std::shared_ptr<std::vector<uint32_t>> gdma_buffer;
+  std::vector<uint32_t> bdc_buffer;
+  std::vector<uint32_t> gdma_buffer;
   uint32_t gdma_total_id;
   uint32_t bdc_total_id;
   std::vector<uint32_t> gdma_group_id;

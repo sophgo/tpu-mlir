@@ -299,6 +299,8 @@ void BM168x::load_functions() {
   CAST_FUNCTION(get_global_memaddr);
   CAST_FUNCTION(set_cmd_buffer_ptr);
   CAST_FUNCTION(set_cmd_id_prefix);
+  CAST_FUNCTION(allow_atomic_cmodel_assert);
+  CAST_FUNCTION(forbid_atomic_cmodel_assert);
   CAST_FUNCTION(tensor_stride_move_gen_cmd);
   CAST_FUNCTION(set_total_id_ptr);
 }
@@ -316,10 +318,9 @@ void BM168x::init() {
   cmdid_node = dl_create_cmd_id_node();
   bdc_node = dl_create_cmd_id_node();
   gdma_node = dl_create_cmd_id_node();
-  bdc_buffer = std::make_shared<std::vector<uint32_t>>(0x1000000);
-  gdma_buffer = std::make_shared<std::vector<uint32_t>>(0x1000000);
-  dl_set_cmd_buffer_ptr((void *)gdma_buffer->data(),
-                        (void *)bdc_buffer->data());
+  gdma_buffer.reserve(0x1000000);
+  bdc_buffer.reserve(0x1000000);
+  dl_set_cmd_buffer_ptr((void *)&gdma_buffer, (void *)&bdc_buffer);
   dl_set_total_id_ptr(&gdma_total_id, &bdc_total_id, cmdid_node,
                       (void *)&gdma_group_id, (void *)&bdc_group_id,
                       &cmdid_groupnum);
@@ -348,6 +349,8 @@ void BM168x::before_codegen() {
   bdc_group_id.push_back(0);
   gdma_bytes.clear();
   bdc_bytes.clear();
+  gdma_buffer.clear();
+  bdc_buffer.clear();
   cmdid_groupnum = 1;
 }
 
@@ -369,8 +372,10 @@ void BM168x::set_command_issue_flag(bool value) {
   if (really_issue_command) {
     dl_allow_store_cmd();
     dl_use_atomic_cmodel();
+    dl_allow_atomic_cmodel_assert();
   } else {
     dl_forbid_store_cmd();
     dl_forbid_atomic_cmodel();
+    dl_forbid_atomic_cmodel_assert();
   }
 }
