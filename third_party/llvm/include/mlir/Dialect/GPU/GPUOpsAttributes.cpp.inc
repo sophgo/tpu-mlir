@@ -104,7 +104,7 @@ AllReduceOperationAttr AllReduceOperationAttr::get(::mlir::MLIRContext *context,
       auto maybeEnum = ::mlir::gpu::symbolizeAllReduceOperation(enumKeyword);
       if (maybeEnum)
         return *maybeEnum;
-      return {(::mlir::LogicalResult)odsParser.emitError(loc, "expected ::mlir::gpu::AllReduceOperation to be one of: add, and, max, min, mul, or, xor")};
+      return {(::mlir::LogicalResult)(odsParser.emitError(loc) << "expected " << "::mlir::gpu::AllReduceOperation" << " to be one of: " << "add" << ", " << "and" << ", " << "max" << ", " << "min" << ", " << "mul" << ", " << "or" << ", " << "xor")};
     }();
   if (::mlir::failed(_result_value)) {
     odsParser.emitError(odsParser.getCurrentLocation(), "failed to parse GPU_AllReduceOperationAttr parameter 'value' which is to be a `::mlir::gpu::AllReduceOperation`");
@@ -168,7 +168,7 @@ DimensionAttr DimensionAttr::get(::mlir::MLIRContext *context, ::mlir::gpu::Dime
       auto maybeEnum = ::mlir::gpu::symbolizeDimension(enumKeyword);
       if (maybeEnum)
         return *maybeEnum;
-      return {(::mlir::LogicalResult)odsParser.emitError(loc, "expected ::mlir::gpu::Dimension to be one of: x, y, z")};
+      return {(::mlir::LogicalResult)(odsParser.emitError(loc) << "expected " << "::mlir::gpu::Dimension" << " to be one of: " << "x" << ", " << "y" << ", " << "z")};
     }();
   if (::mlir::failed(_result_value)) {
     odsParser.emitError(odsParser.getCurrentLocation(), "failed to parse GPU_DimensionAttr parameter 'value' which is to be a `::mlir::gpu::Dimension`");
@@ -232,7 +232,7 @@ ShuffleModeAttr ShuffleModeAttr::get(::mlir::MLIRContext *context, ::mlir::gpu::
       auto maybeEnum = ::mlir::gpu::symbolizeShuffleMode(enumKeyword);
       if (maybeEnum)
         return *maybeEnum;
-      return {(::mlir::LogicalResult)odsParser.emitError(loc, "expected ::mlir::gpu::ShuffleMode to be one of: xor, up, down, idx")};
+      return {(::mlir::LogicalResult)(odsParser.emitError(loc) << "expected " << "::mlir::gpu::ShuffleMode" << " to be one of: " << "xor" << ", " << "up" << ", " << "down" << ", " << "idx")};
     }();
   if (::mlir::failed(_result_value)) {
     odsParser.emitError(odsParser.getCurrentLocation(), "failed to parse GPU_ShuffleModeAttr parameter 'value' which is to be a `::mlir::gpu::ShuffleMode`");
@@ -296,7 +296,7 @@ MMAElementwiseOpAttr MMAElementwiseOpAttr::get(::mlir::MLIRContext *context, ::m
       auto maybeEnum = ::mlir::gpu::symbolizeMMAElementwiseOp(enumKeyword);
       if (maybeEnum)
         return *maybeEnum;
-      return {(::mlir::LogicalResult)odsParser.emitError(loc, "expected ::mlir::gpu::MMAElementwiseOp to be one of: addf, mulf, maxf, minf, divf")};
+      return {(::mlir::LogicalResult)(odsParser.emitError(loc) << "expected " << "::mlir::gpu::MMAElementwiseOp" << " to be one of: " << "addf" << ", " << "mulf" << ", " << "maxf" << ", " << "minf" << ", " << "divf")};
     }();
   if (::mlir::failed(_result_value)) {
     odsParser.emitError(odsParser.getCurrentLocation(), "failed to parse MMAElementWiseAttr parameter 'value' which is to be a `::mlir::gpu::MMAElementwiseOp`");
@@ -335,6 +335,7 @@ namespace gpu {
     if (parseResult.hasValue())
       return attr;
   }
+  
   parser.emitError(typeLoc) << "unknown attribute `"
       << attrTag << "` in dialect `" << getNamespace() << "`";
   return {};
@@ -344,6 +345,7 @@ void GPUDialect::printAttribute(::mlir::Attribute attr,
                          ::mlir::DialectAsmPrinter &printer) const {
   if (::mlir::succeeded(generatedAttributePrinter(attr, printer)))
     return;
+  
 }
 } // namespace gpu
 } // namespace mlir

@@ -30,13 +30,13 @@ std::array<unsigned, 3> mlir::OffsetSizeAndStrideOpInterface::getArrayAttrMaxRan
 ::mlir::ArrayAttr mlir::OffsetSizeAndStrideOpInterface::static_strides() {
       return getImpl()->static_strides(getImpl(), getOperation());
   }
-::mlir::SmallVector<::mlir::OpFoldResult, 4> mlir::OffsetSizeAndStrideOpInterface::getMixedOffsets() {
+::llvm::SmallVector<::mlir::OpFoldResult, 4> mlir::OffsetSizeAndStrideOpInterface::getMixedOffsets() {
       return getImpl()->getMixedOffsets(getImpl(), getOperation());
   }
-::mlir::SmallVector<::mlir::OpFoldResult, 4> mlir::OffsetSizeAndStrideOpInterface::getMixedSizes() {
+::llvm::SmallVector<::mlir::OpFoldResult, 4> mlir::OffsetSizeAndStrideOpInterface::getMixedSizes() {
       return getImpl()->getMixedSizes(getImpl(), getOperation());
   }
-::mlir::SmallVector<::mlir::OpFoldResult, 4> mlir::OffsetSizeAndStrideOpInterface::getMixedStrides() {
+::llvm::SmallVector<::mlir::OpFoldResult, 4> mlir::OffsetSizeAndStrideOpInterface::getMixedStrides() {
       return getImpl()->getMixedStrides(getImpl(), getOperation());
   }
 bool mlir::OffsetSizeAndStrideOpInterface::isDynamicOffset(unsigned idx) {

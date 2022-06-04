@@ -12,6 +12,11 @@ MLIR_CAPI_EXPORTED void mlirRegisterConversionPasses();
 
 
 /* Create Conversion Pass. */
+MLIR_CAPI_EXPORTED MlirPass mlirCreateConversionConvertAMDGPUToROCDL();
+MLIR_CAPI_EXPORTED void mlirRegisterConversionConvertAMDGPUToROCDL();
+
+
+/* Create Conversion Pass. */
 MLIR_CAPI_EXPORTED MlirPass mlirCreateConversionConvertAffineForToGPU();
 MLIR_CAPI_EXPORTED void mlirRegisterConversionConvertAffineForToGPU();
 
@@ -49,6 +54,11 @@ MLIR_CAPI_EXPORTED void mlirRegisterConversionConvertBufferizationToMemRef();
 /* Create Conversion Pass. */
 MLIR_CAPI_EXPORTED MlirPass mlirCreateConversionConvertComplexToLLVM();
 MLIR_CAPI_EXPORTED void mlirRegisterConversionConvertComplexToLLVM();
+
+
+/* Create Conversion Pass. */
+MLIR_CAPI_EXPORTED MlirPass mlirCreateConversionConvertComplexToLibm();
+MLIR_CAPI_EXPORTED void mlirRegisterConversionConvertComplexToLibm();
 
 
 /* Create Conversion Pass. */
@@ -137,6 +147,11 @@ MLIR_CAPI_EXPORTED void mlirRegisterConversionConvertMemRefToSPIRV();
 
 
 /* Create Conversion Pass. */
+MLIR_CAPI_EXPORTED MlirPass mlirCreateConversionConvertNVGPUToNVVM();
+MLIR_CAPI_EXPORTED void mlirRegisterConversionConvertNVGPUToNVVM();
+
+
+/* Create Conversion Pass. */
 MLIR_CAPI_EXPORTED MlirPass mlirCreateConversionConvertOpenACCToLLVM();
 MLIR_CAPI_EXPORTED void mlirRegisterConversionConvertOpenACCToLLVM();
 
@@ -179,6 +194,11 @@ MLIR_CAPI_EXPORTED void mlirRegisterConversionConvertShapeConstraints();
 /* Create Conversion Pass. */
 MLIR_CAPI_EXPORTED MlirPass mlirCreateConversionConvertShapeToStandard();
 MLIR_CAPI_EXPORTED void mlirRegisterConversionConvertShapeToStandard();
+
+
+/* Create Conversion Pass. */
+MLIR_CAPI_EXPORTED MlirPass mlirCreateConversionConvertTensorToLinalg();
+MLIR_CAPI_EXPORTED void mlirRegisterConversionConvertTensorToLinalg();
 
 
 /* Create Conversion Pass. */

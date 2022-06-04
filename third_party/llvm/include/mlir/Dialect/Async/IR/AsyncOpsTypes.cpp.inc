@@ -150,6 +150,7 @@ namespace async {
   auto parseResult = generatedTypeParser(parser, mnemonic, genType);
   if (parseResult.hasValue())
     return genType;
+  
   parser.emitError(typeLoc) << "unknown  type `"
       << mnemonic << "` in dialect `" << getNamespace() << "`";
   return {};
@@ -159,6 +160,7 @@ void AsyncDialect::printType(::mlir::Type type,
                     ::mlir::DialectAsmPrinter &printer) const {
   if (::mlir::succeeded(generatedTypePrinter(type, printer)))
     return;
+  
 }
 } // namespace async
 } // namespace mlir

@@ -113,9 +113,6 @@ public:
 
   // Returns the dialect for the attribute if defined.
   Dialect getDialect() const;
-
-  // Returns the description of the attribute.
-  StringRef getDescription() const;
 };
 
 // Wrapper class providing helper methods for accessing MLIR constant attribute
@@ -143,9 +140,6 @@ class EnumAttrCase : public Attribute {
 public:
   explicit EnumAttrCase(const llvm::Record *record);
   explicit EnumAttrCase(const llvm::DefInit *init);
-
-  // Returns true if this EnumAttrCase is backed by a StringAttr.
-  bool isStrCase() const;
 
   // Returns the symbol of this enum attribute case.
   StringRef getSymbol() const;
@@ -209,6 +203,7 @@ public:
   bool genSpecializedAttr() const;
   llvm::Record *getBaseAttrClass() const;
   StringRef getSpecializedAttrClassName() const;
+  bool printBitEnumPrimaryGroups() const;
 };
 
 class StructFieldAttr {

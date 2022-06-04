@@ -30,3 +30,11 @@ void mlirRegisterGPUGpuLaunchSinkIndexComputations() {
   registerGpuLaunchSinkIndexComputationsPass();
 }
 
+
+MlirPass mlirCreateGPUGpuMapParallelLoopsPass() {
+  return wrap(mlir::createGpuMapParallelLoopsPass().release());
+}
+void mlirRegisterGPUGpuMapParallelLoopsPass() {
+  registerGpuMapParallelLoopsPassPass();
+}
+

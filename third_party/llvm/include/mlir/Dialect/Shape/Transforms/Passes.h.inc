@@ -6,12 +6,12 @@
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class RemoveShapeConstraintsBase : public ::mlir::OperationPass<FuncOp> {
+class RemoveShapeConstraintsBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = RemoveShapeConstraintsBase;
 
-  RemoveShapeConstraintsBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  RemoveShapeConstraintsBase(const RemoveShapeConstraintsBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  RemoveShapeConstraintsBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  RemoveShapeConstraintsBase(const RemoveShapeConstraintsBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -55,12 +55,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class ShapeBufferizeBase : public ::mlir::OperationPass<FuncOp> {
+class ShapeBufferizeBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = ShapeBufferizeBase;
 
-  ShapeBufferizeBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  ShapeBufferizeBase(const ShapeBufferizeBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  ShapeBufferizeBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  ShapeBufferizeBase(const ShapeBufferizeBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -108,12 +108,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class ShapeToShapeLoweringBase : public ::mlir::OperationPass<FuncOp> {
+class ShapeToShapeLoweringBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = ShapeToShapeLoweringBase;
 
-  ShapeToShapeLoweringBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  ShapeToShapeLoweringBase(const ShapeToShapeLoweringBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  ShapeToShapeLoweringBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  ShapeToShapeLoweringBase(const ShapeToShapeLoweringBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {

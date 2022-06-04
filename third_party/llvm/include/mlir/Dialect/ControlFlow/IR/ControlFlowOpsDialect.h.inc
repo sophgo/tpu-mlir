@@ -10,14 +10,7 @@ namespace mlir {
 namespace cf {
 
 class ControlFlowDialect : public ::mlir::Dialect {
-  explicit ControlFlowDialect(::mlir::MLIRContext *context)
-    : ::mlir::Dialect(getDialectNamespace(), context,
-      ::mlir::TypeID::get<ControlFlowDialect>()) {
-    
-    getContext()->getOrLoadDialect<arith::ArithmeticDialect>();
-
-    initialize();
-  }
+  explicit ControlFlowDialect(::mlir::MLIRContext *context);
 
   void initialize();
   friend class ::mlir::MLIRContext;

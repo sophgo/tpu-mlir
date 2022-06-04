@@ -7,6 +7,14 @@ void mlirRegisterConversionPasses() {
   registerConversionPasses();
 }
 
+MlirPass mlirCreateConversionConvertAMDGPUToROCDL() {
+  return wrap(mlir::createConvertAMDGPUToROCDLPass().release());
+}
+void mlirRegisterConversionConvertAMDGPUToROCDL() {
+  registerConvertAMDGPUToROCDLPass();
+}
+
+
 MlirPass mlirCreateConversionConvertAffineForToGPU() {
   return wrap(mlir::createAffineForToGPUPass().release());
 }
@@ -68,6 +76,14 @@ MlirPass mlirCreateConversionConvertComplexToLLVM() {
 }
 void mlirRegisterConversionConvertComplexToLLVM() {
   registerConvertComplexToLLVMPass();
+}
+
+
+MlirPass mlirCreateConversionConvertComplexToLibm() {
+  return wrap(mlir::createConvertComplexToLibmPass().release());
+}
+void mlirRegisterConversionConvertComplexToLibm() {
+  registerConvertComplexToLibmPass();
 }
 
 
@@ -207,6 +223,14 @@ void mlirRegisterConversionConvertMemRefToSPIRV() {
 }
 
 
+MlirPass mlirCreateConversionConvertNVGPUToNVVM() {
+  return wrap(mlir::createConvertNVGPUToNVVMPass().release());
+}
+void mlirRegisterConversionConvertNVGPUToNVVM() {
+  registerConvertNVGPUToNVVMPass();
+}
+
+
 MlirPass mlirCreateConversionConvertOpenACCToLLVM() {
   return wrap(mlir::createConvertOpenACCToLLVMPass().release());
 }
@@ -276,6 +300,14 @@ MlirPass mlirCreateConversionConvertShapeToStandard() {
 }
 void mlirRegisterConversionConvertShapeToStandard() {
   registerConvertShapeToStandardPass();
+}
+
+
+MlirPass mlirCreateConversionConvertTensorToLinalg() {
+  return wrap(mlir::createConvertTensorToLinalgPass().release());
+}
+void mlirRegisterConversionConvertTensorToLinalg() {
+  registerConvertTensorToLinalgPass();
 }
 
 

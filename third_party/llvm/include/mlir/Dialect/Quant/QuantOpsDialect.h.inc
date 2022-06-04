@@ -10,12 +10,7 @@ namespace mlir {
 namespace quant {
 
 class QuantizationDialect : public ::mlir::Dialect {
-  explicit QuantizationDialect(::mlir::MLIRContext *context)
-    : ::mlir::Dialect(getDialectNamespace(), context,
-      ::mlir::TypeID::get<QuantizationDialect>()) {
-    
-    initialize();
-  }
+  explicit QuantizationDialect(::mlir::MLIRContext *context);
 
   void initialize();
   friend class ::mlir::MLIRContext;

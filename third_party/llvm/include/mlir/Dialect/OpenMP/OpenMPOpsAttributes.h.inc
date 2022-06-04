@@ -16,12 +16,29 @@ class AsmPrinter;
 } // namespace mlir
 namespace mlir {
 namespace omp {
+class ClauseCancellationConstructTypeAttr;
 class ClauseDependAttr;
 class ClauseMemoryOrderKindAttr;
 class ClauseOrderKindAttr;
 class ClauseProcBindKindAttr;
 class ClauseScheduleKindAttr;
 class ScheduleModifierAttr;
+namespace detail {
+struct ClauseCancellationConstructTypeAttrStorage;
+} // namespace detail
+class ClauseCancellationConstructTypeAttr : public ::mlir::Attribute::AttrBase<ClauseCancellationConstructTypeAttr, ::mlir::Attribute, detail::ClauseCancellationConstructTypeAttrStorage> {
+public:
+  using Base::Base;
+public:
+  static ClauseCancellationConstructTypeAttr get(::mlir::MLIRContext *context, ::mlir::omp::ClauseCancellationConstructType value);
+  static constexpr ::llvm::StringLiteral getMnemonic() {
+    return {"cancellationconstructtype"};
+  }
+
+  static ::mlir::Attribute parse(::mlir::AsmParser &odsParser, ::mlir::Type odsType);
+  void print(::mlir::AsmPrinter &odsPrinter) const;
+  ::mlir::omp::ClauseCancellationConstructType getValue() const;
+};
 namespace detail {
 struct ClauseDependAttrStorage;
 } // namespace detail
@@ -120,6 +137,7 @@ public:
 };
 } // namespace omp
 } // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::ClauseCancellationConstructTypeAttr)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::ClauseDependAttr)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::ClauseMemoryOrderKindAttr)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::omp::ClauseOrderKindAttr)

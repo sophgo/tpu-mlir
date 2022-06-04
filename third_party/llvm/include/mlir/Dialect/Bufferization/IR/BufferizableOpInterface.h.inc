@@ -21,7 +21,6 @@ struct BufferizableOpInterfaceInterfaceTraits {
     BufferRelation (*bufferRelation)(const Concept *impl, ::mlir::Operation *, OpResult, const AnalysisState &);
     LogicalResult (*bufferize)(const Concept *impl, ::mlir::Operation *, RewriterBase &, BufferizationState &);
     bool (*isWritable)(const Concept *impl, ::mlir::Operation *, Value, const AnalysisState &);
-    bool (*isAllocationHoistingBarrier)(const Concept *impl, ::mlir::Operation *);
     bool (*isNotConflicting)(const Concept *impl, ::mlir::Operation *, OpOperand *, OpOperand *, const AnalysisState &);
     LogicalResult (*verifyAnalysis)(const Concept *impl, ::mlir::Operation *, const AnalysisState &);
   };
@@ -29,7 +28,7 @@ struct BufferizableOpInterfaceInterfaceTraits {
   class Model : public Concept {
   public:
     using Interface = ::mlir::bufferization::BufferizableOpInterface;
-    Model() : Concept{bufferizesToMemoryRead, bufferizesToMemoryWrite, isMemoryWrite, mustBufferizeInPlace, getAliasingOpResult, getAliasingOpOperand, bufferRelation, bufferize, isWritable, isAllocationHoistingBarrier, isNotConflicting, verifyAnalysis} {}
+    Model() : Concept{bufferizesToMemoryRead, bufferizesToMemoryWrite, isMemoryWrite, mustBufferizeInPlace, getAliasingOpResult, getAliasingOpOperand, bufferRelation, bufferize, isWritable, isNotConflicting, verifyAnalysis} {}
 
     static inline bool bufferizesToMemoryRead(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand & opOperand, const AnalysisState & state);
     static inline bool bufferizesToMemoryWrite(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand & opOperand, const AnalysisState & state);
@@ -40,7 +39,6 @@ struct BufferizableOpInterfaceInterfaceTraits {
     static inline BufferRelation bufferRelation(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpResult opResult, const AnalysisState & state);
     static inline LogicalResult bufferize(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, RewriterBase & rewriter, BufferizationState & state);
     static inline bool isWritable(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, Value value, const AnalysisState & state);
-    static inline bool isAllocationHoistingBarrier(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline bool isNotConflicting(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * uRead, OpOperand * uWrite, const AnalysisState & state);
     static inline LogicalResult verifyAnalysis(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, const AnalysisState & state);
   };
@@ -48,7 +46,7 @@ struct BufferizableOpInterfaceInterfaceTraits {
   class FallbackModel : public Concept {
   public:
     using Interface = ::mlir::bufferization::BufferizableOpInterface;
-    FallbackModel() : Concept{bufferizesToMemoryRead, bufferizesToMemoryWrite, isMemoryWrite, mustBufferizeInPlace, getAliasingOpResult, getAliasingOpOperand, bufferRelation, bufferize, isWritable, isAllocationHoistingBarrier, isNotConflicting, verifyAnalysis} {}
+    FallbackModel() : Concept{bufferizesToMemoryRead, bufferizesToMemoryWrite, isMemoryWrite, mustBufferizeInPlace, getAliasingOpResult, getAliasingOpOperand, bufferRelation, bufferize, isWritable, isNotConflicting, verifyAnalysis} {}
 
     static inline bool bufferizesToMemoryRead(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand & opOperand, const AnalysisState & state);
     static inline bool bufferizesToMemoryWrite(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand & opOperand, const AnalysisState & state);
@@ -59,7 +57,6 @@ struct BufferizableOpInterfaceInterfaceTraits {
     static inline BufferRelation bufferRelation(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpResult opResult, const AnalysisState & state);
     static inline LogicalResult bufferize(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, RewriterBase & rewriter, BufferizationState & state);
     static inline bool isWritable(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, Value value, const AnalysisState & state);
-    static inline bool isAllocationHoistingBarrier(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline bool isNotConflicting(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * uRead, OpOperand * uWrite, const AnalysisState & state);
     static inline LogicalResult verifyAnalysis(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, const AnalysisState & state);
   };
@@ -75,7 +72,6 @@ struct BufferizableOpInterfaceInterfaceTraits {
     BufferRelation bufferRelation(::mlir::Operation *tablegen_opaque_val, OpResult opResult, const AnalysisState &state) const;
     LogicalResult bufferize(::mlir::Operation *tablegen_opaque_val, RewriterBase &rewriter, BufferizationState &state) const;
     bool isWritable(::mlir::Operation *tablegen_opaque_val, Value value, const AnalysisState &state) const;
-    bool isAllocationHoistingBarrier(::mlir::Operation *tablegen_opaque_val) const;
     bool isNotConflicting(::mlir::Operation *tablegen_opaque_val, OpOperand *uRead, OpOperand *uWrite, const AnalysisState &state) const;
     LogicalResult verifyAnalysis(::mlir::Operation *tablegen_opaque_val, const AnalysisState &state) const;
   };
@@ -97,7 +93,6 @@ public:
   BufferRelation bufferRelation(OpResult opResult, const AnalysisState & state);
   LogicalResult bufferize(RewriterBase & rewriter, BufferizationState & state);
   bool isWritable(Value value, const AnalysisState & state);
-  bool isAllocationHoistingBarrier();
   bool isNotConflicting(OpOperand * uRead, OpOperand * uWrite, const AnalysisState & state);
   LogicalResult verifyAnalysis(const AnalysisState & state);
 
@@ -116,17 +111,12 @@ public:
           && !bufferizableOp.getAliasingOpResult(opOperand, state).empty();
     }
 
-    // TODO: The following two attributes should belong to the tensor dialect.
-    // The corresponding verifier should also be in the tensor dialect.
+    // TODO: This attribute is deprecated. Use `bufferization.writable` or add
+    // a new attribute in a different dialect.
     /// Attribute name used to mark region arguments that can be bufferized
     /// in-place during one-shot bufferization.
     constexpr const static ::llvm::StringLiteral
-      kInplaceableAttrName = "linalg.inplaceable";
-
-    /// Attribute name used to mark the bufferization layout for region
-    /// arguments during one-shot bufferization.
-    constexpr const static ::llvm::StringLiteral
-      kBufferLayoutAttrName = "linalg.buffer_layout";
+        kInplaceableAttrName = "linalg.inplaceable";
   
 };
 namespace detail {
@@ -192,9 +182,6 @@ namespace detail {
     bool isWritable(Value value, const AnalysisState & state) {
       return value.isa<OpResult>();
     }
-    bool isAllocationHoistingBarrier() {
-      return false;
-    }
     bool isNotConflicting(OpOperand * uRead, OpOperand * uWrite, const AnalysisState & state) {
       return false;
     }
@@ -240,10 +227,6 @@ bool detail::BufferizableOpInterfaceInterfaceTraits::Model<ConcreteOp>::isWritab
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).isWritable(value, state);
 }
 template<typename ConcreteOp>
-bool detail::BufferizableOpInterfaceInterfaceTraits::Model<ConcreteOp>::isAllocationHoistingBarrier(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).isAllocationHoistingBarrier();
-}
-template<typename ConcreteOp>
 bool detail::BufferizableOpInterfaceInterfaceTraits::Model<ConcreteOp>::isNotConflicting(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * uRead, OpOperand * uWrite, const AnalysisState & state) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).isNotConflicting(uRead, uWrite, state);
 }
@@ -286,10 +269,6 @@ LogicalResult detail::BufferizableOpInterfaceInterfaceTraits::FallbackModel<Conc
 template<typename ConcreteOp>
 bool detail::BufferizableOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::isWritable(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, Value value, const AnalysisState & state) {
   return static_cast<const ConcreteOp *>(impl)->isWritable(tablegen_opaque_val, value, state);
-}
-template<typename ConcreteOp>
-bool detail::BufferizableOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::isAllocationHoistingBarrier(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return static_cast<const ConcreteOp *>(impl)->isAllocationHoistingBarrier(tablegen_opaque_val);
 }
 template<typename ConcreteOp>
 bool detail::BufferizableOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::isNotConflicting(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * uRead, OpOperand * uWrite, const AnalysisState & state) {
@@ -367,10 +346,6 @@ llvm_unreachable("bufferize not implemented");
 template<typename ConcreteModel, typename ConcreteOp>
 bool detail::BufferizableOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::isWritable(::mlir::Operation *tablegen_opaque_val, Value value, const AnalysisState &state) const {
 return value.isa<OpResult>();
-}
-template<typename ConcreteModel, typename ConcreteOp>
-bool detail::BufferizableOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::isAllocationHoistingBarrier(::mlir::Operation *tablegen_opaque_val) const {
-return false;
 }
 template<typename ConcreteModel, typename ConcreteOp>
 bool detail::BufferizableOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::isNotConflicting(::mlir::Operation *tablegen_opaque_val, OpOperand *uRead, OpOperand *uWrite, const AnalysisState &state) const {

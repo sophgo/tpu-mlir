@@ -84,6 +84,7 @@ namespace emitc {
     if (parseResult.hasValue())
       return attr;
   }
+  
   parser.emitError(typeLoc) << "unknown attribute `"
       << attrTag << "` in dialect `" << getNamespace() << "`";
   return {};
@@ -93,6 +94,7 @@ void EmitCDialect::printAttribute(::mlir::Attribute attr,
                          ::mlir::DialectAsmPrinter &printer) const {
   if (::mlir::succeeded(generatedAttributePrinter(attr, printer)))
     return;
+  
 }
 } // namespace emitc
 } // namespace mlir

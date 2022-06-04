@@ -6,12 +6,12 @@
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class TosaInferShapesBase : public ::mlir::OperationPass<FuncOp> {
+class TosaInferShapesBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = TosaInferShapesBase;
 
-  TosaInferShapesBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  TosaInferShapesBase(const TosaInferShapesBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  TosaInferShapesBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  TosaInferShapesBase(const TosaInferShapesBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -61,12 +61,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class TosaMakeBroadcastableBase : public ::mlir::OperationPass<FuncOp> {
+class TosaMakeBroadcastableBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = TosaMakeBroadcastableBase;
 
-  TosaMakeBroadcastableBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  TosaMakeBroadcastableBase(const TosaMakeBroadcastableBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  TosaMakeBroadcastableBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  TosaMakeBroadcastableBase(const TosaMakeBroadcastableBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -110,12 +110,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class TosaOptionalDecompositionsBase : public ::mlir::OperationPass<FuncOp> {
+class TosaOptionalDecompositionsBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = TosaOptionalDecompositionsBase;
 
-  TosaOptionalDecompositionsBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  TosaOptionalDecompositionsBase(const TosaOptionalDecompositionsBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  TosaOptionalDecompositionsBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  TosaOptionalDecompositionsBase(const TosaOptionalDecompositionsBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {

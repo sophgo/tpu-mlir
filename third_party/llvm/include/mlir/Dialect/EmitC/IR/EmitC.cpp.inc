@@ -11,6 +11,7 @@
 
 ::mlir::emitc::ApplyOp,
 ::mlir::emitc::CallOp,
+::mlir::emitc::CastOp,
 ::mlir::emitc::ConstantOp,
 ::mlir::emitc::IncludeOp,
 ::mlir::emitc::VariableOp
@@ -81,9 +82,11 @@ namespace emitc {
 // ::mlir::emitc::ApplyOp definitions
 //===----------------------------------------------------------------------===//
 
-ApplyOpAdaptor::ApplyOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ApplyOpAdaptor::ApplyOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("emitc.apply", odsAttrs.getContext());
+}
 
-ApplyOpAdaptor::ApplyOpAdaptor(ApplyOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ApplyOpAdaptor::ApplyOpAdaptor(ApplyOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ApplyOpAdaptor::getOperands() {
   return odsOperands;
@@ -109,8 +112,8 @@ std::pair<unsigned, unsigned> ApplyOpAdaptor::getODSOperandIndexAndLength(unsign
 
 ::mlir::StringAttr ApplyOpAdaptor::applicableOperatorAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::StringAttr attr = odsAttrs.get("applicableOperator").cast<::mlir::StringAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ApplyOp::applicableOperatorAttrName(*odsOpName)).cast<::mlir::StringAttr>();
+    return attr;
 }
 
 ::llvm::StringRef ApplyOpAdaptor::applicableOperator() {
@@ -119,14 +122,21 @@ std::pair<unsigned, unsigned> ApplyOpAdaptor::getODSOperandIndexAndLength(unsign
 }
 
 ::mlir::LogicalResult ApplyOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_applicableOperator = odsAttrs.get("applicableOperator");
-    if (!tblgen_applicableOperator)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_applicableOperator;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'emitc.apply' op ""requires attribute 'applicableOperator'");
-
-    if (tblgen_applicableOperator && !((tblgen_applicableOperator.isa<::mlir::StringAttr>())))
-      return emitError(loc, "'emitc.apply' op ""attribute 'applicableOperator' failed to satisfy constraint: string attribute");
+    if (namedAttrIt->getName() == ApplyOp::applicableOperatorAttrName(*odsOpName)) {
+      tblgen_applicableOperator = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_applicableOperator && !((tblgen_applicableOperator.isa<::mlir::StringAttr>())))
+    return emitError(loc, "'emitc.apply' op ""attribute 'applicableOperator' failed to satisfy constraint: string attribute");
   return ::mlir::success();
 }
 
@@ -165,7 +175,7 @@ std::pair<unsigned, unsigned> ApplyOp::getODSResultIndexAndLength(unsigned index
 }
 
 ::mlir::StringAttr ApplyOp::applicableOperatorAttr() {
-  return (*this)->getAttr(applicableOperatorAttrName()).cast<::mlir::StringAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, applicableOperatorAttrName()).cast<::mlir::StringAttr>();
 }
 
 ::llvm::StringRef ApplyOp::applicableOperator() {
@@ -212,14 +222,21 @@ void ApplyOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 ::mlir::LogicalResult ApplyOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_applicableOperator = (*this)->getAttr(applicableOperatorAttrName());
-    if (!tblgen_applicableOperator)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_applicableOperator;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'applicableOperator'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_EmitC0(*this, tblgen_applicableOperator, "applicableOperator")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == applicableOperatorAttrName()) {
+      tblgen_applicableOperator = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_EmitC0(*this, tblgen_applicableOperator, "applicableOperator")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -306,9 +323,11 @@ namespace emitc {
 // ::mlir::emitc::CallOp definitions
 //===----------------------------------------------------------------------===//
 
-CallOpAdaptor::CallOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+CallOpAdaptor::CallOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("emitc.call", odsAttrs.getContext());
+}
 
-CallOpAdaptor::CallOpAdaptor(CallOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+CallOpAdaptor::CallOpAdaptor(CallOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange CallOpAdaptor::getOperands() {
   return odsOperands;
@@ -348,8 +367,8 @@ std::pair<unsigned, unsigned> CallOpAdaptor::getODSOperandIndexAndLength(unsigne
 
 ::mlir::StringAttr CallOpAdaptor::calleeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::StringAttr attr = odsAttrs.get("callee").cast<::mlir::StringAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, CallOp::calleeAttrName(*odsOpName)).cast<::mlir::StringAttr>();
+    return attr;
 }
 
 ::llvm::StringRef CallOpAdaptor::callee() {
@@ -359,8 +378,8 @@ std::pair<unsigned, unsigned> CallOpAdaptor::getODSOperandIndexAndLength(unsigne
 
 ::mlir::ArrayAttr CallOpAdaptor::argsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("args").dyn_cast_or_null<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, CallOp::argsAttrName(*odsOpName)).dyn_cast_or_null<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::llvm::Optional< ::mlir::ArrayAttr > CallOpAdaptor::args() {
@@ -370,8 +389,8 @@ std::pair<unsigned, unsigned> CallOpAdaptor::getODSOperandIndexAndLength(unsigne
 
 ::mlir::ArrayAttr CallOpAdaptor::template_argsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("template_args").dyn_cast_or_null<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, CallOp::template_argsAttrName(*odsOpName)).dyn_cast_or_null<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::llvm::Optional< ::mlir::ArrayAttr > CallOpAdaptor::template_args() {
@@ -380,24 +399,41 @@ std::pair<unsigned, unsigned> CallOpAdaptor::getODSOperandIndexAndLength(unsigne
 }
 
 ::mlir::LogicalResult CallOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_callee = odsAttrs.get("callee");
-    if (!tblgen_callee)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_callee;
+  ::mlir::Attribute tblgen_args;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'emitc.call' op ""requires attribute 'callee'");
+    if (namedAttrIt->getName() == CallOp::calleeAttrName(*odsOpName)) {
+      tblgen_callee = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == CallOp::argsAttrName(*odsOpName)) {
+      tblgen_args = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_template_args;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == CallOp::template_argsAttrName(*odsOpName)) {
+      tblgen_template_args = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
 
-    if (tblgen_callee && !((tblgen_callee.isa<::mlir::StringAttr>())))
-      return emitError(loc, "'emitc.call' op ""attribute 'callee' failed to satisfy constraint: string attribute");
-  }
-  {
-    auto tblgen_args = odsAttrs.get("args");
-    if (tblgen_args && !((tblgen_args.isa<::mlir::ArrayAttr>())))
-      return emitError(loc, "'emitc.call' op ""attribute 'args' failed to satisfy constraint: array attribute");
-  }
-  {
-    auto tblgen_template_args = odsAttrs.get("template_args");
-    if (tblgen_template_args && !((tblgen_template_args.isa<::mlir::ArrayAttr>())))
-      return emitError(loc, "'emitc.call' op ""attribute 'template_args' failed to satisfy constraint: array attribute");
-  }
+  if (tblgen_callee && !((tblgen_callee.isa<::mlir::StringAttr>())))
+    return emitError(loc, "'emitc.call' op ""attribute 'callee' failed to satisfy constraint: string attribute");
+
+  if (tblgen_args && !((tblgen_args.isa<::mlir::ArrayAttr>())))
+    return emitError(loc, "'emitc.call' op ""attribute 'args' failed to satisfy constraint: array attribute");
+
+  if (tblgen_template_args && !((tblgen_template_args.isa<::mlir::ArrayAttr>())))
+    return emitError(loc, "'emitc.call' op ""attribute 'template_args' failed to satisfy constraint: array attribute");
   return ::mlir::success();
 }
 
@@ -460,7 +496,7 @@ std::pair<unsigned, unsigned> CallOp::getODSResultIndexAndLength(unsigned index)
 }
 
 ::mlir::StringAttr CallOp::calleeAttr() {
-  return (*this)->getAttr(calleeAttrName()).cast<::mlir::StringAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, calleeAttrName()).cast<::mlir::StringAttr>();
 }
 
 ::llvm::StringRef CallOp::callee() {
@@ -469,7 +505,7 @@ std::pair<unsigned, unsigned> CallOp::getODSResultIndexAndLength(unsigned index)
 }
 
 ::mlir::ArrayAttr CallOp::argsAttr() {
-  return (*this)->getAttr(argsAttrName()).dyn_cast_or_null<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, argsAttrName()).dyn_cast_or_null<::mlir::ArrayAttr>();
 }
 
 ::llvm::Optional< ::mlir::ArrayAttr > CallOp::args() {
@@ -478,7 +514,7 @@ std::pair<unsigned, unsigned> CallOp::getODSResultIndexAndLength(unsigned index)
 }
 
 ::mlir::ArrayAttr CallOp::template_argsAttr() {
-  return (*this)->getAttr(template_argsAttrName()).dyn_cast_or_null<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, template_argsAttrName()).dyn_cast_or_null<::mlir::ArrayAttr>();
 }
 
 ::llvm::Optional< ::mlir::ArrayAttr > CallOp::template_args() {
@@ -537,24 +573,41 @@ void CallOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 }
 
 ::mlir::LogicalResult CallOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_callee = (*this)->getAttr(calleeAttrName());
-    if (!tblgen_callee)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_callee;
+  ::mlir::Attribute tblgen_args;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'callee'");
+    if (namedAttrIt->getName() == calleeAttrName()) {
+      tblgen_callee = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == argsAttrName()) {
+      tblgen_args = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_template_args;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == template_argsAttrName()) {
+      tblgen_template_args = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_EmitC0(*this, tblgen_callee, "callee")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_args = (*this)->getAttr(argsAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_EmitC1(*this, tblgen_args, "args")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_template_args = (*this)->getAttr(template_argsAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_EmitC1(*this, tblgen_template_args, "template_args")))
-      return ::mlir::failure();
-  }
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_EmitC0(*this, tblgen_callee, "callee")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_EmitC1(*this, tblgen_args, "args")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_EmitC1(*this, tblgen_template_args, "template_args")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -584,7 +637,7 @@ void CallOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 
 ::mlir::ParseResult CallOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::StringAttr calleeAttr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> operandsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> operandsOperands;
   ::llvm::SMLoc operandsOperandsLoc;
   (void)operandsOperandsLoc;
   ::llvm::ArrayRef<::mlir::Type> operandsTypes;
@@ -638,12 +691,198 @@ namespace mlir {
 namespace emitc {
 
 //===----------------------------------------------------------------------===//
+// ::mlir::emitc::CastOp definitions
+//===----------------------------------------------------------------------===//
+
+CastOpAdaptor::CastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("emitc.cast", odsAttrs.getContext());
+}
+
+CastOpAdaptor::CastOpAdaptor(CastOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange CastOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> CastOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange CastOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value CastOpAdaptor::source() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::DictionaryAttr CastOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult CastOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> CastOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range CastOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value CastOp::source() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::MutableOperandRange CastOp::sourceMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> CastOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range CastOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value CastOp::dest() {
+  return *getODSResults(0).begin();
+}
+
+void CastOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type dest, ::mlir::Value source) {
+  odsState.addOperands(source);
+  odsState.addTypes(dest);
+}
+
+void CastOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value source) {
+  odsState.addOperands(source);
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void CastOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 1u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult CastOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_EmitC0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_EmitC0(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult CastOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+::mlir::ParseResult CastOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::mlir::OpAsmParser::UnresolvedOperand sourceRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
+  (void)sourceOperandsLoc;
+  ::mlir::Type sourceRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> sourceTypes(sourceRawTypes);
+  ::mlir::Type destRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> destTypes(destRawTypes);
+
+  sourceOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperand(sourceRawOperands[0]))
+    return ::mlir::failure();
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  {
+    ::mlir::Type type;
+    if (parser.parseCustomTypeWithFallback(type))
+      return ::mlir::failure();
+    sourceRawTypes[0] = type;
+  }
+  if (parser.parseKeyword("to"))
+    return ::mlir::failure();
+
+  {
+    ::mlir::Type type;
+    if (parser.parseCustomTypeWithFallback(type))
+      return ::mlir::failure();
+    destRawTypes[0] = type;
+  }
+  result.addTypes(destTypes);
+  if (parser.resolveOperands(sourceOperands, sourceTypes, sourceOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void CastOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ';
+  _odsPrinter << source();
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  {
+    auto type = source().getType();
+    if (auto validType = type.dyn_cast<::mlir::Type>())
+      _odsPrinter.printStrippedAttrOrType(validType);
+   else
+     _odsPrinter << type;
+  }
+  _odsPrinter << ' ' << "to";
+  _odsPrinter << ' ';
+  {
+    auto type = dest().getType();
+    if (auto validType = type.dyn_cast<::mlir::Type>())
+      _odsPrinter.printStrippedAttrOrType(validType);
+   else
+     _odsPrinter << type;
+  }
+}
+
+} // namespace emitc
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::emitc::CastOp)
+
+namespace mlir {
+namespace emitc {
+
+//===----------------------------------------------------------------------===//
 // ::mlir::emitc::ConstantOp definitions
 //===----------------------------------------------------------------------===//
 
-ConstantOpAdaptor::ConstantOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ConstantOpAdaptor::ConstantOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("emitc.constant", odsAttrs.getContext());
+}
 
-ConstantOpAdaptor::ConstantOpAdaptor(ConstantOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ConstantOpAdaptor::ConstantOpAdaptor(ConstantOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ConstantOpAdaptor::getOperands() {
   return odsOperands;
@@ -665,8 +904,8 @@ std::pair<unsigned, unsigned> ConstantOpAdaptor::getODSOperandIndexAndLength(uns
 
 ::mlir::Attribute ConstantOpAdaptor::valueAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::Attribute attr = odsAttrs.get("value").cast<::mlir::Attribute>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ConstantOp::valueAttrName(*odsOpName)).cast<::mlir::Attribute>();
+    return attr;
 }
 
 ::mlir::Attribute ConstantOpAdaptor::value() {
@@ -675,14 +914,21 @@ std::pair<unsigned, unsigned> ConstantOpAdaptor::getODSOperandIndexAndLength(uns
 }
 
 ::mlir::LogicalResult ConstantOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_value = odsAttrs.get("value");
-    if (!tblgen_value)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_value;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'emitc.constant' op ""requires attribute 'value'");
-
-    if (tblgen_value && !((true)))
-      return emitError(loc, "'emitc.constant' op ""attribute 'value' failed to satisfy constraint: any attribute");
+    if (namedAttrIt->getName() == ConstantOp::valueAttrName(*odsOpName)) {
+      tblgen_value = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_value && !((true)))
+    return emitError(loc, "'emitc.constant' op ""attribute 'value' failed to satisfy constraint: any attribute");
   return ::mlir::success();
 }
 
@@ -707,7 +953,7 @@ std::pair<unsigned, unsigned> ConstantOp::getODSResultIndexAndLength(unsigned in
 }
 
 ::mlir::Attribute ConstantOp::valueAttr() {
-  return (*this)->getAttr(valueAttrName()).cast<::mlir::Attribute>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, valueAttrName()).cast<::mlir::Attribute>();
 }
 
 ::mlir::Attribute ConstantOp::value() {
@@ -739,14 +985,21 @@ void ConstantOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::LogicalResult ConstantOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_value = (*this)->getAttr(valueAttrName());
-    if (!tblgen_value)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_value;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'value'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_EmitC2(*this, tblgen_value, "value")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == valueAttrName()) {
+      tblgen_value = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_EmitC2(*this, tblgen_value, "value")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSResults(0);
@@ -776,9 +1029,11 @@ namespace emitc {
 // ::mlir::emitc::IncludeOp definitions
 //===----------------------------------------------------------------------===//
 
-IncludeOpAdaptor::IncludeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+IncludeOpAdaptor::IncludeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("emitc.include", odsAttrs.getContext());
+}
 
-IncludeOpAdaptor::IncludeOpAdaptor(IncludeOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+IncludeOpAdaptor::IncludeOpAdaptor(IncludeOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange IncludeOpAdaptor::getOperands() {
   return odsOperands;
@@ -800,8 +1055,8 @@ std::pair<unsigned, unsigned> IncludeOpAdaptor::getODSOperandIndexAndLength(unsi
 
 ::mlir::StringAttr IncludeOpAdaptor::includeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::StringAttr attr = odsAttrs.get("include").cast<::mlir::StringAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, IncludeOp::includeAttrName(*odsOpName)).cast<::mlir::StringAttr>();
+    return attr;
 }
 
 ::llvm::StringRef IncludeOpAdaptor::include() {
@@ -811,8 +1066,8 @@ std::pair<unsigned, unsigned> IncludeOpAdaptor::getODSOperandIndexAndLength(unsi
 
 ::mlir::UnitAttr IncludeOpAdaptor::is_standard_includeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::UnitAttr attr = odsAttrs.get("is_standard_include").dyn_cast_or_null<::mlir::UnitAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, IncludeOp::is_standard_includeAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
+    return attr;
 }
 
 bool IncludeOpAdaptor::is_standard_include() {
@@ -821,19 +1076,34 @@ bool IncludeOpAdaptor::is_standard_include() {
 }
 
 ::mlir::LogicalResult IncludeOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_include = odsAttrs.get("include");
-    if (!tblgen_include)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_include;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'emitc.include' op ""requires attribute 'include'");
+    if (namedAttrIt->getName() == IncludeOp::includeAttrName(*odsOpName)) {
+      tblgen_include = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_is_standard_include;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == IncludeOp::is_standard_includeAttrName(*odsOpName)) {
+      tblgen_is_standard_include = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
 
-    if (tblgen_include && !((tblgen_include.isa<::mlir::StringAttr>())))
-      return emitError(loc, "'emitc.include' op ""attribute 'include' failed to satisfy constraint: string attribute");
-  }
-  {
-    auto tblgen_is_standard_include = odsAttrs.get("is_standard_include");
-    if (tblgen_is_standard_include && !((tblgen_is_standard_include.isa<::mlir::UnitAttr>())))
-      return emitError(loc, "'emitc.include' op ""attribute 'is_standard_include' failed to satisfy constraint: unit attribute");
-  }
+  if (tblgen_include && !((tblgen_include.isa<::mlir::StringAttr>())))
+    return emitError(loc, "'emitc.include' op ""attribute 'include' failed to satisfy constraint: string attribute");
+
+  if (tblgen_is_standard_include && !((tblgen_is_standard_include.isa<::mlir::UnitAttr>())))
+    return emitError(loc, "'emitc.include' op ""attribute 'is_standard_include' failed to satisfy constraint: unit attribute");
   return ::mlir::success();
 }
 
@@ -858,7 +1128,7 @@ std::pair<unsigned, unsigned> IncludeOp::getODSResultIndexAndLength(unsigned ind
 }
 
 ::mlir::StringAttr IncludeOp::includeAttr() {
-  return (*this)->getAttr(includeAttrName()).cast<::mlir::StringAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, includeAttrName()).cast<::mlir::StringAttr>();
 }
 
 ::llvm::StringRef IncludeOp::include() {
@@ -867,7 +1137,7 @@ std::pair<unsigned, unsigned> IncludeOp::getODSResultIndexAndLength(unsigned ind
 }
 
 ::mlir::UnitAttr IncludeOp::is_standard_includeAttr() {
-  return (*this)->getAttr(is_standard_includeAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, is_standard_includeAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
 }
 
 bool IncludeOp::is_standard_include() {
@@ -928,19 +1198,34 @@ void IncludeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 }
 
 ::mlir::LogicalResult IncludeOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_include = (*this)->getAttr(includeAttrName());
-    if (!tblgen_include)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_include;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'include'");
+    if (namedAttrIt->getName() == includeAttrName()) {
+      tblgen_include = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_is_standard_include;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == is_standard_includeAttrName()) {
+      tblgen_is_standard_include = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_EmitC0(*this, tblgen_include, "include")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_is_standard_include = (*this)->getAttr(is_standard_includeAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_EmitC3(*this, tblgen_is_standard_include, "is_standard_include")))
-      return ::mlir::failure();
-  }
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_EmitC0(*this, tblgen_include, "include")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_EmitC3(*this, tblgen_is_standard_include, "is_standard_include")))
+    return ::mlir::failure();
   return ::mlir::success();
 }
 
@@ -948,7 +1233,7 @@ void IncludeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   return verifyInvariantsImpl();
 }
 
-void IncludeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void IncludeOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace emitc
@@ -962,9 +1247,11 @@ namespace emitc {
 // ::mlir::emitc::VariableOp definitions
 //===----------------------------------------------------------------------===//
 
-VariableOpAdaptor::VariableOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+VariableOpAdaptor::VariableOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("emitc.variable", odsAttrs.getContext());
+}
 
-VariableOpAdaptor::VariableOpAdaptor(VariableOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+VariableOpAdaptor::VariableOpAdaptor(VariableOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange VariableOpAdaptor::getOperands() {
   return odsOperands;
@@ -986,8 +1273,8 @@ std::pair<unsigned, unsigned> VariableOpAdaptor::getODSOperandIndexAndLength(uns
 
 ::mlir::Attribute VariableOpAdaptor::valueAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::Attribute attr = odsAttrs.get("value").cast<::mlir::Attribute>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, VariableOp::valueAttrName(*odsOpName)).cast<::mlir::Attribute>();
+    return attr;
 }
 
 ::mlir::Attribute VariableOpAdaptor::value() {
@@ -996,14 +1283,21 @@ std::pair<unsigned, unsigned> VariableOpAdaptor::getODSOperandIndexAndLength(uns
 }
 
 ::mlir::LogicalResult VariableOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_value = odsAttrs.get("value");
-    if (!tblgen_value)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_value;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'emitc.variable' op ""requires attribute 'value'");
-
-    if (tblgen_value && !((true)))
-      return emitError(loc, "'emitc.variable' op ""attribute 'value' failed to satisfy constraint: any attribute");
+    if (namedAttrIt->getName() == VariableOp::valueAttrName(*odsOpName)) {
+      tblgen_value = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_value && !((true)))
+    return emitError(loc, "'emitc.variable' op ""attribute 'value' failed to satisfy constraint: any attribute");
   return ::mlir::success();
 }
 
@@ -1028,7 +1322,7 @@ std::pair<unsigned, unsigned> VariableOp::getODSResultIndexAndLength(unsigned in
 }
 
 ::mlir::Attribute VariableOp::valueAttr() {
-  return (*this)->getAttr(valueAttrName()).cast<::mlir::Attribute>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, valueAttrName()).cast<::mlir::Attribute>();
 }
 
 ::mlir::Attribute VariableOp::value() {
@@ -1060,14 +1354,21 @@ void VariableOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::LogicalResult VariableOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_value = (*this)->getAttr(valueAttrName());
-    if (!tblgen_value)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_value;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'value'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_EmitC2(*this, tblgen_value, "value")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == valueAttrName()) {
+      tblgen_value = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_EmitC2(*this, tblgen_value, "value")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSResults(0);

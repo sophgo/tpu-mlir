@@ -10,12 +10,7 @@ namespace mlir {
 namespace x86vector {
 
 class X86VectorDialect : public ::mlir::Dialect {
-  explicit X86VectorDialect(::mlir::MLIRContext *context)
-    : ::mlir::Dialect(getDialectNamespace(), context,
-      ::mlir::TypeID::get<X86VectorDialect>()) {
-    
-    initialize();
-  }
+  explicit X86VectorDialect(::mlir::MLIRContext *context);
 
   void initialize();
   friend class ::mlir::MLIRContext;

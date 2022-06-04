@@ -8,6 +8,39 @@
 
 namespace mlir {
 namespace omp {
+::llvm::StringRef stringifyClauseCancellationConstructType(ClauseCancellationConstructType val) {
+  switch (val) {
+    case ClauseCancellationConstructType::Parallel: return "parallel";
+    case ClauseCancellationConstructType::Loop: return "loop";
+    case ClauseCancellationConstructType::Sections: return "sections";
+    case ClauseCancellationConstructType::Taskgroup: return "taskgroup";
+  }
+  return "";
+}
+
+::llvm::Optional<ClauseCancellationConstructType> symbolizeClauseCancellationConstructType(::llvm::StringRef str) {
+  return ::llvm::StringSwitch<::llvm::Optional<ClauseCancellationConstructType>>(str)
+      .Case("parallel", ClauseCancellationConstructType::Parallel)
+      .Case("loop", ClauseCancellationConstructType::Loop)
+      .Case("sections", ClauseCancellationConstructType::Sections)
+      .Case("taskgroup", ClauseCancellationConstructType::Taskgroup)
+      .Default(::llvm::None);
+}
+::llvm::Optional<ClauseCancellationConstructType> symbolizeClauseCancellationConstructType(uint32_t value) {
+  switch (value) {
+  case 0: return ClauseCancellationConstructType::Parallel;
+  case 1: return ClauseCancellationConstructType::Loop;
+  case 2: return ClauseCancellationConstructType::Sections;
+  case 3: return ClauseCancellationConstructType::Taskgroup;
+  default: return ::llvm::None;
+  }
+}
+
+} // namespace omp
+} // namespace mlir
+
+namespace mlir {
+namespace omp {
 ::llvm::StringRef stringifyClauseDepend(ClauseDepend val) {
   switch (val) {
     case ClauseDepend::dependsource: return "dependsource";

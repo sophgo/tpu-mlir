@@ -186,9 +186,11 @@ namespace async {
 // ::mlir::async::AddToGroupOp definitions
 //===----------------------------------------------------------------------===//
 
-AddToGroupOpAdaptor::AddToGroupOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+AddToGroupOpAdaptor::AddToGroupOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("async.add_to_group", odsAttrs.getContext());
+}
 
-AddToGroupOpAdaptor::AddToGroupOpAdaptor(AddToGroupOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+AddToGroupOpAdaptor::AddToGroupOpAdaptor(AddToGroupOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange AddToGroupOpAdaptor::getOperands() {
   return odsOperands;
@@ -304,7 +306,7 @@ void AddToGroupOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(AddToGroupOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -351,7 +353,8 @@ void AddToGroupOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
 ::mlir::LogicalResult AddToGroupOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = odsBuilder.getIndexType();
+  ::mlir::Type odsInferredType0 = odsBuilder.getIndexType();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
@@ -424,9 +427,11 @@ namespace async {
 // ::mlir::async::AwaitAllOp definitions
 //===----------------------------------------------------------------------===//
 
-AwaitAllOpAdaptor::AwaitAllOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+AwaitAllOpAdaptor::AwaitAllOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("async.await_all", odsAttrs.getContext());
+}
 
-AwaitAllOpAdaptor::AwaitAllOpAdaptor(AwaitAllOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+AwaitAllOpAdaptor::AwaitAllOpAdaptor(AwaitAllOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange AwaitAllOpAdaptor::getOperands() {
   return odsOperands;
@@ -552,9 +557,11 @@ namespace async {
 // ::mlir::async::AwaitOp definitions
 //===----------------------------------------------------------------------===//
 
-AwaitOpAdaptor::AwaitOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+AwaitOpAdaptor::AwaitOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("async.await", odsAttrs.getContext());
+}
 
-AwaitOpAdaptor::AwaitOpAdaptor(AwaitOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+AwaitOpAdaptor::AwaitOpAdaptor(AwaitOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange AwaitOpAdaptor::getOperands() {
   return odsOperands;
@@ -670,7 +677,7 @@ std::pair<unsigned, unsigned> AwaitOp::getODSResultIndexAndLength(unsigned index
   (void)operandOperandsLoc;
   ::mlir::Type operandRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> operandTypes(operandRawTypes);
-  ::mlir::SmallVector<::mlir::Type, 1> resultTypes;
+  ::llvm::SmallVector<::mlir::Type, 1> resultTypes;
 
   operandOperandsLoc = parser.getCurrentLocation();
   if (parser.parseOperand(operandRawOperands[0]))
@@ -712,9 +719,11 @@ namespace async {
 // ::mlir::async::CoroBeginOp definitions
 //===----------------------------------------------------------------------===//
 
-CoroBeginOpAdaptor::CoroBeginOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+CoroBeginOpAdaptor::CoroBeginOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("async.coro.begin", odsAttrs.getContext());
+}
 
-CoroBeginOpAdaptor::CoroBeginOpAdaptor(CoroBeginOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+CoroBeginOpAdaptor::CoroBeginOpAdaptor(CoroBeginOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange CoroBeginOpAdaptor::getOperands() {
   return odsOperands;
@@ -813,7 +822,7 @@ void CoroBeginOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(CoroBeginOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -854,7 +863,8 @@ void CoroBeginOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
 ::mlir::LogicalResult CoroBeginOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = odsBuilder.getType<::mlir::async::CoroHandleType>();
+  ::mlir::Type odsInferredType0 = odsBuilder.getType<::mlir::async::CoroHandleType>();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
@@ -893,9 +903,11 @@ namespace async {
 // ::mlir::async::CoroEndOp definitions
 //===----------------------------------------------------------------------===//
 
-CoroEndOpAdaptor::CoroEndOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+CoroEndOpAdaptor::CoroEndOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("async.coro.end", odsAttrs.getContext());
+}
 
-CoroEndOpAdaptor::CoroEndOpAdaptor(CoroEndOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+CoroEndOpAdaptor::CoroEndOpAdaptor(CoroEndOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange CoroEndOpAdaptor::getOperands() {
   return odsOperands;
@@ -1021,9 +1033,11 @@ namespace async {
 // ::mlir::async::CoroFreeOp definitions
 //===----------------------------------------------------------------------===//
 
-CoroFreeOpAdaptor::CoroFreeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+CoroFreeOpAdaptor::CoroFreeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("async.coro.free", odsAttrs.getContext());
+}
 
-CoroFreeOpAdaptor::CoroFreeOpAdaptor(CoroFreeOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+CoroFreeOpAdaptor::CoroFreeOpAdaptor(CoroFreeOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange CoroFreeOpAdaptor::getOperands() {
   return odsOperands;
@@ -1186,9 +1200,11 @@ namespace async {
 // ::mlir::async::CoroIdOp definitions
 //===----------------------------------------------------------------------===//
 
-CoroIdOpAdaptor::CoroIdOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+CoroIdOpAdaptor::CoroIdOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("async.coro.id", odsAttrs.getContext());
+}
 
-CoroIdOpAdaptor::CoroIdOpAdaptor(CoroIdOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+CoroIdOpAdaptor::CoroIdOpAdaptor(CoroIdOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange CoroIdOpAdaptor::getOperands() {
   return odsOperands;
@@ -1269,7 +1285,7 @@ void CoroIdOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(CoroIdOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -1301,7 +1317,8 @@ void CoroIdOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
 ::mlir::LogicalResult CoroIdOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = odsBuilder.getType<::mlir::async::CoroIdType>();
+  ::mlir::Type odsInferredType0 = odsBuilder.getType<::mlir::async::CoroIdType>();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
@@ -1328,9 +1345,11 @@ namespace async {
 // ::mlir::async::CoroSaveOp definitions
 //===----------------------------------------------------------------------===//
 
-CoroSaveOpAdaptor::CoroSaveOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+CoroSaveOpAdaptor::CoroSaveOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("async.coro.save", odsAttrs.getContext());
+}
 
-CoroSaveOpAdaptor::CoroSaveOpAdaptor(CoroSaveOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+CoroSaveOpAdaptor::CoroSaveOpAdaptor(CoroSaveOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange CoroSaveOpAdaptor::getOperands() {
   return odsOperands;
@@ -1429,7 +1448,7 @@ void CoroSaveOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(CoroSaveOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -1470,7 +1489,8 @@ void CoroSaveOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 ::mlir::LogicalResult CoroSaveOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = odsBuilder.getType<::mlir::async::CoroStateType>();
+  ::mlir::Type odsInferredType0 = odsBuilder.getType<::mlir::async::CoroStateType>();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
@@ -1509,9 +1529,11 @@ namespace async {
 // ::mlir::async::CoroSuspendOp definitions
 //===----------------------------------------------------------------------===//
 
-CoroSuspendOpAdaptor::CoroSuspendOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+CoroSuspendOpAdaptor::CoroSuspendOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("async.coro.suspend", odsAttrs.getContext());
+}
 
-CoroSuspendOpAdaptor::CoroSuspendOpAdaptor(CoroSuspendOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+CoroSuspendOpAdaptor::CoroSuspendOpAdaptor(CoroSuspendOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange CoroSuspendOpAdaptor::getOperands() {
   return odsOperands;
@@ -1688,9 +1710,11 @@ namespace async {
 // ::mlir::async::CreateGroupOp definitions
 //===----------------------------------------------------------------------===//
 
-CreateGroupOpAdaptor::CreateGroupOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+CreateGroupOpAdaptor::CreateGroupOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("async.create_group", odsAttrs.getContext());
+}
 
-CreateGroupOpAdaptor::CreateGroupOpAdaptor(CreateGroupOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+CreateGroupOpAdaptor::CreateGroupOpAdaptor(CreateGroupOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange CreateGroupOpAdaptor::getOperands() {
   return odsOperands;
@@ -1789,7 +1813,7 @@ void CreateGroupOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState 
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(CreateGroupOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -1834,7 +1858,8 @@ void CreateGroupOp::getCanonicalizationPatterns(::mlir::RewritePatternSet &resul
 ::mlir::LogicalResult CreateGroupOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = odsBuilder.getType<::mlir::async::GroupType>();
+  ::mlir::Type odsInferredType0 = odsBuilder.getType<::mlir::async::GroupType>();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
@@ -1881,7 +1906,7 @@ void CreateGroupOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
 }
 
-void CreateGroupOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void CreateGroupOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace async
@@ -1895,9 +1920,11 @@ namespace async {
 // ::mlir::async::ExecuteOp definitions
 //===----------------------------------------------------------------------===//
 
-ExecuteOpAdaptor::ExecuteOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ExecuteOpAdaptor::ExecuteOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("async.execute", odsAttrs.getContext());
+}
 
-ExecuteOpAdaptor::ExecuteOpAdaptor(ExecuteOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ExecuteOpAdaptor::ExecuteOpAdaptor(ExecuteOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ExecuteOpAdaptor::getOperands() {
   return odsOperands;
@@ -1905,7 +1932,7 @@ ExecuteOpAdaptor::ExecuteOpAdaptor(ExecuteOp &op) : odsOperands(op->getOperands(
 
 std::pair<unsigned, unsigned> ExecuteOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = odsAttrs.get("operand_segment_sizes").cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ExecuteOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -1944,10 +1971,21 @@ std::pair<unsigned, unsigned> ExecuteOpAdaptor::getODSOperandIndexAndLength(unsi
 }
 
 ::mlir::LogicalResult ExecuteOpAdaptor::verify(::mlir::Location loc) {
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'async.execute' op ""requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == ExecuteOp::operand_segment_sizesAttrName(*odsOpName)) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = odsAttrs.get("operand_segment_sizes").dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitError(loc, "'async.execute' op ""missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 2)
@@ -1967,8 +2005,7 @@ void ExecuteOp::getAsmResultNames(::mlir::OpAsmSetValueNameFn setNameFn) {
 }
 
 std::pair<unsigned, unsigned> ExecuteOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr =
-      (*this)->getAttr(operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -1996,13 +2033,13 @@ std::pair<unsigned, unsigned> ExecuteOp::getODSOperandIndexAndLength(unsigned in
 
 ::mlir::MutableOperandRange ExecuteOp::dependenciesMutable() {
   auto range = getODSOperandIndexAndLength(0);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ExecuteOp::operandsMutable() {
   auto range = getODSOperandIndexAndLength(1);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
@@ -2043,10 +2080,21 @@ std::pair<unsigned, unsigned> ExecuteOp::getODSResultIndexAndLength(unsigned ind
 }
 
 ::mlir::LogicalResult ExecuteOp::verifyInvariantsImpl() {
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == operand_segment_sizesAttrName()) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = (*this)->getAttr(operand_segment_sizesAttrName()).dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitOpError("missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 2)
@@ -2108,9 +2156,11 @@ namespace async {
 // ::mlir::async::RuntimeAddRefOp definitions
 //===----------------------------------------------------------------------===//
 
-RuntimeAddRefOpAdaptor::RuntimeAddRefOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+RuntimeAddRefOpAdaptor::RuntimeAddRefOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("async.runtime.add_ref", odsAttrs.getContext());
+}
 
-RuntimeAddRefOpAdaptor::RuntimeAddRefOpAdaptor(RuntimeAddRefOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+RuntimeAddRefOpAdaptor::RuntimeAddRefOpAdaptor(RuntimeAddRefOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange RuntimeAddRefOpAdaptor::getOperands() {
   return odsOperands;
@@ -2136,8 +2186,8 @@ std::pair<unsigned, unsigned> RuntimeAddRefOpAdaptor::getODSOperandIndexAndLengt
 
 ::mlir::IntegerAttr RuntimeAddRefOpAdaptor::countAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("count").cast<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, RuntimeAddRefOp::countAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+    return attr;
 }
 
 uint64_t RuntimeAddRefOpAdaptor::count() {
@@ -2146,14 +2196,21 @@ uint64_t RuntimeAddRefOpAdaptor::count() {
 }
 
 ::mlir::LogicalResult RuntimeAddRefOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_count = odsAttrs.get("count");
-    if (!tblgen_count)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_count;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'async.runtime.add_ref' op ""requires attribute 'count'");
-
-    if (tblgen_count && !((((tblgen_count.isa<::mlir::IntegerAttr>())) && ((tblgen_count.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))) && ((tblgen_count.cast<::mlir::IntegerAttr>().getValue().isStrictlyPositive()))))
-      return emitError(loc, "'async.runtime.add_ref' op ""attribute 'count' failed to satisfy constraint: 64-bit signless integer attribute whose value is positive");
+    if (namedAttrIt->getName() == RuntimeAddRefOp::countAttrName(*odsOpName)) {
+      tblgen_count = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_count && !((((tblgen_count.isa<::mlir::IntegerAttr>())) && ((tblgen_count.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))) && ((tblgen_count.cast<::mlir::IntegerAttr>().getValue().isStrictlyPositive()))))
+    return emitError(loc, "'async.runtime.add_ref' op ""attribute 'count' failed to satisfy constraint: 64-bit signless integer attribute whose value is positive");
   return ::mlir::success();
 }
 
@@ -2188,7 +2245,7 @@ std::pair<unsigned, unsigned> RuntimeAddRefOp::getODSResultIndexAndLength(unsign
 }
 
 ::mlir::IntegerAttr RuntimeAddRefOp::countAttr() {
-  return (*this)->getAttr(countAttrName()).cast<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, countAttrName()).cast<::mlir::IntegerAttr>();
 }
 
 uint64_t RuntimeAddRefOp::count() {
@@ -2233,14 +2290,21 @@ void RuntimeAddRefOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
 }
 
 ::mlir::LogicalResult RuntimeAddRefOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_count = (*this)->getAttr(countAttrName());
-    if (!tblgen_count)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_count;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'count'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_AsyncOps0(*this, tblgen_count, "count")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == countAttrName()) {
+      tblgen_count = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_AsyncOps0(*this, tblgen_count, "count")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -2309,9 +2373,11 @@ namespace async {
 // ::mlir::async::RuntimeAddToGroupOp definitions
 //===----------------------------------------------------------------------===//
 
-RuntimeAddToGroupOpAdaptor::RuntimeAddToGroupOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+RuntimeAddToGroupOpAdaptor::RuntimeAddToGroupOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("async.runtime.add_to_group", odsAttrs.getContext());
+}
 
-RuntimeAddToGroupOpAdaptor::RuntimeAddToGroupOpAdaptor(RuntimeAddToGroupOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+RuntimeAddToGroupOpAdaptor::RuntimeAddToGroupOpAdaptor(RuntimeAddToGroupOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange RuntimeAddToGroupOpAdaptor::getOperands() {
   return odsOperands;
@@ -2427,7 +2493,7 @@ void RuntimeAddToGroupOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operation
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(RuntimeAddToGroupOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -2474,7 +2540,8 @@ void RuntimeAddToGroupOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operation
 ::mlir::LogicalResult RuntimeAddToGroupOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = odsBuilder.getIndexType();
+  ::mlir::Type odsInferredType0 = odsBuilder.getIndexType();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
@@ -2547,9 +2614,11 @@ namespace async {
 // ::mlir::async::RuntimeAwaitAndResumeOp definitions
 //===----------------------------------------------------------------------===//
 
-RuntimeAwaitAndResumeOpAdaptor::RuntimeAwaitAndResumeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+RuntimeAwaitAndResumeOpAdaptor::RuntimeAwaitAndResumeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("async.runtime.await_and_resume", odsAttrs.getContext());
+}
 
-RuntimeAwaitAndResumeOpAdaptor::RuntimeAwaitAndResumeOpAdaptor(RuntimeAwaitAndResumeOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+RuntimeAwaitAndResumeOpAdaptor::RuntimeAwaitAndResumeOpAdaptor(RuntimeAwaitAndResumeOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange RuntimeAwaitAndResumeOpAdaptor::getOperands() {
   return odsOperands;
@@ -2731,9 +2800,11 @@ namespace async {
 // ::mlir::async::RuntimeAwaitOp definitions
 //===----------------------------------------------------------------------===//
 
-RuntimeAwaitOpAdaptor::RuntimeAwaitOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+RuntimeAwaitOpAdaptor::RuntimeAwaitOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("async.runtime.await", odsAttrs.getContext());
+}
 
-RuntimeAwaitOpAdaptor::RuntimeAwaitOpAdaptor(RuntimeAwaitOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+RuntimeAwaitOpAdaptor::RuntimeAwaitOpAdaptor(RuntimeAwaitOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange RuntimeAwaitOpAdaptor::getOperands() {
   return odsOperands;
@@ -2878,9 +2949,11 @@ namespace async {
 // ::mlir::async::RuntimeCreateGroupOp definitions
 //===----------------------------------------------------------------------===//
 
-RuntimeCreateGroupOpAdaptor::RuntimeCreateGroupOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+RuntimeCreateGroupOpAdaptor::RuntimeCreateGroupOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("async.runtime.create_group", odsAttrs.getContext());
+}
 
-RuntimeCreateGroupOpAdaptor::RuntimeCreateGroupOpAdaptor(RuntimeCreateGroupOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+RuntimeCreateGroupOpAdaptor::RuntimeCreateGroupOpAdaptor(RuntimeCreateGroupOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange RuntimeCreateGroupOpAdaptor::getOperands() {
   return odsOperands;
@@ -2979,7 +3052,7 @@ void RuntimeCreateGroupOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operatio
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(RuntimeCreateGroupOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -3020,7 +3093,8 @@ void RuntimeCreateGroupOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operatio
 ::mlir::LogicalResult RuntimeCreateGroupOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = odsBuilder.getType<::mlir::async::GroupType>();
+  ::mlir::Type odsInferredType0 = odsBuilder.getType<::mlir::async::GroupType>();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
@@ -3078,9 +3152,11 @@ namespace async {
 // ::mlir::async::RuntimeCreateOp definitions
 //===----------------------------------------------------------------------===//
 
-RuntimeCreateOpAdaptor::RuntimeCreateOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+RuntimeCreateOpAdaptor::RuntimeCreateOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("async.runtime.create", odsAttrs.getContext());
+}
 
-RuntimeCreateOpAdaptor::RuntimeCreateOpAdaptor(RuntimeCreateOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+RuntimeCreateOpAdaptor::RuntimeCreateOpAdaptor(RuntimeCreateOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange RuntimeCreateOpAdaptor::getOperands() {
   return odsOperands;
@@ -3204,9 +3280,11 @@ namespace async {
 // ::mlir::async::RuntimeDropRefOp definitions
 //===----------------------------------------------------------------------===//
 
-RuntimeDropRefOpAdaptor::RuntimeDropRefOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+RuntimeDropRefOpAdaptor::RuntimeDropRefOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("async.runtime.drop_ref", odsAttrs.getContext());
+}
 
-RuntimeDropRefOpAdaptor::RuntimeDropRefOpAdaptor(RuntimeDropRefOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+RuntimeDropRefOpAdaptor::RuntimeDropRefOpAdaptor(RuntimeDropRefOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange RuntimeDropRefOpAdaptor::getOperands() {
   return odsOperands;
@@ -3232,8 +3310,8 @@ std::pair<unsigned, unsigned> RuntimeDropRefOpAdaptor::getODSOperandIndexAndLeng
 
 ::mlir::IntegerAttr RuntimeDropRefOpAdaptor::countAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("count").cast<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, RuntimeDropRefOp::countAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+    return attr;
 }
 
 uint64_t RuntimeDropRefOpAdaptor::count() {
@@ -3242,14 +3320,21 @@ uint64_t RuntimeDropRefOpAdaptor::count() {
 }
 
 ::mlir::LogicalResult RuntimeDropRefOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_count = odsAttrs.get("count");
-    if (!tblgen_count)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_count;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'async.runtime.drop_ref' op ""requires attribute 'count'");
-
-    if (tblgen_count && !((((tblgen_count.isa<::mlir::IntegerAttr>())) && ((tblgen_count.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))) && ((tblgen_count.cast<::mlir::IntegerAttr>().getValue().isStrictlyPositive()))))
-      return emitError(loc, "'async.runtime.drop_ref' op ""attribute 'count' failed to satisfy constraint: 64-bit signless integer attribute whose value is positive");
+    if (namedAttrIt->getName() == RuntimeDropRefOp::countAttrName(*odsOpName)) {
+      tblgen_count = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_count && !((((tblgen_count.isa<::mlir::IntegerAttr>())) && ((tblgen_count.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))) && ((tblgen_count.cast<::mlir::IntegerAttr>().getValue().isStrictlyPositive()))))
+    return emitError(loc, "'async.runtime.drop_ref' op ""attribute 'count' failed to satisfy constraint: 64-bit signless integer attribute whose value is positive");
   return ::mlir::success();
 }
 
@@ -3284,7 +3369,7 @@ std::pair<unsigned, unsigned> RuntimeDropRefOp::getODSResultIndexAndLength(unsig
 }
 
 ::mlir::IntegerAttr RuntimeDropRefOp::countAttr() {
-  return (*this)->getAttr(countAttrName()).cast<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, countAttrName()).cast<::mlir::IntegerAttr>();
 }
 
 uint64_t RuntimeDropRefOp::count() {
@@ -3329,14 +3414,21 @@ void RuntimeDropRefOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
 }
 
 ::mlir::LogicalResult RuntimeDropRefOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_count = (*this)->getAttr(countAttrName());
-    if (!tblgen_count)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_count;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'count'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_AsyncOps0(*this, tblgen_count, "count")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == countAttrName()) {
+      tblgen_count = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_AsyncOps0(*this, tblgen_count, "count")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -3405,9 +3497,11 @@ namespace async {
 // ::mlir::async::RuntimeIsErrorOp definitions
 //===----------------------------------------------------------------------===//
 
-RuntimeIsErrorOpAdaptor::RuntimeIsErrorOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+RuntimeIsErrorOpAdaptor::RuntimeIsErrorOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("async.runtime.is_error", odsAttrs.getContext());
+}
 
-RuntimeIsErrorOpAdaptor::RuntimeIsErrorOpAdaptor(RuntimeIsErrorOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+RuntimeIsErrorOpAdaptor::RuntimeIsErrorOpAdaptor(RuntimeIsErrorOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange RuntimeIsErrorOpAdaptor::getOperands() {
   return odsOperands;
@@ -3506,7 +3600,7 @@ void RuntimeIsErrorOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationSta
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(RuntimeIsErrorOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -3547,7 +3641,8 @@ void RuntimeIsErrorOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationSta
 ::mlir::LogicalResult RuntimeIsErrorOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = odsBuilder.getIntegerType(1);
+  ::mlir::Type odsInferredType0 = odsBuilder.getIntegerType(1);
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
@@ -3605,9 +3700,11 @@ namespace async {
 // ::mlir::async::RuntimeLoadOp definitions
 //===----------------------------------------------------------------------===//
 
-RuntimeLoadOpAdaptor::RuntimeLoadOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+RuntimeLoadOpAdaptor::RuntimeLoadOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("async.runtime.load", odsAttrs.getContext());
+}
 
-RuntimeLoadOpAdaptor::RuntimeLoadOpAdaptor(RuntimeLoadOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+RuntimeLoadOpAdaptor::RuntimeLoadOpAdaptor(RuntimeLoadOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange RuntimeLoadOpAdaptor::getOperands() {
   return odsOperands;
@@ -3775,9 +3872,11 @@ namespace async {
 // ::mlir::async::RuntimeNumWorkerThreadsOp definitions
 //===----------------------------------------------------------------------===//
 
-RuntimeNumWorkerThreadsOpAdaptor::RuntimeNumWorkerThreadsOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+RuntimeNumWorkerThreadsOpAdaptor::RuntimeNumWorkerThreadsOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("async.runtime.num_worker_threads", odsAttrs.getContext());
+}
 
-RuntimeNumWorkerThreadsOpAdaptor::RuntimeNumWorkerThreadsOpAdaptor(RuntimeNumWorkerThreadsOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+RuntimeNumWorkerThreadsOpAdaptor::RuntimeNumWorkerThreadsOpAdaptor(RuntimeNumWorkerThreadsOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange RuntimeNumWorkerThreadsOpAdaptor::getOperands() {
   return odsOperands;
@@ -3858,7 +3957,7 @@ void RuntimeNumWorkerThreadsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Ope
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(RuntimeNumWorkerThreadsOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -3890,7 +3989,8 @@ void RuntimeNumWorkerThreadsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Ope
 ::mlir::LogicalResult RuntimeNumWorkerThreadsOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = odsBuilder.getIndexType();
+  ::mlir::Type odsInferredType0 = odsBuilder.getIndexType();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
@@ -3936,9 +4036,11 @@ namespace async {
 // ::mlir::async::RuntimeResumeOp definitions
 //===----------------------------------------------------------------------===//
 
-RuntimeResumeOpAdaptor::RuntimeResumeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+RuntimeResumeOpAdaptor::RuntimeResumeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("async.runtime.resume", odsAttrs.getContext());
+}
 
-RuntimeResumeOpAdaptor::RuntimeResumeOpAdaptor(RuntimeResumeOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+RuntimeResumeOpAdaptor::RuntimeResumeOpAdaptor(RuntimeResumeOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange RuntimeResumeOpAdaptor::getOperands() {
   return odsOperands;
@@ -4064,9 +4166,11 @@ namespace async {
 // ::mlir::async::RuntimeSetAvailableOp definitions
 //===----------------------------------------------------------------------===//
 
-RuntimeSetAvailableOpAdaptor::RuntimeSetAvailableOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+RuntimeSetAvailableOpAdaptor::RuntimeSetAvailableOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("async.runtime.set_available", odsAttrs.getContext());
+}
 
-RuntimeSetAvailableOpAdaptor::RuntimeSetAvailableOpAdaptor(RuntimeSetAvailableOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+RuntimeSetAvailableOpAdaptor::RuntimeSetAvailableOpAdaptor(RuntimeSetAvailableOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange RuntimeSetAvailableOpAdaptor::getOperands() {
   return odsOperands;
@@ -4211,9 +4315,11 @@ namespace async {
 // ::mlir::async::RuntimeSetErrorOp definitions
 //===----------------------------------------------------------------------===//
 
-RuntimeSetErrorOpAdaptor::RuntimeSetErrorOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+RuntimeSetErrorOpAdaptor::RuntimeSetErrorOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("async.runtime.set_error", odsAttrs.getContext());
+}
 
-RuntimeSetErrorOpAdaptor::RuntimeSetErrorOpAdaptor(RuntimeSetErrorOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+RuntimeSetErrorOpAdaptor::RuntimeSetErrorOpAdaptor(RuntimeSetErrorOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange RuntimeSetErrorOpAdaptor::getOperands() {
   return odsOperands;
@@ -4358,9 +4464,11 @@ namespace async {
 // ::mlir::async::RuntimeStoreOp definitions
 //===----------------------------------------------------------------------===//
 
-RuntimeStoreOpAdaptor::RuntimeStoreOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+RuntimeStoreOpAdaptor::RuntimeStoreOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("async.runtime.store", odsAttrs.getContext());
+}
 
-RuntimeStoreOpAdaptor::RuntimeStoreOpAdaptor(RuntimeStoreOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+RuntimeStoreOpAdaptor::RuntimeStoreOpAdaptor(RuntimeStoreOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange RuntimeStoreOpAdaptor::getOperands() {
   return odsOperands;
@@ -4549,9 +4657,11 @@ namespace async {
 // ::mlir::async::YieldOp definitions
 //===----------------------------------------------------------------------===//
 
-YieldOpAdaptor::YieldOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+YieldOpAdaptor::YieldOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("async.yield", odsAttrs.getContext());
+}
 
-YieldOpAdaptor::YieldOpAdaptor(YieldOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+YieldOpAdaptor::YieldOpAdaptor(YieldOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange YieldOpAdaptor::getOperands() {
   return odsOperands;
@@ -4668,10 +4778,10 @@ void YieldOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 ::mlir::ParseResult YieldOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> operandsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> operandsOperands;
   ::llvm::SMLoc operandsOperandsLoc;
   (void)operandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> operandsTypes;
+  ::llvm::SmallVector<::mlir::Type, 1> operandsTypes;
 
   operandsOperandsLoc = parser.getCurrentLocation();
   if (parser.parseOperandList(operandsOperands))
@@ -4701,7 +4811,7 @@ void YieldOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
 }
 
-void YieldOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void YieldOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace async

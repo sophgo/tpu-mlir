@@ -135,9 +135,11 @@ namespace amx {
 // ::mlir::amx::x86_amx_tdpbf16ps definitions
 //===----------------------------------------------------------------------===//
 
-x86_amx_tdpbf16psAdaptor::x86_amx_tdpbf16psAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+x86_amx_tdpbf16psAdaptor::x86_amx_tdpbf16psAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("amx.tdpbf16ps", odsAttrs.getContext());
+}
 
-x86_amx_tdpbf16psAdaptor::x86_amx_tdpbf16psAdaptor(x86_amx_tdpbf16ps &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+x86_amx_tdpbf16psAdaptor::x86_amx_tdpbf16psAdaptor(x86_amx_tdpbf16ps op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange x86_amx_tdpbf16psAdaptor::getOperands() {
   return odsOperands;
@@ -281,9 +283,11 @@ namespace amx {
 // ::mlir::amx::x86_amx_tdpbssd definitions
 //===----------------------------------------------------------------------===//
 
-x86_amx_tdpbssdAdaptor::x86_amx_tdpbssdAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+x86_amx_tdpbssdAdaptor::x86_amx_tdpbssdAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("amx.tdpbssd", odsAttrs.getContext());
+}
 
-x86_amx_tdpbssdAdaptor::x86_amx_tdpbssdAdaptor(x86_amx_tdpbssd &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+x86_amx_tdpbssdAdaptor::x86_amx_tdpbssdAdaptor(x86_amx_tdpbssd op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange x86_amx_tdpbssdAdaptor::getOperands() {
   return odsOperands;
@@ -427,9 +431,11 @@ namespace amx {
 // ::mlir::amx::x86_amx_tdpbsud definitions
 //===----------------------------------------------------------------------===//
 
-x86_amx_tdpbsudAdaptor::x86_amx_tdpbsudAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+x86_amx_tdpbsudAdaptor::x86_amx_tdpbsudAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("amx.tdpbsud", odsAttrs.getContext());
+}
 
-x86_amx_tdpbsudAdaptor::x86_amx_tdpbsudAdaptor(x86_amx_tdpbsud &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+x86_amx_tdpbsudAdaptor::x86_amx_tdpbsudAdaptor(x86_amx_tdpbsud op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange x86_amx_tdpbsudAdaptor::getOperands() {
   return odsOperands;
@@ -573,9 +579,11 @@ namespace amx {
 // ::mlir::amx::x86_amx_tdpbusd definitions
 //===----------------------------------------------------------------------===//
 
-x86_amx_tdpbusdAdaptor::x86_amx_tdpbusdAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+x86_amx_tdpbusdAdaptor::x86_amx_tdpbusdAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("amx.tdpbusd", odsAttrs.getContext());
+}
 
-x86_amx_tdpbusdAdaptor::x86_amx_tdpbusdAdaptor(x86_amx_tdpbusd &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+x86_amx_tdpbusdAdaptor::x86_amx_tdpbusdAdaptor(x86_amx_tdpbusd op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange x86_amx_tdpbusdAdaptor::getOperands() {
   return odsOperands;
@@ -719,9 +727,11 @@ namespace amx {
 // ::mlir::amx::x86_amx_tdpbuud definitions
 //===----------------------------------------------------------------------===//
 
-x86_amx_tdpbuudAdaptor::x86_amx_tdpbuudAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+x86_amx_tdpbuudAdaptor::x86_amx_tdpbuudAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("amx.tdpbuud", odsAttrs.getContext());
+}
 
-x86_amx_tdpbuudAdaptor::x86_amx_tdpbuudAdaptor(x86_amx_tdpbuud &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+x86_amx_tdpbuudAdaptor::x86_amx_tdpbuudAdaptor(x86_amx_tdpbuud op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange x86_amx_tdpbuudAdaptor::getOperands() {
   return odsOperands;
@@ -865,9 +875,11 @@ namespace amx {
 // ::mlir::amx::x86_amx_tileloadd64 definitions
 //===----------------------------------------------------------------------===//
 
-x86_amx_tileloadd64Adaptor::x86_amx_tileloadd64Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+x86_amx_tileloadd64Adaptor::x86_amx_tileloadd64Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("amx.tileloadd64", odsAttrs.getContext());
+}
 
-x86_amx_tileloadd64Adaptor::x86_amx_tileloadd64Adaptor(x86_amx_tileloadd64 &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+x86_amx_tileloadd64Adaptor::x86_amx_tileloadd64Adaptor(x86_amx_tileloadd64 op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange x86_amx_tileloadd64Adaptor::getOperands() {
   return odsOperands;
@@ -995,9 +1007,11 @@ namespace amx {
 // ::mlir::amx::x86_amx_tilestored64 definitions
 //===----------------------------------------------------------------------===//
 
-x86_amx_tilestored64Adaptor::x86_amx_tilestored64Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+x86_amx_tilestored64Adaptor::x86_amx_tilestored64Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("amx.tilestored64", odsAttrs.getContext());
+}
 
-x86_amx_tilestored64Adaptor::x86_amx_tilestored64Adaptor(x86_amx_tilestored64 &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+x86_amx_tilestored64Adaptor::x86_amx_tilestored64Adaptor(x86_amx_tilestored64 op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange x86_amx_tilestored64Adaptor::getOperands() {
   return odsOperands;
@@ -1119,9 +1133,11 @@ namespace amx {
 // ::mlir::amx::x86_amx_tilezero definitions
 //===----------------------------------------------------------------------===//
 
-x86_amx_tilezeroAdaptor::x86_amx_tilezeroAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+x86_amx_tilezeroAdaptor::x86_amx_tilezeroAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("amx.tilezero", odsAttrs.getContext());
+}
 
-x86_amx_tilezeroAdaptor::x86_amx_tilezeroAdaptor(x86_amx_tilezero &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+x86_amx_tilezeroAdaptor::x86_amx_tilezeroAdaptor(x86_amx_tilezero op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange x86_amx_tilezeroAdaptor::getOperands() {
   return odsOperands;
@@ -1233,9 +1249,11 @@ namespace amx {
 // ::mlir::amx::TileLoadOp definitions
 //===----------------------------------------------------------------------===//
 
-TileLoadOpAdaptor::TileLoadOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+TileLoadOpAdaptor::TileLoadOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("amx.tile_load", odsAttrs.getContext());
+}
 
-TileLoadOpAdaptor::TileLoadOpAdaptor(TileLoadOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+TileLoadOpAdaptor::TileLoadOpAdaptor(TileLoadOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange TileLoadOpAdaptor::getOperands() {
   return odsOperands;
@@ -1398,7 +1416,7 @@ void TileLoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   ::mlir::OpAsmParser::UnresolvedOperand baseRawOperands[1];
   ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> baseOperands(baseRawOperands);  ::llvm::SMLoc baseOperandsLoc;
   (void)baseOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
   ::llvm::SMLoc indicesOperandsLoc;
   (void)indicesOperandsLoc;
   ::mlir::Type baseRawTypes[1];
@@ -1473,7 +1491,7 @@ void TileLoadOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void TileLoadOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void TileLoadOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
   for (::mlir::Value value : getODSOperands(0))
     effects.emplace_back(::mlir::MemoryEffects::Read::get(), value, ::mlir::SideEffects::DefaultResource::get());
 }
@@ -1489,9 +1507,11 @@ namespace amx {
 // ::mlir::amx::TileMulFOp definitions
 //===----------------------------------------------------------------------===//
 
-TileMulFOpAdaptor::TileMulFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+TileMulFOpAdaptor::TileMulFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("amx.tile_mulf", odsAttrs.getContext());
+}
 
-TileMulFOpAdaptor::TileMulFOpAdaptor(TileMulFOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+TileMulFOpAdaptor::TileMulFOpAdaptor(TileMulFOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange TileMulFOpAdaptor::getOperands() {
   return odsOperands;
@@ -1756,7 +1776,7 @@ void TileMulFOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void TileMulFOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void TileMulFOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace amx
@@ -1770,9 +1790,11 @@ namespace amx {
 // ::mlir::amx::TileMulIOp definitions
 //===----------------------------------------------------------------------===//
 
-TileMulIOpAdaptor::TileMulIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+TileMulIOpAdaptor::TileMulIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("amx.tile_muli", odsAttrs.getContext());
+}
 
-TileMulIOpAdaptor::TileMulIOpAdaptor(TileMulIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+TileMulIOpAdaptor::TileMulIOpAdaptor(TileMulIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange TileMulIOpAdaptor::getOperands() {
   return odsOperands;
@@ -1806,8 +1828,8 @@ std::pair<unsigned, unsigned> TileMulIOpAdaptor::getODSOperandIndexAndLength(uns
 
 ::mlir::UnitAttr TileMulIOpAdaptor::isZextLhsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::UnitAttr attr = odsAttrs.get("isZextLhs").dyn_cast_or_null<::mlir::UnitAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, TileMulIOp::isZextLhsAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
+    return attr;
 }
 
 bool TileMulIOpAdaptor::isZextLhs() {
@@ -1817,8 +1839,8 @@ bool TileMulIOpAdaptor::isZextLhs() {
 
 ::mlir::UnitAttr TileMulIOpAdaptor::isZextRhsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::UnitAttr attr = odsAttrs.get("isZextRhs").dyn_cast_or_null<::mlir::UnitAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, TileMulIOp::isZextRhsAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
+    return attr;
 }
 
 bool TileMulIOpAdaptor::isZextRhs() {
@@ -1827,16 +1849,28 @@ bool TileMulIOpAdaptor::isZextRhs() {
 }
 
 ::mlir::LogicalResult TileMulIOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_isZextLhs = odsAttrs.get("isZextLhs");
-    if (tblgen_isZextLhs && !((tblgen_isZextLhs.isa<::mlir::UnitAttr>())))
-      return emitError(loc, "'amx.tile_muli' op ""attribute 'isZextLhs' failed to satisfy constraint: unit attribute");
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_isZextLhs;
+  ::mlir::Attribute tblgen_isZextRhs;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == TileMulIOp::isZextLhsAttrName(*odsOpName)) {
+      tblgen_isZextLhs = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == TileMulIOp::isZextRhsAttrName(*odsOpName)) {
+      tblgen_isZextRhs = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_isZextRhs = odsAttrs.get("isZextRhs");
-    if (tblgen_isZextRhs && !((tblgen_isZextRhs.isa<::mlir::UnitAttr>())))
-      return emitError(loc, "'amx.tile_muli' op ""attribute 'isZextRhs' failed to satisfy constraint: unit attribute");
-  }
+
+  if (tblgen_isZextLhs && !((tblgen_isZextLhs.isa<::mlir::UnitAttr>())))
+    return emitError(loc, "'amx.tile_muli' op ""attribute 'isZextLhs' failed to satisfy constraint: unit attribute");
+
+  if (tblgen_isZextRhs && !((tblgen_isZextRhs.isa<::mlir::UnitAttr>())))
+    return emitError(loc, "'amx.tile_muli' op ""attribute 'isZextRhs' failed to satisfy constraint: unit attribute");
   return ::mlir::success();
 }
 
@@ -1895,7 +1929,7 @@ std::pair<unsigned, unsigned> TileMulIOp::getODSResultIndexAndLength(unsigned in
 }
 
 ::mlir::UnitAttr TileMulIOp::isZextLhsAttr() {
-  return (*this)->getAttr(isZextLhsAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, isZextLhsAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
 }
 
 bool TileMulIOp::isZextLhs() {
@@ -1904,7 +1938,7 @@ bool TileMulIOp::isZextLhs() {
 }
 
 ::mlir::UnitAttr TileMulIOp::isZextRhsAttr() {
-  return (*this)->getAttr(isZextRhsAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, isZextRhsAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
 }
 
 bool TileMulIOp::isZextRhs() {
@@ -1991,16 +2025,28 @@ void TileMulIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::LogicalResult TileMulIOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_isZextLhs = (*this)->getAttr(isZextLhsAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_AMX0(*this, tblgen_isZextLhs, "isZextLhs")))
-      return ::mlir::failure();
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_isZextLhs;
+  ::mlir::Attribute tblgen_isZextRhs;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == isZextLhsAttrName()) {
+      tblgen_isZextLhs = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == isZextRhsAttrName()) {
+      tblgen_isZextRhs = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_isZextRhs = (*this)->getAttr(isZextRhsAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_AMX0(*this, tblgen_isZextRhs, "isZextRhs")))
-      return ::mlir::failure();
-  }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_AMX0(*this, tblgen_isZextLhs, "isZextLhs")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_AMX0(*this, tblgen_isZextRhs, "isZextRhs")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -2164,7 +2210,7 @@ void TileMulIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void TileMulIOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void TileMulIOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace amx
@@ -2178,9 +2224,11 @@ namespace amx {
 // ::mlir::amx::TileStoreOp definitions
 //===----------------------------------------------------------------------===//
 
-TileStoreOpAdaptor::TileStoreOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+TileStoreOpAdaptor::TileStoreOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("amx.tile_store", odsAttrs.getContext());
+}
 
-TileStoreOpAdaptor::TileStoreOpAdaptor(TileStoreOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+TileStoreOpAdaptor::TileStoreOpAdaptor(TileStoreOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange TileStoreOpAdaptor::getOperands() {
   return odsOperands;
@@ -2351,7 +2399,7 @@ void TileStoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   ::mlir::OpAsmParser::UnresolvedOperand baseRawOperands[1];
   ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> baseOperands(baseRawOperands);  ::llvm::SMLoc baseOperandsLoc;
   (void)baseOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
   ::llvm::SMLoc indicesOperandsLoc;
   (void)indicesOperandsLoc;
   ::mlir::OpAsmParser::UnresolvedOperand valRawOperands[1];
@@ -2439,7 +2487,7 @@ void TileStoreOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void TileStoreOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void TileStoreOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
   for (::mlir::Value value : getODSOperands(0))
     effects.emplace_back(::mlir::MemoryEffects::Write::get(), value, ::mlir::SideEffects::DefaultResource::get());
 }
@@ -2455,9 +2503,11 @@ namespace amx {
 // ::mlir::amx::TileZeroOp definitions
 //===----------------------------------------------------------------------===//
 
-TileZeroOpAdaptor::TileZeroOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+TileZeroOpAdaptor::TileZeroOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("amx.tile_zero", odsAttrs.getContext());
+}
 
-TileZeroOpAdaptor::TileZeroOpAdaptor(TileZeroOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+TileZeroOpAdaptor::TileZeroOpAdaptor(TileZeroOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange TileZeroOpAdaptor::getOperands() {
   return odsOperands;
@@ -2572,7 +2622,7 @@ void TileZeroOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void TileZeroOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void TileZeroOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace amx

@@ -10,16 +10,7 @@ namespace mlir {
 namespace tensor {
 
 class TensorDialect : public ::mlir::Dialect {
-  explicit TensorDialect(::mlir::MLIRContext *context)
-    : ::mlir::Dialect(getDialectNamespace(), context,
-      ::mlir::TypeID::get<TensorDialect>()) {
-    
-    getContext()->getOrLoadDialect<arith::ArithmeticDialect>();
-
-    getContext()->getOrLoadDialect<complex::ComplexDialect>();
-
-    initialize();
-  }
+  explicit TensorDialect(::mlir::MLIRContext *context);
 
   void initialize();
   friend class ::mlir::MLIRContext;

@@ -26,6 +26,11 @@ MLIR_CAPI_EXPORTED MlirPass mlirCreateGPUGpuLaunchSinkIndexComputations();
 MLIR_CAPI_EXPORTED void mlirRegisterGPUGpuLaunchSinkIndexComputations();
 
 
+/* Create GPU Pass. */
+MLIR_CAPI_EXPORTED MlirPass mlirCreateGPUGpuMapParallelLoopsPass();
+MLIR_CAPI_EXPORTED void mlirRegisterGPUGpuMapParallelLoopsPass();
+
+
 
 #ifdef __cplusplus
 }

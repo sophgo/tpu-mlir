@@ -10,22 +10,7 @@ namespace mlir {
 namespace linalg {
 
 class LinalgDialect : public ::mlir::Dialect {
-  explicit LinalgDialect(::mlir::MLIRContext *context)
-    : ::mlir::Dialect(getDialectNamespace(), context,
-      ::mlir::TypeID::get<LinalgDialect>()) {
-    
-    getContext()->getOrLoadDialect<arith::ArithmeticDialect>();
-
-    getContext()->getOrLoadDialect<AffineDialect>();
-
-    getContext()->getOrLoadDialect<math::MathDialect>();
-
-    getContext()->getOrLoadDialect<memref::MemRefDialect>();
-
-    getContext()->getOrLoadDialect<tensor::TensorDialect>();
-
-    initialize();
-  }
+  explicit LinalgDialect(::mlir::MLIRContext *context);
 
   void initialize();
   friend class ::mlir::MLIRContext;

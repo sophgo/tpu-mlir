@@ -8,6 +8,60 @@
 
 namespace mlir {
 namespace omp {
+// CancellationConstructType Clause
+enum class ClauseCancellationConstructType : uint32_t {
+  Parallel = 0,
+  Loop = 1,
+  Sections = 2,
+  Taskgroup = 3,
+};
+
+::llvm::Optional<ClauseCancellationConstructType> symbolizeClauseCancellationConstructType(uint32_t);
+::llvm::StringRef stringifyClauseCancellationConstructType(ClauseCancellationConstructType);
+::llvm::Optional<ClauseCancellationConstructType> symbolizeClauseCancellationConstructType(::llvm::StringRef);
+inline constexpr unsigned getMaxEnumValForClauseCancellationConstructType() {
+  return 3;
+}
+
+
+inline ::llvm::StringRef stringifyEnum(ClauseCancellationConstructType enumValue) {
+  return stringifyClauseCancellationConstructType(enumValue);
+}
+
+template <typename EnumType>
+::llvm::Optional<EnumType> symbolizeEnum(::llvm::StringRef);
+
+template <>
+inline ::llvm::Optional<ClauseCancellationConstructType> symbolizeEnum<ClauseCancellationConstructType>(::llvm::StringRef str) {
+  return symbolizeClauseCancellationConstructType(str);
+}
+} // namespace omp
+} // namespace mlir
+
+namespace llvm {
+template<> struct DenseMapInfo<::mlir::omp::ClauseCancellationConstructType> {
+  using StorageInfo = ::llvm::DenseMapInfo<uint32_t>;
+
+  static inline ::mlir::omp::ClauseCancellationConstructType getEmptyKey() {
+    return static_cast<::mlir::omp::ClauseCancellationConstructType>(StorageInfo::getEmptyKey());
+  }
+
+  static inline ::mlir::omp::ClauseCancellationConstructType getTombstoneKey() {
+    return static_cast<::mlir::omp::ClauseCancellationConstructType>(StorageInfo::getTombstoneKey());
+  }
+
+  static unsigned getHashValue(const ::mlir::omp::ClauseCancellationConstructType &val) {
+    return StorageInfo::getHashValue(static_cast<uint32_t>(val));
+  }
+
+  static bool isEqual(const ::mlir::omp::ClauseCancellationConstructType &lhs, const ::mlir::omp::ClauseCancellationConstructType &rhs) {
+    return lhs == rhs;
+  }
+};
+}
+
+namespace mlir {
+namespace omp {
 // depend clause
 enum class ClauseDepend : uint32_t {
   dependsource = 0,

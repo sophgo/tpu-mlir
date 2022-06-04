@@ -207,6 +207,115 @@ template<> struct DenseMapInfo<::mlir::LLVM::AtomicOrdering> {
 
 namespace mlir {
 namespace LLVM {
+namespace cconv {
+// Calling Conventions
+enum class CConv : uint64_t {
+  C = 0,
+  Fast = 8,
+  Cold = 9,
+  GHC = 10,
+  HiPE = 11,
+  WebKit_JS = 12,
+  AnyReg = 13,
+  PreserveMost = 14,
+  PreserveAll = 15,
+  Swift = 16,
+  CXX_FAST_TLS = 17,
+  Tail = 18,
+  CFGuard_Check = 19,
+  SwiftTail = 20,
+  X86_StdCall = 64,
+  X86_FastCall = 65,
+  ARM_APCS = 66,
+  ARM_AAPCS = 67,
+  ARM_AAPCS_VFP = 68,
+  MSP430_INTR = 69,
+  X86_ThisCall = 70,
+  PTX_Kernel = 71,
+  PTX_Device = 72,
+  SPIR_FUNC = 75,
+  SPIR_KERNEL = 76,
+  Intel_OCL_BI = 77,
+  X86_64_SysV = 78,
+  Win64 = 79,
+  X86_VectorCall = 80,
+  HHVM = 81,
+  HHVM_C = 82,
+  X86_INTR = 83,
+  AVR_INTR = 84,
+  AVR_BUILTIN = 86,
+  AMDGPU_VS = 87,
+  AMDGPU_GS = 88,
+  AMDGPU_CS = 90,
+  AMDGPU_KERNEL = 91,
+  X86_RegCall = 92,
+  AMDGPU_HS = 93,
+  MSP430_BUILTIN = 94,
+  AMDGPU_LS = 95,
+  AMDGPU_ES = 96,
+  AArch64_VectorCall = 97,
+  AArch64_SVE_VectorCall = 98,
+  WASM_EmscriptenInvoke = 99,
+  AMDGPU_Gfx = 100,
+  M68k_INTR = 101,
+};
+
+::llvm::Optional<CConv> symbolizeCConv(uint64_t);
+::llvm::StringRef stringifyCConv(CConv);
+::llvm::Optional<CConv> symbolizeCConv(::llvm::StringRef);
+inline constexpr unsigned getMaxEnumValForCConv() {
+  return 101;
+}
+
+
+inline ::llvm::StringRef stringifyEnum(CConv enumValue) {
+  return stringifyCConv(enumValue);
+}
+
+template <typename EnumType>
+::llvm::Optional<EnumType> symbolizeEnum(::llvm::StringRef);
+
+template <>
+inline ::llvm::Optional<CConv> symbolizeEnum<CConv>(::llvm::StringRef str) {
+  return symbolizeCConv(str);
+}
+
+class CConvAttr : public ::mlir::IntegerAttr {
+public:
+  using ValueType = CConv;
+  using ::mlir::IntegerAttr::IntegerAttr;
+  static bool classof(::mlir::Attribute attr);
+  static CConvAttr get(::mlir::MLIRContext *context, CConv val);
+  CConv getValue() const;
+};
+} // namespace cconv
+} // namespace LLVM
+} // namespace mlir
+
+namespace llvm {
+template<> struct DenseMapInfo<::mlir::LLVM::cconv::CConv> {
+  using StorageInfo = ::llvm::DenseMapInfo<uint64_t>;
+
+  static inline ::mlir::LLVM::cconv::CConv getEmptyKey() {
+    return static_cast<::mlir::LLVM::cconv::CConv>(StorageInfo::getEmptyKey());
+  }
+
+  static inline ::mlir::LLVM::cconv::CConv getTombstoneKey() {
+    return static_cast<::mlir::LLVM::cconv::CConv>(StorageInfo::getTombstoneKey());
+  }
+
+  static unsigned getHashValue(const ::mlir::LLVM::cconv::CConv &val) {
+    return StorageInfo::getHashValue(static_cast<uint64_t>(val));
+  }
+
+  static bool isEqual(const ::mlir::LLVM::cconv::CConv &lhs, const ::mlir::LLVM::cconv::CConv &rhs) {
+    return lhs == rhs;
+  }
+};
+}
+
+namespace mlir {
+namespace LLVM {
 // llvm.fcmp comparison predicate
 enum class FCmpPredicate : uint64_t {
   _false = 0,
@@ -291,7 +400,7 @@ enum class FastmathFlags : uint32_t {
   contract = 16,
   afn = 32,
   reassoc = 64,
-  fast = 128,
+  fast = 127,
 };
 
 ::llvm::Optional<FastmathFlags> symbolizeFastmathFlags(uint32_t);

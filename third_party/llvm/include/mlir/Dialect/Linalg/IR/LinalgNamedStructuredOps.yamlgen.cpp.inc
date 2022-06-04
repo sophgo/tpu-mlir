@@ -47,10 +47,11 @@ if (castIter != attrs.end()) {
 }
 
 ParseResult CopyOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<CopyOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    CopyOp::getNumRegionArgs(), CopyOp::getRegionBuilder());
 }
 void CopyOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult CopyOp::fold(ArrayRef<Attribute>,
@@ -123,10 +124,11 @@ if (castIter != attrs.end()) {
 }
 
 ParseResult ElemwiseUnaryOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<ElemwiseUnaryOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    ElemwiseUnaryOp::getNumRegionArgs(), ElemwiseUnaryOp::getRegionBuilder());
 }
 void ElemwiseUnaryOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult ElemwiseUnaryOp::fold(ArrayRef<Attribute>,
@@ -200,10 +202,11 @@ if (castIter != attrs.end()) {
 }
 
 ParseResult ElemwiseBinaryOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<ElemwiseBinaryOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    ElemwiseBinaryOp::getNumRegionArgs(), ElemwiseBinaryOp::getRegionBuilder());
 }
 void ElemwiseBinaryOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult ElemwiseBinaryOp::fold(ArrayRef<Attribute>,
@@ -285,10 +288,11 @@ if (castIter != attrs.end()) {
 }
 
 ParseResult MatmulOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<MatmulOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    MatmulOp::getNumRegionArgs(), MatmulOp::getRegionBuilder());
 }
 void MatmulOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult MatmulOp::fold(ArrayRef<Attribute>,
@@ -362,10 +366,11 @@ void MatmulUnsignedOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult MatmulUnsignedOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<MatmulUnsignedOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    MatmulUnsignedOp::getNumRegionArgs(), MatmulUnsignedOp::getRegionBuilder());
 }
 void MatmulUnsignedOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult MatmulUnsignedOp::fold(ArrayRef<Attribute>,
@@ -447,10 +452,11 @@ void QuantizedMatmulOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult QuantizedMatmulOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<QuantizedMatmulOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    QuantizedMatmulOp::getNumRegionArgs(), QuantizedMatmulOp::getRegionBuilder());
 }
 void QuantizedMatmulOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult QuantizedMatmulOp::fold(ArrayRef<Attribute>,
@@ -527,10 +533,11 @@ void Mmt4DOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult Mmt4DOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<Mmt4DOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    Mmt4DOp::getNumRegionArgs(), Mmt4DOp::getRegionBuilder());
 }
 void Mmt4DOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult Mmt4DOp::fold(ArrayRef<Attribute>,
@@ -605,10 +612,11 @@ void BatchMatmulOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult BatchMatmulOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<BatchMatmulOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    BatchMatmulOp::getNumRegionArgs(), BatchMatmulOp::getRegionBuilder());
 }
 void BatchMatmulOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult BatchMatmulOp::fold(ArrayRef<Attribute>,
@@ -691,10 +699,11 @@ void QuantizedBatchMatmulOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult QuantizedBatchMatmulOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<QuantizedBatchMatmulOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    QuantizedBatchMatmulOp::getNumRegionArgs(), QuantizedBatchMatmulOp::getRegionBuilder());
 }
 void QuantizedBatchMatmulOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult QuantizedBatchMatmulOp::fold(ArrayRef<Attribute>,
@@ -767,10 +776,11 @@ void MatvecOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult MatvecOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<MatvecOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    MatvecOp::getNumRegionArgs(), MatvecOp::getRegionBuilder());
 }
 void MatvecOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult MatvecOp::fold(ArrayRef<Attribute>,
@@ -843,10 +853,11 @@ void VecmatOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult VecmatOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<VecmatOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    VecmatOp::getNumRegionArgs(), VecmatOp::getRegionBuilder());
 }
 void VecmatOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult VecmatOp::fold(ArrayRef<Attribute>,
@@ -920,10 +931,11 @@ void BatchMatvecOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult BatchMatvecOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<BatchMatvecOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    BatchMatvecOp::getNumRegionArgs(), BatchMatvecOp::getRegionBuilder());
 }
 void BatchMatvecOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult BatchMatvecOp::fold(ArrayRef<Attribute>,
@@ -995,10 +1007,11 @@ void DotOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult DotOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<DotOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    DotOp::getNumRegionArgs(), DotOp::getRegionBuilder());
 }
 void DotOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult DotOp::fold(ArrayRef<Attribute>,
@@ -1071,10 +1084,11 @@ void Conv1DOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult Conv1DOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<Conv1DOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    Conv1DOp::getNumRegionArgs(), Conv1DOp::getRegionBuilder());
 }
 void Conv1DOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult Conv1DOp::fold(ArrayRef<Attribute>,
@@ -1149,10 +1163,11 @@ void Conv2DOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult Conv2DOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<Conv2DOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    Conv2DOp::getNumRegionArgs(), Conv2DOp::getRegionBuilder());
 }
 void Conv2DOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult Conv2DOp::fold(ArrayRef<Attribute>,
@@ -1229,10 +1244,11 @@ void Conv3DOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult Conv3DOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<Conv3DOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    Conv3DOp::getNumRegionArgs(), Conv3DOp::getRegionBuilder());
 }
 void Conv3DOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult Conv3DOp::fold(ArrayRef<Attribute>,
@@ -1338,10 +1354,11 @@ void Conv1DNwcWcfOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult Conv1DNwcWcfOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<Conv1DNwcWcfOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    Conv1DNwcWcfOp::getNumRegionArgs(), Conv1DNwcWcfOp::getRegionBuilder());
 }
 void Conv1DNwcWcfOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult Conv1DNwcWcfOp::fold(ArrayRef<Attribute>,
@@ -1457,10 +1474,11 @@ void Conv2DNhwcHwcfOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult Conv2DNhwcHwcfOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<Conv2DNhwcHwcfOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    Conv2DNhwcHwcfOp::getNumRegionArgs(), Conv2DNhwcHwcfOp::getRegionBuilder());
 }
 void Conv2DNhwcHwcfOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult Conv2DNhwcHwcfOp::fold(ArrayRef<Attribute>,
@@ -1584,10 +1602,11 @@ void Conv2DNhwcHwcfQOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult Conv2DNhwcHwcfQOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<Conv2DNhwcHwcfQOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    Conv2DNhwcHwcfQOp::getNumRegionArgs(), Conv2DNhwcHwcfQOp::getRegionBuilder());
 }
 void Conv2DNhwcHwcfQOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult Conv2DNhwcHwcfQOp::fold(ArrayRef<Attribute>,
@@ -1703,10 +1722,11 @@ void Conv2DNchwFchwOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult Conv2DNchwFchwOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<Conv2DNchwFchwOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    Conv2DNchwFchwOp::getNumRegionArgs(), Conv2DNchwFchwOp::getRegionBuilder());
 }
 void Conv2DNchwFchwOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult Conv2DNchwFchwOp::fold(ArrayRef<Attribute>,
@@ -1832,10 +1852,11 @@ void Conv3DNdhwcDhwcfOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult Conv3DNdhwcDhwcfOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<Conv3DNdhwcDhwcfOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    Conv3DNdhwcDhwcfOp::getNumRegionArgs(), Conv3DNdhwcDhwcfOp::getRegionBuilder());
 }
 void Conv3DNdhwcDhwcfOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult Conv3DNdhwcDhwcfOp::fold(ArrayRef<Attribute>,
@@ -1940,10 +1961,11 @@ void DepthwiseConv1DNwcWcOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult DepthwiseConv1DNwcWcOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<DepthwiseConv1DNwcWcOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    DepthwiseConv1DNwcWcOp::getNumRegionArgs(), DepthwiseConv1DNwcWcOp::getRegionBuilder());
 }
 void DepthwiseConv1DNwcWcOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult DepthwiseConv1DNwcWcOp::fold(ArrayRef<Attribute>,
@@ -2058,10 +2080,11 @@ void DepthwiseConv2DNhwcHwcOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult DepthwiseConv2DNhwcHwcOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<DepthwiseConv2DNhwcHwcOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    DepthwiseConv2DNhwcHwcOp::getNumRegionArgs(), DepthwiseConv2DNhwcHwcOp::getRegionBuilder());
 }
 void DepthwiseConv2DNhwcHwcOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult DepthwiseConv2DNhwcHwcOp::fold(ArrayRef<Attribute>,
@@ -2184,10 +2207,11 @@ void DepthwiseConv2DNhwcHwcQOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult DepthwiseConv2DNhwcHwcQOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<DepthwiseConv2DNhwcHwcQOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    DepthwiseConv2DNhwcHwcQOp::getNumRegionArgs(), DepthwiseConv2DNhwcHwcQOp::getRegionBuilder());
 }
 void DepthwiseConv2DNhwcHwcQOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult DepthwiseConv2DNhwcHwcQOp::fold(ArrayRef<Attribute>,
@@ -2303,10 +2327,11 @@ void DepthwiseConv2DNhwcHwcmOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult DepthwiseConv2DNhwcHwcmOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<DepthwiseConv2DNhwcHwcmOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    DepthwiseConv2DNhwcHwcmOp::getNumRegionArgs(), DepthwiseConv2DNhwcHwcmOp::getRegionBuilder());
 }
 void DepthwiseConv2DNhwcHwcmOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult DepthwiseConv2DNhwcHwcmOp::fold(ArrayRef<Attribute>,
@@ -2430,10 +2455,11 @@ void DepthwiseConv2DNhwcHwcmQOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult DepthwiseConv2DNhwcHwcmQOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<DepthwiseConv2DNhwcHwcmQOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    DepthwiseConv2DNhwcHwcmQOp::getNumRegionArgs(), DepthwiseConv2DNhwcHwcmQOp::getRegionBuilder());
 }
 void DepthwiseConv2DNhwcHwcmQOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult DepthwiseConv2DNhwcHwcmQOp::fold(ArrayRef<Attribute>,
@@ -2546,10 +2572,11 @@ void PoolingNhwcSumOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult PoolingNhwcSumOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<PoolingNhwcSumOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    PoolingNhwcSumOp::getNumRegionArgs(), PoolingNhwcSumOp::getRegionBuilder());
 }
 void PoolingNhwcSumOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult PoolingNhwcSumOp::fold(ArrayRef<Attribute>,
@@ -2557,6 +2584,123 @@ LogicalResult PoolingNhwcSumOp::fold(ArrayRef<Attribute>,
   return foldMemRefCast(*this);
 }
 void PoolingNhwcSumOp::getEffects(SmallVectorImpl<
+    SideEffects::EffectInstance<MemoryEffects::Effect> >&effects) {
+      SmallVector<Value> inputBuffers = getInputBufferOperands();
+      SmallVector<Value> outputBuffers = getOutputBufferOperands();
+      getGenericEffectsImpl(effects,
+        getOperation()->getResults(), inputBuffers, outputBuffers);
+}
+
+//===----------------------------------------------------------------------===//
+// Implementation of PoolingNchwSumOp
+//===----------------------------------------------------------------------===//
+
+ArrayAttr PoolingNchwSumOp::iterator_types() {
+  return Builder(getContext()).getStrArrayAttr(SmallVector<StringRef>{ getParallelIteratorTypeName(), getParallelIteratorTypeName(), getParallelIteratorTypeName(), getParallelIteratorTypeName(), getReductionIteratorTypeName(), getReductionIteratorTypeName() });
+}
+
+static SmallVector<AffineExpr> getSymbolBindings(PoolingNchwSumOp self) {
+  MLIRContext *context = self.getContext();
+  SmallVector<AffineExpr> exprs;
+  exprs.push_back(getAffineSymbolExpr(0, context));
+  exprs.push_back(getAffineSymbolExpr(1, context));
+  exprs.push_back(getAffineSymbolExpr(2, context));
+
+int64_t cst3 = self.strides().getValues<int64_t>()[0];
+exprs.push_back(getAffineConstantExpr(cst3, context));
+
+  exprs.push_back(getAffineSymbolExpr(4, context));
+
+int64_t cst5 = self.dilations().getValues<int64_t>()[0];
+exprs.push_back(getAffineConstantExpr(cst5, context));
+
+  exprs.push_back(getAffineSymbolExpr(6, context));
+
+int64_t cst7 = self.strides().getValues<int64_t>()[1];
+exprs.push_back(getAffineConstantExpr(cst7, context));
+
+  exprs.push_back(getAffineSymbolExpr(8, context));
+
+int64_t cst9 = self.dilations().getValues<int64_t>()[1];
+exprs.push_back(getAffineConstantExpr(cst9, context));
+
+  return exprs;
+}
+
+ArrayAttr PoolingNchwSumOp::indexing_maps() {
+  static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
+  ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
+  if (cached)
+    return cached;
+
+  MLIRContext *context = getContext();
+  auto symbolBindings = getSymbolBindings(*this);
+  SmallVector<AffineMap> maps;
+  maps.push_back(mlir::parseAttribute("affine_map<(d0, d1, d2, d3, d4, d5)[s0, s1, s2, s3, s4, s5, s6, s7, s8, s9] -> (d0, d1, d2 * s3 + d4 * s5, d3 * s7 + d5 * s9)>", context).cast<AffineMapAttr>().getValue());
+  maps.back() = simplifyAffineMap(maps.back().replaceDimsAndSymbols({}, symbolBindings, 6, 0));
+  maps.push_back(mlir::parseAttribute("affine_map<(d0, d1, d2, d3, d4, d5)[s0, s1, s2, s3, s4, s5, s6, s7, s8, s9] -> (d4, d5)>", context).cast<AffineMapAttr>().getValue());
+  maps.back() = simplifyAffineMap(maps.back().replaceDimsAndSymbols({}, symbolBindings, 6, 0));
+  maps.push_back(mlir::parseAttribute("affine_map<(d0, d1, d2, d3, d4, d5)[s0, s1, s2, s3, s4, s5, s6, s7, s8, s9] -> (d0, d1, d2, d3)>", context).cast<AffineMapAttr>().getValue());
+  maps.back() = simplifyAffineMap(maps.back().replaceDimsAndSymbols({}, symbolBindings, 6, 0));
+  cached = Builder(context).getAffineMapArrayAttr(maps);
+  getOperation()->setAttr(memoizeAttr, cached);
+  return cached;
+}
+
+unsigned PoolingNchwSumOp::getNumRegionArgs() { return 3; }
+
+std::string PoolingNchwSumOp::getLibraryCallName() {
+  return generateLibraryCallName(getOperation());
+}
+
+bool PoolingNchwSumOp::hasDynamicIndexingMaps() { return true; }
+LogicalResult PoolingNchwSumOp::verifyIndexingMapRequiredAttributes() {
+  Operation *op = getOperation();
+  
+if (auto attr = op->getAttrOfType<DenseElementsAttr>("strides")) {
+  if (!attr.getType().getElementType().isInteger(64))
+    return op->emitError("incorrect element type for index attribute 'strides'");
+  if (attr.getType().getShape() != ArrayRef<int64_t>{ 2 })
+    return op->emitError("incorrect shape for index attribute 'strides'");
+}
+
+
+if (auto attr = op->getAttrOfType<DenseElementsAttr>("dilations")) {
+  if (!attr.getType().getElementType().isInteger(64))
+    return op->emitError("incorrect element type for index attribute 'dilations'");
+  if (attr.getType().getShape() != ArrayRef<int64_t>{ 2 })
+    return op->emitError("incorrect shape for index attribute 'dilations'");
+}
+
+  return success();
+}
+
+void PoolingNchwSumOp::regionBuilder(ImplicitLocOpBuilder &b,
+                        Block &block, ArrayRef<NamedAttribute> attrs) {
+  assert(3 > 0 && block.getNumArguments() == 3 &&
+         "PoolingNchwSumOp regionBuilder expects 3 (>=0) args");
+  RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
+  SmallVector<Value> yields;
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(2), value1);
+  yields.push_back(value2);
+  helper.yieldOutputs(yields);
+}
+
+ParseResult PoolingNchwSumOp::parse(OpAsmParser &parser, OperationState &result) {
+  return ::parseNamedStructuredOp(parser, result,
+    PoolingNchwSumOp::getNumRegionArgs(), PoolingNchwSumOp::getRegionBuilder());
+}
+void PoolingNchwSumOp::print(OpAsmPrinter &p) {
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
+}
+
+LogicalResult PoolingNchwSumOp::fold(ArrayRef<Attribute>,
+                        SmallVectorImpl<OpFoldResult> &) {
+  return foldMemRefCast(*this);
+}
+void PoolingNchwSumOp::getEffects(SmallVectorImpl<
     SideEffects::EffectInstance<MemoryEffects::Effect> >&effects) {
       SmallVector<Value> inputBuffers = getInputBufferOperands();
       SmallVector<Value> outputBuffers = getOutputBufferOperands();
@@ -2662,10 +2806,11 @@ void PoolingNhwcMaxOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult PoolingNhwcMaxOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<PoolingNhwcMaxOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    PoolingNhwcMaxOp::getNumRegionArgs(), PoolingNhwcMaxOp::getRegionBuilder());
 }
 void PoolingNhwcMaxOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult PoolingNhwcMaxOp::fold(ArrayRef<Attribute>,
@@ -2778,10 +2923,11 @@ void PoolingNhwcMaxUnsignedOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult PoolingNhwcMaxUnsignedOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<PoolingNhwcMaxUnsignedOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    PoolingNhwcMaxUnsignedOp::getNumRegionArgs(), PoolingNhwcMaxUnsignedOp::getRegionBuilder());
 }
 void PoolingNhwcMaxUnsignedOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult PoolingNhwcMaxUnsignedOp::fold(ArrayRef<Attribute>,
@@ -2894,10 +3040,11 @@ void PoolingNchwMaxOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult PoolingNchwMaxOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<PoolingNchwMaxOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    PoolingNchwMaxOp::getNumRegionArgs(), PoolingNchwMaxOp::getRegionBuilder());
 }
 void PoolingNchwMaxOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult PoolingNchwMaxOp::fold(ArrayRef<Attribute>,
@@ -3010,10 +3157,11 @@ void PoolingNhwcMinOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult PoolingNhwcMinOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<PoolingNhwcMinOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    PoolingNhwcMinOp::getNumRegionArgs(), PoolingNhwcMinOp::getRegionBuilder());
 }
 void PoolingNhwcMinOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult PoolingNhwcMinOp::fold(ArrayRef<Attribute>,
@@ -3126,10 +3274,11 @@ void PoolingNhwcMinUnsignedOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult PoolingNhwcMinUnsignedOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<PoolingNhwcMinUnsignedOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    PoolingNhwcMinUnsignedOp::getNumRegionArgs(), PoolingNhwcMinUnsignedOp::getRegionBuilder());
 }
 void PoolingNhwcMinUnsignedOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult PoolingNhwcMinUnsignedOp::fold(ArrayRef<Attribute>,
@@ -3252,10 +3401,11 @@ void PoolingNdhwcSumOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult PoolingNdhwcSumOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<PoolingNdhwcSumOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    PoolingNdhwcSumOp::getNumRegionArgs(), PoolingNdhwcSumOp::getRegionBuilder());
 }
 void PoolingNdhwcSumOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult PoolingNdhwcSumOp::fold(ArrayRef<Attribute>,
@@ -3378,10 +3528,11 @@ void PoolingNdhwcMaxOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult PoolingNdhwcMaxOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<PoolingNdhwcMaxOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    PoolingNdhwcMaxOp::getNumRegionArgs(), PoolingNdhwcMaxOp::getRegionBuilder());
 }
 void PoolingNdhwcMaxOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult PoolingNdhwcMaxOp::fold(ArrayRef<Attribute>,
@@ -3504,10 +3655,11 @@ void PoolingNdhwcMinOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult PoolingNdhwcMinOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<PoolingNdhwcMinOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    PoolingNdhwcMinOp::getNumRegionArgs(), PoolingNdhwcMinOp::getRegionBuilder());
 }
 void PoolingNdhwcMinOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult PoolingNdhwcMinOp::fold(ArrayRef<Attribute>,
@@ -3562,10 +3714,11 @@ void FillOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult FillOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<FillOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    FillOp::getNumRegionArgs(), FillOp::getRegionBuilder());
 }
 void FillOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult FillOp::fold(ArrayRef<Attribute>,
@@ -3665,10 +3818,11 @@ void FillRng2DOp::regionBuilder(ImplicitLocOpBuilder &b,
 }
 
 ParseResult FillRng2DOp::parse(OpAsmParser &parser, OperationState &result) {
-  return ::parseNamedStructuredOp<FillRng2DOp>(parser, result);
+  return ::parseNamedStructuredOp(parser, result,
+    FillRng2DOp::getNumRegionArgs(), FillRng2DOp::getRegionBuilder());
 }
 void FillRng2DOp::print(OpAsmPrinter &p) {
-  ::printNamedStructuredOp(p, *this);
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
 }
 
 LogicalResult FillRng2DOp::fold(ArrayRef<Attribute>,

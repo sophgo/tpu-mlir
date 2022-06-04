@@ -9,6 +9,7 @@
 #ifdef GET_ATTRDEF_LIST
 #undef GET_ATTRDEF_LIST
 
+::mlir::omp::ClauseCancellationConstructTypeAttr,
 ::mlir::omp::ClauseDependAttr,
 ::mlir::omp::ClauseMemoryOrderKindAttr,
 ::mlir::omp::ClauseOrderKindAttr,
@@ -22,6 +23,10 @@
 #undef GET_ATTRDEF_CLASSES
 
 static ::mlir::OptionalParseResult generatedAttributeParser(::mlir::AsmParser &parser, ::llvm::StringRef mnemonic, ::mlir::Type type, ::mlir::Attribute &value) {
+  if (mnemonic == ::mlir::omp::ClauseCancellationConstructTypeAttr::getMnemonic()) {
+    value = ::mlir::omp::ClauseCancellationConstructTypeAttr::parse(parser, type);
+    return ::mlir::success(!!value);
+  }
   if (mnemonic == ::mlir::omp::ClauseDependAttr::getMnemonic()) {
     value = ::mlir::omp::ClauseDependAttr::parse(parser, type);
     return ::mlir::success(!!value);
@@ -50,7 +55,12 @@ static ::mlir::OptionalParseResult generatedAttributeParser(::mlir::AsmParser &p
 }
 
 static ::mlir::LogicalResult generatedAttributePrinter(::mlir::Attribute def, ::mlir::AsmPrinter &printer) {
-  return ::llvm::TypeSwitch<::mlir::Attribute, ::mlir::LogicalResult>(def)    .Case<::mlir::omp::ClauseDependAttr>([&](auto t) {
+  return ::llvm::TypeSwitch<::mlir::Attribute, ::mlir::LogicalResult>(def)    .Case<::mlir::omp::ClauseCancellationConstructTypeAttr>([&](auto t) {
+      printer << ::mlir::omp::ClauseCancellationConstructTypeAttr::getMnemonic();
+t.print(printer);
+      return ::mlir::success();
+    })
+    .Case<::mlir::omp::ClauseDependAttr>([&](auto t) {
       printer << ::mlir::omp::ClauseDependAttr::getMnemonic();
 t.print(printer);
       return ::mlir::success();
@@ -83,6 +93,70 @@ t.print(printer);
     .Default([](auto) { return ::mlir::failure(); });
 }
 
+namespace mlir {
+namespace omp {
+namespace detail {
+struct ClauseCancellationConstructTypeAttrStorage : public ::mlir::AttributeStorage {
+  using KeyTy = std::tuple<::mlir::omp::ClauseCancellationConstructType>;
+  ClauseCancellationConstructTypeAttrStorage(::mlir::omp::ClauseCancellationConstructType value) : ::mlir::AttributeStorage(), value(value) {}
+
+  bool operator==(const KeyTy &tblgenKey) const {
+    return (value == std::get<0>(tblgenKey));
+  }
+
+  static ::llvm::hash_code hashKey(const KeyTy &tblgenKey) {
+    return ::llvm::hash_combine(std::get<0>(tblgenKey));
+  }
+
+  static ClauseCancellationConstructTypeAttrStorage *construct(::mlir::AttributeStorageAllocator &allocator, const KeyTy &tblgenKey) {
+    auto value = std::get<0>(tblgenKey);
+    return new (allocator.allocate<ClauseCancellationConstructTypeAttrStorage>()) ClauseCancellationConstructTypeAttrStorage(value);
+  }
+
+  ::mlir::omp::ClauseCancellationConstructType value;
+};
+} // namespace detail
+ClauseCancellationConstructTypeAttr ClauseCancellationConstructTypeAttr::get(::mlir::MLIRContext *context, ::mlir::omp::ClauseCancellationConstructType value) {
+  return Base::get(context, value);
+}
+
+::mlir::Attribute ClauseCancellationConstructTypeAttr::parse(::mlir::AsmParser &odsParser, ::mlir::Type odsType) {
+  ::mlir::FailureOr<::mlir::omp::ClauseCancellationConstructType> _result_value;
+  ::llvm::SMLoc odsLoc = odsParser.getCurrentLocation();
+  (void) odsLoc;
+
+  // Parse variable 'value'
+  _result_value = [&]() -> ::mlir::FailureOr<::mlir::omp::ClauseCancellationConstructType> {
+      auto loc = odsParser.getCurrentLocation();
+      ::llvm::StringRef enumKeyword;
+      if (::mlir::failed(odsParser.parseKeyword(&enumKeyword)))
+        return ::mlir::failure();
+      auto maybeEnum = ::mlir::omp::symbolizeClauseCancellationConstructType(enumKeyword);
+      if (maybeEnum)
+        return *maybeEnum;
+      return {(::mlir::LogicalResult)(odsParser.emitError(loc) << "expected " << "::mlir::omp::ClauseCancellationConstructType" << " to be one of: " << "parallel" << ", " << "loop" << ", " << "sections" << ", " << "taskgroup")};
+    }();
+  if (::mlir::failed(_result_value)) {
+    odsParser.emitError(odsParser.getCurrentLocation(), "failed to parse CancellationConstructTypeAttr parameter 'value' which is to be a `::mlir::omp::ClauseCancellationConstructType`");
+    return {};
+  }
+  assert(::mlir::succeeded(_result_value));
+  return ClauseCancellationConstructTypeAttr::get(odsParser.getContext(),
+      *_result_value);
+}
+
+void ClauseCancellationConstructTypeAttr::print(::mlir::AsmPrinter &odsPrinter) const {
+  odsPrinter << ' ';
+  odsPrinter << stringifyClauseCancellationConstructType(getValue());
+}
+
+::mlir::omp::ClauseCancellationConstructType ClauseCancellationConstructTypeAttr::getValue() const {
+  return getImpl()->value;
+}
+
+} // namespace omp
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::ClauseCancellationConstructTypeAttr)
 namespace mlir {
 namespace omp {
 namespace detail {
@@ -126,7 +200,7 @@ ClauseDependAttr ClauseDependAttr::get(::mlir::MLIRContext *context, ::mlir::omp
       auto maybeEnum = ::mlir::omp::symbolizeClauseDepend(enumKeyword);
       if (maybeEnum)
         return *maybeEnum;
-      return {(::mlir::LogicalResult)odsParser.emitError(loc, "expected ::mlir::omp::ClauseDepend to be one of: dependsource, dependsink")};
+      return {(::mlir::LogicalResult)(odsParser.emitError(loc) << "expected " << "::mlir::omp::ClauseDepend" << " to be one of: " << "dependsource" << ", " << "dependsink")};
     }();
   if (::mlir::failed(_result_value)) {
     odsParser.emitError(odsParser.getCurrentLocation(), "failed to parse ClauseDependAttr parameter 'value' which is to be a `::mlir::omp::ClauseDepend`");
@@ -193,7 +267,7 @@ ClauseMemoryOrderKindAttr ClauseMemoryOrderKindAttr::get(::mlir::MLIRContext *co
       auto maybeEnum = ::mlir::omp::symbolizeClauseMemoryOrderKind(enumKeyword);
       if (maybeEnum)
         return *maybeEnum;
-      return {(::mlir::LogicalResult)odsParser.emitError(loc, "expected ::mlir::omp::ClauseMemoryOrderKind to be one of: seq_cst, acq_rel, acquire, release, relaxed")};
+      return {(::mlir::LogicalResult)(odsParser.emitError(loc) << "expected " << "::mlir::omp::ClauseMemoryOrderKind" << " to be one of: " << "seq_cst" << ", " << "acq_rel" << ", " << "acquire" << ", " << "release" << ", " << "relaxed")};
     }();
   if (::mlir::failed(_result_value)) {
     odsParser.emitError(odsParser.getCurrentLocation(), "failed to parse MemoryOrderKindAttr parameter 'value' which is to be a `::mlir::omp::ClauseMemoryOrderKind`");
@@ -257,7 +331,7 @@ ClauseOrderKindAttr ClauseOrderKindAttr::get(::mlir::MLIRContext *context, ::mli
       auto maybeEnum = ::mlir::omp::symbolizeClauseOrderKind(enumKeyword);
       if (maybeEnum)
         return *maybeEnum;
-      return {(::mlir::LogicalResult)odsParser.emitError(loc, "expected ::mlir::omp::ClauseOrderKind to be one of: concurrent")};
+      return {(::mlir::LogicalResult)(odsParser.emitError(loc) << "expected " << "::mlir::omp::ClauseOrderKind" << " to be one of: " << "concurrent")};
     }();
   if (::mlir::failed(_result_value)) {
     odsParser.emitError(odsParser.getCurrentLocation(), "failed to parse OrderKindAttr parameter 'value' which is to be a `::mlir::omp::ClauseOrderKind`");
@@ -321,7 +395,7 @@ ClauseProcBindKindAttr ClauseProcBindKindAttr::get(::mlir::MLIRContext *context,
       auto maybeEnum = ::mlir::omp::symbolizeClauseProcBindKind(enumKeyword);
       if (maybeEnum)
         return *maybeEnum;
-      return {(::mlir::LogicalResult)odsParser.emitError(loc, "expected ::mlir::omp::ClauseProcBindKind to be one of: primary, master, close, spread")};
+      return {(::mlir::LogicalResult)(odsParser.emitError(loc) << "expected " << "::mlir::omp::ClauseProcBindKind" << " to be one of: " << "primary" << ", " << "master" << ", " << "close" << ", " << "spread")};
     }();
   if (::mlir::failed(_result_value)) {
     odsParser.emitError(odsParser.getCurrentLocation(), "failed to parse ProcBindKindAttr parameter 'value' which is to be a `::mlir::omp::ClauseProcBindKind`");
@@ -385,7 +459,7 @@ ClauseScheduleKindAttr ClauseScheduleKindAttr::get(::mlir::MLIRContext *context,
       auto maybeEnum = ::mlir::omp::symbolizeClauseScheduleKind(enumKeyword);
       if (maybeEnum)
         return *maybeEnum;
-      return {(::mlir::LogicalResult)odsParser.emitError(loc, "expected ::mlir::omp::ClauseScheduleKind to be one of: static, dynamic, guided, auto, runtime")};
+      return {(::mlir::LogicalResult)(odsParser.emitError(loc) << "expected " << "::mlir::omp::ClauseScheduleKind" << " to be one of: " << "static" << ", " << "dynamic" << ", " << "guided" << ", " << "auto" << ", " << "runtime")};
     }();
   if (::mlir::failed(_result_value)) {
     odsParser.emitError(odsParser.getCurrentLocation(), "failed to parse ScheduleKindAttr parameter 'value' which is to be a `::mlir::omp::ClauseScheduleKind`");
@@ -449,7 +523,7 @@ ScheduleModifierAttr ScheduleModifierAttr::get(::mlir::MLIRContext *context, ::m
       auto maybeEnum = ::mlir::omp::symbolizeScheduleModifier(enumKeyword);
       if (maybeEnum)
         return *maybeEnum;
-      return {(::mlir::LogicalResult)odsParser.emitError(loc, "expected ::mlir::omp::ScheduleModifier to be one of: none, monotonic, nonmonotonic, simd")};
+      return {(::mlir::LogicalResult)(odsParser.emitError(loc) << "expected " << "::mlir::omp::ScheduleModifier" << " to be one of: " << "none" << ", " << "monotonic" << ", " << "nonmonotonic" << ", " << "simd")};
     }();
   if (::mlir::failed(_result_value)) {
     odsParser.emitError(odsParser.getCurrentLocation(), "failed to parse ScheduleModifierAttr parameter 'value' which is to be a `::mlir::omp::ScheduleModifier`");
@@ -488,6 +562,7 @@ namespace omp {
     if (parseResult.hasValue())
       return attr;
   }
+  
   parser.emitError(typeLoc) << "unknown attribute `"
       << attrTag << "` in dialect `" << getNamespace() << "`";
   return {};
@@ -497,6 +572,7 @@ void OpenMPDialect::printAttribute(::mlir::Attribute attr,
                          ::mlir::DialectAsmPrinter &printer) const {
   if (::mlir::succeeded(generatedAttributePrinter(attr, printer)))
     return;
+  
 }
 } // namespace omp
 } // namespace mlir

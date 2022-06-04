@@ -10,12 +10,7 @@ namespace mlir {
 namespace arm_neon {
 
 class ArmNeonDialect : public ::mlir::Dialect {
-  explicit ArmNeonDialect(::mlir::MLIRContext *context)
-    : ::mlir::Dialect(getDialectNamespace(), context,
-      ::mlir::TypeID::get<ArmNeonDialect>()) {
-    
-    initialize();
-  }
+  explicit ArmNeonDialect(::mlir::MLIRContext *context);
 
   void initialize();
   friend class ::mlir::MLIRContext;

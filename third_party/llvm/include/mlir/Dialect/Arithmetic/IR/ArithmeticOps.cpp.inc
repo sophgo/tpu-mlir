@@ -190,9 +190,11 @@ namespace arith {
 // ::mlir::arith::AddFOp definitions
 //===----------------------------------------------------------------------===//
 
-AddFOpAdaptor::AddFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+AddFOpAdaptor::AddFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.addf", odsAttrs.getContext());
+}
 
-AddFOpAdaptor::AddFOpAdaptor(AddFOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+AddFOpAdaptor::AddFOpAdaptor(AddFOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange AddFOpAdaptor::getOperands() {
   return odsOperands;
@@ -274,6 +276,20 @@ void AddFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
   odsState.addTypes(result);
 }
 
+void AddFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(AddFOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void AddFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
@@ -289,18 +305,21 @@ void AddFOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   odsState.addTypes(resultTypes);
 }
 
-void AddFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
-  odsState.addOperands(lhs);
-  odsState.addOperands(rhs);
-  odsState.addTypes({lhs.getType()});
-
-}
-
 void AddFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(AddFOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult AddFOp::verifyInvariantsImpl() {
@@ -333,6 +352,14 @@ void AddFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 
 ::mlir::LogicalResult AddFOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult AddFOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult AddFOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -391,7 +418,7 @@ void AddFOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void AddFOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void AddFOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -405,9 +432,11 @@ namespace arith {
 // ::mlir::arith::AddIOp definitions
 //===----------------------------------------------------------------------===//
 
-AddIOpAdaptor::AddIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+AddIOpAdaptor::AddIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.addi", odsAttrs.getContext());
+}
 
-AddIOpAdaptor::AddIOpAdaptor(AddIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+AddIOpAdaptor::AddIOpAdaptor(AddIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange AddIOpAdaptor::getOperands() {
   return odsOperands;
@@ -489,6 +518,20 @@ void AddIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
   odsState.addTypes(result);
 }
 
+void AddIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(AddIOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void AddIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
@@ -504,18 +547,21 @@ void AddIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   odsState.addTypes(resultTypes);
 }
 
-void AddIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
-  odsState.addOperands(lhs);
-  odsState.addOperands(rhs);
-  odsState.addTypes({lhs.getType()});
-
-}
-
 void AddIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(AddIOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult AddIOp::verifyInvariantsImpl() {
@@ -548,6 +594,14 @@ void AddIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 
 ::mlir::LogicalResult AddIOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult AddIOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult AddIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -606,7 +660,7 @@ void AddIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void AddIOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void AddIOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -620,9 +674,11 @@ namespace arith {
 // ::mlir::arith::AndIOp definitions
 //===----------------------------------------------------------------------===//
 
-AndIOpAdaptor::AndIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+AndIOpAdaptor::AndIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.andi", odsAttrs.getContext());
+}
 
-AndIOpAdaptor::AndIOpAdaptor(AndIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+AndIOpAdaptor::AndIOpAdaptor(AndIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange AndIOpAdaptor::getOperands() {
   return odsOperands;
@@ -704,6 +760,20 @@ void AndIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
   odsState.addTypes(result);
 }
 
+void AndIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(AndIOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void AndIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
@@ -719,18 +789,21 @@ void AndIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   odsState.addTypes(resultTypes);
 }
 
-void AndIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
-  odsState.addOperands(lhs);
-  odsState.addOperands(rhs);
-  odsState.addTypes({lhs.getType()});
-
-}
-
 void AndIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(AndIOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult AndIOp::verifyInvariantsImpl() {
@@ -763,6 +836,14 @@ void AndIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 
 ::mlir::LogicalResult AndIOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult AndIOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult AndIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -821,7 +902,7 @@ void AndIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void AndIOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void AndIOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -835,9 +916,11 @@ namespace arith {
 // ::mlir::arith::BitcastOp definitions
 //===----------------------------------------------------------------------===//
 
-BitcastOpAdaptor::BitcastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+BitcastOpAdaptor::BitcastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.bitcast", odsAttrs.getContext());
+}
 
-BitcastOpAdaptor::BitcastOpAdaptor(BitcastOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+BitcastOpAdaptor::BitcastOpAdaptor(BitcastOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange BitcastOpAdaptor::getOperands() {
   return odsOperands;
@@ -1006,7 +1089,7 @@ void BitcastOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void BitcastOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void BitcastOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -1020,9 +1103,11 @@ namespace arith {
 // ::mlir::arith::CeilDivSIOp definitions
 //===----------------------------------------------------------------------===//
 
-CeilDivSIOpAdaptor::CeilDivSIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+CeilDivSIOpAdaptor::CeilDivSIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.ceildivsi", odsAttrs.getContext());
+}
 
-CeilDivSIOpAdaptor::CeilDivSIOpAdaptor(CeilDivSIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+CeilDivSIOpAdaptor::CeilDivSIOpAdaptor(CeilDivSIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange CeilDivSIOpAdaptor::getOperands() {
   return odsOperands;
@@ -1104,6 +1189,20 @@ void CeilDivSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
   odsState.addTypes(result);
 }
 
+void CeilDivSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(CeilDivSIOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void CeilDivSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
@@ -1119,18 +1218,21 @@ void CeilDivSIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   odsState.addTypes(resultTypes);
 }
 
-void CeilDivSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
-  odsState.addOperands(lhs);
-  odsState.addOperands(rhs);
-  odsState.addTypes({lhs.getType()});
-
-}
-
 void CeilDivSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(CeilDivSIOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult CeilDivSIOp::verifyInvariantsImpl() {
@@ -1163,6 +1265,14 @@ void CeilDivSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
 
 ::mlir::LogicalResult CeilDivSIOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult CeilDivSIOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult CeilDivSIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -1221,7 +1331,7 @@ void CeilDivSIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void CeilDivSIOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void CeilDivSIOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -1235,9 +1345,11 @@ namespace arith {
 // ::mlir::arith::CeilDivUIOp definitions
 //===----------------------------------------------------------------------===//
 
-CeilDivUIOpAdaptor::CeilDivUIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+CeilDivUIOpAdaptor::CeilDivUIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.ceildivui", odsAttrs.getContext());
+}
 
-CeilDivUIOpAdaptor::CeilDivUIOpAdaptor(CeilDivUIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+CeilDivUIOpAdaptor::CeilDivUIOpAdaptor(CeilDivUIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange CeilDivUIOpAdaptor::getOperands() {
   return odsOperands;
@@ -1319,6 +1431,20 @@ void CeilDivUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
   odsState.addTypes(result);
 }
 
+void CeilDivUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(CeilDivUIOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void CeilDivUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
@@ -1334,18 +1460,21 @@ void CeilDivUIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   odsState.addTypes(resultTypes);
 }
 
-void CeilDivUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
-  odsState.addOperands(lhs);
-  odsState.addOperands(rhs);
-  odsState.addTypes({lhs.getType()});
-
-}
-
 void CeilDivUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(CeilDivUIOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult CeilDivUIOp::verifyInvariantsImpl() {
@@ -1378,6 +1507,14 @@ void CeilDivUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
 
 ::mlir::LogicalResult CeilDivUIOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult CeilDivUIOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult CeilDivUIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -1436,7 +1573,7 @@ void CeilDivUIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void CeilDivUIOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void CeilDivUIOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -1450,9 +1587,11 @@ namespace arith {
 // ::mlir::arith::CmpFOp definitions
 //===----------------------------------------------------------------------===//
 
-CmpFOpAdaptor::CmpFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+CmpFOpAdaptor::CmpFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.cmpf", odsAttrs.getContext());
+}
 
-CmpFOpAdaptor::CmpFOpAdaptor(CmpFOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+CmpFOpAdaptor::CmpFOpAdaptor(CmpFOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange CmpFOpAdaptor::getOperands() {
   return odsOperands;
@@ -1482,8 +1621,8 @@ std::pair<unsigned, unsigned> CmpFOpAdaptor::getODSOperandIndexAndLength(unsigne
 
 ::mlir::arith::CmpFPredicateAttr CmpFOpAdaptor::getPredicateAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::arith::CmpFPredicateAttr attr = odsAttrs.get("predicate").cast<::mlir::arith::CmpFPredicateAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, CmpFOp::getPredicateAttrName(*odsOpName)).cast<::mlir::arith::CmpFPredicateAttr>();
+    return attr;
 }
 
 ::mlir::arith::CmpFPredicate CmpFOpAdaptor::getPredicate() {
@@ -1492,14 +1631,21 @@ std::pair<unsigned, unsigned> CmpFOpAdaptor::getODSOperandIndexAndLength(unsigne
 }
 
 ::mlir::LogicalResult CmpFOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_predicate = odsAttrs.get("predicate");
-    if (!tblgen_predicate)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_predicate;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'arith.cmpf' op ""requires attribute 'predicate'");
-
-    if (tblgen_predicate && !((tblgen_predicate.isa<::mlir::arith::CmpFPredicateAttr>())))
-      return emitError(loc, "'arith.cmpf' op ""attribute 'predicate' failed to satisfy constraint: allowed 64-bit signless integer cases: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15");
+    if (namedAttrIt->getName() == CmpFOp::getPredicateAttrName(*odsOpName)) {
+      tblgen_predicate = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_predicate && !((tblgen_predicate.isa<::mlir::arith::CmpFPredicateAttr>())))
+    return emitError(loc, "'arith.cmpf' op ""attribute 'predicate' failed to satisfy constraint: allowed 64-bit signless integer cases: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15");
   return ::mlir::success();
 }
 
@@ -1548,7 +1694,7 @@ std::pair<unsigned, unsigned> CmpFOp::getODSResultIndexAndLength(unsigned index)
 }
 
 ::mlir::arith::CmpFPredicateAttr CmpFOp::getPredicateAttr() {
-  return (*this)->getAttr(getPredicateAttrName()).cast<::mlir::arith::CmpFPredicateAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getPredicateAttrName()).cast<::mlir::arith::CmpFPredicateAttr>();
 }
 
 ::mlir::arith::CmpFPredicate CmpFOp::getPredicate() {
@@ -1605,14 +1751,21 @@ void CmpFOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 }
 
 ::mlir::LogicalResult CmpFOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_predicate = (*this)->getAttr(getPredicateAttrName());
-    if (!tblgen_predicate)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_predicate;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'predicate'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_ArithmeticOps0(*this, tblgen_predicate, "predicate")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == getPredicateAttrName()) {
+      tblgen_predicate = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_ArithmeticOps0(*this, tblgen_predicate, "predicate")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1748,7 +1901,7 @@ void CmpFOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void CmpFOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void CmpFOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -1762,9 +1915,11 @@ namespace arith {
 // ::mlir::arith::CmpIOp definitions
 //===----------------------------------------------------------------------===//
 
-CmpIOpAdaptor::CmpIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+CmpIOpAdaptor::CmpIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.cmpi", odsAttrs.getContext());
+}
 
-CmpIOpAdaptor::CmpIOpAdaptor(CmpIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+CmpIOpAdaptor::CmpIOpAdaptor(CmpIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange CmpIOpAdaptor::getOperands() {
   return odsOperands;
@@ -1794,8 +1949,8 @@ std::pair<unsigned, unsigned> CmpIOpAdaptor::getODSOperandIndexAndLength(unsigne
 
 ::mlir::arith::CmpIPredicateAttr CmpIOpAdaptor::getPredicateAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::arith::CmpIPredicateAttr attr = odsAttrs.get("predicate").cast<::mlir::arith::CmpIPredicateAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, CmpIOp::getPredicateAttrName(*odsOpName)).cast<::mlir::arith::CmpIPredicateAttr>();
+    return attr;
 }
 
 ::mlir::arith::CmpIPredicate CmpIOpAdaptor::getPredicate() {
@@ -1804,14 +1959,21 @@ std::pair<unsigned, unsigned> CmpIOpAdaptor::getODSOperandIndexAndLength(unsigne
 }
 
 ::mlir::LogicalResult CmpIOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_predicate = odsAttrs.get("predicate");
-    if (!tblgen_predicate)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_predicate;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'arith.cmpi' op ""requires attribute 'predicate'");
-
-    if (tblgen_predicate && !((tblgen_predicate.isa<::mlir::arith::CmpIPredicateAttr>())))
-      return emitError(loc, "'arith.cmpi' op ""attribute 'predicate' failed to satisfy constraint: allowed 64-bit signless integer cases: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9");
+    if (namedAttrIt->getName() == CmpIOp::getPredicateAttrName(*odsOpName)) {
+      tblgen_predicate = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_predicate && !((tblgen_predicate.isa<::mlir::arith::CmpIPredicateAttr>())))
+    return emitError(loc, "'arith.cmpi' op ""attribute 'predicate' failed to satisfy constraint: allowed 64-bit signless integer cases: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9");
   return ::mlir::success();
 }
 
@@ -1860,7 +2022,7 @@ std::pair<unsigned, unsigned> CmpIOp::getODSResultIndexAndLength(unsigned index)
 }
 
 ::mlir::arith::CmpIPredicateAttr CmpIOp::getPredicateAttr() {
-  return (*this)->getAttr(getPredicateAttrName()).cast<::mlir::arith::CmpIPredicateAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getPredicateAttrName()).cast<::mlir::arith::CmpIPredicateAttr>();
 }
 
 ::mlir::arith::CmpIPredicate CmpIOp::getPredicate() {
@@ -1917,14 +2079,21 @@ void CmpIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 }
 
 ::mlir::LogicalResult CmpIOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_predicate = (*this)->getAttr(getPredicateAttrName());
-    if (!tblgen_predicate)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_predicate;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'predicate'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_ArithmeticOps1(*this, tblgen_predicate, "predicate")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == getPredicateAttrName()) {
+      tblgen_predicate = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_ArithmeticOps1(*this, tblgen_predicate, "predicate")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -2060,7 +2229,7 @@ void CmpIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void CmpIOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void CmpIOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -2074,9 +2243,11 @@ namespace arith {
 // ::mlir::arith::ConstantOp definitions
 //===----------------------------------------------------------------------===//
 
-ConstantOpAdaptor::ConstantOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ConstantOpAdaptor::ConstantOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.constant", odsAttrs.getContext());
+}
 
-ConstantOpAdaptor::ConstantOpAdaptor(ConstantOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ConstantOpAdaptor::ConstantOpAdaptor(ConstantOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ConstantOpAdaptor::getOperands() {
   return odsOperands;
@@ -2098,8 +2269,8 @@ std::pair<unsigned, unsigned> ConstantOpAdaptor::getODSOperandIndexAndLength(uns
 
 ::mlir::Attribute ConstantOpAdaptor::getValueAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::Attribute attr = odsAttrs.get("value").cast<::mlir::Attribute>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ConstantOp::getValueAttrName(*odsOpName)).cast<::mlir::Attribute>();
+    return attr;
 }
 
 ::mlir::Attribute ConstantOpAdaptor::getValue() {
@@ -2108,14 +2279,21 @@ std::pair<unsigned, unsigned> ConstantOpAdaptor::getODSOperandIndexAndLength(uns
 }
 
 ::mlir::LogicalResult ConstantOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_value = odsAttrs.get("value");
-    if (!tblgen_value)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_value;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'arith.constant' op ""requires attribute 'value'");
-
-    if (tblgen_value && !((true)))
-      return emitError(loc, "'arith.constant' op ""attribute 'value' failed to satisfy constraint: any attribute");
+    if (namedAttrIt->getName() == ConstantOp::getValueAttrName(*odsOpName)) {
+      tblgen_value = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_value && !((true)))
+    return emitError(loc, "'arith.constant' op ""attribute 'value' failed to satisfy constraint: any attribute");
   return ::mlir::success();
 }
 
@@ -2144,7 +2322,7 @@ std::pair<unsigned, unsigned> ConstantOp::getODSResultIndexAndLength(unsigned in
 }
 
 ::mlir::Attribute ConstantOp::getValueAttr() {
-  return (*this)->getAttr(getValueAttrName()).cast<::mlir::Attribute>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getValueAttrName()).cast<::mlir::Attribute>();
 }
 
 ::mlir::Attribute ConstantOp::getValue() {
@@ -2156,10 +2334,6 @@ void ConstantOp::setValueAttr(::mlir::Attribute attr) {
   (*this)->setAttr(getValueAttrName(), attr);
 }
 
-void ConstantOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Attribute value) {
- build(odsBuilder, odsState, value.getType(), value); 
-}
-
 void ConstantOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Attribute value, Type type) {
  build(odsBuilder, odsState, type, value); 
 }
@@ -2167,6 +2341,19 @@ void ConstantOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 void ConstantOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Attribute value) {
   odsState.addAttribute(getValueAttrName(odsState.name), value);
   odsState.addTypes(result);
+}
+
+void ConstantOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Attribute value) {
+  odsState.addAttribute(getValueAttrName(odsState.name), value);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(ConstantOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
 }
 
 void ConstantOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Attribute value) {
@@ -2183,15 +2370,39 @@ void ConstantOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult ConstantOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_value = (*this)->getAttr(getValueAttrName());
-    if (!tblgen_value)
-      return emitOpError("requires attribute 'value'");
+void ConstantOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 0u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_ArithmeticOps2(*this, tblgen_value, "value")))
-      return ::mlir::failure();
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(ConstantOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
   }
+}
+
+::mlir::LogicalResult ConstantOp::verifyInvariantsImpl() {
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_value;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'value'");
+    if (namedAttrIt->getName() == getValueAttrName()) {
+      tblgen_value = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_ArithmeticOps2(*this, tblgen_value, "value")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSResults(0);
@@ -2201,8 +2412,8 @@ void ConstantOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
         return ::mlir::failure();
     }
   }
-  if (!((std::equal_to<>()((*this)->getAttr(getValueAttrName()).getType(), (*this->getODSResults(0).begin()).getType()))))
-    return emitOpError("failed to verify that result and attribute have the same type");
+  if (!((::llvm::is_splat(::llvm::makeArrayRef({::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getValueAttrName()).getType(), (*this->getODSResults(0).begin()).getType()})))))
+    return emitOpError("failed to verify that all of {value, result} have same type");
   return ::mlir::success();
 }
 
@@ -2210,6 +2421,14 @@ void ConstantOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
     return ::mlir::success();
   return ::mlir::failure();
+}
+
+::mlir::LogicalResult ConstantOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = attributes.get("value").getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult ConstantOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -2229,7 +2448,7 @@ void ConstantOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter.printAttribute(getValueAttr());
 }
 
-void ConstantOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ConstantOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -2243,9 +2462,11 @@ namespace arith {
 // ::mlir::arith::DivFOp definitions
 //===----------------------------------------------------------------------===//
 
-DivFOpAdaptor::DivFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+DivFOpAdaptor::DivFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.divf", odsAttrs.getContext());
+}
 
-DivFOpAdaptor::DivFOpAdaptor(DivFOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+DivFOpAdaptor::DivFOpAdaptor(DivFOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange DivFOpAdaptor::getOperands() {
   return odsOperands;
@@ -2327,6 +2548,20 @@ void DivFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
   odsState.addTypes(result);
 }
 
+void DivFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(DivFOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void DivFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
@@ -2342,18 +2577,21 @@ void DivFOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   odsState.addTypes(resultTypes);
 }
 
-void DivFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
-  odsState.addOperands(lhs);
-  odsState.addOperands(rhs);
-  odsState.addTypes({lhs.getType()});
-
-}
-
 void DivFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(DivFOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult DivFOp::verifyInvariantsImpl() {
@@ -2386,6 +2624,14 @@ void DivFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 
 ::mlir::LogicalResult DivFOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult DivFOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult DivFOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -2444,7 +2690,7 @@ void DivFOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void DivFOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void DivFOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -2458,9 +2704,11 @@ namespace arith {
 // ::mlir::arith::DivSIOp definitions
 //===----------------------------------------------------------------------===//
 
-DivSIOpAdaptor::DivSIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+DivSIOpAdaptor::DivSIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.divsi", odsAttrs.getContext());
+}
 
-DivSIOpAdaptor::DivSIOpAdaptor(DivSIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+DivSIOpAdaptor::DivSIOpAdaptor(DivSIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange DivSIOpAdaptor::getOperands() {
   return odsOperands;
@@ -2542,6 +2790,20 @@ void DivSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
   odsState.addTypes(result);
 }
 
+void DivSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(DivSIOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void DivSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
@@ -2557,18 +2819,21 @@ void DivSIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   odsState.addTypes(resultTypes);
 }
 
-void DivSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
-  odsState.addOperands(lhs);
-  odsState.addOperands(rhs);
-  odsState.addTypes({lhs.getType()});
-
-}
-
 void DivSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(DivSIOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult DivSIOp::verifyInvariantsImpl() {
@@ -2601,6 +2866,14 @@ void DivSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
 
 ::mlir::LogicalResult DivSIOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult DivSIOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult DivSIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -2659,7 +2932,7 @@ void DivSIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void DivSIOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void DivSIOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -2673,9 +2946,11 @@ namespace arith {
 // ::mlir::arith::DivUIOp definitions
 //===----------------------------------------------------------------------===//
 
-DivUIOpAdaptor::DivUIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+DivUIOpAdaptor::DivUIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.divui", odsAttrs.getContext());
+}
 
-DivUIOpAdaptor::DivUIOpAdaptor(DivUIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+DivUIOpAdaptor::DivUIOpAdaptor(DivUIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange DivUIOpAdaptor::getOperands() {
   return odsOperands;
@@ -2757,6 +3032,20 @@ void DivUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
   odsState.addTypes(result);
 }
 
+void DivUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(DivUIOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void DivUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
@@ -2772,18 +3061,21 @@ void DivUIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   odsState.addTypes(resultTypes);
 }
 
-void DivUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
-  odsState.addOperands(lhs);
-  odsState.addOperands(rhs);
-  odsState.addTypes({lhs.getType()});
-
-}
-
 void DivUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(DivUIOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult DivUIOp::verifyInvariantsImpl() {
@@ -2816,6 +3108,14 @@ void DivUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
 
 ::mlir::LogicalResult DivUIOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult DivUIOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult DivUIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -2874,7 +3174,7 @@ void DivUIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void DivUIOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void DivUIOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -2888,9 +3188,11 @@ namespace arith {
 // ::mlir::arith::ExtFOp definitions
 //===----------------------------------------------------------------------===//
 
-ExtFOpAdaptor::ExtFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ExtFOpAdaptor::ExtFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.extf", odsAttrs.getContext());
+}
 
-ExtFOpAdaptor::ExtFOpAdaptor(ExtFOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ExtFOpAdaptor::ExtFOpAdaptor(ExtFOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ExtFOpAdaptor::getOperands() {
   return odsOperands;
@@ -3061,7 +3363,7 @@ void ExtFOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void ExtFOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ExtFOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -3075,9 +3377,11 @@ namespace arith {
 // ::mlir::arith::ExtSIOp definitions
 //===----------------------------------------------------------------------===//
 
-ExtSIOpAdaptor::ExtSIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ExtSIOpAdaptor::ExtSIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.extsi", odsAttrs.getContext());
+}
 
-ExtSIOpAdaptor::ExtSIOpAdaptor(ExtSIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ExtSIOpAdaptor::ExtSIOpAdaptor(ExtSIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ExtSIOpAdaptor::getOperands() {
   return odsOperands;
@@ -3248,7 +3552,7 @@ void ExtSIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void ExtSIOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ExtSIOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -3262,9 +3566,11 @@ namespace arith {
 // ::mlir::arith::ExtUIOp definitions
 //===----------------------------------------------------------------------===//
 
-ExtUIOpAdaptor::ExtUIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ExtUIOpAdaptor::ExtUIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.extui", odsAttrs.getContext());
+}
 
-ExtUIOpAdaptor::ExtUIOpAdaptor(ExtUIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ExtUIOpAdaptor::ExtUIOpAdaptor(ExtUIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ExtUIOpAdaptor::getOperands() {
   return odsOperands;
@@ -3435,7 +3741,7 @@ void ExtUIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void ExtUIOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ExtUIOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -3449,9 +3755,11 @@ namespace arith {
 // ::mlir::arith::FPToSIOp definitions
 //===----------------------------------------------------------------------===//
 
-FPToSIOpAdaptor::FPToSIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+FPToSIOpAdaptor::FPToSIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.fptosi", odsAttrs.getContext());
+}
 
-FPToSIOpAdaptor::FPToSIOpAdaptor(FPToSIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+FPToSIOpAdaptor::FPToSIOpAdaptor(FPToSIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange FPToSIOpAdaptor::getOperands() {
   return odsOperands;
@@ -3620,7 +3928,7 @@ void FPToSIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void FPToSIOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void FPToSIOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -3634,9 +3942,11 @@ namespace arith {
 // ::mlir::arith::FPToUIOp definitions
 //===----------------------------------------------------------------------===//
 
-FPToUIOpAdaptor::FPToUIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+FPToUIOpAdaptor::FPToUIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.fptoui", odsAttrs.getContext());
+}
 
-FPToUIOpAdaptor::FPToUIOpAdaptor(FPToUIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+FPToUIOpAdaptor::FPToUIOpAdaptor(FPToUIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange FPToUIOpAdaptor::getOperands() {
   return odsOperands;
@@ -3805,7 +4115,7 @@ void FPToUIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void FPToUIOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void FPToUIOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -3819,9 +4129,11 @@ namespace arith {
 // ::mlir::arith::FloorDivSIOp definitions
 //===----------------------------------------------------------------------===//
 
-FloorDivSIOpAdaptor::FloorDivSIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+FloorDivSIOpAdaptor::FloorDivSIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.floordivsi", odsAttrs.getContext());
+}
 
-FloorDivSIOpAdaptor::FloorDivSIOpAdaptor(FloorDivSIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+FloorDivSIOpAdaptor::FloorDivSIOpAdaptor(FloorDivSIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange FloorDivSIOpAdaptor::getOperands() {
   return odsOperands;
@@ -3903,6 +4215,20 @@ void FloorDivSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
   odsState.addTypes(result);
 }
 
+void FloorDivSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(FloorDivSIOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void FloorDivSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
@@ -3918,18 +4244,21 @@ void FloorDivSIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
   odsState.addTypes(resultTypes);
 }
 
-void FloorDivSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
-  odsState.addOperands(lhs);
-  odsState.addOperands(rhs);
-  odsState.addTypes({lhs.getType()});
-
-}
-
 void FloorDivSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(FloorDivSIOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult FloorDivSIOp::verifyInvariantsImpl() {
@@ -3962,6 +4291,14 @@ void FloorDivSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
 
 ::mlir::LogicalResult FloorDivSIOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult FloorDivSIOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult FloorDivSIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -4020,7 +4357,7 @@ void FloorDivSIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void FloorDivSIOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void FloorDivSIOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -4034,9 +4371,11 @@ namespace arith {
 // ::mlir::arith::IndexCastOp definitions
 //===----------------------------------------------------------------------===//
 
-IndexCastOpAdaptor::IndexCastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+IndexCastOpAdaptor::IndexCastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.index_cast", odsAttrs.getContext());
+}
 
-IndexCastOpAdaptor::IndexCastOpAdaptor(IndexCastOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+IndexCastOpAdaptor::IndexCastOpAdaptor(IndexCastOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange IndexCastOpAdaptor::getOperands() {
   return odsOperands;
@@ -4205,7 +4544,7 @@ void IndexCastOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void IndexCastOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void IndexCastOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -4219,9 +4558,11 @@ namespace arith {
 // ::mlir::arith::MaxFOp definitions
 //===----------------------------------------------------------------------===//
 
-MaxFOpAdaptor::MaxFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+MaxFOpAdaptor::MaxFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.maxf", odsAttrs.getContext());
+}
 
-MaxFOpAdaptor::MaxFOpAdaptor(MaxFOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+MaxFOpAdaptor::MaxFOpAdaptor(MaxFOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange MaxFOpAdaptor::getOperands() {
   return odsOperands;
@@ -4303,6 +4644,20 @@ void MaxFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
   odsState.addTypes(result);
 }
 
+void MaxFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(MaxFOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void MaxFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
@@ -4318,18 +4673,21 @@ void MaxFOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   odsState.addTypes(resultTypes);
 }
 
-void MaxFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
-  odsState.addOperands(lhs);
-  odsState.addOperands(rhs);
-  odsState.addTypes({lhs.getType()});
-
-}
-
 void MaxFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(MaxFOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult MaxFOp::verifyInvariantsImpl() {
@@ -4362,6 +4720,14 @@ void MaxFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 
 ::mlir::LogicalResult MaxFOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult MaxFOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult MaxFOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -4420,7 +4786,7 @@ void MaxFOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void MaxFOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void MaxFOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -4434,9 +4800,11 @@ namespace arith {
 // ::mlir::arith::MaxSIOp definitions
 //===----------------------------------------------------------------------===//
 
-MaxSIOpAdaptor::MaxSIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+MaxSIOpAdaptor::MaxSIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.maxsi", odsAttrs.getContext());
+}
 
-MaxSIOpAdaptor::MaxSIOpAdaptor(MaxSIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+MaxSIOpAdaptor::MaxSIOpAdaptor(MaxSIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange MaxSIOpAdaptor::getOperands() {
   return odsOperands;
@@ -4518,6 +4886,20 @@ void MaxSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
   odsState.addTypes(result);
 }
 
+void MaxSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(MaxSIOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void MaxSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
@@ -4533,18 +4915,21 @@ void MaxSIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   odsState.addTypes(resultTypes);
 }
 
-void MaxSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
-  odsState.addOperands(lhs);
-  odsState.addOperands(rhs);
-  odsState.addTypes({lhs.getType()});
-
-}
-
 void MaxSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(MaxSIOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult MaxSIOp::verifyInvariantsImpl() {
@@ -4577,6 +4962,14 @@ void MaxSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
 
 ::mlir::LogicalResult MaxSIOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult MaxSIOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult MaxSIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -4635,7 +5028,7 @@ void MaxSIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void MaxSIOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void MaxSIOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -4649,9 +5042,11 @@ namespace arith {
 // ::mlir::arith::MaxUIOp definitions
 //===----------------------------------------------------------------------===//
 
-MaxUIOpAdaptor::MaxUIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+MaxUIOpAdaptor::MaxUIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.maxui", odsAttrs.getContext());
+}
 
-MaxUIOpAdaptor::MaxUIOpAdaptor(MaxUIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+MaxUIOpAdaptor::MaxUIOpAdaptor(MaxUIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange MaxUIOpAdaptor::getOperands() {
   return odsOperands;
@@ -4733,6 +5128,20 @@ void MaxUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
   odsState.addTypes(result);
 }
 
+void MaxUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(MaxUIOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void MaxUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
@@ -4748,18 +5157,21 @@ void MaxUIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   odsState.addTypes(resultTypes);
 }
 
-void MaxUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
-  odsState.addOperands(lhs);
-  odsState.addOperands(rhs);
-  odsState.addTypes({lhs.getType()});
-
-}
-
 void MaxUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(MaxUIOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult MaxUIOp::verifyInvariantsImpl() {
@@ -4792,6 +5204,14 @@ void MaxUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
 
 ::mlir::LogicalResult MaxUIOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult MaxUIOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult MaxUIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -4850,7 +5270,7 @@ void MaxUIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void MaxUIOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void MaxUIOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -4864,9 +5284,11 @@ namespace arith {
 // ::mlir::arith::MinFOp definitions
 //===----------------------------------------------------------------------===//
 
-MinFOpAdaptor::MinFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+MinFOpAdaptor::MinFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.minf", odsAttrs.getContext());
+}
 
-MinFOpAdaptor::MinFOpAdaptor(MinFOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+MinFOpAdaptor::MinFOpAdaptor(MinFOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange MinFOpAdaptor::getOperands() {
   return odsOperands;
@@ -4948,6 +5370,20 @@ void MinFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
   odsState.addTypes(result);
 }
 
+void MinFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(MinFOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void MinFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
@@ -4963,18 +5399,21 @@ void MinFOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   odsState.addTypes(resultTypes);
 }
 
-void MinFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
-  odsState.addOperands(lhs);
-  odsState.addOperands(rhs);
-  odsState.addTypes({lhs.getType()});
-
-}
-
 void MinFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(MinFOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult MinFOp::verifyInvariantsImpl() {
@@ -5007,6 +5446,14 @@ void MinFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 
 ::mlir::LogicalResult MinFOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult MinFOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult MinFOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -5065,7 +5512,7 @@ void MinFOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void MinFOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void MinFOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -5079,9 +5526,11 @@ namespace arith {
 // ::mlir::arith::MinSIOp definitions
 //===----------------------------------------------------------------------===//
 
-MinSIOpAdaptor::MinSIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+MinSIOpAdaptor::MinSIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.minsi", odsAttrs.getContext());
+}
 
-MinSIOpAdaptor::MinSIOpAdaptor(MinSIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+MinSIOpAdaptor::MinSIOpAdaptor(MinSIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange MinSIOpAdaptor::getOperands() {
   return odsOperands;
@@ -5163,6 +5612,20 @@ void MinSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
   odsState.addTypes(result);
 }
 
+void MinSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(MinSIOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void MinSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
@@ -5178,18 +5641,21 @@ void MinSIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   odsState.addTypes(resultTypes);
 }
 
-void MinSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
-  odsState.addOperands(lhs);
-  odsState.addOperands(rhs);
-  odsState.addTypes({lhs.getType()});
-
-}
-
 void MinSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(MinSIOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult MinSIOp::verifyInvariantsImpl() {
@@ -5222,6 +5688,14 @@ void MinSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
 
 ::mlir::LogicalResult MinSIOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult MinSIOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult MinSIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -5280,7 +5754,7 @@ void MinSIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void MinSIOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void MinSIOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -5294,9 +5768,11 @@ namespace arith {
 // ::mlir::arith::MinUIOp definitions
 //===----------------------------------------------------------------------===//
 
-MinUIOpAdaptor::MinUIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+MinUIOpAdaptor::MinUIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.minui", odsAttrs.getContext());
+}
 
-MinUIOpAdaptor::MinUIOpAdaptor(MinUIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+MinUIOpAdaptor::MinUIOpAdaptor(MinUIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange MinUIOpAdaptor::getOperands() {
   return odsOperands;
@@ -5378,6 +5854,20 @@ void MinUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
   odsState.addTypes(result);
 }
 
+void MinUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(MinUIOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void MinUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
@@ -5393,18 +5883,21 @@ void MinUIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   odsState.addTypes(resultTypes);
 }
 
-void MinUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
-  odsState.addOperands(lhs);
-  odsState.addOperands(rhs);
-  odsState.addTypes({lhs.getType()});
-
-}
-
 void MinUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(MinUIOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult MinUIOp::verifyInvariantsImpl() {
@@ -5437,6 +5930,14 @@ void MinUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
 
 ::mlir::LogicalResult MinUIOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult MinUIOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult MinUIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -5495,7 +5996,7 @@ void MinUIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void MinUIOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void MinUIOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -5509,9 +6010,11 @@ namespace arith {
 // ::mlir::arith::MulFOp definitions
 //===----------------------------------------------------------------------===//
 
-MulFOpAdaptor::MulFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+MulFOpAdaptor::MulFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.mulf", odsAttrs.getContext());
+}
 
-MulFOpAdaptor::MulFOpAdaptor(MulFOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+MulFOpAdaptor::MulFOpAdaptor(MulFOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange MulFOpAdaptor::getOperands() {
   return odsOperands;
@@ -5593,6 +6096,20 @@ void MulFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
   odsState.addTypes(result);
 }
 
+void MulFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(MulFOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void MulFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
@@ -5608,18 +6125,21 @@ void MulFOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   odsState.addTypes(resultTypes);
 }
 
-void MulFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
-  odsState.addOperands(lhs);
-  odsState.addOperands(rhs);
-  odsState.addTypes({lhs.getType()});
-
-}
-
 void MulFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(MulFOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult MulFOp::verifyInvariantsImpl() {
@@ -5652,6 +6172,14 @@ void MulFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 
 ::mlir::LogicalResult MulFOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult MulFOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult MulFOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -5710,7 +6238,7 @@ void MulFOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void MulFOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void MulFOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -5724,9 +6252,11 @@ namespace arith {
 // ::mlir::arith::MulIOp definitions
 //===----------------------------------------------------------------------===//
 
-MulIOpAdaptor::MulIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+MulIOpAdaptor::MulIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.muli", odsAttrs.getContext());
+}
 
-MulIOpAdaptor::MulIOpAdaptor(MulIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+MulIOpAdaptor::MulIOpAdaptor(MulIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange MulIOpAdaptor::getOperands() {
   return odsOperands;
@@ -5808,6 +6338,20 @@ void MulIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
   odsState.addTypes(result);
 }
 
+void MulIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(MulIOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void MulIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
@@ -5823,18 +6367,21 @@ void MulIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   odsState.addTypes(resultTypes);
 }
 
-void MulIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
-  odsState.addOperands(lhs);
-  odsState.addOperands(rhs);
-  odsState.addTypes({lhs.getType()});
-
-}
-
 void MulIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(MulIOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult MulIOp::verifyInvariantsImpl() {
@@ -5867,6 +6414,14 @@ void MulIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 
 ::mlir::LogicalResult MulIOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult MulIOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult MulIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -5925,7 +6480,7 @@ void MulIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void MulIOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void MulIOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -5939,9 +6494,11 @@ namespace arith {
 // ::mlir::arith::NegFOp definitions
 //===----------------------------------------------------------------------===//
 
-NegFOpAdaptor::NegFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+NegFOpAdaptor::NegFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.negf", odsAttrs.getContext());
+}
 
-NegFOpAdaptor::NegFOpAdaptor(NegFOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+NegFOpAdaptor::NegFOpAdaptor(NegFOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange NegFOpAdaptor::getOperands() {
   return odsOperands;
@@ -6008,6 +6565,19 @@ void NegFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
   odsState.addTypes(result);
 }
 
+void NegFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand) {
+  odsState.addOperands(operand);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(NegFOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void NegFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand) {
   odsState.addOperands(operand);
   assert(resultTypes.size() == 1u && "mismatched number of results");
@@ -6022,17 +6592,21 @@ void NegFOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   odsState.addTypes(resultTypes);
 }
 
-void NegFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand) {
-  odsState.addOperands(operand);
-  odsState.addTypes({operand.getType()});
-
-}
-
 void NegFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 1u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(NegFOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult NegFOp::verifyInvariantsImpl() {
@@ -6059,6 +6633,14 @@ void NegFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 
 ::mlir::LogicalResult NegFOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult NegFOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult NegFOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -6103,7 +6685,7 @@ void NegFOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void NegFOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void NegFOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -6117,9 +6699,11 @@ namespace arith {
 // ::mlir::arith::OrIOp definitions
 //===----------------------------------------------------------------------===//
 
-OrIOpAdaptor::OrIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+OrIOpAdaptor::OrIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.ori", odsAttrs.getContext());
+}
 
-OrIOpAdaptor::OrIOpAdaptor(OrIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+OrIOpAdaptor::OrIOpAdaptor(OrIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange OrIOpAdaptor::getOperands() {
   return odsOperands;
@@ -6201,6 +6785,20 @@ void OrIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
   odsState.addTypes(result);
 }
 
+void OrIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(OrIOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void OrIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
@@ -6216,18 +6814,21 @@ void OrIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
   odsState.addTypes(resultTypes);
 }
 
-void OrIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
-  odsState.addOperands(lhs);
-  odsState.addOperands(rhs);
-  odsState.addTypes({lhs.getType()});
-
-}
-
 void OrIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(OrIOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult OrIOp::verifyInvariantsImpl() {
@@ -6260,6 +6861,14 @@ void OrIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 
 ::mlir::LogicalResult OrIOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult OrIOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult OrIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -6318,7 +6927,7 @@ void OrIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void OrIOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void OrIOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -6332,9 +6941,11 @@ namespace arith {
 // ::mlir::arith::RemFOp definitions
 //===----------------------------------------------------------------------===//
 
-RemFOpAdaptor::RemFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+RemFOpAdaptor::RemFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.remf", odsAttrs.getContext());
+}
 
-RemFOpAdaptor::RemFOpAdaptor(RemFOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+RemFOpAdaptor::RemFOpAdaptor(RemFOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange RemFOpAdaptor::getOperands() {
   return odsOperands;
@@ -6416,6 +7027,20 @@ void RemFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
   odsState.addTypes(result);
 }
 
+void RemFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(RemFOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void RemFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
@@ -6431,18 +7056,21 @@ void RemFOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   odsState.addTypes(resultTypes);
 }
 
-void RemFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
-  odsState.addOperands(lhs);
-  odsState.addOperands(rhs);
-  odsState.addTypes({lhs.getType()});
-
-}
-
 void RemFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(RemFOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult RemFOp::verifyInvariantsImpl() {
@@ -6475,6 +7103,14 @@ void RemFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 
 ::mlir::LogicalResult RemFOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult RemFOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult RemFOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -6533,7 +7169,7 @@ void RemFOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void RemFOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void RemFOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -6547,9 +7183,11 @@ namespace arith {
 // ::mlir::arith::RemSIOp definitions
 //===----------------------------------------------------------------------===//
 
-RemSIOpAdaptor::RemSIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+RemSIOpAdaptor::RemSIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.remsi", odsAttrs.getContext());
+}
 
-RemSIOpAdaptor::RemSIOpAdaptor(RemSIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+RemSIOpAdaptor::RemSIOpAdaptor(RemSIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange RemSIOpAdaptor::getOperands() {
   return odsOperands;
@@ -6631,6 +7269,20 @@ void RemSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
   odsState.addTypes(result);
 }
 
+void RemSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(RemSIOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void RemSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
@@ -6646,18 +7298,21 @@ void RemSIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   odsState.addTypes(resultTypes);
 }
 
-void RemSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
-  odsState.addOperands(lhs);
-  odsState.addOperands(rhs);
-  odsState.addTypes({lhs.getType()});
-
-}
-
 void RemSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(RemSIOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult RemSIOp::verifyInvariantsImpl() {
@@ -6690,6 +7345,14 @@ void RemSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
 
 ::mlir::LogicalResult RemSIOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult RemSIOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult RemSIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -6748,7 +7411,7 @@ void RemSIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void RemSIOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void RemSIOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -6762,9 +7425,11 @@ namespace arith {
 // ::mlir::arith::RemUIOp definitions
 //===----------------------------------------------------------------------===//
 
-RemUIOpAdaptor::RemUIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+RemUIOpAdaptor::RemUIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.remui", odsAttrs.getContext());
+}
 
-RemUIOpAdaptor::RemUIOpAdaptor(RemUIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+RemUIOpAdaptor::RemUIOpAdaptor(RemUIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange RemUIOpAdaptor::getOperands() {
   return odsOperands;
@@ -6846,6 +7511,20 @@ void RemUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
   odsState.addTypes(result);
 }
 
+void RemUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(RemUIOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void RemUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
@@ -6861,18 +7540,21 @@ void RemUIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   odsState.addTypes(resultTypes);
 }
 
-void RemUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
-  odsState.addOperands(lhs);
-  odsState.addOperands(rhs);
-  odsState.addTypes({lhs.getType()});
-
-}
-
 void RemUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(RemUIOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult RemUIOp::verifyInvariantsImpl() {
@@ -6905,6 +7587,14 @@ void RemUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
 
 ::mlir::LogicalResult RemUIOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult RemUIOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult RemUIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -6963,7 +7653,7 @@ void RemUIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void RemUIOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void RemUIOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -6977,9 +7667,11 @@ namespace arith {
 // ::mlir::arith::SIToFPOp definitions
 //===----------------------------------------------------------------------===//
 
-SIToFPOpAdaptor::SIToFPOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+SIToFPOpAdaptor::SIToFPOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.sitofp", odsAttrs.getContext());
+}
 
-SIToFPOpAdaptor::SIToFPOpAdaptor(SIToFPOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+SIToFPOpAdaptor::SIToFPOpAdaptor(SIToFPOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange SIToFPOpAdaptor::getOperands() {
   return odsOperands;
@@ -7148,7 +7840,7 @@ void SIToFPOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void SIToFPOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void SIToFPOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -7162,9 +7854,11 @@ namespace arith {
 // ::mlir::arith::ShLIOp definitions
 //===----------------------------------------------------------------------===//
 
-ShLIOpAdaptor::ShLIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ShLIOpAdaptor::ShLIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.shli", odsAttrs.getContext());
+}
 
-ShLIOpAdaptor::ShLIOpAdaptor(ShLIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ShLIOpAdaptor::ShLIOpAdaptor(ShLIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ShLIOpAdaptor::getOperands() {
   return odsOperands;
@@ -7246,6 +7940,20 @@ void ShLIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
   odsState.addTypes(result);
 }
 
+void ShLIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(ShLIOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void ShLIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
@@ -7261,18 +7969,21 @@ void ShLIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   odsState.addTypes(resultTypes);
 }
 
-void ShLIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
-  odsState.addOperands(lhs);
-  odsState.addOperands(rhs);
-  odsState.addTypes({lhs.getType()});
-
-}
-
 void ShLIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(ShLIOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult ShLIOp::verifyInvariantsImpl() {
@@ -7305,6 +8016,14 @@ void ShLIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 
 ::mlir::LogicalResult ShLIOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult ShLIOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult ShLIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -7363,7 +8082,7 @@ void ShLIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void ShLIOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ShLIOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -7377,9 +8096,11 @@ namespace arith {
 // ::mlir::arith::ShRSIOp definitions
 //===----------------------------------------------------------------------===//
 
-ShRSIOpAdaptor::ShRSIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ShRSIOpAdaptor::ShRSIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.shrsi", odsAttrs.getContext());
+}
 
-ShRSIOpAdaptor::ShRSIOpAdaptor(ShRSIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ShRSIOpAdaptor::ShRSIOpAdaptor(ShRSIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ShRSIOpAdaptor::getOperands() {
   return odsOperands;
@@ -7461,6 +8182,20 @@ void ShRSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
   odsState.addTypes(result);
 }
 
+void ShRSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(ShRSIOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void ShRSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
@@ -7476,18 +8211,21 @@ void ShRSIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   odsState.addTypes(resultTypes);
 }
 
-void ShRSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
-  odsState.addOperands(lhs);
-  odsState.addOperands(rhs);
-  odsState.addTypes({lhs.getType()});
-
-}
-
 void ShRSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(ShRSIOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult ShRSIOp::verifyInvariantsImpl() {
@@ -7520,6 +8258,14 @@ void ShRSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
 
 ::mlir::LogicalResult ShRSIOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult ShRSIOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult ShRSIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -7578,7 +8324,7 @@ void ShRSIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void ShRSIOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ShRSIOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -7592,9 +8338,11 @@ namespace arith {
 // ::mlir::arith::ShRUIOp definitions
 //===----------------------------------------------------------------------===//
 
-ShRUIOpAdaptor::ShRUIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ShRUIOpAdaptor::ShRUIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.shrui", odsAttrs.getContext());
+}
 
-ShRUIOpAdaptor::ShRUIOpAdaptor(ShRUIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ShRUIOpAdaptor::ShRUIOpAdaptor(ShRUIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ShRUIOpAdaptor::getOperands() {
   return odsOperands;
@@ -7676,6 +8424,20 @@ void ShRUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
   odsState.addTypes(result);
 }
 
+void ShRUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(ShRUIOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void ShRUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
@@ -7691,18 +8453,21 @@ void ShRUIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   odsState.addTypes(resultTypes);
 }
 
-void ShRUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
-  odsState.addOperands(lhs);
-  odsState.addOperands(rhs);
-  odsState.addTypes({lhs.getType()});
-
-}
-
 void ShRUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(ShRUIOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult ShRUIOp::verifyInvariantsImpl() {
@@ -7735,6 +8500,14 @@ void ShRUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
 
 ::mlir::LogicalResult ShRUIOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult ShRUIOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult ShRUIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -7793,7 +8566,7 @@ void ShRUIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void ShRUIOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ShRUIOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -7807,9 +8580,11 @@ namespace arith {
 // ::mlir::arith::SubFOp definitions
 //===----------------------------------------------------------------------===//
 
-SubFOpAdaptor::SubFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+SubFOpAdaptor::SubFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.subf", odsAttrs.getContext());
+}
 
-SubFOpAdaptor::SubFOpAdaptor(SubFOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+SubFOpAdaptor::SubFOpAdaptor(SubFOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange SubFOpAdaptor::getOperands() {
   return odsOperands;
@@ -7891,6 +8666,20 @@ void SubFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
   odsState.addTypes(result);
 }
 
+void SubFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(SubFOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void SubFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
@@ -7906,18 +8695,21 @@ void SubFOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   odsState.addTypes(resultTypes);
 }
 
-void SubFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
-  odsState.addOperands(lhs);
-  odsState.addOperands(rhs);
-  odsState.addTypes({lhs.getType()});
-
-}
-
 void SubFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(SubFOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult SubFOp::verifyInvariantsImpl() {
@@ -7950,6 +8742,14 @@ void SubFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 
 ::mlir::LogicalResult SubFOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult SubFOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult SubFOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -8008,7 +8808,7 @@ void SubFOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void SubFOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void SubFOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -8022,9 +8822,11 @@ namespace arith {
 // ::mlir::arith::SubIOp definitions
 //===----------------------------------------------------------------------===//
 
-SubIOpAdaptor::SubIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+SubIOpAdaptor::SubIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.subi", odsAttrs.getContext());
+}
 
-SubIOpAdaptor::SubIOpAdaptor(SubIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+SubIOpAdaptor::SubIOpAdaptor(SubIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange SubIOpAdaptor::getOperands() {
   return odsOperands;
@@ -8106,6 +8908,20 @@ void SubIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
   odsState.addTypes(result);
 }
 
+void SubIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(SubIOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void SubIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
@@ -8121,18 +8937,21 @@ void SubIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   odsState.addTypes(resultTypes);
 }
 
-void SubIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
-  odsState.addOperands(lhs);
-  odsState.addOperands(rhs);
-  odsState.addTypes({lhs.getType()});
-
-}
-
 void SubIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(SubIOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult SubIOp::verifyInvariantsImpl() {
@@ -8165,6 +8984,14 @@ void SubIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 
 ::mlir::LogicalResult SubIOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult SubIOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult SubIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -8223,7 +9050,7 @@ void SubIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void SubIOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void SubIOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -8237,9 +9064,11 @@ namespace arith {
 // ::mlir::arith::TruncFOp definitions
 //===----------------------------------------------------------------------===//
 
-TruncFOpAdaptor::TruncFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+TruncFOpAdaptor::TruncFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.truncf", odsAttrs.getContext());
+}
 
-TruncFOpAdaptor::TruncFOpAdaptor(TruncFOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+TruncFOpAdaptor::TruncFOpAdaptor(TruncFOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange TruncFOpAdaptor::getOperands() {
   return odsOperands;
@@ -8410,7 +9239,7 @@ void TruncFOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void TruncFOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void TruncFOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -8424,9 +9253,11 @@ namespace arith {
 // ::mlir::arith::TruncIOp definitions
 //===----------------------------------------------------------------------===//
 
-TruncIOpAdaptor::TruncIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+TruncIOpAdaptor::TruncIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.trunci", odsAttrs.getContext());
+}
 
-TruncIOpAdaptor::TruncIOpAdaptor(TruncIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+TruncIOpAdaptor::TruncIOpAdaptor(TruncIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange TruncIOpAdaptor::getOperands() {
   return odsOperands;
@@ -8597,7 +9428,7 @@ void TruncIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void TruncIOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void TruncIOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -8611,9 +9442,11 @@ namespace arith {
 // ::mlir::arith::UIToFPOp definitions
 //===----------------------------------------------------------------------===//
 
-UIToFPOpAdaptor::UIToFPOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+UIToFPOpAdaptor::UIToFPOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.uitofp", odsAttrs.getContext());
+}
 
-UIToFPOpAdaptor::UIToFPOpAdaptor(UIToFPOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+UIToFPOpAdaptor::UIToFPOpAdaptor(UIToFPOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange UIToFPOpAdaptor::getOperands() {
   return odsOperands;
@@ -8782,7 +9615,7 @@ void UIToFPOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void UIToFPOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void UIToFPOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -8796,9 +9629,11 @@ namespace arith {
 // ::mlir::arith::XOrIOp definitions
 //===----------------------------------------------------------------------===//
 
-XOrIOpAdaptor::XOrIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+XOrIOpAdaptor::XOrIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.xori", odsAttrs.getContext());
+}
 
-XOrIOpAdaptor::XOrIOpAdaptor(XOrIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+XOrIOpAdaptor::XOrIOpAdaptor(XOrIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange XOrIOpAdaptor::getOperands() {
   return odsOperands;
@@ -8880,6 +9715,20 @@ void XOrIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
   odsState.addTypes(result);
 }
 
+void XOrIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(XOrIOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void XOrIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
@@ -8895,18 +9744,21 @@ void XOrIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   odsState.addTypes(resultTypes);
 }
 
-void XOrIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
-  odsState.addOperands(lhs);
-  odsState.addOperands(rhs);
-  odsState.addTypes({lhs.getType()});
-
-}
-
 void XOrIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(XOrIOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult XOrIOp::verifyInvariantsImpl() {
@@ -8939,6 +9791,14 @@ void XOrIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 
 ::mlir::LogicalResult XOrIOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult XOrIOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult XOrIOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -8997,7 +9857,7 @@ void XOrIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void XOrIOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void XOrIOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith
@@ -9011,9 +9871,11 @@ namespace arith {
 // ::mlir::arith::SelectOp definitions
 //===----------------------------------------------------------------------===//
 
-SelectOpAdaptor::SelectOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+SelectOpAdaptor::SelectOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.select", odsAttrs.getContext());
+}
 
-SelectOpAdaptor::SelectOpAdaptor(SelectOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+SelectOpAdaptor::SelectOpAdaptor(SelectOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange SelectOpAdaptor::getOperands() {
   return odsOperands;
@@ -9146,7 +10008,7 @@ void SelectOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(SelectOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -9203,11 +10065,12 @@ void SelectOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
 ::mlir::LogicalResult SelectOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = operands[2].getType();
+  ::mlir::Type odsInferredType0 = operands[2].getType();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
-void SelectOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void SelectOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arith

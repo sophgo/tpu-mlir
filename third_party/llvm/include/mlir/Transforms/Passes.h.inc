@@ -556,6 +556,55 @@ protected:
 };
 
 //===----------------------------------------------------------------------===//
+// TopologicalSort
+//===----------------------------------------------------------------------===//
+
+template <typename DerivedT>
+class TopologicalSortBase : public ::mlir::OperationPass<> {
+public:
+  using Base = TopologicalSortBase;
+
+  TopologicalSortBase() : ::mlir::OperationPass<>(::mlir::TypeID::get<DerivedT>()) {}
+  TopologicalSortBase(const TopologicalSortBase &other) : ::mlir::OperationPass<>(other) {}
+
+  /// Returns the command-line argument attached to this pass.
+  static constexpr ::llvm::StringLiteral getArgumentName() {
+    return ::llvm::StringLiteral("topological-sort");
+  }
+  ::llvm::StringRef getArgument() const override { return "topological-sort"; }
+
+  ::llvm::StringRef getDescription() const override { return "Sort regions without SSA dominance in topological order"; }
+
+  /// Returns the derived pass name.
+  static constexpr ::llvm::StringLiteral getPassName() {
+    return ::llvm::StringLiteral("TopologicalSort");
+  }
+  ::llvm::StringRef getName() const override { return "TopologicalSort"; }
+
+  /// Support isa/dyn_cast functionality for the derived pass class.
+  static bool classof(const ::mlir::Pass *pass) {
+    return pass->getTypeID() == ::mlir::TypeID::get<DerivedT>();
+  }
+
+  /// A clone method to create a copy of this pass.
+  std::unique_ptr<::mlir::Pass> clonePass() const override {
+    return std::make_unique<DerivedT>(*static_cast<const DerivedT *>(this));
+  }
+
+  /// Return the dialect that must be loaded in the context before this pass.
+  void getDependentDialects(::mlir::DialectRegistry &registry) const override {
+    
+  }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(TopologicalSortBase<DerivedT>)
+
+protected:
+};
+
+//===----------------------------------------------------------------------===//
 // ViewOpGraph
 //===----------------------------------------------------------------------===//
 
@@ -723,6 +772,16 @@ inline void registerSymbolPrivatizePass() {
 }
 
 //===----------------------------------------------------------------------===//
+// TopologicalSort Registration
+//===----------------------------------------------------------------------===//
+
+inline void registerTopologicalSortPass() {
+  ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
+    return mlir::createTopologicalSortPass();
+  });
+}
+
+//===----------------------------------------------------------------------===//
 // ViewOpGraph Registration
 //===----------------------------------------------------------------------===//
 
@@ -748,6 +807,7 @@ inline void registerTransformsPasses() {
   registerStripDebugInfoPass();
   registerSymbolDCEPass();
   registerSymbolPrivatizePass();
+  registerTopologicalSortPass();
   registerViewOpGraphPass();
 }
 #undef GEN_PASS_REGISTRATION

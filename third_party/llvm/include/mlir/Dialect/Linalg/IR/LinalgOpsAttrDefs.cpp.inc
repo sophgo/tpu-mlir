@@ -96,7 +96,7 @@ BinaryFnAttr BinaryFnAttr::get(::mlir::MLIRContext *context, ::mlir::linalg::Bin
       auto maybeEnum = ::mlir::linalg::symbolizeBinaryFn(enumKeyword);
       if (maybeEnum)
         return *maybeEnum;
-      return {(::mlir::LogicalResult)odsParser.emitError(loc, "expected ::mlir::linalg::BinaryFn to be one of: add, sub, mul, max_signed, min_signed, max_unsigned, min_unsigned")};
+      return {(::mlir::LogicalResult)(odsParser.emitError(loc) << "expected " << "::mlir::linalg::BinaryFn" << " to be one of: " << "add" << ", " << "sub" << ", " << "mul" << ", " << "max_signed" << ", " << "min_signed" << ", " << "max_unsigned" << ", " << "min_unsigned")};
     }();
   if (::mlir::failed(_result_value)) {
     odsParser.emitError(odsParser.getCurrentLocation(), "failed to parse BinaryFnAttr parameter 'value' which is to be a `::mlir::linalg::BinaryFn`");
@@ -165,7 +165,7 @@ TypeFnAttr TypeFnAttr::get(::mlir::MLIRContext *context, ::mlir::linalg::TypeFn 
       auto maybeEnum = ::mlir::linalg::symbolizeTypeFn(enumKeyword);
       if (maybeEnum)
         return *maybeEnum;
-      return {(::mlir::LogicalResult)odsParser.emitError(loc, "expected ::mlir::linalg::TypeFn to be one of: cast_signed, cast_unsigned")};
+      return {(::mlir::LogicalResult)(odsParser.emitError(loc) << "expected " << "::mlir::linalg::TypeFn" << " to be one of: " << "cast_signed" << ", " << "cast_unsigned")};
     }();
   if (::mlir::failed(_result_value)) {
     odsParser.emitError(odsParser.getCurrentLocation(), "failed to parse TypeFnAttr parameter 'value' which is to be a `::mlir::linalg::TypeFn`");
@@ -234,7 +234,7 @@ UnaryFnAttr UnaryFnAttr::get(::mlir::MLIRContext *context, ::mlir::linalg::Unary
       auto maybeEnum = ::mlir::linalg::symbolizeUnaryFn(enumKeyword);
       if (maybeEnum)
         return *maybeEnum;
-      return {(::mlir::LogicalResult)odsParser.emitError(loc, "expected ::mlir::linalg::UnaryFn to be one of: exp, log, abs, ceil, floor, negf")};
+      return {(::mlir::LogicalResult)(odsParser.emitError(loc) << "expected " << "::mlir::linalg::UnaryFn" << " to be one of: " << "exp" << ", " << "log" << ", " << "abs" << ", " << "ceil" << ", " << "floor" << ", " << "negf")};
     }();
   if (::mlir::failed(_result_value)) {
     odsParser.emitError(odsParser.getCurrentLocation(), "failed to parse UnaryFnAttr parameter 'value' which is to be a `::mlir::linalg::UnaryFn`");
@@ -276,6 +276,7 @@ namespace linalg {
     if (parseResult.hasValue())
       return attr;
   }
+  
   parser.emitError(typeLoc) << "unknown attribute `"
       << attrTag << "` in dialect `" << getNamespace() << "`";
   return {};
@@ -285,6 +286,7 @@ void LinalgDialect::printAttribute(::mlir::Attribute attr,
                          ::mlir::DialectAsmPrinter &printer) const {
   if (::mlir::succeeded(generatedAttributePrinter(attr, printer)))
     return;
+  
 }
 } // namespace linalg
 } // namespace mlir

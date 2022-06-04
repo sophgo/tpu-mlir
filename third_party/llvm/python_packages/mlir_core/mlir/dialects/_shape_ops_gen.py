@@ -179,7 +179,7 @@ class BroadcastOp(_ods_ir.OpView):
 
   _ODS_REGIONS = (0, True)
 
-  def __init__(self, result, shapes, error, *, loc=None, ip=None):
+  def __init__(self, result, shapes, *, error=None, loc=None, ip=None):
     operands = []
     results = []
     attributes = {}
@@ -609,6 +609,57 @@ class FromExtentsOp(_ods_ir.OpView):
 
 @_ods_cext.register_operation(_Dialect)
 @_ods_extend_opview_class(_ods_ext_module)
+class FuncOp(_ods_ir.OpView):
+  OPERATION_NAME = "shape.func"
+
+  _ODS_REGIONS = (1, True)
+
+  def __init__(self, sym_name, function_type, *, sym_visibility=None, loc=None, ip=None):
+    operands = []
+    results = []
+    attributes = {}
+    regions = None
+    attributes["sym_name"] = sym_name
+    attributes["function_type"] = function_type
+    if sym_visibility is not None: attributes["sym_visibility"] = sym_visibility
+    _ods_successors = None
+    super().__init__(self.build_generic(
+      attributes=attributes, results=results, operands=operands,
+      successors=_ods_successors, regions=regions, loc=loc, ip=ip))
+
+  @builtins.property
+  def sym_name(self):
+    return _ods_ir.StringAttr(self.operation.attributes["sym_name"])
+
+  @sym_name.setter
+  def sym_name(self, value):
+    if value is None:
+      raise ValueError("'None' not allowed as value for mandatory attributes")
+    self.operation.attributes["sym_name"] = value
+
+  @builtins.property
+  def sym_visibility(self):
+    if "sym_visibility" not in self.operation.attributes:
+      return None
+    return _ods_ir.StringAttr(self.operation.attributes["sym_visibility"])
+
+  @sym_visibility.setter
+  def sym_visibility(self, value):
+    if value is not None:
+      self.operation.attributes["sym_visibility"] = value
+    elif "sym_visibility" in self.operation.attributes:
+      del self.operation.attributes["sym_visibility"]
+
+  @sym_visibility.deleter
+  def sym_visibility(self):
+    del self.operation.attributes["sym_visibility"]
+
+  @builtins.property
+  def body(self):
+    return self.regions[0]
+
+@_ods_cext.register_operation(_Dialect)
+@_ods_extend_opview_class(_ods_ext_module)
 class FunctionLibraryOp(_ods_ir.OpView):
   OPERATION_NAME = "shape.function_library"
 
@@ -764,7 +815,7 @@ class MeetOp(_ods_ir.OpView):
 
   _ODS_REGIONS = (0, True)
 
-  def __init__(self, arg0, arg1, error, *, loc=None, ip=None):
+  def __init__(self, arg0, arg1, *, error=None, loc=None, ip=None):
     operands = []
     results = []
     attributes = {}
@@ -987,6 +1038,29 @@ class ReduceOp(_ods_ir.OpView):
   @builtins.property
   def region(self):
     return self.regions[0]
+
+@_ods_cext.register_operation(_Dialect)
+@_ods_extend_opview_class(_ods_ext_module)
+class ReturnOp(_ods_ir.OpView):
+  OPERATION_NAME = "shape.return"
+
+  _ODS_REGIONS = (0, True)
+
+  def __init__(self, operands_, *, loc=None, ip=None):
+    operands = []
+    results = []
+    attributes = {}
+    regions = None
+    operands.extend(_get_op_results_or_values(operands_))
+    _ods_successors = None
+    super().__init__(self.build_generic(
+      attributes=attributes, results=results, operands=operands,
+      successors=_ods_successors, regions=regions, loc=loc, ip=ip))
+
+  @builtins.property
+  def operands_(self):
+    _ods_variadic_group_length = len(self.operation.operands) - 1 + 1
+    return self.operation.operands[0:0 + _ods_variadic_group_length]
 
 @_ods_cext.register_operation(_Dialect)
 @_ods_extend_opview_class(_ods_ext_module)

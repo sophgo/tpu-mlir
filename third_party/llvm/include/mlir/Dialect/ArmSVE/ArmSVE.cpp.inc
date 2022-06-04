@@ -164,9 +164,11 @@ namespace arm_sve {
 // ::mlir::arm_sve::ScalableMaskedAddFIntrOp definitions
 //===----------------------------------------------------------------------===//
 
-ScalableMaskedAddFIntrOpAdaptor::ScalableMaskedAddFIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ScalableMaskedAddFIntrOpAdaptor::ScalableMaskedAddFIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arm_sve.intr.fadd", odsAttrs.getContext());
+}
 
-ScalableMaskedAddFIntrOpAdaptor::ScalableMaskedAddFIntrOpAdaptor(ScalableMaskedAddFIntrOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ScalableMaskedAddFIntrOpAdaptor::ScalableMaskedAddFIntrOpAdaptor(ScalableMaskedAddFIntrOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ScalableMaskedAddFIntrOpAdaptor::getOperands() {
   return odsOperands;
@@ -286,9 +288,11 @@ namespace arm_sve {
 // ::mlir::arm_sve::ScalableMaskedAddFOp definitions
 //===----------------------------------------------------------------------===//
 
-ScalableMaskedAddFOpAdaptor::ScalableMaskedAddFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ScalableMaskedAddFOpAdaptor::ScalableMaskedAddFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arm_sve.masked.addf", odsAttrs.getContext());
+}
 
-ScalableMaskedAddFOpAdaptor::ScalableMaskedAddFOpAdaptor(ScalableMaskedAddFOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ScalableMaskedAddFOpAdaptor::ScalableMaskedAddFOpAdaptor(ScalableMaskedAddFOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ScalableMaskedAddFOpAdaptor::getOperands() {
   return odsOperands;
@@ -544,9 +548,11 @@ namespace arm_sve {
 // ::mlir::arm_sve::ScalableMaskedAddIIntrOp definitions
 //===----------------------------------------------------------------------===//
 
-ScalableMaskedAddIIntrOpAdaptor::ScalableMaskedAddIIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ScalableMaskedAddIIntrOpAdaptor::ScalableMaskedAddIIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arm_sve.intr.add", odsAttrs.getContext());
+}
 
-ScalableMaskedAddIIntrOpAdaptor::ScalableMaskedAddIIntrOpAdaptor(ScalableMaskedAddIIntrOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ScalableMaskedAddIIntrOpAdaptor::ScalableMaskedAddIIntrOpAdaptor(ScalableMaskedAddIIntrOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ScalableMaskedAddIIntrOpAdaptor::getOperands() {
   return odsOperands;
@@ -666,9 +672,11 @@ namespace arm_sve {
 // ::mlir::arm_sve::ScalableMaskedAddIOp definitions
 //===----------------------------------------------------------------------===//
 
-ScalableMaskedAddIOpAdaptor::ScalableMaskedAddIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ScalableMaskedAddIOpAdaptor::ScalableMaskedAddIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arm_sve.masked.addi", odsAttrs.getContext());
+}
 
-ScalableMaskedAddIOpAdaptor::ScalableMaskedAddIOpAdaptor(ScalableMaskedAddIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ScalableMaskedAddIOpAdaptor::ScalableMaskedAddIOpAdaptor(ScalableMaskedAddIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ScalableMaskedAddIOpAdaptor::getOperands() {
   return odsOperands;
@@ -924,9 +932,11 @@ namespace arm_sve {
 // ::mlir::arm_sve::ScalableMaskedDivFIntrOp definitions
 //===----------------------------------------------------------------------===//
 
-ScalableMaskedDivFIntrOpAdaptor::ScalableMaskedDivFIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ScalableMaskedDivFIntrOpAdaptor::ScalableMaskedDivFIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arm_sve.intr.fdiv", odsAttrs.getContext());
+}
 
-ScalableMaskedDivFIntrOpAdaptor::ScalableMaskedDivFIntrOpAdaptor(ScalableMaskedDivFIntrOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ScalableMaskedDivFIntrOpAdaptor::ScalableMaskedDivFIntrOpAdaptor(ScalableMaskedDivFIntrOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ScalableMaskedDivFIntrOpAdaptor::getOperands() {
   return odsOperands;
@@ -1046,9 +1056,11 @@ namespace arm_sve {
 // ::mlir::arm_sve::ScalableMaskedDivFOp definitions
 //===----------------------------------------------------------------------===//
 
-ScalableMaskedDivFOpAdaptor::ScalableMaskedDivFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ScalableMaskedDivFOpAdaptor::ScalableMaskedDivFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arm_sve.masked.divf", odsAttrs.getContext());
+}
 
-ScalableMaskedDivFOpAdaptor::ScalableMaskedDivFOpAdaptor(ScalableMaskedDivFOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ScalableMaskedDivFOpAdaptor::ScalableMaskedDivFOpAdaptor(ScalableMaskedDivFOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ScalableMaskedDivFOpAdaptor::getOperands() {
   return odsOperands;
@@ -1304,9 +1316,11 @@ namespace arm_sve {
 // ::mlir::arm_sve::ScalableMaskedMulFIntrOp definitions
 //===----------------------------------------------------------------------===//
 
-ScalableMaskedMulFIntrOpAdaptor::ScalableMaskedMulFIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ScalableMaskedMulFIntrOpAdaptor::ScalableMaskedMulFIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arm_sve.intr.fmul", odsAttrs.getContext());
+}
 
-ScalableMaskedMulFIntrOpAdaptor::ScalableMaskedMulFIntrOpAdaptor(ScalableMaskedMulFIntrOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ScalableMaskedMulFIntrOpAdaptor::ScalableMaskedMulFIntrOpAdaptor(ScalableMaskedMulFIntrOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ScalableMaskedMulFIntrOpAdaptor::getOperands() {
   return odsOperands;
@@ -1426,9 +1440,11 @@ namespace arm_sve {
 // ::mlir::arm_sve::ScalableMaskedMulFOp definitions
 //===----------------------------------------------------------------------===//
 
-ScalableMaskedMulFOpAdaptor::ScalableMaskedMulFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ScalableMaskedMulFOpAdaptor::ScalableMaskedMulFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arm_sve.masked.mulf", odsAttrs.getContext());
+}
 
-ScalableMaskedMulFOpAdaptor::ScalableMaskedMulFOpAdaptor(ScalableMaskedMulFOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ScalableMaskedMulFOpAdaptor::ScalableMaskedMulFOpAdaptor(ScalableMaskedMulFOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ScalableMaskedMulFOpAdaptor::getOperands() {
   return odsOperands;
@@ -1684,9 +1700,11 @@ namespace arm_sve {
 // ::mlir::arm_sve::ScalableMaskedMulIIntrOp definitions
 //===----------------------------------------------------------------------===//
 
-ScalableMaskedMulIIntrOpAdaptor::ScalableMaskedMulIIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ScalableMaskedMulIIntrOpAdaptor::ScalableMaskedMulIIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arm_sve.intr.mul", odsAttrs.getContext());
+}
 
-ScalableMaskedMulIIntrOpAdaptor::ScalableMaskedMulIIntrOpAdaptor(ScalableMaskedMulIIntrOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ScalableMaskedMulIIntrOpAdaptor::ScalableMaskedMulIIntrOpAdaptor(ScalableMaskedMulIIntrOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ScalableMaskedMulIIntrOpAdaptor::getOperands() {
   return odsOperands;
@@ -1806,9 +1824,11 @@ namespace arm_sve {
 // ::mlir::arm_sve::ScalableMaskedMulIOp definitions
 //===----------------------------------------------------------------------===//
 
-ScalableMaskedMulIOpAdaptor::ScalableMaskedMulIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ScalableMaskedMulIOpAdaptor::ScalableMaskedMulIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arm_sve.masked.muli", odsAttrs.getContext());
+}
 
-ScalableMaskedMulIOpAdaptor::ScalableMaskedMulIOpAdaptor(ScalableMaskedMulIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ScalableMaskedMulIOpAdaptor::ScalableMaskedMulIOpAdaptor(ScalableMaskedMulIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ScalableMaskedMulIOpAdaptor::getOperands() {
   return odsOperands;
@@ -2064,9 +2084,11 @@ namespace arm_sve {
 // ::mlir::arm_sve::ScalableMaskedSDivIIntrOp definitions
 //===----------------------------------------------------------------------===//
 
-ScalableMaskedSDivIIntrOpAdaptor::ScalableMaskedSDivIIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ScalableMaskedSDivIIntrOpAdaptor::ScalableMaskedSDivIIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arm_sve.intr.sdiv", odsAttrs.getContext());
+}
 
-ScalableMaskedSDivIIntrOpAdaptor::ScalableMaskedSDivIIntrOpAdaptor(ScalableMaskedSDivIIntrOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ScalableMaskedSDivIIntrOpAdaptor::ScalableMaskedSDivIIntrOpAdaptor(ScalableMaskedSDivIIntrOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ScalableMaskedSDivIIntrOpAdaptor::getOperands() {
   return odsOperands;
@@ -2186,9 +2208,11 @@ namespace arm_sve {
 // ::mlir::arm_sve::ScalableMaskedSDivIOp definitions
 //===----------------------------------------------------------------------===//
 
-ScalableMaskedSDivIOpAdaptor::ScalableMaskedSDivIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ScalableMaskedSDivIOpAdaptor::ScalableMaskedSDivIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arm_sve.masked.divi_signed", odsAttrs.getContext());
+}
 
-ScalableMaskedSDivIOpAdaptor::ScalableMaskedSDivIOpAdaptor(ScalableMaskedSDivIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ScalableMaskedSDivIOpAdaptor::ScalableMaskedSDivIOpAdaptor(ScalableMaskedSDivIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ScalableMaskedSDivIOpAdaptor::getOperands() {
   return odsOperands;
@@ -2444,9 +2468,11 @@ namespace arm_sve {
 // ::mlir::arm_sve::ScalableMaskedSubFIntrOp definitions
 //===----------------------------------------------------------------------===//
 
-ScalableMaskedSubFIntrOpAdaptor::ScalableMaskedSubFIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ScalableMaskedSubFIntrOpAdaptor::ScalableMaskedSubFIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arm_sve.intr.fsub", odsAttrs.getContext());
+}
 
-ScalableMaskedSubFIntrOpAdaptor::ScalableMaskedSubFIntrOpAdaptor(ScalableMaskedSubFIntrOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ScalableMaskedSubFIntrOpAdaptor::ScalableMaskedSubFIntrOpAdaptor(ScalableMaskedSubFIntrOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ScalableMaskedSubFIntrOpAdaptor::getOperands() {
   return odsOperands;
@@ -2566,9 +2592,11 @@ namespace arm_sve {
 // ::mlir::arm_sve::ScalableMaskedSubFOp definitions
 //===----------------------------------------------------------------------===//
 
-ScalableMaskedSubFOpAdaptor::ScalableMaskedSubFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ScalableMaskedSubFOpAdaptor::ScalableMaskedSubFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arm_sve.masked.subf", odsAttrs.getContext());
+}
 
-ScalableMaskedSubFOpAdaptor::ScalableMaskedSubFOpAdaptor(ScalableMaskedSubFOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ScalableMaskedSubFOpAdaptor::ScalableMaskedSubFOpAdaptor(ScalableMaskedSubFOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ScalableMaskedSubFOpAdaptor::getOperands() {
   return odsOperands;
@@ -2824,9 +2852,11 @@ namespace arm_sve {
 // ::mlir::arm_sve::ScalableMaskedSubIIntrOp definitions
 //===----------------------------------------------------------------------===//
 
-ScalableMaskedSubIIntrOpAdaptor::ScalableMaskedSubIIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ScalableMaskedSubIIntrOpAdaptor::ScalableMaskedSubIIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arm_sve.intr.sub", odsAttrs.getContext());
+}
 
-ScalableMaskedSubIIntrOpAdaptor::ScalableMaskedSubIIntrOpAdaptor(ScalableMaskedSubIIntrOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ScalableMaskedSubIIntrOpAdaptor::ScalableMaskedSubIIntrOpAdaptor(ScalableMaskedSubIIntrOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ScalableMaskedSubIIntrOpAdaptor::getOperands() {
   return odsOperands;
@@ -2946,9 +2976,11 @@ namespace arm_sve {
 // ::mlir::arm_sve::ScalableMaskedSubIOp definitions
 //===----------------------------------------------------------------------===//
 
-ScalableMaskedSubIOpAdaptor::ScalableMaskedSubIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ScalableMaskedSubIOpAdaptor::ScalableMaskedSubIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arm_sve.masked.subi", odsAttrs.getContext());
+}
 
-ScalableMaskedSubIOpAdaptor::ScalableMaskedSubIOpAdaptor(ScalableMaskedSubIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ScalableMaskedSubIOpAdaptor::ScalableMaskedSubIOpAdaptor(ScalableMaskedSubIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ScalableMaskedSubIOpAdaptor::getOperands() {
   return odsOperands;
@@ -3204,9 +3236,11 @@ namespace arm_sve {
 // ::mlir::arm_sve::ScalableMaskedUDivIIntrOp definitions
 //===----------------------------------------------------------------------===//
 
-ScalableMaskedUDivIIntrOpAdaptor::ScalableMaskedUDivIIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ScalableMaskedUDivIIntrOpAdaptor::ScalableMaskedUDivIIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arm_sve.intr.udiv", odsAttrs.getContext());
+}
 
-ScalableMaskedUDivIIntrOpAdaptor::ScalableMaskedUDivIIntrOpAdaptor(ScalableMaskedUDivIIntrOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ScalableMaskedUDivIIntrOpAdaptor::ScalableMaskedUDivIIntrOpAdaptor(ScalableMaskedUDivIIntrOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ScalableMaskedUDivIIntrOpAdaptor::getOperands() {
   return odsOperands;
@@ -3326,9 +3360,11 @@ namespace arm_sve {
 // ::mlir::arm_sve::ScalableMaskedUDivIOp definitions
 //===----------------------------------------------------------------------===//
 
-ScalableMaskedUDivIOpAdaptor::ScalableMaskedUDivIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ScalableMaskedUDivIOpAdaptor::ScalableMaskedUDivIOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arm_sve.masked.divi_unsigned", odsAttrs.getContext());
+}
 
-ScalableMaskedUDivIOpAdaptor::ScalableMaskedUDivIOpAdaptor(ScalableMaskedUDivIOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ScalableMaskedUDivIOpAdaptor::ScalableMaskedUDivIOpAdaptor(ScalableMaskedUDivIOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ScalableMaskedUDivIOpAdaptor::getOperands() {
   return odsOperands;
@@ -3584,9 +3620,11 @@ namespace arm_sve {
 // ::mlir::arm_sve::SdotIntrOp definitions
 //===----------------------------------------------------------------------===//
 
-SdotIntrOpAdaptor::SdotIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+SdotIntrOpAdaptor::SdotIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arm_sve.intr.sdot", odsAttrs.getContext());
+}
 
-SdotIntrOpAdaptor::SdotIntrOpAdaptor(SdotIntrOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+SdotIntrOpAdaptor::SdotIntrOpAdaptor(SdotIntrOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange SdotIntrOpAdaptor::getOperands() {
   return odsOperands;
@@ -3706,9 +3744,11 @@ namespace arm_sve {
 // ::mlir::arm_sve::SdotOp definitions
 //===----------------------------------------------------------------------===//
 
-SdotOpAdaptor::SdotOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+SdotOpAdaptor::SdotOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arm_sve.sdot", odsAttrs.getContext());
+}
 
-SdotOpAdaptor::SdotOpAdaptor(SdotOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+SdotOpAdaptor::SdotOpAdaptor(SdotOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange SdotOpAdaptor::getOperands() {
   return odsOperands;
@@ -3953,7 +3993,7 @@ void SdotOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void SdotOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void SdotOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arm_sve
@@ -3967,9 +4007,11 @@ namespace arm_sve {
 // ::mlir::arm_sve::SmmlaIntrOp definitions
 //===----------------------------------------------------------------------===//
 
-SmmlaIntrOpAdaptor::SmmlaIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+SmmlaIntrOpAdaptor::SmmlaIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arm_sve.intr.smmla", odsAttrs.getContext());
+}
 
-SmmlaIntrOpAdaptor::SmmlaIntrOpAdaptor(SmmlaIntrOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+SmmlaIntrOpAdaptor::SmmlaIntrOpAdaptor(SmmlaIntrOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange SmmlaIntrOpAdaptor::getOperands() {
   return odsOperands;
@@ -4089,9 +4131,11 @@ namespace arm_sve {
 // ::mlir::arm_sve::SmmlaOp definitions
 //===----------------------------------------------------------------------===//
 
-SmmlaOpAdaptor::SmmlaOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+SmmlaOpAdaptor::SmmlaOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arm_sve.smmla", odsAttrs.getContext());
+}
 
-SmmlaOpAdaptor::SmmlaOpAdaptor(SmmlaOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+SmmlaOpAdaptor::SmmlaOpAdaptor(SmmlaOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange SmmlaOpAdaptor::getOperands() {
   return odsOperands;
@@ -4336,7 +4380,7 @@ void SmmlaOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void SmmlaOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void SmmlaOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arm_sve
@@ -4350,9 +4394,11 @@ namespace arm_sve {
 // ::mlir::arm_sve::UdotIntrOp definitions
 //===----------------------------------------------------------------------===//
 
-UdotIntrOpAdaptor::UdotIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+UdotIntrOpAdaptor::UdotIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arm_sve.intr.udot", odsAttrs.getContext());
+}
 
-UdotIntrOpAdaptor::UdotIntrOpAdaptor(UdotIntrOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+UdotIntrOpAdaptor::UdotIntrOpAdaptor(UdotIntrOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange UdotIntrOpAdaptor::getOperands() {
   return odsOperands;
@@ -4472,9 +4518,11 @@ namespace arm_sve {
 // ::mlir::arm_sve::UdotOp definitions
 //===----------------------------------------------------------------------===//
 
-UdotOpAdaptor::UdotOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+UdotOpAdaptor::UdotOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arm_sve.udot", odsAttrs.getContext());
+}
 
-UdotOpAdaptor::UdotOpAdaptor(UdotOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+UdotOpAdaptor::UdotOpAdaptor(UdotOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange UdotOpAdaptor::getOperands() {
   return odsOperands;
@@ -4719,7 +4767,7 @@ void UdotOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void UdotOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void UdotOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arm_sve
@@ -4733,9 +4781,11 @@ namespace arm_sve {
 // ::mlir::arm_sve::UmmlaIntrOp definitions
 //===----------------------------------------------------------------------===//
 
-UmmlaIntrOpAdaptor::UmmlaIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+UmmlaIntrOpAdaptor::UmmlaIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arm_sve.intr.ummla", odsAttrs.getContext());
+}
 
-UmmlaIntrOpAdaptor::UmmlaIntrOpAdaptor(UmmlaIntrOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+UmmlaIntrOpAdaptor::UmmlaIntrOpAdaptor(UmmlaIntrOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange UmmlaIntrOpAdaptor::getOperands() {
   return odsOperands;
@@ -4855,9 +4905,11 @@ namespace arm_sve {
 // ::mlir::arm_sve::UmmlaOp definitions
 //===----------------------------------------------------------------------===//
 
-UmmlaOpAdaptor::UmmlaOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+UmmlaOpAdaptor::UmmlaOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arm_sve.ummla", odsAttrs.getContext());
+}
 
-UmmlaOpAdaptor::UmmlaOpAdaptor(UmmlaOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+UmmlaOpAdaptor::UmmlaOpAdaptor(UmmlaOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange UmmlaOpAdaptor::getOperands() {
   return odsOperands;
@@ -5102,7 +5154,7 @@ void UmmlaOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void UmmlaOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void UmmlaOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arm_sve

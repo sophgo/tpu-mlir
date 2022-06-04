@@ -10,12 +10,7 @@ namespace mlir {
 namespace math {
 
 class MathDialect : public ::mlir::Dialect {
-  explicit MathDialect(::mlir::MLIRContext *context)
-    : ::mlir::Dialect(getDialectNamespace(), context,
-      ::mlir::TypeID::get<MathDialect>()) {
-    
-    initialize();
-  }
+  explicit MathDialect(::mlir::MLIRContext *context);
 
   void initialize();
   friend class ::mlir::MLIRContext;

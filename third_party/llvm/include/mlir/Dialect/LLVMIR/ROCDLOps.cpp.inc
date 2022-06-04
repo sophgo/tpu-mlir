@@ -21,6 +21,9 @@
 ::mlir::ROCDL::GridDimZOp,
 ::mlir::ROCDL::MubufLoadOp,
 ::mlir::ROCDL::MubufStoreOp,
+::mlir::ROCDL::RawBufferAtomicFAddOp,
+::mlir::ROCDL::RawBufferLoadOp,
+::mlir::ROCDL::RawBufferStoreOp,
 ::mlir::ROCDL::ThreadIdXOp,
 ::mlir::ROCDL::ThreadIdYOp,
 ::mlir::ROCDL::ThreadIdZOp,
@@ -75,9 +78,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::BarrierOp definitions
 //===----------------------------------------------------------------------===//
 
-BarrierOpAdaptor::BarrierOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+BarrierOpAdaptor::BarrierOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.barrier", odsAttrs.getContext());
+}
 
-BarrierOpAdaptor::BarrierOpAdaptor(BarrierOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+BarrierOpAdaptor::BarrierOpAdaptor(BarrierOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange BarrierOpAdaptor::getOperands() {
   return odsOperands;
@@ -166,9 +171,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::BlockDimXOp definitions
 //===----------------------------------------------------------------------===//
 
-BlockDimXOpAdaptor::BlockDimXOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+BlockDimXOpAdaptor::BlockDimXOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.workgroup.dim.x", odsAttrs.getContext());
+}
 
-BlockDimXOpAdaptor::BlockDimXOpAdaptor(BlockDimXOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+BlockDimXOpAdaptor::BlockDimXOpAdaptor(BlockDimXOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange BlockDimXOpAdaptor::getOperands() {
   return odsOperands;
@@ -281,7 +288,7 @@ void BlockDimXOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void BlockDimXOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void BlockDimXOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace ROCDL
@@ -295,9 +302,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::BlockDimYOp definitions
 //===----------------------------------------------------------------------===//
 
-BlockDimYOpAdaptor::BlockDimYOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+BlockDimYOpAdaptor::BlockDimYOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.workgroup.dim.y", odsAttrs.getContext());
+}
 
-BlockDimYOpAdaptor::BlockDimYOpAdaptor(BlockDimYOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+BlockDimYOpAdaptor::BlockDimYOpAdaptor(BlockDimYOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange BlockDimYOpAdaptor::getOperands() {
   return odsOperands;
@@ -410,7 +419,7 @@ void BlockDimYOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void BlockDimYOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void BlockDimYOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace ROCDL
@@ -424,9 +433,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::BlockDimZOp definitions
 //===----------------------------------------------------------------------===//
 
-BlockDimZOpAdaptor::BlockDimZOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+BlockDimZOpAdaptor::BlockDimZOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.workgroup.dim.z", odsAttrs.getContext());
+}
 
-BlockDimZOpAdaptor::BlockDimZOpAdaptor(BlockDimZOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+BlockDimZOpAdaptor::BlockDimZOpAdaptor(BlockDimZOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange BlockDimZOpAdaptor::getOperands() {
   return odsOperands;
@@ -539,7 +550,7 @@ void BlockDimZOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void BlockDimZOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void BlockDimZOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace ROCDL
@@ -553,9 +564,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::BlockIdXOp definitions
 //===----------------------------------------------------------------------===//
 
-BlockIdXOpAdaptor::BlockIdXOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+BlockIdXOpAdaptor::BlockIdXOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.workgroup.id.x", odsAttrs.getContext());
+}
 
-BlockIdXOpAdaptor::BlockIdXOpAdaptor(BlockIdXOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+BlockIdXOpAdaptor::BlockIdXOpAdaptor(BlockIdXOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange BlockIdXOpAdaptor::getOperands() {
   return odsOperands;
@@ -668,7 +681,7 @@ void BlockIdXOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void BlockIdXOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void BlockIdXOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace ROCDL
@@ -682,9 +695,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::BlockIdYOp definitions
 //===----------------------------------------------------------------------===//
 
-BlockIdYOpAdaptor::BlockIdYOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+BlockIdYOpAdaptor::BlockIdYOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.workgroup.id.y", odsAttrs.getContext());
+}
 
-BlockIdYOpAdaptor::BlockIdYOpAdaptor(BlockIdYOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+BlockIdYOpAdaptor::BlockIdYOpAdaptor(BlockIdYOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange BlockIdYOpAdaptor::getOperands() {
   return odsOperands;
@@ -797,7 +812,7 @@ void BlockIdYOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void BlockIdYOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void BlockIdYOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace ROCDL
@@ -811,9 +826,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::BlockIdZOp definitions
 //===----------------------------------------------------------------------===//
 
-BlockIdZOpAdaptor::BlockIdZOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+BlockIdZOpAdaptor::BlockIdZOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.workgroup.id.z", odsAttrs.getContext());
+}
 
-BlockIdZOpAdaptor::BlockIdZOpAdaptor(BlockIdZOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+BlockIdZOpAdaptor::BlockIdZOpAdaptor(BlockIdZOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange BlockIdZOpAdaptor::getOperands() {
   return odsOperands;
@@ -926,7 +943,7 @@ void BlockIdZOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void BlockIdZOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void BlockIdZOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace ROCDL
@@ -940,9 +957,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::GridDimXOp definitions
 //===----------------------------------------------------------------------===//
 
-GridDimXOpAdaptor::GridDimXOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+GridDimXOpAdaptor::GridDimXOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.grid.dim.x", odsAttrs.getContext());
+}
 
-GridDimXOpAdaptor::GridDimXOpAdaptor(GridDimXOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+GridDimXOpAdaptor::GridDimXOpAdaptor(GridDimXOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange GridDimXOpAdaptor::getOperands() {
   return odsOperands;
@@ -1055,7 +1074,7 @@ void GridDimXOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void GridDimXOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void GridDimXOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace ROCDL
@@ -1069,9 +1088,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::GridDimYOp definitions
 //===----------------------------------------------------------------------===//
 
-GridDimYOpAdaptor::GridDimYOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+GridDimYOpAdaptor::GridDimYOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.grid.dim.y", odsAttrs.getContext());
+}
 
-GridDimYOpAdaptor::GridDimYOpAdaptor(GridDimYOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+GridDimYOpAdaptor::GridDimYOpAdaptor(GridDimYOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange GridDimYOpAdaptor::getOperands() {
   return odsOperands;
@@ -1184,7 +1205,7 @@ void GridDimYOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void GridDimYOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void GridDimYOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace ROCDL
@@ -1198,9 +1219,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::GridDimZOp definitions
 //===----------------------------------------------------------------------===//
 
-GridDimZOpAdaptor::GridDimZOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+GridDimZOpAdaptor::GridDimZOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.grid.dim.z", odsAttrs.getContext());
+}
 
-GridDimZOpAdaptor::GridDimZOpAdaptor(GridDimZOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+GridDimZOpAdaptor::GridDimZOpAdaptor(GridDimZOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange GridDimZOpAdaptor::getOperands() {
   return odsOperands;
@@ -1313,7 +1336,7 @@ void GridDimZOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void GridDimZOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void GridDimZOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace ROCDL
@@ -1327,9 +1350,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::MubufLoadOp definitions
 //===----------------------------------------------------------------------===//
 
-MubufLoadOpAdaptor::MubufLoadOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+MubufLoadOpAdaptor::MubufLoadOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.buffer.load", odsAttrs.getContext());
+}
 
-MubufLoadOpAdaptor::MubufLoadOpAdaptor(MubufLoadOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+MubufLoadOpAdaptor::MubufLoadOpAdaptor(MubufLoadOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange MubufLoadOpAdaptor::getOperands() {
   return odsOperands;
@@ -1535,9 +1560,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::MubufStoreOp definitions
 //===----------------------------------------------------------------------===//
 
-MubufStoreOpAdaptor::MubufStoreOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+MubufStoreOpAdaptor::MubufStoreOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.buffer.store", odsAttrs.getContext());
+}
 
-MubufStoreOpAdaptor::MubufStoreOpAdaptor(MubufStoreOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+MubufStoreOpAdaptor::MubufStoreOpAdaptor(MubufStoreOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange MubufStoreOpAdaptor::getOperands() {
   return odsOperands;
@@ -1748,12 +1775,594 @@ namespace mlir {
 namespace ROCDL {
 
 //===----------------------------------------------------------------------===//
+// ::mlir::ROCDL::RawBufferAtomicFAddOp definitions
+//===----------------------------------------------------------------------===//
+
+RawBufferAtomicFAddOpAdaptor::RawBufferAtomicFAddOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.raw.buffer.atomic.fadd", odsAttrs.getContext());
+}
+
+RawBufferAtomicFAddOpAdaptor::RawBufferAtomicFAddOpAdaptor(RawBufferAtomicFAddOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange RawBufferAtomicFAddOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> RawBufferAtomicFAddOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange RawBufferAtomicFAddOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value RawBufferAtomicFAddOpAdaptor::vdata() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value RawBufferAtomicFAddOpAdaptor::rsrc() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value RawBufferAtomicFAddOpAdaptor::offset() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value RawBufferAtomicFAddOpAdaptor::soffset() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::Value RawBufferAtomicFAddOpAdaptor::aux() {
+  return *getODSOperands(4).begin();
+}
+
+::mlir::DictionaryAttr RawBufferAtomicFAddOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult RawBufferAtomicFAddOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> RawBufferAtomicFAddOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range RawBufferAtomicFAddOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value RawBufferAtomicFAddOp::vdata() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value RawBufferAtomicFAddOp::rsrc() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value RawBufferAtomicFAddOp::offset() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value RawBufferAtomicFAddOp::soffset() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::Value RawBufferAtomicFAddOp::aux() {
+  return *getODSOperands(4).begin();
+}
+
+::mlir::MutableOperandRange RawBufferAtomicFAddOp::vdataMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange RawBufferAtomicFAddOp::rsrcMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange RawBufferAtomicFAddOp::offsetMutable() {
+  auto range = getODSOperandIndexAndLength(2);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange RawBufferAtomicFAddOp::soffsetMutable() {
+  auto range = getODSOperandIndexAndLength(3);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange RawBufferAtomicFAddOp::auxMutable() {
+  auto range = getODSOperandIndexAndLength(4);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> RawBufferAtomicFAddOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range RawBufferAtomicFAddOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+void RawBufferAtomicFAddOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value vdata, ::mlir::Value rsrc, ::mlir::Value offset, ::mlir::Value soffset, ::mlir::Value aux) {
+  odsState.addOperands(vdata);
+  odsState.addOperands(rsrc);
+  odsState.addOperands(offset);
+  odsState.addOperands(soffset);
+  odsState.addOperands(aux);
+}
+
+void RawBufferAtomicFAddOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value vdata, ::mlir::Value rsrc, ::mlir::Value offset, ::mlir::Value soffset, ::mlir::Value aux) {
+  odsState.addOperands(vdata);
+  odsState.addOperands(rsrc);
+  odsState.addOperands(offset);
+  odsState.addOperands(soffset);
+  odsState.addOperands(aux);
+  assert(resultTypes.size() == 0u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void RawBufferAtomicFAddOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 5u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 0u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult RawBufferAtomicFAddOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup2 = getODSOperands(2);
+
+    for (auto v : valueGroup2) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup3 = getODSOperands(3);
+
+    for (auto v : valueGroup3) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup4 = getODSOperands(4);
+
+    for (auto v : valueGroup4) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult RawBufferAtomicFAddOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+} // namespace ROCDL
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::ROCDL::RawBufferAtomicFAddOp)
+
+namespace mlir {
+namespace ROCDL {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::ROCDL::RawBufferLoadOp definitions
+//===----------------------------------------------------------------------===//
+
+RawBufferLoadOpAdaptor::RawBufferLoadOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.raw.buffer.load", odsAttrs.getContext());
+}
+
+RawBufferLoadOpAdaptor::RawBufferLoadOpAdaptor(RawBufferLoadOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange RawBufferLoadOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> RawBufferLoadOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange RawBufferLoadOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value RawBufferLoadOpAdaptor::rsrc() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value RawBufferLoadOpAdaptor::offset() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value RawBufferLoadOpAdaptor::soffset() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value RawBufferLoadOpAdaptor::aux() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::DictionaryAttr RawBufferLoadOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult RawBufferLoadOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> RawBufferLoadOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range RawBufferLoadOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value RawBufferLoadOp::rsrc() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value RawBufferLoadOp::offset() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value RawBufferLoadOp::soffset() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value RawBufferLoadOp::aux() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::MutableOperandRange RawBufferLoadOp::rsrcMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange RawBufferLoadOp::offsetMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange RawBufferLoadOp::soffsetMutable() {
+  auto range = getODSOperandIndexAndLength(2);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange RawBufferLoadOp::auxMutable() {
+  auto range = getODSOperandIndexAndLength(3);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> RawBufferLoadOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range RawBufferLoadOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value RawBufferLoadOp::res() {
+  return *getODSResults(0).begin();
+}
+
+void RawBufferLoadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value rsrc, ::mlir::Value offset, ::mlir::Value soffset, ::mlir::Value aux) {
+  odsState.addOperands(rsrc);
+  odsState.addOperands(offset);
+  odsState.addOperands(soffset);
+  odsState.addOperands(aux);
+  odsState.addTypes(res);
+}
+
+void RawBufferLoadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value rsrc, ::mlir::Value offset, ::mlir::Value soffset, ::mlir::Value aux) {
+  odsState.addOperands(rsrc);
+  odsState.addOperands(offset);
+  odsState.addOperands(soffset);
+  odsState.addOperands(aux);
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void RawBufferLoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 4u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult RawBufferLoadOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup2 = getODSOperands(2);
+
+    for (auto v : valueGroup2) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup3 = getODSOperands(3);
+
+    for (auto v : valueGroup3) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult RawBufferLoadOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+} // namespace ROCDL
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::ROCDL::RawBufferLoadOp)
+
+namespace mlir {
+namespace ROCDL {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::ROCDL::RawBufferStoreOp definitions
+//===----------------------------------------------------------------------===//
+
+RawBufferStoreOpAdaptor::RawBufferStoreOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.raw.buffer.store", odsAttrs.getContext());
+}
+
+RawBufferStoreOpAdaptor::RawBufferStoreOpAdaptor(RawBufferStoreOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange RawBufferStoreOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> RawBufferStoreOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange RawBufferStoreOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value RawBufferStoreOpAdaptor::vdata() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value RawBufferStoreOpAdaptor::rsrc() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value RawBufferStoreOpAdaptor::offset() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value RawBufferStoreOpAdaptor::soffset() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::Value RawBufferStoreOpAdaptor::aux() {
+  return *getODSOperands(4).begin();
+}
+
+::mlir::DictionaryAttr RawBufferStoreOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult RawBufferStoreOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> RawBufferStoreOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range RawBufferStoreOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value RawBufferStoreOp::vdata() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value RawBufferStoreOp::rsrc() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value RawBufferStoreOp::offset() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value RawBufferStoreOp::soffset() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::Value RawBufferStoreOp::aux() {
+  return *getODSOperands(4).begin();
+}
+
+::mlir::MutableOperandRange RawBufferStoreOp::vdataMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange RawBufferStoreOp::rsrcMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange RawBufferStoreOp::offsetMutable() {
+  auto range = getODSOperandIndexAndLength(2);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange RawBufferStoreOp::soffsetMutable() {
+  auto range = getODSOperandIndexAndLength(3);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange RawBufferStoreOp::auxMutable() {
+  auto range = getODSOperandIndexAndLength(4);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> RawBufferStoreOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range RawBufferStoreOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+void RawBufferStoreOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value vdata, ::mlir::Value rsrc, ::mlir::Value offset, ::mlir::Value soffset, ::mlir::Value aux) {
+  odsState.addOperands(vdata);
+  odsState.addOperands(rsrc);
+  odsState.addOperands(offset);
+  odsState.addOperands(soffset);
+  odsState.addOperands(aux);
+}
+
+void RawBufferStoreOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value vdata, ::mlir::Value rsrc, ::mlir::Value offset, ::mlir::Value soffset, ::mlir::Value aux) {
+  odsState.addOperands(vdata);
+  odsState.addOperands(rsrc);
+  odsState.addOperands(offset);
+  odsState.addOperands(soffset);
+  odsState.addOperands(aux);
+  assert(resultTypes.size() == 0u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void RawBufferStoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 5u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 0u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult RawBufferStoreOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup2 = getODSOperands(2);
+
+    for (auto v : valueGroup2) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup3 = getODSOperands(3);
+
+    for (auto v : valueGroup3) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup4 = getODSOperands(4);
+
+    for (auto v : valueGroup4) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult RawBufferStoreOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+} // namespace ROCDL
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::ROCDL::RawBufferStoreOp)
+
+namespace mlir {
+namespace ROCDL {
+
+//===----------------------------------------------------------------------===//
 // ::mlir::ROCDL::ThreadIdXOp definitions
 //===----------------------------------------------------------------------===//
 
-ThreadIdXOpAdaptor::ThreadIdXOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ThreadIdXOpAdaptor::ThreadIdXOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.workitem.id.x", odsAttrs.getContext());
+}
 
-ThreadIdXOpAdaptor::ThreadIdXOpAdaptor(ThreadIdXOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ThreadIdXOpAdaptor::ThreadIdXOpAdaptor(ThreadIdXOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ThreadIdXOpAdaptor::getOperands() {
   return odsOperands;
@@ -1866,7 +2475,7 @@ void ThreadIdXOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void ThreadIdXOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ThreadIdXOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace ROCDL
@@ -1880,9 +2489,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::ThreadIdYOp definitions
 //===----------------------------------------------------------------------===//
 
-ThreadIdYOpAdaptor::ThreadIdYOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ThreadIdYOpAdaptor::ThreadIdYOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.workitem.id.y", odsAttrs.getContext());
+}
 
-ThreadIdYOpAdaptor::ThreadIdYOpAdaptor(ThreadIdYOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ThreadIdYOpAdaptor::ThreadIdYOpAdaptor(ThreadIdYOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ThreadIdYOpAdaptor::getOperands() {
   return odsOperands;
@@ -1995,7 +2606,7 @@ void ThreadIdYOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void ThreadIdYOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ThreadIdYOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace ROCDL
@@ -2009,9 +2620,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::ThreadIdZOp definitions
 //===----------------------------------------------------------------------===//
 
-ThreadIdZOpAdaptor::ThreadIdZOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ThreadIdZOpAdaptor::ThreadIdZOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.workitem.id.z", odsAttrs.getContext());
+}
 
-ThreadIdZOpAdaptor::ThreadIdZOpAdaptor(ThreadIdZOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ThreadIdZOpAdaptor::ThreadIdZOpAdaptor(ThreadIdZOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ThreadIdZOpAdaptor::getOperands() {
   return odsOperands;
@@ -2124,7 +2737,7 @@ void ThreadIdZOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void ThreadIdZOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ThreadIdZOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace ROCDL
@@ -2138,9 +2751,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::mfma_f32_16x16x16f16 definitions
 //===----------------------------------------------------------------------===//
 
-mfma_f32_16x16x16f16Adaptor::mfma_f32_16x16x16f16Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+mfma_f32_16x16x16f16Adaptor::mfma_f32_16x16x16f16Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.mfma.f32.16x16x16f16", odsAttrs.getContext());
+}
 
-mfma_f32_16x16x16f16Adaptor::mfma_f32_16x16x16f16Adaptor(mfma_f32_16x16x16f16 &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+mfma_f32_16x16x16f16Adaptor::mfma_f32_16x16x16f16Adaptor(mfma_f32_16x16x16f16 op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange mfma_f32_16x16x16f16Adaptor::getOperands() {
   return odsOperands;
@@ -2269,7 +2884,7 @@ void mfma_f32_16x16x16f16::build(::mlir::OpBuilder &, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult mfma_f32_16x16x16f16::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
   ::llvm::SMLoc argsOperandsLoc;
   (void)argsOperandsLoc;
   ::llvm::ArrayRef<::mlir::Type> argsTypes;
@@ -2314,9 +2929,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::mfma_f32_16x16x1f32 definitions
 //===----------------------------------------------------------------------===//
 
-mfma_f32_16x16x1f32Adaptor::mfma_f32_16x16x1f32Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+mfma_f32_16x16x1f32Adaptor::mfma_f32_16x16x1f32Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.mfma.f32.16x16x1f32", odsAttrs.getContext());
+}
 
-mfma_f32_16x16x1f32Adaptor::mfma_f32_16x16x1f32Adaptor(mfma_f32_16x16x1f32 &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+mfma_f32_16x16x1f32Adaptor::mfma_f32_16x16x1f32Adaptor(mfma_f32_16x16x1f32 op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange mfma_f32_16x16x1f32Adaptor::getOperands() {
   return odsOperands;
@@ -2445,7 +3062,7 @@ void mfma_f32_16x16x1f32::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult mfma_f32_16x16x1f32::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
   ::llvm::SMLoc argsOperandsLoc;
   (void)argsOperandsLoc;
   ::llvm::ArrayRef<::mlir::Type> argsTypes;
@@ -2490,9 +3107,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::mfma_f32_16x16x2bf16 definitions
 //===----------------------------------------------------------------------===//
 
-mfma_f32_16x16x2bf16Adaptor::mfma_f32_16x16x2bf16Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+mfma_f32_16x16x2bf16Adaptor::mfma_f32_16x16x2bf16Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.mfma.f32.16x16x2bf16", odsAttrs.getContext());
+}
 
-mfma_f32_16x16x2bf16Adaptor::mfma_f32_16x16x2bf16Adaptor(mfma_f32_16x16x2bf16 &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+mfma_f32_16x16x2bf16Adaptor::mfma_f32_16x16x2bf16Adaptor(mfma_f32_16x16x2bf16 op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange mfma_f32_16x16x2bf16Adaptor::getOperands() {
   return odsOperands;
@@ -2621,7 +3240,7 @@ void mfma_f32_16x16x2bf16::build(::mlir::OpBuilder &, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult mfma_f32_16x16x2bf16::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
   ::llvm::SMLoc argsOperandsLoc;
   (void)argsOperandsLoc;
   ::llvm::ArrayRef<::mlir::Type> argsTypes;
@@ -2666,9 +3285,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::mfma_f32_16x16x4f16 definitions
 //===----------------------------------------------------------------------===//
 
-mfma_f32_16x16x4f16Adaptor::mfma_f32_16x16x4f16Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+mfma_f32_16x16x4f16Adaptor::mfma_f32_16x16x4f16Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.mfma.f32.16x16x4f16", odsAttrs.getContext());
+}
 
-mfma_f32_16x16x4f16Adaptor::mfma_f32_16x16x4f16Adaptor(mfma_f32_16x16x4f16 &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+mfma_f32_16x16x4f16Adaptor::mfma_f32_16x16x4f16Adaptor(mfma_f32_16x16x4f16 op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange mfma_f32_16x16x4f16Adaptor::getOperands() {
   return odsOperands;
@@ -2797,7 +3418,7 @@ void mfma_f32_16x16x4f16::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult mfma_f32_16x16x4f16::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
   ::llvm::SMLoc argsOperandsLoc;
   (void)argsOperandsLoc;
   ::llvm::ArrayRef<::mlir::Type> argsTypes;
@@ -2842,9 +3463,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::mfma_f32_16x16x4f32 definitions
 //===----------------------------------------------------------------------===//
 
-mfma_f32_16x16x4f32Adaptor::mfma_f32_16x16x4f32Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+mfma_f32_16x16x4f32Adaptor::mfma_f32_16x16x4f32Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.mfma.f32.16x16x4f32", odsAttrs.getContext());
+}
 
-mfma_f32_16x16x4f32Adaptor::mfma_f32_16x16x4f32Adaptor(mfma_f32_16x16x4f32 &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+mfma_f32_16x16x4f32Adaptor::mfma_f32_16x16x4f32Adaptor(mfma_f32_16x16x4f32 op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange mfma_f32_16x16x4f32Adaptor::getOperands() {
   return odsOperands;
@@ -2973,7 +3596,7 @@ void mfma_f32_16x16x4f32::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult mfma_f32_16x16x4f32::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
   ::llvm::SMLoc argsOperandsLoc;
   (void)argsOperandsLoc;
   ::llvm::ArrayRef<::mlir::Type> argsTypes;
@@ -3018,9 +3641,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::mfma_f32_16x16x8bf16 definitions
 //===----------------------------------------------------------------------===//
 
-mfma_f32_16x16x8bf16Adaptor::mfma_f32_16x16x8bf16Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+mfma_f32_16x16x8bf16Adaptor::mfma_f32_16x16x8bf16Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.mfma.f32.16x16x8bf16", odsAttrs.getContext());
+}
 
-mfma_f32_16x16x8bf16Adaptor::mfma_f32_16x16x8bf16Adaptor(mfma_f32_16x16x8bf16 &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+mfma_f32_16x16x8bf16Adaptor::mfma_f32_16x16x8bf16Adaptor(mfma_f32_16x16x8bf16 op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange mfma_f32_16x16x8bf16Adaptor::getOperands() {
   return odsOperands;
@@ -3149,7 +3774,7 @@ void mfma_f32_16x16x8bf16::build(::mlir::OpBuilder &, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult mfma_f32_16x16x8bf16::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
   ::llvm::SMLoc argsOperandsLoc;
   (void)argsOperandsLoc;
   ::llvm::ArrayRef<::mlir::Type> argsTypes;
@@ -3194,9 +3819,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::mfma_f32_32x32x1f32 definitions
 //===----------------------------------------------------------------------===//
 
-mfma_f32_32x32x1f32Adaptor::mfma_f32_32x32x1f32Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+mfma_f32_32x32x1f32Adaptor::mfma_f32_32x32x1f32Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.mfma.f32.32x32x1f32", odsAttrs.getContext());
+}
 
-mfma_f32_32x32x1f32Adaptor::mfma_f32_32x32x1f32Adaptor(mfma_f32_32x32x1f32 &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+mfma_f32_32x32x1f32Adaptor::mfma_f32_32x32x1f32Adaptor(mfma_f32_32x32x1f32 op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange mfma_f32_32x32x1f32Adaptor::getOperands() {
   return odsOperands;
@@ -3325,7 +3952,7 @@ void mfma_f32_32x32x1f32::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult mfma_f32_32x32x1f32::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
   ::llvm::SMLoc argsOperandsLoc;
   (void)argsOperandsLoc;
   ::llvm::ArrayRef<::mlir::Type> argsTypes;
@@ -3370,9 +3997,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::mfma_f32_32x32x2bf16 definitions
 //===----------------------------------------------------------------------===//
 
-mfma_f32_32x32x2bf16Adaptor::mfma_f32_32x32x2bf16Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+mfma_f32_32x32x2bf16Adaptor::mfma_f32_32x32x2bf16Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.mfma.f32.32x32x2bf16", odsAttrs.getContext());
+}
 
-mfma_f32_32x32x2bf16Adaptor::mfma_f32_32x32x2bf16Adaptor(mfma_f32_32x32x2bf16 &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+mfma_f32_32x32x2bf16Adaptor::mfma_f32_32x32x2bf16Adaptor(mfma_f32_32x32x2bf16 op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange mfma_f32_32x32x2bf16Adaptor::getOperands() {
   return odsOperands;
@@ -3501,7 +4130,7 @@ void mfma_f32_32x32x2bf16::build(::mlir::OpBuilder &, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult mfma_f32_32x32x2bf16::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
   ::llvm::SMLoc argsOperandsLoc;
   (void)argsOperandsLoc;
   ::llvm::ArrayRef<::mlir::Type> argsTypes;
@@ -3546,9 +4175,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::mfma_f32_32x32x2f32 definitions
 //===----------------------------------------------------------------------===//
 
-mfma_f32_32x32x2f32Adaptor::mfma_f32_32x32x2f32Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+mfma_f32_32x32x2f32Adaptor::mfma_f32_32x32x2f32Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.mfma.f32.32x32x2f32", odsAttrs.getContext());
+}
 
-mfma_f32_32x32x2f32Adaptor::mfma_f32_32x32x2f32Adaptor(mfma_f32_32x32x2f32 &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+mfma_f32_32x32x2f32Adaptor::mfma_f32_32x32x2f32Adaptor(mfma_f32_32x32x2f32 op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange mfma_f32_32x32x2f32Adaptor::getOperands() {
   return odsOperands;
@@ -3677,7 +4308,7 @@ void mfma_f32_32x32x2f32::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult mfma_f32_32x32x2f32::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
   ::llvm::SMLoc argsOperandsLoc;
   (void)argsOperandsLoc;
   ::llvm::ArrayRef<::mlir::Type> argsTypes;
@@ -3722,9 +4353,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::mfma_f32_32x32x4bf16 definitions
 //===----------------------------------------------------------------------===//
 
-mfma_f32_32x32x4bf16Adaptor::mfma_f32_32x32x4bf16Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+mfma_f32_32x32x4bf16Adaptor::mfma_f32_32x32x4bf16Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.mfma.f32.32x32x4bf16", odsAttrs.getContext());
+}
 
-mfma_f32_32x32x4bf16Adaptor::mfma_f32_32x32x4bf16Adaptor(mfma_f32_32x32x4bf16 &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+mfma_f32_32x32x4bf16Adaptor::mfma_f32_32x32x4bf16Adaptor(mfma_f32_32x32x4bf16 op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange mfma_f32_32x32x4bf16Adaptor::getOperands() {
   return odsOperands;
@@ -3853,7 +4486,7 @@ void mfma_f32_32x32x4bf16::build(::mlir::OpBuilder &, ::mlir::OperationState &od
 }
 
 ::mlir::ParseResult mfma_f32_32x32x4bf16::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
   ::llvm::SMLoc argsOperandsLoc;
   (void)argsOperandsLoc;
   ::llvm::ArrayRef<::mlir::Type> argsTypes;
@@ -3898,9 +4531,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::mfma_f32_32x32x4f16 definitions
 //===----------------------------------------------------------------------===//
 
-mfma_f32_32x32x4f16Adaptor::mfma_f32_32x32x4f16Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+mfma_f32_32x32x4f16Adaptor::mfma_f32_32x32x4f16Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.mfma.f32.32x32x4f16", odsAttrs.getContext());
+}
 
-mfma_f32_32x32x4f16Adaptor::mfma_f32_32x32x4f16Adaptor(mfma_f32_32x32x4f16 &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+mfma_f32_32x32x4f16Adaptor::mfma_f32_32x32x4f16Adaptor(mfma_f32_32x32x4f16 op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange mfma_f32_32x32x4f16Adaptor::getOperands() {
   return odsOperands;
@@ -4029,7 +4664,7 @@ void mfma_f32_32x32x4f16::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult mfma_f32_32x32x4f16::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
   ::llvm::SMLoc argsOperandsLoc;
   (void)argsOperandsLoc;
   ::llvm::ArrayRef<::mlir::Type> argsTypes;
@@ -4074,9 +4709,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::mfma_f32_32x32x8f16 definitions
 //===----------------------------------------------------------------------===//
 
-mfma_f32_32x32x8f16Adaptor::mfma_f32_32x32x8f16Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+mfma_f32_32x32x8f16Adaptor::mfma_f32_32x32x8f16Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.mfma.f32.32x32x8f16", odsAttrs.getContext());
+}
 
-mfma_f32_32x32x8f16Adaptor::mfma_f32_32x32x8f16Adaptor(mfma_f32_32x32x8f16 &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+mfma_f32_32x32x8f16Adaptor::mfma_f32_32x32x8f16Adaptor(mfma_f32_32x32x8f16 op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange mfma_f32_32x32x8f16Adaptor::getOperands() {
   return odsOperands;
@@ -4205,7 +4842,7 @@ void mfma_f32_32x32x8f16::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult mfma_f32_32x32x8f16::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
   ::llvm::SMLoc argsOperandsLoc;
   (void)argsOperandsLoc;
   ::llvm::ArrayRef<::mlir::Type> argsTypes;
@@ -4250,9 +4887,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::mfma_f32_4x4x1f32 definitions
 //===----------------------------------------------------------------------===//
 
-mfma_f32_4x4x1f32Adaptor::mfma_f32_4x4x1f32Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+mfma_f32_4x4x1f32Adaptor::mfma_f32_4x4x1f32Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.mfma.f32.4x4x1f32", odsAttrs.getContext());
+}
 
-mfma_f32_4x4x1f32Adaptor::mfma_f32_4x4x1f32Adaptor(mfma_f32_4x4x1f32 &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+mfma_f32_4x4x1f32Adaptor::mfma_f32_4x4x1f32Adaptor(mfma_f32_4x4x1f32 op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange mfma_f32_4x4x1f32Adaptor::getOperands() {
   return odsOperands;
@@ -4381,7 +5020,7 @@ void mfma_f32_4x4x1f32::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
 }
 
 ::mlir::ParseResult mfma_f32_4x4x1f32::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
   ::llvm::SMLoc argsOperandsLoc;
   (void)argsOperandsLoc;
   ::llvm::ArrayRef<::mlir::Type> argsTypes;
@@ -4426,9 +5065,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::mfma_f32_4x4x2bf16 definitions
 //===----------------------------------------------------------------------===//
 
-mfma_f32_4x4x2bf16Adaptor::mfma_f32_4x4x2bf16Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+mfma_f32_4x4x2bf16Adaptor::mfma_f32_4x4x2bf16Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.mfma.f32.4x4x2bf16", odsAttrs.getContext());
+}
 
-mfma_f32_4x4x2bf16Adaptor::mfma_f32_4x4x2bf16Adaptor(mfma_f32_4x4x2bf16 &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+mfma_f32_4x4x2bf16Adaptor::mfma_f32_4x4x2bf16Adaptor(mfma_f32_4x4x2bf16 op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange mfma_f32_4x4x2bf16Adaptor::getOperands() {
   return odsOperands;
@@ -4557,7 +5198,7 @@ void mfma_f32_4x4x2bf16::build(::mlir::OpBuilder &, ::mlir::OperationState &odsS
 }
 
 ::mlir::ParseResult mfma_f32_4x4x2bf16::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
   ::llvm::SMLoc argsOperandsLoc;
   (void)argsOperandsLoc;
   ::llvm::ArrayRef<::mlir::Type> argsTypes;
@@ -4602,9 +5243,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::mfma_f32_4x4x4f16 definitions
 //===----------------------------------------------------------------------===//
 
-mfma_f32_4x4x4f16Adaptor::mfma_f32_4x4x4f16Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+mfma_f32_4x4x4f16Adaptor::mfma_f32_4x4x4f16Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.mfma.f32.4x4x4f16", odsAttrs.getContext());
+}
 
-mfma_f32_4x4x4f16Adaptor::mfma_f32_4x4x4f16Adaptor(mfma_f32_4x4x4f16 &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+mfma_f32_4x4x4f16Adaptor::mfma_f32_4x4x4f16Adaptor(mfma_f32_4x4x4f16 op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange mfma_f32_4x4x4f16Adaptor::getOperands() {
   return odsOperands;
@@ -4733,7 +5376,7 @@ void mfma_f32_4x4x4f16::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
 }
 
 ::mlir::ParseResult mfma_f32_4x4x4f16::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
   ::llvm::SMLoc argsOperandsLoc;
   (void)argsOperandsLoc;
   ::llvm::ArrayRef<::mlir::Type> argsTypes;
@@ -4778,9 +5421,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::mfma_i32_16x16x16i8 definitions
 //===----------------------------------------------------------------------===//
 
-mfma_i32_16x16x16i8Adaptor::mfma_i32_16x16x16i8Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+mfma_i32_16x16x16i8Adaptor::mfma_i32_16x16x16i8Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.mfma.i32.16x16x16i8", odsAttrs.getContext());
+}
 
-mfma_i32_16x16x16i8Adaptor::mfma_i32_16x16x16i8Adaptor(mfma_i32_16x16x16i8 &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+mfma_i32_16x16x16i8Adaptor::mfma_i32_16x16x16i8Adaptor(mfma_i32_16x16x16i8 op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange mfma_i32_16x16x16i8Adaptor::getOperands() {
   return odsOperands;
@@ -4909,7 +5554,7 @@ void mfma_i32_16x16x16i8::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult mfma_i32_16x16x16i8::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
   ::llvm::SMLoc argsOperandsLoc;
   (void)argsOperandsLoc;
   ::llvm::ArrayRef<::mlir::Type> argsTypes;
@@ -4954,9 +5599,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::mfma_i32_16x16x4i8 definitions
 //===----------------------------------------------------------------------===//
 
-mfma_i32_16x16x4i8Adaptor::mfma_i32_16x16x4i8Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+mfma_i32_16x16x4i8Adaptor::mfma_i32_16x16x4i8Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.mfma.i32.16x16x4i8", odsAttrs.getContext());
+}
 
-mfma_i32_16x16x4i8Adaptor::mfma_i32_16x16x4i8Adaptor(mfma_i32_16x16x4i8 &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+mfma_i32_16x16x4i8Adaptor::mfma_i32_16x16x4i8Adaptor(mfma_i32_16x16x4i8 op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange mfma_i32_16x16x4i8Adaptor::getOperands() {
   return odsOperands;
@@ -5085,7 +5732,7 @@ void mfma_i32_16x16x4i8::build(::mlir::OpBuilder &, ::mlir::OperationState &odsS
 }
 
 ::mlir::ParseResult mfma_i32_16x16x4i8::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
   ::llvm::SMLoc argsOperandsLoc;
   (void)argsOperandsLoc;
   ::llvm::ArrayRef<::mlir::Type> argsTypes;
@@ -5130,9 +5777,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::mfma_i32_32x32x4i8 definitions
 //===----------------------------------------------------------------------===//
 
-mfma_i32_32x32x4i8Adaptor::mfma_i32_32x32x4i8Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+mfma_i32_32x32x4i8Adaptor::mfma_i32_32x32x4i8Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.mfma.i32.32x32x4i8", odsAttrs.getContext());
+}
 
-mfma_i32_32x32x4i8Adaptor::mfma_i32_32x32x4i8Adaptor(mfma_i32_32x32x4i8 &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+mfma_i32_32x32x4i8Adaptor::mfma_i32_32x32x4i8Adaptor(mfma_i32_32x32x4i8 op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange mfma_i32_32x32x4i8Adaptor::getOperands() {
   return odsOperands;
@@ -5261,7 +5910,7 @@ void mfma_i32_32x32x4i8::build(::mlir::OpBuilder &, ::mlir::OperationState &odsS
 }
 
 ::mlir::ParseResult mfma_i32_32x32x4i8::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
   ::llvm::SMLoc argsOperandsLoc;
   (void)argsOperandsLoc;
   ::llvm::ArrayRef<::mlir::Type> argsTypes;
@@ -5306,9 +5955,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::mfma_i32_32x32x8i8 definitions
 //===----------------------------------------------------------------------===//
 
-mfma_i32_32x32x8i8Adaptor::mfma_i32_32x32x8i8Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+mfma_i32_32x32x8i8Adaptor::mfma_i32_32x32x8i8Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.mfma.i32.32x32x8i8", odsAttrs.getContext());
+}
 
-mfma_i32_32x32x8i8Adaptor::mfma_i32_32x32x8i8Adaptor(mfma_i32_32x32x8i8 &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+mfma_i32_32x32x8i8Adaptor::mfma_i32_32x32x8i8Adaptor(mfma_i32_32x32x8i8 op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange mfma_i32_32x32x8i8Adaptor::getOperands() {
   return odsOperands;
@@ -5437,7 +6088,7 @@ void mfma_i32_32x32x8i8::build(::mlir::OpBuilder &, ::mlir::OperationState &odsS
 }
 
 ::mlir::ParseResult mfma_i32_32x32x8i8::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
   ::llvm::SMLoc argsOperandsLoc;
   (void)argsOperandsLoc;
   ::llvm::ArrayRef<::mlir::Type> argsTypes;
@@ -5482,9 +6133,11 @@ namespace ROCDL {
 // ::mlir::ROCDL::mfma_i32_4x4x4i8 definitions
 //===----------------------------------------------------------------------===//
 
-mfma_i32_4x4x4i8Adaptor::mfma_i32_4x4x4i8Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+mfma_i32_4x4x4i8Adaptor::mfma_i32_4x4x4i8Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.mfma.i32.4x4x4i8", odsAttrs.getContext());
+}
 
-mfma_i32_4x4x4i8Adaptor::mfma_i32_4x4x4i8Adaptor(mfma_i32_4x4x4i8 &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+mfma_i32_4x4x4i8Adaptor::mfma_i32_4x4x4i8Adaptor(mfma_i32_4x4x4i8 op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange mfma_i32_4x4x4i8Adaptor::getOperands() {
   return odsOperands;
@@ -5613,7 +6266,7 @@ void mfma_i32_4x4x4i8::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
 }
 
 ::mlir::ParseResult mfma_i32_4x4x4i8::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
   ::llvm::SMLoc argsOperandsLoc;
   (void)argsOperandsLoc;
   ::llvm::ArrayRef<::mlir::Type> argsTypes;

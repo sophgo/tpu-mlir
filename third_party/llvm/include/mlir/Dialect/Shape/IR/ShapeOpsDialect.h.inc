@@ -10,16 +10,7 @@ namespace mlir {
 namespace shape {
 
 class ShapeDialect : public ::mlir::Dialect {
-  explicit ShapeDialect(::mlir::MLIRContext *context)
-    : ::mlir::Dialect(getDialectNamespace(), context,
-      ::mlir::TypeID::get<ShapeDialect>()) {
-    
-    getContext()->getOrLoadDialect<arith::ArithmeticDialect>();
-
-    getContext()->getOrLoadDialect<tensor::TensorDialect>();
-
-    initialize();
-  }
+  explicit ShapeDialect(::mlir::MLIRContext *context);
 
   void initialize();
   friend class ::mlir::MLIRContext;

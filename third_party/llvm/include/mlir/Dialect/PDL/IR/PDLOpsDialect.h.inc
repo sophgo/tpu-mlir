@@ -10,12 +10,7 @@ namespace mlir {
 namespace pdl {
 
 class PDLDialect : public ::mlir::Dialect {
-  explicit PDLDialect(::mlir::MLIRContext *context)
-    : ::mlir::Dialect(getDialectNamespace(), context,
-      ::mlir::TypeID::get<PDLDialect>()) {
-    
-    initialize();
-  }
+  explicit PDLDialect(::mlir::MLIRContext *context);
 
   void initialize();
   friend class ::mlir::MLIRContext;

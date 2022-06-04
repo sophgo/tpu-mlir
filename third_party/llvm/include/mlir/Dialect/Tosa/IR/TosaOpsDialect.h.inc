@@ -10,14 +10,7 @@ namespace mlir {
 namespace tosa {
 
 class TosaDialect : public ::mlir::Dialect {
-  explicit TosaDialect(::mlir::MLIRContext *context)
-    : ::mlir::Dialect(getDialectNamespace(), context,
-      ::mlir::TypeID::get<TosaDialect>()) {
-    
-    getContext()->getOrLoadDialect<tensor::TensorDialect>();
-
-    initialize();
-  }
+  explicit TosaDialect(::mlir::MLIRContext *context);
 
   void initialize();
   friend class ::mlir::MLIRContext;

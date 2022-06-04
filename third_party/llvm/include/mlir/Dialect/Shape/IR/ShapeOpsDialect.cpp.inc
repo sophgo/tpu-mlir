@@ -10,6 +10,16 @@ MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::ShapeDialect)
 namespace mlir {
 namespace shape {
 
+ShapeDialect::ShapeDialect(::mlir::MLIRContext *context) 
+    : ::mlir::Dialect(getDialectNamespace(), context, ::mlir::TypeID::get<ShapeDialect>()) {
+  
+    getContext()->getOrLoadDialect<arith::ArithmeticDialect>();
+
+    getContext()->getOrLoadDialect<tensor::TensorDialect>();
+
+  initialize();
+}
+
 ShapeDialect::~ShapeDialect() = default;
 
 } // namespace shape

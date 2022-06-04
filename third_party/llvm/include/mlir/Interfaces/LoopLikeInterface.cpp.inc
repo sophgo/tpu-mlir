@@ -24,3 +24,6 @@ void mlir::LoopLikeOpInterface::moveOutOfLoop(::mlir::Operation * op) {
 ::mlir::Optional<::mlir::OpFoldResult> mlir::LoopLikeOpInterface::getSingleStep() {
       return getImpl()->getSingleStep(getImpl(), getOperation());
   }
+::mlir::Optional<::mlir::OpFoldResult> mlir::LoopLikeOpInterface::getSingleUpperBound() {
+      return getImpl()->getSingleUpperBound(getImpl(), getOperation());
+  }

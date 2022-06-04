@@ -15,14 +15,12 @@
 ::mlir::gpu::BlockDimOp,
 ::mlir::gpu::BlockIdOp,
 ::mlir::gpu::DeallocOp,
-::mlir::gpu::DeviceAsyncCopyOp,
-::mlir::gpu::DeviceAsyncCreateGroupOp,
-::mlir::gpu::DeviceAsyncWaitOp,
 ::mlir::gpu::GPUFuncOp,
 ::mlir::gpu::GPUModuleOp,
 ::mlir::gpu::GlobalIdOp,
 ::mlir::gpu::GridDimOp,
 ::mlir::gpu::HostRegisterOp,
+::mlir::gpu::LaneIdOp,
 ::mlir::gpu::LaunchFuncOp,
 ::mlir::gpu::LaunchOp,
 ::mlir::gpu::MemcpyOp,
@@ -100,16 +98,6 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_GPUOps3(
 static ::mlir::LogicalResult __mlir_ods_local_type_constraint_GPUOps4(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
-  if (!((type.isa<::mlir::gpu::DeviceAsyncTokenType>()))) {
-    return op->emitOpError(valueKind) << " #" << valueIndex
-        << " must be device async token type, but got " << type;
-  }
-  return ::mlir::success();
-}
-
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_GPUOps5(
-    ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
-    unsigned valueIndex) {
   if (!(((type.isa<::mlir::UnrankedMemRefType>())) && ([](::mlir::Type elementType) { return (true); }(type.cast<::mlir::ShapedType>().getElementType())))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
         << " must be unranked.memref of any type values, but got " << type;
@@ -117,7 +105,7 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_GPUOps5(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_GPUOps6(
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_GPUOps5(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
   if (!((type.isSignlessInteger(32)))) {
@@ -127,7 +115,7 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_GPUOps6(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_GPUOps7(
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_GPUOps6(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
   if (!(((type.isa<::mlir::IntegerType>())) || ((type.isa<::mlir::IndexType>())) || ((type.isa<::mlir::FloatType>())))) {
@@ -137,7 +125,7 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_GPUOps7(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_GPUOps8(
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_GPUOps7(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
   if (!(((type.isSignlessInteger(32))) || ((type.isF32())))) {
@@ -147,7 +135,7 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_GPUOps8(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_GPUOps9(
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_GPUOps8(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
   if (!((type.isSignlessInteger(1)))) {
@@ -157,7 +145,7 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_GPUOps9(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_GPUOps10(
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_GPUOps9(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
   if (!(((type.isa<::mlir::gpu::MMAMatrixType>())) && (((type.cast<::mlir::gpu::MMAMatrixType>().getElementType().isF16())) || ((type.cast<::mlir::gpu::MMAMatrixType>().getElementType().isF32()))))) {
@@ -167,7 +155,7 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_GPUOps10(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_GPUOps11(
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_GPUOps10(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
   if (!((type.isa<::mlir::gpu::MMAMatrixType>()))) {
@@ -177,7 +165,7 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_GPUOps11(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_GPUOps12(
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_GPUOps11(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
   if (!(((type.isF16())) || ((type.isF32())))) {
@@ -187,7 +175,7 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_GPUOps12(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_GPUOps13(
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_GPUOps12(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
   if (!(((type.isa<::mlir::MemRefType>())) && ([](::mlir::Type elementType) { return ((elementType.isF16())) || ((elementType.isF32())); }(type.cast<::mlir::ShapedType>().getElementType())))) {
@@ -217,24 +205,6 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_GPUOps1(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_GPUOps2(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !(((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isa<::mlir::IndexType>())))) {
-    return op->emitOpError("attribute '") << attrName
-        << "' failed to satisfy constraint: index attribute";
-  }
-  return ::mlir::success();
-}
-
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_GPUOps3(
-    ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !(((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32))))) {
-    return op->emitOpError("attribute '") << attrName
-        << "' failed to satisfy constraint: 32-bit signless integer attribute";
-  }
-  return ::mlir::success();
-}
-
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_GPUOps4(
-    ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !(((attr.isa<::mlir::TypeAttr>())) && ((attr.cast<::mlir::TypeAttr>().getValue().isa<::mlir::FunctionType>())))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: type attribute of function type";
@@ -242,7 +212,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_GPUOps4(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_GPUOps5(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_GPUOps3(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((attr.isa<::mlir::SymbolRefAttr>()))) {
     return op->emitOpError("attribute '") << attrName
@@ -251,7 +221,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_GPUOps5(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_GPUOps6(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_GPUOps4(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((attr.isa<::mlir::StringAttr>()))) {
     return op->emitOpError("attribute '") << attrName
@@ -260,7 +230,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_GPUOps6(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_GPUOps7(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_GPUOps5(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((attr.isa<::mlir::gpu::ShuffleModeAttr>()))) {
     return op->emitOpError("attribute '") << attrName
@@ -269,11 +239,20 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_GPUOps7(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_GPUOps8(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_GPUOps6(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((attr.isa<::mlir::gpu::MMAElementwiseOpAttr>()))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: elementwise operation to apply to mma matrix";
+  }
+  return ::mlir::success();
+}
+
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_GPUOps7(
+    ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
+  if (attr && !(((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isa<::mlir::IndexType>())))) {
+    return op->emitOpError("attribute '") << attrName
+        << "' failed to satisfy constraint: index attribute";
   }
   return ::mlir::success();
 }
@@ -308,9 +287,11 @@ namespace gpu {
 // ::mlir::gpu::AllReduceOp definitions
 //===----------------------------------------------------------------------===//
 
-AllReduceOpAdaptor::AllReduceOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+AllReduceOpAdaptor::AllReduceOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.all_reduce", odsAttrs.getContext());
+}
 
-AllReduceOpAdaptor::AllReduceOpAdaptor(AllReduceOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+AllReduceOpAdaptor::AllReduceOpAdaptor(AllReduceOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange AllReduceOpAdaptor::getOperands() {
   return odsOperands;
@@ -336,8 +317,8 @@ std::pair<unsigned, unsigned> AllReduceOpAdaptor::getODSOperandIndexAndLength(un
 
 ::mlir::gpu::AllReduceOperationAttr AllReduceOpAdaptor::opAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::gpu::AllReduceOperationAttr attr = odsAttrs.get("op").dyn_cast_or_null<::mlir::gpu::AllReduceOperationAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, AllReduceOp::opAttrName(*odsOpName)).dyn_cast_or_null<::mlir::gpu::AllReduceOperationAttr>();
+    return attr;
 }
 
 ::llvm::Optional<::mlir::gpu::AllReduceOperation> AllReduceOpAdaptor::op() {
@@ -354,11 +335,21 @@ std::pair<unsigned, unsigned> AllReduceOpAdaptor::getODSOperandIndexAndLength(un
 }
 
 ::mlir::LogicalResult AllReduceOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_op = odsAttrs.get("op");
-    if (tblgen_op && !((tblgen_op.isa<::mlir::gpu::AllReduceOperationAttr>())))
-      return emitError(loc, "'gpu.all_reduce' op ""attribute 'op' failed to satisfy constraint: built-in reduction operations supported by gpu.allreduce.");
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_op;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == AllReduceOp::opAttrName(*odsOpName)) {
+      tblgen_op = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_op && !((tblgen_op.isa<::mlir::gpu::AllReduceOperationAttr>())))
+    return emitError(loc, "'gpu.all_reduce' op ""attribute 'op' failed to satisfy constraint: built-in reduction operations supported by gpu.allreduce.");
   return ::mlir::success();
 }
 
@@ -397,7 +388,7 @@ std::pair<unsigned, unsigned> AllReduceOp::getODSResultIndexAndLength(unsigned i
 }
 
 ::mlir::gpu::AllReduceOperationAttr AllReduceOp::opAttr() {
-  return (*this)->getAttr(opAttrName()).dyn_cast_or_null<::mlir::gpu::AllReduceOperationAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, opAttrName()).dyn_cast_or_null<::mlir::gpu::AllReduceOperationAttr>();
 }
 
 ::llvm::Optional<::mlir::gpu::AllReduceOperation> AllReduceOp::op() {
@@ -442,6 +433,25 @@ void AllReduceOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   odsState.addTypes(resultTypes);
 }
 
+void AllReduceOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 1u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  for (unsigned i = 0; i != 1; ++i)
+    (void)odsState.addRegion();
+
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(AllReduceOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
+}
+
 void AllReduceOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value value, /*optional*/::mlir::gpu::AllReduceOperationAttr op) {
   odsState.addOperands(value);
   if (op) {
@@ -452,21 +462,22 @@ void AllReduceOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
 
 }
 
-void AllReduceOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
-  odsState.addOperands(operands);
-  odsState.addAttributes(attributes);
-  for (unsigned i = 0; i != 1; ++i)
-    (void)odsState.addRegion();
-  odsState.addTypes({operands[0].getType()});
-
-}
-
 ::mlir::LogicalResult AllReduceOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_op = (*this)->getAttr(opAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps0(*this, tblgen_op, "op")))
-      return ::mlir::failure();
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_op;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == opAttrName()) {
+      tblgen_op = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps0(*this, tblgen_op, "op")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -497,6 +508,14 @@ void AllReduceOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
 
 ::mlir::LogicalResult AllReduceOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult AllReduceOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult AllReduceOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -561,9 +580,11 @@ namespace gpu {
 // ::mlir::gpu::AllocOp definitions
 //===----------------------------------------------------------------------===//
 
-AllocOpAdaptor::AllocOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+AllocOpAdaptor::AllocOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.alloc", odsAttrs.getContext());
+}
 
-AllocOpAdaptor::AllocOpAdaptor(AllocOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+AllocOpAdaptor::AllocOpAdaptor(AllocOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange AllocOpAdaptor::getOperands() {
   return odsOperands;
@@ -571,7 +592,7 @@ AllocOpAdaptor::AllocOpAdaptor(AllocOp &op) : odsOperands(op->getOperands()), od
 
 std::pair<unsigned, unsigned> AllocOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = odsAttrs.get("operand_segment_sizes").cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, AllocOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -606,10 +627,21 @@ std::pair<unsigned, unsigned> AllocOpAdaptor::getODSOperandIndexAndLength(unsign
 }
 
 ::mlir::LogicalResult AllocOpAdaptor::verify(::mlir::Location loc) {
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'gpu.alloc' op ""requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == AllocOp::operand_segment_sizesAttrName(*odsOpName)) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = odsAttrs.get("operand_segment_sizes").dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitError(loc, "'gpu.alloc' op ""missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 3)
@@ -629,8 +661,7 @@ void AllocOp::getAsmResultNames(::mlir::OpAsmSetValueNameFn setNameFn) {
 }
 
 std::pair<unsigned, unsigned> AllocOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr =
-      (*this)->getAttr(operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -662,19 +693,19 @@ std::pair<unsigned, unsigned> AllocOp::getODSOperandIndexAndLength(unsigned inde
 
 ::mlir::MutableOperandRange AllocOp::asyncDependenciesMutable() {
   auto range = getODSOperandIndexAndLength(0);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange AllocOp::dynamicSizesMutable() {
   auto range = getODSOperandIndexAndLength(1);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange AllocOp::symbolOperandsMutable() {
   auto range = getODSOperandIndexAndLength(2);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
@@ -738,10 +769,21 @@ void AllocOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 ::mlir::LogicalResult AllocOp::verifyInvariantsImpl() {
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == operand_segment_sizesAttrName()) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = (*this)->getAttr(operand_segment_sizesAttrName()).dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitOpError("missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 3)
@@ -799,14 +841,14 @@ void AllocOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 ::mlir::ParseResult AllocOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::Type, 1> asyncTokenTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> asyncDependenciesOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> asyncTokenTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> asyncDependenciesOperands;
   ::llvm::SMLoc asyncDependenciesOperandsLoc;
   (void)asyncDependenciesOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> dynamicSizesOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> dynamicSizesOperands;
   ::llvm::SMLoc dynamicSizesOperandsLoc;
   (void)dynamicSizesOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> symbolOperandsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> symbolOperandsOperands;
   ::llvm::SMLoc symbolOperandsOperandsLoc;
   (void)symbolOperandsOperandsLoc;
   ::mlir::Type memrefRawTypes[1];
@@ -884,7 +926,7 @@ void AllocOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void AllocOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void AllocOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
   for (::mlir::Value value : getODSResults(0))
     effects.emplace_back(::mlir::MemoryEffects::Allocate::get(), value, ::mlir::SideEffects::DefaultResource::get());
 }
@@ -900,9 +942,11 @@ namespace gpu {
 // ::mlir::gpu::BarrierOp definitions
 //===----------------------------------------------------------------------===//
 
-BarrierOpAdaptor::BarrierOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+BarrierOpAdaptor::BarrierOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.barrier", odsAttrs.getContext());
+}
 
-BarrierOpAdaptor::BarrierOpAdaptor(BarrierOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+BarrierOpAdaptor::BarrierOpAdaptor(BarrierOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange BarrierOpAdaptor::getOperands() {
   return odsOperands;
@@ -991,9 +1035,11 @@ namespace gpu {
 // ::mlir::gpu::BlockDimOp definitions
 //===----------------------------------------------------------------------===//
 
-BlockDimOpAdaptor::BlockDimOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+BlockDimOpAdaptor::BlockDimOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.block_dim", odsAttrs.getContext());
+}
 
-BlockDimOpAdaptor::BlockDimOpAdaptor(BlockDimOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+BlockDimOpAdaptor::BlockDimOpAdaptor(BlockDimOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange BlockDimOpAdaptor::getOperands() {
   return odsOperands;
@@ -1015,8 +1061,8 @@ std::pair<unsigned, unsigned> BlockDimOpAdaptor::getODSOperandIndexAndLength(uns
 
 ::mlir::gpu::DimensionAttr BlockDimOpAdaptor::dimensionAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::gpu::DimensionAttr attr = odsAttrs.get("dimension").cast<::mlir::gpu::DimensionAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, BlockDimOp::dimensionAttrName(*odsOpName)).cast<::mlir::gpu::DimensionAttr>();
+    return attr;
 }
 
 ::mlir::gpu::Dimension BlockDimOpAdaptor::dimension() {
@@ -1025,14 +1071,21 @@ std::pair<unsigned, unsigned> BlockDimOpAdaptor::getODSOperandIndexAndLength(uns
 }
 
 ::mlir::LogicalResult BlockDimOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_dimension = odsAttrs.get("dimension");
-    if (!tblgen_dimension)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_dimension;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'gpu.block_dim' op ""requires attribute 'dimension'");
-
-    if (tblgen_dimension && !((tblgen_dimension.isa<::mlir::gpu::DimensionAttr>())))
-      return emitError(loc, "'gpu.block_dim' op ""attribute 'dimension' failed to satisfy constraint: a dimension, either 'x', 'y', or 'z'");
+    if (namedAttrIt->getName() == BlockDimOp::dimensionAttrName(*odsOpName)) {
+      tblgen_dimension = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_dimension && !((tblgen_dimension.isa<::mlir::gpu::DimensionAttr>())))
+    return emitError(loc, "'gpu.block_dim' op ""attribute 'dimension' failed to satisfy constraint: a dimension, either 'x', 'y', or 'z'");
   return ::mlir::success();
 }
 
@@ -1057,7 +1110,7 @@ std::pair<unsigned, unsigned> BlockDimOp::getODSResultIndexAndLength(unsigned in
 }
 
 ::mlir::gpu::DimensionAttr BlockDimOp::dimensionAttr() {
-  return (*this)->getAttr(dimensionAttrName()).cast<::mlir::gpu::DimensionAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, dimensionAttrName()).cast<::mlir::gpu::DimensionAttr>();
 }
 
 ::mlir::gpu::Dimension BlockDimOp::dimension() {
@@ -1130,7 +1183,7 @@ void BlockDimOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(BlockDimOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -1143,14 +1196,21 @@ void BlockDimOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 }
 
 ::mlir::LogicalResult BlockDimOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_dimension = (*this)->getAttr(dimensionAttrName());
-    if (!tblgen_dimension)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_dimension;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'dimension'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps1(*this, tblgen_dimension, "dimension")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == dimensionAttrName()) {
+      tblgen_dimension = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps1(*this, tblgen_dimension, "dimension")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSResults(0);
@@ -1170,7 +1230,8 @@ void BlockDimOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 ::mlir::LogicalResult BlockDimOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = odsBuilder.getIndexType();
+  ::mlir::Type odsInferredType0 = odsBuilder.getIndexType();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
@@ -1194,7 +1255,7 @@ _odsPrinter.printStrippedAttrOrType(dimensionAttr());
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"dimension"});
 }
 
-void BlockDimOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void BlockDimOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace gpu
@@ -1208,9 +1269,11 @@ namespace gpu {
 // ::mlir::gpu::BlockIdOp definitions
 //===----------------------------------------------------------------------===//
 
-BlockIdOpAdaptor::BlockIdOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+BlockIdOpAdaptor::BlockIdOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.block_id", odsAttrs.getContext());
+}
 
-BlockIdOpAdaptor::BlockIdOpAdaptor(BlockIdOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+BlockIdOpAdaptor::BlockIdOpAdaptor(BlockIdOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange BlockIdOpAdaptor::getOperands() {
   return odsOperands;
@@ -1232,8 +1295,8 @@ std::pair<unsigned, unsigned> BlockIdOpAdaptor::getODSOperandIndexAndLength(unsi
 
 ::mlir::gpu::DimensionAttr BlockIdOpAdaptor::dimensionAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::gpu::DimensionAttr attr = odsAttrs.get("dimension").cast<::mlir::gpu::DimensionAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, BlockIdOp::dimensionAttrName(*odsOpName)).cast<::mlir::gpu::DimensionAttr>();
+    return attr;
 }
 
 ::mlir::gpu::Dimension BlockIdOpAdaptor::dimension() {
@@ -1242,14 +1305,21 @@ std::pair<unsigned, unsigned> BlockIdOpAdaptor::getODSOperandIndexAndLength(unsi
 }
 
 ::mlir::LogicalResult BlockIdOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_dimension = odsAttrs.get("dimension");
-    if (!tblgen_dimension)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_dimension;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'gpu.block_id' op ""requires attribute 'dimension'");
-
-    if (tblgen_dimension && !((tblgen_dimension.isa<::mlir::gpu::DimensionAttr>())))
-      return emitError(loc, "'gpu.block_id' op ""attribute 'dimension' failed to satisfy constraint: a dimension, either 'x', 'y', or 'z'");
+    if (namedAttrIt->getName() == BlockIdOp::dimensionAttrName(*odsOpName)) {
+      tblgen_dimension = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_dimension && !((tblgen_dimension.isa<::mlir::gpu::DimensionAttr>())))
+    return emitError(loc, "'gpu.block_id' op ""attribute 'dimension' failed to satisfy constraint: a dimension, either 'x', 'y', or 'z'");
   return ::mlir::success();
 }
 
@@ -1274,7 +1344,7 @@ std::pair<unsigned, unsigned> BlockIdOp::getODSResultIndexAndLength(unsigned ind
 }
 
 ::mlir::gpu::DimensionAttr BlockIdOp::dimensionAttr() {
-  return (*this)->getAttr(dimensionAttrName()).cast<::mlir::gpu::DimensionAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, dimensionAttrName()).cast<::mlir::gpu::DimensionAttr>();
 }
 
 ::mlir::gpu::Dimension BlockIdOp::dimension() {
@@ -1347,7 +1417,7 @@ void BlockIdOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(BlockIdOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -1360,14 +1430,21 @@ void BlockIdOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
 }
 
 ::mlir::LogicalResult BlockIdOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_dimension = (*this)->getAttr(dimensionAttrName());
-    if (!tblgen_dimension)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_dimension;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'dimension'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps1(*this, tblgen_dimension, "dimension")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == dimensionAttrName()) {
+      tblgen_dimension = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps1(*this, tblgen_dimension, "dimension")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSResults(0);
@@ -1387,7 +1464,8 @@ void BlockIdOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
 ::mlir::LogicalResult BlockIdOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = odsBuilder.getIndexType();
+  ::mlir::Type odsInferredType0 = odsBuilder.getIndexType();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
@@ -1411,7 +1489,7 @@ _odsPrinter.printStrippedAttrOrType(dimensionAttr());
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"dimension"});
 }
 
-void BlockIdOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void BlockIdOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace gpu
@@ -1425,9 +1503,11 @@ namespace gpu {
 // ::mlir::gpu::DeallocOp definitions
 //===----------------------------------------------------------------------===//
 
-DeallocOpAdaptor::DeallocOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+DeallocOpAdaptor::DeallocOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.dealloc", odsAttrs.getContext());
+}
 
-DeallocOpAdaptor::DeallocOpAdaptor(DeallocOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+DeallocOpAdaptor::DeallocOpAdaptor(DeallocOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange DeallocOpAdaptor::getOperands() {
   return odsOperands;
@@ -1604,8 +1684,8 @@ void DeallocOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 }
 
 ::mlir::ParseResult DeallocOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::Type, 1> asyncTokenTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> asyncDependenciesOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> asyncTokenTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> asyncDependenciesOperands;
   ::llvm::SMLoc asyncDependenciesOperandsLoc;
   (void)asyncDependenciesOperandsLoc;
   ::mlir::OpAsmParser::UnresolvedOperand memrefRawOperands[1];
@@ -1662,7 +1742,7 @@ void DeallocOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void DeallocOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void DeallocOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
   for (::mlir::Value value : getODSOperands(1))
     effects.emplace_back(::mlir::MemoryEffects::Free::get(), value, ::mlir::SideEffects::DefaultResource::get());
 }
@@ -1675,853 +1755,14 @@ namespace mlir {
 namespace gpu {
 
 //===----------------------------------------------------------------------===//
-// ::mlir::gpu::DeviceAsyncCopyOp definitions
-//===----------------------------------------------------------------------===//
-
-DeviceAsyncCopyOpAdaptor::DeviceAsyncCopyOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
-
-DeviceAsyncCopyOpAdaptor::DeviceAsyncCopyOpAdaptor(DeviceAsyncCopyOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
-
-::mlir::ValueRange DeviceAsyncCopyOpAdaptor::getOperands() {
-  return odsOperands;
-}
-
-std::pair<unsigned, unsigned> DeviceAsyncCopyOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
-  assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = odsAttrs.get("operand_segment_sizes").cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
-
-  unsigned start = 0;
-  for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
-}
-
-::mlir::ValueRange DeviceAsyncCopyOpAdaptor::getODSOperands(unsigned index) {
-  auto valueRange = getODSOperandIndexAndLength(index);
-  return {std::next(odsOperands.begin(), valueRange.first),
-           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::Value DeviceAsyncCopyOpAdaptor::dst() {
-  return *getODSOperands(0).begin();
-}
-
-::mlir::ValueRange DeviceAsyncCopyOpAdaptor::dstIndices() {
-  return getODSOperands(1);
-}
-
-::mlir::Value DeviceAsyncCopyOpAdaptor::src() {
-  return *getODSOperands(2).begin();
-}
-
-::mlir::ValueRange DeviceAsyncCopyOpAdaptor::srcIndices() {
-  return getODSOperands(3);
-}
-
-::mlir::DictionaryAttr DeviceAsyncCopyOpAdaptor::getAttributes() {
-  return odsAttrs;
-}
-
-::mlir::IntegerAttr DeviceAsyncCopyOpAdaptor::numElementsAttr() {
-  assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("numElements").cast<::mlir::IntegerAttr>();
-  return attr;
-}
-
-::llvm::APInt DeviceAsyncCopyOpAdaptor::numElements() {
-  auto attr = numElementsAttr();
-  return attr.getValue();
-}
-
-::mlir::LogicalResult DeviceAsyncCopyOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto sizeAttr = odsAttrs.get("operand_segment_sizes").dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitError(loc, "'gpu.device_async_copy' op ""missing segment sizes attribute 'operand_segment_sizes'");
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
-    if (numElements != 4)
-      return emitError(loc, "'gpu.device_async_copy' op ""'operand_segment_sizes' attribute for specifying operand segments must have 4 "
-                "elements, but got ") << numElements;
-  }
-    {
-    auto tblgen_numElements = odsAttrs.get("numElements");
-    if (!tblgen_numElements)
-      return emitError(loc, "'gpu.device_async_copy' op ""requires attribute 'numElements'");
-
-    if (tblgen_numElements && !(((tblgen_numElements.isa<::mlir::IntegerAttr>())) && ((tblgen_numElements.cast<::mlir::IntegerAttr>().getType().isa<::mlir::IndexType>()))))
-      return emitError(loc, "'gpu.device_async_copy' op ""attribute 'numElements' failed to satisfy constraint: index attribute");
-  }
-  return ::mlir::success();
-}
-
-std::pair<unsigned, unsigned> DeviceAsyncCopyOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr =
-      (*this)->getAttr(operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
-
-  unsigned start = 0;
-  for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
-}
-
-::mlir::Operation::operand_range DeviceAsyncCopyOp::getODSOperands(unsigned index) {
-  auto valueRange = getODSOperandIndexAndLength(index);
-  return {std::next(getOperation()->operand_begin(), valueRange.first),
-           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::Value DeviceAsyncCopyOp::dst() {
-  return *getODSOperands(0).begin();
-}
-
-::mlir::Operation::operand_range DeviceAsyncCopyOp::dstIndices() {
-  return getODSOperands(1);
-}
-
-::mlir::Value DeviceAsyncCopyOp::src() {
-  return *getODSOperands(2).begin();
-}
-
-::mlir::Operation::operand_range DeviceAsyncCopyOp::srcIndices() {
-  return getODSOperands(3);
-}
-
-::mlir::MutableOperandRange DeviceAsyncCopyOp::dstMutable() {
-  auto range = getODSOperandIndexAndLength(0);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
-  return mutableRange;
-}
-
-::mlir::MutableOperandRange DeviceAsyncCopyOp::dstIndicesMutable() {
-  auto range = getODSOperandIndexAndLength(1);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
-  return mutableRange;
-}
-
-::mlir::MutableOperandRange DeviceAsyncCopyOp::srcMutable() {
-  auto range = getODSOperandIndexAndLength(2);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
-  return mutableRange;
-}
-
-::mlir::MutableOperandRange DeviceAsyncCopyOp::srcIndicesMutable() {
-  auto range = getODSOperandIndexAndLength(3);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(3u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
-  return mutableRange;
-}
-
-std::pair<unsigned, unsigned> DeviceAsyncCopyOp::getODSResultIndexAndLength(unsigned index) {
-  return {index, 1};
-}
-
-::mlir::Operation::result_range DeviceAsyncCopyOp::getODSResults(unsigned index) {
-  auto valueRange = getODSResultIndexAndLength(index);
-  return {std::next(getOperation()->result_begin(), valueRange.first),
-           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::Value DeviceAsyncCopyOp::asyncToken() {
-  return *getODSResults(0).begin();
-}
-
-::mlir::IntegerAttr DeviceAsyncCopyOp::numElementsAttr() {
-  return (*this)->getAttr(numElementsAttrName()).cast<::mlir::IntegerAttr>();
-}
-
-::llvm::APInt DeviceAsyncCopyOp::numElements() {
-  auto attr = numElementsAttr();
-  return attr.getValue();
-}
-
-void DeviceAsyncCopyOp::numElementsAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(numElementsAttrName(), attr);
-}
-
-void DeviceAsyncCopyOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type asyncToken, ::mlir::Value dst, ::mlir::ValueRange dstIndices, ::mlir::Value src, ::mlir::ValueRange srcIndices, ::mlir::IntegerAttr numElements) {
-  odsState.addOperands(dst);
-  odsState.addOperands(dstIndices);
-  odsState.addOperands(src);
-  odsState.addOperands(srcIndices);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({1, static_cast<int32_t>(dstIndices.size()), 1, static_cast<int32_t>(srcIndices.size())}));
-  odsState.addAttribute(numElementsAttrName(odsState.name), numElements);
-  odsState.addTypes(asyncToken);
-}
-
-void DeviceAsyncCopyOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value dst, ::mlir::ValueRange dstIndices, ::mlir::Value src, ::mlir::ValueRange srcIndices, ::mlir::IntegerAttr numElements) {
-  odsState.addOperands(dst);
-  odsState.addOperands(dstIndices);
-  odsState.addOperands(src);
-  odsState.addOperands(srcIndices);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({1, static_cast<int32_t>(dstIndices.size()), 1, static_cast<int32_t>(srcIndices.size())}));
-  odsState.addAttribute(numElementsAttrName(odsState.name), numElements);
-
-        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
-        if (::mlir::succeeded(DeviceAsyncCopyOp::inferReturnTypes(odsBuilder.getContext(),
-                      odsState.location, odsState.operands,
-                      odsState.attributes.getDictionary(odsState.getContext()),
-                      /*regions=*/{}, inferredReturnTypes)))
-          odsState.addTypes(inferredReturnTypes);
-        else
-          ::llvm::report_fatal_error("Failed to infer result type(s).");
-}
-
-void DeviceAsyncCopyOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value dst, ::mlir::ValueRange dstIndices, ::mlir::Value src, ::mlir::ValueRange srcIndices, ::mlir::IntegerAttr numElements) {
-  odsState.addOperands(dst);
-  odsState.addOperands(dstIndices);
-  odsState.addOperands(src);
-  odsState.addOperands(srcIndices);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({1, static_cast<int32_t>(dstIndices.size()), 1, static_cast<int32_t>(srcIndices.size())}));
-  odsState.addAttribute(numElementsAttrName(odsState.name), numElements);
-  assert(resultTypes.size() == 1u && "mismatched number of results");
-  odsState.addTypes(resultTypes);
-}
-
-void DeviceAsyncCopyOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type asyncToken, ::mlir::Value dst, ::mlir::ValueRange dstIndices, ::mlir::Value src, ::mlir::ValueRange srcIndices, ::llvm::APInt numElements) {
-  odsState.addOperands(dst);
-  odsState.addOperands(dstIndices);
-  odsState.addOperands(src);
-  odsState.addOperands(srcIndices);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({1, static_cast<int32_t>(dstIndices.size()), 1, static_cast<int32_t>(srcIndices.size())}));
-  odsState.addAttribute(numElementsAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIndexType(), numElements));
-  odsState.addTypes(asyncToken);
-}
-
-void DeviceAsyncCopyOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value dst, ::mlir::ValueRange dstIndices, ::mlir::Value src, ::mlir::ValueRange srcIndices, ::llvm::APInt numElements) {
-  odsState.addOperands(dst);
-  odsState.addOperands(dstIndices);
-  odsState.addOperands(src);
-  odsState.addOperands(srcIndices);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({1, static_cast<int32_t>(dstIndices.size()), 1, static_cast<int32_t>(srcIndices.size())}));
-  odsState.addAttribute(numElementsAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIndexType(), numElements));
-
-        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
-        if (::mlir::succeeded(DeviceAsyncCopyOp::inferReturnTypes(odsBuilder.getContext(),
-                      odsState.location, odsState.operands,
-                      odsState.attributes.getDictionary(odsState.getContext()),
-                      /*regions=*/{}, inferredReturnTypes)))
-          odsState.addTypes(inferredReturnTypes);
-        else
-          ::llvm::report_fatal_error("Failed to infer result type(s).");
-}
-
-void DeviceAsyncCopyOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value dst, ::mlir::ValueRange dstIndices, ::mlir::Value src, ::mlir::ValueRange srcIndices, ::llvm::APInt numElements) {
-  odsState.addOperands(dst);
-  odsState.addOperands(dstIndices);
-  odsState.addOperands(src);
-  odsState.addOperands(srcIndices);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({1, static_cast<int32_t>(dstIndices.size()), 1, static_cast<int32_t>(srcIndices.size())}));
-  odsState.addAttribute(numElementsAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIndexType(), numElements));
-  assert(resultTypes.size() == 1u && "mismatched number of results");
-  odsState.addTypes(resultTypes);
-}
-
-void DeviceAsyncCopyOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
-  assert(operands.size() >= 2u && "mismatched number of parameters");
-  odsState.addOperands(operands);
-  odsState.addAttributes(attributes);
-  assert(resultTypes.size() == 1u && "mismatched number of return types");
-  odsState.addTypes(resultTypes);
-}
-
-void DeviceAsyncCopyOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
-  assert(operands.size() >= 2u && "mismatched number of parameters");
-  odsState.addOperands(operands);
-  odsState.addAttributes(attributes);
-
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
-  if (::mlir::succeeded(DeviceAsyncCopyOp::inferReturnTypes(odsBuilder.getContext(),
-          odsState.location, operands,
-          odsState.attributes.getDictionary(odsState.getContext()),
-          odsState.regions, inferredReturnTypes))) {
-    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
-    odsState.addTypes(inferredReturnTypes);
-  } else {
-    ::llvm::report_fatal_error("Failed to infer result type(s).");
-  }
-}
-
-::mlir::LogicalResult DeviceAsyncCopyOp::verifyInvariantsImpl() {
-  {
-    auto sizeAttr = (*this)->getAttr(operand_segment_sizesAttrName()).dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitOpError("missing segment sizes attribute 'operand_segment_sizes'");
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
-    if (numElements != 4)
-      return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 4 "
-                "elements, but got ") << numElements;
-  }
-    {
-    auto tblgen_numElements = (*this)->getAttr(numElementsAttrName());
-    if (!tblgen_numElements)
-      return emitOpError("requires attribute 'numElements'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps2(*this, tblgen_numElements, "numElements")))
-      return ::mlir::failure();
-  }
-  {
-    unsigned index = 0; (void)index;
-    auto valueGroup0 = getODSOperands(0);
-
-    for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps3(*this, v.getType(), "operand", index++)))
-        return ::mlir::failure();
-    }
-    auto valueGroup1 = getODSOperands(1);
-
-    for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps2(*this, v.getType(), "operand", index++)))
-        return ::mlir::failure();
-    }
-    auto valueGroup2 = getODSOperands(2);
-
-    for (auto v : valueGroup2) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps3(*this, v.getType(), "operand", index++)))
-        return ::mlir::failure();
-    }
-    auto valueGroup3 = getODSOperands(3);
-
-    for (auto v : valueGroup3) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps2(*this, v.getType(), "operand", index++)))
-        return ::mlir::failure();
-    }
-  }
-  {
-    unsigned index = 0; (void)index;
-    auto valueGroup0 = getODSResults(0);
-
-    for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps4(*this, v.getType(), "result", index++)))
-        return ::mlir::failure();
-    }
-  }
-  return ::mlir::success();
-}
-
-::mlir::LogicalResult DeviceAsyncCopyOp::verifyInvariants() {
-  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
-    return ::mlir::success();
-  return ::mlir::failure();
-}
-
-::mlir::LogicalResult DeviceAsyncCopyOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
-  inferredReturnTypes.resize(1);
-  ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = mlir::gpu::DeviceAsyncTokenType::get(odsBuilder.getContext());
-  return ::mlir::success();
-}
-
-::mlir::ParseResult DeviceAsyncCopyOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::UnresolvedOperand srcRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> srcOperands(srcRawOperands);  ::llvm::SMLoc srcOperandsLoc;
-  (void)srcOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> srcIndicesOperands;
-  ::llvm::SMLoc srcIndicesOperandsLoc;
-  (void)srcIndicesOperandsLoc;
-  ::mlir::OpAsmParser::UnresolvedOperand dstRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> dstOperands(dstRawOperands);  ::llvm::SMLoc dstOperandsLoc;
-  (void)dstOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> dstIndicesOperands;
-  ::llvm::SMLoc dstIndicesOperandsLoc;
-  (void)dstIndicesOperandsLoc;
-  ::mlir::IntegerAttr numElementsAttr;
-  ::mlir::Type srcRawTypes[1];
-  ::llvm::ArrayRef<::mlir::Type> srcTypes(srcRawTypes);
-  ::mlir::Type dstRawTypes[1];
-  ::llvm::ArrayRef<::mlir::Type> dstTypes(dstRawTypes);
-
-  srcOperandsLoc = parser.getCurrentLocation();
-  if (parser.parseOperand(srcRawOperands[0]))
-    return ::mlir::failure();
-  if (parser.parseLSquare())
-    return ::mlir::failure();
-
-  srcIndicesOperandsLoc = parser.getCurrentLocation();
-  if (parser.parseOperandList(srcIndicesOperands))
-    return ::mlir::failure();
-  if (parser.parseRSquare())
-    return ::mlir::failure();
-  if (parser.parseComma())
-    return ::mlir::failure();
-
-  dstOperandsLoc = parser.getCurrentLocation();
-  if (parser.parseOperand(dstRawOperands[0]))
-    return ::mlir::failure();
-  if (parser.parseLSquare())
-    return ::mlir::failure();
-
-  dstIndicesOperandsLoc = parser.getCurrentLocation();
-  if (parser.parseOperandList(dstIndicesOperands))
-    return ::mlir::failure();
-  if (parser.parseRSquare())
-    return ::mlir::failure();
-  if (parser.parseComma())
-    return ::mlir::failure();
-
-  if (parser.parseCustomAttributeWithFallback(numElementsAttr, parser.getBuilder().getIndexType(), "numElements",
-          result.attributes)) {
-    return ::mlir::failure();
-  }
-  if (parser.parseOptionalAttrDict(result.attributes))
-    return ::mlir::failure();
-  if (parser.parseColon())
-    return ::mlir::failure();
-
-  {
-    ::mlir::MemRefType type;
-    if (parser.parseCustomTypeWithFallback(type))
-      return ::mlir::failure();
-    srcRawTypes[0] = type;
-  }
-  if (parser.parseKeyword("to"))
-    return ::mlir::failure();
-
-  {
-    ::mlir::MemRefType type;
-    if (parser.parseCustomTypeWithFallback(type))
-      return ::mlir::failure();
-    dstRawTypes[0] = type;
-  }
-  result.addAttribute("operand_segment_sizes", parser.getBuilder().getI32VectorAttr({1, static_cast<int32_t>(dstIndicesOperands.size()), 1, static_cast<int32_t>(srcIndicesOperands.size())}));
-  ::mlir::Type odsBuildableType0 = mlir::gpu::DeviceAsyncTokenType::get(parser.getBuilder().getContext());
-  ::mlir::Type odsBuildableType1 = parser.getBuilder().getIndexType();
-  result.addTypes(odsBuildableType0);
-  if (parser.resolveOperands(dstOperands, dstTypes, dstOperandsLoc, result.operands))
-    return ::mlir::failure();
-  if (parser.resolveOperands(dstIndicesOperands, odsBuildableType1, result.operands))
-    return ::mlir::failure();
-  if (parser.resolveOperands(srcOperands, srcTypes, srcOperandsLoc, result.operands))
-    return ::mlir::failure();
-  if (parser.resolveOperands(srcIndicesOperands, odsBuildableType1, result.operands))
-    return ::mlir::failure();
-  return ::mlir::success();
-}
-
-void DeviceAsyncCopyOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
-  _odsPrinter << ' ';
-  _odsPrinter << src();
-  _odsPrinter << "[";
-  _odsPrinter << srcIndices();
-  _odsPrinter << "]";
-  _odsPrinter << ",";
-  _odsPrinter << ' ';
-  _odsPrinter << dst();
-  _odsPrinter << "[";
-  _odsPrinter << dstIndices();
-  _odsPrinter << "]";
-  _odsPrinter << ",";
-  _odsPrinter << ' ';
-  _odsPrinter.printAttributeWithoutType(numElementsAttr());
-  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"operand_segment_sizes", "numElements"});
-  _odsPrinter << ' ' << ":";
-  _odsPrinter << ' ';
-  {
-    auto type = src().getType();
-    if (auto validType = type.dyn_cast<::mlir::MemRefType>())
-      _odsPrinter.printStrippedAttrOrType(validType);
-   else
-     _odsPrinter << type;
-  }
-  _odsPrinter << ' ' << "to";
-  _odsPrinter << ' ';
-  {
-    auto type = dst().getType();
-    if (auto validType = type.dyn_cast<::mlir::MemRefType>())
-      _odsPrinter.printStrippedAttrOrType(validType);
-   else
-     _odsPrinter << type;
-  }
-}
-
-void DeviceAsyncCopyOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
-  for (::mlir::Value value : getODSOperands(0))
-    effects.emplace_back(::mlir::MemoryEffects::Write::get(), value, ::mlir::SideEffects::DefaultResource::get());
-  for (::mlir::Value value : getODSOperands(2))
-    effects.emplace_back(::mlir::MemoryEffects::Read::get(), value, ::mlir::SideEffects::DefaultResource::get());
-}
-
-} // namespace gpu
-} // namespace mlir
-MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::DeviceAsyncCopyOp)
-
-namespace mlir {
-namespace gpu {
-
-//===----------------------------------------------------------------------===//
-// ::mlir::gpu::DeviceAsyncCreateGroupOp definitions
-//===----------------------------------------------------------------------===//
-
-DeviceAsyncCreateGroupOpAdaptor::DeviceAsyncCreateGroupOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
-
-DeviceAsyncCreateGroupOpAdaptor::DeviceAsyncCreateGroupOpAdaptor(DeviceAsyncCreateGroupOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
-
-::mlir::ValueRange DeviceAsyncCreateGroupOpAdaptor::getOperands() {
-  return odsOperands;
-}
-
-std::pair<unsigned, unsigned> DeviceAsyncCreateGroupOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
-  bool isVariadic[] = {true};
-  int prevVariadicCount = 0;
-  for (unsigned i = 0; i < index; ++i)
-    if (isVariadic[i]) ++prevVariadicCount;
-
-  // Calculate how many dynamic values a static variadic operand corresponds to.
-  // This assumes all static variadic operands have the same dynamic value count.
-  int variadicSize = (odsOperands.size() - 0) / 1;
-  // `index` passed in as the parameter is the static index which counts each
-  // operand (variadic or not) as size 1. So here for each previous static variadic
-  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
-  // value pack for this static operand starts.
-  int start = index + (variadicSize - 1) * prevVariadicCount;
-  int size = isVariadic[index] ? variadicSize : 1;
-  return {start, size};
-}
-
-::mlir::ValueRange DeviceAsyncCreateGroupOpAdaptor::getODSOperands(unsigned index) {
-  auto valueRange = getODSOperandIndexAndLength(index);
-  return {std::next(odsOperands.begin(), valueRange.first),
-           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::ValueRange DeviceAsyncCreateGroupOpAdaptor::inputTokens() {
-  return getODSOperands(0);
-}
-
-::mlir::DictionaryAttr DeviceAsyncCreateGroupOpAdaptor::getAttributes() {
-  return odsAttrs;
-}
-
-::mlir::LogicalResult DeviceAsyncCreateGroupOpAdaptor::verify(::mlir::Location loc) {
-  return ::mlir::success();
-}
-
-std::pair<unsigned, unsigned> DeviceAsyncCreateGroupOp::getODSOperandIndexAndLength(unsigned index) {
-  bool isVariadic[] = {true};
-  int prevVariadicCount = 0;
-  for (unsigned i = 0; i < index; ++i)
-    if (isVariadic[i]) ++prevVariadicCount;
-
-  // Calculate how many dynamic values a static variadic operand corresponds to.
-  // This assumes all static variadic operands have the same dynamic value count.
-  int variadicSize = (getOperation()->getNumOperands() - 0) / 1;
-  // `index` passed in as the parameter is the static index which counts each
-  // operand (variadic or not) as size 1. So here for each previous static variadic
-  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
-  // value pack for this static operand starts.
-  int start = index + (variadicSize - 1) * prevVariadicCount;
-  int size = isVariadic[index] ? variadicSize : 1;
-  return {start, size};
-}
-
-::mlir::Operation::operand_range DeviceAsyncCreateGroupOp::getODSOperands(unsigned index) {
-  auto valueRange = getODSOperandIndexAndLength(index);
-  return {std::next(getOperation()->operand_begin(), valueRange.first),
-           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::Operation::operand_range DeviceAsyncCreateGroupOp::inputTokens() {
-  return getODSOperands(0);
-}
-
-::mlir::MutableOperandRange DeviceAsyncCreateGroupOp::inputTokensMutable() {
-  auto range = getODSOperandIndexAndLength(0);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
-  return mutableRange;
-}
-
-std::pair<unsigned, unsigned> DeviceAsyncCreateGroupOp::getODSResultIndexAndLength(unsigned index) {
-  return {index, 1};
-}
-
-::mlir::Operation::result_range DeviceAsyncCreateGroupOp::getODSResults(unsigned index) {
-  auto valueRange = getODSResultIndexAndLength(index);
-  return {std::next(getOperation()->result_begin(), valueRange.first),
-           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::Value DeviceAsyncCreateGroupOp::asyncToken() {
-  return *getODSResults(0).begin();
-}
-
-void DeviceAsyncCreateGroupOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type asyncToken, ::mlir::ValueRange inputTokens) {
-  odsState.addOperands(inputTokens);
-  odsState.addTypes(asyncToken);
-}
-
-void DeviceAsyncCreateGroupOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
-  odsState.addOperands(operands);
-  odsState.addAttributes(attributes);
-  assert(resultTypes.size() == 1u && "mismatched number of return types");
-  odsState.addTypes(resultTypes);
-}
-
-void DeviceAsyncCreateGroupOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
-  odsState.addOperands(operands);
-  odsState.addAttributes(attributes);
-
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
-  if (::mlir::succeeded(DeviceAsyncCreateGroupOp::inferReturnTypes(odsBuilder.getContext(),
-          odsState.location, operands,
-          odsState.attributes.getDictionary(odsState.getContext()),
-          odsState.regions, inferredReturnTypes))) {
-    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
-    odsState.addTypes(inferredReturnTypes);
-  } else {
-    ::llvm::report_fatal_error("Failed to infer result type(s).");
-  }
-}
-
-::mlir::LogicalResult DeviceAsyncCreateGroupOp::verifyInvariantsImpl() {
-  {
-    unsigned index = 0; (void)index;
-    auto valueGroup0 = getODSOperands(0);
-
-    for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps4(*this, v.getType(), "operand", index++)))
-        return ::mlir::failure();
-    }
-  }
-  {
-    unsigned index = 0; (void)index;
-    auto valueGroup0 = getODSResults(0);
-
-    for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps4(*this, v.getType(), "result", index++)))
-        return ::mlir::failure();
-    }
-  }
-  return ::mlir::success();
-}
-
-::mlir::LogicalResult DeviceAsyncCreateGroupOp::verifyInvariants() {
-  return verifyInvariantsImpl();
-}
-
-::mlir::LogicalResult DeviceAsyncCreateGroupOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
-  inferredReturnTypes.resize(1);
-  ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = mlir::gpu::DeviceAsyncTokenType::get(odsBuilder.getContext());
-  return ::mlir::success();
-}
-
-::mlir::ParseResult DeviceAsyncCreateGroupOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> inputTokensOperands;
-  ::llvm::SMLoc inputTokensOperandsLoc;
-  (void)inputTokensOperandsLoc;
-
-  inputTokensOperandsLoc = parser.getCurrentLocation();
-  if (parser.parseOperandList(inputTokensOperands))
-    return ::mlir::failure();
-  if (parser.parseOptionalAttrDict(result.attributes))
-    return ::mlir::failure();
-  ::mlir::Type odsBuildableType0 = mlir::gpu::DeviceAsyncTokenType::get(parser.getBuilder().getContext());
-  result.addTypes(odsBuildableType0);
-  if (parser.resolveOperands(inputTokensOperands, odsBuildableType0, result.operands))
-    return ::mlir::failure();
-  return ::mlir::success();
-}
-
-void DeviceAsyncCreateGroupOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
-  _odsPrinter << ' ';
-  _odsPrinter << inputTokens();
-  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
-}
-
-} // namespace gpu
-} // namespace mlir
-MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::DeviceAsyncCreateGroupOp)
-
-namespace mlir {
-namespace gpu {
-
-//===----------------------------------------------------------------------===//
-// ::mlir::gpu::DeviceAsyncWaitOp definitions
-//===----------------------------------------------------------------------===//
-
-DeviceAsyncWaitOpAdaptor::DeviceAsyncWaitOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
-
-DeviceAsyncWaitOpAdaptor::DeviceAsyncWaitOpAdaptor(DeviceAsyncWaitOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
-
-::mlir::ValueRange DeviceAsyncWaitOpAdaptor::getOperands() {
-  return odsOperands;
-}
-
-std::pair<unsigned, unsigned> DeviceAsyncWaitOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
-  return {index, 1};
-}
-
-::mlir::ValueRange DeviceAsyncWaitOpAdaptor::getODSOperands(unsigned index) {
-  auto valueRange = getODSOperandIndexAndLength(index);
-  return {std::next(odsOperands.begin(), valueRange.first),
-           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::Value DeviceAsyncWaitOpAdaptor::asyncDependencies() {
-  return *getODSOperands(0).begin();
-}
-
-::mlir::DictionaryAttr DeviceAsyncWaitOpAdaptor::getAttributes() {
-  return odsAttrs;
-}
-
-::mlir::IntegerAttr DeviceAsyncWaitOpAdaptor::numGroupsAttr() {
-  assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("numGroups").dyn_cast_or_null<::mlir::IntegerAttr>();
-  return attr;
-}
-
-::llvm::Optional<uint32_t> DeviceAsyncWaitOpAdaptor::numGroups() {
-  auto attr = numGroupsAttr();
-  return attr ? ::llvm::Optional<uint32_t>(attr.getValue().getZExtValue()) : (::llvm::None);
-}
-
-::mlir::LogicalResult DeviceAsyncWaitOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_numGroups = odsAttrs.get("numGroups");
-    if (tblgen_numGroups && !(((tblgen_numGroups.isa<::mlir::IntegerAttr>())) && ((tblgen_numGroups.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))))
-      return emitError(loc, "'gpu.device_async_wait' op ""attribute 'numGroups' failed to satisfy constraint: 32-bit signless integer attribute");
-  }
-  return ::mlir::success();
-}
-
-std::pair<unsigned, unsigned> DeviceAsyncWaitOp::getODSOperandIndexAndLength(unsigned index) {
-  return {index, 1};
-}
-
-::mlir::Operation::operand_range DeviceAsyncWaitOp::getODSOperands(unsigned index) {
-  auto valueRange = getODSOperandIndexAndLength(index);
-  return {std::next(getOperation()->operand_begin(), valueRange.first),
-           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::Value DeviceAsyncWaitOp::asyncDependencies() {
-  return *getODSOperands(0).begin();
-}
-
-::mlir::MutableOperandRange DeviceAsyncWaitOp::asyncDependenciesMutable() {
-  auto range = getODSOperandIndexAndLength(0);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
-  return mutableRange;
-}
-
-std::pair<unsigned, unsigned> DeviceAsyncWaitOp::getODSResultIndexAndLength(unsigned index) {
-  return {index, 1};
-}
-
-::mlir::Operation::result_range DeviceAsyncWaitOp::getODSResults(unsigned index) {
-  auto valueRange = getODSResultIndexAndLength(index);
-  return {std::next(getOperation()->result_begin(), valueRange.first),
-           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::IntegerAttr DeviceAsyncWaitOp::numGroupsAttr() {
-  return (*this)->getAttr(numGroupsAttrName()).dyn_cast_or_null<::mlir::IntegerAttr>();
-}
-
-::llvm::Optional<uint32_t> DeviceAsyncWaitOp::numGroups() {
-  auto attr = numGroupsAttr();
-  return attr ? ::llvm::Optional<uint32_t>(attr.getValue().getZExtValue()) : (::llvm::None);
-}
-
-void DeviceAsyncWaitOp::numGroupsAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(numGroupsAttrName(), attr);
-}
-
-::mlir::Attribute DeviceAsyncWaitOp::removeNumGroupsAttr() {
-  return (*this)->removeAttr(numGroupsAttrName());
-}
-
-void DeviceAsyncWaitOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value asyncDependencies, /*optional*/::mlir::IntegerAttr numGroups) {
-  odsState.addOperands(asyncDependencies);
-  if (numGroups) {
-  odsState.addAttribute(numGroupsAttrName(odsState.name), numGroups);
-  }
-}
-
-void DeviceAsyncWaitOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value asyncDependencies, /*optional*/::mlir::IntegerAttr numGroups) {
-  odsState.addOperands(asyncDependencies);
-  if (numGroups) {
-  odsState.addAttribute(numGroupsAttrName(odsState.name), numGroups);
-  }
-  assert(resultTypes.size() == 0u && "mismatched number of results");
-  odsState.addTypes(resultTypes);
-}
-
-void DeviceAsyncWaitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
-  assert(operands.size() == 1u && "mismatched number of parameters");
-  odsState.addOperands(operands);
-  odsState.addAttributes(attributes);
-  assert(resultTypes.size() == 0u && "mismatched number of return types");
-  odsState.addTypes(resultTypes);
-}
-
-::mlir::LogicalResult DeviceAsyncWaitOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_numGroups = (*this)->getAttr(numGroupsAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps3(*this, tblgen_numGroups, "numGroups")))
-      return ::mlir::failure();
-  }
-  {
-    unsigned index = 0; (void)index;
-    auto valueGroup0 = getODSOperands(0);
-
-    for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps4(*this, v.getType(), "operand", index++)))
-        return ::mlir::failure();
-    }
-  }
-  return ::mlir::success();
-}
-
-::mlir::LogicalResult DeviceAsyncWaitOp::verifyInvariants() {
-  return verifyInvariantsImpl();
-}
-
-::mlir::ParseResult DeviceAsyncWaitOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::OpAsmParser::UnresolvedOperand asyncDependenciesRawOperands[1];
-  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> asyncDependenciesOperands(asyncDependenciesRawOperands);  ::llvm::SMLoc asyncDependenciesOperandsLoc;
-  (void)asyncDependenciesOperandsLoc;
-
-  asyncDependenciesOperandsLoc = parser.getCurrentLocation();
-  if (parser.parseOperand(asyncDependenciesRawOperands[0]))
-    return ::mlir::failure();
-  if (parser.parseOptionalAttrDict(result.attributes))
-    return ::mlir::failure();
-  ::mlir::Type odsBuildableType0 = mlir::gpu::DeviceAsyncTokenType::get(parser.getBuilder().getContext());
-  if (parser.resolveOperands(asyncDependenciesOperands, odsBuildableType0, result.operands))
-    return ::mlir::failure();
-  return ::mlir::success();
-}
-
-void DeviceAsyncWaitOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
-  _odsPrinter << ' ';
-  _odsPrinter << asyncDependencies();
-  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
-}
-
-} // namespace gpu
-} // namespace mlir
-MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::DeviceAsyncWaitOp)
-
-namespace mlir {
-namespace gpu {
-
-//===----------------------------------------------------------------------===//
 // ::mlir::gpu::GPUFuncOp definitions
 //===----------------------------------------------------------------------===//
 
-GPUFuncOpAdaptor::GPUFuncOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+GPUFuncOpAdaptor::GPUFuncOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.func", odsAttrs.getContext());
+}
 
-GPUFuncOpAdaptor::GPUFuncOpAdaptor(GPUFuncOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+GPUFuncOpAdaptor::GPUFuncOpAdaptor(GPUFuncOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange GPUFuncOpAdaptor::getOperands() {
   return odsOperands;
@@ -2543,8 +1784,8 @@ std::pair<unsigned, unsigned> GPUFuncOpAdaptor::getODSOperandIndexAndLength(unsi
 
 ::mlir::TypeAttr GPUFuncOpAdaptor::function_typeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::TypeAttr attr = odsAttrs.get("function_type").cast<::mlir::TypeAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, GPUFuncOp::function_typeAttrName(*odsOpName)).cast<::mlir::TypeAttr>();
+    return attr;
 }
 
 ::mlir::FunctionType GPUFuncOpAdaptor::function_type() {
@@ -2561,14 +1802,21 @@ std::pair<unsigned, unsigned> GPUFuncOpAdaptor::getODSOperandIndexAndLength(unsi
 }
 
 ::mlir::LogicalResult GPUFuncOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_function_type = odsAttrs.get("function_type");
-    if (!tblgen_function_type)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_function_type;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'gpu.func' op ""requires attribute 'function_type'");
-
-    if (tblgen_function_type && !(((tblgen_function_type.isa<::mlir::TypeAttr>())) && ((tblgen_function_type.cast<::mlir::TypeAttr>().getValue().isa<::mlir::FunctionType>()))))
-      return emitError(loc, "'gpu.func' op ""attribute 'function_type' failed to satisfy constraint: type attribute of function type");
+    if (namedAttrIt->getName() == GPUFuncOp::function_typeAttrName(*odsOpName)) {
+      tblgen_function_type = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_function_type && !(((tblgen_function_type.isa<::mlir::TypeAttr>())) && ((tblgen_function_type.cast<::mlir::TypeAttr>().getValue().isa<::mlir::FunctionType>()))))
+    return emitError(loc, "'gpu.func' op ""attribute 'function_type' failed to satisfy constraint: type attribute of function type");
   return ::mlir::success();
 }
 
@@ -2597,7 +1845,7 @@ std::pair<unsigned, unsigned> GPUFuncOp::getODSResultIndexAndLength(unsigned ind
 }
 
 ::mlir::TypeAttr GPUFuncOp::function_typeAttr() {
-  return (*this)->getAttr(function_typeAttrName()).cast<::mlir::TypeAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, function_typeAttrName()).cast<::mlir::TypeAttr>();
 }
 
 ::mlir::FunctionType GPUFuncOp::function_type() {
@@ -2610,14 +1858,21 @@ void GPUFuncOp::function_typeAttr(::mlir::TypeAttr attr) {
 }
 
 ::mlir::LogicalResult GPUFuncOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_function_type = (*this)->getAttr(function_typeAttrName());
-    if (!tblgen_function_type)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_function_type;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'function_type'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps4(*this, tblgen_function_type, "function_type")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == function_typeAttrName()) {
+      tblgen_function_type = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps2(*this, tblgen_function_type, "function_type")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
 
@@ -2643,9 +1898,11 @@ namespace gpu {
 // ::mlir::gpu::GPUModuleOp definitions
 //===----------------------------------------------------------------------===//
 
-GPUModuleOpAdaptor::GPUModuleOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+GPUModuleOpAdaptor::GPUModuleOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.module", odsAttrs.getContext());
+}
 
-GPUModuleOpAdaptor::GPUModuleOpAdaptor(GPUModuleOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+GPUModuleOpAdaptor::GPUModuleOpAdaptor(GPUModuleOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange GPUModuleOpAdaptor::getOperands() {
   return odsOperands;
@@ -2727,9 +1984,11 @@ namespace gpu {
 // ::mlir::gpu::GlobalIdOp definitions
 //===----------------------------------------------------------------------===//
 
-GlobalIdOpAdaptor::GlobalIdOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+GlobalIdOpAdaptor::GlobalIdOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.global_id", odsAttrs.getContext());
+}
 
-GlobalIdOpAdaptor::GlobalIdOpAdaptor(GlobalIdOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+GlobalIdOpAdaptor::GlobalIdOpAdaptor(GlobalIdOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange GlobalIdOpAdaptor::getOperands() {
   return odsOperands;
@@ -2751,8 +2010,8 @@ std::pair<unsigned, unsigned> GlobalIdOpAdaptor::getODSOperandIndexAndLength(uns
 
 ::mlir::gpu::DimensionAttr GlobalIdOpAdaptor::dimensionAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::gpu::DimensionAttr attr = odsAttrs.get("dimension").cast<::mlir::gpu::DimensionAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, GlobalIdOp::dimensionAttrName(*odsOpName)).cast<::mlir::gpu::DimensionAttr>();
+    return attr;
 }
 
 ::mlir::gpu::Dimension GlobalIdOpAdaptor::dimension() {
@@ -2761,14 +2020,21 @@ std::pair<unsigned, unsigned> GlobalIdOpAdaptor::getODSOperandIndexAndLength(uns
 }
 
 ::mlir::LogicalResult GlobalIdOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_dimension = odsAttrs.get("dimension");
-    if (!tblgen_dimension)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_dimension;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'gpu.global_id' op ""requires attribute 'dimension'");
-
-    if (tblgen_dimension && !((tblgen_dimension.isa<::mlir::gpu::DimensionAttr>())))
-      return emitError(loc, "'gpu.global_id' op ""attribute 'dimension' failed to satisfy constraint: a dimension, either 'x', 'y', or 'z'");
+    if (namedAttrIt->getName() == GlobalIdOp::dimensionAttrName(*odsOpName)) {
+      tblgen_dimension = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_dimension && !((tblgen_dimension.isa<::mlir::gpu::DimensionAttr>())))
+    return emitError(loc, "'gpu.global_id' op ""attribute 'dimension' failed to satisfy constraint: a dimension, either 'x', 'y', or 'z'");
   return ::mlir::success();
 }
 
@@ -2793,7 +2059,7 @@ std::pair<unsigned, unsigned> GlobalIdOp::getODSResultIndexAndLength(unsigned in
 }
 
 ::mlir::gpu::DimensionAttr GlobalIdOp::dimensionAttr() {
-  return (*this)->getAttr(dimensionAttrName()).cast<::mlir::gpu::DimensionAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, dimensionAttrName()).cast<::mlir::gpu::DimensionAttr>();
 }
 
 ::mlir::gpu::Dimension GlobalIdOp::dimension() {
@@ -2866,7 +2132,7 @@ void GlobalIdOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(GlobalIdOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -2879,14 +2145,21 @@ void GlobalIdOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 }
 
 ::mlir::LogicalResult GlobalIdOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_dimension = (*this)->getAttr(dimensionAttrName());
-    if (!tblgen_dimension)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_dimension;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'dimension'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps1(*this, tblgen_dimension, "dimension")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == dimensionAttrName()) {
+      tblgen_dimension = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps1(*this, tblgen_dimension, "dimension")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSResults(0);
@@ -2906,7 +2179,8 @@ void GlobalIdOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 ::mlir::LogicalResult GlobalIdOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = odsBuilder.getIndexType();
+  ::mlir::Type odsInferredType0 = odsBuilder.getIndexType();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
@@ -2930,7 +2204,7 @@ _odsPrinter.printStrippedAttrOrType(dimensionAttr());
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"dimension"});
 }
 
-void GlobalIdOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void GlobalIdOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace gpu
@@ -2944,9 +2218,11 @@ namespace gpu {
 // ::mlir::gpu::GridDimOp definitions
 //===----------------------------------------------------------------------===//
 
-GridDimOpAdaptor::GridDimOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+GridDimOpAdaptor::GridDimOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.grid_dim", odsAttrs.getContext());
+}
 
-GridDimOpAdaptor::GridDimOpAdaptor(GridDimOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+GridDimOpAdaptor::GridDimOpAdaptor(GridDimOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange GridDimOpAdaptor::getOperands() {
   return odsOperands;
@@ -2968,8 +2244,8 @@ std::pair<unsigned, unsigned> GridDimOpAdaptor::getODSOperandIndexAndLength(unsi
 
 ::mlir::gpu::DimensionAttr GridDimOpAdaptor::dimensionAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::gpu::DimensionAttr attr = odsAttrs.get("dimension").cast<::mlir::gpu::DimensionAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, GridDimOp::dimensionAttrName(*odsOpName)).cast<::mlir::gpu::DimensionAttr>();
+    return attr;
 }
 
 ::mlir::gpu::Dimension GridDimOpAdaptor::dimension() {
@@ -2978,14 +2254,21 @@ std::pair<unsigned, unsigned> GridDimOpAdaptor::getODSOperandIndexAndLength(unsi
 }
 
 ::mlir::LogicalResult GridDimOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_dimension = odsAttrs.get("dimension");
-    if (!tblgen_dimension)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_dimension;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'gpu.grid_dim' op ""requires attribute 'dimension'");
-
-    if (tblgen_dimension && !((tblgen_dimension.isa<::mlir::gpu::DimensionAttr>())))
-      return emitError(loc, "'gpu.grid_dim' op ""attribute 'dimension' failed to satisfy constraint: a dimension, either 'x', 'y', or 'z'");
+    if (namedAttrIt->getName() == GridDimOp::dimensionAttrName(*odsOpName)) {
+      tblgen_dimension = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_dimension && !((tblgen_dimension.isa<::mlir::gpu::DimensionAttr>())))
+    return emitError(loc, "'gpu.grid_dim' op ""attribute 'dimension' failed to satisfy constraint: a dimension, either 'x', 'y', or 'z'");
   return ::mlir::success();
 }
 
@@ -3010,7 +2293,7 @@ std::pair<unsigned, unsigned> GridDimOp::getODSResultIndexAndLength(unsigned ind
 }
 
 ::mlir::gpu::DimensionAttr GridDimOp::dimensionAttr() {
-  return (*this)->getAttr(dimensionAttrName()).cast<::mlir::gpu::DimensionAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, dimensionAttrName()).cast<::mlir::gpu::DimensionAttr>();
 }
 
 ::mlir::gpu::Dimension GridDimOp::dimension() {
@@ -3083,7 +2366,7 @@ void GridDimOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(GridDimOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -3096,14 +2379,21 @@ void GridDimOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
 }
 
 ::mlir::LogicalResult GridDimOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_dimension = (*this)->getAttr(dimensionAttrName());
-    if (!tblgen_dimension)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_dimension;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'dimension'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps1(*this, tblgen_dimension, "dimension")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == dimensionAttrName()) {
+      tblgen_dimension = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps1(*this, tblgen_dimension, "dimension")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSResults(0);
@@ -3123,7 +2413,8 @@ void GridDimOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
 ::mlir::LogicalResult GridDimOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = odsBuilder.getIndexType();
+  ::mlir::Type odsInferredType0 = odsBuilder.getIndexType();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
@@ -3147,7 +2438,7 @@ _odsPrinter.printStrippedAttrOrType(dimensionAttr());
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"dimension"});
 }
 
-void GridDimOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void GridDimOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace gpu
@@ -3161,9 +2452,11 @@ namespace gpu {
 // ::mlir::gpu::HostRegisterOp definitions
 //===----------------------------------------------------------------------===//
 
-HostRegisterOpAdaptor::HostRegisterOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+HostRegisterOpAdaptor::HostRegisterOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.host_register", odsAttrs.getContext());
+}
 
-HostRegisterOpAdaptor::HostRegisterOpAdaptor(HostRegisterOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+HostRegisterOpAdaptor::HostRegisterOpAdaptor(HostRegisterOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange HostRegisterOpAdaptor::getOperands() {
   return odsOperands;
@@ -3245,7 +2538,7 @@ void HostRegisterOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps5(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps4(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -3305,12 +2598,162 @@ namespace mlir {
 namespace gpu {
 
 //===----------------------------------------------------------------------===//
+// ::mlir::gpu::LaneIdOp definitions
+//===----------------------------------------------------------------------===//
+
+LaneIdOpAdaptor::LaneIdOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.lane_id", odsAttrs.getContext());
+}
+
+LaneIdOpAdaptor::LaneIdOpAdaptor(LaneIdOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange LaneIdOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> LaneIdOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange LaneIdOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::DictionaryAttr LaneIdOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult LaneIdOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> LaneIdOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range LaneIdOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+std::pair<unsigned, unsigned> LaneIdOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range LaneIdOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value LaneIdOp::result() {
+  return *getODSResults(0).begin();
+}
+
+void LaneIdOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result) {
+  odsState.addTypes(result);
+}
+
+void LaneIdOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState) {
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(LaneIdOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
+void LaneIdOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes) {
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void LaneIdOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 0u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+void LaneIdOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 0u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(LaneIdOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
+}
+
+::mlir::LogicalResult LaneIdOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps2(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult LaneIdOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult LaneIdOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = odsBuilder.getIndexType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
+}
+
+::mlir::ParseResult LaneIdOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  ::mlir::Type odsBuildableType0 = parser.getBuilder().getIndexType();
+  result.addTypes(odsBuildableType0);
+  return ::mlir::success();
+}
+
+void LaneIdOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
+}
+
+void LaneIdOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace gpu
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::gpu::LaneIdOp)
+
+namespace mlir {
+namespace gpu {
+
+//===----------------------------------------------------------------------===//
 // ::mlir::gpu::LaunchFuncOp definitions
 //===----------------------------------------------------------------------===//
 
-LaunchFuncOpAdaptor::LaunchFuncOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+LaunchFuncOpAdaptor::LaunchFuncOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.launch_func", odsAttrs.getContext());
+}
 
-LaunchFuncOpAdaptor::LaunchFuncOpAdaptor(LaunchFuncOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+LaunchFuncOpAdaptor::LaunchFuncOpAdaptor(LaunchFuncOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange LaunchFuncOpAdaptor::getOperands() {
   return odsOperands;
@@ -3318,7 +2761,7 @@ LaunchFuncOpAdaptor::LaunchFuncOpAdaptor(LaunchFuncOp &op) : odsOperands(op->get
 
 std::pair<unsigned, unsigned> LaunchFuncOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = odsAttrs.get("operand_segment_sizes").cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, LaunchFuncOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -3379,8 +2822,8 @@ std::pair<unsigned, unsigned> LaunchFuncOpAdaptor::getODSOperandIndexAndLength(u
 
 ::mlir::SymbolRefAttr LaunchFuncOpAdaptor::kernelAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::SymbolRefAttr attr = odsAttrs.get("kernel").cast<::mlir::SymbolRefAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, LaunchFuncOp::kernelAttrName(*odsOpName)).cast<::mlir::SymbolRefAttr>();
+    return attr;
 }
 
 ::mlir::SymbolRefAttr LaunchFuncOpAdaptor::kernel() {
@@ -3389,30 +2832,45 @@ std::pair<unsigned, unsigned> LaunchFuncOpAdaptor::getODSOperandIndexAndLength(u
 }
 
 ::mlir::LogicalResult LaunchFuncOpAdaptor::verify(::mlir::Location loc) {
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_kernel;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'gpu.launch_func' op ""requires attribute 'kernel'");
+    if (namedAttrIt->getName() == LaunchFuncOp::kernelAttrName(*odsOpName)) {
+      tblgen_kernel = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'gpu.launch_func' op ""requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == LaunchFuncOp::operand_segment_sizesAttrName(*odsOpName)) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = odsAttrs.get("operand_segment_sizes").dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitError(loc, "'gpu.launch_func' op ""missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 9)
       return emitError(loc, "'gpu.launch_func' op ""'operand_segment_sizes' attribute for specifying operand segments must have 9 "
                 "elements, but got ") << numElements;
   }
-    {
-    auto tblgen_kernel = odsAttrs.get("kernel");
-    if (!tblgen_kernel)
-      return emitError(loc, "'gpu.launch_func' op ""requires attribute 'kernel'");
 
-    if (tblgen_kernel && !((tblgen_kernel.isa<::mlir::SymbolRefAttr>())))
-      return emitError(loc, "'gpu.launch_func' op ""attribute 'kernel' failed to satisfy constraint: symbol reference attribute");
-  }
+  if (tblgen_kernel && !((tblgen_kernel.isa<::mlir::SymbolRefAttr>())))
+    return emitError(loc, "'gpu.launch_func' op ""attribute 'kernel' failed to satisfy constraint: symbol reference attribute");
   return ::mlir::success();
 }
 
 std::pair<unsigned, unsigned> LaunchFuncOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr =
-      (*this)->getAttr(operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -3469,55 +2927,55 @@ std::pair<unsigned, unsigned> LaunchFuncOp::getODSOperandIndexAndLength(unsigned
 
 ::mlir::MutableOperandRange LaunchFuncOp::asyncDependenciesMutable() {
   auto range = getODSOperandIndexAndLength(0);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange LaunchFuncOp::gridSizeXMutable() {
   auto range = getODSOperandIndexAndLength(1);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange LaunchFuncOp::gridSizeYMutable() {
   auto range = getODSOperandIndexAndLength(2);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange LaunchFuncOp::gridSizeZMutable() {
   auto range = getODSOperandIndexAndLength(3);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(3u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(3u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange LaunchFuncOp::blockSizeXMutable() {
   auto range = getODSOperandIndexAndLength(4);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(4u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(4u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange LaunchFuncOp::blockSizeYMutable() {
   auto range = getODSOperandIndexAndLength(5);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(5u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(5u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange LaunchFuncOp::blockSizeZMutable() {
   auto range = getODSOperandIndexAndLength(6);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(6u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(6u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange LaunchFuncOp::dynamicSharedMemorySizeMutable() {
   auto range = getODSOperandIndexAndLength(7);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(7u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(7u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange LaunchFuncOp::operandsMutable() {
   auto range = getODSOperandIndexAndLength(8);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(8u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(8u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
@@ -3551,7 +3009,7 @@ std::pair<unsigned, unsigned> LaunchFuncOp::getODSResultIndexAndLength(unsigned 
 }
 
 ::mlir::SymbolRefAttr LaunchFuncOp::kernelAttr() {
-  return (*this)->getAttr(kernelAttrName()).cast<::mlir::SymbolRefAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, kernelAttrName()).cast<::mlir::SymbolRefAttr>();
 }
 
 ::mlir::SymbolRefAttr LaunchFuncOp::kernel() {
@@ -3564,24 +3022,40 @@ void LaunchFuncOp::kernelAttr(::mlir::SymbolRefAttr attr) {
 }
 
 ::mlir::LogicalResult LaunchFuncOp::verifyInvariantsImpl() {
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_kernel;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'kernel'");
+    if (namedAttrIt->getName() == kernelAttrName()) {
+      tblgen_kernel = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == operand_segment_sizesAttrName()) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = (*this)->getAttr(operand_segment_sizesAttrName()).dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitOpError("missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 9)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 9 "
                 "elements, but got ") << numElements;
   }
-    {
-    auto tblgen_kernel = (*this)->getAttr(kernelAttrName());
-    if (!tblgen_kernel)
-      return emitOpError("requires attribute 'kernel'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps5(*this, tblgen_kernel, "kernel")))
-      return ::mlir::failure();
-  }
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps3(*this, tblgen_kernel, "kernel")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -3634,7 +3108,7 @@ void LaunchFuncOp::kernelAttr(::mlir::SymbolRefAttr attr) {
     }
 
     for (auto v : valueGroup7) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps6(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup8 = getODSOperands(8);
@@ -3668,8 +3142,8 @@ void LaunchFuncOp::kernelAttr(::mlir::SymbolRefAttr attr) {
 }
 
 ::mlir::ParseResult LaunchFuncOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::Type, 1> asyncTokenTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> asyncDependenciesOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> asyncTokenTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> asyncDependenciesOperands;
   ::llvm::SMLoc asyncDependenciesOperandsLoc;
   (void)asyncDependenciesOperandsLoc;
   ::mlir::SymbolRefAttr kernelAttr;
@@ -3691,13 +3165,13 @@ void LaunchFuncOp::kernelAttr(::mlir::SymbolRefAttr attr) {
   ::mlir::OpAsmParser::UnresolvedOperand blockSizeZRawOperands[1];
   ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> blockSizeZOperands(blockSizeZRawOperands);  ::llvm::SMLoc blockSizeZOperandsLoc;
   (void)blockSizeZOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> dynamicSharedMemorySizeOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> dynamicSharedMemorySizeOperands;
   ::llvm::SMLoc dynamicSharedMemorySizeOperandsLoc;
   (void)dynamicSharedMemorySizeOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> operandsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> operandsOperands;
   ::llvm::SMLoc operandsOperandsLoc;
   (void)operandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> operandsTypes;
+  ::llvm::SmallVector<::mlir::Type, 1> operandsTypes;
   {
     ::mlir::Type asyncTokenType;
     asyncDependenciesOperandsLoc = parser.getCurrentLocation();
@@ -3857,30 +3331,28 @@ namespace gpu {
 // ::mlir::gpu::LaunchOp definitions
 //===----------------------------------------------------------------------===//
 
-LaunchOpAdaptor::LaunchOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+LaunchOpAdaptor::LaunchOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.launch", odsAttrs.getContext());
+}
 
-LaunchOpAdaptor::LaunchOpAdaptor(LaunchOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+LaunchOpAdaptor::LaunchOpAdaptor(LaunchOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange LaunchOpAdaptor::getOperands() {
   return odsOperands;
 }
 
 std::pair<unsigned, unsigned> LaunchOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
-  bool isVariadic[] = {false, false, false, false, false, false, true};
-  int prevVariadicCount = 0;
-  for (unsigned i = 0; i < index; ++i)
-    if (isVariadic[i]) ++prevVariadicCount;
+  assert(odsAttrs && "missing segment size attribute for op");
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, LaunchOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
 
-  // Calculate how many dynamic values a static variadic operand corresponds to.
-  // This assumes all static variadic operands have the same dynamic value count.
-  int variadicSize = (odsOperands.size() - 6) / 1;
-  // `index` passed in as the parameter is the static index which counts each
-  // operand (variadic or not) as size 1. So here for each previous static variadic
-  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
-  // value pack for this static operand starts.
-  int start = index + (variadicSize - 1) * prevVariadicCount;
-  int size = isVariadic[index] ? variadicSize : 1;
-  return {start, size};
+  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
+  if (sizeAttr.isSplat())
+    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+
+  unsigned start = 0;
+  for (unsigned i = 0; i < index; ++i)
+    start += sizeAttrValueIt[i];
+  return {start, sizeAttrValueIt[index]};
 }
 
 ::mlir::ValueRange LaunchOpAdaptor::getODSOperands(unsigned index) {
@@ -3889,32 +3361,36 @@ std::pair<unsigned, unsigned> LaunchOpAdaptor::getODSOperandIndexAndLength(unsig
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value LaunchOpAdaptor::gridSizeX() {
-  return *getODSOperands(0).begin();
+::mlir::ValueRange LaunchOpAdaptor::asyncDependencies() {
+  return getODSOperands(0);
 }
 
-::mlir::Value LaunchOpAdaptor::gridSizeY() {
+::mlir::Value LaunchOpAdaptor::gridSizeX() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value LaunchOpAdaptor::gridSizeZ() {
+::mlir::Value LaunchOpAdaptor::gridSizeY() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::Value LaunchOpAdaptor::blockSizeX() {
+::mlir::Value LaunchOpAdaptor::gridSizeZ() {
   return *getODSOperands(3).begin();
 }
 
-::mlir::Value LaunchOpAdaptor::blockSizeY() {
+::mlir::Value LaunchOpAdaptor::blockSizeX() {
   return *getODSOperands(4).begin();
 }
 
-::mlir::Value LaunchOpAdaptor::blockSizeZ() {
+::mlir::Value LaunchOpAdaptor::blockSizeY() {
   return *getODSOperands(5).begin();
 }
 
+::mlir::Value LaunchOpAdaptor::blockSizeZ() {
+  return *getODSOperands(6).begin();
+}
+
 ::mlir::Value LaunchOpAdaptor::dynamicSharedMemorySize() {
-  auto operands = getODSOperands(6);
+  auto operands = getODSOperands(7);
   return operands.empty() ? ::mlir::Value() : *operands.begin();
 }
 
@@ -3931,18 +3407,139 @@ std::pair<unsigned, unsigned> LaunchOpAdaptor::getODSOperandIndexAndLength(unsig
 }
 
 ::mlir::LogicalResult LaunchOpAdaptor::verify(::mlir::Location loc) {
-  return ::mlir::success();
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'gpu.launch' op ""requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == LaunchOp::operand_segment_sizesAttrName(*odsOpName)) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
+  {
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
+    auto numElements =
+        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    if (numElements != 8)
+      return emitError(loc, "'gpu.launch' op ""'operand_segment_sizes' attribute for specifying operand segments must have 8 "
+                "elements, but got ") << numElements;
+  }
+    return ::mlir::success();
 }
 
 std::pair<unsigned, unsigned> LaunchOp::getODSOperandIndexAndLength(unsigned index) {
-  bool isVariadic[] = {false, false, false, false, false, false, true};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
+
+  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
+  if (sizeAttr.isSplat())
+    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+
+  unsigned start = 0;
+  for (unsigned i = 0; i < index; ++i)
+    start += sizeAttrValueIt[i];
+  return {start, sizeAttrValueIt[index]};
+}
+
+::mlir::Operation::operand_range LaunchOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Operation::operand_range LaunchOp::asyncDependencies() {
+  return getODSOperands(0);
+}
+
+::mlir::Value LaunchOp::gridSizeX() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Value LaunchOp::gridSizeY() {
+  return *getODSOperands(2).begin();
+}
+
+::mlir::Value LaunchOp::gridSizeZ() {
+  return *getODSOperands(3).begin();
+}
+
+::mlir::Value LaunchOp::blockSizeX() {
+  return *getODSOperands(4).begin();
+}
+
+::mlir::Value LaunchOp::blockSizeY() {
+  return *getODSOperands(5).begin();
+}
+
+::mlir::Value LaunchOp::blockSizeZ() {
+  return *getODSOperands(6).begin();
+}
+
+::mlir::Value LaunchOp::dynamicSharedMemorySize() {
+  auto operands = getODSOperands(7);
+  return operands.empty() ? ::mlir::Value() : *operands.begin();
+}
+
+::mlir::MutableOperandRange LaunchOp::asyncDependenciesMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange LaunchOp::gridSizeXMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange LaunchOp::gridSizeYMutable() {
+  auto range = getODSOperandIndexAndLength(2);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange LaunchOp::gridSizeZMutable() {
+  auto range = getODSOperandIndexAndLength(3);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(3u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange LaunchOp::blockSizeXMutable() {
+  auto range = getODSOperandIndexAndLength(4);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(4u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange LaunchOp::blockSizeYMutable() {
+  auto range = getODSOperandIndexAndLength(5);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(5u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange LaunchOp::blockSizeZMutable() {
+  auto range = getODSOperandIndexAndLength(6);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(6u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange LaunchOp::dynamicSharedMemorySizeMutable() {
+  auto range = getODSOperandIndexAndLength(7);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(7u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> LaunchOp::getODSResultIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
   int prevVariadicCount = 0;
   for (unsigned i = 0; i < index; ++i)
     if (isVariadic[i]) ++prevVariadicCount;
 
   // Calculate how many dynamic values a static variadic operand corresponds to.
   // This assumes all static variadic operands have the same dynamic value count.
-  int variadicSize = (getOperation()->getNumOperands() - 6) / 1;
+  int variadicSize = (getOperation()->getNumResults() - 0) / 1;
   // `index` passed in as the parameter is the static index which counts each
   // operand (variadic or not) as size 1. So here for each previous static variadic
   // operand, we need to offset by (variadicSize - 1) to get where the dynamic
@@ -3952,91 +3549,15 @@ std::pair<unsigned, unsigned> LaunchOp::getODSOperandIndexAndLength(unsigned ind
   return {start, size};
 }
 
-::mlir::Operation::operand_range LaunchOp::getODSOperands(unsigned index) {
-  auto valueRange = getODSOperandIndexAndLength(index);
-  return {std::next(getOperation()->operand_begin(), valueRange.first),
-           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::Value LaunchOp::gridSizeX() {
-  return *getODSOperands(0).begin();
-}
-
-::mlir::Value LaunchOp::gridSizeY() {
-  return *getODSOperands(1).begin();
-}
-
-::mlir::Value LaunchOp::gridSizeZ() {
-  return *getODSOperands(2).begin();
-}
-
-::mlir::Value LaunchOp::blockSizeX() {
-  return *getODSOperands(3).begin();
-}
-
-::mlir::Value LaunchOp::blockSizeY() {
-  return *getODSOperands(4).begin();
-}
-
-::mlir::Value LaunchOp::blockSizeZ() {
-  return *getODSOperands(5).begin();
-}
-
-::mlir::Value LaunchOp::dynamicSharedMemorySize() {
-  auto operands = getODSOperands(6);
-  return operands.empty() ? ::mlir::Value() : *operands.begin();
-}
-
-::mlir::MutableOperandRange LaunchOp::gridSizeXMutable() {
-  auto range = getODSOperandIndexAndLength(0);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
-  return mutableRange;
-}
-
-::mlir::MutableOperandRange LaunchOp::gridSizeYMutable() {
-  auto range = getODSOperandIndexAndLength(1);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
-  return mutableRange;
-}
-
-::mlir::MutableOperandRange LaunchOp::gridSizeZMutable() {
-  auto range = getODSOperandIndexAndLength(2);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
-  return mutableRange;
-}
-
-::mlir::MutableOperandRange LaunchOp::blockSizeXMutable() {
-  auto range = getODSOperandIndexAndLength(3);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
-  return mutableRange;
-}
-
-::mlir::MutableOperandRange LaunchOp::blockSizeYMutable() {
-  auto range = getODSOperandIndexAndLength(4);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
-  return mutableRange;
-}
-
-::mlir::MutableOperandRange LaunchOp::blockSizeZMutable() {
-  auto range = getODSOperandIndexAndLength(5);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
-  return mutableRange;
-}
-
-::mlir::MutableOperandRange LaunchOp::dynamicSharedMemorySizeMutable() {
-  auto range = getODSOperandIndexAndLength(6);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
-  return mutableRange;
-}
-
-std::pair<unsigned, unsigned> LaunchOp::getODSResultIndexAndLength(unsigned index) {
-  return {index, 1};
-}
-
 ::mlir::Operation::result_range LaunchOp::getODSResults(unsigned index) {
   auto valueRange = getODSResultIndexAndLength(index);
   return {std::next(getOperation()->result_begin(), valueRange.first),
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value LaunchOp::asyncToken() {
+  auto results = getODSResults(0);
+  return results.empty() ? ::mlir::Value() : *results.begin();
 }
 
 ::mlir::Region &LaunchOp::body() {
@@ -4044,12 +3565,33 @@ std::pair<unsigned, unsigned> LaunchOp::getODSResultIndexAndLength(unsigned inde
 }
 
 ::mlir::LogicalResult LaunchOp::verifyInvariantsImpl() {
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == operand_segment_sizesAttrName()) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
   {
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
+    auto numElements =
+        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    if (numElements != 8)
+      return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 8 "
+                "elements, but got ") << numElements;
+  }
+    {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps2(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps1(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
@@ -4084,13 +3626,33 @@ std::pair<unsigned, unsigned> LaunchOp::getODSResultIndexAndLength(unsigned inde
     }
     auto valueGroup6 = getODSOperands(6);
 
-    if (valueGroup6.size() > 1) {
+    for (auto v : valueGroup6) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps2(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup7 = getODSOperands(7);
+
+    if (valueGroup7.size() > 1) {
       return emitOpError("operand group starting at #") << index
-          << " requires 0 or 1 element, but found " << valueGroup6.size();
+          << " requires 0 or 1 element, but found " << valueGroup7.size();
     }
 
-    for (auto v : valueGroup6) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps6(*this, v.getType(), "operand", index++)))
+    for (auto v : valueGroup7) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps5(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    if (valueGroup0.size() > 1) {
+      return emitOpError("result group starting at #") << index
+          << " requires 0 or 1 element, but found " << valueGroup0.size();
+    }
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps1(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -4119,9 +3681,11 @@ namespace gpu {
 // ::mlir::gpu::MemcpyOp definitions
 //===----------------------------------------------------------------------===//
 
-MemcpyOpAdaptor::MemcpyOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+MemcpyOpAdaptor::MemcpyOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.memcpy", odsAttrs.getContext());
+}
 
-MemcpyOpAdaptor::MemcpyOpAdaptor(MemcpyOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+MemcpyOpAdaptor::MemcpyOpAdaptor(MemcpyOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange MemcpyOpAdaptor::getOperands() {
   return odsOperands;
@@ -4322,8 +3886,8 @@ void MemcpyOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::ParseResult MemcpyOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::Type, 1> asyncTokenTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> asyncDependenciesOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> asyncTokenTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> asyncDependenciesOperands;
   ::llvm::SMLoc asyncDependenciesOperandsLoc;
   (void)asyncDependenciesOperandsLoc;
   ::mlir::OpAsmParser::UnresolvedOperand dstRawOperands[1];
@@ -4414,7 +3978,7 @@ void MemcpyOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
 }
 
-void MemcpyOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void MemcpyOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
   for (::mlir::Value value : getODSOperands(1))
     effects.emplace_back(::mlir::MemoryEffects::Write::get(), value, ::mlir::SideEffects::DefaultResource::get());
   for (::mlir::Value value : getODSOperands(2))
@@ -4432,9 +3996,11 @@ namespace gpu {
 // ::mlir::gpu::MemsetOp definitions
 //===----------------------------------------------------------------------===//
 
-MemsetOpAdaptor::MemsetOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+MemsetOpAdaptor::MemsetOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.memset", odsAttrs.getContext());
+}
 
-MemsetOpAdaptor::MemsetOpAdaptor(MemsetOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+MemsetOpAdaptor::MemsetOpAdaptor(MemsetOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange MemsetOpAdaptor::getOperands() {
   return odsOperands;
@@ -4635,8 +4201,8 @@ void MemsetOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::ParseResult MemsetOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::Type, 1> asyncTokenTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> asyncDependenciesOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> asyncTokenTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> asyncDependenciesOperands;
   ::llvm::SMLoc asyncDependenciesOperandsLoc;
   (void)asyncDependenciesOperandsLoc;
   ::mlir::OpAsmParser::UnresolvedOperand dstRawOperands[1];
@@ -4727,7 +4293,7 @@ void MemsetOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
 }
 
-void MemsetOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void MemsetOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
   for (::mlir::Value value : getODSOperands(1))
     effects.emplace_back(::mlir::MemoryEffects::Write::get(), value, ::mlir::SideEffects::DefaultResource::get());
 }
@@ -4743,9 +4309,11 @@ namespace gpu {
 // ::mlir::gpu::ModuleEndOp definitions
 //===----------------------------------------------------------------------===//
 
-ModuleEndOpAdaptor::ModuleEndOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ModuleEndOpAdaptor::ModuleEndOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.module_end", odsAttrs.getContext());
+}
 
-ModuleEndOpAdaptor::ModuleEndOpAdaptor(ModuleEndOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ModuleEndOpAdaptor::ModuleEndOpAdaptor(ModuleEndOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ModuleEndOpAdaptor::getOperands() {
   return odsOperands;
@@ -4834,9 +4402,11 @@ namespace gpu {
 // ::mlir::gpu::NumSubgroupsOp definitions
 //===----------------------------------------------------------------------===//
 
-NumSubgroupsOpAdaptor::NumSubgroupsOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+NumSubgroupsOpAdaptor::NumSubgroupsOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.num_subgroups", odsAttrs.getContext());
+}
 
-NumSubgroupsOpAdaptor::NumSubgroupsOpAdaptor(NumSubgroupsOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+NumSubgroupsOpAdaptor::NumSubgroupsOpAdaptor(NumSubgroupsOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange NumSubgroupsOpAdaptor::getOperands() {
   return odsOperands;
@@ -4917,7 +4487,7 @@ void NumSubgroupsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(NumSubgroupsOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -4949,7 +4519,8 @@ void NumSubgroupsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
 ::mlir::LogicalResult NumSubgroupsOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = odsBuilder.getIndexType();
+  ::mlir::Type odsInferredType0 = odsBuilder.getIndexType();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
@@ -4984,7 +4555,7 @@ void NumSubgroupsOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void NumSubgroupsOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void NumSubgroupsOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace gpu
@@ -4998,9 +4569,11 @@ namespace gpu {
 // ::mlir::gpu::PrintfOp definitions
 //===----------------------------------------------------------------------===//
 
-PrintfOpAdaptor::PrintfOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+PrintfOpAdaptor::PrintfOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.printf", odsAttrs.getContext());
+}
 
-PrintfOpAdaptor::PrintfOpAdaptor(PrintfOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+PrintfOpAdaptor::PrintfOpAdaptor(PrintfOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange PrintfOpAdaptor::getOperands() {
   return odsOperands;
@@ -5040,8 +4613,8 @@ std::pair<unsigned, unsigned> PrintfOpAdaptor::getODSOperandIndexAndLength(unsig
 
 ::mlir::StringAttr PrintfOpAdaptor::formatAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::StringAttr attr = odsAttrs.get("format").cast<::mlir::StringAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, PrintfOp::formatAttrName(*odsOpName)).cast<::mlir::StringAttr>();
+    return attr;
 }
 
 ::llvm::StringRef PrintfOpAdaptor::format() {
@@ -5050,14 +4623,21 @@ std::pair<unsigned, unsigned> PrintfOpAdaptor::getODSOperandIndexAndLength(unsig
 }
 
 ::mlir::LogicalResult PrintfOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_format = odsAttrs.get("format");
-    if (!tblgen_format)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_format;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'gpu.printf' op ""requires attribute 'format'");
-
-    if (tblgen_format && !((tblgen_format.isa<::mlir::StringAttr>())))
-      return emitError(loc, "'gpu.printf' op ""attribute 'format' failed to satisfy constraint: string attribute");
+    if (namedAttrIt->getName() == PrintfOp::formatAttrName(*odsOpName)) {
+      tblgen_format = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_format && !((tblgen_format.isa<::mlir::StringAttr>())))
+    return emitError(loc, "'gpu.printf' op ""attribute 'format' failed to satisfy constraint: string attribute");
   return ::mlir::success();
 }
 
@@ -5106,7 +4686,7 @@ std::pair<unsigned, unsigned> PrintfOp::getODSResultIndexAndLength(unsigned inde
 }
 
 ::mlir::StringAttr PrintfOp::formatAttr() {
-  return (*this)->getAttr(formatAttrName()).cast<::mlir::StringAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, formatAttrName()).cast<::mlir::StringAttr>();
 }
 
 ::llvm::StringRef PrintfOp::format() {
@@ -5150,20 +4730,27 @@ void PrintfOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::LogicalResult PrintfOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_format = (*this)->getAttr(formatAttrName());
-    if (!tblgen_format)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_format;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'format'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps6(*this, tblgen_format, "format")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == formatAttrName()) {
+      tblgen_format = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps4(*this, tblgen_format, "format")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps7(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps6(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -5176,10 +4763,10 @@ void PrintfOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 
 ::mlir::ParseResult PrintfOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::StringAttr formatAttr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
   ::llvm::SMLoc argsOperandsLoc;
   (void)argsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> argsTypes;
+  ::llvm::SmallVector<::mlir::Type, 1> argsTypes;
 
   if (parser.parseCustomAttributeWithFallback(formatAttr, parser.getBuilder().getType<::mlir::NoneType>(), "format",
           result.attributes)) {
@@ -5216,7 +4803,7 @@ void PrintfOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void PrintfOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void PrintfOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
   effects.emplace_back(::mlir::MemoryEffects::Write::get(), ::mlir::SideEffects::DefaultResource::get());
 }
 
@@ -5231,9 +4818,11 @@ namespace gpu {
 // ::mlir::gpu::ReturnOp definitions
 //===----------------------------------------------------------------------===//
 
-ReturnOpAdaptor::ReturnOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ReturnOpAdaptor::ReturnOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.return", odsAttrs.getContext());
+}
 
-ReturnOpAdaptor::ReturnOpAdaptor(ReturnOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ReturnOpAdaptor::ReturnOpAdaptor(ReturnOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ReturnOpAdaptor::getOperands() {
   return odsOperands;
@@ -5354,10 +4943,10 @@ void ReturnOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::ParseResult ReturnOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> operandsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> operandsOperands;
   ::llvm::SMLoc operandsOperandsLoc;
   (void)operandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> operandsTypes;
+  ::llvm::SmallVector<::mlir::Type, 1> operandsTypes;
   if (parser.parseOptionalAttrDict(result.attributes))
     return ::mlir::failure();
 
@@ -5387,7 +4976,7 @@ void ReturnOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void ReturnOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ReturnOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace gpu
@@ -5401,9 +4990,11 @@ namespace gpu {
 // ::mlir::gpu::SetDefaultDeviceOp definitions
 //===----------------------------------------------------------------------===//
 
-SetDefaultDeviceOpAdaptor::SetDefaultDeviceOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+SetDefaultDeviceOpAdaptor::SetDefaultDeviceOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.set_default_device", odsAttrs.getContext());
+}
 
-SetDefaultDeviceOpAdaptor::SetDefaultDeviceOpAdaptor(SetDefaultDeviceOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+SetDefaultDeviceOpAdaptor::SetDefaultDeviceOpAdaptor(SetDefaultDeviceOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange SetDefaultDeviceOpAdaptor::getOperands() {
   return odsOperands;
@@ -5485,7 +5076,7 @@ void SetDefaultDeviceOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsS
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps6(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -5518,7 +5109,7 @@ void SetDefaultDeviceOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << devIndex();
 }
 
-void SetDefaultDeviceOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void SetDefaultDeviceOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
   effects.emplace_back(::mlir::MemoryEffects::Write::get(), ::mlir::SideEffects::DefaultResource::get());
 }
 
@@ -5533,9 +5124,11 @@ namespace gpu {
 // ::mlir::gpu::ShuffleOp definitions
 //===----------------------------------------------------------------------===//
 
-ShuffleOpAdaptor::ShuffleOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ShuffleOpAdaptor::ShuffleOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.shuffle", odsAttrs.getContext());
+}
 
-ShuffleOpAdaptor::ShuffleOpAdaptor(ShuffleOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ShuffleOpAdaptor::ShuffleOpAdaptor(ShuffleOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ShuffleOpAdaptor::getOperands() {
   return odsOperands;
@@ -5569,8 +5162,8 @@ std::pair<unsigned, unsigned> ShuffleOpAdaptor::getODSOperandIndexAndLength(unsi
 
 ::mlir::gpu::ShuffleModeAttr ShuffleOpAdaptor::modeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::gpu::ShuffleModeAttr attr = odsAttrs.get("mode").cast<::mlir::gpu::ShuffleModeAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ShuffleOp::modeAttrName(*odsOpName)).cast<::mlir::gpu::ShuffleModeAttr>();
+    return attr;
 }
 
 ::mlir::gpu::ShuffleMode ShuffleOpAdaptor::mode() {
@@ -5579,14 +5172,21 @@ std::pair<unsigned, unsigned> ShuffleOpAdaptor::getODSOperandIndexAndLength(unsi
 }
 
 ::mlir::LogicalResult ShuffleOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_mode = odsAttrs.get("mode");
-    if (!tblgen_mode)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_mode;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'gpu.shuffle' op ""requires attribute 'mode'");
-
-    if (tblgen_mode && !((tblgen_mode.isa<::mlir::gpu::ShuffleModeAttr>())))
-      return emitError(loc, "'gpu.shuffle' op ""attribute 'mode' failed to satisfy constraint: Indexing modes supported by gpu.shuffle.");
+    if (namedAttrIt->getName() == ShuffleOp::modeAttrName(*odsOpName)) {
+      tblgen_mode = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_mode && !((tblgen_mode.isa<::mlir::gpu::ShuffleModeAttr>())))
+    return emitError(loc, "'gpu.shuffle' op ""attribute 'mode' failed to satisfy constraint: Indexing modes supported by gpu.shuffle.");
   return ::mlir::success();
 }
 
@@ -5658,7 +5258,7 @@ std::pair<unsigned, unsigned> ShuffleOp::getODSResultIndexAndLength(unsigned ind
 }
 
 ::mlir::gpu::ShuffleModeAttr ShuffleOp::modeAttr() {
-  return (*this)->getAttr(modeAttrName()).cast<::mlir::gpu::ShuffleModeAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, modeAttrName()).cast<::mlir::gpu::ShuffleModeAttr>();
 }
 
 ::mlir::gpu::ShuffleMode ShuffleOp::mode() {
@@ -5751,7 +5351,7 @@ void ShuffleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(ShuffleOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -5764,32 +5364,39 @@ void ShuffleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
 }
 
 ::mlir::LogicalResult ShuffleOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_mode = (*this)->getAttr(modeAttrName());
-    if (!tblgen_mode)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_mode;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'mode'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps7(*this, tblgen_mode, "mode")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == modeAttrName()) {
+      tblgen_mode = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps5(*this, tblgen_mode, "mode")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps8(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps7(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps6(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup2 = getODSOperands(2);
 
     for (auto v : valueGroup2) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps6(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -5798,13 +5405,13 @@ void ShuffleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps8(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps7(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSResults(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps9(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps8(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -5820,8 +5427,10 @@ void ShuffleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
 ::mlir::LogicalResult ShuffleOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(2);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = operands[0].getType();
-  inferredReturnTypes[1] = odsBuilder.getIntegerType(1);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  ::mlir::Type odsInferredType1 = odsBuilder.getIntegerType(1);
+  inferredReturnTypes[0] = odsInferredType0;
+  inferredReturnTypes[1] = odsInferredType1;
   return ::mlir::success();
 }
 
@@ -5906,7 +5515,7 @@ _odsPrinter.printStrippedAttrOrType(modeAttr());
   }
 }
 
-void ShuffleOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ShuffleOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace gpu
@@ -5920,9 +5529,11 @@ namespace gpu {
 // ::mlir::gpu::SubgroupIdOp definitions
 //===----------------------------------------------------------------------===//
 
-SubgroupIdOpAdaptor::SubgroupIdOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+SubgroupIdOpAdaptor::SubgroupIdOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.subgroup_id", odsAttrs.getContext());
+}
 
-SubgroupIdOpAdaptor::SubgroupIdOpAdaptor(SubgroupIdOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+SubgroupIdOpAdaptor::SubgroupIdOpAdaptor(SubgroupIdOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange SubgroupIdOpAdaptor::getOperands() {
   return odsOperands;
@@ -6003,7 +5614,7 @@ void SubgroupIdOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(SubgroupIdOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -6035,7 +5646,8 @@ void SubgroupIdOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
 ::mlir::LogicalResult SubgroupIdOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = odsBuilder.getIndexType();
+  ::mlir::Type odsInferredType0 = odsBuilder.getIndexType();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
@@ -6070,7 +5682,7 @@ void SubgroupIdOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void SubgroupIdOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void SubgroupIdOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace gpu
@@ -6084,9 +5696,11 @@ namespace gpu {
 // ::mlir::gpu::SubgroupMmaComputeOp definitions
 //===----------------------------------------------------------------------===//
 
-SubgroupMmaComputeOpAdaptor::SubgroupMmaComputeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+SubgroupMmaComputeOpAdaptor::SubgroupMmaComputeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.subgroup_mma_compute", odsAttrs.getContext());
+}
 
-SubgroupMmaComputeOpAdaptor::SubgroupMmaComputeOpAdaptor(SubgroupMmaComputeOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+SubgroupMmaComputeOpAdaptor::SubgroupMmaComputeOpAdaptor(SubgroupMmaComputeOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange SubgroupMmaComputeOpAdaptor::getOperands() {
   return odsOperands;
@@ -6219,7 +5833,7 @@ void SubgroupMmaComputeOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operatio
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(SubgroupMmaComputeOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -6237,19 +5851,19 @@ void SubgroupMmaComputeOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operatio
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps10(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps9(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps10(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps9(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup2 = getODSOperands(2);
 
     for (auto v : valueGroup2) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps10(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps9(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -6258,7 +5872,7 @@ void SubgroupMmaComputeOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operatio
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps11(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps10(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -6276,7 +5890,8 @@ void SubgroupMmaComputeOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operatio
 ::mlir::LogicalResult SubgroupMmaComputeOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = operands[2].getType();
+  ::mlir::Type odsInferredType0 = operands[2].getType();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
@@ -6390,7 +6005,7 @@ void SubgroupMmaComputeOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void SubgroupMmaComputeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void SubgroupMmaComputeOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace gpu
@@ -6404,9 +6019,11 @@ namespace gpu {
 // ::mlir::gpu::SubgroupMmaConstantMatrixOp definitions
 //===----------------------------------------------------------------------===//
 
-SubgroupMmaConstantMatrixOpAdaptor::SubgroupMmaConstantMatrixOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+SubgroupMmaConstantMatrixOpAdaptor::SubgroupMmaConstantMatrixOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.subgroup_mma_constant_matrix", odsAttrs.getContext());
+}
 
-SubgroupMmaConstantMatrixOpAdaptor::SubgroupMmaConstantMatrixOpAdaptor(SubgroupMmaConstantMatrixOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+SubgroupMmaConstantMatrixOpAdaptor::SubgroupMmaConstantMatrixOpAdaptor(SubgroupMmaConstantMatrixOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange SubgroupMmaConstantMatrixOpAdaptor::getOperands() {
   return odsOperands;
@@ -6493,7 +6110,7 @@ void SubgroupMmaConstantMatrixOp::build(::mlir::OpBuilder &, ::mlir::OperationSt
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps12(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps11(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -6502,7 +6119,7 @@ void SubgroupMmaConstantMatrixOp::build(::mlir::OpBuilder &, ::mlir::OperationSt
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps11(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps10(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -6563,7 +6180,7 @@ void SubgroupMmaConstantMatrixOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void SubgroupMmaConstantMatrixOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void SubgroupMmaConstantMatrixOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace gpu
@@ -6577,9 +6194,11 @@ namespace gpu {
 // ::mlir::gpu::SubgroupMmaElementwiseOp definitions
 //===----------------------------------------------------------------------===//
 
-SubgroupMmaElementwiseOpAdaptor::SubgroupMmaElementwiseOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+SubgroupMmaElementwiseOpAdaptor::SubgroupMmaElementwiseOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.subgroup_mma_elementwise", odsAttrs.getContext());
+}
 
-SubgroupMmaElementwiseOpAdaptor::SubgroupMmaElementwiseOpAdaptor(SubgroupMmaElementwiseOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+SubgroupMmaElementwiseOpAdaptor::SubgroupMmaElementwiseOpAdaptor(SubgroupMmaElementwiseOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange SubgroupMmaElementwiseOpAdaptor::getOperands() {
   return odsOperands;
@@ -6619,8 +6238,8 @@ std::pair<unsigned, unsigned> SubgroupMmaElementwiseOpAdaptor::getODSOperandInde
 
 ::mlir::gpu::MMAElementwiseOpAttr SubgroupMmaElementwiseOpAdaptor::operationAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::gpu::MMAElementwiseOpAttr attr = odsAttrs.get("operation").cast<::mlir::gpu::MMAElementwiseOpAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, SubgroupMmaElementwiseOp::operationAttrName(*odsOpName)).cast<::mlir::gpu::MMAElementwiseOpAttr>();
+    return attr;
 }
 
 ::mlir::gpu::MMAElementwiseOp SubgroupMmaElementwiseOpAdaptor::operation() {
@@ -6629,14 +6248,21 @@ std::pair<unsigned, unsigned> SubgroupMmaElementwiseOpAdaptor::getODSOperandInde
 }
 
 ::mlir::LogicalResult SubgroupMmaElementwiseOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_operation = odsAttrs.get("operation");
-    if (!tblgen_operation)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operation;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'gpu.subgroup_mma_elementwise' op ""requires attribute 'operation'");
-
-    if (tblgen_operation && !((tblgen_operation.isa<::mlir::gpu::MMAElementwiseOpAttr>())))
-      return emitError(loc, "'gpu.subgroup_mma_elementwise' op ""attribute 'operation' failed to satisfy constraint: elementwise operation to apply to mma matrix");
+    if (namedAttrIt->getName() == SubgroupMmaElementwiseOp::operationAttrName(*odsOpName)) {
+      tblgen_operation = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_operation && !((tblgen_operation.isa<::mlir::gpu::MMAElementwiseOpAttr>())))
+    return emitError(loc, "'gpu.subgroup_mma_elementwise' op ""attribute 'operation' failed to satisfy constraint: elementwise operation to apply to mma matrix");
   return ::mlir::success();
 }
 
@@ -6689,7 +6315,7 @@ std::pair<unsigned, unsigned> SubgroupMmaElementwiseOp::getODSResultIndexAndLeng
 }
 
 ::mlir::gpu::MMAElementwiseOpAttr SubgroupMmaElementwiseOp::operationAttr() {
-  return (*this)->getAttr(operationAttrName()).cast<::mlir::gpu::MMAElementwiseOpAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operationAttrName()).cast<::mlir::gpu::MMAElementwiseOpAttr>();
 }
 
 ::mlir::gpu::MMAElementwiseOp SubgroupMmaElementwiseOp::operation() {
@@ -6735,20 +6361,27 @@ void SubgroupMmaElementwiseOp::build(::mlir::OpBuilder &, ::mlir::OperationState
 }
 
 ::mlir::LogicalResult SubgroupMmaElementwiseOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_operation = (*this)->getAttr(operationAttrName());
-    if (!tblgen_operation)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operation;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'operation'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps8(*this, tblgen_operation, "operation")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == operationAttrName()) {
+      tblgen_operation = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps6(*this, tblgen_operation, "operation")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps11(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps10(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -6757,7 +6390,7 @@ void SubgroupMmaElementwiseOp::build(::mlir::OpBuilder &, ::mlir::OperationState
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps11(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps10(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -6772,7 +6405,7 @@ void SubgroupMmaElementwiseOp::build(::mlir::OpBuilder &, ::mlir::OperationState
 
 ::mlir::ParseResult SubgroupMmaElementwiseOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::gpu::MMAElementwiseOpAttr operationAttr;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
   ::llvm::SMLoc argsOperandsLoc;
   (void)argsOperandsLoc;
   ::llvm::ArrayRef<::mlir::Type> argsTypes;
@@ -6813,7 +6446,7 @@ _odsPrinter.printStrippedAttrOrType(operationAttr());
   _odsPrinter.printFunctionalType(args().getTypes(), ::llvm::ArrayRef<::mlir::Type>(res().getType()));
 }
 
-void SubgroupMmaElementwiseOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void SubgroupMmaElementwiseOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace gpu
@@ -6827,9 +6460,11 @@ namespace gpu {
 // ::mlir::gpu::SubgroupMmaLoadMatrixOp definitions
 //===----------------------------------------------------------------------===//
 
-SubgroupMmaLoadMatrixOpAdaptor::SubgroupMmaLoadMatrixOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+SubgroupMmaLoadMatrixOpAdaptor::SubgroupMmaLoadMatrixOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.subgroup_mma_load_matrix", odsAttrs.getContext());
+}
 
-SubgroupMmaLoadMatrixOpAdaptor::SubgroupMmaLoadMatrixOpAdaptor(SubgroupMmaLoadMatrixOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+SubgroupMmaLoadMatrixOpAdaptor::SubgroupMmaLoadMatrixOpAdaptor(SubgroupMmaLoadMatrixOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange SubgroupMmaLoadMatrixOpAdaptor::getOperands() {
   return odsOperands;
@@ -6873,8 +6508,8 @@ std::pair<unsigned, unsigned> SubgroupMmaLoadMatrixOpAdaptor::getODSOperandIndex
 
 ::mlir::IntegerAttr SubgroupMmaLoadMatrixOpAdaptor::leadDimensionAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("leadDimension").cast<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, SubgroupMmaLoadMatrixOp::leadDimensionAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+    return attr;
 }
 
 ::llvm::APInt SubgroupMmaLoadMatrixOpAdaptor::leadDimension() {
@@ -6883,14 +6518,21 @@ std::pair<unsigned, unsigned> SubgroupMmaLoadMatrixOpAdaptor::getODSOperandIndex
 }
 
 ::mlir::LogicalResult SubgroupMmaLoadMatrixOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_leadDimension = odsAttrs.get("leadDimension");
-    if (!tblgen_leadDimension)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_leadDimension;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'gpu.subgroup_mma_load_matrix' op ""requires attribute 'leadDimension'");
-
-    if (tblgen_leadDimension && !(((tblgen_leadDimension.isa<::mlir::IntegerAttr>())) && ((tblgen_leadDimension.cast<::mlir::IntegerAttr>().getType().isa<::mlir::IndexType>()))))
-      return emitError(loc, "'gpu.subgroup_mma_load_matrix' op ""attribute 'leadDimension' failed to satisfy constraint: index attribute");
+    if (namedAttrIt->getName() == SubgroupMmaLoadMatrixOp::leadDimensionAttrName(*odsOpName)) {
+      tblgen_leadDimension = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_leadDimension && !(((tblgen_leadDimension.isa<::mlir::IntegerAttr>())) && ((tblgen_leadDimension.cast<::mlir::IntegerAttr>().getType().isa<::mlir::IndexType>()))))
+    return emitError(loc, "'gpu.subgroup_mma_load_matrix' op ""attribute 'leadDimension' failed to satisfy constraint: index attribute");
   return ::mlir::success();
 }
 
@@ -6953,7 +6595,7 @@ std::pair<unsigned, unsigned> SubgroupMmaLoadMatrixOp::getODSResultIndexAndLengt
 }
 
 ::mlir::IntegerAttr SubgroupMmaLoadMatrixOp::leadDimensionAttr() {
-  return (*this)->getAttr(leadDimensionAttrName()).cast<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, leadDimensionAttrName()).cast<::mlir::IntegerAttr>();
 }
 
 ::llvm::APInt SubgroupMmaLoadMatrixOp::leadDimension() {
@@ -7004,20 +6646,27 @@ void SubgroupMmaLoadMatrixOp::build(::mlir::OpBuilder &, ::mlir::OperationState 
 }
 
 ::mlir::LogicalResult SubgroupMmaLoadMatrixOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_leadDimension = (*this)->getAttr(leadDimensionAttrName());
-    if (!tblgen_leadDimension)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_leadDimension;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'leadDimension'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps2(*this, tblgen_leadDimension, "leadDimension")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == leadDimensionAttrName()) {
+      tblgen_leadDimension = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps7(*this, tblgen_leadDimension, "leadDimension")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps13(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps12(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
@@ -7032,7 +6681,7 @@ void SubgroupMmaLoadMatrixOp::build(::mlir::OpBuilder &, ::mlir::OperationState 
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps11(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps10(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -7049,7 +6698,7 @@ void SubgroupMmaLoadMatrixOp::build(::mlir::OpBuilder &, ::mlir::OperationState 
   ::mlir::OpAsmParser::UnresolvedOperand srcMemrefRawOperands[1];
   ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> srcMemrefOperands(srcMemrefRawOperands);  ::llvm::SMLoc srcMemrefOperandsLoc;
   (void)srcMemrefOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
   ::llvm::SMLoc indicesOperandsLoc;
   (void)indicesOperandsLoc;
   ::mlir::Type srcMemrefRawTypes[1];
@@ -7124,7 +6773,7 @@ void SubgroupMmaLoadMatrixOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void SubgroupMmaLoadMatrixOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void SubgroupMmaLoadMatrixOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
   effects.emplace_back(::mlir::MemoryEffects::Read::get(), ::mlir::SideEffects::DefaultResource::get());
   for (::mlir::Value value : getODSOperands(0))
     effects.emplace_back(::mlir::MemoryEffects::Read::get(), value, ::mlir::SideEffects::DefaultResource::get());
@@ -7141,9 +6790,11 @@ namespace gpu {
 // ::mlir::gpu::SubgroupMmaStoreMatrixOp definitions
 //===----------------------------------------------------------------------===//
 
-SubgroupMmaStoreMatrixOpAdaptor::SubgroupMmaStoreMatrixOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+SubgroupMmaStoreMatrixOpAdaptor::SubgroupMmaStoreMatrixOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.subgroup_mma_store_matrix", odsAttrs.getContext());
+}
 
-SubgroupMmaStoreMatrixOpAdaptor::SubgroupMmaStoreMatrixOpAdaptor(SubgroupMmaStoreMatrixOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+SubgroupMmaStoreMatrixOpAdaptor::SubgroupMmaStoreMatrixOpAdaptor(SubgroupMmaStoreMatrixOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange SubgroupMmaStoreMatrixOpAdaptor::getOperands() {
   return odsOperands;
@@ -7191,8 +6842,8 @@ std::pair<unsigned, unsigned> SubgroupMmaStoreMatrixOpAdaptor::getODSOperandInde
 
 ::mlir::IntegerAttr SubgroupMmaStoreMatrixOpAdaptor::leadDimensionAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("leadDimension").cast<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, SubgroupMmaStoreMatrixOp::leadDimensionAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+    return attr;
 }
 
 ::llvm::APInt SubgroupMmaStoreMatrixOpAdaptor::leadDimension() {
@@ -7201,14 +6852,21 @@ std::pair<unsigned, unsigned> SubgroupMmaStoreMatrixOpAdaptor::getODSOperandInde
 }
 
 ::mlir::LogicalResult SubgroupMmaStoreMatrixOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_leadDimension = odsAttrs.get("leadDimension");
-    if (!tblgen_leadDimension)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_leadDimension;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'gpu.subgroup_mma_store_matrix' op ""requires attribute 'leadDimension'");
-
-    if (tblgen_leadDimension && !(((tblgen_leadDimension.isa<::mlir::IntegerAttr>())) && ((tblgen_leadDimension.cast<::mlir::IntegerAttr>().getType().isa<::mlir::IndexType>()))))
-      return emitError(loc, "'gpu.subgroup_mma_store_matrix' op ""attribute 'leadDimension' failed to satisfy constraint: index attribute");
+    if (namedAttrIt->getName() == SubgroupMmaStoreMatrixOp::leadDimensionAttrName(*odsOpName)) {
+      tblgen_leadDimension = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_leadDimension && !(((tblgen_leadDimension.isa<::mlir::IntegerAttr>())) && ((tblgen_leadDimension.cast<::mlir::IntegerAttr>().getType().isa<::mlir::IndexType>()))))
+    return emitError(loc, "'gpu.subgroup_mma_store_matrix' op ""attribute 'leadDimension' failed to satisfy constraint: index attribute");
   return ::mlir::success();
 }
 
@@ -7277,7 +6935,7 @@ std::pair<unsigned, unsigned> SubgroupMmaStoreMatrixOp::getODSResultIndexAndLeng
 }
 
 ::mlir::IntegerAttr SubgroupMmaStoreMatrixOp::leadDimensionAttr() {
-  return (*this)->getAttr(leadDimensionAttrName()).cast<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, leadDimensionAttrName()).cast<::mlir::IntegerAttr>();
 }
 
 ::llvm::APInt SubgroupMmaStoreMatrixOp::leadDimension() {
@@ -7330,26 +6988,33 @@ void SubgroupMmaStoreMatrixOp::build(::mlir::OpBuilder &, ::mlir::OperationState
 }
 
 ::mlir::LogicalResult SubgroupMmaStoreMatrixOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_leadDimension = (*this)->getAttr(leadDimensionAttrName());
-    if (!tblgen_leadDimension)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_leadDimension;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'leadDimension'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps2(*this, tblgen_leadDimension, "leadDimension")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == leadDimensionAttrName()) {
+      tblgen_leadDimension = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps7(*this, tblgen_leadDimension, "leadDimension")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps10(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps9(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps13(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_GPUOps12(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup2 = getODSOperands(2);
@@ -7375,7 +7040,7 @@ void SubgroupMmaStoreMatrixOp::build(::mlir::OpBuilder &, ::mlir::OperationState
   ::mlir::OpAsmParser::UnresolvedOperand dstMemrefRawOperands[1];
   ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> dstMemrefOperands(dstMemrefRawOperands);  ::llvm::SMLoc dstMemrefOperandsLoc;
   (void)dstMemrefOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
   ::llvm::SMLoc indicesOperandsLoc;
   (void)indicesOperandsLoc;
   ::mlir::Type srcRawTypes[1];
@@ -7460,7 +7125,7 @@ void SubgroupMmaStoreMatrixOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void SubgroupMmaStoreMatrixOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void SubgroupMmaStoreMatrixOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
   effects.emplace_back(::mlir::MemoryEffects::Write::get(), ::mlir::SideEffects::DefaultResource::get());
   for (::mlir::Value value : getODSOperands(1))
     effects.emplace_back(::mlir::MemoryEffects::Write::get(), value, ::mlir::SideEffects::DefaultResource::get());
@@ -7477,9 +7142,11 @@ namespace gpu {
 // ::mlir::gpu::SubgroupSizeOp definitions
 //===----------------------------------------------------------------------===//
 
-SubgroupSizeOpAdaptor::SubgroupSizeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+SubgroupSizeOpAdaptor::SubgroupSizeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.subgroup_size", odsAttrs.getContext());
+}
 
-SubgroupSizeOpAdaptor::SubgroupSizeOpAdaptor(SubgroupSizeOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+SubgroupSizeOpAdaptor::SubgroupSizeOpAdaptor(SubgroupSizeOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange SubgroupSizeOpAdaptor::getOperands() {
   return odsOperands;
@@ -7560,7 +7227,7 @@ void SubgroupSizeOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(SubgroupSizeOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -7592,7 +7259,8 @@ void SubgroupSizeOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
 ::mlir::LogicalResult SubgroupSizeOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = odsBuilder.getIndexType();
+  ::mlir::Type odsInferredType0 = odsBuilder.getIndexType();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
@@ -7627,7 +7295,7 @@ void SubgroupSizeOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void SubgroupSizeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void SubgroupSizeOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace gpu
@@ -7641,9 +7309,11 @@ namespace gpu {
 // ::mlir::gpu::TerminatorOp definitions
 //===----------------------------------------------------------------------===//
 
-TerminatorOpAdaptor::TerminatorOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+TerminatorOpAdaptor::TerminatorOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.terminator", odsAttrs.getContext());
+}
 
-TerminatorOpAdaptor::TerminatorOpAdaptor(TerminatorOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+TerminatorOpAdaptor::TerminatorOpAdaptor(TerminatorOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange TerminatorOpAdaptor::getOperands() {
   return odsOperands;
@@ -7721,7 +7391,7 @@ void TerminatorOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
 }
 
-void TerminatorOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void TerminatorOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace gpu
@@ -7735,9 +7405,11 @@ namespace gpu {
 // ::mlir::gpu::ThreadIdOp definitions
 //===----------------------------------------------------------------------===//
 
-ThreadIdOpAdaptor::ThreadIdOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ThreadIdOpAdaptor::ThreadIdOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.thread_id", odsAttrs.getContext());
+}
 
-ThreadIdOpAdaptor::ThreadIdOpAdaptor(ThreadIdOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ThreadIdOpAdaptor::ThreadIdOpAdaptor(ThreadIdOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ThreadIdOpAdaptor::getOperands() {
   return odsOperands;
@@ -7759,8 +7431,8 @@ std::pair<unsigned, unsigned> ThreadIdOpAdaptor::getODSOperandIndexAndLength(uns
 
 ::mlir::gpu::DimensionAttr ThreadIdOpAdaptor::dimensionAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::gpu::DimensionAttr attr = odsAttrs.get("dimension").cast<::mlir::gpu::DimensionAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ThreadIdOp::dimensionAttrName(*odsOpName)).cast<::mlir::gpu::DimensionAttr>();
+    return attr;
 }
 
 ::mlir::gpu::Dimension ThreadIdOpAdaptor::dimension() {
@@ -7769,14 +7441,21 @@ std::pair<unsigned, unsigned> ThreadIdOpAdaptor::getODSOperandIndexAndLength(uns
 }
 
 ::mlir::LogicalResult ThreadIdOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_dimension = odsAttrs.get("dimension");
-    if (!tblgen_dimension)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_dimension;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'gpu.thread_id' op ""requires attribute 'dimension'");
-
-    if (tblgen_dimension && !((tblgen_dimension.isa<::mlir::gpu::DimensionAttr>())))
-      return emitError(loc, "'gpu.thread_id' op ""attribute 'dimension' failed to satisfy constraint: a dimension, either 'x', 'y', or 'z'");
+    if (namedAttrIt->getName() == ThreadIdOp::dimensionAttrName(*odsOpName)) {
+      tblgen_dimension = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_dimension && !((tblgen_dimension.isa<::mlir::gpu::DimensionAttr>())))
+    return emitError(loc, "'gpu.thread_id' op ""attribute 'dimension' failed to satisfy constraint: a dimension, either 'x', 'y', or 'z'");
   return ::mlir::success();
 }
 
@@ -7801,7 +7480,7 @@ std::pair<unsigned, unsigned> ThreadIdOp::getODSResultIndexAndLength(unsigned in
 }
 
 ::mlir::gpu::DimensionAttr ThreadIdOp::dimensionAttr() {
-  return (*this)->getAttr(dimensionAttrName()).cast<::mlir::gpu::DimensionAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, dimensionAttrName()).cast<::mlir::gpu::DimensionAttr>();
 }
 
 ::mlir::gpu::Dimension ThreadIdOp::dimension() {
@@ -7874,7 +7553,7 @@ void ThreadIdOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(ThreadIdOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -7887,14 +7566,21 @@ void ThreadIdOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 }
 
 ::mlir::LogicalResult ThreadIdOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_dimension = (*this)->getAttr(dimensionAttrName());
-    if (!tblgen_dimension)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_dimension;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'dimension'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps1(*this, tblgen_dimension, "dimension")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == dimensionAttrName()) {
+      tblgen_dimension = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_GPUOps1(*this, tblgen_dimension, "dimension")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSResults(0);
@@ -7914,7 +7600,8 @@ void ThreadIdOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 ::mlir::LogicalResult ThreadIdOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = odsBuilder.getIndexType();
+  ::mlir::Type odsInferredType0 = odsBuilder.getIndexType();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
@@ -7938,7 +7625,7 @@ _odsPrinter.printStrippedAttrOrType(dimensionAttr());
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"dimension"});
 }
 
-void ThreadIdOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ThreadIdOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace gpu
@@ -7952,9 +7639,11 @@ namespace gpu {
 // ::mlir::gpu::WaitOp definitions
 //===----------------------------------------------------------------------===//
 
-WaitOpAdaptor::WaitOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+WaitOpAdaptor::WaitOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.wait", odsAttrs.getContext());
+}
 
-WaitOpAdaptor::WaitOpAdaptor(WaitOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+WaitOpAdaptor::WaitOpAdaptor(WaitOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange WaitOpAdaptor::getOperands() {
   return odsOperands;
@@ -8103,8 +7792,8 @@ void WaitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 }
 
 ::mlir::ParseResult WaitOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::Type, 1> asyncTokenTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> asyncDependenciesOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> asyncTokenTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> asyncDependenciesOperands;
   ::llvm::SMLoc asyncDependenciesOperandsLoc;
   (void)asyncDependenciesOperandsLoc;
   {
@@ -8141,9 +7830,11 @@ namespace gpu {
 // ::mlir::gpu::YieldOp definitions
 //===----------------------------------------------------------------------===//
 
-YieldOpAdaptor::YieldOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+YieldOpAdaptor::YieldOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("gpu.yield", odsAttrs.getContext());
+}
 
-YieldOpAdaptor::YieldOpAdaptor(YieldOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+YieldOpAdaptor::YieldOpAdaptor(YieldOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange YieldOpAdaptor::getOperands() {
   return odsOperands;
@@ -8257,7 +7948,7 @@ void YieldOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   return verifyInvariantsImpl();
 }
 
-void YieldOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void YieldOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace gpu

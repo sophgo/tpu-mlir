@@ -10,14 +10,7 @@ namespace mlir {
 namespace NVVM {
 
 class NVVMDialect : public ::mlir::Dialect {
-  explicit NVVMDialect(::mlir::MLIRContext *context)
-    : ::mlir::Dialect(getDialectNamespace(), context,
-      ::mlir::TypeID::get<NVVMDialect>()) {
-    
-    getContext()->getOrLoadDialect<LLVM::LLVMDialect>();
-
-    initialize();
-  }
+  explicit NVVMDialect(::mlir::MLIRContext *context);
 
   void initialize();
   friend class ::mlir::MLIRContext;

@@ -9,6 +9,7 @@
 #ifdef GET_ATTRDEF_LIST
 #undef GET_ATTRDEF_LIST
 
+::mlir::LLVM::CConvAttr,
 ::mlir::LLVM::FMFAttr,
 ::mlir::LLVM::LinkageAttr,
 ::mlir::LLVM::LoopOptionsAttr
@@ -19,6 +20,10 @@
 #undef GET_ATTRDEF_CLASSES
 
 static ::mlir::OptionalParseResult generatedAttributeParser(::mlir::AsmParser &parser, ::llvm::StringRef mnemonic, ::mlir::Type type, ::mlir::Attribute &value) {
+  if (mnemonic == ::mlir::LLVM::CConvAttr::getMnemonic()) {
+    value = ::mlir::LLVM::CConvAttr::parse(parser, type);
+    return ::mlir::success(!!value);
+  }
   if (mnemonic == ::mlir::LLVM::FMFAttr::getMnemonic()) {
     value = ::mlir::LLVM::FMFAttr::parse(parser, type);
     return ::mlir::success(!!value);
@@ -35,7 +40,12 @@ static ::mlir::OptionalParseResult generatedAttributeParser(::mlir::AsmParser &p
 }
 
 static ::mlir::LogicalResult generatedAttributePrinter(::mlir::Attribute def, ::mlir::AsmPrinter &printer) {
-  return ::llvm::TypeSwitch<::mlir::Attribute, ::mlir::LogicalResult>(def)    .Case<::mlir::LLVM::FMFAttr>([&](auto t) {
+  return ::llvm::TypeSwitch<::mlir::Attribute, ::mlir::LogicalResult>(def)    .Case<::mlir::LLVM::CConvAttr>([&](auto t) {
+      printer << ::mlir::LLVM::CConvAttr::getMnemonic();
+t.print(printer);
+      return ::mlir::success();
+    })
+    .Case<::mlir::LLVM::FMFAttr>([&](auto t) {
       printer << ::mlir::LLVM::FMFAttr::getMnemonic();
 t.print(printer);
       return ::mlir::success();
@@ -53,6 +63,40 @@ t.print(printer);
     .Default([](auto) { return ::mlir::failure(); });
 }
 
+namespace mlir {
+namespace LLVM {
+namespace detail {
+struct CConvAttrStorage : public ::mlir::AttributeStorage {
+  using KeyTy = std::tuple<CConv>;
+  CConvAttrStorage(CConv CallingConv) : ::mlir::AttributeStorage(), CallingConv(CallingConv) {}
+
+  bool operator==(const KeyTy &tblgenKey) const {
+    return (CallingConv == std::get<0>(tblgenKey));
+  }
+
+  static ::llvm::hash_code hashKey(const KeyTy &tblgenKey) {
+    return ::llvm::hash_combine(std::get<0>(tblgenKey));
+  }
+
+  static CConvAttrStorage *construct(::mlir::AttributeStorageAllocator &allocator, const KeyTy &tblgenKey) {
+    auto CallingConv = std::get<0>(tblgenKey);
+    return new (allocator.allocate<CConvAttrStorage>()) CConvAttrStorage(CallingConv);
+  }
+
+  CConv CallingConv;
+};
+} // namespace detail
+CConvAttr CConvAttr::get(::mlir::MLIRContext *context, CConv CallingConv) {
+  return Base::get(context, CallingConv);
+}
+
+CConv CConvAttr::getCallingConv() const {
+  return getImpl()->CallingConv;
+}
+
+} // namespace LLVM
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::LLVM::CConvAttr)
 namespace mlir {
 namespace LLVM {
 namespace detail {
@@ -168,6 +212,7 @@ namespace LLVM {
     if (parseResult.hasValue())
       return attr;
   }
+  
   parser.emitError(typeLoc) << "unknown attribute `"
       << attrTag << "` in dialect `" << getNamespace() << "`";
   return {};
@@ -177,6 +222,7 @@ void LLVMDialect::printAttribute(::mlir::Attribute attr,
                          ::mlir::DialectAsmPrinter &printer) const {
   if (::mlir::succeeded(generatedAttributePrinter(attr, printer)))
     return;
+  
 }
 } // namespace LLVM
 } // namespace mlir

@@ -6,12 +6,12 @@
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class SCFBufferizeBase : public ::mlir::OperationPass<FuncOp> {
+class SCFBufferizeBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = SCFBufferizeBase;
 
-  SCFBufferizeBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  SCFBufferizeBase(const SCFBufferizeBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  SCFBufferizeBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  SCFBufferizeBase(const SCFBufferizeBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -59,12 +59,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class SCFForLoopCanonicalizationBase : public ::mlir::OperationPass<FuncOp> {
+class SCFForLoopCanonicalizationBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = SCFForLoopCanonicalizationBase;
 
-  SCFForLoopCanonicalizationBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  SCFForLoopCanonicalizationBase(const SCFForLoopCanonicalizationBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  SCFForLoopCanonicalizationBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  SCFForLoopCanonicalizationBase(const SCFForLoopCanonicalizationBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -114,12 +114,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class SCFForLoopPeelingBase : public ::mlir::OperationPass<FuncOp> {
+class SCFForLoopPeelingBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = SCFForLoopPeelingBase;
 
-  SCFForLoopPeelingBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  SCFForLoopPeelingBase(const SCFForLoopPeelingBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  SCFForLoopPeelingBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  SCFForLoopPeelingBase(const SCFForLoopPeelingBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -215,12 +215,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class SCFForLoopSpecializationBase : public ::mlir::OperationPass<FuncOp> {
+class SCFForLoopSpecializationBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = SCFForLoopSpecializationBase;
 
-  SCFForLoopSpecializationBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  SCFForLoopSpecializationBase(const SCFForLoopSpecializationBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  SCFForLoopSpecializationBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  SCFForLoopSpecializationBase(const SCFForLoopSpecializationBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -264,12 +264,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class SCFForToWhileLoopBase : public ::mlir::OperationPass<FuncOp> {
+class SCFForToWhileLoopBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = SCFForToWhileLoopBase;
 
-  SCFForToWhileLoopBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  SCFForToWhileLoopBase(const SCFForToWhileLoopBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  SCFForToWhileLoopBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  SCFForToWhileLoopBase(const SCFForToWhileLoopBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -414,12 +414,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class SCFParallelLoopSpecializationBase : public ::mlir::OperationPass<FuncOp> {
+class SCFParallelLoopSpecializationBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = SCFParallelLoopSpecializationBase;
 
-  SCFParallelLoopSpecializationBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  SCFParallelLoopSpecializationBase(const SCFParallelLoopSpecializationBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  SCFParallelLoopSpecializationBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  SCFParallelLoopSpecializationBase(const SCFParallelLoopSpecializationBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -463,12 +463,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class SCFParallelLoopTilingBase : public ::mlir::OperationPass<FuncOp> {
+class SCFParallelLoopTilingBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = SCFParallelLoopTilingBase;
 
-  SCFParallelLoopTilingBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  SCFParallelLoopTilingBase(const SCFParallelLoopTilingBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  SCFParallelLoopTilingBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  SCFParallelLoopTilingBase(const SCFParallelLoopTilingBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {

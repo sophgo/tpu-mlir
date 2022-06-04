@@ -6,12 +6,12 @@
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class GpuAsyncRegionPassBase : public ::mlir::OperationPass<FuncOp> {
+class GpuAsyncRegionPassBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = GpuAsyncRegionPassBase;
 
-  GpuAsyncRegionPassBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  GpuAsyncRegionPassBase(const GpuAsyncRegionPassBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  GpuAsyncRegionPassBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  GpuAsyncRegionPassBase(const GpuAsyncRegionPassBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -153,6 +153,55 @@ public:
 
 protected:
 };
+
+//===----------------------------------------------------------------------===//
+// GpuMapParallelLoopsPass
+//===----------------------------------------------------------------------===//
+
+template <typename DerivedT>
+class GpuMapParallelLoopsPassBase : public ::mlir::OperationPass<mlir::func::FuncOp> {
+public:
+  using Base = GpuMapParallelLoopsPassBase;
+
+  GpuMapParallelLoopsPassBase() : ::mlir::OperationPass<mlir::func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  GpuMapParallelLoopsPassBase(const GpuMapParallelLoopsPassBase &other) : ::mlir::OperationPass<mlir::func::FuncOp>(other) {}
+
+  /// Returns the command-line argument attached to this pass.
+  static constexpr ::llvm::StringLiteral getArgumentName() {
+    return ::llvm::StringLiteral("gpu-map-parallel-loops");
+  }
+  ::llvm::StringRef getArgument() const override { return "gpu-map-parallel-loops"; }
+
+  ::llvm::StringRef getDescription() const override { return "Greedily maps loops to GPU hardware dimensions."; }
+
+  /// Returns the derived pass name.
+  static constexpr ::llvm::StringLiteral getPassName() {
+    return ::llvm::StringLiteral("GpuMapParallelLoopsPass");
+  }
+  ::llvm::StringRef getName() const override { return "GpuMapParallelLoopsPass"; }
+
+  /// Support isa/dyn_cast functionality for the derived pass class.
+  static bool classof(const ::mlir::Pass *pass) {
+    return pass->getTypeID() == ::mlir::TypeID::get<DerivedT>();
+  }
+
+  /// A clone method to create a copy of this pass.
+  std::unique_ptr<::mlir::Pass> clonePass() const override {
+    return std::make_unique<DerivedT>(*static_cast<const DerivedT *>(this));
+  }
+
+  /// Return the dialect that must be loaded in the context before this pass.
+  void getDependentDialects(::mlir::DialectRegistry &registry) const override {
+    
+  }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(GpuMapParallelLoopsPassBase<DerivedT>)
+
+protected:
+};
 #undef GEN_PASS_CLASSES
 #endif // GEN_PASS_CLASSES
 #ifdef GEN_PASS_REGISTRATION
@@ -188,6 +237,16 @@ inline void registerGpuLaunchSinkIndexComputationsPass() {
 }
 
 //===----------------------------------------------------------------------===//
+// GpuMapParallelLoopsPass Registration
+//===----------------------------------------------------------------------===//
+
+inline void registerGpuMapParallelLoopsPassPass() {
+  ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
+    return mlir::createGpuMapParallelLoopsPass();
+  });
+}
+
+//===----------------------------------------------------------------------===//
 // GPU Registration
 //===----------------------------------------------------------------------===//
 
@@ -195,6 +254,7 @@ inline void registerGPUPasses() {
   registerGpuAsyncRegionPassPass();
   registerGpuKernelOutliningPass();
   registerGpuLaunchSinkIndexComputationsPass();
+  registerGpuMapParallelLoopsPassPass();
 }
 #undef GEN_PASS_REGISTRATION
 #endif // GEN_PASS_REGISTRATION

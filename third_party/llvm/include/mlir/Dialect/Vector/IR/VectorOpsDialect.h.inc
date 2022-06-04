@@ -10,14 +10,7 @@ namespace mlir {
 namespace vector {
 
 class VectorDialect : public ::mlir::Dialect {
-  explicit VectorDialect(::mlir::MLIRContext *context)
-    : ::mlir::Dialect(getDialectNamespace(), context,
-      ::mlir::TypeID::get<VectorDialect>()) {
-    
-    getContext()->getOrLoadDialect<arith::ArithmeticDialect>();
-
-    initialize();
-  }
+  explicit VectorDialect(::mlir::MLIRContext *context);
 
   void initialize();
   friend class ::mlir::MLIRContext;

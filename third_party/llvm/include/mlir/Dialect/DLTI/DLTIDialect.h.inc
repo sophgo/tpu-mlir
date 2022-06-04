@@ -9,12 +9,7 @@
 namespace mlir {
 
 class DLTIDialect : public ::mlir::Dialect {
-  explicit DLTIDialect(::mlir::MLIRContext *context)
-    : ::mlir::Dialect(getDialectNamespace(), context,
-      ::mlir::TypeID::get<DLTIDialect>()) {
-    
-    initialize();
-  }
+  explicit DLTIDialect(::mlir::MLIRContext *context);
 
   void initialize();
   friend class ::mlir::MLIRContext;

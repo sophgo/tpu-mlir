@@ -13,7 +13,6 @@
 ::mlir::sparse_tensor::CompressOp,
 ::mlir::sparse_tensor::ConvertOp,
 ::mlir::sparse_tensor::ExpandOp,
-::mlir::sparse_tensor::InitOp,
 ::mlir::sparse_tensor::LexInsertOp,
 ::mlir::sparse_tensor::LoadOp,
 ::mlir::sparse_tensor::NewOp,
@@ -50,9 +49,9 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SparseTensorOps0(
 static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SparseTensorOps1(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
-  if (!(((type.isa<::mlir::TensorType>())) && ([](::mlir::Type elementType) { return (true); }(type.cast<::mlir::ShapedType>().getElementType())))) {
+  if (!((((type.isa<::mlir::TensorType>())) && ((!!::mlir::sparse_tensor::getSparseTensorEncoding(type)))) && ([](::mlir::Type elementType) { return (true); }(type.cast<::mlir::ShapedType>().getElementType())))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
-        << " must be tensor of any type values, but got " << type;
+        << " must be sparse tensor of any type values, but got " << type;
   }
   return ::mlir::success();
 }
@@ -100,6 +99,16 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SparseTensorOps5(
   return ::mlir::success();
 }
 
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SparseTensorOps6(
+    ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
+    unsigned valueIndex) {
+  if (!(((type.isa<::mlir::TensorType>())) && ([](::mlir::Type elementType) { return (true); }(type.cast<::mlir::ShapedType>().getElementType())))) {
+    return op->emitOpError(valueKind) << " #" << valueIndex
+        << " must be tensor of any type values, but got " << type;
+  }
+  return ::mlir::success();
+}
+
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SparseTensorOps0(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((attr.isa<::mlir::UnitAttr>()))) {
@@ -128,9 +137,11 @@ namespace sparse_tensor {
 // ::mlir::sparse_tensor::BinaryOp definitions
 //===----------------------------------------------------------------------===//
 
-BinaryOpAdaptor::BinaryOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+BinaryOpAdaptor::BinaryOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("sparse_tensor.binary", odsAttrs.getContext());
+}
 
-BinaryOpAdaptor::BinaryOpAdaptor(BinaryOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+BinaryOpAdaptor::BinaryOpAdaptor(BinaryOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange BinaryOpAdaptor::getOperands() {
   return odsOperands;
@@ -160,8 +171,8 @@ std::pair<unsigned, unsigned> BinaryOpAdaptor::getODSOperandIndexAndLength(unsig
 
 ::mlir::UnitAttr BinaryOpAdaptor::left_identityAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::UnitAttr attr = odsAttrs.get("left_identity").dyn_cast_or_null<::mlir::UnitAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, BinaryOp::left_identityAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
+    return attr;
 }
 
 bool BinaryOpAdaptor::left_identity() {
@@ -171,8 +182,8 @@ bool BinaryOpAdaptor::left_identity() {
 
 ::mlir::UnitAttr BinaryOpAdaptor::right_identityAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::UnitAttr attr = odsAttrs.get("right_identity").dyn_cast_or_null<::mlir::UnitAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, BinaryOp::right_identityAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
+    return attr;
 }
 
 bool BinaryOpAdaptor::right_identity() {
@@ -197,16 +208,28 @@ bool BinaryOpAdaptor::right_identity() {
 }
 
 ::mlir::LogicalResult BinaryOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_left_identity = odsAttrs.get("left_identity");
-    if (tblgen_left_identity && !((tblgen_left_identity.isa<::mlir::UnitAttr>())))
-      return emitError(loc, "'sparse_tensor.binary' op ""attribute 'left_identity' failed to satisfy constraint: unit attribute");
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_left_identity;
+  ::mlir::Attribute tblgen_right_identity;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == BinaryOp::left_identityAttrName(*odsOpName)) {
+      tblgen_left_identity = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == BinaryOp::right_identityAttrName(*odsOpName)) {
+      tblgen_right_identity = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_right_identity = odsAttrs.get("right_identity");
-    if (tblgen_right_identity && !((tblgen_right_identity.isa<::mlir::UnitAttr>())))
-      return emitError(loc, "'sparse_tensor.binary' op ""attribute 'right_identity' failed to satisfy constraint: unit attribute");
-  }
+
+  if (tblgen_left_identity && !((tblgen_left_identity.isa<::mlir::UnitAttr>())))
+    return emitError(loc, "'sparse_tensor.binary' op ""attribute 'left_identity' failed to satisfy constraint: unit attribute");
+
+  if (tblgen_right_identity && !((tblgen_right_identity.isa<::mlir::UnitAttr>())))
+    return emitError(loc, "'sparse_tensor.binary' op ""attribute 'right_identity' failed to satisfy constraint: unit attribute");
   return ::mlir::success();
 }
 
@@ -267,7 +290,7 @@ std::pair<unsigned, unsigned> BinaryOp::getODSResultIndexAndLength(unsigned inde
 }
 
 ::mlir::UnitAttr BinaryOp::left_identityAttr() {
-  return (*this)->getAttr(left_identityAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, left_identityAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
 }
 
 bool BinaryOp::left_identity() {
@@ -276,7 +299,7 @@ bool BinaryOp::left_identity() {
 }
 
 ::mlir::UnitAttr BinaryOp::right_identityAttr() {
-  return (*this)->getAttr(right_identityAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, right_identityAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
 }
 
 bool BinaryOp::right_identity() {
@@ -373,16 +396,28 @@ void BinaryOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::LogicalResult BinaryOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_left_identity = (*this)->getAttr(left_identityAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_SparseTensorOps0(*this, tblgen_left_identity, "left_identity")))
-      return ::mlir::failure();
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_left_identity;
+  ::mlir::Attribute tblgen_right_identity;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == left_identityAttrName()) {
+      tblgen_left_identity = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == right_identityAttrName()) {
+      tblgen_right_identity = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_right_identity = (*this)->getAttr(right_identityAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_SparseTensorOps0(*this, tblgen_right_identity, "right_identity")))
-      return ::mlir::failure();
-  }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_SparseTensorOps0(*this, tblgen_left_identity, "left_identity")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_SparseTensorOps0(*this, tblgen_right_identity, "right_identity")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -585,7 +620,7 @@ void BinaryOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void BinaryOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void BinaryOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace sparse_tensor
@@ -599,9 +634,11 @@ namespace sparse_tensor {
 // ::mlir::sparse_tensor::CompressOp definitions
 //===----------------------------------------------------------------------===//
 
-CompressOpAdaptor::CompressOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+CompressOpAdaptor::CompressOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("sparse_tensor.compress", odsAttrs.getContext());
+}
 
-CompressOpAdaptor::CompressOpAdaptor(CompressOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+CompressOpAdaptor::CompressOpAdaptor(CompressOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange CompressOpAdaptor::getOperands() {
   return odsOperands;
@@ -801,9 +838,7 @@ void CompressOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::LogicalResult CompressOp::verifyInvariants() {
-  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
-    return ::mlir::success();
-  return ::mlir::failure();
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult CompressOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -1028,9 +1063,11 @@ namespace sparse_tensor {
 // ::mlir::sparse_tensor::ConvertOp definitions
 //===----------------------------------------------------------------------===//
 
-ConvertOpAdaptor::ConvertOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ConvertOpAdaptor::ConvertOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("sparse_tensor.convert", odsAttrs.getContext());
+}
 
-ConvertOpAdaptor::ConvertOpAdaptor(ConvertOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ConvertOpAdaptor::ConvertOpAdaptor(ConvertOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ConvertOpAdaptor::getOperands() {
   return odsOperands;
@@ -1117,7 +1154,7 @@ void ConvertOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps1(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps6(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -1126,7 +1163,7 @@ void ConvertOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps1(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps6(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -1201,7 +1238,7 @@ void ConvertOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void ConvertOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ConvertOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace sparse_tensor
@@ -1215,9 +1252,11 @@ namespace sparse_tensor {
 // ::mlir::sparse_tensor::ExpandOp definitions
 //===----------------------------------------------------------------------===//
 
-ExpandOpAdaptor::ExpandOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ExpandOpAdaptor::ExpandOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("sparse_tensor.expand", odsAttrs.getContext());
+}
 
-ExpandOpAdaptor::ExpandOpAdaptor(ExpandOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ExpandOpAdaptor::ExpandOpAdaptor(ExpandOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ExpandOpAdaptor::getOperands() {
   return odsOperands;
@@ -1369,9 +1408,7 @@ void ExpandOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::LogicalResult ExpandOp::verifyInvariants() {
-  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
-    return ::mlir::success();
-  return ::mlir::failure();
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult ExpandOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -1507,206 +1544,14 @@ namespace mlir {
 namespace sparse_tensor {
 
 //===----------------------------------------------------------------------===//
-// ::mlir::sparse_tensor::InitOp definitions
-//===----------------------------------------------------------------------===//
-
-InitOpAdaptor::InitOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
-
-InitOpAdaptor::InitOpAdaptor(InitOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
-
-::mlir::ValueRange InitOpAdaptor::getOperands() {
-  return odsOperands;
-}
-
-std::pair<unsigned, unsigned> InitOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
-  bool isVariadic[] = {true};
-  int prevVariadicCount = 0;
-  for (unsigned i = 0; i < index; ++i)
-    if (isVariadic[i]) ++prevVariadicCount;
-
-  // Calculate how many dynamic values a static variadic operand corresponds to.
-  // This assumes all static variadic operands have the same dynamic value count.
-  int variadicSize = (odsOperands.size() - 0) / 1;
-  // `index` passed in as the parameter is the static index which counts each
-  // operand (variadic or not) as size 1. So here for each previous static variadic
-  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
-  // value pack for this static operand starts.
-  int start = index + (variadicSize - 1) * prevVariadicCount;
-  int size = isVariadic[index] ? variadicSize : 1;
-  return {start, size};
-}
-
-::mlir::ValueRange InitOpAdaptor::getODSOperands(unsigned index) {
-  auto valueRange = getODSOperandIndexAndLength(index);
-  return {std::next(odsOperands.begin(), valueRange.first),
-           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::ValueRange InitOpAdaptor::sizes() {
-  return getODSOperands(0);
-}
-
-::mlir::DictionaryAttr InitOpAdaptor::getAttributes() {
-  return odsAttrs;
-}
-
-::mlir::LogicalResult InitOpAdaptor::verify(::mlir::Location loc) {
-  return ::mlir::success();
-}
-
-std::pair<unsigned, unsigned> InitOp::getODSOperandIndexAndLength(unsigned index) {
-  bool isVariadic[] = {true};
-  int prevVariadicCount = 0;
-  for (unsigned i = 0; i < index; ++i)
-    if (isVariadic[i]) ++prevVariadicCount;
-
-  // Calculate how many dynamic values a static variadic operand corresponds to.
-  // This assumes all static variadic operands have the same dynamic value count.
-  int variadicSize = (getOperation()->getNumOperands() - 0) / 1;
-  // `index` passed in as the parameter is the static index which counts each
-  // operand (variadic or not) as size 1. So here for each previous static variadic
-  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
-  // value pack for this static operand starts.
-  int start = index + (variadicSize - 1) * prevVariadicCount;
-  int size = isVariadic[index] ? variadicSize : 1;
-  return {start, size};
-}
-
-::mlir::Operation::operand_range InitOp::getODSOperands(unsigned index) {
-  auto valueRange = getODSOperandIndexAndLength(index);
-  return {std::next(getOperation()->operand_begin(), valueRange.first),
-           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::Operation::operand_range InitOp::sizes() {
-  return getODSOperands(0);
-}
-
-::mlir::MutableOperandRange InitOp::sizesMutable() {
-  auto range = getODSOperandIndexAndLength(0);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
-  return mutableRange;
-}
-
-std::pair<unsigned, unsigned> InitOp::getODSResultIndexAndLength(unsigned index) {
-  return {index, 1};
-}
-
-::mlir::Operation::result_range InitOp::getODSResults(unsigned index) {
-  auto valueRange = getODSResultIndexAndLength(index);
-  return {std::next(getOperation()->result_begin(), valueRange.first),
-           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::Value InitOp::result() {
-  return *getODSResults(0).begin();
-}
-
-void InitOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::ValueRange sizes) {
-  odsState.addOperands(sizes);
-  odsState.addTypes(result);
-}
-
-void InitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
-  odsState.addOperands(operands);
-  odsState.addAttributes(attributes);
-  assert(resultTypes.size() == 1u && "mismatched number of return types");
-  odsState.addTypes(resultTypes);
-}
-
-::mlir::LogicalResult InitOp::verifyInvariantsImpl() {
-  {
-    unsigned index = 0; (void)index;
-    auto valueGroup0 = getODSOperands(0);
-
-    for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps5(*this, v.getType(), "operand", index++)))
-        return ::mlir::failure();
-    }
-  }
-  {
-    unsigned index = 0; (void)index;
-    auto valueGroup0 = getODSResults(0);
-
-    for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps1(*this, v.getType(), "result", index++)))
-        return ::mlir::failure();
-    }
-  }
-  return ::mlir::success();
-}
-
-::mlir::LogicalResult InitOp::verifyInvariants() {
-  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
-    return ::mlir::success();
-  return ::mlir::failure();
-}
-
-::mlir::ParseResult InitOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> sizesOperands;
-  ::llvm::SMLoc sizesOperandsLoc;
-  (void)sizesOperandsLoc;
-  ::mlir::Type resultRawTypes[1];
-  ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
-  if (parser.parseLSquare())
-    return ::mlir::failure();
-
-  sizesOperandsLoc = parser.getCurrentLocation();
-  if (parser.parseOperandList(sizesOperands))
-    return ::mlir::failure();
-  if (parser.parseRSquare())
-    return ::mlir::failure();
-  if (parser.parseOptionalAttrDict(result.attributes))
-    return ::mlir::failure();
-  if (parser.parseColon())
-    return ::mlir::failure();
-
-  {
-    ::mlir::TensorType type;
-    if (parser.parseCustomTypeWithFallback(type))
-      return ::mlir::failure();
-    resultRawTypes[0] = type;
-  }
-  ::mlir::Type odsBuildableType0 = parser.getBuilder().getIndexType();
-  result.addTypes(resultTypes);
-  if (parser.resolveOperands(sizesOperands, odsBuildableType0, result.operands))
-    return ::mlir::failure();
-  return ::mlir::success();
-}
-
-void InitOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
-  _odsPrinter << "[";
-  _odsPrinter << sizes();
-  _odsPrinter << "]";
-  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
-  _odsPrinter << ' ' << ":";
-  _odsPrinter << ' ';
-  {
-    auto type = result().getType();
-    if (auto validType = type.dyn_cast<::mlir::TensorType>())
-      _odsPrinter.printStrippedAttrOrType(validType);
-   else
-     _odsPrinter << type;
-  }
-}
-
-void InitOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
-}
-
-} // namespace sparse_tensor
-} // namespace mlir
-MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::sparse_tensor::InitOp)
-
-namespace mlir {
-namespace sparse_tensor {
-
-//===----------------------------------------------------------------------===//
 // ::mlir::sparse_tensor::LexInsertOp definitions
 //===----------------------------------------------------------------------===//
 
-LexInsertOpAdaptor::LexInsertOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+LexInsertOpAdaptor::LexInsertOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("sparse_tensor.lex_insert", odsAttrs.getContext());
+}
 
-LexInsertOpAdaptor::LexInsertOpAdaptor(LexInsertOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+LexInsertOpAdaptor::LexInsertOpAdaptor(LexInsertOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange LexInsertOpAdaptor::getOperands() {
   return odsOperands;
@@ -1840,9 +1685,7 @@ void LexInsertOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 }
 
 ::mlir::LogicalResult LexInsertOp::verifyInvariants() {
-  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
-    return ::mlir::success();
-  return ::mlir::failure();
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult LexInsertOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -1965,9 +1808,11 @@ namespace sparse_tensor {
 // ::mlir::sparse_tensor::LoadOp definitions
 //===----------------------------------------------------------------------===//
 
-LoadOpAdaptor::LoadOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+LoadOpAdaptor::LoadOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("sparse_tensor.load", odsAttrs.getContext());
+}
 
-LoadOpAdaptor::LoadOpAdaptor(LoadOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+LoadOpAdaptor::LoadOpAdaptor(LoadOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange LoadOpAdaptor::getOperands() {
   return odsOperands;
@@ -1993,8 +1838,8 @@ std::pair<unsigned, unsigned> LoadOpAdaptor::getODSOperandIndexAndLength(unsigne
 
 ::mlir::UnitAttr LoadOpAdaptor::hasInsertsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::UnitAttr attr = odsAttrs.get("hasInserts").dyn_cast_or_null<::mlir::UnitAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, LoadOp::hasInsertsAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
+    return attr;
 }
 
 bool LoadOpAdaptor::hasInserts() {
@@ -2003,11 +1848,21 @@ bool LoadOpAdaptor::hasInserts() {
 }
 
 ::mlir::LogicalResult LoadOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_hasInserts = odsAttrs.get("hasInserts");
-    if (tblgen_hasInserts && !((tblgen_hasInserts.isa<::mlir::UnitAttr>())))
-      return emitError(loc, "'sparse_tensor.load' op ""attribute 'hasInserts' failed to satisfy constraint: unit attribute");
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_hasInserts;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == LoadOp::hasInsertsAttrName(*odsOpName)) {
+      tblgen_hasInserts = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_hasInserts && !((tblgen_hasInserts.isa<::mlir::UnitAttr>())))
+    return emitError(loc, "'sparse_tensor.load' op ""attribute 'hasInserts' failed to satisfy constraint: unit attribute");
   return ::mlir::success();
 }
 
@@ -2046,7 +1901,7 @@ std::pair<unsigned, unsigned> LoadOp::getODSResultIndexAndLength(unsigned index)
 }
 
 ::mlir::UnitAttr LoadOp::hasInsertsAttr() {
-  return (*this)->getAttr(hasInsertsAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, hasInsertsAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
 }
 
 bool LoadOp::hasInserts() {
@@ -2070,6 +1925,22 @@ void LoadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
   odsState.addTypes(result);
 }
 
+void LoadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value tensor, /*optional*/::mlir::UnitAttr hasInserts) {
+  odsState.addOperands(tensor);
+  if (hasInserts) {
+  odsState.addAttribute(hasInsertsAttrName(odsState.name), hasInserts);
+  }
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(LoadOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void LoadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value tensor, /*optional*/::mlir::UnitAttr hasInserts) {
   odsState.addOperands(tensor);
   if (hasInserts) {
@@ -2085,6 +1956,22 @@ void LoadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
   odsState.addAttribute(hasInsertsAttrName(odsState.name), odsBuilder.getUnitAttr());
   }
   odsState.addTypes(result);
+}
+
+void LoadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value tensor, /*optional*/bool hasInserts) {
+  odsState.addOperands(tensor);
+  if (hasInserts) {
+  odsState.addAttribute(hasInsertsAttrName(odsState.name), odsBuilder.getUnitAttr());
+  }
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(LoadOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
 }
 
 void LoadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value tensor, /*optional*/bool hasInserts) {
@@ -2104,28 +1991,39 @@ void LoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   odsState.addTypes(resultTypes);
 }
 
-void LoadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value tensor, /*optional*/::mlir::UnitAttr hasInserts) {
-  odsState.addOperands(tensor);
-  if (hasInserts) {
-  odsState.addAttribute(hasInsertsAttrName(odsState.name), hasInserts);
-  }
-  odsState.addTypes({tensor.getType()});
-
-}
-
 void LoadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 1u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(LoadOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult LoadOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_hasInserts = (*this)->getAttr(hasInsertsAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_SparseTensorOps0(*this, tblgen_hasInserts, "hasInserts")))
-      return ::mlir::failure();
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_hasInserts;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == hasInsertsAttrName()) {
+      tblgen_hasInserts = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_SparseTensorOps0(*this, tblgen_hasInserts, "hasInserts")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -2140,7 +2038,7 @@ void LoadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps1(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps6(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -2148,9 +2046,15 @@ void LoadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::LogicalResult LoadOp::verifyInvariants() {
-  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
-    return ::mlir::success();
-  return ::mlir::failure();
+  return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult LoadOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult LoadOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -2212,9 +2116,11 @@ namespace sparse_tensor {
 // ::mlir::sparse_tensor::NewOp definitions
 //===----------------------------------------------------------------------===//
 
-NewOpAdaptor::NewOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+NewOpAdaptor::NewOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("sparse_tensor.new", odsAttrs.getContext());
+}
 
-NewOpAdaptor::NewOpAdaptor(NewOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+NewOpAdaptor::NewOpAdaptor(NewOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange NewOpAdaptor::getOperands() {
   return odsOperands;
@@ -2318,9 +2224,7 @@ void NewOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
 }
 
 ::mlir::LogicalResult NewOp::verifyInvariants() {
-  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
-    return ::mlir::success();
-  return ::mlir::failure();
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult NewOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -2385,7 +2289,7 @@ void NewOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void NewOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void NewOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace sparse_tensor
@@ -2399,9 +2303,11 @@ namespace sparse_tensor {
 // ::mlir::sparse_tensor::OutOp definitions
 //===----------------------------------------------------------------------===//
 
-OutOpAdaptor::OutOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+OutOpAdaptor::OutOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("sparse_tensor.out", odsAttrs.getContext());
+}
 
-OutOpAdaptor::OutOpAdaptor(OutOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+OutOpAdaptor::OutOpAdaptor(OutOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange OutOpAdaptor::getOperands() {
   return odsOperands;
@@ -2499,7 +2405,7 @@ void OutOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps0(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SparseTensorOps1(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
@@ -2513,9 +2419,7 @@ void OutOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
 }
 
 ::mlir::LogicalResult OutOp::verifyInvariants() {
-  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
-    return ::mlir::success();
-  return ::mlir::failure();
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult OutOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -2545,7 +2449,7 @@ void OutOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
     return ::mlir::failure();
 
   {
-    ::mlir::Type type;
+    ::mlir::TensorType type;
     if (parser.parseCustomTypeWithFallback(type))
       return ::mlir::failure();
     tensorRawTypes[0] = type;
@@ -2577,7 +2481,7 @@ void OutOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
   {
     auto type = tensor().getType();
-    if (auto validType = type.dyn_cast<::mlir::Type>())
+    if (auto validType = type.dyn_cast<::mlir::TensorType>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
      _odsPrinter << type;
@@ -2604,9 +2508,11 @@ namespace sparse_tensor {
 // ::mlir::sparse_tensor::ReleaseOp definitions
 //===----------------------------------------------------------------------===//
 
-ReleaseOpAdaptor::ReleaseOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ReleaseOpAdaptor::ReleaseOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("sparse_tensor.release", odsAttrs.getContext());
+}
 
-ReleaseOpAdaptor::ReleaseOpAdaptor(ReleaseOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ReleaseOpAdaptor::ReleaseOpAdaptor(ReleaseOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ReleaseOpAdaptor::getOperands() {
   return odsOperands;
@@ -2696,9 +2602,7 @@ void ReleaseOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 }
 
 ::mlir::LogicalResult ReleaseOp::verifyInvariants() {
-  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
-    return ::mlir::success();
-  return ::mlir::failure();
+  return verifyInvariantsImpl();
 }
 
 ::mlir::ParseResult ReleaseOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -2753,9 +2657,11 @@ namespace sparse_tensor {
 // ::mlir::sparse_tensor::ToIndicesOp definitions
 //===----------------------------------------------------------------------===//
 
-ToIndicesOpAdaptor::ToIndicesOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ToIndicesOpAdaptor::ToIndicesOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("sparse_tensor.indices", odsAttrs.getContext());
+}
 
-ToIndicesOpAdaptor::ToIndicesOpAdaptor(ToIndicesOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ToIndicesOpAdaptor::ToIndicesOpAdaptor(ToIndicesOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ToIndicesOpAdaptor::getOperands() {
   return odsOperands;
@@ -2963,7 +2869,7 @@ void ToIndicesOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void ToIndicesOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ToIndicesOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace sparse_tensor
@@ -2977,9 +2883,11 @@ namespace sparse_tensor {
 // ::mlir::sparse_tensor::ToPointersOp definitions
 //===----------------------------------------------------------------------===//
 
-ToPointersOpAdaptor::ToPointersOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ToPointersOpAdaptor::ToPointersOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("sparse_tensor.pointers", odsAttrs.getContext());
+}
 
-ToPointersOpAdaptor::ToPointersOpAdaptor(ToPointersOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ToPointersOpAdaptor::ToPointersOpAdaptor(ToPointersOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ToPointersOpAdaptor::getOperands() {
   return odsOperands;
@@ -3187,7 +3095,7 @@ void ToPointersOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void ToPointersOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ToPointersOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace sparse_tensor
@@ -3201,9 +3109,11 @@ namespace sparse_tensor {
 // ::mlir::sparse_tensor::ToValuesOp definitions
 //===----------------------------------------------------------------------===//
 
-ToValuesOpAdaptor::ToValuesOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ToValuesOpAdaptor::ToValuesOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("sparse_tensor.values", odsAttrs.getContext());
+}
 
-ToValuesOpAdaptor::ToValuesOpAdaptor(ToValuesOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ToValuesOpAdaptor::ToValuesOpAdaptor(ToValuesOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ToValuesOpAdaptor::getOperands() {
   return odsOperands;
@@ -3374,7 +3284,7 @@ void ToValuesOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void ToValuesOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ToValuesOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace sparse_tensor
@@ -3388,9 +3298,11 @@ namespace sparse_tensor {
 // ::mlir::sparse_tensor::UnaryOp definitions
 //===----------------------------------------------------------------------===//
 
-UnaryOpAdaptor::UnaryOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+UnaryOpAdaptor::UnaryOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("sparse_tensor.unary", odsAttrs.getContext());
+}
 
-UnaryOpAdaptor::UnaryOpAdaptor(UnaryOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+UnaryOpAdaptor::UnaryOpAdaptor(UnaryOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange UnaryOpAdaptor::getOperands() {
   return odsOperands;
@@ -3626,7 +3538,7 @@ void UnaryOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter.printRegion(absentRegion());
 }
 
-void UnaryOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void UnaryOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace sparse_tensor
@@ -3640,9 +3552,11 @@ namespace sparse_tensor {
 // ::mlir::sparse_tensor::YieldOp definitions
 //===----------------------------------------------------------------------===//
 
-YieldOpAdaptor::YieldOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+YieldOpAdaptor::YieldOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("sparse_tensor.yield", odsAttrs.getContext());
+}
 
-YieldOpAdaptor::YieldOpAdaptor(YieldOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+YieldOpAdaptor::YieldOpAdaptor(YieldOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange YieldOpAdaptor::getOperands() {
   return odsOperands;
@@ -3778,7 +3692,7 @@ void YieldOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void YieldOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void YieldOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace sparse_tensor

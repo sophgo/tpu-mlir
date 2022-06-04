@@ -79,7 +79,7 @@ public:
     /// Block argument iterator types.
     using BlockArgListType = Region::BlockArgListType;
     using args_iterator = BlockArgListType::iterator;
-    
+
     //===------------------------------------------------------------------===//
     // Body Handling
     //===------------------------------------------------------------------===//
@@ -126,7 +126,7 @@ public:
       assert(empty() && "function already has an entry block");
       Block *entry = new Block();
       push_back(entry);
-      
+
       // FIXME: Allow for passing in locations for these arguments instead of using
       // the operations location.
       ArrayRef<Type> inputTypes = (*this).getArgumentTypes();
@@ -523,8 +523,11 @@ namespace detail {
       if ((*static_cast<ConcreteOp *>(this)).isExternal())
         return success();
       ArrayRef<Type> fnInputTypes = (*static_cast<ConcreteOp *>(this)).getArgumentTypes();
-      Block &entryBlock = (*static_cast<ConcreteOp *>(this)).front();
-    
+      // NOTE: This should just be (*static_cast<ConcreteOp *>(this)).front() but access generically
+      // because the interface methods defined here may be shadowed in
+      // arbitrary ways. https://github.com/llvm/llvm-project/issues/54807
+      Block &entryBlock = (*static_cast<ConcreteOp *>(this))->getRegion(0).front();
+
       unsigned numArguments = fnInputTypes.size();
       if (entryBlock.getNumArguments() != numArguments)
         return (*static_cast<ConcreteOp *>(this)).emitOpError("entry block must have ")
@@ -571,7 +574,7 @@ namespace detail {
       bodyRegion->push_back(body);
       for (Type input : inputTypes)
         body->addArgument(input, state.location);
-    } 
+    }
   
 
     /// Block list iterator types.
@@ -582,7 +585,7 @@ namespace detail {
     /// Block argument iterator types.
     using BlockArgListType = Region::BlockArgListType;
     using args_iterator = BlockArgListType::iterator;
-    
+
     //===------------------------------------------------------------------===//
     // Body Handling
     //===------------------------------------------------------------------===//
@@ -629,7 +632,7 @@ namespace detail {
       assert(empty() && "function already has an entry block");
       Block *entry = new Block();
       push_back(entry);
-      
+
       // FIXME: Allow for passing in locations for these arguments instead of using
       // the operations location.
       ArrayRef<Type> inputTypes = (*static_cast<ConcreteOp *>(this)).getArgumentTypes();
@@ -1067,8 +1070,11 @@ template<typename ConcreteModel, typename ConcreteOp>
 if ((llvm::cast<ConcreteOp>(tablegen_opaque_val)).isExternal())
         return success();
       ArrayRef<Type> fnInputTypes = (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getArgumentTypes();
-      Block &entryBlock = (llvm::cast<ConcreteOp>(tablegen_opaque_val)).front();
-    
+      // NOTE: This should just be (llvm::cast<ConcreteOp>(tablegen_opaque_val)).front() but access generically
+      // because the interface methods defined here may be shadowed in
+      // arbitrary ways. https://github.com/llvm/llvm-project/issues/54807
+      Block &entryBlock = (llvm::cast<ConcreteOp>(tablegen_opaque_val))->getRegion(0).front();
+
       unsigned numArguments = fnInputTypes.size();
       if (entryBlock.getNumArguments() != numArguments)
         return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).emitOpError("entry block must have ")

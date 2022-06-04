@@ -16,9 +16,26 @@ class AsmPrinter;
 } // namespace mlir
 namespace mlir {
 namespace LLVM {
+class CConvAttr;
 class FMFAttr;
 class LinkageAttr;
 class LoopOptionsAttr;
+namespace detail {
+struct CConvAttrStorage;
+} // namespace detail
+class CConvAttr : public ::mlir::Attribute::AttrBase<CConvAttr, ::mlir::Attribute, detail::CConvAttrStorage> {
+public:
+  using Base::Base;
+public:
+  static CConvAttr get(::mlir::MLIRContext *context, CConv CallingConv);
+  static constexpr ::llvm::StringLiteral getMnemonic() {
+    return {"cconv"};
+  }
+
+  static ::mlir::Attribute parse(::mlir::AsmParser &odsParser, ::mlir::Type odsType);
+  void print(::mlir::AsmPrinter &odsPrinter) const;
+  CConv getCallingConv() const;
+};
 namespace detail {
 struct FMFAttrStorage;
 } // namespace detail
@@ -75,6 +92,7 @@ public:
 };
 } // namespace LLVM
 } // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::CConvAttr)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::FMFAttr)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::LinkageAttr)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::LLVM::LoopOptionsAttr)

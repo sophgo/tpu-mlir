@@ -10,14 +10,7 @@ namespace mlir {
 namespace omp {
 
 class OpenMPDialect : public ::mlir::Dialect {
-  explicit OpenMPDialect(::mlir::MLIRContext *context)
-    : ::mlir::Dialect(getDialectNamespace(), context,
-      ::mlir::TypeID::get<OpenMPDialect>()) {
-    
-    getContext()->getOrLoadDialect<::mlir::LLVM::LLVMDialect>();
-
-    initialize();
-  }
+  explicit OpenMPDialect(::mlir::MLIRContext *context);
 
   void initialize();
   friend class ::mlir::MLIRContext;

@@ -99,7 +99,10 @@ if (auto op = dyn_cast<::mlir::NVVM::CpAsyncOp>(opInst)) {
           id = llvm::Intrinsic::nvvm_cp_async_ca_shared_global_8;
           break;
         case 16:
-          id = llvm::Intrinsic::nvvm_cp_async_ca_shared_global_16;
+          if(static_cast<bool>(op.bypass_l1()))
+            id = llvm::Intrinsic::nvvm_cp_async_cg_shared_global_16;
+          else
+            id = llvm::Intrinsic::nvvm_cp_async_ca_shared_global_16;
           break;
         default:
           llvm_unreachable("unsupported async copy size");

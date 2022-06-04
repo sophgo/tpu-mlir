@@ -84,7 +84,7 @@ class DataOpAdaptor {
 public:
   DataOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  DataOpAdaptor(DataOp &op);
+  DataOpAdaptor(DataOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -111,8 +111,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class DataOp : public ::mlir::Op<DataOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants> {
+class DataOp : public ::mlir::Op<DataOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants> {
 public:
   using Op::Op;
   using Op::print;
@@ -216,7 +217,7 @@ class EnterDataOpAdaptor {
 public:
   EnterDataOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  EnterDataOpAdaptor(EnterDataOp &op);
+  EnterDataOpAdaptor(EnterDataOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -239,15 +240,16 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class EnterDataOp : public ::mlir::Op<EnterDataOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants> {
+class EnterDataOp : public ::mlir::Op<EnterDataOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = EnterDataOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("async"), ::llvm::StringRef("wait"), ::llvm::StringRef("operand_segment_sizes")};
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("async"), ::llvm::StringRef("operand_segment_sizes"), ::llvm::StringRef("wait")};
     return ::llvm::makeArrayRef(attrNames);
   }
 
@@ -259,19 +261,19 @@ public:
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr waitAttrName() {
+  ::mlir::StringAttr operand_segment_sizesAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr waitAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
   }
 
-  ::mlir::StringAttr operand_segment_sizesAttrName() {
+  ::mlir::StringAttr waitAttrName() {
     return getAttributeNameForIndex(2);
   }
 
-  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr waitAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 2);
   }
 
@@ -350,7 +352,7 @@ class ExitDataOpAdaptor {
 public:
   ExitDataOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  ExitDataOpAdaptor(ExitDataOp &op);
+  ExitDataOpAdaptor(ExitDataOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -374,15 +376,16 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class ExitDataOp : public ::mlir::Op<ExitDataOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants> {
+class ExitDataOp : public ::mlir::Op<ExitDataOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = ExitDataOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("async"), ::llvm::StringRef("wait"), ::llvm::StringRef("finalize"), ::llvm::StringRef("operand_segment_sizes")};
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("async"), ::llvm::StringRef("finalize"), ::llvm::StringRef("operand_segment_sizes"), ::llvm::StringRef("wait")};
     return ::llvm::makeArrayRef(attrNames);
   }
 
@@ -394,27 +397,27 @@ public:
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr waitAttrName() {
+  ::mlir::StringAttr finalizeAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr waitAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr finalizeAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
   }
 
-  ::mlir::StringAttr finalizeAttrName() {
+  ::mlir::StringAttr operand_segment_sizesAttrName() {
     return getAttributeNameForIndex(2);
   }
 
-  static ::mlir::StringAttr finalizeAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 2);
   }
 
-  ::mlir::StringAttr operand_segment_sizesAttrName() {
+  ::mlir::StringAttr waitAttrName() {
     return getAttributeNameForIndex(3);
   }
 
-  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr waitAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 3);
   }
 
@@ -495,7 +498,7 @@ class InitOpAdaptor {
 public:
   InitOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  InitOpAdaptor(InitOp &op);
+  InitOpAdaptor(InitOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -509,8 +512,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class InitOp : public ::mlir::Op<InitOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants> {
+class InitOp : public ::mlir::Op<InitOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants> {
 public:
   using Op::Op;
   using Op::print;
@@ -578,7 +582,7 @@ class LoopOpAdaptor {
 public:
   LoopOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  LoopOpAdaptor(LoopOp &op);
+  LoopOpAdaptor(LoopOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -610,71 +614,72 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class LoopOp : public ::mlir::Op<LoopOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::SingleBlockImplicitTerminator<acc::YieldOp>::Impl, ::mlir::OpTrait::OpInvariants> {
+class LoopOp : public ::mlir::Op<LoopOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::SingleBlockImplicitTerminator<acc::YieldOp>::Impl, ::mlir::OpTrait::OpInvariants> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = LoopOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("collapse"), ::llvm::StringRef("seq"), ::llvm::StringRef("independent"), ::llvm::StringRef("auto_"), ::llvm::StringRef("reductionOp"), ::llvm::StringRef("exec_mapping"), ::llvm::StringRef("operand_segment_sizes")};
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("auto_"), ::llvm::StringRef("collapse"), ::llvm::StringRef("exec_mapping"), ::llvm::StringRef("independent"), ::llvm::StringRef("operand_segment_sizes"), ::llvm::StringRef("reductionOp"), ::llvm::StringRef("seq")};
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr collapseAttrName() {
+  ::mlir::StringAttr auto_AttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr collapseAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr auto_AttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr seqAttrName() {
+  ::mlir::StringAttr collapseAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr seqAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr collapseAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
   }
 
-  ::mlir::StringAttr independentAttrName() {
+  ::mlir::StringAttr exec_mappingAttrName() {
     return getAttributeNameForIndex(2);
   }
 
-  static ::mlir::StringAttr independentAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr exec_mappingAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 2);
   }
 
-  ::mlir::StringAttr auto_AttrName() {
+  ::mlir::StringAttr independentAttrName() {
     return getAttributeNameForIndex(3);
   }
 
-  static ::mlir::StringAttr auto_AttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr independentAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 3);
   }
 
-  ::mlir::StringAttr reductionOpAttrName() {
+  ::mlir::StringAttr operand_segment_sizesAttrName() {
     return getAttributeNameForIndex(4);
   }
 
-  static ::mlir::StringAttr reductionOpAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 4);
   }
 
-  ::mlir::StringAttr exec_mappingAttrName() {
+  ::mlir::StringAttr reductionOpAttrName() {
     return getAttributeNameForIndex(5);
   }
 
-  static ::mlir::StringAttr exec_mappingAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr reductionOpAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 5);
   }
 
-  ::mlir::StringAttr operand_segment_sizesAttrName() {
+  ::mlir::StringAttr seqAttrName() {
     return getAttributeNameForIndex(6);
   }
 
-  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr seqAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 6);
   }
 
@@ -773,7 +778,7 @@ class ParallelOpAdaptor {
 public:
   ParallelOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  ParallelOpAdaptor(ParallelOp &op);
+  ParallelOpAdaptor(ParallelOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -817,15 +822,16 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class ParallelOp : public ::mlir::Op<ParallelOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants> {
+class ParallelOp : public ::mlir::Op<ParallelOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = ParallelOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("asyncAttr"), ::llvm::StringRef("waitAttr"), ::llvm::StringRef("selfAttr"), ::llvm::StringRef("reductionOp"), ::llvm::StringRef("defaultAttr"), ::llvm::StringRef("operand_segment_sizes")};
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("asyncAttr"), ::llvm::StringRef("defaultAttr"), ::llvm::StringRef("operand_segment_sizes"), ::llvm::StringRef("reductionOp"), ::llvm::StringRef("selfAttr"), ::llvm::StringRef("waitAttr")};
     return ::llvm::makeArrayRef(attrNames);
   }
 
@@ -837,19 +843,19 @@ public:
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr waitAttrAttrName() {
+  ::mlir::StringAttr defaultAttrAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr waitAttrAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr defaultAttrAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
   }
 
-  ::mlir::StringAttr selfAttrAttrName() {
+  ::mlir::StringAttr operand_segment_sizesAttrName() {
     return getAttributeNameForIndex(2);
   }
 
-  static ::mlir::StringAttr selfAttrAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 2);
   }
 
@@ -861,19 +867,19 @@ public:
     return getAttributeNameForIndex(name, 3);
   }
 
-  ::mlir::StringAttr defaultAttrAttrName() {
+  ::mlir::StringAttr selfAttrAttrName() {
     return getAttributeNameForIndex(4);
   }
 
-  static ::mlir::StringAttr defaultAttrAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr selfAttrAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 4);
   }
 
-  ::mlir::StringAttr operand_segment_sizesAttrName() {
+  ::mlir::StringAttr waitAttrAttrName() {
     return getAttributeNameForIndex(5);
   }
 
-  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr waitAttrAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 5);
   }
 
@@ -1014,7 +1020,7 @@ class ShutdownOpAdaptor {
 public:
   ShutdownOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  ShutdownOpAdaptor(ShutdownOp &op);
+  ShutdownOpAdaptor(ShutdownOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -1028,8 +1034,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class ShutdownOp : public ::mlir::Op<ShutdownOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants> {
+class ShutdownOp : public ::mlir::Op<ShutdownOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants> {
 public:
   using Op::Op;
   using Op::print;
@@ -1097,7 +1104,7 @@ class TerminatorOpAdaptor {
 public:
   TerminatorOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  TerminatorOpAdaptor(TerminatorOp &op);
+  TerminatorOpAdaptor(TerminatorOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -1108,8 +1115,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class TerminatorOp : public ::mlir::Op<TerminatorOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsTerminator> {
+class TerminatorOp : public ::mlir::Op<TerminatorOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsTerminator> {
 public:
   using Op::Op;
   using Op::print;
@@ -1151,7 +1159,7 @@ class UpdateOpAdaptor {
 public:
   UpdateOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  UpdateOpAdaptor(UpdateOp &op);
+  UpdateOpAdaptor(UpdateOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -1175,15 +1183,16 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class UpdateOp : public ::mlir::Op<UpdateOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants> {
+class UpdateOp : public ::mlir::Op<UpdateOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = UpdateOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("async"), ::llvm::StringRef("wait"), ::llvm::StringRef("ifPresent"), ::llvm::StringRef("operand_segment_sizes")};
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("async"), ::llvm::StringRef("ifPresent"), ::llvm::StringRef("operand_segment_sizes"), ::llvm::StringRef("wait")};
     return ::llvm::makeArrayRef(attrNames);
   }
 
@@ -1195,27 +1204,27 @@ public:
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr waitAttrName() {
+  ::mlir::StringAttr ifPresentAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr waitAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr ifPresentAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
   }
 
-  ::mlir::StringAttr ifPresentAttrName() {
+  ::mlir::StringAttr operand_segment_sizesAttrName() {
     return getAttributeNameForIndex(2);
   }
 
-  static ::mlir::StringAttr ifPresentAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 2);
   }
 
-  ::mlir::StringAttr operand_segment_sizesAttrName() {
+  ::mlir::StringAttr waitAttrName() {
     return getAttributeNameForIndex(3);
   }
 
-  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr waitAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 3);
   }
 
@@ -1296,7 +1305,7 @@ class WaitOpAdaptor {
 public:
   WaitOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  WaitOpAdaptor(WaitOp &op);
+  WaitOpAdaptor(WaitOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -1313,8 +1322,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class WaitOp : public ::mlir::Op<WaitOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants> {
+class WaitOp : public ::mlir::Op<WaitOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants> {
 public:
   using Op::Op;
   using Op::print;
@@ -1398,7 +1408,7 @@ class YieldOpAdaptor {
 public:
   YieldOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  YieldOpAdaptor(YieldOp &op);
+  YieldOpAdaptor(YieldOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -1410,8 +1420,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class YieldOp : public ::mlir::Op<YieldOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::HasParent<ParallelOp, LoopOp>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsTerminator> {
+class YieldOp : public ::mlir::Op<YieldOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::HasParent<ParallelOp, LoopOp>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsTerminator> {
 public:
   using Op::Op;
   using Op::print;

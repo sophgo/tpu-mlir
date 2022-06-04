@@ -52,6 +52,7 @@ class MCSectionCOFF;
 class MCSectionELF;
 class MCSectionGOFF;
 class MCSectionMachO;
+class MCSectionSPIRV;
 class MCSectionWasm;
 class MCSectionXCOFF;
 class MCStreamer;
@@ -81,6 +82,7 @@ public:
     IsELF,
     IsGOFF,
     IsCOFF,
+    IsSPIRV,
     IsWasm,
     IsXCOFF,
     IsDXContainer
@@ -129,6 +131,7 @@ private:
   SpecificBumpPtrAllocator<MCSectionELF> ELFAllocator;
   SpecificBumpPtrAllocator<MCSectionMachO> MachOAllocator;
   SpecificBumpPtrAllocator<MCSectionGOFF> GOFFAllocator;
+  SpecificBumpPtrAllocator<MCSectionSPIRV> SPIRVAllocator;
   SpecificBumpPtrAllocator<MCSectionWasm> WasmAllocator;
   SpecificBumpPtrAllocator<MCSectionXCOFF> XCOFFAllocator;
   SpecificBumpPtrAllocator<MCInst> MCInstAllocator;
@@ -610,7 +613,8 @@ public:
                                               unsigned Flags,
                                               unsigned EntrySize);
 
-  MCSectionGOFF *getGOFFSection(StringRef Section, SectionKind Kind);
+  MCSectionGOFF *getGOFFSection(StringRef Section, SectionKind Kind,
+                                MCSection *Parent, const MCExpr *SubsectionId);
 
   MCSectionCOFF *getCOFFSection(StringRef Section, unsigned Characteristics,
                                 SectionKind Kind, StringRef COMDATSymName,
@@ -629,6 +633,8 @@ public:
   MCSectionCOFF *
   getAssociativeCOFFSection(MCSectionCOFF *Sec, const MCSymbol *KeySym,
                             unsigned UniqueID = GenericSectionID);
+
+  MCSectionSPIRV *getSPIRVSection();
 
   MCSectionWasm *getWasmSection(const Twine &Section, SectionKind K,
                                 unsigned Flags = 0) {

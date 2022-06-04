@@ -22,6 +22,7 @@
 #include <numeric>
 
 using namespace mlir;
+using namespace mlir::func;
 using namespace tpu_mlir::helper;
 
 namespace tpu_mlir {
@@ -88,7 +89,7 @@ void ModuleInterpreter::allocate_resources() {
         auto param = std::make_shared<InferenceParameter>();
         param->outputs.push_back(mem_map[name]->data());
         for (auto input : op->getOperands()) {
-          if (input.getType().isa<mlir::NoneType>()) {
+          if (input.getType().isa<NoneType>()) {
             param->inputs.push_back(nullptr);
             continue;
           }
@@ -112,7 +113,7 @@ void ModuleInterpreter::allocate_resources() {
 }
 
 void ModuleInterpreter::invoke(bool express_type) {
-  for (auto func : module.getOps<mlir::FuncOp>()) {
+  for (auto func : module.getOps<FuncOp>()) {
     func.walk([&](InferenceInterface infer_op) {
       auto name = infer_op->getAttrOfType<StringAttr>("name").str();
       if (failed(infer_op.inference(*inference_map[name]))) {

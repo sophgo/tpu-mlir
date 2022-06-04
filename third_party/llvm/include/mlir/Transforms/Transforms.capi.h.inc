@@ -67,6 +67,11 @@ MLIR_CAPI_EXPORTED void mlirRegisterTransformsSymbolPrivatize();
 
 
 /* Create Transforms Pass. */
+MLIR_CAPI_EXPORTED MlirPass mlirCreateTransformsTopologicalSort();
+MLIR_CAPI_EXPORTED void mlirRegisterTransformsTopologicalSort();
+
+
+/* Create Transforms Pass. */
 MLIR_CAPI_EXPORTED MlirPass mlirCreateTransformsViewOpGraph();
 MLIR_CAPI_EXPORTED void mlirRegisterTransformsViewOpGraph();
 

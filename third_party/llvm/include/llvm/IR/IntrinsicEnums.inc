@@ -172,6 +172,7 @@
     invariant_end,                             // llvm.invariant.end
     invariant_start,                           // llvm.invariant.start
     is_constant,                               // llvm.is.constant
+    is_fpclass,                                // llvm.is.fpclass
     launder_invariant_group,                   // llvm.launder.invariant.group
     lifetime_end,                              // llvm.lifetime.end
     lifetime_start,                            // llvm.lifetime.start
@@ -388,4 +389,4 @@
     write_register,                            // llvm.write_register
     xray_customevent,                          // llvm.xray.customevent
     xray_typedevent,                           // llvm.xray.typedevent
-    num_intrinsics = 10934
+    num_intrinsics = 10960

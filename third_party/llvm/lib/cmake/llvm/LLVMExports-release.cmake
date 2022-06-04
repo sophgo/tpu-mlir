@@ -64,6 +64,16 @@ set_target_properties(LLVMCore PROPERTIES
 list(APPEND _IMPORT_CHECK_TARGETS LLVMCore )
 list(APPEND _IMPORT_CHECK_FILES_FOR_LLVMCore "${_IMPORT_PREFIX}/lib/libLLVMCore.a" )
 
+# Import target "LLVMFuzzerCLI" for configuration "Release"
+set_property(TARGET LLVMFuzzerCLI APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+set_target_properties(LLVMFuzzerCLI PROPERTIES
+  IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "CXX"
+  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libLLVMFuzzerCLI.a"
+  )
+
+list(APPEND _IMPORT_CHECK_TARGETS LLVMFuzzerCLI )
+list(APPEND _IMPORT_CHECK_FILES_FOR_LLVMFuzzerCLI "${_IMPORT_PREFIX}/lib/libLLVMFuzzerCLI.a" )
+
 # Import target "LLVMFuzzMutate" for configuration "Release"
 set_property(TARGET LLVMFuzzMutate APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(LLVMFuzzMutate PROPERTIES
@@ -886,15 +896,6 @@ set_target_properties(mlir-opt PROPERTIES
 list(APPEND _IMPORT_CHECK_TARGETS mlir-opt )
 list(APPEND _IMPORT_CHECK_FILES_FOR_mlir-opt "${_IMPORT_PREFIX}/bin/mlir-opt" )
 
-# Import target "mlir-pdll" for configuration "Release"
-set_property(TARGET mlir-pdll APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
-set_target_properties(mlir-pdll PROPERTIES
-  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/bin/mlir-pdll"
-  )
-
-list(APPEND _IMPORT_CHECK_TARGETS mlir-pdll )
-list(APPEND _IMPORT_CHECK_FILES_FOR_mlir-pdll "${_IMPORT_PREFIX}/bin/mlir-pdll" )
-
 # Import target "mlir-pdll-lsp-server" for configuration "Release"
 set_property(TARGET mlir-pdll-lsp-server APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(mlir-pdll-lsp-server PROPERTIES
@@ -921,6 +922,15 @@ set_target_properties(mlir-translate PROPERTIES
 
 list(APPEND _IMPORT_CHECK_TARGETS mlir-translate )
 list(APPEND _IMPORT_CHECK_FILES_FOR_mlir-translate "${_IMPORT_PREFIX}/bin/mlir-translate" )
+
+# Import target "tblgen-lsp-server" for configuration "Release"
+set_property(TARGET tblgen-lsp-server APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+set_target_properties(tblgen-lsp-server PROPERTIES
+  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/bin/tblgen-lsp-server"
+  )
+
+list(APPEND _IMPORT_CHECK_TARGETS tblgen-lsp-server )
+list(APPEND _IMPORT_CHECK_FILES_FOR_tblgen-lsp-server "${_IMPORT_PREFIX}/bin/tblgen-lsp-server" )
 
 # Import target "mlir-cpu-runner" for configuration "Release"
 set_property(TARGET mlir-cpu-runner APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)

@@ -206,7 +206,7 @@ class AllocOp(_ods_ir.OpView):
 
   _ODS_REGIONS = (0, True)
 
-  def __init__(self, memref, dynamicSizes, symbolOperands, alignment, *, loc=None, ip=None):
+  def __init__(self, memref, dynamicSizes, symbolOperands, *, alignment=None, loc=None, ip=None):
     operands = []
     results = []
     attributes = {}
@@ -264,7 +264,7 @@ class AllocaOp(_ods_ir.OpView):
 
   _ODS_REGIONS = (0, True)
 
-  def __init__(self, memref, dynamicSizes, symbolOperands, alignment, *, loc=None, ip=None):
+  def __init__(self, memref, dynamicSizes, symbolOperands, *, alignment=None, loc=None, ip=None):
     operands = []
     results = []
     attributes = {}
@@ -587,7 +587,7 @@ class GlobalOp(_ods_ir.OpView):
 
   _ODS_REGIONS = (0, True)
 
-  def __init__(self, sym_name, sym_visibility, type, initial_value, constant, alignment, *, loc=None, ip=None):
+  def __init__(self, sym_name, type, *, sym_visibility=None, initial_value=None, constant=None, alignment=None, loc=None, ip=None):
     operands = []
     results = []
     attributes = {}

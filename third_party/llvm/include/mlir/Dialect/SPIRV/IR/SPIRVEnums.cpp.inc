@@ -1779,12 +1779,22 @@ std::string stringifyFunctionControl(FunctionControl symbol) {
   if (val == 0) return "None";
 
   ::llvm::SmallVector<::llvm::StringRef, 2> strs;
-  if (1u == (1u & val)) { strs.push_back("Inline"); }
-   if (2u == (2u & val)) { strs.push_back("DontInline"); }
-   if (4u == (4u & val)) { strs.push_back("Pure"); }
-   if (8u == (8u & val)) { strs.push_back("Const"); }
-   if (65536u == (65536u & val)) { strs.push_back("OptNoneINTEL"); }
-   return ::llvm::join(strs, "|");
+
+  if (1u == (1u & val))
+    strs.push_back("Inline");
+
+  if (2u == (2u & val))
+    strs.push_back("DontInline");
+
+  if (4u == (4u & val))
+    strs.push_back("Pure");
+
+  if (8u == (8u & val))
+    strs.push_back("Const");
+
+  if (65536u == (65536u & val))
+    strs.push_back("OptNoneINTEL");
+  return ::llvm::join(strs, "|");
 }
 
 ::llvm::Optional<FunctionControl> symbolizeFunctionControl(::llvm::StringRef str) {
@@ -1796,7 +1806,7 @@ std::string stringifyFunctionControl(FunctionControl symbol) {
 
   uint32_t val = 0;
   for (auto symbol : symbols) {
-    auto bit = llvm::StringSwitch<::llvm::Optional<uint32_t>>(symbol)
+    auto bit = llvm::StringSwitch<::llvm::Optional<uint32_t>>(symbol.trim())
       .Case("Inline", 1)
       .Case("DontInline", 2)
       .Case("Pure", 4)
@@ -1812,7 +1822,7 @@ std::string stringifyFunctionControl(FunctionControl symbol) {
   // Special case for all bits unset.
   if (value == 0) return FunctionControl::None;
 
-  if (value & ~(1u | 2u | 4u | 8u | 65536u)) return llvm::None;
+  if (value & ~static_cast<uint32_t>(1u | 2u | 4u | 8u | 65536u)) return llvm::None;
   return static_cast<FunctionControl>(value);
 }
 bool FunctionControlAttr::classof(::mlir::Attribute attr) {
@@ -2049,22 +2059,52 @@ std::string stringifyImageOperands(ImageOperands symbol) {
   if (val == 0) return "None";
 
   ::llvm::SmallVector<::llvm::StringRef, 2> strs;
-  if (1u == (1u & val)) { strs.push_back("Bias"); }
-   if (2u == (2u & val)) { strs.push_back("Lod"); }
-   if (4u == (4u & val)) { strs.push_back("Grad"); }
-   if (8u == (8u & val)) { strs.push_back("ConstOffset"); }
-   if (16u == (16u & val)) { strs.push_back("Offset"); }
-   if (32u == (32u & val)) { strs.push_back("ConstOffsets"); }
-   if (64u == (64u & val)) { strs.push_back("Sample"); }
-   if (128u == (128u & val)) { strs.push_back("MinLod"); }
-   if (256u == (256u & val)) { strs.push_back("MakeTexelAvailable"); }
-   if (512u == (512u & val)) { strs.push_back("MakeTexelVisible"); }
-   if (1024u == (1024u & val)) { strs.push_back("NonPrivateTexel"); }
-   if (2048u == (2048u & val)) { strs.push_back("VolatileTexel"); }
-   if (4096u == (4096u & val)) { strs.push_back("SignExtend"); }
-   if (65536u == (65536u & val)) { strs.push_back("Offsets"); }
-   if (8192u == (8192u & val)) { strs.push_back("ZeroExtend"); }
-   return ::llvm::join(strs, "|");
+
+  if (1u == (1u & val))
+    strs.push_back("Bias");
+
+  if (2u == (2u & val))
+    strs.push_back("Lod");
+
+  if (4u == (4u & val))
+    strs.push_back("Grad");
+
+  if (8u == (8u & val))
+    strs.push_back("ConstOffset");
+
+  if (16u == (16u & val))
+    strs.push_back("Offset");
+
+  if (32u == (32u & val))
+    strs.push_back("ConstOffsets");
+
+  if (64u == (64u & val))
+    strs.push_back("Sample");
+
+  if (128u == (128u & val))
+    strs.push_back("MinLod");
+
+  if (256u == (256u & val))
+    strs.push_back("MakeTexelAvailable");
+
+  if (512u == (512u & val))
+    strs.push_back("MakeTexelVisible");
+
+  if (1024u == (1024u & val))
+    strs.push_back("NonPrivateTexel");
+
+  if (2048u == (2048u & val))
+    strs.push_back("VolatileTexel");
+
+  if (4096u == (4096u & val))
+    strs.push_back("SignExtend");
+
+  if (65536u == (65536u & val))
+    strs.push_back("Offsets");
+
+  if (8192u == (8192u & val))
+    strs.push_back("ZeroExtend");
+  return ::llvm::join(strs, "|");
 }
 
 ::llvm::Optional<ImageOperands> symbolizeImageOperands(::llvm::StringRef str) {
@@ -2076,7 +2116,7 @@ std::string stringifyImageOperands(ImageOperands symbol) {
 
   uint32_t val = 0;
   for (auto symbol : symbols) {
-    auto bit = llvm::StringSwitch<::llvm::Optional<uint32_t>>(symbol)
+    auto bit = llvm::StringSwitch<::llvm::Optional<uint32_t>>(symbol.trim())
       .Case("Bias", 1)
       .Case("Lod", 2)
       .Case("Grad", 4)
@@ -2102,7 +2142,7 @@ std::string stringifyImageOperands(ImageOperands symbol) {
   // Special case for all bits unset.
   if (value == 0) return ImageOperands::None;
 
-  if (value & ~(1u | 2u | 4u | 8u | 16u | 32u | 64u | 128u | 256u | 512u | 1024u | 2048u | 4096u | 65536u | 8192u)) return llvm::None;
+  if (value & ~static_cast<uint32_t>(1u | 2u | 4u | 8u | 16u | 32u | 64u | 128u | 256u | 512u | 1024u | 2048u | 4096u | 65536u | 8192u)) return llvm::None;
   return static_cast<ImageOperands>(value);
 }
 bool ImageOperandsAttr::classof(::mlir::Attribute attr) {
@@ -2169,24 +2209,58 @@ std::string stringifyLoopControl(LoopControl symbol) {
   if (val == 0) return "None";
 
   ::llvm::SmallVector<::llvm::StringRef, 2> strs;
-  if (1u == (1u & val)) { strs.push_back("Unroll"); }
-   if (2u == (2u & val)) { strs.push_back("DontUnroll"); }
-   if (4u == (4u & val)) { strs.push_back("DependencyInfinite"); }
-   if (8u == (8u & val)) { strs.push_back("DependencyLength"); }
-   if (16u == (16u & val)) { strs.push_back("MinIterations"); }
-   if (32u == (32u & val)) { strs.push_back("MaxIterations"); }
-   if (64u == (64u & val)) { strs.push_back("IterationMultiple"); }
-   if (128u == (128u & val)) { strs.push_back("PeelCount"); }
-   if (256u == (256u & val)) { strs.push_back("PartialCount"); }
-   if (65536u == (65536u & val)) { strs.push_back("InitiationIntervalINTEL"); }
-   if (1048576u == (1048576u & val)) { strs.push_back("LoopCoalesceINTEL"); }
-   if (131072u == (131072u & val)) { strs.push_back("MaxConcurrencyINTEL"); }
-   if (2097152u == (2097152u & val)) { strs.push_back("MaxInterleavingINTEL"); }
-   if (262144u == (262144u & val)) { strs.push_back("DependencyArrayINTEL"); }
-   if (4194304u == (4194304u & val)) { strs.push_back("SpeculatedIterationsINTEL"); }
-   if (524288u == (524288u & val)) { strs.push_back("PipelineEnableINTEL"); }
-   if (8388608u == (8388608u & val)) { strs.push_back("NoFusionINTEL"); }
-   return ::llvm::join(strs, "|");
+
+  if (1u == (1u & val))
+    strs.push_back("Unroll");
+
+  if (2u == (2u & val))
+    strs.push_back("DontUnroll");
+
+  if (4u == (4u & val))
+    strs.push_back("DependencyInfinite");
+
+  if (8u == (8u & val))
+    strs.push_back("DependencyLength");
+
+  if (16u == (16u & val))
+    strs.push_back("MinIterations");
+
+  if (32u == (32u & val))
+    strs.push_back("MaxIterations");
+
+  if (64u == (64u & val))
+    strs.push_back("IterationMultiple");
+
+  if (128u == (128u & val))
+    strs.push_back("PeelCount");
+
+  if (256u == (256u & val))
+    strs.push_back("PartialCount");
+
+  if (65536u == (65536u & val))
+    strs.push_back("InitiationIntervalINTEL");
+
+  if (1048576u == (1048576u & val))
+    strs.push_back("LoopCoalesceINTEL");
+
+  if (131072u == (131072u & val))
+    strs.push_back("MaxConcurrencyINTEL");
+
+  if (2097152u == (2097152u & val))
+    strs.push_back("MaxInterleavingINTEL");
+
+  if (262144u == (262144u & val))
+    strs.push_back("DependencyArrayINTEL");
+
+  if (4194304u == (4194304u & val))
+    strs.push_back("SpeculatedIterationsINTEL");
+
+  if (524288u == (524288u & val))
+    strs.push_back("PipelineEnableINTEL");
+
+  if (8388608u == (8388608u & val))
+    strs.push_back("NoFusionINTEL");
+  return ::llvm::join(strs, "|");
 }
 
 ::llvm::Optional<LoopControl> symbolizeLoopControl(::llvm::StringRef str) {
@@ -2198,7 +2272,7 @@ std::string stringifyLoopControl(LoopControl symbol) {
 
   uint32_t val = 0;
   for (auto symbol : symbols) {
-    auto bit = llvm::StringSwitch<::llvm::Optional<uint32_t>>(symbol)
+    auto bit = llvm::StringSwitch<::llvm::Optional<uint32_t>>(symbol.trim())
       .Case("Unroll", 1)
       .Case("DontUnroll", 2)
       .Case("DependencyInfinite", 4)
@@ -2226,7 +2300,7 @@ std::string stringifyLoopControl(LoopControl symbol) {
   // Special case for all bits unset.
   if (value == 0) return LoopControl::None;
 
-  if (value & ~(1u | 2u | 4u | 8u | 16u | 32u | 64u | 128u | 256u | 65536u | 1048576u | 131072u | 2097152u | 262144u | 4194304u | 524288u | 8388608u)) return llvm::None;
+  if (value & ~static_cast<uint32_t>(1u | 2u | 4u | 8u | 16u | 32u | 64u | 128u | 256u | 65536u | 1048576u | 131072u | 2097152u | 262144u | 4194304u | 524288u | 8388608u)) return llvm::None;
   return static_cast<LoopControl>(value);
 }
 bool LoopControlAttr::classof(::mlir::Attribute attr) {
@@ -2252,13 +2326,25 @@ std::string stringifyMemoryAccess(MemoryAccess symbol) {
   if (val == 0) return "None";
 
   ::llvm::SmallVector<::llvm::StringRef, 2> strs;
-  if (1u == (1u & val)) { strs.push_back("Volatile"); }
-   if (2u == (2u & val)) { strs.push_back("Aligned"); }
-   if (4u == (4u & val)) { strs.push_back("Nontemporal"); }
-   if (8u == (8u & val)) { strs.push_back("MakePointerAvailable"); }
-   if (16u == (16u & val)) { strs.push_back("MakePointerVisible"); }
-   if (32u == (32u & val)) { strs.push_back("NonPrivatePointer"); }
-   return ::llvm::join(strs, "|");
+
+  if (1u == (1u & val))
+    strs.push_back("Volatile");
+
+  if (2u == (2u & val))
+    strs.push_back("Aligned");
+
+  if (4u == (4u & val))
+    strs.push_back("Nontemporal");
+
+  if (8u == (8u & val))
+    strs.push_back("MakePointerAvailable");
+
+  if (16u == (16u & val))
+    strs.push_back("MakePointerVisible");
+
+  if (32u == (32u & val))
+    strs.push_back("NonPrivatePointer");
+  return ::llvm::join(strs, "|");
 }
 
 ::llvm::Optional<MemoryAccess> symbolizeMemoryAccess(::llvm::StringRef str) {
@@ -2270,7 +2356,7 @@ std::string stringifyMemoryAccess(MemoryAccess symbol) {
 
   uint32_t val = 0;
   for (auto symbol : symbols) {
-    auto bit = llvm::StringSwitch<::llvm::Optional<uint32_t>>(symbol)
+    auto bit = llvm::StringSwitch<::llvm::Optional<uint32_t>>(symbol.trim())
       .Case("Volatile", 1)
       .Case("Aligned", 2)
       .Case("Nontemporal", 4)
@@ -2287,7 +2373,7 @@ std::string stringifyMemoryAccess(MemoryAccess symbol) {
   // Special case for all bits unset.
   if (value == 0) return MemoryAccess::None;
 
-  if (value & ~(1u | 2u | 4u | 8u | 16u | 32u)) return llvm::None;
+  if (value & ~static_cast<uint32_t>(1u | 2u | 4u | 8u | 16u | 32u)) return llvm::None;
   return static_cast<MemoryAccess>(value);
 }
 bool MemoryAccessAttr::classof(::mlir::Attribute attr) {
@@ -2357,21 +2443,49 @@ std::string stringifyMemorySemantics(MemorySemantics symbol) {
   if (val == 0) return "None";
 
   ::llvm::SmallVector<::llvm::StringRef, 2> strs;
-  if (2u == (2u & val)) { strs.push_back("Acquire"); }
-   if (4u == (4u & val)) { strs.push_back("Release"); }
-   if (8u == (8u & val)) { strs.push_back("AcquireRelease"); }
-   if (16u == (16u & val)) { strs.push_back("SequentiallyConsistent"); }
-   if (64u == (64u & val)) { strs.push_back("UniformMemory"); }
-   if (128u == (128u & val)) { strs.push_back("SubgroupMemory"); }
-   if (256u == (256u & val)) { strs.push_back("WorkgroupMemory"); }
-   if (512u == (512u & val)) { strs.push_back("CrossWorkgroupMemory"); }
-   if (1024u == (1024u & val)) { strs.push_back("AtomicCounterMemory"); }
-   if (2048u == (2048u & val)) { strs.push_back("ImageMemory"); }
-   if (4096u == (4096u & val)) { strs.push_back("OutputMemory"); }
-   if (8192u == (8192u & val)) { strs.push_back("MakeAvailable"); }
-   if (16384u == (16384u & val)) { strs.push_back("MakeVisible"); }
-   if (32768u == (32768u & val)) { strs.push_back("Volatile"); }
-   return ::llvm::join(strs, "|");
+
+  if (2u == (2u & val))
+    strs.push_back("Acquire");
+
+  if (4u == (4u & val))
+    strs.push_back("Release");
+
+  if (8u == (8u & val))
+    strs.push_back("AcquireRelease");
+
+  if (16u == (16u & val))
+    strs.push_back("SequentiallyConsistent");
+
+  if (64u == (64u & val))
+    strs.push_back("UniformMemory");
+
+  if (128u == (128u & val))
+    strs.push_back("SubgroupMemory");
+
+  if (256u == (256u & val))
+    strs.push_back("WorkgroupMemory");
+
+  if (512u == (512u & val))
+    strs.push_back("CrossWorkgroupMemory");
+
+  if (1024u == (1024u & val))
+    strs.push_back("AtomicCounterMemory");
+
+  if (2048u == (2048u & val))
+    strs.push_back("ImageMemory");
+
+  if (4096u == (4096u & val))
+    strs.push_back("OutputMemory");
+
+  if (8192u == (8192u & val))
+    strs.push_back("MakeAvailable");
+
+  if (16384u == (16384u & val))
+    strs.push_back("MakeVisible");
+
+  if (32768u == (32768u & val))
+    strs.push_back("Volatile");
+  return ::llvm::join(strs, "|");
 }
 
 ::llvm::Optional<MemorySemantics> symbolizeMemorySemantics(::llvm::StringRef str) {
@@ -2383,7 +2497,7 @@ std::string stringifyMemorySemantics(MemorySemantics symbol) {
 
   uint32_t val = 0;
   for (auto symbol : symbols) {
-    auto bit = llvm::StringSwitch<::llvm::Optional<uint32_t>>(symbol)
+    auto bit = llvm::StringSwitch<::llvm::Optional<uint32_t>>(symbol.trim())
       .Case("Acquire", 2)
       .Case("Release", 4)
       .Case("AcquireRelease", 8)
@@ -2408,7 +2522,7 @@ std::string stringifyMemorySemantics(MemorySemantics symbol) {
   // Special case for all bits unset.
   if (value == 0) return MemorySemantics::None;
 
-  if (value & ~(2u | 4u | 8u | 16u | 64u | 128u | 256u | 512u | 1024u | 2048u | 4096u | 8192u | 16384u | 32768u)) return llvm::None;
+  if (value & ~static_cast<uint32_t>(2u | 4u | 8u | 16u | 64u | 128u | 256u | 512u | 1024u | 2048u | 4096u | 8192u | 16384u | 32768u)) return llvm::None;
   return static_cast<MemorySemantics>(value);
 }
 bool MemorySemanticsAttr::classof(::mlir::Attribute attr) {
@@ -3153,9 +3267,13 @@ std::string stringifySelectionControl(SelectionControl symbol) {
   if (val == 0) return "None";
 
   ::llvm::SmallVector<::llvm::StringRef, 2> strs;
-  if (1u == (1u & val)) { strs.push_back("Flatten"); }
-   if (2u == (2u & val)) { strs.push_back("DontFlatten"); }
-   return ::llvm::join(strs, "|");
+
+  if (1u == (1u & val))
+    strs.push_back("Flatten");
+
+  if (2u == (2u & val))
+    strs.push_back("DontFlatten");
+  return ::llvm::join(strs, "|");
 }
 
 ::llvm::Optional<SelectionControl> symbolizeSelectionControl(::llvm::StringRef str) {
@@ -3167,7 +3285,7 @@ std::string stringifySelectionControl(SelectionControl symbol) {
 
   uint32_t val = 0;
   for (auto symbol : symbols) {
-    auto bit = llvm::StringSwitch<::llvm::Optional<uint32_t>>(symbol)
+    auto bit = llvm::StringSwitch<::llvm::Optional<uint32_t>>(symbol.trim())
       .Case("Flatten", 1)
       .Case("DontFlatten", 2)
       .Default(::llvm::None);
@@ -3180,7 +3298,7 @@ std::string stringifySelectionControl(SelectionControl symbol) {
   // Special case for all bits unset.
   if (value == 0) return SelectionControl::None;
 
-  if (value & ~(1u | 2u)) return llvm::None;
+  if (value & ~static_cast<uint32_t>(1u | 2u)) return llvm::None;
   return static_cast<SelectionControl>(value);
 }
 bool SelectionControlAttr::classof(::mlir::Attribute attr) {

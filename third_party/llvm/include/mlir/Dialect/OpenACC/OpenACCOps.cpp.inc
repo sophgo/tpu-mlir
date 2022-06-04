@@ -128,9 +128,11 @@ namespace acc {
 // ::mlir::acc::DataOp definitions
 //===----------------------------------------------------------------------===//
 
-DataOpAdaptor::DataOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+DataOpAdaptor::DataOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("acc.data", odsAttrs.getContext());
+}
 
-DataOpAdaptor::DataOpAdaptor(DataOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+DataOpAdaptor::DataOpAdaptor(DataOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange DataOpAdaptor::getOperands() {
   return odsOperands;
@@ -138,7 +140,7 @@ DataOpAdaptor::DataOpAdaptor(DataOp &op) : odsOperands(op->getOperands()), odsAt
 
 std::pair<unsigned, unsigned> DataOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = odsAttrs.get("operand_segment_sizes").cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, DataOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -211,8 +213,8 @@ std::pair<unsigned, unsigned> DataOpAdaptor::getODSOperandIndexAndLength(unsigne
 
 ::mlir::acc::ClauseDefaultValueAttr DataOpAdaptor::defaultAttrAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::acc::ClauseDefaultValueAttr attr = odsAttrs.get("defaultAttr").dyn_cast_or_null<::mlir::acc::ClauseDefaultValueAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, DataOp::defaultAttrAttrName(*odsOpName)).dyn_cast_or_null<::mlir::acc::ClauseDefaultValueAttr>();
+    return attr;
 }
 
 ::llvm::Optional<::mlir::acc::ClauseDefaultValue> DataOpAdaptor::defaultAttr() {
@@ -229,27 +231,39 @@ std::pair<unsigned, unsigned> DataOpAdaptor::getODSOperandIndexAndLength(unsigne
 }
 
 ::mlir::LogicalResult DataOpAdaptor::verify(::mlir::Location loc) {
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  ::mlir::Attribute tblgen_defaultAttr;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'acc.data' op ""requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == DataOp::operand_segment_sizesAttrName(*odsOpName)) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == DataOp::defaultAttrAttrName(*odsOpName)) {
+      tblgen_defaultAttr = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = odsAttrs.get("operand_segment_sizes").dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitError(loc, "'acc.data' op ""missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 12)
       return emitError(loc, "'acc.data' op ""'operand_segment_sizes' attribute for specifying operand segments must have 12 "
                 "elements, but got ") << numElements;
   }
-    {
-    auto tblgen_defaultAttr = odsAttrs.get("defaultAttr");
-    if (tblgen_defaultAttr && !((tblgen_defaultAttr.isa<::mlir::acc::ClauseDefaultValueAttr>())))
-      return emitError(loc, "'acc.data' op ""attribute 'defaultAttr' failed to satisfy constraint: DefaultValue Clause");
-  }
+
+  if (tblgen_defaultAttr && !((tblgen_defaultAttr.isa<::mlir::acc::ClauseDefaultValueAttr>())))
+    return emitError(loc, "'acc.data' op ""attribute 'defaultAttr' failed to satisfy constraint: DefaultValue Clause");
   return ::mlir::success();
 }
 
 std::pair<unsigned, unsigned> DataOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr =
-      (*this)->getAttr(operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -318,73 +332,73 @@ std::pair<unsigned, unsigned> DataOp::getODSOperandIndexAndLength(unsigned index
 
 ::mlir::MutableOperandRange DataOp::ifCondMutable() {
   auto range = getODSOperandIndexAndLength(0);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange DataOp::copyOperandsMutable() {
   auto range = getODSOperandIndexAndLength(1);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange DataOp::copyinOperandsMutable() {
   auto range = getODSOperandIndexAndLength(2);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange DataOp::copyinReadonlyOperandsMutable() {
   auto range = getODSOperandIndexAndLength(3);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(3u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(3u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange DataOp::copyoutOperandsMutable() {
   auto range = getODSOperandIndexAndLength(4);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(4u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(4u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange DataOp::copyoutZeroOperandsMutable() {
   auto range = getODSOperandIndexAndLength(5);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(5u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(5u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange DataOp::createOperandsMutable() {
   auto range = getODSOperandIndexAndLength(6);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(6u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(6u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange DataOp::createZeroOperandsMutable() {
   auto range = getODSOperandIndexAndLength(7);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(7u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(7u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange DataOp::noCreateOperandsMutable() {
   auto range = getODSOperandIndexAndLength(8);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(8u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(8u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange DataOp::presentOperandsMutable() {
   auto range = getODSOperandIndexAndLength(9);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(9u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(9u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange DataOp::deviceptrOperandsMutable() {
   auto range = getODSOperandIndexAndLength(10);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(10u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(10u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange DataOp::attachOperandsMutable() {
   auto range = getODSOperandIndexAndLength(11);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(11u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(11u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
@@ -403,7 +417,7 @@ std::pair<unsigned, unsigned> DataOp::getODSResultIndexAndLength(unsigned index)
 }
 
 ::mlir::acc::ClauseDefaultValueAttr DataOp::defaultAttrAttr() {
-  return (*this)->getAttr(defaultAttrAttrName()).dyn_cast_or_null<::mlir::acc::ClauseDefaultValueAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, defaultAttrAttrName()).dyn_cast_or_null<::mlir::acc::ClauseDefaultValueAttr>();
 }
 
 ::llvm::Optional<::mlir::acc::ClauseDefaultValue> DataOp::defaultAttr() {
@@ -473,21 +487,34 @@ void DataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 }
 
 ::mlir::LogicalResult DataOp::verifyInvariantsImpl() {
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  ::mlir::Attribute tblgen_defaultAttr;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == operand_segment_sizesAttrName()) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == defaultAttrAttrName()) {
+      tblgen_defaultAttr = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = (*this)->getAttr(operand_segment_sizesAttrName()).dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitOpError("missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 12)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 12 "
                 "elements, but got ") << numElements;
   }
-    {
-    auto tblgen_defaultAttr = (*this)->getAttr(defaultAttrAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps0(*this, tblgen_defaultAttr, "defaultAttr")))
-      return ::mlir::failure();
-  }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps0(*this, tblgen_defaultAttr, "defaultAttr")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -585,53 +612,53 @@ void DataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 }
 
 ::mlir::ParseResult DataOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> ifCondOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> ifCondOperands;
   ::llvm::SMLoc ifCondOperandsLoc;
   (void)ifCondOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> copyOperandsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> copyOperandsOperands;
   ::llvm::SMLoc copyOperandsOperandsLoc;
   (void)copyOperandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> copyOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> copyinOperandsOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> copyOperandsTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> copyinOperandsOperands;
   ::llvm::SMLoc copyinOperandsOperandsLoc;
   (void)copyinOperandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> copyinOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> copyinReadonlyOperandsOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> copyinOperandsTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> copyinReadonlyOperandsOperands;
   ::llvm::SMLoc copyinReadonlyOperandsOperandsLoc;
   (void)copyinReadonlyOperandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> copyinReadonlyOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> copyoutOperandsOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> copyinReadonlyOperandsTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> copyoutOperandsOperands;
   ::llvm::SMLoc copyoutOperandsOperandsLoc;
   (void)copyoutOperandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> copyoutOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> copyoutZeroOperandsOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> copyoutOperandsTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> copyoutZeroOperandsOperands;
   ::llvm::SMLoc copyoutZeroOperandsOperandsLoc;
   (void)copyoutZeroOperandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> copyoutZeroOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> createOperandsOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> copyoutZeroOperandsTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> createOperandsOperands;
   ::llvm::SMLoc createOperandsOperandsLoc;
   (void)createOperandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> createOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> createZeroOperandsOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> createOperandsTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> createZeroOperandsOperands;
   ::llvm::SMLoc createZeroOperandsOperandsLoc;
   (void)createZeroOperandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> createZeroOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> noCreateOperandsOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> createZeroOperandsTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> noCreateOperandsOperands;
   ::llvm::SMLoc noCreateOperandsOperandsLoc;
   (void)noCreateOperandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> noCreateOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> presentOperandsOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> noCreateOperandsTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> presentOperandsOperands;
   ::llvm::SMLoc presentOperandsOperandsLoc;
   (void)presentOperandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> presentOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> deviceptrOperandsOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> presentOperandsTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> deviceptrOperandsOperands;
   ::llvm::SMLoc deviceptrOperandsOperandsLoc;
   (void)deviceptrOperandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> deviceptrOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> attachOperandsOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> deviceptrOperandsTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> attachOperandsOperands;
   ::llvm::SMLoc attachOperandsOperandsLoc;
   (void)attachOperandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> attachOperandsTypes;
+  ::llvm::SmallVector<::mlir::Type, 1> attachOperandsTypes;
   std::unique_ptr<::mlir::Region> regionRegion = std::make_unique<::mlir::Region>();
   if (succeeded(parser.parseOptionalKeyword("if"))) {
   if (parser.parseLParen())
@@ -974,9 +1001,11 @@ namespace acc {
 // ::mlir::acc::EnterDataOp definitions
 //===----------------------------------------------------------------------===//
 
-EnterDataOpAdaptor::EnterDataOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+EnterDataOpAdaptor::EnterDataOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("acc.enter_data", odsAttrs.getContext());
+}
 
-EnterDataOpAdaptor::EnterDataOpAdaptor(EnterDataOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+EnterDataOpAdaptor::EnterDataOpAdaptor(EnterDataOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange EnterDataOpAdaptor::getOperands() {
   return odsOperands;
@@ -984,7 +1013,7 @@ EnterDataOpAdaptor::EnterDataOpAdaptor(EnterDataOp &op) : odsOperands(op->getOpe
 
 std::pair<unsigned, unsigned> EnterDataOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = odsAttrs.get("operand_segment_sizes").cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, EnterDataOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -1043,8 +1072,8 @@ std::pair<unsigned, unsigned> EnterDataOpAdaptor::getODSOperandIndexAndLength(un
 
 ::mlir::UnitAttr EnterDataOpAdaptor::asyncAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::UnitAttr attr = odsAttrs.get("async").dyn_cast_or_null<::mlir::UnitAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, EnterDataOp::asyncAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
+    return attr;
 }
 
 bool EnterDataOpAdaptor::async() {
@@ -1054,8 +1083,8 @@ bool EnterDataOpAdaptor::async() {
 
 ::mlir::UnitAttr EnterDataOpAdaptor::waitAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::UnitAttr attr = odsAttrs.get("wait").dyn_cast_or_null<::mlir::UnitAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, EnterDataOp::waitAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
+    return attr;
 }
 
 bool EnterDataOpAdaptor::wait() {
@@ -1064,32 +1093,52 @@ bool EnterDataOpAdaptor::wait() {
 }
 
 ::mlir::LogicalResult EnterDataOpAdaptor::verify(::mlir::Location loc) {
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  ::mlir::Attribute tblgen_async;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'acc.enter_data' op ""requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == EnterDataOp::operand_segment_sizesAttrName(*odsOpName)) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == EnterDataOp::asyncAttrName(*odsOpName)) {
+      tblgen_async = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_wait;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == EnterDataOp::waitAttrName(*odsOpName)) {
+      tblgen_wait = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = odsAttrs.get("operand_segment_sizes").dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitError(loc, "'acc.enter_data' op ""missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 8)
       return emitError(loc, "'acc.enter_data' op ""'operand_segment_sizes' attribute for specifying operand segments must have 8 "
                 "elements, but got ") << numElements;
   }
-    {
-    auto tblgen_async = odsAttrs.get("async");
-    if (tblgen_async && !((tblgen_async.isa<::mlir::UnitAttr>())))
-      return emitError(loc, "'acc.enter_data' op ""attribute 'async' failed to satisfy constraint: unit attribute");
-  }
-  {
-    auto tblgen_wait = odsAttrs.get("wait");
-    if (tblgen_wait && !((tblgen_wait.isa<::mlir::UnitAttr>())))
-      return emitError(loc, "'acc.enter_data' op ""attribute 'wait' failed to satisfy constraint: unit attribute");
-  }
+
+  if (tblgen_async && !((tblgen_async.isa<::mlir::UnitAttr>())))
+    return emitError(loc, "'acc.enter_data' op ""attribute 'async' failed to satisfy constraint: unit attribute");
+
+  if (tblgen_wait && !((tblgen_wait.isa<::mlir::UnitAttr>())))
+    return emitError(loc, "'acc.enter_data' op ""attribute 'wait' failed to satisfy constraint: unit attribute");
   return ::mlir::success();
 }
 
 std::pair<unsigned, unsigned> EnterDataOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr =
-      (*this)->getAttr(operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -1144,49 +1193,49 @@ std::pair<unsigned, unsigned> EnterDataOp::getODSOperandIndexAndLength(unsigned 
 
 ::mlir::MutableOperandRange EnterDataOp::ifCondMutable() {
   auto range = getODSOperandIndexAndLength(0);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange EnterDataOp::asyncOperandMutable() {
   auto range = getODSOperandIndexAndLength(1);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange EnterDataOp::waitDevnumMutable() {
   auto range = getODSOperandIndexAndLength(2);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange EnterDataOp::waitOperandsMutable() {
   auto range = getODSOperandIndexAndLength(3);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(3u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(3u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange EnterDataOp::copyinOperandsMutable() {
   auto range = getODSOperandIndexAndLength(4);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(4u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(4u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange EnterDataOp::createOperandsMutable() {
   auto range = getODSOperandIndexAndLength(5);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(5u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(5u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange EnterDataOp::createZeroOperandsMutable() {
   auto range = getODSOperandIndexAndLength(6);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(6u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(6u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange EnterDataOp::attachOperandsMutable() {
   auto range = getODSOperandIndexAndLength(7);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(7u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(7u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
@@ -1201,7 +1250,7 @@ std::pair<unsigned, unsigned> EnterDataOp::getODSResultIndexAndLength(unsigned i
 }
 
 ::mlir::UnitAttr EnterDataOp::asyncAttr() {
-  return (*this)->getAttr(asyncAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, asyncAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
 }
 
 bool EnterDataOp::async() {
@@ -1210,7 +1259,7 @@ bool EnterDataOp::async() {
 }
 
 ::mlir::UnitAttr EnterDataOp::waitAttr() {
-  return (*this)->getAttr(waitAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, waitAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
 }
 
 bool EnterDataOp::wait() {
@@ -1330,26 +1379,47 @@ void EnterDataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 }
 
 ::mlir::LogicalResult EnterDataOp::verifyInvariantsImpl() {
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  ::mlir::Attribute tblgen_async;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == operand_segment_sizesAttrName()) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == asyncAttrName()) {
+      tblgen_async = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_wait;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == waitAttrName()) {
+      tblgen_wait = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = (*this)->getAttr(operand_segment_sizesAttrName()).dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitOpError("missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 8)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 8 "
                 "elements, but got ") << numElements;
   }
-    {
-    auto tblgen_async = (*this)->getAttr(asyncAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps1(*this, tblgen_async, "async")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_wait = (*this)->getAttr(waitAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps1(*this, tblgen_wait, "wait")))
-      return ::mlir::failure();
-  }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps1(*this, tblgen_async, "async")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps1(*this, tblgen_wait, "wait")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1426,37 +1496,37 @@ void EnterDataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 }
 
 ::mlir::ParseResult EnterDataOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> ifCondOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> ifCondOperands;
   ::llvm::SMLoc ifCondOperandsLoc;
   (void)ifCondOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> asyncOperandOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> asyncOperandOperands;
   ::llvm::SMLoc asyncOperandOperandsLoc;
   (void)asyncOperandOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> asyncOperandTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> waitDevnumOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> asyncOperandTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> waitDevnumOperands;
   ::llvm::SMLoc waitDevnumOperandsLoc;
   (void)waitDevnumOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> waitDevnumTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> waitOperandsOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> waitDevnumTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> waitOperandsOperands;
   ::llvm::SMLoc waitOperandsOperandsLoc;
   (void)waitOperandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> waitOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> copyinOperandsOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> waitOperandsTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> copyinOperandsOperands;
   ::llvm::SMLoc copyinOperandsOperandsLoc;
   (void)copyinOperandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> copyinOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> createOperandsOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> copyinOperandsTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> createOperandsOperands;
   ::llvm::SMLoc createOperandsOperandsLoc;
   (void)createOperandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> createOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> createZeroOperandsOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> createOperandsTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> createZeroOperandsOperands;
   ::llvm::SMLoc createZeroOperandsOperandsLoc;
   (void)createZeroOperandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> createZeroOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> attachOperandsOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> createZeroOperandsTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> attachOperandsOperands;
   ::llvm::SMLoc attachOperandsOperandsLoc;
   (void)attachOperandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> attachOperandsTypes;
+  ::llvm::SmallVector<::mlir::Type, 1> attachOperandsTypes;
   if (succeeded(parser.parseOptionalKeyword("if"))) {
   if (parser.parseLParen())
     return ::mlir::failure();
@@ -1722,9 +1792,11 @@ namespace acc {
 // ::mlir::acc::ExitDataOp definitions
 //===----------------------------------------------------------------------===//
 
-ExitDataOpAdaptor::ExitDataOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ExitDataOpAdaptor::ExitDataOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("acc.exit_data", odsAttrs.getContext());
+}
 
-ExitDataOpAdaptor::ExitDataOpAdaptor(ExitDataOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ExitDataOpAdaptor::ExitDataOpAdaptor(ExitDataOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ExitDataOpAdaptor::getOperands() {
   return odsOperands;
@@ -1732,7 +1804,7 @@ ExitDataOpAdaptor::ExitDataOpAdaptor(ExitDataOp &op) : odsOperands(op->getOperan
 
 std::pair<unsigned, unsigned> ExitDataOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = odsAttrs.get("operand_segment_sizes").cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ExitDataOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -1787,8 +1859,8 @@ std::pair<unsigned, unsigned> ExitDataOpAdaptor::getODSOperandIndexAndLength(uns
 
 ::mlir::UnitAttr ExitDataOpAdaptor::asyncAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::UnitAttr attr = odsAttrs.get("async").dyn_cast_or_null<::mlir::UnitAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, ExitDataOp::asyncAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
+    return attr;
 }
 
 bool ExitDataOpAdaptor::async() {
@@ -1798,8 +1870,8 @@ bool ExitDataOpAdaptor::async() {
 
 ::mlir::UnitAttr ExitDataOpAdaptor::waitAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::UnitAttr attr = odsAttrs.get("wait").dyn_cast_or_null<::mlir::UnitAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, ExitDataOp::waitAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
+    return attr;
 }
 
 bool ExitDataOpAdaptor::wait() {
@@ -1809,8 +1881,8 @@ bool ExitDataOpAdaptor::wait() {
 
 ::mlir::UnitAttr ExitDataOpAdaptor::finalizeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::UnitAttr attr = odsAttrs.get("finalize").dyn_cast_or_null<::mlir::UnitAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, ExitDataOp::finalizeAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
+    return attr;
 }
 
 bool ExitDataOpAdaptor::finalize() {
@@ -1819,37 +1891,59 @@ bool ExitDataOpAdaptor::finalize() {
 }
 
 ::mlir::LogicalResult ExitDataOpAdaptor::verify(::mlir::Location loc) {
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  ::mlir::Attribute tblgen_async;
+  ::mlir::Attribute tblgen_finalize;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'acc.exit_data' op ""requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == ExitDataOp::operand_segment_sizesAttrName(*odsOpName)) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == ExitDataOp::asyncAttrName(*odsOpName)) {
+      tblgen_async = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == ExitDataOp::finalizeAttrName(*odsOpName)) {
+      tblgen_finalize = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_wait;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == ExitDataOp::waitAttrName(*odsOpName)) {
+      tblgen_wait = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = odsAttrs.get("operand_segment_sizes").dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitError(loc, "'acc.exit_data' op ""missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 7)
       return emitError(loc, "'acc.exit_data' op ""'operand_segment_sizes' attribute for specifying operand segments must have 7 "
                 "elements, but got ") << numElements;
   }
-    {
-    auto tblgen_async = odsAttrs.get("async");
-    if (tblgen_async && !((tblgen_async.isa<::mlir::UnitAttr>())))
-      return emitError(loc, "'acc.exit_data' op ""attribute 'async' failed to satisfy constraint: unit attribute");
-  }
-  {
-    auto tblgen_wait = odsAttrs.get("wait");
-    if (tblgen_wait && !((tblgen_wait.isa<::mlir::UnitAttr>())))
-      return emitError(loc, "'acc.exit_data' op ""attribute 'wait' failed to satisfy constraint: unit attribute");
-  }
-  {
-    auto tblgen_finalize = odsAttrs.get("finalize");
-    if (tblgen_finalize && !((tblgen_finalize.isa<::mlir::UnitAttr>())))
-      return emitError(loc, "'acc.exit_data' op ""attribute 'finalize' failed to satisfy constraint: unit attribute");
-  }
+
+  if (tblgen_async && !((tblgen_async.isa<::mlir::UnitAttr>())))
+    return emitError(loc, "'acc.exit_data' op ""attribute 'async' failed to satisfy constraint: unit attribute");
+
+  if (tblgen_wait && !((tblgen_wait.isa<::mlir::UnitAttr>())))
+    return emitError(loc, "'acc.exit_data' op ""attribute 'wait' failed to satisfy constraint: unit attribute");
+
+  if (tblgen_finalize && !((tblgen_finalize.isa<::mlir::UnitAttr>())))
+    return emitError(loc, "'acc.exit_data' op ""attribute 'finalize' failed to satisfy constraint: unit attribute");
   return ::mlir::success();
 }
 
 std::pair<unsigned, unsigned> ExitDataOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr =
-      (*this)->getAttr(operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -1900,43 +1994,43 @@ std::pair<unsigned, unsigned> ExitDataOp::getODSOperandIndexAndLength(unsigned i
 
 ::mlir::MutableOperandRange ExitDataOp::ifCondMutable() {
   auto range = getODSOperandIndexAndLength(0);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ExitDataOp::asyncOperandMutable() {
   auto range = getODSOperandIndexAndLength(1);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ExitDataOp::waitDevnumMutable() {
   auto range = getODSOperandIndexAndLength(2);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ExitDataOp::waitOperandsMutable() {
   auto range = getODSOperandIndexAndLength(3);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(3u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(3u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ExitDataOp::copyoutOperandsMutable() {
   auto range = getODSOperandIndexAndLength(4);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(4u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(4u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ExitDataOp::deleteOperandsMutable() {
   auto range = getODSOperandIndexAndLength(5);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(5u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(5u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ExitDataOp::detachOperandsMutable() {
   auto range = getODSOperandIndexAndLength(6);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(6u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(6u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
@@ -1951,7 +2045,7 @@ std::pair<unsigned, unsigned> ExitDataOp::getODSResultIndexAndLength(unsigned in
 }
 
 ::mlir::UnitAttr ExitDataOp::asyncAttr() {
-  return (*this)->getAttr(asyncAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, asyncAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
 }
 
 bool ExitDataOp::async() {
@@ -1960,7 +2054,7 @@ bool ExitDataOp::async() {
 }
 
 ::mlir::UnitAttr ExitDataOp::waitAttr() {
-  return (*this)->getAttr(waitAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, waitAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
 }
 
 bool ExitDataOp::wait() {
@@ -1969,7 +2063,7 @@ bool ExitDataOp::wait() {
 }
 
 ::mlir::UnitAttr ExitDataOp::finalizeAttr() {
-  return (*this)->getAttr(finalizeAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, finalizeAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
 }
 
 bool ExitDataOp::finalize() {
@@ -2105,31 +2199,54 @@ void ExitDataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::LogicalResult ExitDataOp::verifyInvariantsImpl() {
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  ::mlir::Attribute tblgen_async;
+  ::mlir::Attribute tblgen_finalize;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == operand_segment_sizesAttrName()) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == asyncAttrName()) {
+      tblgen_async = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == finalizeAttrName()) {
+      tblgen_finalize = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_wait;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == waitAttrName()) {
+      tblgen_wait = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = (*this)->getAttr(operand_segment_sizesAttrName()).dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitOpError("missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 7)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 7 "
                 "elements, but got ") << numElements;
   }
-    {
-    auto tblgen_async = (*this)->getAttr(asyncAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps1(*this, tblgen_async, "async")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_wait = (*this)->getAttr(waitAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps1(*this, tblgen_wait, "wait")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_finalize = (*this)->getAttr(finalizeAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps1(*this, tblgen_finalize, "finalize")))
-      return ::mlir::failure();
-  }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps1(*this, tblgen_async, "async")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps1(*this, tblgen_wait, "wait")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps1(*this, tblgen_finalize, "finalize")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -2200,33 +2317,33 @@ void ExitDataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::ParseResult ExitDataOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> ifCondOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> ifCondOperands;
   ::llvm::SMLoc ifCondOperandsLoc;
   (void)ifCondOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> asyncOperandOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> asyncOperandOperands;
   ::llvm::SMLoc asyncOperandOperandsLoc;
   (void)asyncOperandOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> asyncOperandTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> waitDevnumOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> asyncOperandTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> waitDevnumOperands;
   ::llvm::SMLoc waitDevnumOperandsLoc;
   (void)waitDevnumOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> waitDevnumTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> waitOperandsOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> waitDevnumTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> waitOperandsOperands;
   ::llvm::SMLoc waitOperandsOperandsLoc;
   (void)waitOperandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> waitOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> copyoutOperandsOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> waitOperandsTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> copyoutOperandsOperands;
   ::llvm::SMLoc copyoutOperandsOperandsLoc;
   (void)copyoutOperandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> copyoutOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> deleteOperandsOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> copyoutOperandsTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> deleteOperandsOperands;
   ::llvm::SMLoc deleteOperandsOperandsLoc;
   (void)deleteOperandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> deleteOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> detachOperandsOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> deleteOperandsTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> detachOperandsOperands;
   ::llvm::SMLoc detachOperandsOperandsLoc;
   (void)detachOperandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> detachOperandsTypes;
+  ::llvm::SmallVector<::mlir::Type, 1> detachOperandsTypes;
   if (succeeded(parser.parseOptionalKeyword("if"))) {
   if (parser.parseLParen())
     return ::mlir::failure();
@@ -2466,9 +2583,11 @@ namespace acc {
 // ::mlir::acc::InitOp definitions
 //===----------------------------------------------------------------------===//
 
-InitOpAdaptor::InitOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+InitOpAdaptor::InitOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("acc.init", odsAttrs.getContext());
+}
 
-InitOpAdaptor::InitOpAdaptor(InitOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+InitOpAdaptor::InitOpAdaptor(InitOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange InitOpAdaptor::getOperands() {
   return odsOperands;
@@ -2476,7 +2595,7 @@ InitOpAdaptor::InitOpAdaptor(InitOp &op) : odsOperands(op->getOperands()), odsAt
 
 std::pair<unsigned, unsigned> InitOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = odsAttrs.get("operand_segment_sizes").cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, InitOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -2513,10 +2632,21 @@ std::pair<unsigned, unsigned> InitOpAdaptor::getODSOperandIndexAndLength(unsigne
 }
 
 ::mlir::LogicalResult InitOpAdaptor::verify(::mlir::Location loc) {
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'acc.init' op ""requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == InitOp::operand_segment_sizesAttrName(*odsOpName)) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = odsAttrs.get("operand_segment_sizes").dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitError(loc, "'acc.init' op ""missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 3)
@@ -2527,8 +2657,7 @@ std::pair<unsigned, unsigned> InitOpAdaptor::getODSOperandIndexAndLength(unsigne
 }
 
 std::pair<unsigned, unsigned> InitOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr =
-      (*this)->getAttr(operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -2562,19 +2691,19 @@ std::pair<unsigned, unsigned> InitOp::getODSOperandIndexAndLength(unsigned index
 
 ::mlir::MutableOperandRange InitOp::deviceTypeOperandsMutable() {
   auto range = getODSOperandIndexAndLength(0);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange InitOp::deviceNumOperandMutable() {
   auto range = getODSOperandIndexAndLength(1);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange InitOp::ifCondMutable() {
   auto range = getODSOperandIndexAndLength(2);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
@@ -2616,10 +2745,21 @@ void InitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 }
 
 ::mlir::LogicalResult InitOp::verifyInvariantsImpl() {
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == operand_segment_sizesAttrName()) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = (*this)->getAttr(operand_segment_sizesAttrName()).dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitOpError("missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 3)
@@ -2667,15 +2807,15 @@ void InitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 }
 
 ::mlir::ParseResult InitOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> deviceTypeOperandsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> deviceTypeOperandsOperands;
   ::llvm::SMLoc deviceTypeOperandsOperandsLoc;
   (void)deviceTypeOperandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> deviceTypeOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> deviceNumOperandOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> deviceTypeOperandsTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> deviceNumOperandOperands;
   ::llvm::SMLoc deviceNumOperandOperandsLoc;
   (void)deviceNumOperandOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> deviceNumOperandTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> ifCondOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> deviceNumOperandTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> ifCondOperands;
   ::llvm::SMLoc ifCondOperandsLoc;
   (void)ifCondOperandsLoc;
   if (succeeded(parser.parseOptionalKeyword("device_type"))) {
@@ -2796,9 +2936,11 @@ namespace acc {
 // ::mlir::acc::LoopOp definitions
 //===----------------------------------------------------------------------===//
 
-LoopOpAdaptor::LoopOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+LoopOpAdaptor::LoopOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("acc.loop", odsAttrs.getContext());
+}
 
-LoopOpAdaptor::LoopOpAdaptor(LoopOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+LoopOpAdaptor::LoopOpAdaptor(LoopOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange LoopOpAdaptor::getOperands() {
   return odsOperands;
@@ -2806,7 +2948,7 @@ LoopOpAdaptor::LoopOpAdaptor(LoopOp &op) : odsOperands(op->getOperands()), odsAt
 
 std::pair<unsigned, unsigned> LoopOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = odsAttrs.get("operand_segment_sizes").cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, LoopOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -2862,8 +3004,8 @@ std::pair<unsigned, unsigned> LoopOpAdaptor::getODSOperandIndexAndLength(unsigne
 
 ::mlir::IntegerAttr LoopOpAdaptor::collapseAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("collapse").dyn_cast_or_null<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, LoopOp::collapseAttrName(*odsOpName)).dyn_cast_or_null<::mlir::IntegerAttr>();
+    return attr;
 }
 
 ::llvm::Optional<uint64_t> LoopOpAdaptor::collapse() {
@@ -2873,8 +3015,8 @@ std::pair<unsigned, unsigned> LoopOpAdaptor::getODSOperandIndexAndLength(unsigne
 
 ::mlir::UnitAttr LoopOpAdaptor::seqAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::UnitAttr attr = odsAttrs.get("seq").dyn_cast_or_null<::mlir::UnitAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, LoopOp::seqAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
+    return attr;
 }
 
 bool LoopOpAdaptor::seq() {
@@ -2884,8 +3026,8 @@ bool LoopOpAdaptor::seq() {
 
 ::mlir::UnitAttr LoopOpAdaptor::independentAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::UnitAttr attr = odsAttrs.get("independent").dyn_cast_or_null<::mlir::UnitAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, LoopOp::independentAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
+    return attr;
 }
 
 bool LoopOpAdaptor::independent() {
@@ -2895,8 +3037,8 @@ bool LoopOpAdaptor::independent() {
 
 ::mlir::UnitAttr LoopOpAdaptor::auto_Attr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::UnitAttr attr = odsAttrs.get("auto_").dyn_cast_or_null<::mlir::UnitAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, LoopOp::auto_AttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
+    return attr;
 }
 
 bool LoopOpAdaptor::auto_() {
@@ -2906,8 +3048,8 @@ bool LoopOpAdaptor::auto_() {
 
 ::mlir::acc::ReductionOpAttr LoopOpAdaptor::reductionOpAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::acc::ReductionOpAttr attr = odsAttrs.get("reductionOp").dyn_cast_or_null<::mlir::acc::ReductionOpAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, LoopOp::reductionOpAttrName(*odsOpName)).dyn_cast_or_null<::mlir::acc::ReductionOpAttr>();
+    return attr;
 }
 
 ::llvm::Optional<::mlir::acc::ReductionOp> LoopOpAdaptor::reductionOp() {
@@ -2917,10 +3059,10 @@ bool LoopOpAdaptor::auto_() {
 
 ::mlir::IntegerAttr LoopOpAdaptor::exec_mappingAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("exec_mapping").dyn_cast_or_null<::mlir::IntegerAttr>();
-  if (!attr)
-    attr = ::mlir::Builder(odsAttrs.getContext()).getIntegerAttr(::mlir::Builder(odsAttrs.getContext()).getIntegerType(64), 0);
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, LoopOp::exec_mappingAttrName(*odsOpName)).dyn_cast_or_null<::mlir::IntegerAttr>();
+    if (!attr)
+      attr = ::mlir::Builder(odsAttrs.getContext()).getIntegerAttr(::mlir::Builder(odsAttrs.getContext()).getIntegerType(64), 0);
+    return attr;
 }
 
 uint64_t LoopOpAdaptor::exec_mapping() {
@@ -2939,52 +3081,80 @@ uint64_t LoopOpAdaptor::exec_mapping() {
 }
 
 ::mlir::LogicalResult LoopOpAdaptor::verify(::mlir::Location loc) {
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  ::mlir::Attribute tblgen_auto_;
+  ::mlir::Attribute tblgen_collapse;
+  ::mlir::Attribute tblgen_exec_mapping;
+  ::mlir::Attribute tblgen_independent;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'acc.loop' op ""requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == LoopOp::operand_segment_sizesAttrName(*odsOpName)) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == LoopOp::auto_AttrName(*odsOpName)) {
+      tblgen_auto_ = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == LoopOp::collapseAttrName(*odsOpName)) {
+      tblgen_collapse = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == LoopOp::exec_mappingAttrName(*odsOpName)) {
+      tblgen_exec_mapping = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == LoopOp::independentAttrName(*odsOpName)) {
+      tblgen_independent = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_reductionOp;
+  ::mlir::Attribute tblgen_seq;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == LoopOp::reductionOpAttrName(*odsOpName)) {
+      tblgen_reductionOp = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == LoopOp::seqAttrName(*odsOpName)) {
+      tblgen_seq = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = odsAttrs.get("operand_segment_sizes").dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitError(loc, "'acc.loop' op ""missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 7)
       return emitError(loc, "'acc.loop' op ""'operand_segment_sizes' attribute for specifying operand segments must have 7 "
                 "elements, but got ") << numElements;
   }
-    {
-    auto tblgen_collapse = odsAttrs.get("collapse");
-    if (tblgen_collapse && !(((tblgen_collapse.isa<::mlir::IntegerAttr>())) && ((tblgen_collapse.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
-      return emitError(loc, "'acc.loop' op ""attribute 'collapse' failed to satisfy constraint: 64-bit signless integer attribute");
-  }
-  {
-    auto tblgen_seq = odsAttrs.get("seq");
-    if (tblgen_seq && !((tblgen_seq.isa<::mlir::UnitAttr>())))
-      return emitError(loc, "'acc.loop' op ""attribute 'seq' failed to satisfy constraint: unit attribute");
-  }
-  {
-    auto tblgen_independent = odsAttrs.get("independent");
-    if (tblgen_independent && !((tblgen_independent.isa<::mlir::UnitAttr>())))
-      return emitError(loc, "'acc.loop' op ""attribute 'independent' failed to satisfy constraint: unit attribute");
-  }
-  {
-    auto tblgen_auto_ = odsAttrs.get("auto_");
-    if (tblgen_auto_ && !((tblgen_auto_.isa<::mlir::UnitAttr>())))
-      return emitError(loc, "'acc.loop' op ""attribute 'auto_' failed to satisfy constraint: unit attribute");
-  }
-  {
-    auto tblgen_reductionOp = odsAttrs.get("reductionOp");
-    if (tblgen_reductionOp && !((tblgen_reductionOp.isa<::mlir::acc::ReductionOpAttr>())))
-      return emitError(loc, "'acc.loop' op ""attribute 'reductionOp' failed to satisfy constraint: built-in reduction operations supported by OpenACC");
-  }
-  {
-    auto tblgen_exec_mapping = odsAttrs.get("exec_mapping");
-    if (tblgen_exec_mapping && !(((tblgen_exec_mapping.isa<::mlir::IntegerAttr>())) && ((tblgen_exec_mapping.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
-      return emitError(loc, "'acc.loop' op ""attribute 'exec_mapping' failed to satisfy constraint: 64-bit signless integer attribute");
-  }
+
+  if (tblgen_collapse && !(((tblgen_collapse.isa<::mlir::IntegerAttr>())) && ((tblgen_collapse.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
+    return emitError(loc, "'acc.loop' op ""attribute 'collapse' failed to satisfy constraint: 64-bit signless integer attribute");
+
+  if (tblgen_seq && !((tblgen_seq.isa<::mlir::UnitAttr>())))
+    return emitError(loc, "'acc.loop' op ""attribute 'seq' failed to satisfy constraint: unit attribute");
+
+  if (tblgen_independent && !((tblgen_independent.isa<::mlir::UnitAttr>())))
+    return emitError(loc, "'acc.loop' op ""attribute 'independent' failed to satisfy constraint: unit attribute");
+
+  if (tblgen_auto_ && !((tblgen_auto_.isa<::mlir::UnitAttr>())))
+    return emitError(loc, "'acc.loop' op ""attribute 'auto_' failed to satisfy constraint: unit attribute");
+
+  if (tblgen_reductionOp && !((tblgen_reductionOp.isa<::mlir::acc::ReductionOpAttr>())))
+    return emitError(loc, "'acc.loop' op ""attribute 'reductionOp' failed to satisfy constraint: built-in reduction operations supported by OpenACC");
+
+  if (tblgen_exec_mapping && !(((tblgen_exec_mapping.isa<::mlir::IntegerAttr>())) && ((tblgen_exec_mapping.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
+    return emitError(loc, "'acc.loop' op ""attribute 'exec_mapping' failed to satisfy constraint: 64-bit signless integer attribute");
   return ::mlir::success();
 }
 
 std::pair<unsigned, unsigned> LoopOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr =
-      (*this)->getAttr(operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -3036,43 +3206,43 @@ std::pair<unsigned, unsigned> LoopOp::getODSOperandIndexAndLength(unsigned index
 
 ::mlir::MutableOperandRange LoopOp::gangNumMutable() {
   auto range = getODSOperandIndexAndLength(0);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange LoopOp::gangStaticMutable() {
   auto range = getODSOperandIndexAndLength(1);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange LoopOp::workerNumMutable() {
   auto range = getODSOperandIndexAndLength(2);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange LoopOp::vectorLengthMutable() {
   auto range = getODSOperandIndexAndLength(3);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(3u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(3u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange LoopOp::tileOperandsMutable() {
   auto range = getODSOperandIndexAndLength(4);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(4u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(4u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange LoopOp::privateOperandsMutable() {
   auto range = getODSOperandIndexAndLength(5);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(5u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(5u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange LoopOp::reductionOperandsMutable() {
   auto range = getODSOperandIndexAndLength(6);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(6u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(6u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
@@ -3109,7 +3279,7 @@ std::pair<unsigned, unsigned> LoopOp::getODSResultIndexAndLength(unsigned index)
 }
 
 ::mlir::IntegerAttr LoopOp::collapseAttr() {
-  return (*this)->getAttr(collapseAttrName()).dyn_cast_or_null<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, collapseAttrName()).dyn_cast_or_null<::mlir::IntegerAttr>();
 }
 
 ::llvm::Optional<uint64_t> LoopOp::collapse() {
@@ -3118,7 +3288,7 @@ std::pair<unsigned, unsigned> LoopOp::getODSResultIndexAndLength(unsigned index)
 }
 
 ::mlir::UnitAttr LoopOp::seqAttr() {
-  return (*this)->getAttr(seqAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, seqAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
 }
 
 bool LoopOp::seq() {
@@ -3127,7 +3297,7 @@ bool LoopOp::seq() {
 }
 
 ::mlir::UnitAttr LoopOp::independentAttr() {
-  return (*this)->getAttr(independentAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, independentAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
 }
 
 bool LoopOp::independent() {
@@ -3136,7 +3306,7 @@ bool LoopOp::independent() {
 }
 
 ::mlir::UnitAttr LoopOp::auto_Attr() {
-  return (*this)->getAttr(auto_AttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, auto_AttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
 }
 
 bool LoopOp::auto_() {
@@ -3145,7 +3315,7 @@ bool LoopOp::auto_() {
 }
 
 ::mlir::acc::ReductionOpAttr LoopOp::reductionOpAttr() {
-  return (*this)->getAttr(reductionOpAttrName()).dyn_cast_or_null<::mlir::acc::ReductionOpAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, reductionOpAttrName()).dyn_cast_or_null<::mlir::acc::ReductionOpAttr>();
 }
 
 ::llvm::Optional<::mlir::acc::ReductionOp> LoopOp::reductionOp() {
@@ -3154,7 +3324,7 @@ bool LoopOp::auto_() {
 }
 
 ::mlir::IntegerAttr LoopOp::exec_mappingAttr() {
-  return (*this)->getAttr(exec_mappingAttrName()).dyn_cast_or_null<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, exec_mappingAttrName()).dyn_cast_or_null<::mlir::IntegerAttr>();
 }
 
 uint64_t LoopOp::exec_mapping() {
@@ -3285,46 +3455,75 @@ void LoopOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 }
 
 ::mlir::LogicalResult LoopOp::verifyInvariantsImpl() {
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  ::mlir::Attribute tblgen_auto_;
+  ::mlir::Attribute tblgen_collapse;
+  ::mlir::Attribute tblgen_exec_mapping;
+  ::mlir::Attribute tblgen_independent;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == operand_segment_sizesAttrName()) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == auto_AttrName()) {
+      tblgen_auto_ = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == collapseAttrName()) {
+      tblgen_collapse = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == exec_mappingAttrName()) {
+      tblgen_exec_mapping = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == independentAttrName()) {
+      tblgen_independent = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_reductionOp;
+  ::mlir::Attribute tblgen_seq;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == reductionOpAttrName()) {
+      tblgen_reductionOp = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == seqAttrName()) {
+      tblgen_seq = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = (*this)->getAttr(operand_segment_sizesAttrName()).dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitOpError("missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 7)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 7 "
                 "elements, but got ") << numElements;
   }
-    {
-    auto tblgen_collapse = (*this)->getAttr(collapseAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps2(*this, tblgen_collapse, "collapse")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_seq = (*this)->getAttr(seqAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps1(*this, tblgen_seq, "seq")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_independent = (*this)->getAttr(independentAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps1(*this, tblgen_independent, "independent")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_auto_ = (*this)->getAttr(auto_AttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps1(*this, tblgen_auto_, "auto_")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_reductionOp = (*this)->getAttr(reductionOpAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps3(*this, tblgen_reductionOp, "reductionOp")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_exec_mapping = (*this)->getAttr(exec_mappingAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps2(*this, tblgen_exec_mapping, "exec_mapping")))
-      return ::mlir::failure();
-  }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps2(*this, tblgen_collapse, "collapse")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps1(*this, tblgen_seq, "seq")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps1(*this, tblgen_independent, "independent")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps1(*this, tblgen_auto_, "auto_")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps3(*this, tblgen_reductionOp, "reductionOp")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps2(*this, tblgen_exec_mapping, "exec_mapping")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -3426,9 +3625,11 @@ namespace acc {
 // ::mlir::acc::ParallelOp definitions
 //===----------------------------------------------------------------------===//
 
-ParallelOpAdaptor::ParallelOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ParallelOpAdaptor::ParallelOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("acc.parallel", odsAttrs.getContext());
+}
 
-ParallelOpAdaptor::ParallelOpAdaptor(ParallelOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ParallelOpAdaptor::ParallelOpAdaptor(ParallelOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ParallelOpAdaptor::getOperands() {
   return odsOperands;
@@ -3436,7 +3637,7 @@ ParallelOpAdaptor::ParallelOpAdaptor(ParallelOp &op) : odsOperands(op->getOperan
 
 std::pair<unsigned, unsigned> ParallelOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = odsAttrs.get("operand_segment_sizes").cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ParallelOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -3550,8 +3751,8 @@ std::pair<unsigned, unsigned> ParallelOpAdaptor::getODSOperandIndexAndLength(uns
 
 ::mlir::UnitAttr ParallelOpAdaptor::asyncAttrAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::UnitAttr attr = odsAttrs.get("asyncAttr").dyn_cast_or_null<::mlir::UnitAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, ParallelOp::asyncAttrAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
+    return attr;
 }
 
 bool ParallelOpAdaptor::asyncAttr() {
@@ -3561,8 +3762,8 @@ bool ParallelOpAdaptor::asyncAttr() {
 
 ::mlir::UnitAttr ParallelOpAdaptor::waitAttrAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::UnitAttr attr = odsAttrs.get("waitAttr").dyn_cast_or_null<::mlir::UnitAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, ParallelOp::waitAttrAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
+    return attr;
 }
 
 bool ParallelOpAdaptor::waitAttr() {
@@ -3572,8 +3773,8 @@ bool ParallelOpAdaptor::waitAttr() {
 
 ::mlir::UnitAttr ParallelOpAdaptor::selfAttrAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::UnitAttr attr = odsAttrs.get("selfAttr").dyn_cast_or_null<::mlir::UnitAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, ParallelOp::selfAttrAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
+    return attr;
 }
 
 bool ParallelOpAdaptor::selfAttr() {
@@ -3583,8 +3784,8 @@ bool ParallelOpAdaptor::selfAttr() {
 
 ::mlir::acc::ReductionOpAttr ParallelOpAdaptor::reductionOpAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::acc::ReductionOpAttr attr = odsAttrs.get("reductionOp").dyn_cast_or_null<::mlir::acc::ReductionOpAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, ParallelOp::reductionOpAttrName(*odsOpName)).dyn_cast_or_null<::mlir::acc::ReductionOpAttr>();
+    return attr;
 }
 
 ::llvm::Optional<::mlir::acc::ReductionOp> ParallelOpAdaptor::reductionOp() {
@@ -3594,8 +3795,8 @@ bool ParallelOpAdaptor::selfAttr() {
 
 ::mlir::acc::ClauseDefaultValueAttr ParallelOpAdaptor::defaultAttrAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::acc::ClauseDefaultValueAttr attr = odsAttrs.get("defaultAttr").dyn_cast_or_null<::mlir::acc::ClauseDefaultValueAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, ParallelOp::defaultAttrAttrName(*odsOpName)).dyn_cast_or_null<::mlir::acc::ClauseDefaultValueAttr>();
+    return attr;
 }
 
 ::llvm::Optional<::mlir::acc::ClauseDefaultValue> ParallelOpAdaptor::defaultAttr() {
@@ -3612,47 +3813,73 @@ bool ParallelOpAdaptor::selfAttr() {
 }
 
 ::mlir::LogicalResult ParallelOpAdaptor::verify(::mlir::Location loc) {
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  ::mlir::Attribute tblgen_asyncAttr;
+  ::mlir::Attribute tblgen_defaultAttr;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'acc.parallel' op ""requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == ParallelOp::operand_segment_sizesAttrName(*odsOpName)) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == ParallelOp::asyncAttrAttrName(*odsOpName)) {
+      tblgen_asyncAttr = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == ParallelOp::defaultAttrAttrName(*odsOpName)) {
+      tblgen_defaultAttr = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_reductionOp;
+  ::mlir::Attribute tblgen_selfAttr;
+  ::mlir::Attribute tblgen_waitAttr;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == ParallelOp::reductionOpAttrName(*odsOpName)) {
+      tblgen_reductionOp = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == ParallelOp::selfAttrAttrName(*odsOpName)) {
+      tblgen_selfAttr = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == ParallelOp::waitAttrAttrName(*odsOpName)) {
+      tblgen_waitAttr = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = odsAttrs.get("operand_segment_sizes").dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitError(loc, "'acc.parallel' op ""missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 21)
       return emitError(loc, "'acc.parallel' op ""'operand_segment_sizes' attribute for specifying operand segments must have 21 "
                 "elements, but got ") << numElements;
   }
-    {
-    auto tblgen_asyncAttr = odsAttrs.get("asyncAttr");
-    if (tblgen_asyncAttr && !((tblgen_asyncAttr.isa<::mlir::UnitAttr>())))
-      return emitError(loc, "'acc.parallel' op ""attribute 'asyncAttr' failed to satisfy constraint: unit attribute");
-  }
-  {
-    auto tblgen_waitAttr = odsAttrs.get("waitAttr");
-    if (tblgen_waitAttr && !((tblgen_waitAttr.isa<::mlir::UnitAttr>())))
-      return emitError(loc, "'acc.parallel' op ""attribute 'waitAttr' failed to satisfy constraint: unit attribute");
-  }
-  {
-    auto tblgen_selfAttr = odsAttrs.get("selfAttr");
-    if (tblgen_selfAttr && !((tblgen_selfAttr.isa<::mlir::UnitAttr>())))
-      return emitError(loc, "'acc.parallel' op ""attribute 'selfAttr' failed to satisfy constraint: unit attribute");
-  }
-  {
-    auto tblgen_reductionOp = odsAttrs.get("reductionOp");
-    if (tblgen_reductionOp && !((tblgen_reductionOp.isa<::mlir::acc::ReductionOpAttr>())))
-      return emitError(loc, "'acc.parallel' op ""attribute 'reductionOp' failed to satisfy constraint: built-in reduction operations supported by OpenACC");
-  }
-  {
-    auto tblgen_defaultAttr = odsAttrs.get("defaultAttr");
-    if (tblgen_defaultAttr && !((tblgen_defaultAttr.isa<::mlir::acc::ClauseDefaultValueAttr>())))
-      return emitError(loc, "'acc.parallel' op ""attribute 'defaultAttr' failed to satisfy constraint: DefaultValue Clause");
-  }
+
+  if (tblgen_asyncAttr && !((tblgen_asyncAttr.isa<::mlir::UnitAttr>())))
+    return emitError(loc, "'acc.parallel' op ""attribute 'asyncAttr' failed to satisfy constraint: unit attribute");
+
+  if (tblgen_waitAttr && !((tblgen_waitAttr.isa<::mlir::UnitAttr>())))
+    return emitError(loc, "'acc.parallel' op ""attribute 'waitAttr' failed to satisfy constraint: unit attribute");
+
+  if (tblgen_selfAttr && !((tblgen_selfAttr.isa<::mlir::UnitAttr>())))
+    return emitError(loc, "'acc.parallel' op ""attribute 'selfAttr' failed to satisfy constraint: unit attribute");
+
+  if (tblgen_reductionOp && !((tblgen_reductionOp.isa<::mlir::acc::ReductionOpAttr>())))
+    return emitError(loc, "'acc.parallel' op ""attribute 'reductionOp' failed to satisfy constraint: built-in reduction operations supported by OpenACC");
+
+  if (tblgen_defaultAttr && !((tblgen_defaultAttr.isa<::mlir::acc::ClauseDefaultValueAttr>())))
+    return emitError(loc, "'acc.parallel' op ""attribute 'defaultAttr' failed to satisfy constraint: DefaultValue Clause");
   return ::mlir::success();
 }
 
 std::pair<unsigned, unsigned> ParallelOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr =
-      (*this)->getAttr(operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -3762,127 +3989,127 @@ std::pair<unsigned, unsigned> ParallelOp::getODSOperandIndexAndLength(unsigned i
 
 ::mlir::MutableOperandRange ParallelOp::asyncMutable() {
   auto range = getODSOperandIndexAndLength(0);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ParallelOp::waitOperandsMutable() {
   auto range = getODSOperandIndexAndLength(1);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ParallelOp::numGangsMutable() {
   auto range = getODSOperandIndexAndLength(2);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ParallelOp::numWorkersMutable() {
   auto range = getODSOperandIndexAndLength(3);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(3u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(3u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ParallelOp::vectorLengthMutable() {
   auto range = getODSOperandIndexAndLength(4);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(4u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(4u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ParallelOp::ifCondMutable() {
   auto range = getODSOperandIndexAndLength(5);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(5u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(5u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ParallelOp::selfCondMutable() {
   auto range = getODSOperandIndexAndLength(6);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(6u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(6u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ParallelOp::reductionOperandsMutable() {
   auto range = getODSOperandIndexAndLength(7);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(7u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(7u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ParallelOp::copyOperandsMutable() {
   auto range = getODSOperandIndexAndLength(8);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(8u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(8u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ParallelOp::copyinOperandsMutable() {
   auto range = getODSOperandIndexAndLength(9);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(9u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(9u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ParallelOp::copyinReadonlyOperandsMutable() {
   auto range = getODSOperandIndexAndLength(10);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(10u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(10u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ParallelOp::copyoutOperandsMutable() {
   auto range = getODSOperandIndexAndLength(11);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(11u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(11u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ParallelOp::copyoutZeroOperandsMutable() {
   auto range = getODSOperandIndexAndLength(12);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(12u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(12u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ParallelOp::createOperandsMutable() {
   auto range = getODSOperandIndexAndLength(13);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(13u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(13u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ParallelOp::createZeroOperandsMutable() {
   auto range = getODSOperandIndexAndLength(14);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(14u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(14u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ParallelOp::noCreateOperandsMutable() {
   auto range = getODSOperandIndexAndLength(15);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(15u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(15u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ParallelOp::presentOperandsMutable() {
   auto range = getODSOperandIndexAndLength(16);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(16u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(16u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ParallelOp::devicePtrOperandsMutable() {
   auto range = getODSOperandIndexAndLength(17);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(17u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(17u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ParallelOp::attachOperandsMutable() {
   auto range = getODSOperandIndexAndLength(18);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(18u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(18u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ParallelOp::gangPrivateOperandsMutable() {
   auto range = getODSOperandIndexAndLength(19);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(19u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(19u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ParallelOp::gangFirstPrivateOperandsMutable() {
   auto range = getODSOperandIndexAndLength(20);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(20u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(20u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
@@ -3901,7 +4128,7 @@ std::pair<unsigned, unsigned> ParallelOp::getODSResultIndexAndLength(unsigned in
 }
 
 ::mlir::UnitAttr ParallelOp::asyncAttrAttr() {
-  return (*this)->getAttr(asyncAttrAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, asyncAttrAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
 }
 
 bool ParallelOp::asyncAttr() {
@@ -3910,7 +4137,7 @@ bool ParallelOp::asyncAttr() {
 }
 
 ::mlir::UnitAttr ParallelOp::waitAttrAttr() {
-  return (*this)->getAttr(waitAttrAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, waitAttrAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
 }
 
 bool ParallelOp::waitAttr() {
@@ -3919,7 +4146,7 @@ bool ParallelOp::waitAttr() {
 }
 
 ::mlir::UnitAttr ParallelOp::selfAttrAttr() {
-  return (*this)->getAttr(selfAttrAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, selfAttrAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
 }
 
 bool ParallelOp::selfAttr() {
@@ -3928,7 +4155,7 @@ bool ParallelOp::selfAttr() {
 }
 
 ::mlir::acc::ReductionOpAttr ParallelOp::reductionOpAttr() {
-  return (*this)->getAttr(reductionOpAttrName()).dyn_cast_or_null<::mlir::acc::ReductionOpAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, reductionOpAttrName()).dyn_cast_or_null<::mlir::acc::ReductionOpAttr>();
 }
 
 ::llvm::Optional<::mlir::acc::ReductionOp> ParallelOp::reductionOp() {
@@ -3937,7 +4164,7 @@ bool ParallelOp::selfAttr() {
 }
 
 ::mlir::acc::ClauseDefaultValueAttr ParallelOp::defaultAttrAttr() {
-  return (*this)->getAttr(defaultAttrAttrName()).dyn_cast_or_null<::mlir::acc::ClauseDefaultValueAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, defaultAttrAttrName()).dyn_cast_or_null<::mlir::acc::ClauseDefaultValueAttr>();
 }
 
 ::llvm::Optional<::mlir::acc::ClauseDefaultValue> ParallelOp::defaultAttr() {
@@ -4187,41 +4414,68 @@ void ParallelOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::LogicalResult ParallelOp::verifyInvariantsImpl() {
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  ::mlir::Attribute tblgen_asyncAttr;
+  ::mlir::Attribute tblgen_defaultAttr;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == operand_segment_sizesAttrName()) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == asyncAttrAttrName()) {
+      tblgen_asyncAttr = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == defaultAttrAttrName()) {
+      tblgen_defaultAttr = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_reductionOp;
+  ::mlir::Attribute tblgen_selfAttr;
+  ::mlir::Attribute tblgen_waitAttr;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == reductionOpAttrName()) {
+      tblgen_reductionOp = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == selfAttrAttrName()) {
+      tblgen_selfAttr = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == waitAttrAttrName()) {
+      tblgen_waitAttr = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = (*this)->getAttr(operand_segment_sizesAttrName()).dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitOpError("missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 21)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 21 "
                 "elements, but got ") << numElements;
   }
-    {
-    auto tblgen_asyncAttr = (*this)->getAttr(asyncAttrAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps1(*this, tblgen_asyncAttr, "asyncAttr")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_waitAttr = (*this)->getAttr(waitAttrAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps1(*this, tblgen_waitAttr, "waitAttr")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_selfAttr = (*this)->getAttr(selfAttrAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps1(*this, tblgen_selfAttr, "selfAttr")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_reductionOp = (*this)->getAttr(reductionOpAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps3(*this, tblgen_reductionOp, "reductionOp")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_defaultAttr = (*this)->getAttr(defaultAttrAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps0(*this, tblgen_defaultAttr, "defaultAttr")))
-      return ::mlir::failure();
-  }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps1(*this, tblgen_asyncAttr, "asyncAttr")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps1(*this, tblgen_waitAttr, "waitAttr")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps1(*this, tblgen_selfAttr, "selfAttr")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps3(*this, tblgen_reductionOp, "reductionOp")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps0(*this, tblgen_defaultAttr, "defaultAttr")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -4406,9 +4660,11 @@ namespace acc {
 // ::mlir::acc::ShutdownOp definitions
 //===----------------------------------------------------------------------===//
 
-ShutdownOpAdaptor::ShutdownOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ShutdownOpAdaptor::ShutdownOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("acc.shutdown", odsAttrs.getContext());
+}
 
-ShutdownOpAdaptor::ShutdownOpAdaptor(ShutdownOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ShutdownOpAdaptor::ShutdownOpAdaptor(ShutdownOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ShutdownOpAdaptor::getOperands() {
   return odsOperands;
@@ -4416,7 +4672,7 @@ ShutdownOpAdaptor::ShutdownOpAdaptor(ShutdownOp &op) : odsOperands(op->getOperan
 
 std::pair<unsigned, unsigned> ShutdownOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = odsAttrs.get("operand_segment_sizes").cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ShutdownOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -4453,10 +4709,21 @@ std::pair<unsigned, unsigned> ShutdownOpAdaptor::getODSOperandIndexAndLength(uns
 }
 
 ::mlir::LogicalResult ShutdownOpAdaptor::verify(::mlir::Location loc) {
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'acc.shutdown' op ""requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == ShutdownOp::operand_segment_sizesAttrName(*odsOpName)) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = odsAttrs.get("operand_segment_sizes").dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitError(loc, "'acc.shutdown' op ""missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 3)
@@ -4467,8 +4734,7 @@ std::pair<unsigned, unsigned> ShutdownOpAdaptor::getODSOperandIndexAndLength(uns
 }
 
 std::pair<unsigned, unsigned> ShutdownOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr =
-      (*this)->getAttr(operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -4502,19 +4768,19 @@ std::pair<unsigned, unsigned> ShutdownOp::getODSOperandIndexAndLength(unsigned i
 
 ::mlir::MutableOperandRange ShutdownOp::deviceTypeOperandsMutable() {
   auto range = getODSOperandIndexAndLength(0);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ShutdownOp::deviceNumOperandMutable() {
   auto range = getODSOperandIndexAndLength(1);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ShutdownOp::ifCondMutable() {
   auto range = getODSOperandIndexAndLength(2);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
@@ -4556,10 +4822,21 @@ void ShutdownOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::LogicalResult ShutdownOp::verifyInvariantsImpl() {
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == operand_segment_sizesAttrName()) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = (*this)->getAttr(operand_segment_sizesAttrName()).dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitOpError("missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 3)
@@ -4607,15 +4884,15 @@ void ShutdownOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 }
 
 ::mlir::ParseResult ShutdownOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> deviceTypeOperandsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> deviceTypeOperandsOperands;
   ::llvm::SMLoc deviceTypeOperandsOperandsLoc;
   (void)deviceTypeOperandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> deviceTypeOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> deviceNumOperandOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> deviceTypeOperandsTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> deviceNumOperandOperands;
   ::llvm::SMLoc deviceNumOperandOperandsLoc;
   (void)deviceNumOperandOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> deviceNumOperandTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> ifCondOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> deviceNumOperandTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> ifCondOperands;
   ::llvm::SMLoc ifCondOperandsLoc;
   (void)ifCondOperandsLoc;
   if (succeeded(parser.parseOptionalKeyword("device_type"))) {
@@ -4736,9 +5013,11 @@ namespace acc {
 // ::mlir::acc::TerminatorOp definitions
 //===----------------------------------------------------------------------===//
 
-TerminatorOpAdaptor::TerminatorOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+TerminatorOpAdaptor::TerminatorOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("acc.terminator", odsAttrs.getContext());
+}
 
-TerminatorOpAdaptor::TerminatorOpAdaptor(TerminatorOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+TerminatorOpAdaptor::TerminatorOpAdaptor(TerminatorOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange TerminatorOpAdaptor::getOperands() {
   return odsOperands;
@@ -4827,9 +5106,11 @@ namespace acc {
 // ::mlir::acc::UpdateOp definitions
 //===----------------------------------------------------------------------===//
 
-UpdateOpAdaptor::UpdateOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+UpdateOpAdaptor::UpdateOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("acc.update", odsAttrs.getContext());
+}
 
-UpdateOpAdaptor::UpdateOpAdaptor(UpdateOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+UpdateOpAdaptor::UpdateOpAdaptor(UpdateOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange UpdateOpAdaptor::getOperands() {
   return odsOperands;
@@ -4837,7 +5118,7 @@ UpdateOpAdaptor::UpdateOpAdaptor(UpdateOp &op) : odsOperands(op->getOperands()),
 
 std::pair<unsigned, unsigned> UpdateOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = odsAttrs.get("operand_segment_sizes").cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, UpdateOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -4892,8 +5173,8 @@ std::pair<unsigned, unsigned> UpdateOpAdaptor::getODSOperandIndexAndLength(unsig
 
 ::mlir::UnitAttr UpdateOpAdaptor::asyncAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::UnitAttr attr = odsAttrs.get("async").dyn_cast_or_null<::mlir::UnitAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, UpdateOp::asyncAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
+    return attr;
 }
 
 bool UpdateOpAdaptor::async() {
@@ -4903,8 +5184,8 @@ bool UpdateOpAdaptor::async() {
 
 ::mlir::UnitAttr UpdateOpAdaptor::waitAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::UnitAttr attr = odsAttrs.get("wait").dyn_cast_or_null<::mlir::UnitAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, UpdateOp::waitAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
+    return attr;
 }
 
 bool UpdateOpAdaptor::wait() {
@@ -4914,8 +5195,8 @@ bool UpdateOpAdaptor::wait() {
 
 ::mlir::UnitAttr UpdateOpAdaptor::ifPresentAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::UnitAttr attr = odsAttrs.get("ifPresent").dyn_cast_or_null<::mlir::UnitAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, UpdateOp::ifPresentAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
+    return attr;
 }
 
 bool UpdateOpAdaptor::ifPresent() {
@@ -4924,37 +5205,59 @@ bool UpdateOpAdaptor::ifPresent() {
 }
 
 ::mlir::LogicalResult UpdateOpAdaptor::verify(::mlir::Location loc) {
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  ::mlir::Attribute tblgen_async;
+  ::mlir::Attribute tblgen_ifPresent;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'acc.update' op ""requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == UpdateOp::operand_segment_sizesAttrName(*odsOpName)) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == UpdateOp::asyncAttrName(*odsOpName)) {
+      tblgen_async = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == UpdateOp::ifPresentAttrName(*odsOpName)) {
+      tblgen_ifPresent = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_wait;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == UpdateOp::waitAttrName(*odsOpName)) {
+      tblgen_wait = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = odsAttrs.get("operand_segment_sizes").dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitError(loc, "'acc.update' op ""missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 7)
       return emitError(loc, "'acc.update' op ""'operand_segment_sizes' attribute for specifying operand segments must have 7 "
                 "elements, but got ") << numElements;
   }
-    {
-    auto tblgen_async = odsAttrs.get("async");
-    if (tblgen_async && !((tblgen_async.isa<::mlir::UnitAttr>())))
-      return emitError(loc, "'acc.update' op ""attribute 'async' failed to satisfy constraint: unit attribute");
-  }
-  {
-    auto tblgen_wait = odsAttrs.get("wait");
-    if (tblgen_wait && !((tblgen_wait.isa<::mlir::UnitAttr>())))
-      return emitError(loc, "'acc.update' op ""attribute 'wait' failed to satisfy constraint: unit attribute");
-  }
-  {
-    auto tblgen_ifPresent = odsAttrs.get("ifPresent");
-    if (tblgen_ifPresent && !((tblgen_ifPresent.isa<::mlir::UnitAttr>())))
-      return emitError(loc, "'acc.update' op ""attribute 'ifPresent' failed to satisfy constraint: unit attribute");
-  }
+
+  if (tblgen_async && !((tblgen_async.isa<::mlir::UnitAttr>())))
+    return emitError(loc, "'acc.update' op ""attribute 'async' failed to satisfy constraint: unit attribute");
+
+  if (tblgen_wait && !((tblgen_wait.isa<::mlir::UnitAttr>())))
+    return emitError(loc, "'acc.update' op ""attribute 'wait' failed to satisfy constraint: unit attribute");
+
+  if (tblgen_ifPresent && !((tblgen_ifPresent.isa<::mlir::UnitAttr>())))
+    return emitError(loc, "'acc.update' op ""attribute 'ifPresent' failed to satisfy constraint: unit attribute");
   return ::mlir::success();
 }
 
 std::pair<unsigned, unsigned> UpdateOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr =
-      (*this)->getAttr(operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -5005,43 +5308,43 @@ std::pair<unsigned, unsigned> UpdateOp::getODSOperandIndexAndLength(unsigned ind
 
 ::mlir::MutableOperandRange UpdateOp::ifCondMutable() {
   auto range = getODSOperandIndexAndLength(0);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange UpdateOp::asyncOperandMutable() {
   auto range = getODSOperandIndexAndLength(1);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange UpdateOp::waitDevnumMutable() {
   auto range = getODSOperandIndexAndLength(2);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange UpdateOp::waitOperandsMutable() {
   auto range = getODSOperandIndexAndLength(3);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(3u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(3u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange UpdateOp::deviceTypeOperandsMutable() {
   auto range = getODSOperandIndexAndLength(4);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(4u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(4u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange UpdateOp::hostOperandsMutable() {
   auto range = getODSOperandIndexAndLength(5);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(5u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(5u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange UpdateOp::deviceOperandsMutable() {
   auto range = getODSOperandIndexAndLength(6);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(6u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(6u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
@@ -5056,7 +5359,7 @@ std::pair<unsigned, unsigned> UpdateOp::getODSResultIndexAndLength(unsigned inde
 }
 
 ::mlir::UnitAttr UpdateOp::asyncAttr() {
-  return (*this)->getAttr(asyncAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, asyncAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
 }
 
 bool UpdateOp::async() {
@@ -5065,7 +5368,7 @@ bool UpdateOp::async() {
 }
 
 ::mlir::UnitAttr UpdateOp::waitAttr() {
-  return (*this)->getAttr(waitAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, waitAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
 }
 
 bool UpdateOp::wait() {
@@ -5074,7 +5377,7 @@ bool UpdateOp::wait() {
 }
 
 ::mlir::UnitAttr UpdateOp::ifPresentAttr() {
-  return (*this)->getAttr(ifPresentAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, ifPresentAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
 }
 
 bool UpdateOp::ifPresent() {
@@ -5210,31 +5513,54 @@ void UpdateOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::LogicalResult UpdateOp::verifyInvariantsImpl() {
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  ::mlir::Attribute tblgen_async;
+  ::mlir::Attribute tblgen_ifPresent;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == operand_segment_sizesAttrName()) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == asyncAttrName()) {
+      tblgen_async = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == ifPresentAttrName()) {
+      tblgen_ifPresent = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_wait;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == waitAttrName()) {
+      tblgen_wait = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = (*this)->getAttr(operand_segment_sizesAttrName()).dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitOpError("missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 7)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 7 "
                 "elements, but got ") << numElements;
   }
-    {
-    auto tblgen_async = (*this)->getAttr(asyncAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps1(*this, tblgen_async, "async")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_wait = (*this)->getAttr(waitAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps1(*this, tblgen_wait, "wait")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_ifPresent = (*this)->getAttr(ifPresentAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps1(*this, tblgen_ifPresent, "ifPresent")))
-      return ::mlir::failure();
-  }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps1(*this, tblgen_async, "async")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps1(*this, tblgen_wait, "wait")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps1(*this, tblgen_ifPresent, "ifPresent")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -5305,33 +5631,33 @@ void UpdateOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::ParseResult UpdateOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> ifCondOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> ifCondOperands;
   ::llvm::SMLoc ifCondOperandsLoc;
   (void)ifCondOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> asyncOperandOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> asyncOperandOperands;
   ::llvm::SMLoc asyncOperandOperandsLoc;
   (void)asyncOperandOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> asyncOperandTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> waitDevnumOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> asyncOperandTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> waitDevnumOperands;
   ::llvm::SMLoc waitDevnumOperandsLoc;
   (void)waitDevnumOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> waitDevnumTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> deviceTypeOperandsOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> waitDevnumTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> deviceTypeOperandsOperands;
   ::llvm::SMLoc deviceTypeOperandsOperandsLoc;
   (void)deviceTypeOperandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> deviceTypeOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> waitOperandsOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> deviceTypeOperandsTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> waitOperandsOperands;
   ::llvm::SMLoc waitOperandsOperandsLoc;
   (void)waitOperandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> waitOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> hostOperandsOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> waitOperandsTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> hostOperandsOperands;
   ::llvm::SMLoc hostOperandsOperandsLoc;
   (void)hostOperandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> hostOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> deviceOperandsOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> hostOperandsTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> deviceOperandsOperands;
   ::llvm::SMLoc deviceOperandsOperandsLoc;
   (void)deviceOperandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> deviceOperandsTypes;
+  ::llvm::SmallVector<::mlir::Type, 1> deviceOperandsTypes;
   if (succeeded(parser.parseOptionalKeyword("if"))) {
   if (parser.parseLParen())
     return ::mlir::failure();
@@ -5571,9 +5897,11 @@ namespace acc {
 // ::mlir::acc::WaitOp definitions
 //===----------------------------------------------------------------------===//
 
-WaitOpAdaptor::WaitOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+WaitOpAdaptor::WaitOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("acc.wait", odsAttrs.getContext());
+}
 
-WaitOpAdaptor::WaitOpAdaptor(WaitOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+WaitOpAdaptor::WaitOpAdaptor(WaitOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange WaitOpAdaptor::getOperands() {
   return odsOperands;
@@ -5581,7 +5909,7 @@ WaitOpAdaptor::WaitOpAdaptor(WaitOp &op) : odsOperands(op->getOperands()), odsAt
 
 std::pair<unsigned, unsigned> WaitOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = odsAttrs.get("operand_segment_sizes").cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, WaitOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -5624,8 +5952,8 @@ std::pair<unsigned, unsigned> WaitOpAdaptor::getODSOperandIndexAndLength(unsigne
 
 ::mlir::UnitAttr WaitOpAdaptor::asyncAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::UnitAttr attr = odsAttrs.get("async").dyn_cast_or_null<::mlir::UnitAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, WaitOp::asyncAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
+    return attr;
 }
 
 bool WaitOpAdaptor::async() {
@@ -5634,27 +5962,39 @@ bool WaitOpAdaptor::async() {
 }
 
 ::mlir::LogicalResult WaitOpAdaptor::verify(::mlir::Location loc) {
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  ::mlir::Attribute tblgen_async;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'acc.wait' op ""requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == WaitOp::operand_segment_sizesAttrName(*odsOpName)) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == WaitOp::asyncAttrName(*odsOpName)) {
+      tblgen_async = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = odsAttrs.get("operand_segment_sizes").dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitError(loc, "'acc.wait' op ""missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 4)
       return emitError(loc, "'acc.wait' op ""'operand_segment_sizes' attribute for specifying operand segments must have 4 "
                 "elements, but got ") << numElements;
   }
-    {
-    auto tblgen_async = odsAttrs.get("async");
-    if (tblgen_async && !((tblgen_async.isa<::mlir::UnitAttr>())))
-      return emitError(loc, "'acc.wait' op ""attribute 'async' failed to satisfy constraint: unit attribute");
-  }
+
+  if (tblgen_async && !((tblgen_async.isa<::mlir::UnitAttr>())))
+    return emitError(loc, "'acc.wait' op ""attribute 'async' failed to satisfy constraint: unit attribute");
   return ::mlir::success();
 }
 
 std::pair<unsigned, unsigned> WaitOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr =
-      (*this)->getAttr(operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -5693,25 +6033,25 @@ std::pair<unsigned, unsigned> WaitOp::getODSOperandIndexAndLength(unsigned index
 
 ::mlir::MutableOperandRange WaitOp::waitOperandsMutable() {
   auto range = getODSOperandIndexAndLength(0);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange WaitOp::asyncOperandMutable() {
   auto range = getODSOperandIndexAndLength(1);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange WaitOp::waitDevnumMutable() {
   auto range = getODSOperandIndexAndLength(2);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange WaitOp::ifCondMutable() {
   auto range = getODSOperandIndexAndLength(3);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(3u, *getOperation()->getAttrDictionary().getNamed(operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(3u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
   return mutableRange;
 }
 
@@ -5726,7 +6066,7 @@ std::pair<unsigned, unsigned> WaitOp::getODSResultIndexAndLength(unsigned index)
 }
 
 ::mlir::UnitAttr WaitOp::asyncAttr() {
-  return (*this)->getAttr(asyncAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, asyncAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
 }
 
 bool WaitOp::async() {
@@ -5810,21 +6150,34 @@ void WaitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 }
 
 ::mlir::LogicalResult WaitOp::verifyInvariantsImpl() {
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  ::mlir::Attribute tblgen_async;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == operand_segment_sizesAttrName()) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == asyncAttrName()) {
+      tblgen_async = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = (*this)->getAttr(operand_segment_sizesAttrName()).dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitOpError("missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 4)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 4 "
                 "elements, but got ") << numElements;
   }
-    {
-    auto tblgen_async = (*this)->getAttr(asyncAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps1(*this, tblgen_async, "async")))
-      return ::mlir::failure();
-  }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenACCOps1(*this, tblgen_async, "async")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -5877,19 +6230,19 @@ void WaitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 }
 
 ::mlir::ParseResult WaitOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> waitOperandsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> waitOperandsOperands;
   ::llvm::SMLoc waitOperandsOperandsLoc;
   (void)waitOperandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> waitOperandsTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> asyncOperandOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> waitOperandsTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> asyncOperandOperands;
   ::llvm::SMLoc asyncOperandOperandsLoc;
   (void)asyncOperandOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> asyncOperandTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> waitDevnumOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> asyncOperandTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> waitDevnumOperands;
   ::llvm::SMLoc waitDevnumOperandsLoc;
   (void)waitDevnumOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> waitDevnumTypes;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> ifCondOperands;
+  ::llvm::SmallVector<::mlir::Type, 1> waitDevnumTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> ifCondOperands;
   ::llvm::SMLoc ifCondOperandsLoc;
   (void)ifCondOperandsLoc;
   if (succeeded(parser.parseOptionalLParen())) {
@@ -6050,9 +6403,11 @@ namespace acc {
 // ::mlir::acc::YieldOp definitions
 //===----------------------------------------------------------------------===//
 
-YieldOpAdaptor::YieldOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+YieldOpAdaptor::YieldOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("acc.yield", odsAttrs.getContext());
+}
 
-YieldOpAdaptor::YieldOpAdaptor(YieldOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+YieldOpAdaptor::YieldOpAdaptor(YieldOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange YieldOpAdaptor::getOperands() {
   return odsOperands;
@@ -6171,10 +6526,10 @@ void YieldOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 ::mlir::ParseResult YieldOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> operandsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> operandsOperands;
   ::llvm::SMLoc operandsOperandsLoc;
   (void)operandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> operandsTypes;
+  ::llvm::SmallVector<::mlir::Type, 1> operandsTypes;
   if (parser.parseOptionalAttrDict(result.attributes))
     return ::mlir::failure();
 

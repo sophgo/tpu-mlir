@@ -164,9 +164,11 @@ namespace quant {
 // ::mlir::quant::ConstFakeQuant definitions
 //===----------------------------------------------------------------------===//
 
-ConstFakeQuantAdaptor::ConstFakeQuantAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ConstFakeQuantAdaptor::ConstFakeQuantAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("quant.const_fake_quant", odsAttrs.getContext());
+}
 
-ConstFakeQuantAdaptor::ConstFakeQuantAdaptor(ConstFakeQuant &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ConstFakeQuantAdaptor::ConstFakeQuantAdaptor(ConstFakeQuant op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ConstFakeQuantAdaptor::getOperands() {
   return odsOperands;
@@ -192,8 +194,8 @@ std::pair<unsigned, unsigned> ConstFakeQuantAdaptor::getODSOperandIndexAndLength
 
 ::mlir::FloatAttr ConstFakeQuantAdaptor::minAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::FloatAttr attr = odsAttrs.get("min").cast<::mlir::FloatAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 1, ConstFakeQuant::minAttrName(*odsOpName)).cast<::mlir::FloatAttr>();
+    return attr;
 }
 
 ::llvm::APFloat ConstFakeQuantAdaptor::min() {
@@ -203,8 +205,8 @@ std::pair<unsigned, unsigned> ConstFakeQuantAdaptor::getODSOperandIndexAndLength
 
 ::mlir::FloatAttr ConstFakeQuantAdaptor::maxAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::FloatAttr attr = odsAttrs.get("max").cast<::mlir::FloatAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 2, ConstFakeQuant::maxAttrName(*odsOpName)).cast<::mlir::FloatAttr>();
+    return attr;
 }
 
 ::llvm::APFloat ConstFakeQuantAdaptor::max() {
@@ -214,8 +216,8 @@ std::pair<unsigned, unsigned> ConstFakeQuantAdaptor::getODSOperandIndexAndLength
 
 ::mlir::IntegerAttr ConstFakeQuantAdaptor::num_bitsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("num_bits").cast<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 0, ConstFakeQuant::num_bitsAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+    return attr;
 }
 
 uint64_t ConstFakeQuantAdaptor::num_bits() {
@@ -225,10 +227,10 @@ uint64_t ConstFakeQuantAdaptor::num_bits() {
 
 ::mlir::BoolAttr ConstFakeQuantAdaptor::narrow_rangeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::BoolAttr attr = odsAttrs.get("narrow_range").dyn_cast_or_null<::mlir::BoolAttr>();
-  if (!attr)
-    attr = ::mlir::Builder(odsAttrs.getContext()).getBoolAttr(false);
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 1, ConstFakeQuant::narrow_rangeAttrName(*odsOpName)).dyn_cast_or_null<::mlir::BoolAttr>();
+    if (!attr)
+      attr = ::mlir::Builder(odsAttrs.getContext()).getBoolAttr(false);
+    return attr;
 }
 
 bool ConstFakeQuantAdaptor::narrow_range() {
@@ -240,10 +242,10 @@ bool ConstFakeQuantAdaptor::narrow_range() {
 
 ::mlir::BoolAttr ConstFakeQuantAdaptor::is_signedAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::BoolAttr attr = odsAttrs.get("is_signed").dyn_cast_or_null<::mlir::BoolAttr>();
-  if (!attr)
-    attr = ::mlir::Builder(odsAttrs.getContext()).getBoolAttr(false);
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 3, ConstFakeQuant::is_signedAttrName(*odsOpName)).dyn_cast_or_null<::mlir::BoolAttr>();
+    if (!attr)
+      attr = ::mlir::Builder(odsAttrs.getContext()).getBoolAttr(false);
+    return attr;
 }
 
 bool ConstFakeQuantAdaptor::is_signed() {
@@ -254,40 +256,61 @@ bool ConstFakeQuantAdaptor::is_signed() {
 }
 
 ::mlir::LogicalResult ConstFakeQuantAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_min = odsAttrs.get("min");
-    if (!tblgen_min)
-      return emitError(loc, "'quant.const_fake_quant' op ""requires attribute 'min'");
-
-    if (tblgen_min && !(((tblgen_min.isa<::mlir::FloatAttr>())) && ((tblgen_min.cast<::mlir::FloatAttr>().getType().isF32()))))
-      return emitError(loc, "'quant.const_fake_quant' op ""attribute 'min' failed to satisfy constraint: 32-bit float attribute");
-  }
-  {
-    auto tblgen_max = odsAttrs.get("max");
-    if (!tblgen_max)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_max;
+  ::mlir::Attribute tblgen_is_signed;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'quant.const_fake_quant' op ""requires attribute 'max'");
-
-    if (tblgen_max && !(((tblgen_max.isa<::mlir::FloatAttr>())) && ((tblgen_max.cast<::mlir::FloatAttr>().getType().isF32()))))
-      return emitError(loc, "'quant.const_fake_quant' op ""attribute 'max' failed to satisfy constraint: 32-bit float attribute");
+    if (namedAttrIt->getName() == ConstFakeQuant::maxAttrName(*odsOpName)) {
+      tblgen_max = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == ConstFakeQuant::is_signedAttrName(*odsOpName)) {
+      tblgen_is_signed = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_num_bits = odsAttrs.get("num_bits");
-    if (!tblgen_num_bits)
+  ::mlir::Attribute tblgen_min;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'quant.const_fake_quant' op ""requires attribute 'min'");
+    if (namedAttrIt->getName() == ConstFakeQuant::minAttrName(*odsOpName)) {
+      tblgen_min = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_num_bits;
+  ::mlir::Attribute tblgen_narrow_range;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'quant.const_fake_quant' op ""requires attribute 'num_bits'");
+    if (namedAttrIt->getName() == ConstFakeQuant::num_bitsAttrName(*odsOpName)) {
+      tblgen_num_bits = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == ConstFakeQuant::narrow_rangeAttrName(*odsOpName)) {
+      tblgen_narrow_range = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
 
-    if (tblgen_num_bits && !(((tblgen_num_bits.isa<::mlir::IntegerAttr>())) && ((tblgen_num_bits.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
-      return emitError(loc, "'quant.const_fake_quant' op ""attribute 'num_bits' failed to satisfy constraint: 64-bit signless integer attribute");
-  }
-  {
-    auto tblgen_narrow_range = odsAttrs.get("narrow_range");
-    if (tblgen_narrow_range && !((tblgen_narrow_range.isa<::mlir::BoolAttr>())))
-      return emitError(loc, "'quant.const_fake_quant' op ""attribute 'narrow_range' failed to satisfy constraint: bool attribute");
-  }
-  {
-    auto tblgen_is_signed = odsAttrs.get("is_signed");
-    if (tblgen_is_signed && !((tblgen_is_signed.isa<::mlir::BoolAttr>())))
-      return emitError(loc, "'quant.const_fake_quant' op ""attribute 'is_signed' failed to satisfy constraint: bool attribute");
-  }
+  if (tblgen_min && !(((tblgen_min.isa<::mlir::FloatAttr>())) && ((tblgen_min.cast<::mlir::FloatAttr>().getType().isF32()))))
+    return emitError(loc, "'quant.const_fake_quant' op ""attribute 'min' failed to satisfy constraint: 32-bit float attribute");
+
+  if (tblgen_max && !(((tblgen_max.isa<::mlir::FloatAttr>())) && ((tblgen_max.cast<::mlir::FloatAttr>().getType().isF32()))))
+    return emitError(loc, "'quant.const_fake_quant' op ""attribute 'max' failed to satisfy constraint: 32-bit float attribute");
+
+  if (tblgen_num_bits && !(((tblgen_num_bits.isa<::mlir::IntegerAttr>())) && ((tblgen_num_bits.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
+    return emitError(loc, "'quant.const_fake_quant' op ""attribute 'num_bits' failed to satisfy constraint: 64-bit signless integer attribute");
+
+  if (tblgen_narrow_range && !((tblgen_narrow_range.isa<::mlir::BoolAttr>())))
+    return emitError(loc, "'quant.const_fake_quant' op ""attribute 'narrow_range' failed to satisfy constraint: bool attribute");
+
+  if (tblgen_is_signed && !((tblgen_is_signed.isa<::mlir::BoolAttr>())))
+    return emitError(loc, "'quant.const_fake_quant' op ""attribute 'is_signed' failed to satisfy constraint: bool attribute");
   return ::mlir::success();
 }
 
@@ -326,7 +349,7 @@ std::pair<unsigned, unsigned> ConstFakeQuant::getODSResultIndexAndLength(unsigne
 }
 
 ::mlir::FloatAttr ConstFakeQuant::minAttr() {
-  return (*this)->getAttr(minAttrName()).cast<::mlir::FloatAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 1, minAttrName()).cast<::mlir::FloatAttr>();
 }
 
 ::llvm::APFloat ConstFakeQuant::min() {
@@ -335,7 +358,7 @@ std::pair<unsigned, unsigned> ConstFakeQuant::getODSResultIndexAndLength(unsigne
 }
 
 ::mlir::FloatAttr ConstFakeQuant::maxAttr() {
-  return (*this)->getAttr(maxAttrName()).cast<::mlir::FloatAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 2, maxAttrName()).cast<::mlir::FloatAttr>();
 }
 
 ::llvm::APFloat ConstFakeQuant::max() {
@@ -344,7 +367,7 @@ std::pair<unsigned, unsigned> ConstFakeQuant::getODSResultIndexAndLength(unsigne
 }
 
 ::mlir::IntegerAttr ConstFakeQuant::num_bitsAttr() {
-  return (*this)->getAttr(num_bitsAttrName()).cast<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 0, num_bitsAttrName()).cast<::mlir::IntegerAttr>();
 }
 
 uint64_t ConstFakeQuant::num_bits() {
@@ -353,7 +376,7 @@ uint64_t ConstFakeQuant::num_bits() {
 }
 
 ::mlir::BoolAttr ConstFakeQuant::narrow_rangeAttr() {
-  return (*this)->getAttr(narrow_rangeAttrName()).dyn_cast_or_null<::mlir::BoolAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 1, narrow_rangeAttrName()).dyn_cast_or_null<::mlir::BoolAttr>();
 }
 
 bool ConstFakeQuant::narrow_range() {
@@ -364,7 +387,7 @@ bool ConstFakeQuant::narrow_range() {
 }
 
 ::mlir::BoolAttr ConstFakeQuant::is_signedAttr() {
-  return (*this)->getAttr(is_signedAttrName()).dyn_cast_or_null<::mlir::BoolAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 3, is_signedAttrName()).dyn_cast_or_null<::mlir::BoolAttr>();
 }
 
 bool ConstFakeQuant::is_signed() {
@@ -408,6 +431,28 @@ void ConstFakeQuant::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
   odsState.addTypes(outputs);
 }
 
+void ConstFakeQuant::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value inputs, ::mlir::FloatAttr min, ::mlir::FloatAttr max, ::mlir::IntegerAttr num_bits, ::mlir::BoolAttr narrow_range, ::mlir::BoolAttr is_signed) {
+  odsState.addOperands(inputs);
+  odsState.addAttribute(minAttrName(odsState.name), min);
+  odsState.addAttribute(maxAttrName(odsState.name), max);
+  odsState.addAttribute(num_bitsAttrName(odsState.name), num_bits);
+  if (narrow_range) {
+  odsState.addAttribute(narrow_rangeAttrName(odsState.name), narrow_range);
+  }
+  if (is_signed) {
+  odsState.addAttribute(is_signedAttrName(odsState.name), is_signed);
+  }
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(ConstFakeQuant::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void ConstFakeQuant::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value inputs, ::mlir::FloatAttr min, ::mlir::FloatAttr max, ::mlir::IntegerAttr num_bits, ::mlir::BoolAttr narrow_range, ::mlir::BoolAttr is_signed) {
   odsState.addOperands(inputs);
   odsState.addAttribute(minAttrName(odsState.name), min);
@@ -433,6 +478,24 @@ void ConstFakeQuant::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
   odsState.addTypes(outputs);
 }
 
+void ConstFakeQuant::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value inputs, ::llvm::APFloat min, ::llvm::APFloat max, uint64_t num_bits, bool narrow_range, bool is_signed) {
+  odsState.addOperands(inputs);
+  odsState.addAttribute(minAttrName(odsState.name), odsBuilder.getFloatAttr(odsBuilder.getF32Type(), min));
+  odsState.addAttribute(maxAttrName(odsState.name), odsBuilder.getFloatAttr(odsBuilder.getF32Type(), max));
+  odsState.addAttribute(num_bitsAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), num_bits));
+  odsState.addAttribute(narrow_rangeAttrName(odsState.name), odsBuilder.getBoolAttr(narrow_range));
+  odsState.addAttribute(is_signedAttrName(odsState.name), odsBuilder.getBoolAttr(is_signed));
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(ConstFakeQuant::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void ConstFakeQuant::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value inputs, ::llvm::APFloat min, ::llvm::APFloat max, uint64_t num_bits, bool narrow_range, bool is_signed) {
   odsState.addOperands(inputs);
   odsState.addAttribute(minAttrName(odsState.name), odsBuilder.getFloatAttr(odsBuilder.getF32Type(), min));
@@ -452,63 +515,79 @@ void ConstFakeQuant::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
   odsState.addTypes(resultTypes);
 }
 
-void ConstFakeQuant::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value inputs, ::mlir::FloatAttr min, ::mlir::FloatAttr max, ::mlir::IntegerAttr num_bits, ::mlir::BoolAttr narrow_range, ::mlir::BoolAttr is_signed) {
-  odsState.addOperands(inputs);
-  odsState.addAttribute(minAttrName(odsState.name), min);
-  odsState.addAttribute(maxAttrName(odsState.name), max);
-  odsState.addAttribute(num_bitsAttrName(odsState.name), num_bits);
-  if (narrow_range) {
-  odsState.addAttribute(narrow_rangeAttrName(odsState.name), narrow_range);
-  }
-  if (is_signed) {
-  odsState.addAttribute(is_signedAttrName(odsState.name), is_signed);
-  }
-  odsState.addTypes({inputs.getType()});
-
-}
-
 void ConstFakeQuant::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 1u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(ConstFakeQuant::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult ConstFakeQuant::verifyInvariantsImpl() {
-  {
-    auto tblgen_min = (*this)->getAttr(minAttrName());
-    if (!tblgen_min)
-      return emitOpError("requires attribute 'min'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps0(*this, tblgen_min, "min")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_max = (*this)->getAttr(maxAttrName());
-    if (!tblgen_max)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_max;
+  ::mlir::Attribute tblgen_is_signed;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'max'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps0(*this, tblgen_max, "max")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == maxAttrName()) {
+      tblgen_max = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == is_signedAttrName()) {
+      tblgen_is_signed = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_num_bits = (*this)->getAttr(num_bitsAttrName());
-    if (!tblgen_num_bits)
+  ::mlir::Attribute tblgen_min;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'min'");
+    if (namedAttrIt->getName() == minAttrName()) {
+      tblgen_min = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_num_bits;
+  ::mlir::Attribute tblgen_narrow_range;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'num_bits'");
+    if (namedAttrIt->getName() == num_bitsAttrName()) {
+      tblgen_num_bits = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == narrow_rangeAttrName()) {
+      tblgen_narrow_range = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps1(*this, tblgen_num_bits, "num_bits")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_narrow_range = (*this)->getAttr(narrow_rangeAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps2(*this, tblgen_narrow_range, "narrow_range")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_is_signed = (*this)->getAttr(is_signedAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps2(*this, tblgen_is_signed, "is_signed")))
-      return ::mlir::failure();
-  }
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps0(*this, tblgen_min, "min")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps0(*this, tblgen_max, "max")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps1(*this, tblgen_num_bits, "num_bits")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps2(*this, tblgen_narrow_range, "narrow_range")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps2(*this, tblgen_is_signed, "is_signed")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -534,7 +613,15 @@ void ConstFakeQuant::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
   return verifyInvariantsImpl();
 }
 
-void ConstFakeQuant::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+::mlir::LogicalResult ConstFakeQuant::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
+}
+
+void ConstFakeQuant::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace quant
@@ -548,9 +635,11 @@ namespace quant {
 // ::mlir::quant::ConstFakeQuantPerAxis definitions
 //===----------------------------------------------------------------------===//
 
-ConstFakeQuantPerAxisAdaptor::ConstFakeQuantPerAxisAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ConstFakeQuantPerAxisAdaptor::ConstFakeQuantPerAxisAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("quant.const_fake_quant_per_axis", odsAttrs.getContext());
+}
 
-ConstFakeQuantPerAxisAdaptor::ConstFakeQuantPerAxisAdaptor(ConstFakeQuantPerAxis &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ConstFakeQuantPerAxisAdaptor::ConstFakeQuantPerAxisAdaptor(ConstFakeQuantPerAxis op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ConstFakeQuantPerAxisAdaptor::getOperands() {
   return odsOperands;
@@ -576,8 +665,8 @@ std::pair<unsigned, unsigned> ConstFakeQuantPerAxisAdaptor::getODSOperandIndexAn
 
 ::mlir::ArrayAttr ConstFakeQuantPerAxisAdaptor::minAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("min").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 1, ConstFakeQuantPerAxis::minAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr ConstFakeQuantPerAxisAdaptor::min() {
@@ -587,8 +676,8 @@ std::pair<unsigned, unsigned> ConstFakeQuantPerAxisAdaptor::getODSOperandIndexAn
 
 ::mlir::ArrayAttr ConstFakeQuantPerAxisAdaptor::maxAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("max").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 2, ConstFakeQuantPerAxis::maxAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr ConstFakeQuantPerAxisAdaptor::max() {
@@ -598,8 +687,8 @@ std::pair<unsigned, unsigned> ConstFakeQuantPerAxisAdaptor::getODSOperandIndexAn
 
 ::mlir::IntegerAttr ConstFakeQuantPerAxisAdaptor::axisAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("axis").cast<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 3, ConstFakeQuantPerAxis::axisAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+    return attr;
 }
 
 uint64_t ConstFakeQuantPerAxisAdaptor::axis() {
@@ -609,8 +698,8 @@ uint64_t ConstFakeQuantPerAxisAdaptor::axis() {
 
 ::mlir::IntegerAttr ConstFakeQuantPerAxisAdaptor::num_bitsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("num_bits").cast<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 3, odsAttrs.end() - 0, ConstFakeQuantPerAxis::num_bitsAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+    return attr;
 }
 
 uint64_t ConstFakeQuantPerAxisAdaptor::num_bits() {
@@ -620,10 +709,10 @@ uint64_t ConstFakeQuantPerAxisAdaptor::num_bits() {
 
 ::mlir::BoolAttr ConstFakeQuantPerAxisAdaptor::narrow_rangeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::BoolAttr attr = odsAttrs.get("narrow_range").dyn_cast_or_null<::mlir::BoolAttr>();
-  if (!attr)
-    attr = ::mlir::Builder(odsAttrs.getContext()).getBoolAttr(false);
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 3, odsAttrs.end() - 1, ConstFakeQuantPerAxis::narrow_rangeAttrName(*odsOpName)).dyn_cast_or_null<::mlir::BoolAttr>();
+    if (!attr)
+      attr = ::mlir::Builder(odsAttrs.getContext()).getBoolAttr(false);
+    return attr;
 }
 
 bool ConstFakeQuantPerAxisAdaptor::narrow_range() {
@@ -635,10 +724,10 @@ bool ConstFakeQuantPerAxisAdaptor::narrow_range() {
 
 ::mlir::BoolAttr ConstFakeQuantPerAxisAdaptor::is_signedAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::BoolAttr attr = odsAttrs.get("is_signed").dyn_cast_or_null<::mlir::BoolAttr>();
-  if (!attr)
-    attr = ::mlir::Builder(odsAttrs.getContext()).getBoolAttr(false);
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 3, ConstFakeQuantPerAxis::is_signedAttrName(*odsOpName)).dyn_cast_or_null<::mlir::BoolAttr>();
+    if (!attr)
+      attr = ::mlir::Builder(odsAttrs.getContext()).getBoolAttr(false);
+    return attr;
 }
 
 bool ConstFakeQuantPerAxisAdaptor::is_signed() {
@@ -649,48 +738,74 @@ bool ConstFakeQuantPerAxisAdaptor::is_signed() {
 }
 
 ::mlir::LogicalResult ConstFakeQuantPerAxisAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_min = odsAttrs.get("min");
-    if (!tblgen_min)
-      return emitError(loc, "'quant.const_fake_quant_per_axis' op ""requires attribute 'min'");
-
-    if (tblgen_min && !(((tblgen_min.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_min.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::FloatAttr>())) && ((attr.cast<::mlir::FloatAttr>().getType().isF32()))); }))))
-      return emitError(loc, "'quant.const_fake_quant_per_axis' op ""attribute 'min' failed to satisfy constraint: 32-bit float array attribute");
-  }
-  {
-    auto tblgen_max = odsAttrs.get("max");
-    if (!tblgen_max)
-      return emitError(loc, "'quant.const_fake_quant_per_axis' op ""requires attribute 'max'");
-
-    if (tblgen_max && !(((tblgen_max.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_max.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::FloatAttr>())) && ((attr.cast<::mlir::FloatAttr>().getType().isF32()))); }))))
-      return emitError(loc, "'quant.const_fake_quant_per_axis' op ""attribute 'max' failed to satisfy constraint: 32-bit float array attribute");
-  }
-  {
-    auto tblgen_axis = odsAttrs.get("axis");
-    if (!tblgen_axis)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_axis;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'quant.const_fake_quant_per_axis' op ""requires attribute 'axis'");
-
-    if (tblgen_axis && !(((tblgen_axis.isa<::mlir::IntegerAttr>())) && ((tblgen_axis.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
-      return emitError(loc, "'quant.const_fake_quant_per_axis' op ""attribute 'axis' failed to satisfy constraint: 64-bit signless integer attribute");
+    if (namedAttrIt->getName() == ConstFakeQuantPerAxis::axisAttrName(*odsOpName)) {
+      tblgen_axis = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_num_bits = odsAttrs.get("num_bits");
-    if (!tblgen_num_bits)
+  ::mlir::Attribute tblgen_max;
+  ::mlir::Attribute tblgen_is_signed;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'quant.const_fake_quant_per_axis' op ""requires attribute 'max'");
+    if (namedAttrIt->getName() == ConstFakeQuantPerAxis::maxAttrName(*odsOpName)) {
+      tblgen_max = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == ConstFakeQuantPerAxis::is_signedAttrName(*odsOpName)) {
+      tblgen_is_signed = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_min;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'quant.const_fake_quant_per_axis' op ""requires attribute 'min'");
+    if (namedAttrIt->getName() == ConstFakeQuantPerAxis::minAttrName(*odsOpName)) {
+      tblgen_min = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_num_bits;
+  ::mlir::Attribute tblgen_narrow_range;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'quant.const_fake_quant_per_axis' op ""requires attribute 'num_bits'");
+    if (namedAttrIt->getName() == ConstFakeQuantPerAxis::num_bitsAttrName(*odsOpName)) {
+      tblgen_num_bits = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == ConstFakeQuantPerAxis::narrow_rangeAttrName(*odsOpName)) {
+      tblgen_narrow_range = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
 
-    if (tblgen_num_bits && !(((tblgen_num_bits.isa<::mlir::IntegerAttr>())) && ((tblgen_num_bits.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
-      return emitError(loc, "'quant.const_fake_quant_per_axis' op ""attribute 'num_bits' failed to satisfy constraint: 64-bit signless integer attribute");
-  }
-  {
-    auto tblgen_narrow_range = odsAttrs.get("narrow_range");
-    if (tblgen_narrow_range && !((tblgen_narrow_range.isa<::mlir::BoolAttr>())))
-      return emitError(loc, "'quant.const_fake_quant_per_axis' op ""attribute 'narrow_range' failed to satisfy constraint: bool attribute");
-  }
-  {
-    auto tblgen_is_signed = odsAttrs.get("is_signed");
-    if (tblgen_is_signed && !((tblgen_is_signed.isa<::mlir::BoolAttr>())))
-      return emitError(loc, "'quant.const_fake_quant_per_axis' op ""attribute 'is_signed' failed to satisfy constraint: bool attribute");
-  }
+  if (tblgen_min && !(((tblgen_min.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_min.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::FloatAttr>())) && ((attr.cast<::mlir::FloatAttr>().getType().isF32()))); }))))
+    return emitError(loc, "'quant.const_fake_quant_per_axis' op ""attribute 'min' failed to satisfy constraint: 32-bit float array attribute");
+
+  if (tblgen_max && !(((tblgen_max.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_max.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::FloatAttr>())) && ((attr.cast<::mlir::FloatAttr>().getType().isF32()))); }))))
+    return emitError(loc, "'quant.const_fake_quant_per_axis' op ""attribute 'max' failed to satisfy constraint: 32-bit float array attribute");
+
+  if (tblgen_axis && !(((tblgen_axis.isa<::mlir::IntegerAttr>())) && ((tblgen_axis.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
+    return emitError(loc, "'quant.const_fake_quant_per_axis' op ""attribute 'axis' failed to satisfy constraint: 64-bit signless integer attribute");
+
+  if (tblgen_num_bits && !(((tblgen_num_bits.isa<::mlir::IntegerAttr>())) && ((tblgen_num_bits.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
+    return emitError(loc, "'quant.const_fake_quant_per_axis' op ""attribute 'num_bits' failed to satisfy constraint: 64-bit signless integer attribute");
+
+  if (tblgen_narrow_range && !((tblgen_narrow_range.isa<::mlir::BoolAttr>())))
+    return emitError(loc, "'quant.const_fake_quant_per_axis' op ""attribute 'narrow_range' failed to satisfy constraint: bool attribute");
+
+  if (tblgen_is_signed && !((tblgen_is_signed.isa<::mlir::BoolAttr>())))
+    return emitError(loc, "'quant.const_fake_quant_per_axis' op ""attribute 'is_signed' failed to satisfy constraint: bool attribute");
   return ::mlir::success();
 }
 
@@ -729,7 +844,7 @@ std::pair<unsigned, unsigned> ConstFakeQuantPerAxis::getODSResultIndexAndLength(
 }
 
 ::mlir::ArrayAttr ConstFakeQuantPerAxis::minAttr() {
-  return (*this)->getAttr(minAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 1, minAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr ConstFakeQuantPerAxis::min() {
@@ -738,7 +853,7 @@ std::pair<unsigned, unsigned> ConstFakeQuantPerAxis::getODSResultIndexAndLength(
 }
 
 ::mlir::ArrayAttr ConstFakeQuantPerAxis::maxAttr() {
-  return (*this)->getAttr(maxAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 2, maxAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr ConstFakeQuantPerAxis::max() {
@@ -747,7 +862,7 @@ std::pair<unsigned, unsigned> ConstFakeQuantPerAxis::getODSResultIndexAndLength(
 }
 
 ::mlir::IntegerAttr ConstFakeQuantPerAxis::axisAttr() {
-  return (*this)->getAttr(axisAttrName()).cast<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 3, axisAttrName()).cast<::mlir::IntegerAttr>();
 }
 
 uint64_t ConstFakeQuantPerAxis::axis() {
@@ -756,7 +871,7 @@ uint64_t ConstFakeQuantPerAxis::axis() {
 }
 
 ::mlir::IntegerAttr ConstFakeQuantPerAxis::num_bitsAttr() {
-  return (*this)->getAttr(num_bitsAttrName()).cast<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 3, (*this)->getAttrs().end() - 0, num_bitsAttrName()).cast<::mlir::IntegerAttr>();
 }
 
 uint64_t ConstFakeQuantPerAxis::num_bits() {
@@ -765,7 +880,7 @@ uint64_t ConstFakeQuantPerAxis::num_bits() {
 }
 
 ::mlir::BoolAttr ConstFakeQuantPerAxis::narrow_rangeAttr() {
-  return (*this)->getAttr(narrow_rangeAttrName()).dyn_cast_or_null<::mlir::BoolAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 3, (*this)->getAttrs().end() - 1, narrow_rangeAttrName()).dyn_cast_or_null<::mlir::BoolAttr>();
 }
 
 bool ConstFakeQuantPerAxis::narrow_range() {
@@ -776,7 +891,7 @@ bool ConstFakeQuantPerAxis::narrow_range() {
 }
 
 ::mlir::BoolAttr ConstFakeQuantPerAxis::is_signedAttr() {
-  return (*this)->getAttr(is_signedAttrName()).dyn_cast_or_null<::mlir::BoolAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 3, is_signedAttrName()).dyn_cast_or_null<::mlir::BoolAttr>();
 }
 
 bool ConstFakeQuantPerAxis::is_signed() {
@@ -825,6 +940,29 @@ void ConstFakeQuantPerAxis::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operati
   odsState.addTypes(outputs);
 }
 
+void ConstFakeQuantPerAxis::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value inputs, ::mlir::ArrayAttr min, ::mlir::ArrayAttr max, ::mlir::IntegerAttr axis, ::mlir::IntegerAttr num_bits, ::mlir::BoolAttr narrow_range, ::mlir::BoolAttr is_signed) {
+  odsState.addOperands(inputs);
+  odsState.addAttribute(minAttrName(odsState.name), min);
+  odsState.addAttribute(maxAttrName(odsState.name), max);
+  odsState.addAttribute(axisAttrName(odsState.name), axis);
+  odsState.addAttribute(num_bitsAttrName(odsState.name), num_bits);
+  if (narrow_range) {
+  odsState.addAttribute(narrow_rangeAttrName(odsState.name), narrow_range);
+  }
+  if (is_signed) {
+  odsState.addAttribute(is_signedAttrName(odsState.name), is_signed);
+  }
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(ConstFakeQuantPerAxis::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void ConstFakeQuantPerAxis::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value inputs, ::mlir::ArrayAttr min, ::mlir::ArrayAttr max, ::mlir::IntegerAttr axis, ::mlir::IntegerAttr num_bits, ::mlir::BoolAttr narrow_range, ::mlir::BoolAttr is_signed) {
   odsState.addOperands(inputs);
   odsState.addAttribute(minAttrName(odsState.name), min);
@@ -852,6 +990,25 @@ void ConstFakeQuantPerAxis::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operati
   odsState.addTypes(outputs);
 }
 
+void ConstFakeQuantPerAxis::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value inputs, ::mlir::ArrayAttr min, ::mlir::ArrayAttr max, uint64_t axis, uint64_t num_bits, bool narrow_range, bool is_signed) {
+  odsState.addOperands(inputs);
+  odsState.addAttribute(minAttrName(odsState.name), min);
+  odsState.addAttribute(maxAttrName(odsState.name), max);
+  odsState.addAttribute(axisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
+  odsState.addAttribute(num_bitsAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), num_bits));
+  odsState.addAttribute(narrow_rangeAttrName(odsState.name), odsBuilder.getBoolAttr(narrow_range));
+  odsState.addAttribute(is_signedAttrName(odsState.name), odsBuilder.getBoolAttr(is_signed));
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(ConstFakeQuantPerAxis::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void ConstFakeQuantPerAxis::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value inputs, ::mlir::ArrayAttr min, ::mlir::ArrayAttr max, uint64_t axis, uint64_t num_bits, bool narrow_range, bool is_signed) {
   odsState.addOperands(inputs);
   odsState.addAttribute(minAttrName(odsState.name), min);
@@ -872,72 +1029,92 @@ void ConstFakeQuantPerAxis::build(::mlir::OpBuilder &, ::mlir::OperationState &o
   odsState.addTypes(resultTypes);
 }
 
-void ConstFakeQuantPerAxis::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value inputs, ::mlir::ArrayAttr min, ::mlir::ArrayAttr max, ::mlir::IntegerAttr axis, ::mlir::IntegerAttr num_bits, ::mlir::BoolAttr narrow_range, ::mlir::BoolAttr is_signed) {
-  odsState.addOperands(inputs);
-  odsState.addAttribute(minAttrName(odsState.name), min);
-  odsState.addAttribute(maxAttrName(odsState.name), max);
-  odsState.addAttribute(axisAttrName(odsState.name), axis);
-  odsState.addAttribute(num_bitsAttrName(odsState.name), num_bits);
-  if (narrow_range) {
-  odsState.addAttribute(narrow_rangeAttrName(odsState.name), narrow_range);
-  }
-  if (is_signed) {
-  odsState.addAttribute(is_signedAttrName(odsState.name), is_signed);
-  }
-  odsState.addTypes({inputs.getType()});
-
-}
-
 void ConstFakeQuantPerAxis::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 1u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(ConstFakeQuantPerAxis::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult ConstFakeQuantPerAxis::verifyInvariantsImpl() {
-  {
-    auto tblgen_min = (*this)->getAttr(minAttrName());
-    if (!tblgen_min)
-      return emitOpError("requires attribute 'min'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps3(*this, tblgen_min, "min")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_max = (*this)->getAttr(maxAttrName());
-    if (!tblgen_max)
-      return emitOpError("requires attribute 'max'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps3(*this, tblgen_max, "max")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_axis = (*this)->getAttr(axisAttrName());
-    if (!tblgen_axis)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_axis;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'axis'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps1(*this, tblgen_axis, "axis")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == axisAttrName()) {
+      tblgen_axis = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_num_bits = (*this)->getAttr(num_bitsAttrName());
-    if (!tblgen_num_bits)
+  ::mlir::Attribute tblgen_max;
+  ::mlir::Attribute tblgen_is_signed;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'max'");
+    if (namedAttrIt->getName() == maxAttrName()) {
+      tblgen_max = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == is_signedAttrName()) {
+      tblgen_is_signed = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_min;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'min'");
+    if (namedAttrIt->getName() == minAttrName()) {
+      tblgen_min = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_num_bits;
+  ::mlir::Attribute tblgen_narrow_range;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'num_bits'");
+    if (namedAttrIt->getName() == num_bitsAttrName()) {
+      tblgen_num_bits = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == narrow_rangeAttrName()) {
+      tblgen_narrow_range = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps1(*this, tblgen_num_bits, "num_bits")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_narrow_range = (*this)->getAttr(narrow_rangeAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps2(*this, tblgen_narrow_range, "narrow_range")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_is_signed = (*this)->getAttr(is_signedAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps2(*this, tblgen_is_signed, "is_signed")))
-      return ::mlir::failure();
-  }
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps3(*this, tblgen_min, "min")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps3(*this, tblgen_max, "max")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps1(*this, tblgen_axis, "axis")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps1(*this, tblgen_num_bits, "num_bits")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps2(*this, tblgen_narrow_range, "narrow_range")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps2(*this, tblgen_is_signed, "is_signed")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -963,7 +1140,15 @@ void ConstFakeQuantPerAxis::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operati
   return verifyInvariantsImpl();
 }
 
-void ConstFakeQuantPerAxis::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+::mlir::LogicalResult ConstFakeQuantPerAxis::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
+}
+
+void ConstFakeQuantPerAxis::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace quant
@@ -977,9 +1162,11 @@ namespace quant {
 // ::mlir::quant::CoupledRefOp definitions
 //===----------------------------------------------------------------------===//
 
-CoupledRefOpAdaptor::CoupledRefOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+CoupledRefOpAdaptor::CoupledRefOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("quant.coupled_ref", odsAttrs.getContext());
+}
 
-CoupledRefOpAdaptor::CoupledRefOpAdaptor(CoupledRefOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+CoupledRefOpAdaptor::CoupledRefOpAdaptor(CoupledRefOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange CoupledRefOpAdaptor::getOperands() {
   return odsOperands;
@@ -1005,8 +1192,8 @@ std::pair<unsigned, unsigned> CoupledRefOpAdaptor::getODSOperandIndexAndLength(u
 
 ::mlir::StringAttr CoupledRefOpAdaptor::coupledKeyAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::StringAttr attr = odsAttrs.get("coupledKey").cast<::mlir::StringAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, CoupledRefOp::coupledKeyAttrName(*odsOpName)).cast<::mlir::StringAttr>();
+    return attr;
 }
 
 ::llvm::StringRef CoupledRefOpAdaptor::coupledKey() {
@@ -1015,14 +1202,21 @@ std::pair<unsigned, unsigned> CoupledRefOpAdaptor::getODSOperandIndexAndLength(u
 }
 
 ::mlir::LogicalResult CoupledRefOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_coupledKey = odsAttrs.get("coupledKey");
-    if (!tblgen_coupledKey)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_coupledKey;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'quant.coupled_ref' op ""requires attribute 'coupledKey'");
-
-    if (tblgen_coupledKey && !((tblgen_coupledKey.isa<::mlir::StringAttr>())))
-      return emitError(loc, "'quant.coupled_ref' op ""attribute 'coupledKey' failed to satisfy constraint: string attribute");
+    if (namedAttrIt->getName() == CoupledRefOp::coupledKeyAttrName(*odsOpName)) {
+      tblgen_coupledKey = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_coupledKey && !((tblgen_coupledKey.isa<::mlir::StringAttr>())))
+    return emitError(loc, "'quant.coupled_ref' op ""attribute 'coupledKey' failed to satisfy constraint: string attribute");
   return ::mlir::success();
 }
 
@@ -1057,7 +1251,7 @@ std::pair<unsigned, unsigned> CoupledRefOp::getODSResultIndexAndLength(unsigned 
 }
 
 ::mlir::StringAttr CoupledRefOp::coupledKeyAttr() {
-  return (*this)->getAttr(coupledKeyAttrName()).cast<::mlir::StringAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, coupledKeyAttrName()).cast<::mlir::StringAttr>();
 }
 
 ::llvm::StringRef CoupledRefOp::coupledKey() {
@@ -1075,6 +1269,20 @@ void CoupledRefOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
   odsState.addTypes(resultType0);
 }
 
+void CoupledRefOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value arg, ::mlir::StringAttr coupledKey) {
+  odsState.addOperands(arg);
+  odsState.addAttribute(coupledKeyAttrName(odsState.name), coupledKey);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(CoupledRefOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void CoupledRefOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value arg, ::mlir::StringAttr coupledKey) {
   odsState.addOperands(arg);
   odsState.addAttribute(coupledKeyAttrName(odsState.name), coupledKey);
@@ -1086,6 +1294,20 @@ void CoupledRefOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
   odsState.addOperands(arg);
   odsState.addAttribute(coupledKeyAttrName(odsState.name), odsBuilder.getStringAttr(coupledKey));
   odsState.addTypes(resultType0);
+}
+
+void CoupledRefOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value arg, ::llvm::StringRef coupledKey) {
+  odsState.addOperands(arg);
+  odsState.addAttribute(coupledKeyAttrName(odsState.name), odsBuilder.getStringAttr(coupledKey));
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(CoupledRefOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
 }
 
 void CoupledRefOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value arg, ::llvm::StringRef coupledKey) {
@@ -1103,29 +1325,39 @@ void CoupledRefOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
   odsState.addTypes(resultTypes);
 }
 
-void CoupledRefOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value arg, ::mlir::StringAttr coupledKey) {
-  odsState.addOperands(arg);
-  odsState.addAttribute(coupledKeyAttrName(odsState.name), coupledKey);
-  odsState.addTypes({arg.getType()});
-
-}
-
 void CoupledRefOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 1u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(CoupledRefOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult CoupledRefOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_coupledKey = (*this)->getAttr(coupledKeyAttrName());
-    if (!tblgen_coupledKey)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_coupledKey;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'coupledKey'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps4(*this, tblgen_coupledKey, "coupledKey")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == coupledKeyAttrName()) {
+      tblgen_coupledKey = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps4(*this, tblgen_coupledKey, "coupledKey")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1151,6 +1383,14 @@ void CoupledRefOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
   return verifyInvariantsImpl();
 }
 
+::mlir::LogicalResult CoupledRefOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
+}
+
 } // namespace quant
 } // namespace mlir
 MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::quant::CoupledRefOp)
@@ -1162,9 +1402,11 @@ namespace quant {
 // ::mlir::quant::DequantizeCastOp definitions
 //===----------------------------------------------------------------------===//
 
-DequantizeCastOpAdaptor::DequantizeCastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+DequantizeCastOpAdaptor::DequantizeCastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("quant.dcast", odsAttrs.getContext());
+}
 
-DequantizeCastOpAdaptor::DequantizeCastOpAdaptor(DequantizeCastOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+DequantizeCastOpAdaptor::DequantizeCastOpAdaptor(DequantizeCastOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange DequantizeCastOpAdaptor::getOperands() {
   return odsOperands;
@@ -1267,7 +1509,7 @@ void DequantizeCastOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
   return verifyInvariantsImpl();
 }
 
-void DequantizeCastOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void DequantizeCastOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace quant
@@ -1281,9 +1523,11 @@ namespace quant {
 // ::mlir::quant::QuantizeCastOp definitions
 //===----------------------------------------------------------------------===//
 
-QuantizeCastOpAdaptor::QuantizeCastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+QuantizeCastOpAdaptor::QuantizeCastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("quant.qcast", odsAttrs.getContext());
+}
 
-QuantizeCastOpAdaptor::QuantizeCastOpAdaptor(QuantizeCastOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+QuantizeCastOpAdaptor::QuantizeCastOpAdaptor(QuantizeCastOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange QuantizeCastOpAdaptor::getOperands() {
   return odsOperands;
@@ -1386,7 +1630,7 @@ void QuantizeCastOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
   return verifyInvariantsImpl();
 }
 
-void QuantizeCastOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void QuantizeCastOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace quant
@@ -1400,9 +1644,11 @@ namespace quant {
 // ::mlir::quant::QuantizeRegionOp definitions
 //===----------------------------------------------------------------------===//
 
-QuantizeRegionOpAdaptor::QuantizeRegionOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+QuantizeRegionOpAdaptor::QuantizeRegionOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("quant.region", odsAttrs.getContext());
+}
 
-QuantizeRegionOpAdaptor::QuantizeRegionOpAdaptor(QuantizeRegionOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+QuantizeRegionOpAdaptor::QuantizeRegionOpAdaptor(QuantizeRegionOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange QuantizeRegionOpAdaptor::getOperands() {
   return odsOperands;
@@ -1442,8 +1688,8 @@ std::pair<unsigned, unsigned> QuantizeRegionOpAdaptor::getODSOperandIndexAndLeng
 
 ::mlir::ArrayAttr QuantizeRegionOpAdaptor::input_specsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("input_specs").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 2, QuantizeRegionOp::input_specsAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr QuantizeRegionOpAdaptor::input_specs() {
@@ -1453,8 +1699,8 @@ std::pair<unsigned, unsigned> QuantizeRegionOpAdaptor::getODSOperandIndexAndLeng
 
 ::mlir::ArrayAttr QuantizeRegionOpAdaptor::output_specsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("output_specs").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 0, QuantizeRegionOp::output_specsAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr QuantizeRegionOpAdaptor::output_specs() {
@@ -1464,8 +1710,8 @@ std::pair<unsigned, unsigned> QuantizeRegionOpAdaptor::getODSOperandIndexAndLeng
 
 ::mlir::StringAttr QuantizeRegionOpAdaptor::logical_kernelAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::StringAttr attr = odsAttrs.get("logical_kernel").cast<::mlir::StringAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 1, QuantizeRegionOp::logical_kernelAttrName(*odsOpName)).cast<::mlir::StringAttr>();
+    return attr;
 }
 
 ::llvm::StringRef QuantizeRegionOpAdaptor::logical_kernel() {
@@ -1482,30 +1728,47 @@ std::pair<unsigned, unsigned> QuantizeRegionOpAdaptor::getODSOperandIndexAndLeng
 }
 
 ::mlir::LogicalResult QuantizeRegionOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_input_specs = odsAttrs.get("input_specs");
-    if (!tblgen_input_specs)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_input_specs;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'quant.region' op ""requires attribute 'input_specs'");
-
-    if (tblgen_input_specs && !(((tblgen_input_specs.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_input_specs.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::TypeAttr>())) && ((attr.cast<::mlir::TypeAttr>().getValue().isa<::mlir::Type>()))); }))))
-      return emitError(loc, "'quant.region' op ""attribute 'input_specs' failed to satisfy constraint: type array attribute");
+    if (namedAttrIt->getName() == QuantizeRegionOp::input_specsAttrName(*odsOpName)) {
+      tblgen_input_specs = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_output_specs = odsAttrs.get("output_specs");
-    if (!tblgen_output_specs)
-      return emitError(loc, "'quant.region' op ""requires attribute 'output_specs'");
-
-    if (tblgen_output_specs && !(((tblgen_output_specs.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_output_specs.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::TypeAttr>())) && ((attr.cast<::mlir::TypeAttr>().getValue().isa<::mlir::Type>()))); }))))
-      return emitError(loc, "'quant.region' op ""attribute 'output_specs' failed to satisfy constraint: type array attribute");
-  }
-  {
-    auto tblgen_logical_kernel = odsAttrs.get("logical_kernel");
-    if (!tblgen_logical_kernel)
+  ::mlir::Attribute tblgen_logical_kernel;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'quant.region' op ""requires attribute 'logical_kernel'");
-
-    if (tblgen_logical_kernel && !((tblgen_logical_kernel.isa<::mlir::StringAttr>())))
-      return emitError(loc, "'quant.region' op ""attribute 'logical_kernel' failed to satisfy constraint: string attribute");
+    if (namedAttrIt->getName() == QuantizeRegionOp::logical_kernelAttrName(*odsOpName)) {
+      tblgen_logical_kernel = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+  ::mlir::Attribute tblgen_output_specs;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'quant.region' op ""requires attribute 'output_specs'");
+    if (namedAttrIt->getName() == QuantizeRegionOp::output_specsAttrName(*odsOpName)) {
+      tblgen_output_specs = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
+  if (tblgen_input_specs && !(((tblgen_input_specs.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_input_specs.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::TypeAttr>())) && ((attr.cast<::mlir::TypeAttr>().getValue().isa<::mlir::Type>()))); }))))
+    return emitError(loc, "'quant.region' op ""attribute 'input_specs' failed to satisfy constraint: type array attribute");
+
+  if (tblgen_output_specs && !(((tblgen_output_specs.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_output_specs.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::TypeAttr>())) && ((attr.cast<::mlir::TypeAttr>().getValue().isa<::mlir::Type>()))); }))))
+    return emitError(loc, "'quant.region' op ""attribute 'output_specs' failed to satisfy constraint: type array attribute");
+
+  if (tblgen_logical_kernel && !((tblgen_logical_kernel.isa<::mlir::StringAttr>())))
+    return emitError(loc, "'quant.region' op ""attribute 'logical_kernel' failed to satisfy constraint: string attribute");
   return ::mlir::success();
 }
 
@@ -1576,7 +1839,7 @@ std::pair<unsigned, unsigned> QuantizeRegionOp::getODSResultIndexAndLength(unsig
 }
 
 ::mlir::ArrayAttr QuantizeRegionOp::input_specsAttr() {
-  return (*this)->getAttr(input_specsAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 2, input_specsAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr QuantizeRegionOp::input_specs() {
@@ -1585,7 +1848,7 @@ std::pair<unsigned, unsigned> QuantizeRegionOp::getODSResultIndexAndLength(unsig
 }
 
 ::mlir::ArrayAttr QuantizeRegionOp::output_specsAttr() {
-  return (*this)->getAttr(output_specsAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 0, output_specsAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr QuantizeRegionOp::output_specs() {
@@ -1594,7 +1857,7 @@ std::pair<unsigned, unsigned> QuantizeRegionOp::getODSResultIndexAndLength(unsig
 }
 
 ::mlir::StringAttr QuantizeRegionOp::logical_kernelAttr() {
-  return (*this)->getAttr(logical_kernelAttrName()).cast<::mlir::StringAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 1, logical_kernelAttrName()).cast<::mlir::StringAttr>();
 }
 
 ::llvm::StringRef QuantizeRegionOp::logical_kernel() {
@@ -1641,30 +1904,47 @@ void QuantizeRegionOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
 }
 
 ::mlir::LogicalResult QuantizeRegionOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_input_specs = (*this)->getAttr(input_specsAttrName());
-    if (!tblgen_input_specs)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_input_specs;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'input_specs'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps5(*this, tblgen_input_specs, "input_specs")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == input_specsAttrName()) {
+      tblgen_input_specs = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_output_specs = (*this)->getAttr(output_specsAttrName());
-    if (!tblgen_output_specs)
-      return emitOpError("requires attribute 'output_specs'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps5(*this, tblgen_output_specs, "output_specs")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_logical_kernel = (*this)->getAttr(logical_kernelAttrName());
-    if (!tblgen_logical_kernel)
+  ::mlir::Attribute tblgen_logical_kernel;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'logical_kernel'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps4(*this, tblgen_logical_kernel, "logical_kernel")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == logical_kernelAttrName()) {
+      tblgen_logical_kernel = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+  ::mlir::Attribute tblgen_output_specs;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'output_specs'");
+    if (namedAttrIt->getName() == output_specsAttrName()) {
+      tblgen_output_specs = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps5(*this, tblgen_input_specs, "input_specs")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps5(*this, tblgen_output_specs, "output_specs")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps4(*this, tblgen_logical_kernel, "logical_kernel")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1699,7 +1979,7 @@ void QuantizeRegionOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
   return ::mlir::failure();
 }
 
-void QuantizeRegionOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void QuantizeRegionOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace quant
@@ -1713,9 +1993,11 @@ namespace quant {
 // ::mlir::quant::ReturnOp definitions
 //===----------------------------------------------------------------------===//
 
-ReturnOpAdaptor::ReturnOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ReturnOpAdaptor::ReturnOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("quant.return", odsAttrs.getContext());
+}
 
-ReturnOpAdaptor::ReturnOpAdaptor(ReturnOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ReturnOpAdaptor::ReturnOpAdaptor(ReturnOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ReturnOpAdaptor::getOperands() {
   return odsOperands;
@@ -1840,9 +2122,11 @@ namespace quant {
 // ::mlir::quant::StatisticsOp definitions
 //===----------------------------------------------------------------------===//
 
-StatisticsOpAdaptor::StatisticsOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+StatisticsOpAdaptor::StatisticsOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("quant.stats", odsAttrs.getContext());
+}
 
-StatisticsOpAdaptor::StatisticsOpAdaptor(StatisticsOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+StatisticsOpAdaptor::StatisticsOpAdaptor(StatisticsOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange StatisticsOpAdaptor::getOperands() {
   return odsOperands;
@@ -1868,8 +2152,8 @@ std::pair<unsigned, unsigned> StatisticsOpAdaptor::getODSOperandIndexAndLength(u
 
 ::mlir::ElementsAttr StatisticsOpAdaptor::layerStatsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ElementsAttr attr = odsAttrs.get("layerStats").cast<::mlir::ElementsAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, StatisticsOp::layerStatsAttrName(*odsOpName)).cast<::mlir::ElementsAttr>();
+    return attr;
 }
 
 ::mlir::ElementsAttr StatisticsOpAdaptor::layerStats() {
@@ -1879,8 +2163,8 @@ std::pair<unsigned, unsigned> StatisticsOpAdaptor::getODSOperandIndexAndLength(u
 
 ::mlir::ElementsAttr StatisticsOpAdaptor::axisStatsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ElementsAttr attr = odsAttrs.get("axisStats").dyn_cast_or_null<::mlir::ElementsAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, StatisticsOp::axisStatsAttrName(*odsOpName)).dyn_cast_or_null<::mlir::ElementsAttr>();
+    return attr;
 }
 
 ::llvm::Optional< ::mlir::ElementsAttr > StatisticsOpAdaptor::axisStats() {
@@ -1890,8 +2174,8 @@ std::pair<unsigned, unsigned> StatisticsOpAdaptor::getODSOperandIndexAndLength(u
 
 ::mlir::IntegerAttr StatisticsOpAdaptor::axisAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("axis").dyn_cast_or_null<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, StatisticsOp::axisAttrName(*odsOpName)).dyn_cast_or_null<::mlir::IntegerAttr>();
+    return attr;
 }
 
 ::llvm::Optional<uint64_t> StatisticsOpAdaptor::axis() {
@@ -1900,24 +2184,35 @@ std::pair<unsigned, unsigned> StatisticsOpAdaptor::getODSOperandIndexAndLength(u
 }
 
 ::mlir::LogicalResult StatisticsOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_layerStats = odsAttrs.get("layerStats");
-    if (!tblgen_layerStats)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_layerStats;
+  ::mlir::Attribute tblgen_axis;
+  ::mlir::Attribute tblgen_axisStats;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'quant.stats' op ""requires attribute 'layerStats'");
+    if (namedAttrIt->getName() == StatisticsOp::layerStatsAttrName(*odsOpName)) {
+      tblgen_layerStats = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == StatisticsOp::axisAttrName(*odsOpName)) {
+      tblgen_axis = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == StatisticsOp::axisStatsAttrName(*odsOpName)) {
+      tblgen_axisStats = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
 
-    if (tblgen_layerStats && !((tblgen_layerStats.isa<::mlir::ElementsAttr>())))
-      return emitError(loc, "'quant.stats' op ""attribute 'layerStats' failed to satisfy constraint: constant vector/tensor attribute");
-  }
-  {
-    auto tblgen_axisStats = odsAttrs.get("axisStats");
-    if (tblgen_axisStats && !((tblgen_axisStats.isa<::mlir::ElementsAttr>())))
-      return emitError(loc, "'quant.stats' op ""attribute 'axisStats' failed to satisfy constraint: constant vector/tensor attribute");
-  }
-  {
-    auto tblgen_axis = odsAttrs.get("axis");
-    if (tblgen_axis && !(((tblgen_axis.isa<::mlir::IntegerAttr>())) && ((tblgen_axis.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
-      return emitError(loc, "'quant.stats' op ""attribute 'axis' failed to satisfy constraint: 64-bit signless integer attribute");
-  }
+  if (tblgen_layerStats && !((tblgen_layerStats.isa<::mlir::ElementsAttr>())))
+    return emitError(loc, "'quant.stats' op ""attribute 'layerStats' failed to satisfy constraint: constant vector/tensor attribute");
+
+  if (tblgen_axisStats && !((tblgen_axisStats.isa<::mlir::ElementsAttr>())))
+    return emitError(loc, "'quant.stats' op ""attribute 'axisStats' failed to satisfy constraint: constant vector/tensor attribute");
+
+  if (tblgen_axis && !(((tblgen_axis.isa<::mlir::IntegerAttr>())) && ((tblgen_axis.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
+    return emitError(loc, "'quant.stats' op ""attribute 'axis' failed to satisfy constraint: 64-bit signless integer attribute");
   return ::mlir::success();
 }
 
@@ -1952,7 +2247,7 @@ std::pair<unsigned, unsigned> StatisticsOp::getODSResultIndexAndLength(unsigned 
 }
 
 ::mlir::ElementsAttr StatisticsOp::layerStatsAttr() {
-  return (*this)->getAttr(layerStatsAttrName()).cast<::mlir::ElementsAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, layerStatsAttrName()).cast<::mlir::ElementsAttr>();
 }
 
 ::mlir::ElementsAttr StatisticsOp::layerStats() {
@@ -1961,7 +2256,7 @@ std::pair<unsigned, unsigned> StatisticsOp::getODSResultIndexAndLength(unsigned 
 }
 
 ::mlir::ElementsAttr StatisticsOp::axisStatsAttr() {
-  return (*this)->getAttr(axisStatsAttrName()).dyn_cast_or_null<::mlir::ElementsAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, axisStatsAttrName()).dyn_cast_or_null<::mlir::ElementsAttr>();
 }
 
 ::llvm::Optional< ::mlir::ElementsAttr > StatisticsOp::axisStats() {
@@ -1970,7 +2265,7 @@ std::pair<unsigned, unsigned> StatisticsOp::getODSResultIndexAndLength(unsigned 
 }
 
 ::mlir::IntegerAttr StatisticsOp::axisAttr() {
-  return (*this)->getAttr(axisAttrName()).dyn_cast_or_null<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, axisAttrName()).dyn_cast_or_null<::mlir::IntegerAttr>();
 }
 
 ::llvm::Optional<uint64_t> StatisticsOp::axis() {
@@ -2010,6 +2305,26 @@ void StatisticsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
   odsState.addTypes(resultType0);
 }
 
+void StatisticsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value arg, ::mlir::ElementsAttr layerStats, /*optional*/::mlir::ElementsAttr axisStats, /*optional*/::mlir::IntegerAttr axis) {
+  odsState.addOperands(arg);
+  odsState.addAttribute(layerStatsAttrName(odsState.name), layerStats);
+  if (axisStats) {
+  odsState.addAttribute(axisStatsAttrName(odsState.name), axisStats);
+  }
+  if (axis) {
+  odsState.addAttribute(axisAttrName(odsState.name), axis);
+  }
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(StatisticsOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void StatisticsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value arg, ::mlir::ElementsAttr layerStats, /*optional*/::mlir::ElementsAttr axisStats, /*optional*/::mlir::IntegerAttr axis) {
   odsState.addOperands(arg);
   odsState.addAttribute(layerStatsAttrName(odsState.name), layerStats);
@@ -2031,45 +2346,53 @@ void StatisticsOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
   odsState.addTypes(resultTypes);
 }
 
-void StatisticsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value arg, ::mlir::ElementsAttr layerStats, /*optional*/::mlir::ElementsAttr axisStats, /*optional*/::mlir::IntegerAttr axis) {
-  odsState.addOperands(arg);
-  odsState.addAttribute(layerStatsAttrName(odsState.name), layerStats);
-  if (axisStats) {
-  odsState.addAttribute(axisStatsAttrName(odsState.name), axisStats);
-  }
-  if (axis) {
-  odsState.addAttribute(axisAttrName(odsState.name), axis);
-  }
-  odsState.addTypes({arg.getType()});
-
-}
-
 void StatisticsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 1u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(StatisticsOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult StatisticsOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_layerStats = (*this)->getAttr(layerStatsAttrName());
-    if (!tblgen_layerStats)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_layerStats;
+  ::mlir::Attribute tblgen_axis;
+  ::mlir::Attribute tblgen_axisStats;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'layerStats'");
+    if (namedAttrIt->getName() == layerStatsAttrName()) {
+      tblgen_layerStats = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == axisAttrName()) {
+      tblgen_axis = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == axisStatsAttrName()) {
+      tblgen_axisStats = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps6(*this, tblgen_layerStats, "layerStats")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_axisStats = (*this)->getAttr(axisStatsAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps6(*this, tblgen_axisStats, "axisStats")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_axis = (*this)->getAttr(axisAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps1(*this, tblgen_axis, "axis")))
-      return ::mlir::failure();
-  }
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps6(*this, tblgen_layerStats, "layerStats")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps6(*this, tblgen_axisStats, "axisStats")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps1(*this, tblgen_axis, "axis")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -2097,6 +2420,14 @@ void StatisticsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
   return ::mlir::failure();
 }
 
+::mlir::LogicalResult StatisticsOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
+}
+
 } // namespace quant
 } // namespace mlir
 MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::quant::StatisticsOp)
@@ -2108,9 +2439,11 @@ namespace quant {
 // ::mlir::quant::StatisticsRefOp definitions
 //===----------------------------------------------------------------------===//
 
-StatisticsRefOpAdaptor::StatisticsRefOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+StatisticsRefOpAdaptor::StatisticsRefOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("quant.stats_ref", odsAttrs.getContext());
+}
 
-StatisticsRefOpAdaptor::StatisticsRefOpAdaptor(StatisticsRefOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+StatisticsRefOpAdaptor::StatisticsRefOpAdaptor(StatisticsRefOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange StatisticsRefOpAdaptor::getOperands() {
   return odsOperands;
@@ -2136,8 +2469,8 @@ std::pair<unsigned, unsigned> StatisticsRefOpAdaptor::getODSOperandIndexAndLengt
 
 ::mlir::StringAttr StatisticsRefOpAdaptor::statsKeyAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::StringAttr attr = odsAttrs.get("statsKey").cast<::mlir::StringAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, StatisticsRefOp::statsKeyAttrName(*odsOpName)).cast<::mlir::StringAttr>();
+    return attr;
 }
 
 ::llvm::StringRef StatisticsRefOpAdaptor::statsKey() {
@@ -2146,14 +2479,21 @@ std::pair<unsigned, unsigned> StatisticsRefOpAdaptor::getODSOperandIndexAndLengt
 }
 
 ::mlir::LogicalResult StatisticsRefOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_statsKey = odsAttrs.get("statsKey");
-    if (!tblgen_statsKey)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_statsKey;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'quant.stats_ref' op ""requires attribute 'statsKey'");
-
-    if (tblgen_statsKey && !((tblgen_statsKey.isa<::mlir::StringAttr>())))
-      return emitError(loc, "'quant.stats_ref' op ""attribute 'statsKey' failed to satisfy constraint: string attribute");
+    if (namedAttrIt->getName() == StatisticsRefOp::statsKeyAttrName(*odsOpName)) {
+      tblgen_statsKey = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_statsKey && !((tblgen_statsKey.isa<::mlir::StringAttr>())))
+    return emitError(loc, "'quant.stats_ref' op ""attribute 'statsKey' failed to satisfy constraint: string attribute");
   return ::mlir::success();
 }
 
@@ -2188,7 +2528,7 @@ std::pair<unsigned, unsigned> StatisticsRefOp::getODSResultIndexAndLength(unsign
 }
 
 ::mlir::StringAttr StatisticsRefOp::statsKeyAttr() {
-  return (*this)->getAttr(statsKeyAttrName()).cast<::mlir::StringAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, statsKeyAttrName()).cast<::mlir::StringAttr>();
 }
 
 ::llvm::StringRef StatisticsRefOp::statsKey() {
@@ -2206,6 +2546,20 @@ void StatisticsRefOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationStat
   odsState.addTypes(resultType0);
 }
 
+void StatisticsRefOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value arg, ::mlir::StringAttr statsKey) {
+  odsState.addOperands(arg);
+  odsState.addAttribute(statsKeyAttrName(odsState.name), statsKey);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(StatisticsRefOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void StatisticsRefOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value arg, ::mlir::StringAttr statsKey) {
   odsState.addOperands(arg);
   odsState.addAttribute(statsKeyAttrName(odsState.name), statsKey);
@@ -2217,6 +2571,20 @@ void StatisticsRefOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationStat
   odsState.addOperands(arg);
   odsState.addAttribute(statsKeyAttrName(odsState.name), odsBuilder.getStringAttr(statsKey));
   odsState.addTypes(resultType0);
+}
+
+void StatisticsRefOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value arg, ::llvm::StringRef statsKey) {
+  odsState.addOperands(arg);
+  odsState.addAttribute(statsKeyAttrName(odsState.name), odsBuilder.getStringAttr(statsKey));
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(StatisticsRefOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
 }
 
 void StatisticsRefOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value arg, ::llvm::StringRef statsKey) {
@@ -2234,29 +2602,39 @@ void StatisticsRefOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
   odsState.addTypes(resultTypes);
 }
 
-void StatisticsRefOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value arg, ::mlir::StringAttr statsKey) {
-  odsState.addOperands(arg);
-  odsState.addAttribute(statsKeyAttrName(odsState.name), statsKey);
-  odsState.addTypes({arg.getType()});
-
-}
-
 void StatisticsRefOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 1u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(StatisticsRefOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult StatisticsRefOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_statsKey = (*this)->getAttr(statsKeyAttrName());
-    if (!tblgen_statsKey)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_statsKey;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'statsKey'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps4(*this, tblgen_statsKey, "statsKey")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == statsKeyAttrName()) {
+      tblgen_statsKey = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_QuantOps4(*this, tblgen_statsKey, "statsKey")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -2282,6 +2660,14 @@ void StatisticsRefOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationStat
   return verifyInvariantsImpl();
 }
 
+::mlir::LogicalResult StatisticsRefOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
+}
+
 } // namespace quant
 } // namespace mlir
 MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::quant::StatisticsRefOp)
@@ -2293,9 +2679,11 @@ namespace quant {
 // ::mlir::quant::StorageCastOp definitions
 //===----------------------------------------------------------------------===//
 
-StorageCastOpAdaptor::StorageCastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+StorageCastOpAdaptor::StorageCastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("quant.scast", odsAttrs.getContext());
+}
 
-StorageCastOpAdaptor::StorageCastOpAdaptor(StorageCastOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+StorageCastOpAdaptor::StorageCastOpAdaptor(StorageCastOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange StorageCastOpAdaptor::getOperands() {
   return odsOperands;
@@ -2398,7 +2786,7 @@ void StorageCastOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
   return verifyInvariantsImpl();
 }
 
-void StorageCastOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void StorageCastOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace quant

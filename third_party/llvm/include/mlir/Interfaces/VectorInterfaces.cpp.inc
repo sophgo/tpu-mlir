@@ -57,6 +57,6 @@ bool mlir::VectorTransferOpInterface::hasOutOfBoundsDim() {
 void mlir::VectorTransferOpInterface::zipResultAndIndexing(::llvm::function_ref<void(int64_t, int64_t)> fun) {
       return getImpl()->zipResultAndIndexing(getImpl(), getOperation(), fun);
   }
-::mlir::Optional<::mlir::SmallVector<int64_t, 4>> mlir::VectorUnrollOpInterface::getShapeForUnroll() {
+::mlir::Optional<::llvm::SmallVector<int64_t, 4>> mlir::VectorUnrollOpInterface::getShapeForUnroll() {
       return getImpl()->getShapeForUnroll(getImpl(), getOperation());
   }

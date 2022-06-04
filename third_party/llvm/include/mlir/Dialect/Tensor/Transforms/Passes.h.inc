@@ -6,12 +6,12 @@
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class TensorBufferizeBase : public ::mlir::OperationPass<FuncOp> {
+class TensorBufferizeBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = TensorBufferizeBase;
 
-  TensorBufferizeBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  TensorBufferizeBase(const TensorBufferizeBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  TensorBufferizeBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  TensorBufferizeBase(const TensorBufferizeBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {

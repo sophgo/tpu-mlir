@@ -10,14 +10,7 @@ namespace mlir {
 namespace ROCDL {
 
 class ROCDLDialect : public ::mlir::Dialect {
-  explicit ROCDLDialect(::mlir::MLIRContext *context)
-    : ::mlir::Dialect(getDialectNamespace(), context,
-      ::mlir::TypeID::get<ROCDLDialect>()) {
-    
-    getContext()->getOrLoadDialect<LLVM::LLVMDialect>();
-
-    initialize();
-  }
+  explicit ROCDLDialect(::mlir::MLIRContext *context);
 
   void initialize();
   friend class ::mlir::MLIRContext;

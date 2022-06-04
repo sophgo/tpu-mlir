@@ -19,9 +19,9 @@ struct OffsetSizeAndStrideOpInterfaceInterfaceTraits {
     ::mlir::ArrayAttr (*static_offsets)(const Concept *impl, ::mlir::Operation *);
     ::mlir::ArrayAttr (*static_sizes)(const Concept *impl, ::mlir::Operation *);
     ::mlir::ArrayAttr (*static_strides)(const Concept *impl, ::mlir::Operation *);
-    ::mlir::SmallVector<::mlir::OpFoldResult, 4> (*getMixedOffsets)(const Concept *impl, ::mlir::Operation *);
-    ::mlir::SmallVector<::mlir::OpFoldResult, 4> (*getMixedSizes)(const Concept *impl, ::mlir::Operation *);
-    ::mlir::SmallVector<::mlir::OpFoldResult, 4> (*getMixedStrides)(const Concept *impl, ::mlir::Operation *);
+    ::llvm::SmallVector<::mlir::OpFoldResult, 4> (*getMixedOffsets)(const Concept *impl, ::mlir::Operation *);
+    ::llvm::SmallVector<::mlir::OpFoldResult, 4> (*getMixedSizes)(const Concept *impl, ::mlir::Operation *);
+    ::llvm::SmallVector<::mlir::OpFoldResult, 4> (*getMixedStrides)(const Concept *impl, ::mlir::Operation *);
     bool (*isDynamicOffset)(const Concept *impl, ::mlir::Operation *, unsigned);
     bool (*isDynamicSize)(const Concept *impl, ::mlir::Operation *, unsigned);
     bool (*isDynamicStride)(const Concept *impl, ::mlir::Operation *, unsigned);
@@ -53,9 +53,9 @@ struct OffsetSizeAndStrideOpInterfaceInterfaceTraits {
     static inline ::mlir::ArrayAttr static_offsets(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline ::mlir::ArrayAttr static_sizes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline ::mlir::ArrayAttr static_strides(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline ::mlir::SmallVector<::mlir::OpFoldResult, 4> getMixedOffsets(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline ::mlir::SmallVector<::mlir::OpFoldResult, 4> getMixedSizes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline ::mlir::SmallVector<::mlir::OpFoldResult, 4> getMixedStrides(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ::llvm::SmallVector<::mlir::OpFoldResult, 4> getMixedOffsets(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ::llvm::SmallVector<::mlir::OpFoldResult, 4> getMixedSizes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ::llvm::SmallVector<::mlir::OpFoldResult, 4> getMixedStrides(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline bool isDynamicOffset(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, unsigned idx);
     static inline bool isDynamicSize(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, unsigned idx);
     static inline bool isDynamicStride(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, unsigned idx);
@@ -87,9 +87,9 @@ struct OffsetSizeAndStrideOpInterfaceInterfaceTraits {
     static inline ::mlir::ArrayAttr static_offsets(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline ::mlir::ArrayAttr static_sizes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline ::mlir::ArrayAttr static_strides(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline ::mlir::SmallVector<::mlir::OpFoldResult, 4> getMixedOffsets(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline ::mlir::SmallVector<::mlir::OpFoldResult, 4> getMixedSizes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline ::mlir::SmallVector<::mlir::OpFoldResult, 4> getMixedStrides(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ::llvm::SmallVector<::mlir::OpFoldResult, 4> getMixedOffsets(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ::llvm::SmallVector<::mlir::OpFoldResult, 4> getMixedSizes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ::llvm::SmallVector<::mlir::OpFoldResult, 4> getMixedStrides(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline bool isDynamicOffset(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, unsigned idx);
     static inline bool isDynamicSize(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, unsigned idx);
     static inline bool isDynamicStride(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, unsigned idx);
@@ -116,9 +116,9 @@ struct OffsetSizeAndStrideOpInterfaceInterfaceTraits {
     ::mlir::ArrayAttr static_offsets(::mlir::Operation *tablegen_opaque_val) const;
     ::mlir::ArrayAttr static_sizes(::mlir::Operation *tablegen_opaque_val) const;
     ::mlir::ArrayAttr static_strides(::mlir::Operation *tablegen_opaque_val) const;
-    ::mlir::SmallVector<::mlir::OpFoldResult, 4> getMixedOffsets(::mlir::Operation *tablegen_opaque_val) const;
-    ::mlir::SmallVector<::mlir::OpFoldResult, 4> getMixedSizes(::mlir::Operation *tablegen_opaque_val) const;
-    ::mlir::SmallVector<::mlir::OpFoldResult, 4> getMixedStrides(::mlir::Operation *tablegen_opaque_val) const;
+    ::llvm::SmallVector<::mlir::OpFoldResult, 4> getMixedOffsets(::mlir::Operation *tablegen_opaque_val) const;
+    ::llvm::SmallVector<::mlir::OpFoldResult, 4> getMixedSizes(::mlir::Operation *tablegen_opaque_val) const;
+    ::llvm::SmallVector<::mlir::OpFoldResult, 4> getMixedStrides(::mlir::Operation *tablegen_opaque_val) const;
     bool isDynamicOffset(::mlir::Operation *tablegen_opaque_val, unsigned idx) const;
     bool isDynamicSize(::mlir::Operation *tablegen_opaque_val, unsigned idx) const;
     bool isDynamicStride(::mlir::Operation *tablegen_opaque_val, unsigned idx) const;
@@ -153,9 +153,9 @@ public:
   ::mlir::ArrayAttr static_offsets();
   ::mlir::ArrayAttr static_sizes();
   ::mlir::ArrayAttr static_strides();
-  ::mlir::SmallVector<::mlir::OpFoldResult, 4> getMixedOffsets();
-  ::mlir::SmallVector<::mlir::OpFoldResult, 4> getMixedSizes();
-  ::mlir::SmallVector<::mlir::OpFoldResult, 4> getMixedStrides();
+  ::llvm::SmallVector<::mlir::OpFoldResult, 4> getMixedOffsets();
+  ::llvm::SmallVector<::mlir::OpFoldResult, 4> getMixedSizes();
+  ::llvm::SmallVector<::mlir::OpFoldResult, 4> getMixedStrides();
   bool isDynamicOffset(unsigned idx);
   bool isDynamicSize(unsigned idx);
   bool isDynamicStride(unsigned idx);
@@ -229,14 +229,14 @@ namespace detail {
     ::mlir::ArrayAttr static_strides() {
       return (*static_cast<ConcreteOp *>(this)).static_strides();
     }
-    ::mlir::SmallVector<::mlir::OpFoldResult, 4> getMixedOffsets() {
+    ::llvm::SmallVector<::mlir::OpFoldResult, 4> getMixedOffsets() {
       return ::mlir::getMixedOffsets((*static_cast<ConcreteOp *>(this)), (*static_cast<ConcreteOp *>(this)).static_offsets(),
                                        (*static_cast<ConcreteOp *>(this)).offsets());
     }
-    ::mlir::SmallVector<::mlir::OpFoldResult, 4> getMixedSizes() {
+    ::llvm::SmallVector<::mlir::OpFoldResult, 4> getMixedSizes() {
       return ::mlir::getMixedSizes((*static_cast<ConcreteOp *>(this)), (*static_cast<ConcreteOp *>(this)).static_sizes(), (*static_cast<ConcreteOp *>(this)).sizes());
     }
-    ::mlir::SmallVector<::mlir::OpFoldResult, 4> getMixedStrides() {
+    ::llvm::SmallVector<::mlir::OpFoldResult, 4> getMixedStrides() {
       return ::mlir::getMixedStrides((*static_cast<ConcreteOp *>(this)), (*static_cast<ConcreteOp *>(this)).static_strides(),
                                        (*static_cast<ConcreteOp *>(this)).strides());
     }
@@ -367,15 +367,15 @@ template<typename ConcreteOp>
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).static_strides();
 }
 template<typename ConcreteOp>
-::mlir::SmallVector<::mlir::OpFoldResult, 4> detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits::Model<ConcreteOp>::getMixedOffsets(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+::llvm::SmallVector<::mlir::OpFoldResult, 4> detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits::Model<ConcreteOp>::getMixedOffsets(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getMixedOffsets();
 }
 template<typename ConcreteOp>
-::mlir::SmallVector<::mlir::OpFoldResult, 4> detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits::Model<ConcreteOp>::getMixedSizes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+::llvm::SmallVector<::mlir::OpFoldResult, 4> detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits::Model<ConcreteOp>::getMixedSizes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getMixedSizes();
 }
 template<typename ConcreteOp>
-::mlir::SmallVector<::mlir::OpFoldResult, 4> detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits::Model<ConcreteOp>::getMixedStrides(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+::llvm::SmallVector<::mlir::OpFoldResult, 4> detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits::Model<ConcreteOp>::getMixedStrides(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getMixedStrides();
 }
 template<typename ConcreteOp>
@@ -475,15 +475,15 @@ template<typename ConcreteOp>
   return static_cast<const ConcreteOp *>(impl)->static_strides(tablegen_opaque_val);
 }
 template<typename ConcreteOp>
-::mlir::SmallVector<::mlir::OpFoldResult, 4> detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getMixedOffsets(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+::llvm::SmallVector<::mlir::OpFoldResult, 4> detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getMixedOffsets(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return static_cast<const ConcreteOp *>(impl)->getMixedOffsets(tablegen_opaque_val);
 }
 template<typename ConcreteOp>
-::mlir::SmallVector<::mlir::OpFoldResult, 4> detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getMixedSizes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+::llvm::SmallVector<::mlir::OpFoldResult, 4> detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getMixedSizes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return static_cast<const ConcreteOp *>(impl)->getMixedSizes(tablegen_opaque_val);
 }
 template<typename ConcreteOp>
-::mlir::SmallVector<::mlir::OpFoldResult, 4> detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getMixedStrides(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+::llvm::SmallVector<::mlir::OpFoldResult, 4> detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getMixedStrides(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return static_cast<const ConcreteOp *>(impl)->getMixedStrides(tablegen_opaque_val);
 }
 template<typename ConcreteOp>
@@ -575,16 +575,16 @@ template<typename ConcreteModel, typename ConcreteOp>
 return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).static_strides();
 }
 template<typename ConcreteModel, typename ConcreteOp>
-::mlir::SmallVector<::mlir::OpFoldResult, 4> detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getMixedOffsets(::mlir::Operation *tablegen_opaque_val) const {
+::llvm::SmallVector<::mlir::OpFoldResult, 4> detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getMixedOffsets(::mlir::Operation *tablegen_opaque_val) const {
 return ::mlir::getMixedOffsets((llvm::cast<ConcreteOp>(tablegen_opaque_val)), (llvm::cast<ConcreteOp>(tablegen_opaque_val)).static_offsets(),
                                        (llvm::cast<ConcreteOp>(tablegen_opaque_val)).offsets());
 }
 template<typename ConcreteModel, typename ConcreteOp>
-::mlir::SmallVector<::mlir::OpFoldResult, 4> detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getMixedSizes(::mlir::Operation *tablegen_opaque_val) const {
+::llvm::SmallVector<::mlir::OpFoldResult, 4> detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getMixedSizes(::mlir::Operation *tablegen_opaque_val) const {
 return ::mlir::getMixedSizes((llvm::cast<ConcreteOp>(tablegen_opaque_val)), (llvm::cast<ConcreteOp>(tablegen_opaque_val)).static_sizes(), (llvm::cast<ConcreteOp>(tablegen_opaque_val)).sizes());
 }
 template<typename ConcreteModel, typename ConcreteOp>
-::mlir::SmallVector<::mlir::OpFoldResult, 4> detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getMixedStrides(::mlir::Operation *tablegen_opaque_val) const {
+::llvm::SmallVector<::mlir::OpFoldResult, 4> detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getMixedStrides(::mlir::Operation *tablegen_opaque_val) const {
 return ::mlir::getMixedStrides((llvm::cast<ConcreteOp>(tablegen_opaque_val)), (llvm::cast<ConcreteOp>(tablegen_opaque_val)).static_strides(),
                                        (llvm::cast<ConcreteOp>(tablegen_opaque_val)).strides());
 }

@@ -11,7 +11,7 @@ class MemoryEffectOpInterface;
 namespace detail {
 struct MemoryEffectOpInterfaceInterfaceTraits {
   struct Concept {
-    void (*getEffects)(const Concept *impl, ::mlir::Operation *, ::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &);
+    void (*getEffects)(const Concept *impl, ::mlir::Operation *, ::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &);
   };
   template<typename ConcreteOp>
   class Model : public Concept {
@@ -19,7 +19,7 @@ struct MemoryEffectOpInterfaceInterfaceTraits {
     using Interface = ::mlir::MemoryEffectOpInterface;
     Model() : Concept{getEffects} {}
 
-    static inline void getEffects(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> & effects);
+    static inline void getEffects(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> & effects);
   };
   template<typename ConcreteOp>
   class FallbackModel : public Concept {
@@ -27,7 +27,7 @@ struct MemoryEffectOpInterfaceInterfaceTraits {
     using Interface = ::mlir::MemoryEffectOpInterface;
     FallbackModel() : Concept{getEffects} {}
 
-    static inline void getEffects(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> & effects);
+    static inline void getEffects(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> & effects);
   };
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
@@ -42,7 +42,7 @@ public:
   using ::mlir::OpInterface<MemoryEffectOpInterface, detail::MemoryEffectOpInterfaceInterfaceTraits>::OpInterface;
   template <typename ConcreteOp>
   struct Trait : public detail::MemoryEffectOpInterfaceTrait<ConcreteOp> {};
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> & effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> & effects);
 
     /// Collect all of the effect instances that correspond to the given
     /// `Effect` and place them in 'effects'.
@@ -141,11 +141,11 @@ namespace detail {
   };
 }// namespace detail
 template<typename ConcreteOp>
-void detail::MemoryEffectOpInterfaceInterfaceTraits::Model<ConcreteOp>::getEffects(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> & effects) {
+void detail::MemoryEffectOpInterfaceInterfaceTraits::Model<ConcreteOp>::getEffects(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> & effects) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getEffects(effects);
 }
 template<typename ConcreteOp>
-void detail::MemoryEffectOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getEffects(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> & effects) {
+void detail::MemoryEffectOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getEffects(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> & effects) {
   return static_cast<const ConcreteOp *>(impl)->getEffects(tablegen_opaque_val, effects);
 }
 } // namespace mlir

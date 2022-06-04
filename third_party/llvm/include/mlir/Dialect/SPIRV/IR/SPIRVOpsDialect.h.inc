@@ -10,12 +10,7 @@ namespace mlir {
 namespace spirv {
 
 class SPIRVDialect : public ::mlir::Dialect {
-  explicit SPIRVDialect(::mlir::MLIRContext *context)
-    : ::mlir::Dialect(getDialectNamespace(), context,
-      ::mlir::TypeID::get<SPIRVDialect>()) {
-    
-    initialize();
-  }
+  explicit SPIRVDialect(::mlir::MLIRContext *context);
 
   void initialize();
   friend class ::mlir::MLIRContext;

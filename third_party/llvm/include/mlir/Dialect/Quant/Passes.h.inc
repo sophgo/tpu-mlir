@@ -6,12 +6,12 @@
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class QuantConvertConstBase : public ::mlir::OperationPass<FuncOp> {
+class QuantConvertConstBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = QuantConvertConstBase;
 
-  QuantConvertConstBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  QuantConvertConstBase(const QuantConvertConstBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  QuantConvertConstBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  QuantConvertConstBase(const QuantConvertConstBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -55,12 +55,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class QuantConvertSimulatedQuantBase : public ::mlir::OperationPass<FuncOp> {
+class QuantConvertSimulatedQuantBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = QuantConvertSimulatedQuantBase;
 
-  QuantConvertSimulatedQuantBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  QuantConvertSimulatedQuantBase(const QuantConvertSimulatedQuantBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  QuantConvertSimulatedQuantBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  QuantConvertSimulatedQuantBase(const QuantConvertSimulatedQuantBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {

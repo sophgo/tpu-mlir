@@ -62,6 +62,32 @@ if (auto op = dyn_cast<::mlir::ROCDL::MubufStoreOp>(opInst)) {
   
   return success();
 }
+if (auto op = dyn_cast<::mlir::ROCDL::RawBufferAtomicFAddOp>(opInst)) {
+
+      auto vdataType = moduleTranslation.convertType(op.vdata().getType());
+      createIntrinsicCall(builder,
+          llvm::Intrinsic::amdgcn_raw_buffer_atomic_fadd, {moduleTranslation.lookupValue(op.vdata()), moduleTranslation.lookupValue(op.rsrc()),
+            moduleTranslation.lookupValue(op.offset()), moduleTranslation.lookupValue(op.soffset()), moduleTranslation.lookupValue(op.aux())}, {vdataType});
+  
+  return success();
+}
+if (auto op = dyn_cast<::mlir::ROCDL::RawBufferLoadOp>(opInst)) {
+
+      moduleTranslation.mapValue(op.res()) = createIntrinsicCall(builder,
+          llvm::Intrinsic::amdgcn_raw_buffer_load, {moduleTranslation.lookupValue(op.rsrc()), moduleTranslation.lookupValue(op.offset()),
+          moduleTranslation.lookupValue(op.soffset()), moduleTranslation.lookupValue(op.aux())}, {moduleTranslation.convertType(op.getResult().getType())});
+  
+  return success();
+}
+if (auto op = dyn_cast<::mlir::ROCDL::RawBufferStoreOp>(opInst)) {
+
+    auto vdataType = moduleTranslation.convertType(op.vdata().getType());
+    createIntrinsicCall(builder,
+          llvm::Intrinsic::amdgcn_raw_buffer_store, {moduleTranslation.lookupValue(op.vdata()), moduleTranslation.lookupValue(op.rsrc()),
+          moduleTranslation.lookupValue(op.offset()), moduleTranslation.lookupValue(op.soffset()), moduleTranslation.lookupValue(op.aux())}, {vdataType});
+  
+  return success();
+}
 if (auto op = dyn_cast<::mlir::ROCDL::ThreadIdXOp>(opInst)) {
 moduleTranslation.mapValue(op.res()) = createIntrinsicCall(builder,llvm::Intrinsic::amdgcn_workitem_id_x);
   return success();

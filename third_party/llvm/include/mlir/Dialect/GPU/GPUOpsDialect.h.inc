@@ -10,14 +10,7 @@ namespace mlir {
 namespace gpu {
 
 class GPUDialect : public ::mlir::Dialect {
-  explicit GPUDialect(::mlir::MLIRContext *context)
-    : ::mlir::Dialect(getDialectNamespace(), context,
-      ::mlir::TypeID::get<GPUDialect>()) {
-    
-    getContext()->getOrLoadDialect<arith::ArithmeticDialect>();
-
-    initialize();
-  }
+  explicit GPUDialect(::mlir::MLIRContext *context);
 
   void initialize();
   friend class ::mlir::MLIRContext;

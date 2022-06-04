@@ -10,14 +10,7 @@ namespace mlir {
 namespace func {
 
 class FuncDialect : public ::mlir::Dialect {
-  explicit FuncDialect(::mlir::MLIRContext *context)
-    : ::mlir::Dialect(getDialectNamespace(), context,
-      ::mlir::TypeID::get<FuncDialect>()) {
-    
-    getContext()->getOrLoadDialect<cf::ControlFlowDialect>();
-
-    initialize();
-  }
+  explicit FuncDialect(::mlir::MLIRContext *context);
 
   void initialize();
   friend class ::mlir::MLIRContext;

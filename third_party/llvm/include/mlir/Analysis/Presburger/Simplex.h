@@ -280,7 +280,7 @@ protected:
   Unknown &unknownFromRow(unsigned row);
 
   /// Add a new row to the tableau and the associated data structures. The row
-  /// is initialized to zero.
+  /// is initialized to zero. Returns the index of the added row.
   unsigned addZeroRow(bool makeRestricted = false);
 
   /// Add a new row to the tableau and the associated data structures.
@@ -289,10 +289,6 @@ protected:
   ///
   /// Returns the index of the new Unknown in con.
   unsigned addRow(ArrayRef<int64_t> coeffs, bool makeRestricted = false);
-
-  /// Normalize the given row by removing common factors between the numerator
-  /// and the denominator.
-  void normalizeRow(unsigned row);
 
   /// Swap the two rows/columns in the tableau and associated data structures.
   void swapRows(unsigned i, unsigned j);
@@ -320,16 +316,11 @@ protected:
   /// Return the number of fixed columns, as described in the constructor above,
   /// this is the number of columns beyond those for the variables in var.
   unsigned getNumFixedCols() const { return usingBigM ? 3u : 2u; }
+  unsigned getNumRows() const { return tableau.getNumRows(); }
+  unsigned getNumColumns() const { return tableau.getNumColumns(); }
 
   /// Stores whether or not a big M column is present in the tableau.
   bool usingBigM;
-
-  /// The number of rows in the tableau.
-  unsigned nRow;
-
-  /// The number of columns in the tableau, including the common denominator
-  /// and the constant column.
-  unsigned nCol;
 
   /// The number of redundant rows in the tableau. These are the first
   /// nRedundant rows.
@@ -444,10 +435,9 @@ protected:
   void appendSymbol();
 
   /// Try to move the specified row to column orientation while preserving the
-  /// lexicopositivity of the basis transform. The row must have a negative
-  /// sample value. If this is not possible, return failure. This only occurs
-  /// when the constraints have no solution; the tableau will be marked empty in
-  /// such a case.
+  /// lexicopositivity of the basis transform. The row must have a non-positive
+  /// sample value. If this is not possible, return failure. This occurs when
+  /// the constraints have no solution or the sample value is zero.
   LogicalResult moveRowUnknownToColumn(unsigned row);
 
   /// Given a row that has a non-integer sample value, add an inequality to cut
@@ -628,6 +618,10 @@ private:
   /// This is an affine expression in the symbols with integer coefficients.
   /// The last element is the constant term. This ignores the big M coefficient.
   SmallVector<int64_t, 8> getSymbolicSampleNumerator(unsigned row) const;
+
+  /// Get an affine inequality in the symbols with integer coefficients that
+  /// holds iff the symbolic sample of the specified row is non-negative.
+  SmallVector<int64_t, 8> getSymbolicSampleIneq(unsigned row) const;
 
   /// Return whether all the coefficients of the symbolic sample are integers.
   ///

@@ -46,7 +46,9 @@
 ::mlir::vector::TransferReadOp,
 ::mlir::vector::TransferWriteOp,
 ::mlir::vector::TransposeOp,
-::mlir::vector::TypeCastOp
+::mlir::vector::TypeCastOp,
+::mlir::vector::WarpExecuteOnLane0Op,
+::mlir::vector::YieldOp
 #endif  // GET_OP_LIST
 
 #ifdef GET_OP_CLASSES
@@ -304,6 +306,17 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_VectorOps8(
   }
   return ::mlir::success();
 }
+
+static ::mlir::LogicalResult __mlir_ods_local_region_constraint_VectorOps0(
+    ::mlir::Operation *op, ::mlir::Region &region, ::llvm::StringRef regionName,
+    unsigned regionIndex) {
+  if (!((::llvm::hasNItems(region, 1)))) {
+    return op->emitOpError("region #") << regionIndex
+        << (regionName.empty() ? " " : " ('" + regionName + "') ")
+        << "failed to verify constraint: region with 1 blocks";
+  }
+  return ::mlir::success();
+}
 } // namespace vector
 } // namespace mlir
 namespace mlir {
@@ -313,9 +326,11 @@ namespace vector {
 // ::mlir::vector::VectorScaleOp definitions
 //===----------------------------------------------------------------------===//
 
-VectorScaleOpAdaptor::VectorScaleOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+VectorScaleOpAdaptor::VectorScaleOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.vscale", odsAttrs.getContext());
+}
 
-VectorScaleOpAdaptor::VectorScaleOpAdaptor(VectorScaleOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+VectorScaleOpAdaptor::VectorScaleOpAdaptor(VectorScaleOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange VectorScaleOpAdaptor::getOperands() {
   return odsOperands;
@@ -396,7 +411,7 @@ void VectorScaleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState 
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(VectorScaleOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -428,7 +443,8 @@ void VectorScaleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState 
 ::mlir::LogicalResult VectorScaleOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = odsBuilder.getIndexType();
+  ::mlir::Type odsInferredType0 = odsBuilder.getIndexType();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
@@ -444,7 +460,7 @@ void VectorScaleOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
 }
 
-void VectorScaleOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void VectorScaleOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace vector
@@ -458,9 +474,11 @@ namespace vector {
 // ::mlir::vector::BitCastOp definitions
 //===----------------------------------------------------------------------===//
 
-BitCastOpAdaptor::BitCastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+BitCastOpAdaptor::BitCastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.bitcast", odsAttrs.getContext());
+}
 
-BitCastOpAdaptor::BitCastOpAdaptor(BitCastOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+BitCastOpAdaptor::BitCastOpAdaptor(BitCastOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange BitCastOpAdaptor::getOperands() {
   return odsOperands;
@@ -633,7 +651,7 @@ void BitCastOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void BitCastOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void BitCastOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace vector
@@ -647,9 +665,11 @@ namespace vector {
 // ::mlir::vector::BroadcastOp definitions
 //===----------------------------------------------------------------------===//
 
-BroadcastOpAdaptor::BroadcastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+BroadcastOpAdaptor::BroadcastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.broadcast", odsAttrs.getContext());
+}
 
-BroadcastOpAdaptor::BroadcastOpAdaptor(BroadcastOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+BroadcastOpAdaptor::BroadcastOpAdaptor(BroadcastOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange BroadcastOpAdaptor::getOperands() {
   return odsOperands;
@@ -822,7 +842,7 @@ void BroadcastOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void BroadcastOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void BroadcastOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace vector
@@ -836,9 +856,11 @@ namespace vector {
 // ::mlir::vector::CompressStoreOp definitions
 //===----------------------------------------------------------------------===//
 
-CompressStoreOpAdaptor::CompressStoreOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+CompressStoreOpAdaptor::CompressStoreOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.compressstore", odsAttrs.getContext());
+}
 
-CompressStoreOpAdaptor::CompressStoreOpAdaptor(CompressStoreOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+CompressStoreOpAdaptor::CompressStoreOpAdaptor(CompressStoreOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange CompressStoreOpAdaptor::getOperands() {
   return odsOperands;
@@ -1031,7 +1053,7 @@ void CompressStoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
   ::mlir::OpAsmParser::UnresolvedOperand baseRawOperands[1];
   ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> baseOperands(baseRawOperands);  ::llvm::SMLoc baseOperandsLoc;
   (void)baseOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
   ::llvm::SMLoc indicesOperandsLoc;
   (void)indicesOperandsLoc;
   ::mlir::OpAsmParser::UnresolvedOperand maskRawOperands[1];
@@ -1153,7 +1175,7 @@ void CompressStoreOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void CompressStoreOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void CompressStoreOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
   for (::mlir::Value value : getODSOperands(0))
     effects.emplace_back(::mlir::MemoryEffects::Write::get(), value, ::mlir::SideEffects::DefaultResource::get());
 }
@@ -1169,9 +1191,11 @@ namespace vector {
 // ::mlir::vector::ConstantMaskOp definitions
 //===----------------------------------------------------------------------===//
 
-ConstantMaskOpAdaptor::ConstantMaskOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ConstantMaskOpAdaptor::ConstantMaskOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.constant_mask", odsAttrs.getContext());
+}
 
-ConstantMaskOpAdaptor::ConstantMaskOpAdaptor(ConstantMaskOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ConstantMaskOpAdaptor::ConstantMaskOpAdaptor(ConstantMaskOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ConstantMaskOpAdaptor::getOperands() {
   return odsOperands;
@@ -1193,8 +1217,8 @@ std::pair<unsigned, unsigned> ConstantMaskOpAdaptor::getODSOperandIndexAndLength
 
 ::mlir::ArrayAttr ConstantMaskOpAdaptor::getMaskDimSizesAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("mask_dim_sizes").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ConstantMaskOp::getMaskDimSizesAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr ConstantMaskOpAdaptor::getMaskDimSizes() {
@@ -1203,14 +1227,21 @@ std::pair<unsigned, unsigned> ConstantMaskOpAdaptor::getODSOperandIndexAndLength
 }
 
 ::mlir::LogicalResult ConstantMaskOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_mask_dim_sizes = odsAttrs.get("mask_dim_sizes");
-    if (!tblgen_mask_dim_sizes)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_mask_dim_sizes;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'vector.constant_mask' op ""requires attribute 'mask_dim_sizes'");
-
-    if (tblgen_mask_dim_sizes && !(((tblgen_mask_dim_sizes.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_mask_dim_sizes.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
-      return emitError(loc, "'vector.constant_mask' op ""attribute 'mask_dim_sizes' failed to satisfy constraint: 64-bit integer array attribute");
+    if (namedAttrIt->getName() == ConstantMaskOp::getMaskDimSizesAttrName(*odsOpName)) {
+      tblgen_mask_dim_sizes = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_mask_dim_sizes && !(((tblgen_mask_dim_sizes.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_mask_dim_sizes.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
+    return emitError(loc, "'vector.constant_mask' op ""attribute 'mask_dim_sizes' failed to satisfy constraint: 64-bit integer array attribute");
   return ::mlir::success();
 }
 
@@ -1235,7 +1266,7 @@ std::pair<unsigned, unsigned> ConstantMaskOp::getODSResultIndexAndLength(unsigne
 }
 
 ::mlir::ArrayAttr ConstantMaskOp::getMaskDimSizesAttr() {
-  return (*this)->getAttr(getMaskDimSizesAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getMaskDimSizesAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr ConstantMaskOp::getMaskDimSizes() {
@@ -1267,14 +1298,21 @@ void ConstantMaskOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
 }
 
 ::mlir::LogicalResult ConstantMaskOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_mask_dim_sizes = (*this)->getAttr(getMaskDimSizesAttrName());
-    if (!tblgen_mask_dim_sizes)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_mask_dim_sizes;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'mask_dim_sizes'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps0(*this, tblgen_mask_dim_sizes, "mask_dim_sizes")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == getMaskDimSizesAttrName()) {
+      tblgen_mask_dim_sizes = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps0(*this, tblgen_mask_dim_sizes, "mask_dim_sizes")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSResults(0);
@@ -1295,7 +1333,7 @@ void ConstantMaskOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
 
 ::mlir::ParseResult ConstantMaskOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::ArrayAttr mask_dim_sizesAttr;
-  ::mlir::SmallVector<::mlir::Type, 1> allResultTypes;
+  ::llvm::SmallVector<::mlir::Type, 1> allResultTypes;
 
   if (parser.parseCustomAttributeWithFallback(mask_dim_sizesAttr, parser.getBuilder().getType<::mlir::NoneType>(), "mask_dim_sizes",
           result.attributes)) {
@@ -1321,7 +1359,7 @@ void ConstantMaskOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << getOperation()->getResultTypes();
 }
 
-void ConstantMaskOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ConstantMaskOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace vector
@@ -1335,9 +1373,11 @@ namespace vector {
 // ::mlir::vector::ContractionOp definitions
 //===----------------------------------------------------------------------===//
 
-ContractionOpAdaptor::ContractionOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ContractionOpAdaptor::ContractionOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.contract", odsAttrs.getContext());
+}
 
-ContractionOpAdaptor::ContractionOpAdaptor(ContractionOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ContractionOpAdaptor::ContractionOpAdaptor(ContractionOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ContractionOpAdaptor::getOperands() {
   return odsOperands;
@@ -1389,8 +1429,8 @@ std::pair<unsigned, unsigned> ContractionOpAdaptor::getODSOperandIndexAndLength(
 
 ::mlir::ArrayAttr ContractionOpAdaptor::getIndexingMapsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("indexing_maps").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, ContractionOp::getIndexingMapsAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::llvm::SmallVector<::mlir::AffineMap, 4> ContractionOpAdaptor::getIndexingMaps() {
@@ -1400,8 +1440,8 @@ std::pair<unsigned, unsigned> ContractionOpAdaptor::getODSOperandIndexAndLength(
 
 ::mlir::ArrayAttr ContractionOpAdaptor::getIteratorTypesAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("iterator_types").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, ContractionOp::getIteratorTypesAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr ContractionOpAdaptor::getIteratorTypes() {
@@ -1411,10 +1451,10 @@ std::pair<unsigned, unsigned> ContractionOpAdaptor::getODSOperandIndexAndLength(
 
 ::mlir::vector::CombiningKindAttr ContractionOpAdaptor::getKindAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::vector::CombiningKindAttr attr = odsAttrs.get("kind").dyn_cast_or_null<::mlir::vector::CombiningKindAttr>();
-  if (!attr)
-    attr = ::mlir::vector::CombiningKindAttr::get(CombiningKind::ADD, ::mlir::Builder(odsAttrs.getContext()).getContext());
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 0, ContractionOp::getKindAttrName(*odsOpName)).dyn_cast_or_null<::mlir::vector::CombiningKindAttr>();
+    if (!attr)
+      attr = ::mlir::vector::CombiningKindAttr::get(CombiningKind::ADD, ::mlir::Builder(odsAttrs.getContext()).getContext());
+    return attr;
 }
 
 ::mlir::vector::CombiningKind ContractionOpAdaptor::getKind() {
@@ -1425,27 +1465,47 @@ std::pair<unsigned, unsigned> ContractionOpAdaptor::getODSOperandIndexAndLength(
 }
 
 ::mlir::LogicalResult ContractionOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_indexing_maps = odsAttrs.get("indexing_maps");
-    if (!tblgen_indexing_maps)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_indexing_maps;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'vector.contract' op ""requires attribute 'indexing_maps'");
-
-    if (tblgen_indexing_maps && !(((tblgen_indexing_maps.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_indexing_maps.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && ((attr.isa<::mlir::AffineMapAttr>())); }))))
-      return emitError(loc, "'vector.contract' op ""attribute 'indexing_maps' failed to satisfy constraint: AffineMap array attribute");
+    if (namedAttrIt->getName() == ContractionOp::getIndexingMapsAttrName(*odsOpName)) {
+      tblgen_indexing_maps = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_iterator_types = odsAttrs.get("iterator_types");
-    if (!tblgen_iterator_types)
+  ::mlir::Attribute tblgen_iterator_types;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'vector.contract' op ""requires attribute 'iterator_types'");
+    if (namedAttrIt->getName() == ContractionOp::getIteratorTypesAttrName(*odsOpName)) {
+      tblgen_iterator_types = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_kind;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == ContractionOp::getKindAttrName(*odsOpName)) {
+      tblgen_kind = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
 
-    if (tblgen_iterator_types && !((tblgen_iterator_types.isa<::mlir::ArrayAttr>())))
-      return emitError(loc, "'vector.contract' op ""attribute 'iterator_types' failed to satisfy constraint: array attribute");
-  }
-  {
-    auto tblgen_kind = odsAttrs.get("kind");
-    if (tblgen_kind && !((tblgen_kind.isa<::mlir::vector::CombiningKindAttr>())))
-      return emitError(loc, "'vector.contract' op ""attribute 'kind' failed to satisfy constraint: Kind of combining function for contractions and reductions");
-  }
+  if (tblgen_indexing_maps && !(((tblgen_indexing_maps.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_indexing_maps.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && ((attr.isa<::mlir::AffineMapAttr>())); }))))
+    return emitError(loc, "'vector.contract' op ""attribute 'indexing_maps' failed to satisfy constraint: AffineMap array attribute");
+
+  if (tblgen_iterator_types && !((tblgen_iterator_types.isa<::mlir::ArrayAttr>())))
+    return emitError(loc, "'vector.contract' op ""attribute 'iterator_types' failed to satisfy constraint: array attribute");
+
+  if (tblgen_kind && !((tblgen_kind.isa<::mlir::vector::CombiningKindAttr>())))
+    return emitError(loc, "'vector.contract' op ""attribute 'kind' failed to satisfy constraint: Kind of combining function for contractions and reductions");
   return ::mlir::success();
 }
 
@@ -1524,7 +1584,7 @@ std::pair<unsigned, unsigned> ContractionOp::getODSResultIndexAndLength(unsigned
 }
 
 ::mlir::ArrayAttr ContractionOp::getIndexingMapsAttr() {
-  return (*this)->getAttr(getIndexingMapsAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, getIndexingMapsAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::llvm::SmallVector<::mlir::AffineMap, 4> ContractionOp::getIndexingMaps() {
@@ -1533,7 +1593,7 @@ std::pair<unsigned, unsigned> ContractionOp::getODSResultIndexAndLength(unsigned
 }
 
 ::mlir::ArrayAttr ContractionOp::getIteratorTypesAttr() {
-  return (*this)->getAttr(getIteratorTypesAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, getIteratorTypesAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr ContractionOp::getIteratorTypes() {
@@ -1542,7 +1602,7 @@ std::pair<unsigned, unsigned> ContractionOp::getODSResultIndexAndLength(unsigned
 }
 
 ::mlir::vector::CombiningKindAttr ContractionOp::getKindAttr() {
-  return (*this)->getAttr(getKindAttrName()).dyn_cast_or_null<::mlir::vector::CombiningKindAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 0, getKindAttrName()).dyn_cast_or_null<::mlir::vector::CombiningKindAttr>();
 }
 
 ::mlir::vector::CombiningKind ContractionOp::getKind() {
@@ -1623,27 +1683,47 @@ void ContractionOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
 }
 
 ::mlir::LogicalResult ContractionOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_indexing_maps = (*this)->getAttr(getIndexingMapsAttrName());
-    if (!tblgen_indexing_maps)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_indexing_maps;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'indexing_maps'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps1(*this, tblgen_indexing_maps, "indexing_maps")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == getIndexingMapsAttrName()) {
+      tblgen_indexing_maps = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_iterator_types = (*this)->getAttr(getIteratorTypesAttrName());
-    if (!tblgen_iterator_types)
+  ::mlir::Attribute tblgen_iterator_types;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'iterator_types'");
+    if (namedAttrIt->getName() == getIteratorTypesAttrName()) {
+      tblgen_iterator_types = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_kind;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == getKindAttrName()) {
+      tblgen_kind = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps2(*this, tblgen_iterator_types, "iterator_types")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_kind = (*this)->getAttr(getKindAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps3(*this, tblgen_kind, "kind")))
-      return ::mlir::failure();
-  }
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps1(*this, tblgen_indexing_maps, "indexing_maps")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps2(*this, tblgen_iterator_types, "iterator_types")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps3(*this, tblgen_kind, "kind")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1693,7 +1773,7 @@ void ContractionOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
   return ::mlir::failure();
 }
 
-void ContractionOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ContractionOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace vector
@@ -1707,9 +1787,11 @@ namespace vector {
 // ::mlir::vector::CreateMaskOp definitions
 //===----------------------------------------------------------------------===//
 
-CreateMaskOpAdaptor::CreateMaskOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+CreateMaskOpAdaptor::CreateMaskOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.create_mask", odsAttrs.getContext());
+}
 
-CreateMaskOpAdaptor::CreateMaskOpAdaptor(CreateMaskOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+CreateMaskOpAdaptor::CreateMaskOpAdaptor(CreateMaskOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange CreateMaskOpAdaptor::getOperands() {
   return odsOperands;
@@ -1836,10 +1918,10 @@ void CreateMaskOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
 }
 
 ::mlir::ParseResult CreateMaskOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> operandsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> operandsOperands;
   ::llvm::SMLoc operandsOperandsLoc;
   (void)operandsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> allResultTypes;
+  ::llvm::SmallVector<::mlir::Type, 1> allResultTypes;
 
   operandsOperandsLoc = parser.getCurrentLocation();
   if (parser.parseOperandList(operandsOperands))
@@ -1867,7 +1949,7 @@ void CreateMaskOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << getOperation()->getResultTypes();
 }
 
-void CreateMaskOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void CreateMaskOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace vector
@@ -1881,9 +1963,11 @@ namespace vector {
 // ::mlir::vector::ExpandLoadOp definitions
 //===----------------------------------------------------------------------===//
 
-ExpandLoadOpAdaptor::ExpandLoadOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ExpandLoadOpAdaptor::ExpandLoadOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.expandload", odsAttrs.getContext());
+}
 
-ExpandLoadOpAdaptor::ExpandLoadOpAdaptor(ExpandLoadOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ExpandLoadOpAdaptor::ExpandLoadOpAdaptor(ExpandLoadOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ExpandLoadOpAdaptor::getOperands() {
   return odsOperands;
@@ -2090,7 +2174,7 @@ void ExpandLoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
   ::mlir::OpAsmParser::UnresolvedOperand baseRawOperands[1];
   ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> baseOperands(baseRawOperands);  ::llvm::SMLoc baseOperandsLoc;
   (void)baseOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
   ::llvm::SMLoc indicesOperandsLoc;
   (void)indicesOperandsLoc;
   ::mlir::OpAsmParser::UnresolvedOperand maskRawOperands[1];
@@ -2233,7 +2317,7 @@ void ExpandLoadOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void ExpandLoadOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ExpandLoadOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
   for (::mlir::Value value : getODSOperands(0))
     effects.emplace_back(::mlir::MemoryEffects::Read::get(), value, ::mlir::SideEffects::DefaultResource::get());
 }
@@ -2249,9 +2333,11 @@ namespace vector {
 // ::mlir::vector::ExtractElementOp definitions
 //===----------------------------------------------------------------------===//
 
-ExtractElementOpAdaptor::ExtractElementOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ExtractElementOpAdaptor::ExtractElementOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.extractelement", odsAttrs.getContext());
+}
 
-ExtractElementOpAdaptor::ExtractElementOpAdaptor(ExtractElementOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ExtractElementOpAdaptor::ExtractElementOpAdaptor(ExtractElementOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ExtractElementOpAdaptor::getOperands() {
   return odsOperands;
@@ -2425,10 +2511,10 @@ void ExtractElementOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
   ::mlir::OpAsmParser::UnresolvedOperand vectorRawOperands[1];
   ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> vectorOperands(vectorRawOperands);  ::llvm::SMLoc vectorOperandsLoc;
   (void)vectorOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> positionOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> positionOperands;
   ::llvm::SMLoc positionOperandsLoc;
   (void)positionOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> positionTypes;
+  ::llvm::SmallVector<::mlir::Type, 1> positionTypes;
   ::mlir::Type vectorRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> vectorTypes(vectorRawTypes);
 
@@ -2515,7 +2601,7 @@ void ExtractElementOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void ExtractElementOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ExtractElementOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace vector
@@ -2529,9 +2615,11 @@ namespace vector {
 // ::mlir::vector::ExtractMapOp definitions
 //===----------------------------------------------------------------------===//
 
-ExtractMapOpAdaptor::ExtractMapOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ExtractMapOpAdaptor::ExtractMapOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.extract_map", odsAttrs.getContext());
+}
 
-ExtractMapOpAdaptor::ExtractMapOpAdaptor(ExtractMapOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ExtractMapOpAdaptor::ExtractMapOpAdaptor(ExtractMapOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ExtractMapOpAdaptor::getOperands() {
   return odsOperands;
@@ -2690,12 +2778,12 @@ void ExtractMapOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
   ::mlir::OpAsmParser::UnresolvedOperand vectorRawOperands[1];
   ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> vectorOperands(vectorRawOperands);  ::llvm::SMLoc vectorOperandsLoc;
   (void)vectorOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> idsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> idsOperands;
   ::llvm::SMLoc idsOperandsLoc;
   (void)idsOperandsLoc;
   ::mlir::Type vectorRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> vectorTypes(vectorRawTypes);
-  ::mlir::SmallVector<::mlir::Type, 1> allResultTypes;
+  ::llvm::SmallVector<::mlir::Type, 1> allResultTypes;
 
   vectorOperandsLoc = parser.getCurrentLocation();
   if (parser.parseOperand(vectorRawOperands[0]))
@@ -2754,7 +2842,7 @@ void ExtractMapOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << getOperation()->getResultTypes();
 }
 
-void ExtractMapOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ExtractMapOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace vector
@@ -2768,9 +2856,11 @@ namespace vector {
 // ::mlir::vector::ExtractOp definitions
 //===----------------------------------------------------------------------===//
 
-ExtractOpAdaptor::ExtractOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ExtractOpAdaptor::ExtractOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.extract", odsAttrs.getContext());
+}
 
-ExtractOpAdaptor::ExtractOpAdaptor(ExtractOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ExtractOpAdaptor::ExtractOpAdaptor(ExtractOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ExtractOpAdaptor::getOperands() {
   return odsOperands;
@@ -2796,8 +2886,8 @@ std::pair<unsigned, unsigned> ExtractOpAdaptor::getODSOperandIndexAndLength(unsi
 
 ::mlir::ArrayAttr ExtractOpAdaptor::getPositionAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("position").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ExtractOp::getPositionAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr ExtractOpAdaptor::getPosition() {
@@ -2806,14 +2896,21 @@ std::pair<unsigned, unsigned> ExtractOpAdaptor::getODSOperandIndexAndLength(unsi
 }
 
 ::mlir::LogicalResult ExtractOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_position = odsAttrs.get("position");
-    if (!tblgen_position)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_position;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'vector.extract' op ""requires attribute 'position'");
-
-    if (tblgen_position && !(((tblgen_position.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_position.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
-      return emitError(loc, "'vector.extract' op ""attribute 'position' failed to satisfy constraint: 64-bit integer array attribute");
+    if (namedAttrIt->getName() == ExtractOp::getPositionAttrName(*odsOpName)) {
+      tblgen_position = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_position && !(((tblgen_position.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_position.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
+    return emitError(loc, "'vector.extract' op ""attribute 'position' failed to satisfy constraint: 64-bit integer array attribute");
   return ::mlir::success();
 }
 
@@ -2848,7 +2945,7 @@ std::pair<unsigned, unsigned> ExtractOp::getODSResultIndexAndLength(unsigned ind
 }
 
 ::mlir::ArrayAttr ExtractOp::getPositionAttr() {
-  return (*this)->getAttr(getPositionAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getPositionAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr ExtractOp::getPosition() {
@@ -2900,7 +2997,7 @@ void ExtractOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(ExtractOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -2913,14 +3010,21 @@ void ExtractOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
 }
 
 ::mlir::LogicalResult ExtractOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_position = (*this)->getAttr(getPositionAttrName());
-    if (!tblgen_position)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_position;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'position'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps0(*this, tblgen_position, "position")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == getPositionAttrName()) {
+      tblgen_position = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps0(*this, tblgen_position, "position")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -3006,7 +3110,7 @@ void ExtractOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void ExtractOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ExtractOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace vector
@@ -3020,9 +3124,11 @@ namespace vector {
 // ::mlir::vector::ExtractStridedSliceOp definitions
 //===----------------------------------------------------------------------===//
 
-ExtractStridedSliceOpAdaptor::ExtractStridedSliceOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ExtractStridedSliceOpAdaptor::ExtractStridedSliceOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.extract_strided_slice", odsAttrs.getContext());
+}
 
-ExtractStridedSliceOpAdaptor::ExtractStridedSliceOpAdaptor(ExtractStridedSliceOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ExtractStridedSliceOpAdaptor::ExtractStridedSliceOpAdaptor(ExtractStridedSliceOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ExtractStridedSliceOpAdaptor::getOperands() {
   return odsOperands;
@@ -3048,8 +3154,8 @@ std::pair<unsigned, unsigned> ExtractStridedSliceOpAdaptor::getODSOperandIndexAn
 
 ::mlir::ArrayAttr ExtractStridedSliceOpAdaptor::getOffsetsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("offsets").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 2, ExtractStridedSliceOp::getOffsetsAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr ExtractStridedSliceOpAdaptor::getOffsets() {
@@ -3059,8 +3165,8 @@ std::pair<unsigned, unsigned> ExtractStridedSliceOpAdaptor::getODSOperandIndexAn
 
 ::mlir::ArrayAttr ExtractStridedSliceOpAdaptor::getSizesAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("sizes").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 1, ExtractStridedSliceOp::getSizesAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr ExtractStridedSliceOpAdaptor::getSizes() {
@@ -3070,8 +3176,8 @@ std::pair<unsigned, unsigned> ExtractStridedSliceOpAdaptor::getODSOperandIndexAn
 
 ::mlir::ArrayAttr ExtractStridedSliceOpAdaptor::getStridesAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("strides").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 0, ExtractStridedSliceOp::getStridesAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr ExtractStridedSliceOpAdaptor::getStrides() {
@@ -3080,30 +3186,47 @@ std::pair<unsigned, unsigned> ExtractStridedSliceOpAdaptor::getODSOperandIndexAn
 }
 
 ::mlir::LogicalResult ExtractStridedSliceOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_offsets = odsAttrs.get("offsets");
-    if (!tblgen_offsets)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_offsets;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'vector.extract_strided_slice' op ""requires attribute 'offsets'");
-
-    if (tblgen_offsets && !(((tblgen_offsets.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_offsets.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
-      return emitError(loc, "'vector.extract_strided_slice' op ""attribute 'offsets' failed to satisfy constraint: 64-bit integer array attribute");
+    if (namedAttrIt->getName() == ExtractStridedSliceOp::getOffsetsAttrName(*odsOpName)) {
+      tblgen_offsets = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_sizes = odsAttrs.get("sizes");
-    if (!tblgen_sizes)
+  ::mlir::Attribute tblgen_sizes;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'vector.extract_strided_slice' op ""requires attribute 'sizes'");
-
-    if (tblgen_sizes && !(((tblgen_sizes.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_sizes.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
-      return emitError(loc, "'vector.extract_strided_slice' op ""attribute 'sizes' failed to satisfy constraint: 64-bit integer array attribute");
+    if (namedAttrIt->getName() == ExtractStridedSliceOp::getSizesAttrName(*odsOpName)) {
+      tblgen_sizes = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_strides = odsAttrs.get("strides");
-    if (!tblgen_strides)
+  ::mlir::Attribute tblgen_strides;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'vector.extract_strided_slice' op ""requires attribute 'strides'");
-
-    if (tblgen_strides && !(((tblgen_strides.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_strides.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
-      return emitError(loc, "'vector.extract_strided_slice' op ""attribute 'strides' failed to satisfy constraint: 64-bit integer array attribute");
+    if (namedAttrIt->getName() == ExtractStridedSliceOp::getStridesAttrName(*odsOpName)) {
+      tblgen_strides = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_offsets && !(((tblgen_offsets.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_offsets.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
+    return emitError(loc, "'vector.extract_strided_slice' op ""attribute 'offsets' failed to satisfy constraint: 64-bit integer array attribute");
+
+  if (tblgen_sizes && !(((tblgen_sizes.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_sizes.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
+    return emitError(loc, "'vector.extract_strided_slice' op ""attribute 'sizes' failed to satisfy constraint: 64-bit integer array attribute");
+
+  if (tblgen_strides && !(((tblgen_strides.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_strides.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
+    return emitError(loc, "'vector.extract_strided_slice' op ""attribute 'strides' failed to satisfy constraint: 64-bit integer array attribute");
   return ::mlir::success();
 }
 
@@ -3138,7 +3261,7 @@ std::pair<unsigned, unsigned> ExtractStridedSliceOp::getODSResultIndexAndLength(
 }
 
 ::mlir::ArrayAttr ExtractStridedSliceOp::getOffsetsAttr() {
-  return (*this)->getAttr(getOffsetsAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 2, getOffsetsAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr ExtractStridedSliceOp::getOffsets() {
@@ -3147,7 +3270,7 @@ std::pair<unsigned, unsigned> ExtractStridedSliceOp::getODSResultIndexAndLength(
 }
 
 ::mlir::ArrayAttr ExtractStridedSliceOp::getSizesAttr() {
-  return (*this)->getAttr(getSizesAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 1, getSizesAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr ExtractStridedSliceOp::getSizes() {
@@ -3156,7 +3279,7 @@ std::pair<unsigned, unsigned> ExtractStridedSliceOp::getODSResultIndexAndLength(
 }
 
 ::mlir::ArrayAttr ExtractStridedSliceOp::getStridesAttr() {
-  return (*this)->getAttr(getStridesAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 0, getStridesAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr ExtractStridedSliceOp::getStrides() {
@@ -3202,30 +3325,47 @@ void ExtractStridedSliceOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
 }
 
 ::mlir::LogicalResult ExtractStridedSliceOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_offsets = (*this)->getAttr(getOffsetsAttrName());
-    if (!tblgen_offsets)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_offsets;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'offsets'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps0(*this, tblgen_offsets, "offsets")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == getOffsetsAttrName()) {
+      tblgen_offsets = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_sizes = (*this)->getAttr(getSizesAttrName());
-    if (!tblgen_sizes)
+  ::mlir::Attribute tblgen_sizes;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'sizes'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps0(*this, tblgen_sizes, "sizes")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == getSizesAttrName()) {
+      tblgen_sizes = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_strides = (*this)->getAttr(getStridesAttrName());
-    if (!tblgen_strides)
+  ::mlir::Attribute tblgen_strides;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'strides'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps0(*this, tblgen_strides, "strides")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == getStridesAttrName()) {
+      tblgen_strides = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps0(*this, tblgen_offsets, "offsets")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps0(*this, tblgen_sizes, "sizes")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps0(*this, tblgen_strides, "strides")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -3261,7 +3401,7 @@ void ExtractStridedSliceOp::build(::mlir::OpBuilder &, ::mlir::OperationState &o
   (void)vectorOperandsLoc;
   ::mlir::Type vectorRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> vectorTypes(vectorRawTypes);
-  ::mlir::SmallVector<::mlir::Type, 1> allResultTypes;
+  ::llvm::SmallVector<::mlir::Type, 1> allResultTypes;
 
   vectorOperandsLoc = parser.getCurrentLocation();
   if (parser.parseOperand(vectorRawOperands[0]))
@@ -3306,7 +3446,7 @@ void ExtractStridedSliceOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << getOperation()->getResultTypes();
 }
 
-void ExtractStridedSliceOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ExtractStridedSliceOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace vector
@@ -3320,9 +3460,11 @@ namespace vector {
 // ::mlir::vector::FMAOp definitions
 //===----------------------------------------------------------------------===//
 
-FMAOpAdaptor::FMAOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+FMAOpAdaptor::FMAOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.fma", odsAttrs.getContext());
+}
 
-FMAOpAdaptor::FMAOpAdaptor(FMAOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+FMAOpAdaptor::FMAOpAdaptor(FMAOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange FMAOpAdaptor::getOperands() {
   return odsOperands;
@@ -3455,7 +3597,7 @@ void FMAOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(FMAOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -3510,7 +3652,8 @@ void FMAOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 ::mlir::LogicalResult FMAOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = operands[2].getType();
+  ::mlir::Type odsInferredType0 = operands[2].getType();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
@@ -3584,7 +3727,7 @@ void FMAOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void FMAOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void FMAOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace vector
@@ -3598,9 +3741,11 @@ namespace vector {
 // ::mlir::vector::FlatTransposeOp definitions
 //===----------------------------------------------------------------------===//
 
-FlatTransposeOpAdaptor::FlatTransposeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+FlatTransposeOpAdaptor::FlatTransposeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.flat_transpose", odsAttrs.getContext());
+}
 
-FlatTransposeOpAdaptor::FlatTransposeOpAdaptor(FlatTransposeOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+FlatTransposeOpAdaptor::FlatTransposeOpAdaptor(FlatTransposeOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange FlatTransposeOpAdaptor::getOperands() {
   return odsOperands;
@@ -3626,8 +3771,8 @@ std::pair<unsigned, unsigned> FlatTransposeOpAdaptor::getODSOperandIndexAndLengt
 
 ::mlir::IntegerAttr FlatTransposeOpAdaptor::getRowsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("rows").cast<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, FlatTransposeOp::getRowsAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+    return attr;
 }
 
 uint32_t FlatTransposeOpAdaptor::getRows() {
@@ -3637,8 +3782,8 @@ uint32_t FlatTransposeOpAdaptor::getRows() {
 
 ::mlir::IntegerAttr FlatTransposeOpAdaptor::getColumnsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("columns").cast<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, FlatTransposeOp::getColumnsAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+    return attr;
 }
 
 uint32_t FlatTransposeOpAdaptor::getColumns() {
@@ -3647,22 +3792,34 @@ uint32_t FlatTransposeOpAdaptor::getColumns() {
 }
 
 ::mlir::LogicalResult FlatTransposeOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_rows = odsAttrs.get("rows");
-    if (!tblgen_rows)
-      return emitError(loc, "'vector.flat_transpose' op ""requires attribute 'rows'");
-
-    if (tblgen_rows && !(((tblgen_rows.isa<::mlir::IntegerAttr>())) && ((tblgen_rows.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))))
-      return emitError(loc, "'vector.flat_transpose' op ""attribute 'rows' failed to satisfy constraint: 32-bit signless integer attribute");
-  }
-  {
-    auto tblgen_columns = odsAttrs.get("columns");
-    if (!tblgen_columns)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_columns;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'vector.flat_transpose' op ""requires attribute 'columns'");
-
-    if (tblgen_columns && !(((tblgen_columns.isa<::mlir::IntegerAttr>())) && ((tblgen_columns.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))))
-      return emitError(loc, "'vector.flat_transpose' op ""attribute 'columns' failed to satisfy constraint: 32-bit signless integer attribute");
+    if (namedAttrIt->getName() == FlatTransposeOp::getColumnsAttrName(*odsOpName)) {
+      tblgen_columns = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+  ::mlir::Attribute tblgen_rows;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'vector.flat_transpose' op ""requires attribute 'rows'");
+    if (namedAttrIt->getName() == FlatTransposeOp::getRowsAttrName(*odsOpName)) {
+      tblgen_rows = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
+  if (tblgen_rows && !(((tblgen_rows.isa<::mlir::IntegerAttr>())) && ((tblgen_rows.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))))
+    return emitError(loc, "'vector.flat_transpose' op ""attribute 'rows' failed to satisfy constraint: 32-bit signless integer attribute");
+
+  if (tblgen_columns && !(((tblgen_columns.isa<::mlir::IntegerAttr>())) && ((tblgen_columns.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))))
+    return emitError(loc, "'vector.flat_transpose' op ""attribute 'columns' failed to satisfy constraint: 32-bit signless integer attribute");
   return ::mlir::success();
 }
 
@@ -3701,7 +3858,7 @@ std::pair<unsigned, unsigned> FlatTransposeOp::getODSResultIndexAndLength(unsign
 }
 
 ::mlir::IntegerAttr FlatTransposeOp::getRowsAttr() {
-  return (*this)->getAttr(getRowsAttrName()).cast<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, getRowsAttrName()).cast<::mlir::IntegerAttr>();
 }
 
 uint32_t FlatTransposeOp::getRows() {
@@ -3710,7 +3867,7 @@ uint32_t FlatTransposeOp::getRows() {
 }
 
 ::mlir::IntegerAttr FlatTransposeOp::getColumnsAttr() {
-  return (*this)->getAttr(getColumnsAttrName()).cast<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, getColumnsAttrName()).cast<::mlir::IntegerAttr>();
 }
 
 uint32_t FlatTransposeOp::getColumns() {
@@ -3765,22 +3922,34 @@ void FlatTransposeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
 }
 
 ::mlir::LogicalResult FlatTransposeOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_rows = (*this)->getAttr(getRowsAttrName());
-    if (!tblgen_rows)
-      return emitOpError("requires attribute 'rows'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps4(*this, tblgen_rows, "rows")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_columns = (*this)->getAttr(getColumnsAttrName());
-    if (!tblgen_columns)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_columns;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'columns'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps4(*this, tblgen_columns, "columns")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == getColumnsAttrName()) {
+      tblgen_columns = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+  ::mlir::Attribute tblgen_rows;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'rows'");
+    if (namedAttrIt->getName() == getRowsAttrName()) {
+      tblgen_rows = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps4(*this, tblgen_rows, "rows")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps4(*this, tblgen_columns, "columns")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -3870,7 +4039,7 @@ void FlatTransposeOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void FlatTransposeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void FlatTransposeOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace vector
@@ -3884,9 +4053,11 @@ namespace vector {
 // ::mlir::vector::GatherOp definitions
 //===----------------------------------------------------------------------===//
 
-GatherOpAdaptor::GatherOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+GatherOpAdaptor::GatherOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.gather", odsAttrs.getContext());
+}
 
-GatherOpAdaptor::GatherOpAdaptor(GatherOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+GatherOpAdaptor::GatherOpAdaptor(GatherOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange GatherOpAdaptor::getOperands() {
   return odsOperands;
@@ -4115,7 +4286,7 @@ void GatherOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   ::mlir::OpAsmParser::UnresolvedOperand baseRawOperands[1];
   ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> baseOperands(baseRawOperands);  ::llvm::SMLoc baseOperandsLoc;
   (void)baseOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
   ::llvm::SMLoc indicesOperandsLoc;
   (void)indicesOperandsLoc;
   ::mlir::OpAsmParser::UnresolvedOperand index_vecRawOperands[1];
@@ -4294,7 +4465,7 @@ void GatherOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void GatherOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void GatherOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
   for (::mlir::Value value : getODSOperands(0))
     effects.emplace_back(::mlir::MemoryEffects::Read::get(), value, ::mlir::SideEffects::DefaultResource::get());
 }
@@ -4310,9 +4481,11 @@ namespace vector {
 // ::mlir::vector::InsertElementOp definitions
 //===----------------------------------------------------------------------===//
 
-InsertElementOpAdaptor::InsertElementOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+InsertElementOpAdaptor::InsertElementOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.insertelement", odsAttrs.getContext());
+}
 
-InsertElementOpAdaptor::InsertElementOpAdaptor(InsertElementOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+InsertElementOpAdaptor::InsertElementOpAdaptor(InsertElementOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange InsertElementOpAdaptor::getOperands() {
   return odsOperands;
@@ -4478,7 +4651,7 @@ void InsertElementOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationStat
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(InsertElementOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -4542,7 +4715,8 @@ void InsertElementOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationStat
 ::mlir::LogicalResult InsertElementOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = operands[1].getType();
+  ::mlir::Type odsInferredType0 = operands[1].getType();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
@@ -4553,10 +4727,10 @@ void InsertElementOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationStat
   ::mlir::OpAsmParser::UnresolvedOperand destRawOperands[1];
   ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> destOperands(destRawOperands);  ::llvm::SMLoc destOperandsLoc;
   (void)destOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> positionOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> positionOperands;
   ::llvm::SMLoc positionOperandsLoc;
   (void)positionOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> positionTypes;
+  ::llvm::SmallVector<::mlir::Type, 1> positionTypes;
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
 
@@ -4654,7 +4828,7 @@ void InsertElementOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void InsertElementOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void InsertElementOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace vector
@@ -4668,9 +4842,11 @@ namespace vector {
 // ::mlir::vector::InsertMapOp definitions
 //===----------------------------------------------------------------------===//
 
-InsertMapOpAdaptor::InsertMapOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+InsertMapOpAdaptor::InsertMapOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.insert_map", odsAttrs.getContext());
+}
 
-InsertMapOpAdaptor::InsertMapOpAdaptor(InsertMapOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+InsertMapOpAdaptor::InsertMapOpAdaptor(InsertMapOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange InsertMapOpAdaptor::getOperands() {
   return odsOperands;
@@ -4831,7 +5007,7 @@ void InsertMapOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(InsertMapOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -4888,7 +5064,8 @@ void InsertMapOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
 ::mlir::LogicalResult InsertMapOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = operands[1].getType();
+  ::mlir::Type odsInferredType0 = operands[1].getType();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
@@ -4899,7 +5076,7 @@ void InsertMapOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
   ::mlir::OpAsmParser::UnresolvedOperand destRawOperands[1];
   ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> destOperands(destRawOperands);  ::llvm::SMLoc destOperandsLoc;
   (void)destOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> idsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> idsOperands;
   ::llvm::SMLoc idsOperandsLoc;
   (void)idsOperandsLoc;
   ::mlir::Type vectorRawTypes[1];
@@ -4985,7 +5162,7 @@ void InsertMapOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void InsertMapOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void InsertMapOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace vector
@@ -4999,9 +5176,11 @@ namespace vector {
 // ::mlir::vector::InsertOp definitions
 //===----------------------------------------------------------------------===//
 
-InsertOpAdaptor::InsertOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+InsertOpAdaptor::InsertOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.insert", odsAttrs.getContext());
+}
 
-InsertOpAdaptor::InsertOpAdaptor(InsertOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+InsertOpAdaptor::InsertOpAdaptor(InsertOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange InsertOpAdaptor::getOperands() {
   return odsOperands;
@@ -5031,8 +5210,8 @@ std::pair<unsigned, unsigned> InsertOpAdaptor::getODSOperandIndexAndLength(unsig
 
 ::mlir::ArrayAttr InsertOpAdaptor::getPositionAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("position").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, InsertOp::getPositionAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr InsertOpAdaptor::getPosition() {
@@ -5041,14 +5220,21 @@ std::pair<unsigned, unsigned> InsertOpAdaptor::getODSOperandIndexAndLength(unsig
 }
 
 ::mlir::LogicalResult InsertOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_position = odsAttrs.get("position");
-    if (!tblgen_position)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_position;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'vector.insert' op ""requires attribute 'position'");
-
-    if (tblgen_position && !(((tblgen_position.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_position.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
-      return emitError(loc, "'vector.insert' op ""attribute 'position' failed to satisfy constraint: 64-bit integer array attribute");
+    if (namedAttrIt->getName() == InsertOp::getPositionAttrName(*odsOpName)) {
+      tblgen_position = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_position && !(((tblgen_position.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_position.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
+    return emitError(loc, "'vector.insert' op ""attribute 'position' failed to satisfy constraint: 64-bit integer array attribute");
   return ::mlir::success();
 }
 
@@ -5097,7 +5283,7 @@ std::pair<unsigned, unsigned> InsertOp::getODSResultIndexAndLength(unsigned inde
 }
 
 ::mlir::ArrayAttr InsertOp::getPositionAttr() {
-  return (*this)->getAttr(getPositionAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getPositionAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr InsertOp::getPosition() {
@@ -5152,7 +5338,7 @@ void InsertOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(InsertOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -5165,14 +5351,21 @@ void InsertOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
 }
 
 ::mlir::LogicalResult InsertOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_position = (*this)->getAttr(getPositionAttrName());
-    if (!tblgen_position)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_position;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'position'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps0(*this, tblgen_position, "position")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == getPositionAttrName()) {
+      tblgen_position = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps0(*this, tblgen_position, "position")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -5213,7 +5406,8 @@ void InsertOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
 ::mlir::LogicalResult InsertOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = operands[1].getType();
+  ::mlir::Type odsInferredType0 = operands[1].getType();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
@@ -5301,7 +5495,7 @@ void InsertOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void InsertOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void InsertOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace vector
@@ -5315,9 +5509,11 @@ namespace vector {
 // ::mlir::vector::InsertStridedSliceOp definitions
 //===----------------------------------------------------------------------===//
 
-InsertStridedSliceOpAdaptor::InsertStridedSliceOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+InsertStridedSliceOpAdaptor::InsertStridedSliceOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.insert_strided_slice", odsAttrs.getContext());
+}
 
-InsertStridedSliceOpAdaptor::InsertStridedSliceOpAdaptor(InsertStridedSliceOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+InsertStridedSliceOpAdaptor::InsertStridedSliceOpAdaptor(InsertStridedSliceOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange InsertStridedSliceOpAdaptor::getOperands() {
   return odsOperands;
@@ -5347,8 +5543,8 @@ std::pair<unsigned, unsigned> InsertStridedSliceOpAdaptor::getODSOperandIndexAnd
 
 ::mlir::ArrayAttr InsertStridedSliceOpAdaptor::getOffsetsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("offsets").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, InsertStridedSliceOp::getOffsetsAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr InsertStridedSliceOpAdaptor::getOffsets() {
@@ -5358,8 +5554,8 @@ std::pair<unsigned, unsigned> InsertStridedSliceOpAdaptor::getODSOperandIndexAnd
 
 ::mlir::ArrayAttr InsertStridedSliceOpAdaptor::getStridesAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("strides").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, InsertStridedSliceOp::getStridesAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr InsertStridedSliceOpAdaptor::getStrides() {
@@ -5368,22 +5564,34 @@ std::pair<unsigned, unsigned> InsertStridedSliceOpAdaptor::getODSOperandIndexAnd
 }
 
 ::mlir::LogicalResult InsertStridedSliceOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_offsets = odsAttrs.get("offsets");
-    if (!tblgen_offsets)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_offsets;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'vector.insert_strided_slice' op ""requires attribute 'offsets'");
-
-    if (tblgen_offsets && !(((tblgen_offsets.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_offsets.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
-      return emitError(loc, "'vector.insert_strided_slice' op ""attribute 'offsets' failed to satisfy constraint: 64-bit integer array attribute");
+    if (namedAttrIt->getName() == InsertStridedSliceOp::getOffsetsAttrName(*odsOpName)) {
+      tblgen_offsets = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_strides = odsAttrs.get("strides");
-    if (!tblgen_strides)
+  ::mlir::Attribute tblgen_strides;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'vector.insert_strided_slice' op ""requires attribute 'strides'");
-
-    if (tblgen_strides && !(((tblgen_strides.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_strides.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
-      return emitError(loc, "'vector.insert_strided_slice' op ""attribute 'strides' failed to satisfy constraint: 64-bit integer array attribute");
+    if (namedAttrIt->getName() == InsertStridedSliceOp::getStridesAttrName(*odsOpName)) {
+      tblgen_strides = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_offsets && !(((tblgen_offsets.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_offsets.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
+    return emitError(loc, "'vector.insert_strided_slice' op ""attribute 'offsets' failed to satisfy constraint: 64-bit integer array attribute");
+
+  if (tblgen_strides && !(((tblgen_strides.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_strides.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
+    return emitError(loc, "'vector.insert_strided_slice' op ""attribute 'strides' failed to satisfy constraint: 64-bit integer array attribute");
   return ::mlir::success();
 }
 
@@ -5432,7 +5640,7 @@ std::pair<unsigned, unsigned> InsertStridedSliceOp::getODSResultIndexAndLength(u
 }
 
 ::mlir::ArrayAttr InsertStridedSliceOp::getOffsetsAttr() {
-  return (*this)->getAttr(getOffsetsAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, getOffsetsAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr InsertStridedSliceOp::getOffsets() {
@@ -5441,7 +5649,7 @@ std::pair<unsigned, unsigned> InsertStridedSliceOp::getODSResultIndexAndLength(u
 }
 
 ::mlir::ArrayAttr InsertStridedSliceOp::getStridesAttr() {
-  return (*this)->getAttr(getStridesAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, getStridesAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr InsertStridedSliceOp::getStrides() {
@@ -5503,7 +5711,7 @@ void InsertStridedSliceOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operatio
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(InsertStridedSliceOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -5516,22 +5724,34 @@ void InsertStridedSliceOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operatio
 }
 
 ::mlir::LogicalResult InsertStridedSliceOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_offsets = (*this)->getAttr(getOffsetsAttrName());
-    if (!tblgen_offsets)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_offsets;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'offsets'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps0(*this, tblgen_offsets, "offsets")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == getOffsetsAttrName()) {
+      tblgen_offsets = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_strides = (*this)->getAttr(getStridesAttrName());
-    if (!tblgen_strides)
+  ::mlir::Attribute tblgen_strides;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'strides'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps0(*this, tblgen_strides, "strides")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == getStridesAttrName()) {
+      tblgen_strides = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps0(*this, tblgen_offsets, "offsets")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps0(*this, tblgen_strides, "strides")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -5572,7 +5792,8 @@ void InsertStridedSliceOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operatio
 ::mlir::LogicalResult InsertStridedSliceOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = operands[1].getType();
+  ::mlir::Type odsInferredType0 = operands[1].getType();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
@@ -5652,7 +5873,7 @@ void InsertStridedSliceOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void InsertStridedSliceOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void InsertStridedSliceOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace vector
@@ -5666,9 +5887,11 @@ namespace vector {
 // ::mlir::vector::LoadOp definitions
 //===----------------------------------------------------------------------===//
 
-LoadOpAdaptor::LoadOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+LoadOpAdaptor::LoadOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.load", odsAttrs.getContext());
+}
 
-LoadOpAdaptor::LoadOpAdaptor(LoadOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+LoadOpAdaptor::LoadOpAdaptor(LoadOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange LoadOpAdaptor::getOperands() {
   return odsOperands;
@@ -5831,7 +6054,7 @@ void LoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   ::mlir::OpAsmParser::UnresolvedOperand baseRawOperands[1];
   ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> baseOperands(baseRawOperands);  ::llvm::SMLoc baseOperandsLoc;
   (void)baseOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
   ::llvm::SMLoc indicesOperandsLoc;
   (void)indicesOperandsLoc;
   ::mlir::Type baseRawTypes[1];
@@ -5906,7 +6129,7 @@ void LoadOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void LoadOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void LoadOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
   for (::mlir::Value value : getODSOperands(0))
     effects.emplace_back(::mlir::MemoryEffects::Read::get(), value, ::mlir::SideEffects::DefaultResource::get());
 }
@@ -5922,9 +6145,11 @@ namespace vector {
 // ::mlir::vector::MaskedLoadOp definitions
 //===----------------------------------------------------------------------===//
 
-MaskedLoadOpAdaptor::MaskedLoadOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+MaskedLoadOpAdaptor::MaskedLoadOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.maskedload", odsAttrs.getContext());
+}
 
-MaskedLoadOpAdaptor::MaskedLoadOpAdaptor(MaskedLoadOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+MaskedLoadOpAdaptor::MaskedLoadOpAdaptor(MaskedLoadOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange MaskedLoadOpAdaptor::getOperands() {
   return odsOperands;
@@ -6131,7 +6356,7 @@ void MaskedLoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
   ::mlir::OpAsmParser::UnresolvedOperand baseRawOperands[1];
   ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> baseOperands(baseRawOperands);  ::llvm::SMLoc baseOperandsLoc;
   (void)baseOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
   ::llvm::SMLoc indicesOperandsLoc;
   (void)indicesOperandsLoc;
   ::mlir::OpAsmParser::UnresolvedOperand maskRawOperands[1];
@@ -6274,7 +6499,7 @@ void MaskedLoadOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void MaskedLoadOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void MaskedLoadOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
   for (::mlir::Value value : getODSOperands(0))
     effects.emplace_back(::mlir::MemoryEffects::Read::get(), value, ::mlir::SideEffects::DefaultResource::get());
 }
@@ -6290,9 +6515,11 @@ namespace vector {
 // ::mlir::vector::MaskedStoreOp definitions
 //===----------------------------------------------------------------------===//
 
-MaskedStoreOpAdaptor::MaskedStoreOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+MaskedStoreOpAdaptor::MaskedStoreOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.maskedstore", odsAttrs.getContext());
+}
 
-MaskedStoreOpAdaptor::MaskedStoreOpAdaptor(MaskedStoreOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+MaskedStoreOpAdaptor::MaskedStoreOpAdaptor(MaskedStoreOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange MaskedStoreOpAdaptor::getOperands() {
   return odsOperands;
@@ -6485,7 +6712,7 @@ void MaskedStoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
   ::mlir::OpAsmParser::UnresolvedOperand baseRawOperands[1];
   ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> baseOperands(baseRawOperands);  ::llvm::SMLoc baseOperandsLoc;
   (void)baseOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
   ::llvm::SMLoc indicesOperandsLoc;
   (void)indicesOperandsLoc;
   ::mlir::OpAsmParser::UnresolvedOperand maskRawOperands[1];
@@ -6607,7 +6834,7 @@ void MaskedStoreOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void MaskedStoreOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void MaskedStoreOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
   for (::mlir::Value value : getODSOperands(0))
     effects.emplace_back(::mlir::MemoryEffects::Write::get(), value, ::mlir::SideEffects::DefaultResource::get());
 }
@@ -6623,9 +6850,11 @@ namespace vector {
 // ::mlir::vector::MatmulOp definitions
 //===----------------------------------------------------------------------===//
 
-MatmulOpAdaptor::MatmulOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+MatmulOpAdaptor::MatmulOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.matrix_multiply", odsAttrs.getContext());
+}
 
-MatmulOpAdaptor::MatmulOpAdaptor(MatmulOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+MatmulOpAdaptor::MatmulOpAdaptor(MatmulOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange MatmulOpAdaptor::getOperands() {
   return odsOperands;
@@ -6655,8 +6884,8 @@ std::pair<unsigned, unsigned> MatmulOpAdaptor::getODSOperandIndexAndLength(unsig
 
 ::mlir::IntegerAttr MatmulOpAdaptor::getLhsRowsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("lhs_rows").cast<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 1, MatmulOp::getLhsRowsAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+    return attr;
 }
 
 uint32_t MatmulOpAdaptor::getLhsRows() {
@@ -6666,8 +6895,8 @@ uint32_t MatmulOpAdaptor::getLhsRows() {
 
 ::mlir::IntegerAttr MatmulOpAdaptor::getLhsColumnsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("lhs_columns").cast<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 2, MatmulOp::getLhsColumnsAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+    return attr;
 }
 
 uint32_t MatmulOpAdaptor::getLhsColumns() {
@@ -6677,8 +6906,8 @@ uint32_t MatmulOpAdaptor::getLhsColumns() {
 
 ::mlir::IntegerAttr MatmulOpAdaptor::getRhsColumnsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("rhs_columns").cast<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 0, MatmulOp::getRhsColumnsAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+    return attr;
 }
 
 uint32_t MatmulOpAdaptor::getRhsColumns() {
@@ -6687,30 +6916,47 @@ uint32_t MatmulOpAdaptor::getRhsColumns() {
 }
 
 ::mlir::LogicalResult MatmulOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_lhs_rows = odsAttrs.get("lhs_rows");
-    if (!tblgen_lhs_rows)
-      return emitError(loc, "'vector.matrix_multiply' op ""requires attribute 'lhs_rows'");
-
-    if (tblgen_lhs_rows && !(((tblgen_lhs_rows.isa<::mlir::IntegerAttr>())) && ((tblgen_lhs_rows.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))))
-      return emitError(loc, "'vector.matrix_multiply' op ""attribute 'lhs_rows' failed to satisfy constraint: 32-bit signless integer attribute");
-  }
-  {
-    auto tblgen_lhs_columns = odsAttrs.get("lhs_columns");
-    if (!tblgen_lhs_columns)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_lhs_columns;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'vector.matrix_multiply' op ""requires attribute 'lhs_columns'");
-
-    if (tblgen_lhs_columns && !(((tblgen_lhs_columns.isa<::mlir::IntegerAttr>())) && ((tblgen_lhs_columns.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))))
-      return emitError(loc, "'vector.matrix_multiply' op ""attribute 'lhs_columns' failed to satisfy constraint: 32-bit signless integer attribute");
+    if (namedAttrIt->getName() == MatmulOp::getLhsColumnsAttrName(*odsOpName)) {
+      tblgen_lhs_columns = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_rhs_columns = odsAttrs.get("rhs_columns");
-    if (!tblgen_rhs_columns)
+  ::mlir::Attribute tblgen_lhs_rows;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'vector.matrix_multiply' op ""requires attribute 'lhs_rows'");
+    if (namedAttrIt->getName() == MatmulOp::getLhsRowsAttrName(*odsOpName)) {
+      tblgen_lhs_rows = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_rhs_columns;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'vector.matrix_multiply' op ""requires attribute 'rhs_columns'");
-
-    if (tblgen_rhs_columns && !(((tblgen_rhs_columns.isa<::mlir::IntegerAttr>())) && ((tblgen_rhs_columns.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))))
-      return emitError(loc, "'vector.matrix_multiply' op ""attribute 'rhs_columns' failed to satisfy constraint: 32-bit signless integer attribute");
+    if (namedAttrIt->getName() == MatmulOp::getRhsColumnsAttrName(*odsOpName)) {
+      tblgen_rhs_columns = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_lhs_rows && !(((tblgen_lhs_rows.isa<::mlir::IntegerAttr>())) && ((tblgen_lhs_rows.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))))
+    return emitError(loc, "'vector.matrix_multiply' op ""attribute 'lhs_rows' failed to satisfy constraint: 32-bit signless integer attribute");
+
+  if (tblgen_lhs_columns && !(((tblgen_lhs_columns.isa<::mlir::IntegerAttr>())) && ((tblgen_lhs_columns.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))))
+    return emitError(loc, "'vector.matrix_multiply' op ""attribute 'lhs_columns' failed to satisfy constraint: 32-bit signless integer attribute");
+
+  if (tblgen_rhs_columns && !(((tblgen_rhs_columns.isa<::mlir::IntegerAttr>())) && ((tblgen_rhs_columns.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))))
+    return emitError(loc, "'vector.matrix_multiply' op ""attribute 'rhs_columns' failed to satisfy constraint: 32-bit signless integer attribute");
   return ::mlir::success();
 }
 
@@ -6759,7 +7005,7 @@ std::pair<unsigned, unsigned> MatmulOp::getODSResultIndexAndLength(unsigned inde
 }
 
 ::mlir::IntegerAttr MatmulOp::getLhsRowsAttr() {
-  return (*this)->getAttr(getLhsRowsAttrName()).cast<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 1, getLhsRowsAttrName()).cast<::mlir::IntegerAttr>();
 }
 
 uint32_t MatmulOp::getLhsRows() {
@@ -6768,7 +7014,7 @@ uint32_t MatmulOp::getLhsRows() {
 }
 
 ::mlir::IntegerAttr MatmulOp::getLhsColumnsAttr() {
-  return (*this)->getAttr(getLhsColumnsAttrName()).cast<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 2, getLhsColumnsAttrName()).cast<::mlir::IntegerAttr>();
 }
 
 uint32_t MatmulOp::getLhsColumns() {
@@ -6777,7 +7023,7 @@ uint32_t MatmulOp::getLhsColumns() {
 }
 
 ::mlir::IntegerAttr MatmulOp::getRhsColumnsAttr() {
-  return (*this)->getAttr(getRhsColumnsAttrName()).cast<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 0, getRhsColumnsAttrName()).cast<::mlir::IntegerAttr>();
 }
 
 uint32_t MatmulOp::getRhsColumns() {
@@ -6854,30 +7100,47 @@ void MatmulOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::LogicalResult MatmulOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_lhs_rows = (*this)->getAttr(getLhsRowsAttrName());
-    if (!tblgen_lhs_rows)
-      return emitOpError("requires attribute 'lhs_rows'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps4(*this, tblgen_lhs_rows, "lhs_rows")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_lhs_columns = (*this)->getAttr(getLhsColumnsAttrName());
-    if (!tblgen_lhs_columns)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_lhs_columns;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'lhs_columns'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps4(*this, tblgen_lhs_columns, "lhs_columns")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == getLhsColumnsAttrName()) {
+      tblgen_lhs_columns = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_rhs_columns = (*this)->getAttr(getRhsColumnsAttrName());
-    if (!tblgen_rhs_columns)
+  ::mlir::Attribute tblgen_lhs_rows;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'lhs_rows'");
+    if (namedAttrIt->getName() == getLhsRowsAttrName()) {
+      tblgen_lhs_rows = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_rhs_columns;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'rhs_columns'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps4(*this, tblgen_rhs_columns, "rhs_columns")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == getRhsColumnsAttrName()) {
+      tblgen_rhs_columns = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps4(*this, tblgen_lhs_rows, "lhs_rows")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps4(*this, tblgen_lhs_columns, "lhs_columns")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps4(*this, tblgen_rhs_columns, "rhs_columns")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -7014,7 +7277,7 @@ void MatmulOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void MatmulOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void MatmulOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace vector
@@ -7028,9 +7291,11 @@ namespace vector {
 // ::mlir::vector::MultiDimReductionOp definitions
 //===----------------------------------------------------------------------===//
 
-MultiDimReductionOpAdaptor::MultiDimReductionOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+MultiDimReductionOpAdaptor::MultiDimReductionOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.multi_reduction", odsAttrs.getContext());
+}
 
-MultiDimReductionOpAdaptor::MultiDimReductionOpAdaptor(MultiDimReductionOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+MultiDimReductionOpAdaptor::MultiDimReductionOpAdaptor(MultiDimReductionOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange MultiDimReductionOpAdaptor::getOperands() {
   return odsOperands;
@@ -7056,8 +7321,8 @@ std::pair<unsigned, unsigned> MultiDimReductionOpAdaptor::getODSOperandIndexAndL
 
 ::mlir::vector::CombiningKindAttr MultiDimReductionOpAdaptor::getKindAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::vector::CombiningKindAttr attr = odsAttrs.get("kind").cast<::mlir::vector::CombiningKindAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, MultiDimReductionOp::getKindAttrName(*odsOpName)).cast<::mlir::vector::CombiningKindAttr>();
+    return attr;
 }
 
 ::mlir::vector::CombiningKind MultiDimReductionOpAdaptor::getKind() {
@@ -7067,8 +7332,8 @@ std::pair<unsigned, unsigned> MultiDimReductionOpAdaptor::getODSOperandIndexAndL
 
 ::mlir::ArrayAttr MultiDimReductionOpAdaptor::getReductionDimsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("reduction_dims").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, MultiDimReductionOp::getReductionDimsAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr MultiDimReductionOpAdaptor::getReductionDims() {
@@ -7077,22 +7342,34 @@ std::pair<unsigned, unsigned> MultiDimReductionOpAdaptor::getODSOperandIndexAndL
 }
 
 ::mlir::LogicalResult MultiDimReductionOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_kind = odsAttrs.get("kind");
-    if (!tblgen_kind)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_kind;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'vector.multi_reduction' op ""requires attribute 'kind'");
-
-    if (tblgen_kind && !((tblgen_kind.isa<::mlir::vector::CombiningKindAttr>())))
-      return emitError(loc, "'vector.multi_reduction' op ""attribute 'kind' failed to satisfy constraint: Kind of combining function for contractions and reductions");
+    if (namedAttrIt->getName() == MultiDimReductionOp::getKindAttrName(*odsOpName)) {
+      tblgen_kind = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_reduction_dims = odsAttrs.get("reduction_dims");
-    if (!tblgen_reduction_dims)
+  ::mlir::Attribute tblgen_reduction_dims;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'vector.multi_reduction' op ""requires attribute 'reduction_dims'");
-
-    if (tblgen_reduction_dims && !(((tblgen_reduction_dims.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_reduction_dims.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
-      return emitError(loc, "'vector.multi_reduction' op ""attribute 'reduction_dims' failed to satisfy constraint: 64-bit integer array attribute");
+    if (namedAttrIt->getName() == MultiDimReductionOp::getReductionDimsAttrName(*odsOpName)) {
+      tblgen_reduction_dims = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_kind && !((tblgen_kind.isa<::mlir::vector::CombiningKindAttr>())))
+    return emitError(loc, "'vector.multi_reduction' op ""attribute 'kind' failed to satisfy constraint: Kind of combining function for contractions and reductions");
+
+  if (tblgen_reduction_dims && !(((tblgen_reduction_dims.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_reduction_dims.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
+    return emitError(loc, "'vector.multi_reduction' op ""attribute 'reduction_dims' failed to satisfy constraint: 64-bit integer array attribute");
   return ::mlir::success();
 }
 
@@ -7131,7 +7408,7 @@ std::pair<unsigned, unsigned> MultiDimReductionOp::getODSResultIndexAndLength(un
 }
 
 ::mlir::vector::CombiningKindAttr MultiDimReductionOp::getKindAttr() {
-  return (*this)->getAttr(getKindAttrName()).cast<::mlir::vector::CombiningKindAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, getKindAttrName()).cast<::mlir::vector::CombiningKindAttr>();
 }
 
 ::mlir::vector::CombiningKind MultiDimReductionOp::getKind() {
@@ -7140,7 +7417,7 @@ std::pair<unsigned, unsigned> MultiDimReductionOp::getODSResultIndexAndLength(un
 }
 
 ::mlir::ArrayAttr MultiDimReductionOp::getReductionDimsAttr() {
-  return (*this)->getAttr(getReductionDimsAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, getReductionDimsAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr MultiDimReductionOp::getReductionDims() {
@@ -7229,7 +7506,7 @@ void MultiDimReductionOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operation
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(MultiDimReductionOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -7242,22 +7519,34 @@ void MultiDimReductionOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operation
 }
 
 ::mlir::LogicalResult MultiDimReductionOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_kind = (*this)->getAttr(getKindAttrName());
-    if (!tblgen_kind)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_kind;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'kind'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps3(*this, tblgen_kind, "kind")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == getKindAttrName()) {
+      tblgen_kind = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_reduction_dims = (*this)->getAttr(getReductionDimsAttrName());
-    if (!tblgen_reduction_dims)
+  ::mlir::Attribute tblgen_reduction_dims;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'reduction_dims'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps0(*this, tblgen_reduction_dims, "reduction_dims")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == getReductionDimsAttrName()) {
+      tblgen_reduction_dims = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps3(*this, tblgen_kind, "kind")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps0(*this, tblgen_reduction_dims, "reduction_dims")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -7366,7 +7655,7 @@ _odsPrinter.printStrippedAttrOrType(getKindAttr());
   }
 }
 
-void MultiDimReductionOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void MultiDimReductionOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace vector
@@ -7380,9 +7669,11 @@ namespace vector {
 // ::mlir::vector::OuterProductOp definitions
 //===----------------------------------------------------------------------===//
 
-OuterProductOpAdaptor::OuterProductOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+OuterProductOpAdaptor::OuterProductOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.outerproduct", odsAttrs.getContext());
+}
 
-OuterProductOpAdaptor::OuterProductOpAdaptor(OuterProductOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+OuterProductOpAdaptor::OuterProductOpAdaptor(OuterProductOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange OuterProductOpAdaptor::getOperands() {
   return odsOperands;
@@ -7430,10 +7721,10 @@ std::pair<unsigned, unsigned> OuterProductOpAdaptor::getODSOperandIndexAndLength
 
 ::mlir::vector::CombiningKindAttr OuterProductOpAdaptor::getKindAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::vector::CombiningKindAttr attr = odsAttrs.get("kind").dyn_cast_or_null<::mlir::vector::CombiningKindAttr>();
-  if (!attr)
-    attr = ::mlir::vector::CombiningKindAttr::get(CombiningKind::ADD, ::mlir::Builder(odsAttrs.getContext()).getContext());
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, OuterProductOp::getKindAttrName(*odsOpName)).dyn_cast_or_null<::mlir::vector::CombiningKindAttr>();
+    if (!attr)
+      attr = ::mlir::vector::CombiningKindAttr::get(CombiningKind::ADD, ::mlir::Builder(odsAttrs.getContext()).getContext());
+    return attr;
 }
 
 ::mlir::vector::CombiningKind OuterProductOpAdaptor::getKind() {
@@ -7444,11 +7735,21 @@ std::pair<unsigned, unsigned> OuterProductOpAdaptor::getODSOperandIndexAndLength
 }
 
 ::mlir::LogicalResult OuterProductOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_kind = odsAttrs.get("kind");
-    if (tblgen_kind && !((tblgen_kind.isa<::mlir::vector::CombiningKindAttr>())))
-      return emitError(loc, "'vector.outerproduct' op ""attribute 'kind' failed to satisfy constraint: Kind of combining function for contractions and reductions");
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_kind;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == OuterProductOp::getKindAttrName(*odsOpName)) {
+      tblgen_kind = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_kind && !((tblgen_kind.isa<::mlir::vector::CombiningKindAttr>())))
+    return emitError(loc, "'vector.outerproduct' op ""attribute 'kind' failed to satisfy constraint: Kind of combining function for contractions and reductions");
   return ::mlir::success();
 }
 
@@ -7517,7 +7818,7 @@ std::pair<unsigned, unsigned> OuterProductOp::getODSResultIndexAndLength(unsigne
 }
 
 ::mlir::vector::CombiningKindAttr OuterProductOp::getKindAttr() {
-  return (*this)->getAttr(getKindAttrName()).dyn_cast_or_null<::mlir::vector::CombiningKindAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getKindAttrName()).dyn_cast_or_null<::mlir::vector::CombiningKindAttr>();
 }
 
 ::mlir::vector::CombiningKind OuterProductOp::getKind() {
@@ -7578,11 +7879,21 @@ void OuterProductOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
 }
 
 ::mlir::LogicalResult OuterProductOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_kind = (*this)->getAttr(getKindAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps3(*this, tblgen_kind, "kind")))
-      return ::mlir::failure();
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_kind;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == getKindAttrName()) {
+      tblgen_kind = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps3(*this, tblgen_kind, "kind")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -7626,7 +7937,7 @@ void OuterProductOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
   return ::mlir::failure();
 }
 
-void OuterProductOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void OuterProductOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace vector
@@ -7640,9 +7951,11 @@ namespace vector {
 // ::mlir::vector::PrintOp definitions
 //===----------------------------------------------------------------------===//
 
-PrintOpAdaptor::PrintOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+PrintOpAdaptor::PrintOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.print", odsAttrs.getContext());
+}
 
-PrintOpAdaptor::PrintOpAdaptor(PrintOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+PrintOpAdaptor::PrintOpAdaptor(PrintOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange PrintOpAdaptor::getOperands() {
   return odsOperands;
@@ -7787,9 +8100,11 @@ namespace vector {
 // ::mlir::vector::ReductionOp definitions
 //===----------------------------------------------------------------------===//
 
-ReductionOpAdaptor::ReductionOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ReductionOpAdaptor::ReductionOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.reduction", odsAttrs.getContext());
+}
 
-ReductionOpAdaptor::ReductionOpAdaptor(ReductionOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ReductionOpAdaptor::ReductionOpAdaptor(ReductionOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ReductionOpAdaptor::getOperands() {
   return odsOperands;
@@ -7834,8 +8149,8 @@ std::pair<unsigned, unsigned> ReductionOpAdaptor::getODSOperandIndexAndLength(un
 
 ::mlir::vector::CombiningKindAttr ReductionOpAdaptor::getKindAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::vector::CombiningKindAttr attr = odsAttrs.get("kind").cast<::mlir::vector::CombiningKindAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ReductionOp::getKindAttrName(*odsOpName)).cast<::mlir::vector::CombiningKindAttr>();
+    return attr;
 }
 
 ::mlir::vector::CombiningKind ReductionOpAdaptor::getKind() {
@@ -7844,14 +8159,21 @@ std::pair<unsigned, unsigned> ReductionOpAdaptor::getODSOperandIndexAndLength(un
 }
 
 ::mlir::LogicalResult ReductionOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_kind = odsAttrs.get("kind");
-    if (!tblgen_kind)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_kind;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'vector.reduction' op ""requires attribute 'kind'");
-
-    if (tblgen_kind && !((tblgen_kind.isa<::mlir::vector::CombiningKindAttr>())))
-      return emitError(loc, "'vector.reduction' op ""attribute 'kind' failed to satisfy constraint: Kind of combining function for contractions and reductions");
+    if (namedAttrIt->getName() == ReductionOp::getKindAttrName(*odsOpName)) {
+      tblgen_kind = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_kind && !((tblgen_kind.isa<::mlir::vector::CombiningKindAttr>())))
+    return emitError(loc, "'vector.reduction' op ""attribute 'kind' failed to satisfy constraint: Kind of combining function for contractions and reductions");
   return ::mlir::success();
 }
 
@@ -7915,7 +8237,7 @@ std::pair<unsigned, unsigned> ReductionOp::getODSResultIndexAndLength(unsigned i
 }
 
 ::mlir::vector::CombiningKindAttr ReductionOp::getKindAttr() {
-  return (*this)->getAttr(getKindAttrName()).cast<::mlir::vector::CombiningKindAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getKindAttrName()).cast<::mlir::vector::CombiningKindAttr>();
 }
 
 ::mlir::vector::CombiningKind ReductionOp::getKind() {
@@ -7970,14 +8292,21 @@ void ReductionOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 }
 
 ::mlir::LogicalResult ReductionOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_kind = (*this)->getAttr(getKindAttrName());
-    if (!tblgen_kind)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_kind;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'kind'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps3(*this, tblgen_kind, "kind")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == getKindAttrName()) {
+      tblgen_kind = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps3(*this, tblgen_kind, "kind")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -8018,7 +8347,7 @@ void ReductionOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   return ::mlir::failure();
 }
 
-void ReductionOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ReductionOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace vector
@@ -8032,9 +8361,11 @@ namespace vector {
 // ::mlir::vector::ReshapeOp definitions
 //===----------------------------------------------------------------------===//
 
-ReshapeOpAdaptor::ReshapeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ReshapeOpAdaptor::ReshapeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.reshape", odsAttrs.getContext());
+}
 
-ReshapeOpAdaptor::ReshapeOpAdaptor(ReshapeOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ReshapeOpAdaptor::ReshapeOpAdaptor(ReshapeOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ReshapeOpAdaptor::getOperands() {
   return odsOperands;
@@ -8042,7 +8373,7 @@ ReshapeOpAdaptor::ReshapeOpAdaptor(ReshapeOp &op) : odsOperands(op->getOperands(
 
 std::pair<unsigned, unsigned> ReshapeOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = odsAttrs.get("operand_segment_sizes").cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, ReshapeOp::getOperandSegmentSizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -8078,8 +8409,8 @@ std::pair<unsigned, unsigned> ReshapeOpAdaptor::getODSOperandIndexAndLength(unsi
 
 ::mlir::ArrayAttr ReshapeOpAdaptor::getFixedVectorSizesAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("fixed_vector_sizes").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, ReshapeOp::getFixedVectorSizesAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr ReshapeOpAdaptor::getFixedVectorSizes() {
@@ -8088,30 +8419,45 @@ std::pair<unsigned, unsigned> ReshapeOpAdaptor::getODSOperandIndexAndLength(unsi
 }
 
 ::mlir::LogicalResult ReshapeOpAdaptor::verify(::mlir::Location loc) {
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_fixed_vector_sizes;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'vector.reshape' op ""requires attribute 'fixed_vector_sizes'");
+    if (namedAttrIt->getName() == ReshapeOp::getFixedVectorSizesAttrName(*odsOpName)) {
+      tblgen_fixed_vector_sizes = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'vector.reshape' op ""requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == ReshapeOp::getOperandSegmentSizesAttrName(*odsOpName)) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = odsAttrs.get("operand_segment_sizes").dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitError(loc, "'vector.reshape' op ""missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 3)
       return emitError(loc, "'vector.reshape' op ""'operand_segment_sizes' attribute for specifying operand segments must have 3 "
                 "elements, but got ") << numElements;
   }
-    {
-    auto tblgen_fixed_vector_sizes = odsAttrs.get("fixed_vector_sizes");
-    if (!tblgen_fixed_vector_sizes)
-      return emitError(loc, "'vector.reshape' op ""requires attribute 'fixed_vector_sizes'");
 
-    if (tblgen_fixed_vector_sizes && !(((tblgen_fixed_vector_sizes.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_fixed_vector_sizes.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
-      return emitError(loc, "'vector.reshape' op ""attribute 'fixed_vector_sizes' failed to satisfy constraint: 64-bit integer array attribute");
-  }
+  if (tblgen_fixed_vector_sizes && !(((tblgen_fixed_vector_sizes.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_fixed_vector_sizes.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
+    return emitError(loc, "'vector.reshape' op ""attribute 'fixed_vector_sizes' failed to satisfy constraint: 64-bit integer array attribute");
   return ::mlir::success();
 }
 
 std::pair<unsigned, unsigned> ReshapeOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr =
-      (*this)->getAttr(getOperandSegmentSizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, getOperandSegmentSizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -8143,19 +8489,19 @@ std::pair<unsigned, unsigned> ReshapeOp::getODSOperandIndexAndLength(unsigned in
 
 ::mlir::MutableOperandRange ReshapeOp::getVectorMutable() {
   auto range = getODSOperandIndexAndLength(0);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *getOperation()->getAttrDictionary().getNamed(getOperandSegmentSizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, getOperandSegmentSizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ReshapeOp::getInputShapeMutable() {
   auto range = getODSOperandIndexAndLength(1);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *getOperation()->getAttrDictionary().getNamed(getOperandSegmentSizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, getOperandSegmentSizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ReshapeOp::getOutputShapeMutable() {
   auto range = getODSOperandIndexAndLength(2);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *getOperation()->getAttrDictionary().getNamed(getOperandSegmentSizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, getOperandSegmentSizesAttrName())));
   return mutableRange;
 }
 
@@ -8174,7 +8520,7 @@ std::pair<unsigned, unsigned> ReshapeOp::getODSResultIndexAndLength(unsigned ind
 }
 
 ::mlir::ArrayAttr ReshapeOp::getFixedVectorSizesAttr() {
-  return (*this)->getAttr(getFixedVectorSizesAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, getFixedVectorSizesAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr ReshapeOp::getFixedVectorSizes() {
@@ -8214,24 +8560,40 @@ void ReshapeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 }
 
 ::mlir::LogicalResult ReshapeOp::verifyInvariantsImpl() {
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_fixed_vector_sizes;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'fixed_vector_sizes'");
+    if (namedAttrIt->getName() == getFixedVectorSizesAttrName()) {
+      tblgen_fixed_vector_sizes = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == getOperandSegmentSizesAttrName()) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = (*this)->getAttr(getOperandSegmentSizesAttrName()).dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitOpError("missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 3)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 3 "
                 "elements, but got ") << numElements;
   }
-    {
-    auto tblgen_fixed_vector_sizes = (*this)->getAttr(getFixedVectorSizesAttrName());
-    if (!tblgen_fixed_vector_sizes)
-      return emitOpError("requires attribute 'fixed_vector_sizes'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps0(*this, tblgen_fixed_vector_sizes, "fixed_vector_sizes")))
-      return ::mlir::failure();
-  }
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps0(*this, tblgen_fixed_vector_sizes, "fixed_vector_sizes")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -8275,10 +8637,10 @@ void ReshapeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   ::mlir::OpAsmParser::UnresolvedOperand vectorRawOperands[1];
   ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> vectorOperands(vectorRawOperands);  ::llvm::SMLoc vectorOperandsLoc;
   (void)vectorOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> input_shapeOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> input_shapeOperands;
   ::llvm::SMLoc input_shapeOperandsLoc;
   (void)input_shapeOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> output_shapeOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> output_shapeOperands;
   ::llvm::SMLoc output_shapeOperandsLoc;
   (void)output_shapeOperandsLoc;
   ::mlir::ArrayAttr fixed_vector_sizesAttr;
@@ -8384,7 +8746,7 @@ void ReshapeOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void ReshapeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ReshapeOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace vector
@@ -8398,9 +8760,11 @@ namespace vector {
 // ::mlir::vector::ScanOp definitions
 //===----------------------------------------------------------------------===//
 
-ScanOpAdaptor::ScanOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ScanOpAdaptor::ScanOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.scan", odsAttrs.getContext());
+}
 
-ScanOpAdaptor::ScanOpAdaptor(ScanOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ScanOpAdaptor::ScanOpAdaptor(ScanOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ScanOpAdaptor::getOperands() {
   return odsOperands;
@@ -8430,8 +8794,8 @@ std::pair<unsigned, unsigned> ScanOpAdaptor::getODSOperandIndexAndLength(unsigne
 
 ::mlir::vector::CombiningKindAttr ScanOpAdaptor::getKindAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::vector::CombiningKindAttr attr = odsAttrs.get("kind").cast<::mlir::vector::CombiningKindAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 1, ScanOp::getKindAttrName(*odsOpName)).cast<::mlir::vector::CombiningKindAttr>();
+    return attr;
 }
 
 ::mlir::vector::CombiningKind ScanOpAdaptor::getKind() {
@@ -8441,8 +8805,8 @@ std::pair<unsigned, unsigned> ScanOpAdaptor::getODSOperandIndexAndLength(unsigne
 
 ::mlir::IntegerAttr ScanOpAdaptor::getReductionDimAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("reduction_dim").cast<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 0, ScanOp::getReductionDimAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+    return attr;
 }
 
 uint64_t ScanOpAdaptor::getReductionDim() {
@@ -8452,8 +8816,8 @@ uint64_t ScanOpAdaptor::getReductionDim() {
 
 ::mlir::BoolAttr ScanOpAdaptor::getInclusiveAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::BoolAttr attr = odsAttrs.get("inclusive").cast<::mlir::BoolAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 2, ScanOp::getInclusiveAttrName(*odsOpName)).cast<::mlir::BoolAttr>();
+    return attr;
 }
 
 bool ScanOpAdaptor::getInclusive() {
@@ -8462,30 +8826,47 @@ bool ScanOpAdaptor::getInclusive() {
 }
 
 ::mlir::LogicalResult ScanOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_kind = odsAttrs.get("kind");
-    if (!tblgen_kind)
-      return emitError(loc, "'vector.scan' op ""requires attribute 'kind'");
-
-    if (tblgen_kind && !((tblgen_kind.isa<::mlir::vector::CombiningKindAttr>())))
-      return emitError(loc, "'vector.scan' op ""attribute 'kind' failed to satisfy constraint: Kind of combining function for contractions and reductions");
-  }
-  {
-    auto tblgen_reduction_dim = odsAttrs.get("reduction_dim");
-    if (!tblgen_reduction_dim)
-      return emitError(loc, "'vector.scan' op ""requires attribute 'reduction_dim'");
-
-    if (tblgen_reduction_dim && !(((tblgen_reduction_dim.isa<::mlir::IntegerAttr>())) && ((tblgen_reduction_dim.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
-      return emitError(loc, "'vector.scan' op ""attribute 'reduction_dim' failed to satisfy constraint: 64-bit signless integer attribute");
-  }
-  {
-    auto tblgen_inclusive = odsAttrs.get("inclusive");
-    if (!tblgen_inclusive)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_inclusive;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'vector.scan' op ""requires attribute 'inclusive'");
-
-    if (tblgen_inclusive && !((tblgen_inclusive.isa<::mlir::BoolAttr>())))
-      return emitError(loc, "'vector.scan' op ""attribute 'inclusive' failed to satisfy constraint: bool attribute");
+    if (namedAttrIt->getName() == ScanOp::getInclusiveAttrName(*odsOpName)) {
+      tblgen_inclusive = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+  ::mlir::Attribute tblgen_kind;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'vector.scan' op ""requires attribute 'kind'");
+    if (namedAttrIt->getName() == ScanOp::getKindAttrName(*odsOpName)) {
+      tblgen_kind = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_reduction_dim;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'vector.scan' op ""requires attribute 'reduction_dim'");
+    if (namedAttrIt->getName() == ScanOp::getReductionDimAttrName(*odsOpName)) {
+      tblgen_reduction_dim = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
+  if (tblgen_kind && !((tblgen_kind.isa<::mlir::vector::CombiningKindAttr>())))
+    return emitError(loc, "'vector.scan' op ""attribute 'kind' failed to satisfy constraint: Kind of combining function for contractions and reductions");
+
+  if (tblgen_reduction_dim && !(((tblgen_reduction_dim.isa<::mlir::IntegerAttr>())) && ((tblgen_reduction_dim.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
+    return emitError(loc, "'vector.scan' op ""attribute 'reduction_dim' failed to satisfy constraint: 64-bit signless integer attribute");
+
+  if (tblgen_inclusive && !((tblgen_inclusive.isa<::mlir::BoolAttr>())))
+    return emitError(loc, "'vector.scan' op ""attribute 'inclusive' failed to satisfy constraint: bool attribute");
   return ::mlir::success();
 }
 
@@ -8547,7 +8928,7 @@ std::pair<unsigned, unsigned> ScanOp::getODSResultIndexAndLength(unsigned index)
 }
 
 ::mlir::vector::CombiningKindAttr ScanOp::getKindAttr() {
-  return (*this)->getAttr(getKindAttrName()).cast<::mlir::vector::CombiningKindAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 1, getKindAttrName()).cast<::mlir::vector::CombiningKindAttr>();
 }
 
 ::mlir::vector::CombiningKind ScanOp::getKind() {
@@ -8556,7 +8937,7 @@ std::pair<unsigned, unsigned> ScanOp::getODSResultIndexAndLength(unsigned index)
 }
 
 ::mlir::IntegerAttr ScanOp::getReductionDimAttr() {
-  return (*this)->getAttr(getReductionDimAttrName()).cast<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 0, getReductionDimAttrName()).cast<::mlir::IntegerAttr>();
 }
 
 uint64_t ScanOp::getReductionDim() {
@@ -8565,7 +8946,7 @@ uint64_t ScanOp::getReductionDim() {
 }
 
 ::mlir::BoolAttr ScanOp::getInclusiveAttr() {
-  return (*this)->getAttr(getInclusiveAttrName()).cast<::mlir::BoolAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 2, getInclusiveAttrName()).cast<::mlir::BoolAttr>();
 }
 
 bool ScanOp::getInclusive() {
@@ -8672,7 +9053,7 @@ void ScanOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(ScanOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -8685,30 +9066,47 @@ void ScanOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 }
 
 ::mlir::LogicalResult ScanOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_kind = (*this)->getAttr(getKindAttrName());
-    if (!tblgen_kind)
-      return emitOpError("requires attribute 'kind'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps3(*this, tblgen_kind, "kind")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_reduction_dim = (*this)->getAttr(getReductionDimAttrName());
-    if (!tblgen_reduction_dim)
-      return emitOpError("requires attribute 'reduction_dim'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps5(*this, tblgen_reduction_dim, "reduction_dim")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_inclusive = (*this)->getAttr(getInclusiveAttrName());
-    if (!tblgen_inclusive)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_inclusive;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'inclusive'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps6(*this, tblgen_inclusive, "inclusive")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == getInclusiveAttrName()) {
+      tblgen_inclusive = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+  ::mlir::Attribute tblgen_kind;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'kind'");
+    if (namedAttrIt->getName() == getKindAttrName()) {
+      tblgen_kind = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_reduction_dim;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'reduction_dim'");
+    if (namedAttrIt->getName() == getReductionDimAttrName()) {
+      tblgen_reduction_dim = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps3(*this, tblgen_kind, "kind")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps5(*this, tblgen_reduction_dim, "reduction_dim")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps6(*this, tblgen_inclusive, "inclusive")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -8755,8 +9153,10 @@ void ScanOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 ::mlir::LogicalResult ScanOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(2);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = operands[0].getType();
-  inferredReturnTypes[1] = operands[1].getType();
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  ::mlir::Type odsInferredType1 = operands[1].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  inferredReturnTypes[1] = odsInferredType1;
   return ::mlir::success();
 }
 
@@ -8848,7 +9248,7 @@ _odsPrinter.printStrippedAttrOrType(getKindAttr());
   }
 }
 
-void ScanOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ScanOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace vector
@@ -8862,9 +9262,11 @@ namespace vector {
 // ::mlir::vector::ScatterOp definitions
 //===----------------------------------------------------------------------===//
 
-ScatterOpAdaptor::ScatterOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ScatterOpAdaptor::ScatterOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.scatter", odsAttrs.getContext());
+}
 
-ScatterOpAdaptor::ScatterOpAdaptor(ScatterOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ScatterOpAdaptor::ScatterOpAdaptor(ScatterOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ScatterOpAdaptor::getOperands() {
   return odsOperands;
@@ -9079,7 +9481,7 @@ void ScatterOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   ::mlir::OpAsmParser::UnresolvedOperand baseRawOperands[1];
   ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> baseOperands(baseRawOperands);  ::llvm::SMLoc baseOperandsLoc;
   (void)baseOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
   ::llvm::SMLoc indicesOperandsLoc;
   (void)indicesOperandsLoc;
   ::mlir::OpAsmParser::UnresolvedOperand index_vecRawOperands[1];
@@ -9237,7 +9639,7 @@ void ScatterOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void ScatterOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ScatterOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
   for (::mlir::Value value : getODSOperands(0))
     effects.emplace_back(::mlir::MemoryEffects::Write::get(), value, ::mlir::SideEffects::DefaultResource::get());
 }
@@ -9253,9 +9655,11 @@ namespace vector {
 // ::mlir::vector::ShapeCastOp definitions
 //===----------------------------------------------------------------------===//
 
-ShapeCastOpAdaptor::ShapeCastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ShapeCastOpAdaptor::ShapeCastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.shape_cast", odsAttrs.getContext());
+}
 
-ShapeCastOpAdaptor::ShapeCastOpAdaptor(ShapeCastOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ShapeCastOpAdaptor::ShapeCastOpAdaptor(ShapeCastOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ShapeCastOpAdaptor::getOperands() {
   return odsOperands;
@@ -9426,7 +9830,7 @@ void ShapeCastOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void ShapeCastOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ShapeCastOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace vector
@@ -9440,9 +9844,11 @@ namespace vector {
 // ::mlir::vector::ShuffleOp definitions
 //===----------------------------------------------------------------------===//
 
-ShuffleOpAdaptor::ShuffleOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ShuffleOpAdaptor::ShuffleOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.shuffle", odsAttrs.getContext());
+}
 
-ShuffleOpAdaptor::ShuffleOpAdaptor(ShuffleOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ShuffleOpAdaptor::ShuffleOpAdaptor(ShuffleOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ShuffleOpAdaptor::getOperands() {
   return odsOperands;
@@ -9472,8 +9878,8 @@ std::pair<unsigned, unsigned> ShuffleOpAdaptor::getODSOperandIndexAndLength(unsi
 
 ::mlir::ArrayAttr ShuffleOpAdaptor::getMaskAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("mask").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ShuffleOp::getMaskAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr ShuffleOpAdaptor::getMask() {
@@ -9482,14 +9888,21 @@ std::pair<unsigned, unsigned> ShuffleOpAdaptor::getODSOperandIndexAndLength(unsi
 }
 
 ::mlir::LogicalResult ShuffleOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_mask = odsAttrs.get("mask");
-    if (!tblgen_mask)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_mask;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'vector.shuffle' op ""requires attribute 'mask'");
-
-    if (tblgen_mask && !(((tblgen_mask.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_mask.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
-      return emitError(loc, "'vector.shuffle' op ""attribute 'mask' failed to satisfy constraint: 64-bit integer array attribute");
+    if (namedAttrIt->getName() == ShuffleOp::getMaskAttrName(*odsOpName)) {
+      tblgen_mask = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_mask && !(((tblgen_mask.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_mask.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
+    return emitError(loc, "'vector.shuffle' op ""attribute 'mask' failed to satisfy constraint: 64-bit integer array attribute");
   return ::mlir::success();
 }
 
@@ -9538,7 +9951,7 @@ std::pair<unsigned, unsigned> ShuffleOp::getODSResultIndexAndLength(unsigned ind
 }
 
 ::mlir::ArrayAttr ShuffleOp::getMaskAttr() {
-  return (*this)->getAttr(getMaskAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getMaskAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr ShuffleOp::getMask() {
@@ -9593,7 +10006,7 @@ void ShuffleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(ShuffleOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -9606,14 +10019,21 @@ void ShuffleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
 }
 
 ::mlir::LogicalResult ShuffleOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_mask = (*this)->getAttr(getMaskAttrName());
-    if (!tblgen_mask)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_mask;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'mask'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps0(*this, tblgen_mask, "mask")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == getMaskAttrName()) {
+      tblgen_mask = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps0(*this, tblgen_mask, "mask")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -9652,9 +10072,9 @@ void ShuffleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
 }
 
 ::mlir::ParseResult ShuffleOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allOperands;
   ::mlir::ArrayAttr maskAttr;
-  ::mlir::SmallVector<::mlir::Type, 1> allOperandTypes;
+  ::llvm::SmallVector<::mlir::Type, 1> allOperandTypes;
   ::llvm::SMLoc allOperandLoc = parser.getCurrentLocation();
   if (parser.parseOperandList(allOperands))
     return ::mlir::failure();
@@ -9694,7 +10114,7 @@ void ShuffleOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << getOperation()->getOperandTypes();
 }
 
-void ShuffleOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ShuffleOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace vector
@@ -9708,9 +10128,11 @@ namespace vector {
 // ::mlir::vector::SplatOp definitions
 //===----------------------------------------------------------------------===//
 
-SplatOpAdaptor::SplatOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+SplatOpAdaptor::SplatOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.splat", odsAttrs.getContext());
+}
 
-SplatOpAdaptor::SplatOpAdaptor(SplatOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+SplatOpAdaptor::SplatOpAdaptor(SplatOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange SplatOpAdaptor::getOperands() {
   return odsOperands;
@@ -9871,7 +10293,7 @@ void SplatOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void SplatOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void SplatOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace vector
@@ -9885,9 +10307,11 @@ namespace vector {
 // ::mlir::vector::StoreOp definitions
 //===----------------------------------------------------------------------===//
 
-StoreOpAdaptor::StoreOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+StoreOpAdaptor::StoreOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.store", odsAttrs.getContext());
+}
 
-StoreOpAdaptor::StoreOpAdaptor(StoreOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+StoreOpAdaptor::StoreOpAdaptor(StoreOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange StoreOpAdaptor::getOperands() {
   return odsOperands;
@@ -10061,7 +10485,7 @@ void StoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   ::mlir::OpAsmParser::UnresolvedOperand baseRawOperands[1];
   ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> baseOperands(baseRawOperands);  ::llvm::SMLoc baseOperandsLoc;
   (void)baseOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> indicesOperands;
   ::llvm::SMLoc indicesOperandsLoc;
   (void)indicesOperandsLoc;
   ::mlir::Type baseRawTypes[1];
@@ -10146,7 +10570,7 @@ void StoreOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void StoreOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void StoreOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
   for (::mlir::Value value : getODSOperands(1))
     effects.emplace_back(::mlir::MemoryEffects::Write::get(), value, ::mlir::SideEffects::DefaultResource::get());
 }
@@ -10162,9 +10586,11 @@ namespace vector {
 // ::mlir::vector::TransferReadOp definitions
 //===----------------------------------------------------------------------===//
 
-TransferReadOpAdaptor::TransferReadOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+TransferReadOpAdaptor::TransferReadOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.transfer_read", odsAttrs.getContext());
+}
 
-TransferReadOpAdaptor::TransferReadOpAdaptor(TransferReadOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+TransferReadOpAdaptor::TransferReadOpAdaptor(TransferReadOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange TransferReadOpAdaptor::getOperands() {
   return odsOperands;
@@ -10172,7 +10598,7 @@ TransferReadOpAdaptor::TransferReadOpAdaptor(TransferReadOp &op) : odsOperands(o
 
 std::pair<unsigned, unsigned> TransferReadOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = odsAttrs.get("operand_segment_sizes").cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, TransferReadOp::getOperandSegmentSizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -10213,8 +10639,8 @@ std::pair<unsigned, unsigned> TransferReadOpAdaptor::getODSOperandIndexAndLength
 
 ::mlir::AffineMapAttr TransferReadOpAdaptor::getPermutationMapAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::AffineMapAttr attr = odsAttrs.get("permutation_map").cast<::mlir::AffineMapAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, TransferReadOp::getPermutationMapAttrName(*odsOpName)).cast<::mlir::AffineMapAttr>();
+    return attr;
 }
 
 ::mlir::AffineMap TransferReadOpAdaptor::getPermutationMap() {
@@ -10224,8 +10650,8 @@ std::pair<unsigned, unsigned> TransferReadOpAdaptor::getODSOperandIndexAndLength
 
 ::mlir::ArrayAttr TransferReadOpAdaptor::getInBoundsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("in_bounds").dyn_cast_or_null<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 2, TransferReadOp::getInBoundsAttrName(*odsOpName)).dyn_cast_or_null<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::llvm::Optional< ::mlir::ArrayAttr > TransferReadOpAdaptor::getInBounds() {
@@ -10234,35 +10660,52 @@ std::pair<unsigned, unsigned> TransferReadOpAdaptor::getODSOperandIndexAndLength
 }
 
 ::mlir::LogicalResult TransferReadOpAdaptor::verify(::mlir::Location loc) {
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  ::mlir::Attribute tblgen_in_bounds;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'vector.transfer_read' op ""requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == TransferReadOp::getOperandSegmentSizesAttrName(*odsOpName)) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == TransferReadOp::getInBoundsAttrName(*odsOpName)) {
+      tblgen_in_bounds = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_permutation_map;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'vector.transfer_read' op ""requires attribute 'permutation_map'");
+    if (namedAttrIt->getName() == TransferReadOp::getPermutationMapAttrName(*odsOpName)) {
+      tblgen_permutation_map = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = odsAttrs.get("operand_segment_sizes").dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitError(loc, "'vector.transfer_read' op ""missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 4)
       return emitError(loc, "'vector.transfer_read' op ""'operand_segment_sizes' attribute for specifying operand segments must have 4 "
                 "elements, but got ") << numElements;
   }
-    {
-    auto tblgen_permutation_map = odsAttrs.get("permutation_map");
-    if (!tblgen_permutation_map)
-      return emitError(loc, "'vector.transfer_read' op ""requires attribute 'permutation_map'");
 
-    if (tblgen_permutation_map && !((tblgen_permutation_map.isa<::mlir::AffineMapAttr>())))
-      return emitError(loc, "'vector.transfer_read' op ""attribute 'permutation_map' failed to satisfy constraint: AffineMap attribute");
-  }
-  {
-    auto tblgen_in_bounds = odsAttrs.get("in_bounds");
-    if (tblgen_in_bounds && !(((tblgen_in_bounds.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_in_bounds.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && ((attr.isa<::mlir::BoolAttr>())); }))))
-      return emitError(loc, "'vector.transfer_read' op ""attribute 'in_bounds' failed to satisfy constraint: 1-bit boolean array attribute");
-  }
+  if (tblgen_permutation_map && !((tblgen_permutation_map.isa<::mlir::AffineMapAttr>())))
+    return emitError(loc, "'vector.transfer_read' op ""attribute 'permutation_map' failed to satisfy constraint: AffineMap attribute");
+
+  if (tblgen_in_bounds && !(((tblgen_in_bounds.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_in_bounds.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && ((attr.isa<::mlir::BoolAttr>())); }))))
+    return emitError(loc, "'vector.transfer_read' op ""attribute 'in_bounds' failed to satisfy constraint: 1-bit boolean array attribute");
   return ::mlir::success();
 }
 
 std::pair<unsigned, unsigned> TransferReadOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr =
-      (*this)->getAttr(getOperandSegmentSizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, getOperandSegmentSizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -10299,25 +10742,25 @@ std::pair<unsigned, unsigned> TransferReadOp::getODSOperandIndexAndLength(unsign
 
 ::mlir::MutableOperandRange TransferReadOp::getSourceMutable() {
   auto range = getODSOperandIndexAndLength(0);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *getOperation()->getAttrDictionary().getNamed(getOperandSegmentSizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, getOperandSegmentSizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange TransferReadOp::getIndicesMutable() {
   auto range = getODSOperandIndexAndLength(1);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *getOperation()->getAttrDictionary().getNamed(getOperandSegmentSizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, getOperandSegmentSizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange TransferReadOp::getPaddingMutable() {
   auto range = getODSOperandIndexAndLength(2);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *getOperation()->getAttrDictionary().getNamed(getOperandSegmentSizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, getOperandSegmentSizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange TransferReadOp::getMaskMutable() {
   auto range = getODSOperandIndexAndLength(3);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(3u, *getOperation()->getAttrDictionary().getNamed(getOperandSegmentSizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(3u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, getOperandSegmentSizesAttrName())));
   return mutableRange;
 }
 
@@ -10336,7 +10779,7 @@ std::pair<unsigned, unsigned> TransferReadOp::getODSResultIndexAndLength(unsigne
 }
 
 ::mlir::AffineMapAttr TransferReadOp::getPermutationMapAttr() {
-  return (*this)->getAttr(getPermutationMapAttrName()).cast<::mlir::AffineMapAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, getPermutationMapAttrName()).cast<::mlir::AffineMapAttr>();
 }
 
 ::mlir::AffineMap TransferReadOp::getPermutationMap() {
@@ -10345,7 +10788,7 @@ std::pair<unsigned, unsigned> TransferReadOp::getODSResultIndexAndLength(unsigne
 }
 
 ::mlir::ArrayAttr TransferReadOp::getInBoundsAttr() {
-  return (*this)->getAttr(getInBoundsAttrName()).dyn_cast_or_null<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 2, getInBoundsAttrName()).dyn_cast_or_null<::mlir::ArrayAttr>();
 }
 
 ::llvm::Optional< ::mlir::ArrayAttr > TransferReadOp::getInBounds() {
@@ -10432,29 +10875,47 @@ void TransferReadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
 }
 
 ::mlir::LogicalResult TransferReadOp::verifyInvariantsImpl() {
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  ::mlir::Attribute tblgen_in_bounds;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == getOperandSegmentSizesAttrName()) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == getInBoundsAttrName()) {
+      tblgen_in_bounds = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_permutation_map;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'permutation_map'");
+    if (namedAttrIt->getName() == getPermutationMapAttrName()) {
+      tblgen_permutation_map = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = (*this)->getAttr(getOperandSegmentSizesAttrName()).dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitOpError("missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 4)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 4 "
                 "elements, but got ") << numElements;
   }
-    {
-    auto tblgen_permutation_map = (*this)->getAttr(getPermutationMapAttrName());
-    if (!tblgen_permutation_map)
-      return emitOpError("requires attribute 'permutation_map'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps7(*this, tblgen_permutation_map, "permutation_map")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_in_bounds = (*this)->getAttr(getInBoundsAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps8(*this, tblgen_in_bounds, "in_bounds")))
-      return ::mlir::failure();
-  }
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps7(*this, tblgen_permutation_map, "permutation_map")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps8(*this, tblgen_in_bounds, "in_bounds")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -10516,9 +10977,11 @@ namespace vector {
 // ::mlir::vector::TransferWriteOp definitions
 //===----------------------------------------------------------------------===//
 
-TransferWriteOpAdaptor::TransferWriteOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+TransferWriteOpAdaptor::TransferWriteOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.transfer_write", odsAttrs.getContext());
+}
 
-TransferWriteOpAdaptor::TransferWriteOpAdaptor(TransferWriteOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+TransferWriteOpAdaptor::TransferWriteOpAdaptor(TransferWriteOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange TransferWriteOpAdaptor::getOperands() {
   return odsOperands;
@@ -10526,7 +10989,7 @@ TransferWriteOpAdaptor::TransferWriteOpAdaptor(TransferWriteOp &op) : odsOperand
 
 std::pair<unsigned, unsigned> TransferWriteOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = odsAttrs.get("operand_segment_sizes").cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, TransferWriteOp::getOperandSegmentSizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -10567,8 +11030,8 @@ std::pair<unsigned, unsigned> TransferWriteOpAdaptor::getODSOperandIndexAndLengt
 
 ::mlir::AffineMapAttr TransferWriteOpAdaptor::getPermutationMapAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::AffineMapAttr attr = odsAttrs.get("permutation_map").cast<::mlir::AffineMapAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, TransferWriteOp::getPermutationMapAttrName(*odsOpName)).cast<::mlir::AffineMapAttr>();
+    return attr;
 }
 
 ::mlir::AffineMap TransferWriteOpAdaptor::getPermutationMap() {
@@ -10578,8 +11041,8 @@ std::pair<unsigned, unsigned> TransferWriteOpAdaptor::getODSOperandIndexAndLengt
 
 ::mlir::ArrayAttr TransferWriteOpAdaptor::getInBoundsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("in_bounds").dyn_cast_or_null<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 2, TransferWriteOp::getInBoundsAttrName(*odsOpName)).dyn_cast_or_null<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::llvm::Optional< ::mlir::ArrayAttr > TransferWriteOpAdaptor::getInBounds() {
@@ -10588,35 +11051,52 @@ std::pair<unsigned, unsigned> TransferWriteOpAdaptor::getODSOperandIndexAndLengt
 }
 
 ::mlir::LogicalResult TransferWriteOpAdaptor::verify(::mlir::Location loc) {
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  ::mlir::Attribute tblgen_in_bounds;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'vector.transfer_write' op ""requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == TransferWriteOp::getOperandSegmentSizesAttrName(*odsOpName)) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == TransferWriteOp::getInBoundsAttrName(*odsOpName)) {
+      tblgen_in_bounds = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_permutation_map;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'vector.transfer_write' op ""requires attribute 'permutation_map'");
+    if (namedAttrIt->getName() == TransferWriteOp::getPermutationMapAttrName(*odsOpName)) {
+      tblgen_permutation_map = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = odsAttrs.get("operand_segment_sizes").dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitError(loc, "'vector.transfer_write' op ""missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 4)
       return emitError(loc, "'vector.transfer_write' op ""'operand_segment_sizes' attribute for specifying operand segments must have 4 "
                 "elements, but got ") << numElements;
   }
-    {
-    auto tblgen_permutation_map = odsAttrs.get("permutation_map");
-    if (!tblgen_permutation_map)
-      return emitError(loc, "'vector.transfer_write' op ""requires attribute 'permutation_map'");
 
-    if (tblgen_permutation_map && !((tblgen_permutation_map.isa<::mlir::AffineMapAttr>())))
-      return emitError(loc, "'vector.transfer_write' op ""attribute 'permutation_map' failed to satisfy constraint: AffineMap attribute");
-  }
-  {
-    auto tblgen_in_bounds = odsAttrs.get("in_bounds");
-    if (tblgen_in_bounds && !(((tblgen_in_bounds.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_in_bounds.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && ((attr.isa<::mlir::BoolAttr>())); }))))
-      return emitError(loc, "'vector.transfer_write' op ""attribute 'in_bounds' failed to satisfy constraint: 1-bit boolean array attribute");
-  }
+  if (tblgen_permutation_map && !((tblgen_permutation_map.isa<::mlir::AffineMapAttr>())))
+    return emitError(loc, "'vector.transfer_write' op ""attribute 'permutation_map' failed to satisfy constraint: AffineMap attribute");
+
+  if (tblgen_in_bounds && !(((tblgen_in_bounds.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_in_bounds.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && ((attr.isa<::mlir::BoolAttr>())); }))))
+    return emitError(loc, "'vector.transfer_write' op ""attribute 'in_bounds' failed to satisfy constraint: 1-bit boolean array attribute");
   return ::mlir::success();
 }
 
 std::pair<unsigned, unsigned> TransferWriteOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr =
-      (*this)->getAttr(getOperandSegmentSizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, getOperandSegmentSizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -10653,25 +11133,25 @@ std::pair<unsigned, unsigned> TransferWriteOp::getODSOperandIndexAndLength(unsig
 
 ::mlir::MutableOperandRange TransferWriteOp::getVectorMutable() {
   auto range = getODSOperandIndexAndLength(0);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *getOperation()->getAttrDictionary().getNamed(getOperandSegmentSizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, getOperandSegmentSizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange TransferWriteOp::getSourceMutable() {
   auto range = getODSOperandIndexAndLength(1);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *getOperation()->getAttrDictionary().getNamed(getOperandSegmentSizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, getOperandSegmentSizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange TransferWriteOp::getIndicesMutable() {
   auto range = getODSOperandIndexAndLength(2);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *getOperation()->getAttrDictionary().getNamed(getOperandSegmentSizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, getOperandSegmentSizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange TransferWriteOp::getMaskMutable() {
   auto range = getODSOperandIndexAndLength(3);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(3u, *getOperation()->getAttrDictionary().getNamed(getOperandSegmentSizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(3u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, getOperandSegmentSizesAttrName())));
   return mutableRange;
 }
 
@@ -10705,7 +11185,7 @@ std::pair<unsigned, unsigned> TransferWriteOp::getODSResultIndexAndLength(unsign
 }
 
 ::mlir::AffineMapAttr TransferWriteOp::getPermutationMapAttr() {
-  return (*this)->getAttr(getPermutationMapAttrName()).cast<::mlir::AffineMapAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, getPermutationMapAttrName()).cast<::mlir::AffineMapAttr>();
 }
 
 ::mlir::AffineMap TransferWriteOp::getPermutationMap() {
@@ -10714,7 +11194,7 @@ std::pair<unsigned, unsigned> TransferWriteOp::getODSResultIndexAndLength(unsign
 }
 
 ::mlir::ArrayAttr TransferWriteOp::getInBoundsAttr() {
-  return (*this)->getAttr(getInBoundsAttrName()).dyn_cast_or_null<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 2, getInBoundsAttrName()).dyn_cast_or_null<::mlir::ArrayAttr>();
 }
 
 ::llvm::Optional< ::mlir::ArrayAttr > TransferWriteOp::getInBounds() {
@@ -10800,29 +11280,47 @@ void TransferWriteOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
 }
 
 ::mlir::LogicalResult TransferWriteOp::verifyInvariantsImpl() {
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  ::mlir::Attribute tblgen_in_bounds;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == getOperandSegmentSizesAttrName()) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == getInBoundsAttrName()) {
+      tblgen_in_bounds = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_permutation_map;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'permutation_map'");
+    if (namedAttrIt->getName() == getPermutationMapAttrName()) {
+      tblgen_permutation_map = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = (*this)->getAttr(getOperandSegmentSizesAttrName()).dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitOpError("missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 4)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 4 "
                 "elements, but got ") << numElements;
   }
-    {
-    auto tblgen_permutation_map = (*this)->getAttr(getPermutationMapAttrName());
-    if (!tblgen_permutation_map)
-      return emitOpError("requires attribute 'permutation_map'");
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps7(*this, tblgen_permutation_map, "permutation_map")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_in_bounds = (*this)->getAttr(getInBoundsAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps8(*this, tblgen_in_bounds, "in_bounds")))
-      return ::mlir::failure();
-  }
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps7(*this, tblgen_permutation_map, "permutation_map")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps8(*this, tblgen_in_bounds, "in_bounds")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -10889,9 +11387,11 @@ namespace vector {
 // ::mlir::vector::TransposeOp definitions
 //===----------------------------------------------------------------------===//
 
-TransposeOpAdaptor::TransposeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+TransposeOpAdaptor::TransposeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.transpose", odsAttrs.getContext());
+}
 
-TransposeOpAdaptor::TransposeOpAdaptor(TransposeOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+TransposeOpAdaptor::TransposeOpAdaptor(TransposeOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange TransposeOpAdaptor::getOperands() {
   return odsOperands;
@@ -10917,8 +11417,8 @@ std::pair<unsigned, unsigned> TransposeOpAdaptor::getODSOperandIndexAndLength(un
 
 ::mlir::ArrayAttr TransposeOpAdaptor::getTranspAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("transp").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, TransposeOp::getTranspAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr TransposeOpAdaptor::getTransp() {
@@ -10927,14 +11427,21 @@ std::pair<unsigned, unsigned> TransposeOpAdaptor::getODSOperandIndexAndLength(un
 }
 
 ::mlir::LogicalResult TransposeOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_transp = odsAttrs.get("transp");
-    if (!tblgen_transp)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_transp;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'vector.transpose' op ""requires attribute 'transp'");
-
-    if (tblgen_transp && !(((tblgen_transp.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_transp.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
-      return emitError(loc, "'vector.transpose' op ""attribute 'transp' failed to satisfy constraint: 64-bit integer array attribute");
+    if (namedAttrIt->getName() == TransposeOp::getTranspAttrName(*odsOpName)) {
+      tblgen_transp = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_transp && !(((tblgen_transp.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_transp.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
+    return emitError(loc, "'vector.transpose' op ""attribute 'transp' failed to satisfy constraint: 64-bit integer array attribute");
   return ::mlir::success();
 }
 
@@ -10973,7 +11480,7 @@ std::pair<unsigned, unsigned> TransposeOp::getODSResultIndexAndLength(unsigned i
 }
 
 ::mlir::ArrayAttr TransposeOp::getTranspAttr() {
-  return (*this)->getAttr(getTranspAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getTranspAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr TransposeOp::getTransp() {
@@ -11007,14 +11514,21 @@ void TransposeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 }
 
 ::mlir::LogicalResult TransposeOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_transp = (*this)->getAttr(getTranspAttrName());
-    if (!tblgen_transp)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_transp;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'transp'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps0(*this, tblgen_transp, "transp")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == getTranspAttrName()) {
+      tblgen_transp = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps0(*this, tblgen_transp, "transp")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -11117,7 +11631,7 @@ void TransposeOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void TransposeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void TransposeOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace vector
@@ -11131,9 +11645,11 @@ namespace vector {
 // ::mlir::vector::TypeCastOp definitions
 //===----------------------------------------------------------------------===//
 
-TypeCastOpAdaptor::TypeCastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+TypeCastOpAdaptor::TypeCastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.type_cast", odsAttrs.getContext());
+}
 
-TypeCastOpAdaptor::TypeCastOpAdaptor(TypeCastOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+TypeCastOpAdaptor::TypeCastOpAdaptor(TypeCastOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange TypeCastOpAdaptor::getOperands() {
   return odsOperands;
@@ -11304,12 +11820,422 @@ void TypeCastOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void TypeCastOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void TypeCastOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace vector
 } // namespace mlir
 MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::vector::TypeCastOp)
+
+namespace mlir {
+namespace vector {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::vector::WarpExecuteOnLane0Op definitions
+//===----------------------------------------------------------------------===//
+
+WarpExecuteOnLane0OpAdaptor::WarpExecuteOnLane0OpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.warp_execute_on_lane_0", odsAttrs.getContext());
+}
+
+WarpExecuteOnLane0OpAdaptor::WarpExecuteOnLane0OpAdaptor(WarpExecuteOnLane0Op op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange WarpExecuteOnLane0OpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> WarpExecuteOnLane0OpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {false, true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (odsOperands.size() - 1) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::ValueRange WarpExecuteOnLane0OpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value WarpExecuteOnLane0OpAdaptor::getLaneid() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::ValueRange WarpExecuteOnLane0OpAdaptor::getArgs() {
+  return getODSOperands(1);
+}
+
+::mlir::DictionaryAttr WarpExecuteOnLane0OpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::IntegerAttr WarpExecuteOnLane0OpAdaptor::getWarpSizeAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, WarpExecuteOnLane0Op::getWarpSizeAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+    return attr;
+}
+
+uint64_t WarpExecuteOnLane0OpAdaptor::getWarpSize() {
+  auto attr = getWarpSizeAttr();
+  return attr.getValue().getZExtValue();
+}
+
+::mlir::RegionRange WarpExecuteOnLane0OpAdaptor::getRegions() {
+  return odsRegions;
+}
+
+::mlir::Region &WarpExecuteOnLane0OpAdaptor::getWarpRegion() {
+  return *odsRegions[0];
+}
+
+::mlir::LogicalResult WarpExecuteOnLane0OpAdaptor::verify(::mlir::Location loc) {
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_warp_size;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'vector.warp_execute_on_lane_0' op ""requires attribute 'warp_size'");
+    if (namedAttrIt->getName() == WarpExecuteOnLane0Op::getWarpSizeAttrName(*odsOpName)) {
+      tblgen_warp_size = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
+  if (tblgen_warp_size && !(((tblgen_warp_size.isa<::mlir::IntegerAttr>())) && ((tblgen_warp_size.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
+    return emitError(loc, "'vector.warp_execute_on_lane_0' op ""attribute 'warp_size' failed to satisfy constraint: 64-bit signless integer attribute");
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> WarpExecuteOnLane0Op::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {false, true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (getOperation()->getNumOperands() - 1) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::Operation::operand_range WarpExecuteOnLane0Op::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value WarpExecuteOnLane0Op::getLaneid() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Operation::operand_range WarpExecuteOnLane0Op::getArgs() {
+  return getODSOperands(1);
+}
+
+::mlir::MutableOperandRange WarpExecuteOnLane0Op::getLaneidMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange WarpExecuteOnLane0Op::getArgsMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> WarpExecuteOnLane0Op::getODSResultIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (getOperation()->getNumResults() - 0) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::Operation::result_range WarpExecuteOnLane0Op::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Operation::result_range WarpExecuteOnLane0Op::getResults() {
+  return getODSResults(0);
+}
+
+::mlir::Region &WarpExecuteOnLane0Op::getWarpRegion() {
+  return (*this)->getRegion(0);
+}
+
+::mlir::IntegerAttr WarpExecuteOnLane0Op::getWarpSizeAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getWarpSizeAttrName()).cast<::mlir::IntegerAttr>();
+}
+
+uint64_t WarpExecuteOnLane0Op::getWarpSize() {
+  auto attr = getWarpSizeAttr();
+  return attr.getValue().getZExtValue();
+}
+
+void WarpExecuteOnLane0Op::setWarpSizeAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(getWarpSizeAttrName(), attr);
+}
+
+::mlir::LogicalResult WarpExecuteOnLane0Op::verifyInvariantsImpl() {
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_warp_size;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'warp_size'");
+    if (namedAttrIt->getName() == getWarpSizeAttrName()) {
+      tblgen_warp_size = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_VectorOps5(*this, tblgen_warp_size, "warp_size")))
+    return ::mlir::failure();
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_VectorOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_VectorOps2(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_VectorOps2(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+
+    for (auto &region : ::llvm::makeMutableArrayRef((*this)->getRegion(0)))
+      if (::mlir::failed(__mlir_ods_local_region_constraint_VectorOps0(*this, region, "warpRegion", index++)))
+        return ::mlir::failure();
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult WarpExecuteOnLane0Op::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
+}
+
+} // namespace vector
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::vector::WarpExecuteOnLane0Op)
+
+namespace mlir {
+namespace vector {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::vector::YieldOp definitions
+//===----------------------------------------------------------------------===//
+
+YieldOpAdaptor::YieldOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("vector.yield", odsAttrs.getContext());
+}
+
+YieldOpAdaptor::YieldOpAdaptor(YieldOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange YieldOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> YieldOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (odsOperands.size() - 0) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::ValueRange YieldOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::ValueRange YieldOpAdaptor::operands() {
+  return getODSOperands(0);
+}
+
+::mlir::DictionaryAttr YieldOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult YieldOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> YieldOp::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (getOperation()->getNumOperands() - 0) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::Operation::operand_range YieldOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Operation::operand_range YieldOp::operands() {
+  return getODSOperands(0);
+}
+
+::mlir::MutableOperandRange YieldOp::operandsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> YieldOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range YieldOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+void YieldOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState) {
+ /* nothing to do */ 
+}
+
+void YieldOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands) {
+  odsState.addOperands(operands);
+}
+
+void YieldOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 0u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult YieldOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_VectorOps2(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult YieldOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+::mlir::ParseResult YieldOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> operandsOperands;
+  ::llvm::SMLoc operandsOperandsLoc;
+  (void)operandsOperandsLoc;
+  ::llvm::SmallVector<::mlir::Type, 1> operandsTypes;
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+
+  operandsOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperandList(operandsOperands))
+    return ::mlir::failure();
+  if (!operandsOperands.empty()) {
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  if (parser.parseTypeList(operandsTypes))
+    return ::mlir::failure();
+  }
+  if (parser.resolveOperands(operandsOperands, operandsTypes, operandsOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void YieldOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
+  if (!operands().empty()) {
+  _odsPrinter << ' ';
+  _odsPrinter << operands();
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  _odsPrinter << operands().getTypes();
+  }
+}
+
+void YieldOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace vector
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::vector::YieldOp)
 
 
 #endif  // GET_OP_CLASSES

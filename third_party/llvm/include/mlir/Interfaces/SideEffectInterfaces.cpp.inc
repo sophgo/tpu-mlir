@@ -6,6 +6,6 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
-void mlir::MemoryEffectOpInterface::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> & effects) {
+void mlir::MemoryEffectOpInterface::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> & effects) {
       return getImpl()->getEffects(getImpl(), getOperation(), effects);
   }

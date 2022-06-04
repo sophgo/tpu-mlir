@@ -9,14 +9,7 @@
 namespace mlir {
 
 class AffineDialect : public ::mlir::Dialect {
-  explicit AffineDialect(::mlir::MLIRContext *context)
-    : ::mlir::Dialect(getDialectNamespace(), context,
-      ::mlir::TypeID::get<AffineDialect>()) {
-    
-    getContext()->getOrLoadDialect<arith::ArithmeticDialect>();
-
-    initialize();
-  }
+  explicit AffineDialect(::mlir::MLIRContext *context);
 
   void initialize();
   friend class ::mlir::MLIRContext;

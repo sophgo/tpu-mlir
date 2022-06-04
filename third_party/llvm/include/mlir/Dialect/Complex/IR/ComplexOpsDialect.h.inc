@@ -10,14 +10,7 @@ namespace mlir {
 namespace complex {
 
 class ComplexDialect : public ::mlir::Dialect {
-  explicit ComplexDialect(::mlir::MLIRContext *context)
-    : ::mlir::Dialect(getDialectNamespace(), context,
-      ::mlir::TypeID::get<ComplexDialect>()) {
-    
-    getContext()->getOrLoadDialect<arith::ArithmeticDialect>();
-
-    initialize();
-  }
+  explicit ComplexDialect(::mlir::MLIRContext *context);
 
   void initialize();
   friend class ::mlir::MLIRContext;

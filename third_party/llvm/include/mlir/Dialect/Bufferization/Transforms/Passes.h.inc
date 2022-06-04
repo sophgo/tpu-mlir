@@ -2,6 +2,55 @@
 #ifdef GEN_PASS_CLASSES
 
 //===----------------------------------------------------------------------===//
+// AllocTensorElimination
+//===----------------------------------------------------------------------===//
+
+template <typename DerivedT>
+class AllocTensorEliminationBase : public ::mlir::OperationPass<> {
+public:
+  using Base = AllocTensorEliminationBase;
+
+  AllocTensorEliminationBase() : ::mlir::OperationPass<>(::mlir::TypeID::get<DerivedT>()) {}
+  AllocTensorEliminationBase(const AllocTensorEliminationBase &other) : ::mlir::OperationPass<>(other) {}
+
+  /// Returns the command-line argument attached to this pass.
+  static constexpr ::llvm::StringLiteral getArgumentName() {
+    return ::llvm::StringLiteral("eliminate-alloc-tensors");
+  }
+  ::llvm::StringRef getArgument() const override { return "eliminate-alloc-tensors"; }
+
+  ::llvm::StringRef getDescription() const override { return "Try to eliminate all alloc_tensor ops."; }
+
+  /// Returns the derived pass name.
+  static constexpr ::llvm::StringLiteral getPassName() {
+    return ::llvm::StringLiteral("AllocTensorElimination");
+  }
+  ::llvm::StringRef getName() const override { return "AllocTensorElimination"; }
+
+  /// Support isa/dyn_cast functionality for the derived pass class.
+  static bool classof(const ::mlir::Pass *pass) {
+    return pass->getTypeID() == ::mlir::TypeID::get<DerivedT>();
+  }
+
+  /// A clone method to create a copy of this pass.
+  std::unique_ptr<::mlir::Pass> clonePass() const override {
+    return std::make_unique<DerivedT>(*static_cast<const DerivedT *>(this));
+  }
+
+  /// Return the dialect that must be loaded in the context before this pass.
+  void getDependentDialects(::mlir::DialectRegistry &registry) const override {
+    
+  }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(AllocTensorEliminationBase<DerivedT>)
+
+protected:
+};
+
+//===----------------------------------------------------------------------===//
 // BufferDeallocation
 //===----------------------------------------------------------------------===//
 
@@ -200,6 +249,55 @@ protected:
 };
 
 //===----------------------------------------------------------------------===//
+// BufferizationBufferize
+//===----------------------------------------------------------------------===//
+
+template <typename DerivedT>
+class BufferizationBufferizeBase : public ::mlir::OperationPass<func::FuncOp> {
+public:
+  using Base = BufferizationBufferizeBase;
+
+  BufferizationBufferizeBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  BufferizationBufferizeBase(const BufferizationBufferizeBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
+
+  /// Returns the command-line argument attached to this pass.
+  static constexpr ::llvm::StringLiteral getArgumentName() {
+    return ::llvm::StringLiteral("bufferization-bufferize");
+  }
+  ::llvm::StringRef getArgument() const override { return "bufferization-bufferize"; }
+
+  ::llvm::StringRef getDescription() const override { return "Bufferize the `bufferization` dialect"; }
+
+  /// Returns the derived pass name.
+  static constexpr ::llvm::StringLiteral getPassName() {
+    return ::llvm::StringLiteral("BufferizationBufferize");
+  }
+  ::llvm::StringRef getName() const override { return "BufferizationBufferize"; }
+
+  /// Support isa/dyn_cast functionality for the derived pass class.
+  static bool classof(const ::mlir::Pass *pass) {
+    return pass->getTypeID() == ::mlir::TypeID::get<DerivedT>();
+  }
+
+  /// A clone method to create a copy of this pass.
+  std::unique_ptr<::mlir::Pass> clonePass() const override {
+    return std::make_unique<DerivedT>(*static_cast<const DerivedT *>(this));
+  }
+
+  /// Return the dialect that must be loaded in the context before this pass.
+  void getDependentDialects(::mlir::DialectRegistry &registry) const override {
+    
+  }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(BufferizationBufferizeBase<DerivedT>)
+
+protected:
+};
+
+//===----------------------------------------------------------------------===//
 // FinalizingBufferize
 //===----------------------------------------------------------------------===//
 
@@ -295,14 +393,19 @@ public:
   MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(OneShotBufferizeBase<DerivedT>)
 
 protected:
+  ::mlir::Pass::Option<bool> dropEquivalentFuncResults{*this, "drop-equivalent-func-results", ::llvm::cl::desc("Drop buffer return values that are equivalent to a FuncOp arg."), ::llvm::cl::init(true)};
   ::mlir::Pass::Option<bool> allowReturnAllocs{*this, "allow-return-allocs", ::llvm::cl::desc("Allows returning/yielding new allocations from a block."), ::llvm::cl::init(false)};
   ::mlir::Pass::Option<bool> allowUnknownOps{*this, "allow-unknown-ops", ::llvm::cl::desc("Allows unknown (not bufferizable) ops in the input IR."), ::llvm::cl::init(false)};
+  ::mlir::Pass::Option<bool> alwaysAliasingWithDest{*this, "always-aliasing-with-dest", ::llvm::cl::desc("Tensor OpResult cannot bufferize inplace OpOperands other than out/dest OpOperands (if the op has such operands; experimental)"), ::llvm::cl::init(true)};
   ::mlir::Pass::Option<unsigned> analysisFuzzerSeed{*this, "analysis-fuzzer-seed", ::llvm::cl::desc("Test only: Analyze ops in random order with a given seed (fuzzer)"), ::llvm::cl::init(0)};
+  ::mlir::Pass::Option<bool> bufferizeFunctionBoundaries{*this, "bufferize-function-boundaries", ::llvm::cl::desc("Bufferize function boundaries (experimental)."), ::llvm::cl::init(0)};
   ::mlir::Pass::Option<bool> createDeallocs{*this, "create-deallocs", ::llvm::cl::desc("Specify if buffers should be deallocated. For compatibility with core bufferization passes."), ::llvm::cl::init(true)};
   ::mlir::Pass::ListOption<std::string> dialectFilter{*this, "dialect-filter", ::llvm::cl::desc("Restrict bufferization to ops from these dialects.")};
-  ::mlir::Pass::Option<bool> fullyDynamicLayoutMaps{*this, "fully-dynamic-layout-maps", ::llvm::cl::desc("Generate MemRef types with dynamic offset+strides by default."), ::llvm::cl::init(true)};
+  ::mlir::Pass::Option<std::string> functionBoundaryTypeConversion{*this, "function-boundary-type-conversion", ::llvm::cl::desc("Controls layout maps when bufferizing function signatures."), ::llvm::cl::init("infer-layout-map")};
   ::mlir::Pass::Option<bool> testAnalysisOnly{*this, "test-analysis-only", ::llvm::cl::desc("Test only: Only run inplaceability analysis and annotate IR"), ::llvm::cl::init(false)};
   ::mlir::Pass::Option<bool> printConflicts{*this, "print-conflicts", ::llvm::cl::desc("Test only: Annotate IR with RaW conflicts. Requires test-analysis-only."), ::llvm::cl::init(false)};
+  ::mlir::Pass::Option<bool> promoteBufferResultsToOutParams{*this, "promote-buffer-results-to-out-params", ::llvm::cl::desc("Replace returned buffers (that were not dropped) with out params."), ::llvm::cl::init(false)};
+  ::mlir::Pass::Option<std::string> unknownTypeConversion{*this, "unknown-type-conversion", ::llvm::cl::desc("Controls layout maps for non-inferrable memref types."), ::llvm::cl::init("fully-dynamic-layout-map")};
 };
 
 //===----------------------------------------------------------------------===//
@@ -360,6 +463,16 @@ protected:
 #ifdef GEN_PASS_REGISTRATION
 
 //===----------------------------------------------------------------------===//
+// AllocTensorElimination Registration
+//===----------------------------------------------------------------------===//
+
+inline void registerAllocTensorEliminationPass() {
+  ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
+    return mlir::bufferization::createAllocTensorEliminationPass();
+  });
+}
+
+//===----------------------------------------------------------------------===//
 // BufferDeallocation Registration
 //===----------------------------------------------------------------------===//
 
@@ -400,6 +513,16 @@ inline void registerBufferResultsToOutParamsPass() {
 }
 
 //===----------------------------------------------------------------------===//
+// BufferizationBufferize Registration
+//===----------------------------------------------------------------------===//
+
+inline void registerBufferizationBufferizePass() {
+  ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
+    return mlir::bufferization::createBufferizationBufferizePass();
+  });
+}
+
+//===----------------------------------------------------------------------===//
 // FinalizingBufferize Registration
 //===----------------------------------------------------------------------===//
 
@@ -434,10 +557,12 @@ inline void registerPromoteBuffersToStackPass() {
 //===----------------------------------------------------------------------===//
 
 inline void registerBufferizationPasses() {
+  registerAllocTensorEliminationPass();
   registerBufferDeallocationPass();
   registerBufferHoistingPass();
   registerBufferLoopHoistingPass();
   registerBufferResultsToOutParamsPass();
+  registerBufferizationBufferizePass();
   registerFinalizingBufferizePass();
   registerOneShotBufferizePass();
   registerPromoteBuffersToStackPass();

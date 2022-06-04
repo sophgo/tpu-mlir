@@ -6,10 +6,7 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
-::mlir::Optional<::mlir::MutableOperandRange> mlir::BranchOpInterface::getMutableSuccessorOperands(unsigned index) {
-      return getImpl()->getMutableSuccessorOperands(getImpl(), getOperation(), index);
-  }
-::mlir::Optional<::mlir::OperandRange> mlir::BranchOpInterface::getSuccessorOperands(unsigned index) {
+::mlir::SuccessorOperands mlir::BranchOpInterface::getSuccessorOperands(unsigned index) {
       return getImpl()->getSuccessorOperands(getImpl(), getOperation(), index);
   }
 ::mlir::Optional<::mlir::BlockArgument> mlir::BranchOpInterface::getSuccessorBlockArgument(unsigned operandIndex) {
@@ -24,7 +21,7 @@ bool mlir::BranchOpInterface::areTypesCompatible(::mlir::Type lhs, ::mlir::Type 
 ::mlir::OperandRange mlir::RegionBranchOpInterface::getSuccessorEntryOperands(unsigned index) {
       return getImpl()->getSuccessorEntryOperands(getImpl(), getOperation(), index);
   }
-void mlir::RegionBranchOpInterface::getSuccessorRegions(::mlir::Optional<unsigned> index, ::mlir::ArrayRef<::mlir::Attribute> operands, ::mlir::SmallVectorImpl<::mlir::RegionSuccessor> & regions) {
+void mlir::RegionBranchOpInterface::getSuccessorRegions(::mlir::Optional<unsigned> index, ::mlir::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::RegionSuccessor> & regions) {
       return getImpl()->getSuccessorRegions(getImpl(), getOperation(), index, operands, regions);
   }
 void mlir::RegionBranchOpInterface::getRegionInvocationBounds(::mlir::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::InvocationBounds> & invocationBounds) {

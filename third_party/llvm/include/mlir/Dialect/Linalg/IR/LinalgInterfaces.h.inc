@@ -362,9 +362,10 @@ struct LinalgOpInterfaceTraits {
     bool (*hasIndexSemantics)(const Concept *impl, ::mlir::Operation *);
     AffineMap (*getLoopsToShapesMap)(const Concept *impl, ::mlir::Operation *);
     AffineMap (*getShapesToLoopsMap)(const Concept *impl, ::mlir::Operation *);
+    bool (*canOpOperandsBeDropped)(const Concept *impl, ::mlir::Operation *, ArrayRef<OpOperand *>);
     std::pair<int64_t, int64_t> (*getResultsPositionInLoopsToShapeMap)(const Concept *impl, ::mlir::Operation *);
     SmallVector<int64_t> (*getStaticShape)(const Concept *impl, ::mlir::Operation *);
-    Optional<SmallVector<int64_t, 4>> (*getStaticLoopRanges)(const Concept *impl, ::mlir::Operation *);
+    SmallVector<int64_t, 4> (*getStaticLoopRanges)(const Concept *impl, ::mlir::Operation *);
     Operation *(*clone)(const Concept *impl, ::mlir::Operation *, OpBuilder &, Location, TypeRange, ValueRange);
     Operation *(*cloneWithMapper)(const Concept *impl, ::mlir::Operation *, OpBuilder &, Location, TypeRange, ValueRange, BlockAndValueMapping &);
     Operation *(*cloneWithoutRegions)(const Concept *impl, ::mlir::Operation *, OpBuilder &, Location, TypeRange, ValueRange);
@@ -375,7 +376,7 @@ struct LinalgOpInterfaceTraits {
   class Model : public Concept {
   public:
     using Interface = ::mlir::linalg::LinalgOp;
-    Model() : Concept{getNumParallelLoops, getParallelDims, getNumReductionLoops, getReductionDims, getNumWindowLoops, getWindowDims, getNumLoops, hasSingleReductionLoop, inputs, getNumInputs, outputs, getNumOutputs, getNumInputsAndOutputs, getInputOperands, getInputOperand, getInputBufferOperands, getInputTensorOperands, getOutputOperands, getOutputOperand, setOutputOperand, getOutputBufferOperands, getOutputTensorOperands, getOutputBufferTypes, getOutputTensorTypes, getInputAndOutputOperands, payloadUsesValueFromOperand, isInputTensor, isOutputTensor, isInitTensor, getRank, getRegionOutputArgs, getShape, isScalar, getTiedBlockArgument, getTiedIndexingMap, getTiedIndexingMapForResult, getTiedOpResult, getTiedYieldValue, getBlock, iterator_types, hasDynamicIndexingMaps, verifyIndexingMapRequiredAttributes, indexing_maps, getIndexingMaps, hasDynamicShape, hasBufferSemantics, hasTensorSemantics, getLibraryCallName, hasIndexSemantics, getLoopsToShapesMap, getShapesToLoopsMap, getResultsPositionInLoopsToShapeMap, getStaticShape, getStaticLoopRanges, clone, cloneWithMapper, cloneWithoutRegions, getRegionBuilder, hasOnlyProjectedPermutations} {}
+    Model() : Concept{getNumParallelLoops, getParallelDims, getNumReductionLoops, getReductionDims, getNumWindowLoops, getWindowDims, getNumLoops, hasSingleReductionLoop, inputs, getNumInputs, outputs, getNumOutputs, getNumInputsAndOutputs, getInputOperands, getInputOperand, getInputBufferOperands, getInputTensorOperands, getOutputOperands, getOutputOperand, setOutputOperand, getOutputBufferOperands, getOutputTensorOperands, getOutputBufferTypes, getOutputTensorTypes, getInputAndOutputOperands, payloadUsesValueFromOperand, isInputTensor, isOutputTensor, isInitTensor, getRank, getRegionOutputArgs, getShape, isScalar, getTiedBlockArgument, getTiedIndexingMap, getTiedIndexingMapForResult, getTiedOpResult, getTiedYieldValue, getBlock, iterator_types, hasDynamicIndexingMaps, verifyIndexingMapRequiredAttributes, indexing_maps, getIndexingMaps, hasDynamicShape, hasBufferSemantics, hasTensorSemantics, getLibraryCallName, hasIndexSemantics, getLoopsToShapesMap, getShapesToLoopsMap, canOpOperandsBeDropped, getResultsPositionInLoopsToShapeMap, getStaticShape, getStaticLoopRanges, clone, cloneWithMapper, cloneWithoutRegions, getRegionBuilder, hasOnlyProjectedPermutations} {}
 
     static inline unsigned getNumParallelLoops(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline void getParallelDims(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, SmallVectorImpl<unsigned> & res);
@@ -428,9 +429,10 @@ struct LinalgOpInterfaceTraits {
     static inline bool hasIndexSemantics(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline AffineMap getLoopsToShapesMap(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline AffineMap getShapesToLoopsMap(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline bool canOpOperandsBeDropped(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ArrayRef<OpOperand *> droppedOperands);
     static inline std::pair<int64_t, int64_t> getResultsPositionInLoopsToShapeMap(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline SmallVector<int64_t> getStaticShape(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline Optional<SmallVector<int64_t, 4>> getStaticLoopRanges(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline SmallVector<int64_t, 4> getStaticLoopRanges(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline Operation *clone(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands);
     static inline Operation *cloneWithMapper(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands, BlockAndValueMapping & bvm);
     static inline Operation *cloneWithoutRegions(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands);
@@ -441,7 +443,7 @@ struct LinalgOpInterfaceTraits {
   class FallbackModel : public Concept {
   public:
     using Interface = ::mlir::linalg::LinalgOp;
-    FallbackModel() : Concept{getNumParallelLoops, getParallelDims, getNumReductionLoops, getReductionDims, getNumWindowLoops, getWindowDims, getNumLoops, hasSingleReductionLoop, inputs, getNumInputs, outputs, getNumOutputs, getNumInputsAndOutputs, getInputOperands, getInputOperand, getInputBufferOperands, getInputTensorOperands, getOutputOperands, getOutputOperand, setOutputOperand, getOutputBufferOperands, getOutputTensorOperands, getOutputBufferTypes, getOutputTensorTypes, getInputAndOutputOperands, payloadUsesValueFromOperand, isInputTensor, isOutputTensor, isInitTensor, getRank, getRegionOutputArgs, getShape, isScalar, getTiedBlockArgument, getTiedIndexingMap, getTiedIndexingMapForResult, getTiedOpResult, getTiedYieldValue, getBlock, iterator_types, hasDynamicIndexingMaps, verifyIndexingMapRequiredAttributes, indexing_maps, getIndexingMaps, hasDynamicShape, hasBufferSemantics, hasTensorSemantics, getLibraryCallName, hasIndexSemantics, getLoopsToShapesMap, getShapesToLoopsMap, getResultsPositionInLoopsToShapeMap, getStaticShape, getStaticLoopRanges, clone, cloneWithMapper, cloneWithoutRegions, getRegionBuilder, hasOnlyProjectedPermutations} {}
+    FallbackModel() : Concept{getNumParallelLoops, getParallelDims, getNumReductionLoops, getReductionDims, getNumWindowLoops, getWindowDims, getNumLoops, hasSingleReductionLoop, inputs, getNumInputs, outputs, getNumOutputs, getNumInputsAndOutputs, getInputOperands, getInputOperand, getInputBufferOperands, getInputTensorOperands, getOutputOperands, getOutputOperand, setOutputOperand, getOutputBufferOperands, getOutputTensorOperands, getOutputBufferTypes, getOutputTensorTypes, getInputAndOutputOperands, payloadUsesValueFromOperand, isInputTensor, isOutputTensor, isInitTensor, getRank, getRegionOutputArgs, getShape, isScalar, getTiedBlockArgument, getTiedIndexingMap, getTiedIndexingMapForResult, getTiedOpResult, getTiedYieldValue, getBlock, iterator_types, hasDynamicIndexingMaps, verifyIndexingMapRequiredAttributes, indexing_maps, getIndexingMaps, hasDynamicShape, hasBufferSemantics, hasTensorSemantics, getLibraryCallName, hasIndexSemantics, getLoopsToShapesMap, getShapesToLoopsMap, canOpOperandsBeDropped, getResultsPositionInLoopsToShapeMap, getStaticShape, getStaticLoopRanges, clone, cloneWithMapper, cloneWithoutRegions, getRegionBuilder, hasOnlyProjectedPermutations} {}
 
     static inline unsigned getNumParallelLoops(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline void getParallelDims(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, SmallVectorImpl<unsigned> & res);
@@ -494,9 +496,10 @@ struct LinalgOpInterfaceTraits {
     static inline bool hasIndexSemantics(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline AffineMap getLoopsToShapesMap(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline AffineMap getShapesToLoopsMap(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline bool canOpOperandsBeDropped(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ArrayRef<OpOperand *> droppedOperands);
     static inline std::pair<int64_t, int64_t> getResultsPositionInLoopsToShapeMap(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline SmallVector<int64_t> getStaticShape(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline Optional<SmallVector<int64_t, 4>> getStaticLoopRanges(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline SmallVector<int64_t, 4> getStaticLoopRanges(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline Operation *clone(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands);
     static inline Operation *cloneWithMapper(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands, BlockAndValueMapping & bvm);
     static inline Operation *cloneWithoutRegions(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands);
@@ -553,9 +556,10 @@ struct LinalgOpInterfaceTraits {
     std::string getLibraryCallName(::mlir::Operation *tablegen_opaque_val) const;
     AffineMap getLoopsToShapesMap(::mlir::Operation *tablegen_opaque_val) const;
     AffineMap getShapesToLoopsMap(::mlir::Operation *tablegen_opaque_val) const;
+    bool canOpOperandsBeDropped(::mlir::Operation *tablegen_opaque_val, ArrayRef<OpOperand *> droppedOperands) const;
     std::pair<int64_t, int64_t> getResultsPositionInLoopsToShapeMap(::mlir::Operation *tablegen_opaque_val) const;
     SmallVector<int64_t> getStaticShape(::mlir::Operation *tablegen_opaque_val) const;
-    Optional<SmallVector<int64_t, 4>> getStaticLoopRanges(::mlir::Operation *tablegen_opaque_val) const;
+    SmallVector<int64_t, 4> getStaticLoopRanges(::mlir::Operation *tablegen_opaque_val) const;
   };
 };template <typename ConcreteOp>
 struct LinalgOpTrait;
@@ -617,9 +621,10 @@ public:
   bool hasIndexSemantics();
   AffineMap getLoopsToShapesMap();
   AffineMap getShapesToLoopsMap();
+  bool canOpOperandsBeDropped(ArrayRef<OpOperand *> droppedOperands);
   std::pair<int64_t, int64_t> getResultsPositionInLoopsToShapeMap();
   SmallVector<int64_t> getStaticShape();
-  Optional<SmallVector<int64_t, 4>> getStaticLoopRanges();
+  SmallVector<int64_t, 4> getStaticLoopRanges();
   Operation *clone(OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands);
   Operation *cloneWithMapper(OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands, BlockAndValueMapping & bvm);
   Operation *cloneWithoutRegions(OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands);
@@ -941,6 +946,9 @@ namespace detail {
     AffineMap getShapesToLoopsMap() {
       return inversePermutation(getLoopsToShapesMap());
     }
+    bool canOpOperandsBeDropped(ArrayRef<OpOperand *> droppedOperands) {
+      return detail::canOpOperandsBeDroppedImpl((*static_cast<ConcreteOp *>(this)), droppedOperands);
+    }
     std::pair<int64_t, int64_t> getResultsPositionInLoopsToShapeMap() {
       int64_t inputRankSum = 0;
         int64_t outputRankSum = 0;
@@ -956,11 +964,10 @@ namespace detail {
           llvm::append_range(res, getShape(opOperand));
         return res;
     }
-    Optional<SmallVector<int64_t, 4>> getStaticLoopRanges() {
+    SmallVector<int64_t, 4> getStaticLoopRanges() {
       SmallVector<int64_t> viewSizes = getStaticShape();
         AffineMap invertedMap = getShapesToLoopsMap();
-        if (!invertedMap)
-          return {};
+        assert(invertedMap && "expected a valid Linalg op to call the method");
         return invertedMap.compose(viewSizes);
     }
     static ::mlir::LogicalResult verifyRegionTrait(::mlir::Operation *op) {
@@ -1173,6 +1180,10 @@ AffineMap detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getShapesToLoopsMa
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getShapesToLoopsMap();
 }
 template<typename ConcreteOp>
+bool detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::canOpOperandsBeDropped(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ArrayRef<OpOperand *> droppedOperands) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).canOpOperandsBeDropped(droppedOperands);
+}
+template<typename ConcreteOp>
 std::pair<int64_t, int64_t> detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getResultsPositionInLoopsToShapeMap(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getResultsPositionInLoopsToShapeMap();
 }
@@ -1181,7 +1192,7 @@ SmallVector<int64_t> detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getStat
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getStaticShape();
 }
 template<typename ConcreteOp>
-Optional<SmallVector<int64_t, 4>> detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getStaticLoopRanges(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+SmallVector<int64_t, 4> detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getStaticLoopRanges(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getStaticLoopRanges();
 }
 template<typename ConcreteOp>
@@ -1426,6 +1437,10 @@ AffineMap detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getShapesT
   return static_cast<const ConcreteOp *>(impl)->getShapesToLoopsMap(tablegen_opaque_val);
 }
 template<typename ConcreteOp>
+bool detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::canOpOperandsBeDropped(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ArrayRef<OpOperand *> droppedOperands) {
+  return static_cast<const ConcreteOp *>(impl)->canOpOperandsBeDropped(tablegen_opaque_val, droppedOperands);
+}
+template<typename ConcreteOp>
 std::pair<int64_t, int64_t> detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getResultsPositionInLoopsToShapeMap(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return static_cast<const ConcreteOp *>(impl)->getResultsPositionInLoopsToShapeMap(tablegen_opaque_val);
 }
@@ -1434,7 +1449,7 @@ SmallVector<int64_t> detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>:
   return static_cast<const ConcreteOp *>(impl)->getStaticShape(tablegen_opaque_val);
 }
 template<typename ConcreteOp>
-Optional<SmallVector<int64_t, 4>> detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getStaticLoopRanges(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+SmallVector<int64_t, 4> detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getStaticLoopRanges(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return static_cast<const ConcreteOp *>(impl)->getStaticLoopRanges(tablegen_opaque_val);
 }
 template<typename ConcreteOp>
@@ -1772,6 +1787,10 @@ AffineMap detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, Concrete
 return inversePermutation(getLoopsToShapesMap());
 }
 template<typename ConcreteModel, typename ConcreteOp>
+bool detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::canOpOperandsBeDropped(::mlir::Operation *tablegen_opaque_val, ArrayRef<OpOperand *> droppedOperands) const {
+return detail::canOpOperandsBeDroppedImpl((llvm::cast<ConcreteOp>(tablegen_opaque_val)), droppedOperands);
+}
+template<typename ConcreteModel, typename ConcreteOp>
 std::pair<int64_t, int64_t> detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getResultsPositionInLoopsToShapeMap(::mlir::Operation *tablegen_opaque_val) const {
 int64_t inputRankSum = 0;
         int64_t outputRankSum = 0;
@@ -1789,11 +1808,10 @@ SmallVector<int64_t> res;
         return res;
 }
 template<typename ConcreteModel, typename ConcreteOp>
-Optional<SmallVector<int64_t, 4>> detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getStaticLoopRanges(::mlir::Operation *tablegen_opaque_val) const {
+SmallVector<int64_t, 4> detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getStaticLoopRanges(::mlir::Operation *tablegen_opaque_val) const {
 SmallVector<int64_t> viewSizes = getStaticShape();
         AffineMap invertedMap = getShapesToLoopsMap();
-        if (!invertedMap)
-          return {};
+        assert(invertedMap && "expected a valid Linalg op to call the method");
         return invertedMap.compose(viewSizes);
 }
 } // namespace linalg

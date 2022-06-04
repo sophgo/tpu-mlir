@@ -474,9 +474,11 @@ namespace tosa {
 // mlir::tosa::AbsOp definitions
 //===----------------------------------------------------------------------===//
 
-AbsOpAdaptor::AbsOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+AbsOpAdaptor::AbsOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.abs", odsAttrs.getContext());
+}
 
-AbsOpAdaptor::AbsOpAdaptor(AbsOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+AbsOpAdaptor::AbsOpAdaptor(AbsOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange AbsOpAdaptor::getOperands() {
   return odsOperands;
@@ -583,7 +585,7 @@ void AbsOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
   return verifyInvariantsImpl();
 }
 
-void AbsOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void AbsOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -597,9 +599,11 @@ namespace tosa {
 // mlir::tosa::AddOp definitions
 //===----------------------------------------------------------------------===//
 
-AddOpAdaptor::AddOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+AddOpAdaptor::AddOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.add", odsAttrs.getContext());
+}
 
-AddOpAdaptor::AddOpAdaptor(AddOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+AddOpAdaptor::AddOpAdaptor(AddOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange AddOpAdaptor::getOperands() {
   return odsOperands;
@@ -728,7 +732,7 @@ void AddOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
   return verifyInvariantsImpl();
 }
 
-void AddOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void AddOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -742,9 +746,11 @@ namespace tosa {
 // mlir::tosa::ApplyScaleOp definitions
 //===----------------------------------------------------------------------===//
 
-ApplyScaleOpAdaptor::ApplyScaleOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ApplyScaleOpAdaptor::ApplyScaleOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.apply_scale", odsAttrs.getContext());
+}
 
-ApplyScaleOpAdaptor::ApplyScaleOpAdaptor(ApplyScaleOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ApplyScaleOpAdaptor::ApplyScaleOpAdaptor(ApplyScaleOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ApplyScaleOpAdaptor::getOperands() {
   return odsOperands;
@@ -778,8 +784,8 @@ std::pair<unsigned, unsigned> ApplyScaleOpAdaptor::getODSOperandIndexAndLength(u
 
 ::mlir::BoolAttr ApplyScaleOpAdaptor::double_roundAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::BoolAttr attr = odsAttrs.get("double_round").cast<::mlir::BoolAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ApplyScaleOp::double_roundAttrName(*odsOpName)).cast<::mlir::BoolAttr>();
+    return attr;
 }
 
 bool ApplyScaleOpAdaptor::double_round() {
@@ -788,14 +794,21 @@ bool ApplyScaleOpAdaptor::double_round() {
 }
 
 ::mlir::LogicalResult ApplyScaleOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_double_round = odsAttrs.get("double_round");
-    if (!tblgen_double_round)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_double_round;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.apply_scale' op ""requires attribute 'double_round'");
-
-    if (tblgen_double_round && !((tblgen_double_round.isa<::mlir::BoolAttr>())))
-      return emitError(loc, "'tosa.apply_scale' op ""attribute 'double_round' failed to satisfy constraint: bool attribute");
+    if (namedAttrIt->getName() == ApplyScaleOp::double_roundAttrName(*odsOpName)) {
+      tblgen_double_round = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_double_round && !((tblgen_double_round.isa<::mlir::BoolAttr>())))
+    return emitError(loc, "'tosa.apply_scale' op ""attribute 'double_round' failed to satisfy constraint: bool attribute");
   return ::mlir::success();
 }
 
@@ -854,7 +867,7 @@ std::pair<unsigned, unsigned> ApplyScaleOp::getODSResultIndexAndLength(unsigned 
 }
 
 ::mlir::BoolAttr ApplyScaleOp::double_roundAttr() {
-  return (*this)->getAttr(double_roundAttrName()).cast<::mlir::BoolAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, double_roundAttrName()).cast<::mlir::BoolAttr>();
 }
 
 bool ApplyScaleOp::double_round() {
@@ -909,14 +922,21 @@ void ApplyScaleOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
 }
 
 ::mlir::LogicalResult ApplyScaleOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_double_round = (*this)->getAttr(double_roundAttrName());
-    if (!tblgen_double_round)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_double_round;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'double_round'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps0(*this, tblgen_double_round, "double_round")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == double_roundAttrName()) {
+      tblgen_double_round = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps0(*this, tblgen_double_round, "double_round")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -954,7 +974,7 @@ void ApplyScaleOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
   return verifyInvariantsImpl();
 }
 
-void ApplyScaleOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ApplyScaleOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -968,9 +988,11 @@ namespace tosa {
 // mlir::tosa::ArgMaxOp definitions
 //===----------------------------------------------------------------------===//
 
-ArgMaxOpAdaptor::ArgMaxOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ArgMaxOpAdaptor::ArgMaxOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.argmax", odsAttrs.getContext());
+}
 
-ArgMaxOpAdaptor::ArgMaxOpAdaptor(ArgMaxOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ArgMaxOpAdaptor::ArgMaxOpAdaptor(ArgMaxOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ArgMaxOpAdaptor::getOperands() {
   return odsOperands;
@@ -996,8 +1018,8 @@ std::pair<unsigned, unsigned> ArgMaxOpAdaptor::getODSOperandIndexAndLength(unsig
 
 ::mlir::IntegerAttr ArgMaxOpAdaptor::axisAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("axis").cast<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ArgMaxOp::axisAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+    return attr;
 }
 
 uint64_t ArgMaxOpAdaptor::axis() {
@@ -1006,14 +1028,21 @@ uint64_t ArgMaxOpAdaptor::axis() {
 }
 
 ::mlir::LogicalResult ArgMaxOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_axis = odsAttrs.get("axis");
-    if (!tblgen_axis)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_axis;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.argmax' op ""requires attribute 'axis'");
-
-    if (tblgen_axis && !(((tblgen_axis.isa<::mlir::IntegerAttr>())) && ((tblgen_axis.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
-      return emitError(loc, "'tosa.argmax' op ""attribute 'axis' failed to satisfy constraint: 64-bit signless integer attribute");
+    if (namedAttrIt->getName() == ArgMaxOp::axisAttrName(*odsOpName)) {
+      tblgen_axis = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_axis && !(((tblgen_axis.isa<::mlir::IntegerAttr>())) && ((tblgen_axis.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
+    return emitError(loc, "'tosa.argmax' op ""attribute 'axis' failed to satisfy constraint: 64-bit signless integer attribute");
   return ::mlir::success();
 }
 
@@ -1052,7 +1081,7 @@ std::pair<unsigned, unsigned> ArgMaxOp::getODSResultIndexAndLength(unsigned inde
 }
 
 ::mlir::IntegerAttr ArgMaxOp::axisAttr() {
-  return (*this)->getAttr(axisAttrName()).cast<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, axisAttrName()).cast<::mlir::IntegerAttr>();
 }
 
 uint64_t ArgMaxOp::axis() {
@@ -1099,14 +1128,21 @@ void ArgMaxOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::LogicalResult ArgMaxOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_axis = (*this)->getAttr(axisAttrName());
-    if (!tblgen_axis)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_axis;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'axis'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps1(*this, tblgen_axis, "axis")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == axisAttrName()) {
+      tblgen_axis = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps1(*this, tblgen_axis, "axis")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1132,7 +1168,7 @@ void ArgMaxOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   return verifyInvariantsImpl();
 }
 
-void ArgMaxOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ArgMaxOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -1146,9 +1182,11 @@ namespace tosa {
 // mlir::tosa::ArithmeticRightShiftOp definitions
 //===----------------------------------------------------------------------===//
 
-ArithmeticRightShiftOpAdaptor::ArithmeticRightShiftOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ArithmeticRightShiftOpAdaptor::ArithmeticRightShiftOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.arithmetic_right_shift", odsAttrs.getContext());
+}
 
-ArithmeticRightShiftOpAdaptor::ArithmeticRightShiftOpAdaptor(ArithmeticRightShiftOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ArithmeticRightShiftOpAdaptor::ArithmeticRightShiftOpAdaptor(ArithmeticRightShiftOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ArithmeticRightShiftOpAdaptor::getOperands() {
   return odsOperands;
@@ -1178,8 +1216,8 @@ std::pair<unsigned, unsigned> ArithmeticRightShiftOpAdaptor::getODSOperandIndexA
 
 ::mlir::BoolAttr ArithmeticRightShiftOpAdaptor::roundAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::BoolAttr attr = odsAttrs.get("round").cast<::mlir::BoolAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ArithmeticRightShiftOp::roundAttrName(*odsOpName)).cast<::mlir::BoolAttr>();
+    return attr;
 }
 
 bool ArithmeticRightShiftOpAdaptor::round() {
@@ -1188,14 +1226,21 @@ bool ArithmeticRightShiftOpAdaptor::round() {
 }
 
 ::mlir::LogicalResult ArithmeticRightShiftOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_round = odsAttrs.get("round");
-    if (!tblgen_round)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_round;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.arithmetic_right_shift' op ""requires attribute 'round'");
-
-    if (tblgen_round && !((tblgen_round.isa<::mlir::BoolAttr>())))
-      return emitError(loc, "'tosa.arithmetic_right_shift' op ""attribute 'round' failed to satisfy constraint: bool attribute");
+    if (namedAttrIt->getName() == ArithmeticRightShiftOp::roundAttrName(*odsOpName)) {
+      tblgen_round = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_round && !((tblgen_round.isa<::mlir::BoolAttr>())))
+    return emitError(loc, "'tosa.arithmetic_right_shift' op ""attribute 'round' failed to satisfy constraint: bool attribute");
   return ::mlir::success();
 }
 
@@ -1244,7 +1289,7 @@ std::pair<unsigned, unsigned> ArithmeticRightShiftOp::getODSResultIndexAndLength
 }
 
 ::mlir::BoolAttr ArithmeticRightShiftOp::roundAttr() {
-  return (*this)->getAttr(roundAttrName()).cast<::mlir::BoolAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, roundAttrName()).cast<::mlir::BoolAttr>();
 }
 
 bool ArithmeticRightShiftOp::round() {
@@ -1295,14 +1340,21 @@ void ArithmeticRightShiftOp::build(::mlir::OpBuilder &, ::mlir::OperationState &
 }
 
 ::mlir::LogicalResult ArithmeticRightShiftOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_round = (*this)->getAttr(roundAttrName());
-    if (!tblgen_round)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_round;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'round'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps0(*this, tblgen_round, "round")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == roundAttrName()) {
+      tblgen_round = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps0(*this, tblgen_round, "round")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1334,7 +1386,7 @@ void ArithmeticRightShiftOp::build(::mlir::OpBuilder &, ::mlir::OperationState &
   return verifyInvariantsImpl();
 }
 
-void ArithmeticRightShiftOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ArithmeticRightShiftOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -1348,9 +1400,11 @@ namespace tosa {
 // mlir::tosa::AvgPool2dOp definitions
 //===----------------------------------------------------------------------===//
 
-AvgPool2dOpAdaptor::AvgPool2dOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+AvgPool2dOpAdaptor::AvgPool2dOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.avg_pool2d", odsAttrs.getContext());
+}
 
-AvgPool2dOpAdaptor::AvgPool2dOpAdaptor(AvgPool2dOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+AvgPool2dOpAdaptor::AvgPool2dOpAdaptor(AvgPool2dOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange AvgPool2dOpAdaptor::getOperands() {
   return odsOperands;
@@ -1376,8 +1430,8 @@ std::pair<unsigned, unsigned> AvgPool2dOpAdaptor::getODSOperandIndexAndLength(un
 
 ::mlir::ArrayAttr AvgPool2dOpAdaptor::kernelAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("kernel").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 2, AvgPool2dOp::kernelAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr AvgPool2dOpAdaptor::kernel() {
@@ -1387,8 +1441,8 @@ std::pair<unsigned, unsigned> AvgPool2dOpAdaptor::getODSOperandIndexAndLength(un
 
 ::mlir::ArrayAttr AvgPool2dOpAdaptor::strideAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("stride").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 0, AvgPool2dOp::strideAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr AvgPool2dOpAdaptor::stride() {
@@ -1398,8 +1452,8 @@ std::pair<unsigned, unsigned> AvgPool2dOpAdaptor::getODSOperandIndexAndLength(un
 
 ::mlir::ArrayAttr AvgPool2dOpAdaptor::padAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("pad").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 1, AvgPool2dOp::padAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr AvgPool2dOpAdaptor::pad() {
@@ -1409,8 +1463,8 @@ std::pair<unsigned, unsigned> AvgPool2dOpAdaptor::getODSOperandIndexAndLength(un
 
 mlir::tosa::UnaryOpQuantizationAttr AvgPool2dOpAdaptor::quantization_infoAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  mlir::tosa::UnaryOpQuantizationAttr attr = odsAttrs.get("quantization_info").dyn_cast_or_null<mlir::tosa::UnaryOpQuantizationAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 1, AvgPool2dOp::quantization_infoAttrName(*odsOpName)).dyn_cast_or_null<mlir::tosa::UnaryOpQuantizationAttr>();
+    return attr;
 }
 
 ::llvm::Optional<mlir::tosa::UnaryOpQuantizationAttr> AvgPool2dOpAdaptor::quantization_info() {
@@ -1419,35 +1473,54 @@ mlir::tosa::UnaryOpQuantizationAttr AvgPool2dOpAdaptor::quantization_infoAttr() 
 }
 
 ::mlir::LogicalResult AvgPool2dOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_kernel = odsAttrs.get("kernel");
-    if (!tblgen_kernel)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_kernel;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.avg_pool2d' op ""requires attribute 'kernel'");
-
-    if (tblgen_kernel && !((((tblgen_kernel.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_kernel.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_kernel.cast<::mlir::ArrayAttr>().size() == 2))))
-      return emitError(loc, "'tosa.avg_pool2d' op ""attribute 'kernel' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
+    if (namedAttrIt->getName() == AvgPool2dOp::kernelAttrName(*odsOpName)) {
+      tblgen_kernel = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_stride = odsAttrs.get("stride");
-    if (!tblgen_stride)
-      return emitError(loc, "'tosa.avg_pool2d' op ""requires attribute 'stride'");
-
-    if (tblgen_stride && !((((tblgen_stride.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_stride.cast<::mlir::ArrayAttr>().size() == 2))))
-      return emitError(loc, "'tosa.avg_pool2d' op ""attribute 'stride' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
-  }
-  {
-    auto tblgen_pad = odsAttrs.get("pad");
-    if (!tblgen_pad)
+  ::mlir::Attribute tblgen_pad;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.avg_pool2d' op ""requires attribute 'pad'");
+    if (namedAttrIt->getName() == AvgPool2dOp::padAttrName(*odsOpName)) {
+      tblgen_pad = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_stride;
+  ::mlir::Attribute tblgen_quantization_info;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'tosa.avg_pool2d' op ""requires attribute 'stride'");
+    if (namedAttrIt->getName() == AvgPool2dOp::strideAttrName(*odsOpName)) {
+      tblgen_stride = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == AvgPool2dOp::quantization_infoAttrName(*odsOpName)) {
+      tblgen_quantization_info = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
 
-    if (tblgen_pad && !((((tblgen_pad.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_pad.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_pad.cast<::mlir::ArrayAttr>().size() == 4))))
-      return emitError(loc, "'tosa.avg_pool2d' op ""attribute 'pad' failed to satisfy constraint: 64-bit integer array attribute with exactly 4 elements");
-  }
-  {
-    auto tblgen_quantization_info = odsAttrs.get("quantization_info");
-    if (tblgen_quantization_info && !((tblgen_quantization_info.isa<mlir::tosa::UnaryOpQuantizationAttr>())))
-      return emitError(loc, "'tosa.avg_pool2d' op ""attribute 'quantization_info' failed to satisfy constraint: Attribute for UnaryOp quantization information.");
-  }
+  if (tblgen_kernel && !((((tblgen_kernel.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_kernel.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_kernel.cast<::mlir::ArrayAttr>().size() == 2))))
+    return emitError(loc, "'tosa.avg_pool2d' op ""attribute 'kernel' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
+
+  if (tblgen_stride && !((((tblgen_stride.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_stride.cast<::mlir::ArrayAttr>().size() == 2))))
+    return emitError(loc, "'tosa.avg_pool2d' op ""attribute 'stride' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
+
+  if (tblgen_pad && !((((tblgen_pad.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_pad.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_pad.cast<::mlir::ArrayAttr>().size() == 4))))
+    return emitError(loc, "'tosa.avg_pool2d' op ""attribute 'pad' failed to satisfy constraint: 64-bit integer array attribute with exactly 4 elements");
+
+  if (tblgen_quantization_info && !((tblgen_quantization_info.isa<mlir::tosa::UnaryOpQuantizationAttr>())))
+    return emitError(loc, "'tosa.avg_pool2d' op ""attribute 'quantization_info' failed to satisfy constraint: Attribute for UnaryOp quantization information.");
   return ::mlir::success();
 }
 
@@ -1486,7 +1559,7 @@ std::pair<unsigned, unsigned> AvgPool2dOp::getODSResultIndexAndLength(unsigned i
 }
 
 ::mlir::ArrayAttr AvgPool2dOp::kernelAttr() {
-  return (*this)->getAttr(kernelAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 2, kernelAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr AvgPool2dOp::kernel() {
@@ -1495,7 +1568,7 @@ std::pair<unsigned, unsigned> AvgPool2dOp::getODSResultIndexAndLength(unsigned i
 }
 
 ::mlir::ArrayAttr AvgPool2dOp::strideAttr() {
-  return (*this)->getAttr(strideAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 0, strideAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr AvgPool2dOp::stride() {
@@ -1504,7 +1577,7 @@ std::pair<unsigned, unsigned> AvgPool2dOp::getODSResultIndexAndLength(unsigned i
 }
 
 ::mlir::ArrayAttr AvgPool2dOp::padAttr() {
-  return (*this)->getAttr(padAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 1, padAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr AvgPool2dOp::pad() {
@@ -1513,7 +1586,7 @@ std::pair<unsigned, unsigned> AvgPool2dOp::getODSResultIndexAndLength(unsigned i
 }
 
 mlir::tosa::UnaryOpQuantizationAttr AvgPool2dOp::quantization_infoAttr() {
-  return (*this)->getAttr(quantization_infoAttrName()).dyn_cast_or_null<mlir::tosa::UnaryOpQuantizationAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 1, quantization_infoAttrName()).dyn_cast_or_null<mlir::tosa::UnaryOpQuantizationAttr>();
 }
 
 ::llvm::Optional<mlir::tosa::UnaryOpQuantizationAttr> AvgPool2dOp::quantization_info() {
@@ -1579,35 +1652,54 @@ void AvgPool2dOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 }
 
 ::mlir::LogicalResult AvgPool2dOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_kernel = (*this)->getAttr(kernelAttrName());
-    if (!tblgen_kernel)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_kernel;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'kernel'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps2(*this, tblgen_kernel, "kernel")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == kernelAttrName()) {
+      tblgen_kernel = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_stride = (*this)->getAttr(strideAttrName());
-    if (!tblgen_stride)
-      return emitOpError("requires attribute 'stride'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps2(*this, tblgen_stride, "stride")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_pad = (*this)->getAttr(padAttrName());
-    if (!tblgen_pad)
+  ::mlir::Attribute tblgen_pad;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'pad'");
+    if (namedAttrIt->getName() == padAttrName()) {
+      tblgen_pad = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_stride;
+  ::mlir::Attribute tblgen_quantization_info;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'stride'");
+    if (namedAttrIt->getName() == strideAttrName()) {
+      tblgen_stride = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == quantization_infoAttrName()) {
+      tblgen_quantization_info = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps3(*this, tblgen_pad, "pad")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_quantization_info = (*this)->getAttr(quantization_infoAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps4(*this, tblgen_quantization_info, "quantization_info")))
-      return ::mlir::failure();
-  }
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps2(*this, tblgen_kernel, "kernel")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps2(*this, tblgen_stride, "stride")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps3(*this, tblgen_pad, "pad")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps4(*this, tblgen_quantization_info, "quantization_info")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1635,7 +1727,7 @@ void AvgPool2dOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   return ::mlir::failure();
 }
 
-void AvgPool2dOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void AvgPool2dOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -1649,9 +1741,11 @@ namespace tosa {
 // mlir::tosa::BitwiseAndOp definitions
 //===----------------------------------------------------------------------===//
 
-BitwiseAndOpAdaptor::BitwiseAndOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+BitwiseAndOpAdaptor::BitwiseAndOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.bitwise_and", odsAttrs.getContext());
+}
 
-BitwiseAndOpAdaptor::BitwiseAndOpAdaptor(BitwiseAndOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+BitwiseAndOpAdaptor::BitwiseAndOpAdaptor(BitwiseAndOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange BitwiseAndOpAdaptor::getOperands() {
   return odsOperands;
@@ -1780,7 +1874,7 @@ void BitwiseAndOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
   return verifyInvariantsImpl();
 }
 
-void BitwiseAndOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void BitwiseAndOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -1794,9 +1888,11 @@ namespace tosa {
 // mlir::tosa::BitwiseNotOp definitions
 //===----------------------------------------------------------------------===//
 
-BitwiseNotOpAdaptor::BitwiseNotOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+BitwiseNotOpAdaptor::BitwiseNotOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.bitwise_not", odsAttrs.getContext());
+}
 
-BitwiseNotOpAdaptor::BitwiseNotOpAdaptor(BitwiseNotOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+BitwiseNotOpAdaptor::BitwiseNotOpAdaptor(BitwiseNotOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange BitwiseNotOpAdaptor::getOperands() {
   return odsOperands;
@@ -1903,7 +1999,7 @@ void BitwiseNotOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
   return verifyInvariantsImpl();
 }
 
-void BitwiseNotOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void BitwiseNotOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -1917,9 +2013,11 @@ namespace tosa {
 // mlir::tosa::BitwiseOrOp definitions
 //===----------------------------------------------------------------------===//
 
-BitwiseOrOpAdaptor::BitwiseOrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+BitwiseOrOpAdaptor::BitwiseOrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.bitwise_or", odsAttrs.getContext());
+}
 
-BitwiseOrOpAdaptor::BitwiseOrOpAdaptor(BitwiseOrOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+BitwiseOrOpAdaptor::BitwiseOrOpAdaptor(BitwiseOrOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange BitwiseOrOpAdaptor::getOperands() {
   return odsOperands;
@@ -2048,7 +2146,7 @@ void BitwiseOrOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   return verifyInvariantsImpl();
 }
 
-void BitwiseOrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void BitwiseOrOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -2062,9 +2160,11 @@ namespace tosa {
 // mlir::tosa::BitwiseXorOp definitions
 //===----------------------------------------------------------------------===//
 
-BitwiseXorOpAdaptor::BitwiseXorOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+BitwiseXorOpAdaptor::BitwiseXorOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.bitwise_xor", odsAttrs.getContext());
+}
 
-BitwiseXorOpAdaptor::BitwiseXorOpAdaptor(BitwiseXorOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+BitwiseXorOpAdaptor::BitwiseXorOpAdaptor(BitwiseXorOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange BitwiseXorOpAdaptor::getOperands() {
   return odsOperands;
@@ -2193,7 +2293,7 @@ void BitwiseXorOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
   return verifyInvariantsImpl();
 }
 
-void BitwiseXorOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void BitwiseXorOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -2207,9 +2307,11 @@ namespace tosa {
 // mlir::tosa::CastOp definitions
 //===----------------------------------------------------------------------===//
 
-CastOpAdaptor::CastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+CastOpAdaptor::CastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.cast", odsAttrs.getContext());
+}
 
-CastOpAdaptor::CastOpAdaptor(CastOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+CastOpAdaptor::CastOpAdaptor(CastOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange CastOpAdaptor::getOperands() {
   return odsOperands;
@@ -2316,7 +2418,7 @@ void CastOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   return verifyInvariantsImpl();
 }
 
-void CastOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void CastOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -2330,9 +2432,11 @@ namespace tosa {
 // mlir::tosa::CeilOp definitions
 //===----------------------------------------------------------------------===//
 
-CeilOpAdaptor::CeilOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+CeilOpAdaptor::CeilOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.ceil", odsAttrs.getContext());
+}
 
-CeilOpAdaptor::CeilOpAdaptor(CeilOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+CeilOpAdaptor::CeilOpAdaptor(CeilOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange CeilOpAdaptor::getOperands() {
   return odsOperands;
@@ -2439,7 +2543,7 @@ void CeilOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   return verifyInvariantsImpl();
 }
 
-void CeilOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void CeilOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -2453,9 +2557,11 @@ namespace tosa {
 // mlir::tosa::ClampOp definitions
 //===----------------------------------------------------------------------===//
 
-ClampOpAdaptor::ClampOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ClampOpAdaptor::ClampOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.clamp", odsAttrs.getContext());
+}
 
-ClampOpAdaptor::ClampOpAdaptor(ClampOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ClampOpAdaptor::ClampOpAdaptor(ClampOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ClampOpAdaptor::getOperands() {
   return odsOperands;
@@ -2481,8 +2587,8 @@ std::pair<unsigned, unsigned> ClampOpAdaptor::getODSOperandIndexAndLength(unsign
 
 ::mlir::IntegerAttr ClampOpAdaptor::min_intAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("min_int").cast<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 3, odsAttrs.end() - 0, ClampOp::min_intAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+    return attr;
 }
 
 uint64_t ClampOpAdaptor::min_int() {
@@ -2492,8 +2598,8 @@ uint64_t ClampOpAdaptor::min_int() {
 
 ::mlir::IntegerAttr ClampOpAdaptor::max_intAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("max_int").cast<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 2, ClampOp::max_intAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+    return attr;
 }
 
 uint64_t ClampOpAdaptor::max_int() {
@@ -2503,8 +2609,8 @@ uint64_t ClampOpAdaptor::max_int() {
 
 ::mlir::FloatAttr ClampOpAdaptor::min_fpAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::FloatAttr attr = odsAttrs.get("min_fp").cast<::mlir::FloatAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 1, ClampOp::min_fpAttrName(*odsOpName)).cast<::mlir::FloatAttr>();
+    return attr;
 }
 
 ::llvm::APFloat ClampOpAdaptor::min_fp() {
@@ -2514,8 +2620,8 @@ uint64_t ClampOpAdaptor::max_int() {
 
 ::mlir::FloatAttr ClampOpAdaptor::max_fpAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::FloatAttr attr = odsAttrs.get("max_fp").cast<::mlir::FloatAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 3, ClampOp::max_fpAttrName(*odsOpName)).cast<::mlir::FloatAttr>();
+    return attr;
 }
 
 ::llvm::APFloat ClampOpAdaptor::max_fp() {
@@ -2524,38 +2630,60 @@ uint64_t ClampOpAdaptor::max_int() {
 }
 
 ::mlir::LogicalResult ClampOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_min_int = odsAttrs.get("min_int");
-    if (!tblgen_min_int)
-      return emitError(loc, "'tosa.clamp' op ""requires attribute 'min_int'");
-
-    if (tblgen_min_int && !(((tblgen_min_int.isa<::mlir::IntegerAttr>())) && ((tblgen_min_int.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
-      return emitError(loc, "'tosa.clamp' op ""attribute 'min_int' failed to satisfy constraint: 64-bit signless integer attribute");
-  }
-  {
-    auto tblgen_max_int = odsAttrs.get("max_int");
-    if (!tblgen_max_int)
-      return emitError(loc, "'tosa.clamp' op ""requires attribute 'max_int'");
-
-    if (tblgen_max_int && !(((tblgen_max_int.isa<::mlir::IntegerAttr>())) && ((tblgen_max_int.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
-      return emitError(loc, "'tosa.clamp' op ""attribute 'max_int' failed to satisfy constraint: 64-bit signless integer attribute");
-  }
-  {
-    auto tblgen_min_fp = odsAttrs.get("min_fp");
-    if (!tblgen_min_fp)
-      return emitError(loc, "'tosa.clamp' op ""requires attribute 'min_fp'");
-
-    if (tblgen_min_fp && !(((tblgen_min_fp.isa<::mlir::FloatAttr>())) && ((tblgen_min_fp.cast<::mlir::FloatAttr>().getType().isF32()))))
-      return emitError(loc, "'tosa.clamp' op ""attribute 'min_fp' failed to satisfy constraint: 32-bit float attribute");
-  }
-  {
-    auto tblgen_max_fp = odsAttrs.get("max_fp");
-    if (!tblgen_max_fp)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_max_fp;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.clamp' op ""requires attribute 'max_fp'");
-
-    if (tblgen_max_fp && !(((tblgen_max_fp.isa<::mlir::FloatAttr>())) && ((tblgen_max_fp.cast<::mlir::FloatAttr>().getType().isF32()))))
-      return emitError(loc, "'tosa.clamp' op ""attribute 'max_fp' failed to satisfy constraint: 32-bit float attribute");
+    if (namedAttrIt->getName() == ClampOp::max_fpAttrName(*odsOpName)) {
+      tblgen_max_fp = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+  ::mlir::Attribute tblgen_max_int;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'tosa.clamp' op ""requires attribute 'max_int'");
+    if (namedAttrIt->getName() == ClampOp::max_intAttrName(*odsOpName)) {
+      tblgen_max_int = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_min_fp;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'tosa.clamp' op ""requires attribute 'min_fp'");
+    if (namedAttrIt->getName() == ClampOp::min_fpAttrName(*odsOpName)) {
+      tblgen_min_fp = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_min_int;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'tosa.clamp' op ""requires attribute 'min_int'");
+    if (namedAttrIt->getName() == ClampOp::min_intAttrName(*odsOpName)) {
+      tblgen_min_int = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
+  if (tblgen_min_int && !(((tblgen_min_int.isa<::mlir::IntegerAttr>())) && ((tblgen_min_int.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
+    return emitError(loc, "'tosa.clamp' op ""attribute 'min_int' failed to satisfy constraint: 64-bit signless integer attribute");
+
+  if (tblgen_max_int && !(((tblgen_max_int.isa<::mlir::IntegerAttr>())) && ((tblgen_max_int.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
+    return emitError(loc, "'tosa.clamp' op ""attribute 'max_int' failed to satisfy constraint: 64-bit signless integer attribute");
+
+  if (tblgen_min_fp && !(((tblgen_min_fp.isa<::mlir::FloatAttr>())) && ((tblgen_min_fp.cast<::mlir::FloatAttr>().getType().isF32()))))
+    return emitError(loc, "'tosa.clamp' op ""attribute 'min_fp' failed to satisfy constraint: 32-bit float attribute");
+
+  if (tblgen_max_fp && !(((tblgen_max_fp.isa<::mlir::FloatAttr>())) && ((tblgen_max_fp.cast<::mlir::FloatAttr>().getType().isF32()))))
+    return emitError(loc, "'tosa.clamp' op ""attribute 'max_fp' failed to satisfy constraint: 32-bit float attribute");
   return ::mlir::success();
 }
 
@@ -2594,7 +2722,7 @@ std::pair<unsigned, unsigned> ClampOp::getODSResultIndexAndLength(unsigned index
 }
 
 ::mlir::IntegerAttr ClampOp::min_intAttr() {
-  return (*this)->getAttr(min_intAttrName()).cast<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 3, (*this)->getAttrs().end() - 0, min_intAttrName()).cast<::mlir::IntegerAttr>();
 }
 
 uint64_t ClampOp::min_int() {
@@ -2603,7 +2731,7 @@ uint64_t ClampOp::min_int() {
 }
 
 ::mlir::IntegerAttr ClampOp::max_intAttr() {
-  return (*this)->getAttr(max_intAttrName()).cast<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 2, max_intAttrName()).cast<::mlir::IntegerAttr>();
 }
 
 uint64_t ClampOp::max_int() {
@@ -2612,7 +2740,7 @@ uint64_t ClampOp::max_int() {
 }
 
 ::mlir::FloatAttr ClampOp::min_fpAttr() {
-  return (*this)->getAttr(min_fpAttrName()).cast<::mlir::FloatAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 1, min_fpAttrName()).cast<::mlir::FloatAttr>();
 }
 
 ::llvm::APFloat ClampOp::min_fp() {
@@ -2621,7 +2749,7 @@ uint64_t ClampOp::max_int() {
 }
 
 ::mlir::FloatAttr ClampOp::max_fpAttr() {
-  return (*this)->getAttr(max_fpAttrName()).cast<::mlir::FloatAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 3, max_fpAttrName()).cast<::mlir::FloatAttr>();
 }
 
 ::llvm::APFloat ClampOp::max_fp() {
@@ -2692,38 +2820,60 @@ void ClampOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 ::mlir::LogicalResult ClampOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_min_int = (*this)->getAttr(min_intAttrName());
-    if (!tblgen_min_int)
-      return emitOpError("requires attribute 'min_int'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps1(*this, tblgen_min_int, "min_int")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_max_int = (*this)->getAttr(max_intAttrName());
-    if (!tblgen_max_int)
-      return emitOpError("requires attribute 'max_int'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps1(*this, tblgen_max_int, "max_int")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_min_fp = (*this)->getAttr(min_fpAttrName());
-    if (!tblgen_min_fp)
-      return emitOpError("requires attribute 'min_fp'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps5(*this, tblgen_min_fp, "min_fp")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_max_fp = (*this)->getAttr(max_fpAttrName());
-    if (!tblgen_max_fp)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_max_fp;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'max_fp'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps5(*this, tblgen_max_fp, "max_fp")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == max_fpAttrName()) {
+      tblgen_max_fp = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+  ::mlir::Attribute tblgen_max_int;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'max_int'");
+    if (namedAttrIt->getName() == max_intAttrName()) {
+      tblgen_max_int = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_min_fp;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'min_fp'");
+    if (namedAttrIt->getName() == min_fpAttrName()) {
+      tblgen_min_fp = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_min_int;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'min_int'");
+    if (namedAttrIt->getName() == min_intAttrName()) {
+      tblgen_min_int = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps1(*this, tblgen_min_int, "min_int")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps1(*this, tblgen_max_int, "max_int")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps5(*this, tblgen_min_fp, "min_fp")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps5(*this, tblgen_max_fp, "max_fp")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -2749,7 +2899,7 @@ void ClampOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   return verifyInvariantsImpl();
 }
 
-void ClampOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ClampOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -2763,9 +2913,11 @@ namespace tosa {
 // mlir::tosa::ClzOp definitions
 //===----------------------------------------------------------------------===//
 
-ClzOpAdaptor::ClzOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ClzOpAdaptor::ClzOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.clz", odsAttrs.getContext());
+}
 
-ClzOpAdaptor::ClzOpAdaptor(ClzOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ClzOpAdaptor::ClzOpAdaptor(ClzOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ClzOpAdaptor::getOperands() {
   return odsOperands;
@@ -2872,7 +3024,7 @@ void ClzOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
   return verifyInvariantsImpl();
 }
 
-void ClzOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ClzOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -2886,9 +3038,11 @@ namespace tosa {
 // mlir::tosa::ConcatOp definitions
 //===----------------------------------------------------------------------===//
 
-ConcatOpAdaptor::ConcatOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ConcatOpAdaptor::ConcatOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.concat", odsAttrs.getContext());
+}
 
-ConcatOpAdaptor::ConcatOpAdaptor(ConcatOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ConcatOpAdaptor::ConcatOpAdaptor(ConcatOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ConcatOpAdaptor::getOperands() {
   return odsOperands;
@@ -2928,8 +3082,8 @@ std::pair<unsigned, unsigned> ConcatOpAdaptor::getODSOperandIndexAndLength(unsig
 
 ::mlir::IntegerAttr ConcatOpAdaptor::axisAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("axis").cast<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ConcatOp::axisAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+    return attr;
 }
 
 uint64_t ConcatOpAdaptor::axis() {
@@ -2938,14 +3092,21 @@ uint64_t ConcatOpAdaptor::axis() {
 }
 
 ::mlir::LogicalResult ConcatOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_axis = odsAttrs.get("axis");
-    if (!tblgen_axis)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_axis;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.concat' op ""requires attribute 'axis'");
-
-    if (tblgen_axis && !(((tblgen_axis.isa<::mlir::IntegerAttr>())) && ((tblgen_axis.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
-      return emitError(loc, "'tosa.concat' op ""attribute 'axis' failed to satisfy constraint: 64-bit signless integer attribute");
+    if (namedAttrIt->getName() == ConcatOp::axisAttrName(*odsOpName)) {
+      tblgen_axis = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_axis && !(((tblgen_axis.isa<::mlir::IntegerAttr>())) && ((tblgen_axis.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
+    return emitError(loc, "'tosa.concat' op ""attribute 'axis' failed to satisfy constraint: 64-bit signless integer attribute");
   return ::mlir::success();
 }
 
@@ -2998,7 +3159,7 @@ std::pair<unsigned, unsigned> ConcatOp::getODSResultIndexAndLength(unsigned inde
 }
 
 ::mlir::IntegerAttr ConcatOp::axisAttr() {
-  return (*this)->getAttr(axisAttrName()).cast<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, axisAttrName()).cast<::mlir::IntegerAttr>();
 }
 
 uint64_t ConcatOp::axis() {
@@ -3044,14 +3205,21 @@ void ConcatOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::LogicalResult ConcatOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_axis = (*this)->getAttr(axisAttrName());
-    if (!tblgen_axis)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_axis;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'axis'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps1(*this, tblgen_axis, "axis")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == axisAttrName()) {
+      tblgen_axis = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps1(*this, tblgen_axis, "axis")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -3077,7 +3245,7 @@ void ConcatOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   return verifyInvariantsImpl();
 }
 
-void ConcatOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ConcatOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -3091,9 +3259,11 @@ namespace tosa {
 // mlir::tosa::ConstOp definitions
 //===----------------------------------------------------------------------===//
 
-ConstOpAdaptor::ConstOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ConstOpAdaptor::ConstOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.const", odsAttrs.getContext());
+}
 
-ConstOpAdaptor::ConstOpAdaptor(ConstOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ConstOpAdaptor::ConstOpAdaptor(ConstOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ConstOpAdaptor::getOperands() {
   return odsOperands;
@@ -3115,8 +3285,8 @@ std::pair<unsigned, unsigned> ConstOpAdaptor::getODSOperandIndexAndLength(unsign
 
 ::mlir::ElementsAttr ConstOpAdaptor::valueAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ElementsAttr attr = odsAttrs.get("value").cast<::mlir::ElementsAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ConstOp::valueAttrName(*odsOpName)).cast<::mlir::ElementsAttr>();
+    return attr;
 }
 
 ::mlir::ElementsAttr ConstOpAdaptor::value() {
@@ -3125,14 +3295,21 @@ std::pair<unsigned, unsigned> ConstOpAdaptor::getODSOperandIndexAndLength(unsign
 }
 
 ::mlir::LogicalResult ConstOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_value = odsAttrs.get("value");
-    if (!tblgen_value)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_value;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.const' op ""requires attribute 'value'");
-
-    if (tblgen_value && !((tblgen_value.isa<::mlir::ElementsAttr>())))
-      return emitError(loc, "'tosa.const' op ""attribute 'value' failed to satisfy constraint: constant vector/tensor attribute");
+    if (namedAttrIt->getName() == ConstOp::valueAttrName(*odsOpName)) {
+      tblgen_value = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_value && !((tblgen_value.isa<::mlir::ElementsAttr>())))
+    return emitError(loc, "'tosa.const' op ""attribute 'value' failed to satisfy constraint: constant vector/tensor attribute");
   return ::mlir::success();
 }
 
@@ -3161,7 +3338,7 @@ std::pair<unsigned, unsigned> ConstOp::getODSResultIndexAndLength(unsigned index
 }
 
 ::mlir::ElementsAttr ConstOp::valueAttr() {
-  return (*this)->getAttr(valueAttrName()).cast<::mlir::ElementsAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, valueAttrName()).cast<::mlir::ElementsAttr>();
 }
 
 ::mlir::ElementsAttr ConstOp::value() {
@@ -3203,14 +3380,21 @@ void ConstOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
 }
 
 ::mlir::LogicalResult ConstOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_value = (*this)->getAttr(valueAttrName());
-    if (!tblgen_value)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_value;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'value'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps6(*this, tblgen_value, "value")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == valueAttrName()) {
+      tblgen_value = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps6(*this, tblgen_value, "value")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSResults(0);
@@ -3227,7 +3411,7 @@ void ConstOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
   return verifyInvariantsImpl();
 }
 
-void ConstOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ConstOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -3241,9 +3425,11 @@ namespace tosa {
 // mlir::tosa::Conv2DOp definitions
 //===----------------------------------------------------------------------===//
 
-Conv2DOpAdaptor::Conv2DOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+Conv2DOpAdaptor::Conv2DOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.conv2d", odsAttrs.getContext());
+}
 
-Conv2DOpAdaptor::Conv2DOpAdaptor(Conv2DOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+Conv2DOpAdaptor::Conv2DOpAdaptor(Conv2DOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange Conv2DOpAdaptor::getOperands() {
   return odsOperands;
@@ -3277,8 +3463,8 @@ std::pair<unsigned, unsigned> Conv2DOpAdaptor::getODSOperandIndexAndLength(unsig
 
 ::mlir::ArrayAttr Conv2DOpAdaptor::padAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("pad").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 1, Conv2DOp::padAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr Conv2DOpAdaptor::pad() {
@@ -3288,8 +3474,8 @@ std::pair<unsigned, unsigned> Conv2DOpAdaptor::getODSOperandIndexAndLength(unsig
 
 ::mlir::ArrayAttr Conv2DOpAdaptor::strideAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("stride").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 0, Conv2DOp::strideAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr Conv2DOpAdaptor::stride() {
@@ -3299,8 +3485,8 @@ std::pair<unsigned, unsigned> Conv2DOpAdaptor::getODSOperandIndexAndLength(unsig
 
 ::mlir::ArrayAttr Conv2DOpAdaptor::dilationAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("dilation").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 2, Conv2DOp::dilationAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr Conv2DOpAdaptor::dilation() {
@@ -3310,8 +3496,8 @@ std::pair<unsigned, unsigned> Conv2DOpAdaptor::getODSOperandIndexAndLength(unsig
 
 mlir::tosa::ConvOpQuantizationAttr Conv2DOpAdaptor::quantization_infoAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  mlir::tosa::ConvOpQuantizationAttr attr = odsAttrs.get("quantization_info").dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 1, Conv2DOp::quantization_infoAttrName(*odsOpName)).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
+    return attr;
 }
 
 ::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr> Conv2DOpAdaptor::quantization_info() {
@@ -3320,35 +3506,54 @@ mlir::tosa::ConvOpQuantizationAttr Conv2DOpAdaptor::quantization_infoAttr() {
 }
 
 ::mlir::LogicalResult Conv2DOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_pad = odsAttrs.get("pad");
-    if (!tblgen_pad)
-      return emitError(loc, "'tosa.conv2d' op ""requires attribute 'pad'");
-
-    if (tblgen_pad && !((((tblgen_pad.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_pad.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_pad.cast<::mlir::ArrayAttr>().size() == 4))))
-      return emitError(loc, "'tosa.conv2d' op ""attribute 'pad' failed to satisfy constraint: 64-bit integer array attribute with exactly 4 elements");
-  }
-  {
-    auto tblgen_stride = odsAttrs.get("stride");
-    if (!tblgen_stride)
-      return emitError(loc, "'tosa.conv2d' op ""requires attribute 'stride'");
-
-    if (tblgen_stride && !((((tblgen_stride.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_stride.cast<::mlir::ArrayAttr>().size() == 2))))
-      return emitError(loc, "'tosa.conv2d' op ""attribute 'stride' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
-  }
-  {
-    auto tblgen_dilation = odsAttrs.get("dilation");
-    if (!tblgen_dilation)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_dilation;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.conv2d' op ""requires attribute 'dilation'");
+    if (namedAttrIt->getName() == Conv2DOp::dilationAttrName(*odsOpName)) {
+      tblgen_dilation = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_pad;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'tosa.conv2d' op ""requires attribute 'pad'");
+    if (namedAttrIt->getName() == Conv2DOp::padAttrName(*odsOpName)) {
+      tblgen_pad = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_stride;
+  ::mlir::Attribute tblgen_quantization_info;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'tosa.conv2d' op ""requires attribute 'stride'");
+    if (namedAttrIt->getName() == Conv2DOp::strideAttrName(*odsOpName)) {
+      tblgen_stride = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == Conv2DOp::quantization_infoAttrName(*odsOpName)) {
+      tblgen_quantization_info = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
 
-    if (tblgen_dilation && !((((tblgen_dilation.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_dilation.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_dilation.cast<::mlir::ArrayAttr>().size() == 2))))
-      return emitError(loc, "'tosa.conv2d' op ""attribute 'dilation' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
-  }
-  {
-    auto tblgen_quantization_info = odsAttrs.get("quantization_info");
-    if (tblgen_quantization_info && !((tblgen_quantization_info.isa<mlir::tosa::ConvOpQuantizationAttr>())))
-      return emitError(loc, "'tosa.conv2d' op ""attribute 'quantization_info' failed to satisfy constraint: Attribute for Conv type op quantization information.");
-  }
+  if (tblgen_pad && !((((tblgen_pad.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_pad.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_pad.cast<::mlir::ArrayAttr>().size() == 4))))
+    return emitError(loc, "'tosa.conv2d' op ""attribute 'pad' failed to satisfy constraint: 64-bit integer array attribute with exactly 4 elements");
+
+  if (tblgen_stride && !((((tblgen_stride.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_stride.cast<::mlir::ArrayAttr>().size() == 2))))
+    return emitError(loc, "'tosa.conv2d' op ""attribute 'stride' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
+
+  if (tblgen_dilation && !((((tblgen_dilation.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_dilation.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_dilation.cast<::mlir::ArrayAttr>().size() == 2))))
+    return emitError(loc, "'tosa.conv2d' op ""attribute 'dilation' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
+
+  if (tblgen_quantization_info && !((tblgen_quantization_info.isa<mlir::tosa::ConvOpQuantizationAttr>())))
+    return emitError(loc, "'tosa.conv2d' op ""attribute 'quantization_info' failed to satisfy constraint: Attribute for Conv type op quantization information.");
   return ::mlir::success();
 }
 
@@ -3407,7 +3612,7 @@ std::pair<unsigned, unsigned> Conv2DOp::getODSResultIndexAndLength(unsigned inde
 }
 
 ::mlir::ArrayAttr Conv2DOp::padAttr() {
-  return (*this)->getAttr(padAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 1, padAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr Conv2DOp::pad() {
@@ -3416,7 +3621,7 @@ std::pair<unsigned, unsigned> Conv2DOp::getODSResultIndexAndLength(unsigned inde
 }
 
 ::mlir::ArrayAttr Conv2DOp::strideAttr() {
-  return (*this)->getAttr(strideAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 0, strideAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr Conv2DOp::stride() {
@@ -3425,7 +3630,7 @@ std::pair<unsigned, unsigned> Conv2DOp::getODSResultIndexAndLength(unsigned inde
 }
 
 ::mlir::ArrayAttr Conv2DOp::dilationAttr() {
-  return (*this)->getAttr(dilationAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 2, dilationAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr Conv2DOp::dilation() {
@@ -3434,7 +3639,7 @@ std::pair<unsigned, unsigned> Conv2DOp::getODSResultIndexAndLength(unsigned inde
 }
 
 mlir::tosa::ConvOpQuantizationAttr Conv2DOp::quantization_infoAttr() {
-  return (*this)->getAttr(quantization_infoAttrName()).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 1, quantization_infoAttrName()).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
 }
 
 ::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr> Conv2DOp::quantization_info() {
@@ -3505,35 +3710,54 @@ void Conv2DOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::LogicalResult Conv2DOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_pad = (*this)->getAttr(padAttrName());
-    if (!tblgen_pad)
-      return emitOpError("requires attribute 'pad'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps3(*this, tblgen_pad, "pad")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_stride = (*this)->getAttr(strideAttrName());
-    if (!tblgen_stride)
-      return emitOpError("requires attribute 'stride'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps2(*this, tblgen_stride, "stride")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_dilation = (*this)->getAttr(dilationAttrName());
-    if (!tblgen_dilation)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_dilation;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'dilation'");
+    if (namedAttrIt->getName() == dilationAttrName()) {
+      tblgen_dilation = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_pad;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'pad'");
+    if (namedAttrIt->getName() == padAttrName()) {
+      tblgen_pad = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_stride;
+  ::mlir::Attribute tblgen_quantization_info;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'stride'");
+    if (namedAttrIt->getName() == strideAttrName()) {
+      tblgen_stride = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == quantization_infoAttrName()) {
+      tblgen_quantization_info = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps2(*this, tblgen_dilation, "dilation")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_quantization_info = (*this)->getAttr(quantization_infoAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps7(*this, tblgen_quantization_info, "quantization_info")))
-      return ::mlir::failure();
-  }
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps3(*this, tblgen_pad, "pad")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps2(*this, tblgen_stride, "stride")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps2(*this, tblgen_dilation, "dilation")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps7(*this, tblgen_quantization_info, "quantization_info")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -3573,7 +3797,7 @@ void Conv2DOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   return ::mlir::failure();
 }
 
-void Conv2DOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void Conv2DOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -3587,9 +3811,11 @@ namespace tosa {
 // mlir::tosa::Conv3DOp definitions
 //===----------------------------------------------------------------------===//
 
-Conv3DOpAdaptor::Conv3DOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+Conv3DOpAdaptor::Conv3DOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.conv3d", odsAttrs.getContext());
+}
 
-Conv3DOpAdaptor::Conv3DOpAdaptor(Conv3DOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+Conv3DOpAdaptor::Conv3DOpAdaptor(Conv3DOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange Conv3DOpAdaptor::getOperands() {
   return odsOperands;
@@ -3623,8 +3849,8 @@ std::pair<unsigned, unsigned> Conv3DOpAdaptor::getODSOperandIndexAndLength(unsig
 
 ::mlir::ArrayAttr Conv3DOpAdaptor::padAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("pad").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 1, Conv3DOp::padAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr Conv3DOpAdaptor::pad() {
@@ -3634,8 +3860,8 @@ std::pair<unsigned, unsigned> Conv3DOpAdaptor::getODSOperandIndexAndLength(unsig
 
 ::mlir::ArrayAttr Conv3DOpAdaptor::strideAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("stride").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 0, Conv3DOp::strideAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr Conv3DOpAdaptor::stride() {
@@ -3645,8 +3871,8 @@ std::pair<unsigned, unsigned> Conv3DOpAdaptor::getODSOperandIndexAndLength(unsig
 
 ::mlir::ArrayAttr Conv3DOpAdaptor::dilationAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("dilation").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 2, Conv3DOp::dilationAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr Conv3DOpAdaptor::dilation() {
@@ -3656,8 +3882,8 @@ std::pair<unsigned, unsigned> Conv3DOpAdaptor::getODSOperandIndexAndLength(unsig
 
 mlir::tosa::ConvOpQuantizationAttr Conv3DOpAdaptor::quantization_infoAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  mlir::tosa::ConvOpQuantizationAttr attr = odsAttrs.get("quantization_info").dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 1, Conv3DOp::quantization_infoAttrName(*odsOpName)).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
+    return attr;
 }
 
 ::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr> Conv3DOpAdaptor::quantization_info() {
@@ -3666,35 +3892,54 @@ mlir::tosa::ConvOpQuantizationAttr Conv3DOpAdaptor::quantization_infoAttr() {
 }
 
 ::mlir::LogicalResult Conv3DOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_pad = odsAttrs.get("pad");
-    if (!tblgen_pad)
-      return emitError(loc, "'tosa.conv3d' op ""requires attribute 'pad'");
-
-    if (tblgen_pad && !((((tblgen_pad.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_pad.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_pad.cast<::mlir::ArrayAttr>().size() == 6))))
-      return emitError(loc, "'tosa.conv3d' op ""attribute 'pad' failed to satisfy constraint: 64-bit integer array attribute with exactly 6 elements");
-  }
-  {
-    auto tblgen_stride = odsAttrs.get("stride");
-    if (!tblgen_stride)
-      return emitError(loc, "'tosa.conv3d' op ""requires attribute 'stride'");
-
-    if (tblgen_stride && !((((tblgen_stride.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_stride.cast<::mlir::ArrayAttr>().size() == 3))))
-      return emitError(loc, "'tosa.conv3d' op ""attribute 'stride' failed to satisfy constraint: 64-bit integer array attribute with exactly 3 elements");
-  }
-  {
-    auto tblgen_dilation = odsAttrs.get("dilation");
-    if (!tblgen_dilation)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_dilation;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.conv3d' op ""requires attribute 'dilation'");
+    if (namedAttrIt->getName() == Conv3DOp::dilationAttrName(*odsOpName)) {
+      tblgen_dilation = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_pad;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'tosa.conv3d' op ""requires attribute 'pad'");
+    if (namedAttrIt->getName() == Conv3DOp::padAttrName(*odsOpName)) {
+      tblgen_pad = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_stride;
+  ::mlir::Attribute tblgen_quantization_info;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'tosa.conv3d' op ""requires attribute 'stride'");
+    if (namedAttrIt->getName() == Conv3DOp::strideAttrName(*odsOpName)) {
+      tblgen_stride = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == Conv3DOp::quantization_infoAttrName(*odsOpName)) {
+      tblgen_quantization_info = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
 
-    if (tblgen_dilation && !((((tblgen_dilation.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_dilation.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_dilation.cast<::mlir::ArrayAttr>().size() == 3))))
-      return emitError(loc, "'tosa.conv3d' op ""attribute 'dilation' failed to satisfy constraint: 64-bit integer array attribute with exactly 3 elements");
-  }
-  {
-    auto tblgen_quantization_info = odsAttrs.get("quantization_info");
-    if (tblgen_quantization_info && !((tblgen_quantization_info.isa<mlir::tosa::ConvOpQuantizationAttr>())))
-      return emitError(loc, "'tosa.conv3d' op ""attribute 'quantization_info' failed to satisfy constraint: Attribute for Conv type op quantization information.");
-  }
+  if (tblgen_pad && !((((tblgen_pad.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_pad.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_pad.cast<::mlir::ArrayAttr>().size() == 6))))
+    return emitError(loc, "'tosa.conv3d' op ""attribute 'pad' failed to satisfy constraint: 64-bit integer array attribute with exactly 6 elements");
+
+  if (tblgen_stride && !((((tblgen_stride.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_stride.cast<::mlir::ArrayAttr>().size() == 3))))
+    return emitError(loc, "'tosa.conv3d' op ""attribute 'stride' failed to satisfy constraint: 64-bit integer array attribute with exactly 3 elements");
+
+  if (tblgen_dilation && !((((tblgen_dilation.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_dilation.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_dilation.cast<::mlir::ArrayAttr>().size() == 3))))
+    return emitError(loc, "'tosa.conv3d' op ""attribute 'dilation' failed to satisfy constraint: 64-bit integer array attribute with exactly 3 elements");
+
+  if (tblgen_quantization_info && !((tblgen_quantization_info.isa<mlir::tosa::ConvOpQuantizationAttr>())))
+    return emitError(loc, "'tosa.conv3d' op ""attribute 'quantization_info' failed to satisfy constraint: Attribute for Conv type op quantization information.");
   return ::mlir::success();
 }
 
@@ -3753,7 +3998,7 @@ std::pair<unsigned, unsigned> Conv3DOp::getODSResultIndexAndLength(unsigned inde
 }
 
 ::mlir::ArrayAttr Conv3DOp::padAttr() {
-  return (*this)->getAttr(padAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 1, padAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr Conv3DOp::pad() {
@@ -3762,7 +4007,7 @@ std::pair<unsigned, unsigned> Conv3DOp::getODSResultIndexAndLength(unsigned inde
 }
 
 ::mlir::ArrayAttr Conv3DOp::strideAttr() {
-  return (*this)->getAttr(strideAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 0, strideAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr Conv3DOp::stride() {
@@ -3771,7 +4016,7 @@ std::pair<unsigned, unsigned> Conv3DOp::getODSResultIndexAndLength(unsigned inde
 }
 
 ::mlir::ArrayAttr Conv3DOp::dilationAttr() {
-  return (*this)->getAttr(dilationAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 2, dilationAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr Conv3DOp::dilation() {
@@ -3780,7 +4025,7 @@ std::pair<unsigned, unsigned> Conv3DOp::getODSResultIndexAndLength(unsigned inde
 }
 
 mlir::tosa::ConvOpQuantizationAttr Conv3DOp::quantization_infoAttr() {
-  return (*this)->getAttr(quantization_infoAttrName()).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 1, quantization_infoAttrName()).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
 }
 
 ::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr> Conv3DOp::quantization_info() {
@@ -3851,35 +4096,54 @@ void Conv3DOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::LogicalResult Conv3DOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_pad = (*this)->getAttr(padAttrName());
-    if (!tblgen_pad)
-      return emitOpError("requires attribute 'pad'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps8(*this, tblgen_pad, "pad")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_stride = (*this)->getAttr(strideAttrName());
-    if (!tblgen_stride)
-      return emitOpError("requires attribute 'stride'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps9(*this, tblgen_stride, "stride")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_dilation = (*this)->getAttr(dilationAttrName());
-    if (!tblgen_dilation)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_dilation;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'dilation'");
+    if (namedAttrIt->getName() == dilationAttrName()) {
+      tblgen_dilation = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_pad;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'pad'");
+    if (namedAttrIt->getName() == padAttrName()) {
+      tblgen_pad = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_stride;
+  ::mlir::Attribute tblgen_quantization_info;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'stride'");
+    if (namedAttrIt->getName() == strideAttrName()) {
+      tblgen_stride = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == quantization_infoAttrName()) {
+      tblgen_quantization_info = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps9(*this, tblgen_dilation, "dilation")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_quantization_info = (*this)->getAttr(quantization_infoAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps7(*this, tblgen_quantization_info, "quantization_info")))
-      return ::mlir::failure();
-  }
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps8(*this, tblgen_pad, "pad")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps9(*this, tblgen_stride, "stride")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps9(*this, tblgen_dilation, "dilation")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps7(*this, tblgen_quantization_info, "quantization_info")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -3919,7 +4183,7 @@ void Conv3DOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   return ::mlir::failure();
 }
 
-void Conv3DOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void Conv3DOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -3933,9 +4197,11 @@ namespace tosa {
 // mlir::tosa::CustomOp definitions
 //===----------------------------------------------------------------------===//
 
-CustomOpAdaptor::CustomOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+CustomOpAdaptor::CustomOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.custom", odsAttrs.getContext());
+}
 
-CustomOpAdaptor::CustomOpAdaptor(CustomOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+CustomOpAdaptor::CustomOpAdaptor(CustomOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange CustomOpAdaptor::getOperands() {
   return odsOperands;
@@ -3975,8 +4241,8 @@ std::pair<unsigned, unsigned> CustomOpAdaptor::getODSOperandIndexAndLength(unsig
 
 ::mlir::StringAttr CustomOpAdaptor::identifierAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::StringAttr attr = odsAttrs.get("identifier").cast<::mlir::StringAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, CustomOp::identifierAttrName(*odsOpName)).cast<::mlir::StringAttr>();
+    return attr;
 }
 
 ::llvm::StringRef CustomOpAdaptor::identifier() {
@@ -3985,14 +4251,21 @@ std::pair<unsigned, unsigned> CustomOpAdaptor::getODSOperandIndexAndLength(unsig
 }
 
 ::mlir::LogicalResult CustomOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_identifier = odsAttrs.get("identifier");
-    if (!tblgen_identifier)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_identifier;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.custom' op ""requires attribute 'identifier'");
-
-    if (tblgen_identifier && !((tblgen_identifier.isa<::mlir::StringAttr>())))
-      return emitError(loc, "'tosa.custom' op ""attribute 'identifier' failed to satisfy constraint: string attribute");
+    if (namedAttrIt->getName() == CustomOp::identifierAttrName(*odsOpName)) {
+      tblgen_identifier = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_identifier && !((tblgen_identifier.isa<::mlir::StringAttr>())))
+    return emitError(loc, "'tosa.custom' op ""attribute 'identifier' failed to satisfy constraint: string attribute");
   return ::mlir::success();
 }
 
@@ -4059,7 +4332,7 @@ std::pair<unsigned, unsigned> CustomOp::getODSResultIndexAndLength(unsigned inde
 }
 
 ::mlir::StringAttr CustomOp::identifierAttr() {
-  return (*this)->getAttr(identifierAttrName()).cast<::mlir::StringAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, identifierAttrName()).cast<::mlir::StringAttr>();
 }
 
 ::llvm::StringRef CustomOp::identifier() {
@@ -4090,14 +4363,21 @@ void CustomOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::LogicalResult CustomOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_identifier = (*this)->getAttr(identifierAttrName());
-    if (!tblgen_identifier)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_identifier;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'identifier'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps10(*this, tblgen_identifier, "identifier")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == identifierAttrName()) {
+      tblgen_identifier = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps10(*this, tblgen_identifier, "identifier")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -4134,9 +4414,11 @@ namespace tosa {
 // mlir::tosa::DepthwiseConv2DOp definitions
 //===----------------------------------------------------------------------===//
 
-DepthwiseConv2DOpAdaptor::DepthwiseConv2DOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+DepthwiseConv2DOpAdaptor::DepthwiseConv2DOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.depthwise_conv2d", odsAttrs.getContext());
+}
 
-DepthwiseConv2DOpAdaptor::DepthwiseConv2DOpAdaptor(DepthwiseConv2DOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+DepthwiseConv2DOpAdaptor::DepthwiseConv2DOpAdaptor(DepthwiseConv2DOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange DepthwiseConv2DOpAdaptor::getOperands() {
   return odsOperands;
@@ -4170,8 +4452,8 @@ std::pair<unsigned, unsigned> DepthwiseConv2DOpAdaptor::getODSOperandIndexAndLen
 
 ::mlir::ArrayAttr DepthwiseConv2DOpAdaptor::padAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("pad").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 1, DepthwiseConv2DOp::padAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr DepthwiseConv2DOpAdaptor::pad() {
@@ -4181,8 +4463,8 @@ std::pair<unsigned, unsigned> DepthwiseConv2DOpAdaptor::getODSOperandIndexAndLen
 
 ::mlir::ArrayAttr DepthwiseConv2DOpAdaptor::strideAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("stride").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 0, DepthwiseConv2DOp::strideAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr DepthwiseConv2DOpAdaptor::stride() {
@@ -4192,8 +4474,8 @@ std::pair<unsigned, unsigned> DepthwiseConv2DOpAdaptor::getODSOperandIndexAndLen
 
 ::mlir::ArrayAttr DepthwiseConv2DOpAdaptor::dilationAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("dilation").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 2, DepthwiseConv2DOp::dilationAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr DepthwiseConv2DOpAdaptor::dilation() {
@@ -4203,8 +4485,8 @@ std::pair<unsigned, unsigned> DepthwiseConv2DOpAdaptor::getODSOperandIndexAndLen
 
 mlir::tosa::ConvOpQuantizationAttr DepthwiseConv2DOpAdaptor::quantization_infoAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  mlir::tosa::ConvOpQuantizationAttr attr = odsAttrs.get("quantization_info").dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 1, DepthwiseConv2DOp::quantization_infoAttrName(*odsOpName)).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
+    return attr;
 }
 
 ::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr> DepthwiseConv2DOpAdaptor::quantization_info() {
@@ -4213,35 +4495,54 @@ mlir::tosa::ConvOpQuantizationAttr DepthwiseConv2DOpAdaptor::quantization_infoAt
 }
 
 ::mlir::LogicalResult DepthwiseConv2DOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_pad = odsAttrs.get("pad");
-    if (!tblgen_pad)
-      return emitError(loc, "'tosa.depthwise_conv2d' op ""requires attribute 'pad'");
-
-    if (tblgen_pad && !((((tblgen_pad.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_pad.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_pad.cast<::mlir::ArrayAttr>().size() == 4))))
-      return emitError(loc, "'tosa.depthwise_conv2d' op ""attribute 'pad' failed to satisfy constraint: 64-bit integer array attribute with exactly 4 elements");
-  }
-  {
-    auto tblgen_stride = odsAttrs.get("stride");
-    if (!tblgen_stride)
-      return emitError(loc, "'tosa.depthwise_conv2d' op ""requires attribute 'stride'");
-
-    if (tblgen_stride && !((((tblgen_stride.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_stride.cast<::mlir::ArrayAttr>().size() == 2))))
-      return emitError(loc, "'tosa.depthwise_conv2d' op ""attribute 'stride' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
-  }
-  {
-    auto tblgen_dilation = odsAttrs.get("dilation");
-    if (!tblgen_dilation)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_dilation;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.depthwise_conv2d' op ""requires attribute 'dilation'");
+    if (namedAttrIt->getName() == DepthwiseConv2DOp::dilationAttrName(*odsOpName)) {
+      tblgen_dilation = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_pad;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'tosa.depthwise_conv2d' op ""requires attribute 'pad'");
+    if (namedAttrIt->getName() == DepthwiseConv2DOp::padAttrName(*odsOpName)) {
+      tblgen_pad = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_stride;
+  ::mlir::Attribute tblgen_quantization_info;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'tosa.depthwise_conv2d' op ""requires attribute 'stride'");
+    if (namedAttrIt->getName() == DepthwiseConv2DOp::strideAttrName(*odsOpName)) {
+      tblgen_stride = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == DepthwiseConv2DOp::quantization_infoAttrName(*odsOpName)) {
+      tblgen_quantization_info = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
 
-    if (tblgen_dilation && !((((tblgen_dilation.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_dilation.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_dilation.cast<::mlir::ArrayAttr>().size() == 2))))
-      return emitError(loc, "'tosa.depthwise_conv2d' op ""attribute 'dilation' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
-  }
-  {
-    auto tblgen_quantization_info = odsAttrs.get("quantization_info");
-    if (tblgen_quantization_info && !((tblgen_quantization_info.isa<mlir::tosa::ConvOpQuantizationAttr>())))
-      return emitError(loc, "'tosa.depthwise_conv2d' op ""attribute 'quantization_info' failed to satisfy constraint: Attribute for Conv type op quantization information.");
-  }
+  if (tblgen_pad && !((((tblgen_pad.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_pad.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_pad.cast<::mlir::ArrayAttr>().size() == 4))))
+    return emitError(loc, "'tosa.depthwise_conv2d' op ""attribute 'pad' failed to satisfy constraint: 64-bit integer array attribute with exactly 4 elements");
+
+  if (tblgen_stride && !((((tblgen_stride.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_stride.cast<::mlir::ArrayAttr>().size() == 2))))
+    return emitError(loc, "'tosa.depthwise_conv2d' op ""attribute 'stride' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
+
+  if (tblgen_dilation && !((((tblgen_dilation.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_dilation.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_dilation.cast<::mlir::ArrayAttr>().size() == 2))))
+    return emitError(loc, "'tosa.depthwise_conv2d' op ""attribute 'dilation' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
+
+  if (tblgen_quantization_info && !((tblgen_quantization_info.isa<mlir::tosa::ConvOpQuantizationAttr>())))
+    return emitError(loc, "'tosa.depthwise_conv2d' op ""attribute 'quantization_info' failed to satisfy constraint: Attribute for Conv type op quantization information.");
   return ::mlir::success();
 }
 
@@ -4300,7 +4601,7 @@ std::pair<unsigned, unsigned> DepthwiseConv2DOp::getODSResultIndexAndLength(unsi
 }
 
 ::mlir::ArrayAttr DepthwiseConv2DOp::padAttr() {
-  return (*this)->getAttr(padAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 1, padAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr DepthwiseConv2DOp::pad() {
@@ -4309,7 +4610,7 @@ std::pair<unsigned, unsigned> DepthwiseConv2DOp::getODSResultIndexAndLength(unsi
 }
 
 ::mlir::ArrayAttr DepthwiseConv2DOp::strideAttr() {
-  return (*this)->getAttr(strideAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 0, strideAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr DepthwiseConv2DOp::stride() {
@@ -4318,7 +4619,7 @@ std::pair<unsigned, unsigned> DepthwiseConv2DOp::getODSResultIndexAndLength(unsi
 }
 
 ::mlir::ArrayAttr DepthwiseConv2DOp::dilationAttr() {
-  return (*this)->getAttr(dilationAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 2, dilationAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr DepthwiseConv2DOp::dilation() {
@@ -4327,7 +4628,7 @@ std::pair<unsigned, unsigned> DepthwiseConv2DOp::getODSResultIndexAndLength(unsi
 }
 
 mlir::tosa::ConvOpQuantizationAttr DepthwiseConv2DOp::quantization_infoAttr() {
-  return (*this)->getAttr(quantization_infoAttrName()).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 1, quantization_infoAttrName()).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
 }
 
 ::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr> DepthwiseConv2DOp::quantization_info() {
@@ -4398,35 +4699,54 @@ void DepthwiseConv2DOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
 }
 
 ::mlir::LogicalResult DepthwiseConv2DOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_pad = (*this)->getAttr(padAttrName());
-    if (!tblgen_pad)
-      return emitOpError("requires attribute 'pad'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps3(*this, tblgen_pad, "pad")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_stride = (*this)->getAttr(strideAttrName());
-    if (!tblgen_stride)
-      return emitOpError("requires attribute 'stride'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps2(*this, tblgen_stride, "stride")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_dilation = (*this)->getAttr(dilationAttrName());
-    if (!tblgen_dilation)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_dilation;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'dilation'");
+    if (namedAttrIt->getName() == dilationAttrName()) {
+      tblgen_dilation = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_pad;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'pad'");
+    if (namedAttrIt->getName() == padAttrName()) {
+      tblgen_pad = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_stride;
+  ::mlir::Attribute tblgen_quantization_info;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'stride'");
+    if (namedAttrIt->getName() == strideAttrName()) {
+      tblgen_stride = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == quantization_infoAttrName()) {
+      tblgen_quantization_info = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps2(*this, tblgen_dilation, "dilation")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_quantization_info = (*this)->getAttr(quantization_infoAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps7(*this, tblgen_quantization_info, "quantization_info")))
-      return ::mlir::failure();
-  }
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps3(*this, tblgen_pad, "pad")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps2(*this, tblgen_stride, "stride")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps2(*this, tblgen_dilation, "dilation")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps7(*this, tblgen_quantization_info, "quantization_info")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -4466,7 +4786,7 @@ void DepthwiseConv2DOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
   return ::mlir::failure();
 }
 
-void DepthwiseConv2DOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void DepthwiseConv2DOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -4480,9 +4800,11 @@ namespace tosa {
 // mlir::tosa::DivOp definitions
 //===----------------------------------------------------------------------===//
 
-DivOpAdaptor::DivOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+DivOpAdaptor::DivOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.div", odsAttrs.getContext());
+}
 
-DivOpAdaptor::DivOpAdaptor(DivOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+DivOpAdaptor::DivOpAdaptor(DivOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange DivOpAdaptor::getOperands() {
   return odsOperands;
@@ -4611,7 +4933,7 @@ void DivOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
   return verifyInvariantsImpl();
 }
 
-void DivOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void DivOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -4625,9 +4947,11 @@ namespace tosa {
 // mlir::tosa::EqualOp definitions
 //===----------------------------------------------------------------------===//
 
-EqualOpAdaptor::EqualOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+EqualOpAdaptor::EqualOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.equal", odsAttrs.getContext());
+}
 
-EqualOpAdaptor::EqualOpAdaptor(EqualOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+EqualOpAdaptor::EqualOpAdaptor(EqualOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange EqualOpAdaptor::getOperands() {
   return odsOperands;
@@ -4756,7 +5080,7 @@ void EqualOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   return verifyInvariantsImpl();
 }
 
-void EqualOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void EqualOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -4770,9 +5094,11 @@ namespace tosa {
 // mlir::tosa::ExpOp definitions
 //===----------------------------------------------------------------------===//
 
-ExpOpAdaptor::ExpOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ExpOpAdaptor::ExpOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.exp", odsAttrs.getContext());
+}
 
-ExpOpAdaptor::ExpOpAdaptor(ExpOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ExpOpAdaptor::ExpOpAdaptor(ExpOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ExpOpAdaptor::getOperands() {
   return odsOperands;
@@ -4879,7 +5205,7 @@ void ExpOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
   return verifyInvariantsImpl();
 }
 
-void ExpOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ExpOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -4893,9 +5219,11 @@ namespace tosa {
 // mlir::tosa::FloorOp definitions
 //===----------------------------------------------------------------------===//
 
-FloorOpAdaptor::FloorOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+FloorOpAdaptor::FloorOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.floor", odsAttrs.getContext());
+}
 
-FloorOpAdaptor::FloorOpAdaptor(FloorOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+FloorOpAdaptor::FloorOpAdaptor(FloorOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange FloorOpAdaptor::getOperands() {
   return odsOperands;
@@ -5002,7 +5330,7 @@ void FloorOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   return verifyInvariantsImpl();
 }
 
-void FloorOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void FloorOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -5016,9 +5344,11 @@ namespace tosa {
 // mlir::tosa::FullyConnectedOp definitions
 //===----------------------------------------------------------------------===//
 
-FullyConnectedOpAdaptor::FullyConnectedOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+FullyConnectedOpAdaptor::FullyConnectedOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.fully_connected", odsAttrs.getContext());
+}
 
-FullyConnectedOpAdaptor::FullyConnectedOpAdaptor(FullyConnectedOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+FullyConnectedOpAdaptor::FullyConnectedOpAdaptor(FullyConnectedOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange FullyConnectedOpAdaptor::getOperands() {
   return odsOperands;
@@ -5052,8 +5382,8 @@ std::pair<unsigned, unsigned> FullyConnectedOpAdaptor::getODSOperandIndexAndLeng
 
 mlir::tosa::ConvOpQuantizationAttr FullyConnectedOpAdaptor::quantization_infoAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  mlir::tosa::ConvOpQuantizationAttr attr = odsAttrs.get("quantization_info").dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, FullyConnectedOp::quantization_infoAttrName(*odsOpName)).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
+    return attr;
 }
 
 ::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr> FullyConnectedOpAdaptor::quantization_info() {
@@ -5062,11 +5392,21 @@ mlir::tosa::ConvOpQuantizationAttr FullyConnectedOpAdaptor::quantization_infoAtt
 }
 
 ::mlir::LogicalResult FullyConnectedOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_quantization_info = odsAttrs.get("quantization_info");
-    if (tblgen_quantization_info && !((tblgen_quantization_info.isa<mlir::tosa::ConvOpQuantizationAttr>())))
-      return emitError(loc, "'tosa.fully_connected' op ""attribute 'quantization_info' failed to satisfy constraint: Attribute for Conv type op quantization information.");
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_quantization_info;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == FullyConnectedOp::quantization_infoAttrName(*odsOpName)) {
+      tblgen_quantization_info = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_quantization_info && !((tblgen_quantization_info.isa<mlir::tosa::ConvOpQuantizationAttr>())))
+    return emitError(loc, "'tosa.fully_connected' op ""attribute 'quantization_info' failed to satisfy constraint: Attribute for Conv type op quantization information.");
   return ::mlir::success();
 }
 
@@ -5125,7 +5465,7 @@ std::pair<unsigned, unsigned> FullyConnectedOp::getODSResultIndexAndLength(unsig
 }
 
 mlir::tosa::ConvOpQuantizationAttr FullyConnectedOp::quantization_infoAttr() {
-  return (*this)->getAttr(quantization_infoAttrName()).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, quantization_infoAttrName()).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
 }
 
 ::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr> FullyConnectedOp::quantization_info() {
@@ -5177,11 +5517,21 @@ void FullyConnectedOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
 }
 
 ::mlir::LogicalResult FullyConnectedOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_quantization_info = (*this)->getAttr(quantization_infoAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps7(*this, tblgen_quantization_info, "quantization_info")))
-      return ::mlir::failure();
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_quantization_info;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == quantization_infoAttrName()) {
+      tblgen_quantization_info = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps7(*this, tblgen_quantization_info, "quantization_info")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -5221,7 +5571,7 @@ void FullyConnectedOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
   return ::mlir::failure();
 }
 
-void FullyConnectedOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void FullyConnectedOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -5235,9 +5585,11 @@ namespace tosa {
 // mlir::tosa::GatherOp definitions
 //===----------------------------------------------------------------------===//
 
-GatherOpAdaptor::GatherOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+GatherOpAdaptor::GatherOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.gather", odsAttrs.getContext());
+}
 
-GatherOpAdaptor::GatherOpAdaptor(GatherOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+GatherOpAdaptor::GatherOpAdaptor(GatherOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange GatherOpAdaptor::getOperands() {
   return odsOperands;
@@ -5366,7 +5718,7 @@ void GatherOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   return verifyInvariantsImpl();
 }
 
-void GatherOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void GatherOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -5380,9 +5732,11 @@ namespace tosa {
 // mlir::tosa::GreaterEqualOp definitions
 //===----------------------------------------------------------------------===//
 
-GreaterEqualOpAdaptor::GreaterEqualOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+GreaterEqualOpAdaptor::GreaterEqualOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.greater_equal", odsAttrs.getContext());
+}
 
-GreaterEqualOpAdaptor::GreaterEqualOpAdaptor(GreaterEqualOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+GreaterEqualOpAdaptor::GreaterEqualOpAdaptor(GreaterEqualOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange GreaterEqualOpAdaptor::getOperands() {
   return odsOperands;
@@ -5511,7 +5865,7 @@ void GreaterEqualOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
   return verifyInvariantsImpl();
 }
 
-void GreaterEqualOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void GreaterEqualOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -5525,9 +5879,11 @@ namespace tosa {
 // mlir::tosa::GreaterOp definitions
 //===----------------------------------------------------------------------===//
 
-GreaterOpAdaptor::GreaterOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+GreaterOpAdaptor::GreaterOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.greater", odsAttrs.getContext());
+}
 
-GreaterOpAdaptor::GreaterOpAdaptor(GreaterOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+GreaterOpAdaptor::GreaterOpAdaptor(GreaterOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange GreaterOpAdaptor::getOperands() {
   return odsOperands;
@@ -5656,7 +6012,7 @@ void GreaterOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   return verifyInvariantsImpl();
 }
 
-void GreaterOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void GreaterOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -5670,9 +6026,11 @@ namespace tosa {
 // mlir::tosa::IdentityOp definitions
 //===----------------------------------------------------------------------===//
 
-IdentityOpAdaptor::IdentityOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+IdentityOpAdaptor::IdentityOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.identity", odsAttrs.getContext());
+}
 
-IdentityOpAdaptor::IdentityOpAdaptor(IdentityOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+IdentityOpAdaptor::IdentityOpAdaptor(IdentityOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange IdentityOpAdaptor::getOperands() {
   return odsOperands;
@@ -5779,7 +6137,7 @@ void IdentityOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   return verifyInvariantsImpl();
 }
 
-void IdentityOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void IdentityOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -5793,9 +6151,11 @@ namespace tosa {
 // mlir::tosa::IfOp definitions
 //===----------------------------------------------------------------------===//
 
-IfOpAdaptor::IfOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+IfOpAdaptor::IfOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.cond_if", odsAttrs.getContext());
+}
 
-IfOpAdaptor::IfOpAdaptor(IfOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+IfOpAdaptor::IfOpAdaptor(IfOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange IfOpAdaptor::getOperands() {
   return odsOperands;
@@ -6004,9 +6364,11 @@ namespace tosa {
 // mlir::tosa::LogOp definitions
 //===----------------------------------------------------------------------===//
 
-LogOpAdaptor::LogOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+LogOpAdaptor::LogOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.log", odsAttrs.getContext());
+}
 
-LogOpAdaptor::LogOpAdaptor(LogOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+LogOpAdaptor::LogOpAdaptor(LogOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange LogOpAdaptor::getOperands() {
   return odsOperands;
@@ -6113,7 +6475,7 @@ void LogOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
   return verifyInvariantsImpl();
 }
 
-void LogOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void LogOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -6127,9 +6489,11 @@ namespace tosa {
 // mlir::tosa::LogicalAndOp definitions
 //===----------------------------------------------------------------------===//
 
-LogicalAndOpAdaptor::LogicalAndOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+LogicalAndOpAdaptor::LogicalAndOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.logical_and", odsAttrs.getContext());
+}
 
-LogicalAndOpAdaptor::LogicalAndOpAdaptor(LogicalAndOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+LogicalAndOpAdaptor::LogicalAndOpAdaptor(LogicalAndOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange LogicalAndOpAdaptor::getOperands() {
   return odsOperands;
@@ -6258,7 +6622,7 @@ void LogicalAndOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
   return verifyInvariantsImpl();
 }
 
-void LogicalAndOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void LogicalAndOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -6272,9 +6636,11 @@ namespace tosa {
 // mlir::tosa::LogicalLeftShiftOp definitions
 //===----------------------------------------------------------------------===//
 
-LogicalLeftShiftOpAdaptor::LogicalLeftShiftOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+LogicalLeftShiftOpAdaptor::LogicalLeftShiftOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.logical_left_shift", odsAttrs.getContext());
+}
 
-LogicalLeftShiftOpAdaptor::LogicalLeftShiftOpAdaptor(LogicalLeftShiftOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+LogicalLeftShiftOpAdaptor::LogicalLeftShiftOpAdaptor(LogicalLeftShiftOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange LogicalLeftShiftOpAdaptor::getOperands() {
   return odsOperands;
@@ -6403,7 +6769,7 @@ void LogicalLeftShiftOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsS
   return verifyInvariantsImpl();
 }
 
-void LogicalLeftShiftOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void LogicalLeftShiftOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -6417,9 +6783,11 @@ namespace tosa {
 // mlir::tosa::LogicalNotOp definitions
 //===----------------------------------------------------------------------===//
 
-LogicalNotOpAdaptor::LogicalNotOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+LogicalNotOpAdaptor::LogicalNotOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.logical_not", odsAttrs.getContext());
+}
 
-LogicalNotOpAdaptor::LogicalNotOpAdaptor(LogicalNotOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+LogicalNotOpAdaptor::LogicalNotOpAdaptor(LogicalNotOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange LogicalNotOpAdaptor::getOperands() {
   return odsOperands;
@@ -6526,7 +6894,7 @@ void LogicalNotOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
   return verifyInvariantsImpl();
 }
 
-void LogicalNotOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void LogicalNotOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -6540,9 +6908,11 @@ namespace tosa {
 // mlir::tosa::LogicalOrOp definitions
 //===----------------------------------------------------------------------===//
 
-LogicalOrOpAdaptor::LogicalOrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+LogicalOrOpAdaptor::LogicalOrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.logical_or", odsAttrs.getContext());
+}
 
-LogicalOrOpAdaptor::LogicalOrOpAdaptor(LogicalOrOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+LogicalOrOpAdaptor::LogicalOrOpAdaptor(LogicalOrOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange LogicalOrOpAdaptor::getOperands() {
   return odsOperands;
@@ -6671,7 +7041,7 @@ void LogicalOrOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   return verifyInvariantsImpl();
 }
 
-void LogicalOrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void LogicalOrOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -6685,9 +7055,11 @@ namespace tosa {
 // mlir::tosa::LogicalRightShiftOp definitions
 //===----------------------------------------------------------------------===//
 
-LogicalRightShiftOpAdaptor::LogicalRightShiftOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+LogicalRightShiftOpAdaptor::LogicalRightShiftOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.logical_right_shift", odsAttrs.getContext());
+}
 
-LogicalRightShiftOpAdaptor::LogicalRightShiftOpAdaptor(LogicalRightShiftOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+LogicalRightShiftOpAdaptor::LogicalRightShiftOpAdaptor(LogicalRightShiftOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange LogicalRightShiftOpAdaptor::getOperands() {
   return odsOperands;
@@ -6816,7 +7188,7 @@ void LogicalRightShiftOp::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
   return verifyInvariantsImpl();
 }
 
-void LogicalRightShiftOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void LogicalRightShiftOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -6830,9 +7202,11 @@ namespace tosa {
 // mlir::tosa::LogicalXorOp definitions
 //===----------------------------------------------------------------------===//
 
-LogicalXorOpAdaptor::LogicalXorOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+LogicalXorOpAdaptor::LogicalXorOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.logical_xor", odsAttrs.getContext());
+}
 
-LogicalXorOpAdaptor::LogicalXorOpAdaptor(LogicalXorOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+LogicalXorOpAdaptor::LogicalXorOpAdaptor(LogicalXorOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange LogicalXorOpAdaptor::getOperands() {
   return odsOperands;
@@ -6961,7 +7335,7 @@ void LogicalXorOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
   return verifyInvariantsImpl();
 }
 
-void LogicalXorOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void LogicalXorOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -6975,9 +7349,11 @@ namespace tosa {
 // mlir::tosa::MatMulOp definitions
 //===----------------------------------------------------------------------===//
 
-MatMulOpAdaptor::MatMulOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+MatMulOpAdaptor::MatMulOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.matmul", odsAttrs.getContext());
+}
 
-MatMulOpAdaptor::MatMulOpAdaptor(MatMulOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+MatMulOpAdaptor::MatMulOpAdaptor(MatMulOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange MatMulOpAdaptor::getOperands() {
   return odsOperands;
@@ -7007,8 +7383,8 @@ std::pair<unsigned, unsigned> MatMulOpAdaptor::getODSOperandIndexAndLength(unsig
 
 mlir::tosa::MatMulOpQuantizationAttr MatMulOpAdaptor::quantization_infoAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  mlir::tosa::MatMulOpQuantizationAttr attr = odsAttrs.get("quantization_info").dyn_cast_or_null<mlir::tosa::MatMulOpQuantizationAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, MatMulOp::quantization_infoAttrName(*odsOpName)).dyn_cast_or_null<mlir::tosa::MatMulOpQuantizationAttr>();
+    return attr;
 }
 
 ::llvm::Optional<mlir::tosa::MatMulOpQuantizationAttr> MatMulOpAdaptor::quantization_info() {
@@ -7017,11 +7393,21 @@ mlir::tosa::MatMulOpQuantizationAttr MatMulOpAdaptor::quantization_infoAttr() {
 }
 
 ::mlir::LogicalResult MatMulOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_quantization_info = odsAttrs.get("quantization_info");
-    if (tblgen_quantization_info && !((tblgen_quantization_info.isa<mlir::tosa::MatMulOpQuantizationAttr>())))
-      return emitError(loc, "'tosa.matmul' op ""attribute 'quantization_info' failed to satisfy constraint: Attribute for MatMulOp quantization information.");
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_quantization_info;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == MatMulOp::quantization_infoAttrName(*odsOpName)) {
+      tblgen_quantization_info = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_quantization_info && !((tblgen_quantization_info.isa<mlir::tosa::MatMulOpQuantizationAttr>())))
+    return emitError(loc, "'tosa.matmul' op ""attribute 'quantization_info' failed to satisfy constraint: Attribute for MatMulOp quantization information.");
   return ::mlir::success();
 }
 
@@ -7070,7 +7456,7 @@ std::pair<unsigned, unsigned> MatMulOp::getODSResultIndexAndLength(unsigned inde
 }
 
 mlir::tosa::MatMulOpQuantizationAttr MatMulOp::quantization_infoAttr() {
-  return (*this)->getAttr(quantization_infoAttrName()).dyn_cast_or_null<mlir::tosa::MatMulOpQuantizationAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, quantization_infoAttrName()).dyn_cast_or_null<mlir::tosa::MatMulOpQuantizationAttr>();
 }
 
 ::llvm::Optional<mlir::tosa::MatMulOpQuantizationAttr> MatMulOp::quantization_info() {
@@ -7120,11 +7506,21 @@ void MatMulOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::LogicalResult MatMulOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_quantization_info = (*this)->getAttr(quantization_infoAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps11(*this, tblgen_quantization_info, "quantization_info")))
-      return ::mlir::failure();
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_quantization_info;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == quantization_infoAttrName()) {
+      tblgen_quantization_info = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps11(*this, tblgen_quantization_info, "quantization_info")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -7156,7 +7552,7 @@ void MatMulOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   return verifyInvariantsImpl();
 }
 
-void MatMulOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void MatMulOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -7170,9 +7566,11 @@ namespace tosa {
 // mlir::tosa::MaxPool2dOp definitions
 //===----------------------------------------------------------------------===//
 
-MaxPool2dOpAdaptor::MaxPool2dOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+MaxPool2dOpAdaptor::MaxPool2dOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.max_pool2d", odsAttrs.getContext());
+}
 
-MaxPool2dOpAdaptor::MaxPool2dOpAdaptor(MaxPool2dOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+MaxPool2dOpAdaptor::MaxPool2dOpAdaptor(MaxPool2dOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange MaxPool2dOpAdaptor::getOperands() {
   return odsOperands;
@@ -7198,8 +7596,8 @@ std::pair<unsigned, unsigned> MaxPool2dOpAdaptor::getODSOperandIndexAndLength(un
 
 ::mlir::ArrayAttr MaxPool2dOpAdaptor::kernelAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("kernel").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 2, MaxPool2dOp::kernelAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr MaxPool2dOpAdaptor::kernel() {
@@ -7209,8 +7607,8 @@ std::pair<unsigned, unsigned> MaxPool2dOpAdaptor::getODSOperandIndexAndLength(un
 
 ::mlir::ArrayAttr MaxPool2dOpAdaptor::strideAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("stride").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 0, MaxPool2dOp::strideAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr MaxPool2dOpAdaptor::stride() {
@@ -7220,8 +7618,8 @@ std::pair<unsigned, unsigned> MaxPool2dOpAdaptor::getODSOperandIndexAndLength(un
 
 ::mlir::ArrayAttr MaxPool2dOpAdaptor::padAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("pad").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 1, MaxPool2dOp::padAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr MaxPool2dOpAdaptor::pad() {
@@ -7230,30 +7628,47 @@ std::pair<unsigned, unsigned> MaxPool2dOpAdaptor::getODSOperandIndexAndLength(un
 }
 
 ::mlir::LogicalResult MaxPool2dOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_kernel = odsAttrs.get("kernel");
-    if (!tblgen_kernel)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_kernel;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.max_pool2d' op ""requires attribute 'kernel'");
-
-    if (tblgen_kernel && !((((tblgen_kernel.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_kernel.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_kernel.cast<::mlir::ArrayAttr>().size() == 2))))
-      return emitError(loc, "'tosa.max_pool2d' op ""attribute 'kernel' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
+    if (namedAttrIt->getName() == MaxPool2dOp::kernelAttrName(*odsOpName)) {
+      tblgen_kernel = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_stride = odsAttrs.get("stride");
-    if (!tblgen_stride)
-      return emitError(loc, "'tosa.max_pool2d' op ""requires attribute 'stride'");
-
-    if (tblgen_stride && !((((tblgen_stride.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_stride.cast<::mlir::ArrayAttr>().size() == 2))))
-      return emitError(loc, "'tosa.max_pool2d' op ""attribute 'stride' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
-  }
-  {
-    auto tblgen_pad = odsAttrs.get("pad");
-    if (!tblgen_pad)
+  ::mlir::Attribute tblgen_pad;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.max_pool2d' op ""requires attribute 'pad'");
-
-    if (tblgen_pad && !((((tblgen_pad.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_pad.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_pad.cast<::mlir::ArrayAttr>().size() == 4))))
-      return emitError(loc, "'tosa.max_pool2d' op ""attribute 'pad' failed to satisfy constraint: 64-bit integer array attribute with exactly 4 elements");
+    if (namedAttrIt->getName() == MaxPool2dOp::padAttrName(*odsOpName)) {
+      tblgen_pad = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+  ::mlir::Attribute tblgen_stride;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'tosa.max_pool2d' op ""requires attribute 'stride'");
+    if (namedAttrIt->getName() == MaxPool2dOp::strideAttrName(*odsOpName)) {
+      tblgen_stride = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
+  if (tblgen_kernel && !((((tblgen_kernel.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_kernel.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_kernel.cast<::mlir::ArrayAttr>().size() == 2))))
+    return emitError(loc, "'tosa.max_pool2d' op ""attribute 'kernel' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
+
+  if (tblgen_stride && !((((tblgen_stride.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_stride.cast<::mlir::ArrayAttr>().size() == 2))))
+    return emitError(loc, "'tosa.max_pool2d' op ""attribute 'stride' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
+
+  if (tblgen_pad && !((((tblgen_pad.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_pad.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_pad.cast<::mlir::ArrayAttr>().size() == 4))))
+    return emitError(loc, "'tosa.max_pool2d' op ""attribute 'pad' failed to satisfy constraint: 64-bit integer array attribute with exactly 4 elements");
   return ::mlir::success();
 }
 
@@ -7292,7 +7707,7 @@ std::pair<unsigned, unsigned> MaxPool2dOp::getODSResultIndexAndLength(unsigned i
 }
 
 ::mlir::ArrayAttr MaxPool2dOp::kernelAttr() {
-  return (*this)->getAttr(kernelAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 2, kernelAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr MaxPool2dOp::kernel() {
@@ -7301,7 +7716,7 @@ std::pair<unsigned, unsigned> MaxPool2dOp::getODSResultIndexAndLength(unsigned i
 }
 
 ::mlir::ArrayAttr MaxPool2dOp::strideAttr() {
-  return (*this)->getAttr(strideAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 0, strideAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr MaxPool2dOp::stride() {
@@ -7310,7 +7725,7 @@ std::pair<unsigned, unsigned> MaxPool2dOp::getODSResultIndexAndLength(unsigned i
 }
 
 ::mlir::ArrayAttr MaxPool2dOp::padAttr() {
-  return (*this)->getAttr(padAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 1, padAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr MaxPool2dOp::pad() {
@@ -7356,30 +7771,47 @@ void MaxPool2dOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 }
 
 ::mlir::LogicalResult MaxPool2dOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_kernel = (*this)->getAttr(kernelAttrName());
-    if (!tblgen_kernel)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_kernel;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'kernel'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps2(*this, tblgen_kernel, "kernel")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == kernelAttrName()) {
+      tblgen_kernel = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_stride = (*this)->getAttr(strideAttrName());
-    if (!tblgen_stride)
-      return emitOpError("requires attribute 'stride'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps2(*this, tblgen_stride, "stride")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_pad = (*this)->getAttr(padAttrName());
-    if (!tblgen_pad)
+  ::mlir::Attribute tblgen_pad;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'pad'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps3(*this, tblgen_pad, "pad")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == padAttrName()) {
+      tblgen_pad = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+  ::mlir::Attribute tblgen_stride;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'stride'");
+    if (namedAttrIt->getName() == strideAttrName()) {
+      tblgen_stride = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps2(*this, tblgen_kernel, "kernel")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps2(*this, tblgen_stride, "stride")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps3(*this, tblgen_pad, "pad")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -7405,7 +7837,7 @@ void MaxPool2dOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   return verifyInvariantsImpl();
 }
 
-void MaxPool2dOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void MaxPool2dOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -7419,9 +7851,11 @@ namespace tosa {
 // mlir::tosa::MaximumOp definitions
 //===----------------------------------------------------------------------===//
 
-MaximumOpAdaptor::MaximumOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+MaximumOpAdaptor::MaximumOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.maximum", odsAttrs.getContext());
+}
 
-MaximumOpAdaptor::MaximumOpAdaptor(MaximumOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+MaximumOpAdaptor::MaximumOpAdaptor(MaximumOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange MaximumOpAdaptor::getOperands() {
   return odsOperands;
@@ -7550,7 +7984,7 @@ void MaximumOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   return verifyInvariantsImpl();
 }
 
-void MaximumOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void MaximumOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -7564,9 +7998,11 @@ namespace tosa {
 // mlir::tosa::MinimumOp definitions
 //===----------------------------------------------------------------------===//
 
-MinimumOpAdaptor::MinimumOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+MinimumOpAdaptor::MinimumOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.minimum", odsAttrs.getContext());
+}
 
-MinimumOpAdaptor::MinimumOpAdaptor(MinimumOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+MinimumOpAdaptor::MinimumOpAdaptor(MinimumOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange MinimumOpAdaptor::getOperands() {
   return odsOperands;
@@ -7695,7 +8131,7 @@ void MinimumOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   return verifyInvariantsImpl();
 }
 
-void MinimumOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void MinimumOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -7709,9 +8145,11 @@ namespace tosa {
 // mlir::tosa::MulOp definitions
 //===----------------------------------------------------------------------===//
 
-MulOpAdaptor::MulOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+MulOpAdaptor::MulOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.mul", odsAttrs.getContext());
+}
 
-MulOpAdaptor::MulOpAdaptor(MulOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+MulOpAdaptor::MulOpAdaptor(MulOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange MulOpAdaptor::getOperands() {
   return odsOperands;
@@ -7741,8 +8179,8 @@ std::pair<unsigned, unsigned> MulOpAdaptor::getODSOperandIndexAndLength(unsigned
 
 ::mlir::IntegerAttr MulOpAdaptor::shiftAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("shift").cast<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, MulOp::shiftAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+    return attr;
 }
 
 uint32_t MulOpAdaptor::shift() {
@@ -7751,14 +8189,21 @@ uint32_t MulOpAdaptor::shift() {
 }
 
 ::mlir::LogicalResult MulOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_shift = odsAttrs.get("shift");
-    if (!tblgen_shift)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_shift;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.mul' op ""requires attribute 'shift'");
-
-    if (tblgen_shift && !(((tblgen_shift.isa<::mlir::IntegerAttr>())) && ((tblgen_shift.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))))
-      return emitError(loc, "'tosa.mul' op ""attribute 'shift' failed to satisfy constraint: 32-bit signless integer attribute");
+    if (namedAttrIt->getName() == MulOp::shiftAttrName(*odsOpName)) {
+      tblgen_shift = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_shift && !(((tblgen_shift.isa<::mlir::IntegerAttr>())) && ((tblgen_shift.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))))
+    return emitError(loc, "'tosa.mul' op ""attribute 'shift' failed to satisfy constraint: 32-bit signless integer attribute");
   return ::mlir::success();
 }
 
@@ -7807,7 +8252,7 @@ std::pair<unsigned, unsigned> MulOp::getODSResultIndexAndLength(unsigned index) 
 }
 
 ::mlir::IntegerAttr MulOp::shiftAttr() {
-  return (*this)->getAttr(shiftAttrName()).cast<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, shiftAttrName()).cast<::mlir::IntegerAttr>();
 }
 
 uint32_t MulOp::shift() {
@@ -7858,14 +8303,21 @@ void MulOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
 }
 
 ::mlir::LogicalResult MulOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_shift = (*this)->getAttr(shiftAttrName());
-    if (!tblgen_shift)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_shift;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'shift'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps12(*this, tblgen_shift, "shift")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == shiftAttrName()) {
+      tblgen_shift = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps12(*this, tblgen_shift, "shift")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -7897,7 +8349,7 @@ void MulOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
   return verifyInvariantsImpl();
 }
 
-void MulOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void MulOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -7911,9 +8363,11 @@ namespace tosa {
 // mlir::tosa::NegateOp definitions
 //===----------------------------------------------------------------------===//
 
-NegateOpAdaptor::NegateOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+NegateOpAdaptor::NegateOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.negate", odsAttrs.getContext());
+}
 
-NegateOpAdaptor::NegateOpAdaptor(NegateOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+NegateOpAdaptor::NegateOpAdaptor(NegateOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange NegateOpAdaptor::getOperands() {
   return odsOperands;
@@ -7939,8 +8393,8 @@ std::pair<unsigned, unsigned> NegateOpAdaptor::getODSOperandIndexAndLength(unsig
 
 mlir::tosa::UnaryOpQuantizationAttr NegateOpAdaptor::quantization_infoAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  mlir::tosa::UnaryOpQuantizationAttr attr = odsAttrs.get("quantization_info").dyn_cast_or_null<mlir::tosa::UnaryOpQuantizationAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, NegateOp::quantization_infoAttrName(*odsOpName)).dyn_cast_or_null<mlir::tosa::UnaryOpQuantizationAttr>();
+    return attr;
 }
 
 ::llvm::Optional<mlir::tosa::UnaryOpQuantizationAttr> NegateOpAdaptor::quantization_info() {
@@ -7949,11 +8403,21 @@ mlir::tosa::UnaryOpQuantizationAttr NegateOpAdaptor::quantization_infoAttr() {
 }
 
 ::mlir::LogicalResult NegateOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_quantization_info = odsAttrs.get("quantization_info");
-    if (tblgen_quantization_info && !((tblgen_quantization_info.isa<mlir::tosa::UnaryOpQuantizationAttr>())))
-      return emitError(loc, "'tosa.negate' op ""attribute 'quantization_info' failed to satisfy constraint: Attribute for UnaryOp quantization information.");
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_quantization_info;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == NegateOp::quantization_infoAttrName(*odsOpName)) {
+      tblgen_quantization_info = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_quantization_info && !((tblgen_quantization_info.isa<mlir::tosa::UnaryOpQuantizationAttr>())))
+    return emitError(loc, "'tosa.negate' op ""attribute 'quantization_info' failed to satisfy constraint: Attribute for UnaryOp quantization information.");
   return ::mlir::success();
 }
 
@@ -7992,7 +8456,7 @@ std::pair<unsigned, unsigned> NegateOp::getODSResultIndexAndLength(unsigned inde
 }
 
 mlir::tosa::UnaryOpQuantizationAttr NegateOp::quantization_infoAttr() {
-  return (*this)->getAttr(quantization_infoAttrName()).dyn_cast_or_null<mlir::tosa::UnaryOpQuantizationAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, quantization_infoAttrName()).dyn_cast_or_null<mlir::tosa::UnaryOpQuantizationAttr>();
 }
 
 ::llvm::Optional<mlir::tosa::UnaryOpQuantizationAttr> NegateOp::quantization_info() {
@@ -8039,11 +8503,21 @@ void NegateOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::LogicalResult NegateOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_quantization_info = (*this)->getAttr(quantization_infoAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps4(*this, tblgen_quantization_info, "quantization_info")))
-      return ::mlir::failure();
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_quantization_info;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == quantization_infoAttrName()) {
+      tblgen_quantization_info = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps4(*this, tblgen_quantization_info, "quantization_info")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -8069,7 +8543,7 @@ void NegateOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   return verifyInvariantsImpl();
 }
 
-void NegateOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void NegateOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -8083,9 +8557,11 @@ namespace tosa {
 // mlir::tosa::PadOp definitions
 //===----------------------------------------------------------------------===//
 
-PadOpAdaptor::PadOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+PadOpAdaptor::PadOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.pad", odsAttrs.getContext());
+}
 
-PadOpAdaptor::PadOpAdaptor(PadOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+PadOpAdaptor::PadOpAdaptor(PadOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange PadOpAdaptor::getOperands() {
   return odsOperands;
@@ -8134,8 +8610,8 @@ std::pair<unsigned, unsigned> PadOpAdaptor::getODSOperandIndexAndLength(unsigned
 
 mlir::tosa::PadOpQuantizationAttr PadOpAdaptor::quantization_infoAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  mlir::tosa::PadOpQuantizationAttr attr = odsAttrs.get("quantization_info").dyn_cast_or_null<mlir::tosa::PadOpQuantizationAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, PadOp::quantization_infoAttrName(*odsOpName)).dyn_cast_or_null<mlir::tosa::PadOpQuantizationAttr>();
+    return attr;
 }
 
 ::llvm::Optional<mlir::tosa::PadOpQuantizationAttr> PadOpAdaptor::quantization_info() {
@@ -8144,11 +8620,21 @@ mlir::tosa::PadOpQuantizationAttr PadOpAdaptor::quantization_infoAttr() {
 }
 
 ::mlir::LogicalResult PadOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_quantization_info = odsAttrs.get("quantization_info");
-    if (tblgen_quantization_info && !((tblgen_quantization_info.isa<mlir::tosa::PadOpQuantizationAttr>())))
-      return emitError(loc, "'tosa.pad' op ""attribute 'quantization_info' failed to satisfy constraint: Attribute for PadOp quantization information.");
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_quantization_info;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == PadOp::quantization_infoAttrName(*odsOpName)) {
+      tblgen_quantization_info = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_quantization_info && !((tblgen_quantization_info.isa<mlir::tosa::PadOpQuantizationAttr>())))
+    return emitError(loc, "'tosa.pad' op ""attribute 'quantization_info' failed to satisfy constraint: Attribute for PadOp quantization information.");
   return ::mlir::success();
 }
 
@@ -8222,7 +8708,7 @@ std::pair<unsigned, unsigned> PadOp::getODSResultIndexAndLength(unsigned index) 
 }
 
 mlir::tosa::PadOpQuantizationAttr PadOp::quantization_infoAttr() {
-  return (*this)->getAttr(quantization_infoAttrName()).dyn_cast_or_null<mlir::tosa::PadOpQuantizationAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, quantization_infoAttrName()).dyn_cast_or_null<mlir::tosa::PadOpQuantizationAttr>();
 }
 
 ::llvm::Optional<mlir::tosa::PadOpQuantizationAttr> PadOp::quantization_info() {
@@ -8282,11 +8768,21 @@ void PadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
 }
 
 ::mlir::LogicalResult PadOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_quantization_info = (*this)->getAttr(quantization_infoAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps13(*this, tblgen_quantization_info, "quantization_info")))
-      return ::mlir::failure();
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_quantization_info;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == quantization_infoAttrName()) {
+      tblgen_quantization_info = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps13(*this, tblgen_quantization_info, "quantization_info")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -8329,7 +8825,7 @@ void PadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
   return verifyInvariantsImpl();
 }
 
-void PadOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void PadOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -8343,9 +8839,11 @@ namespace tosa {
 // mlir::tosa::PowOp definitions
 //===----------------------------------------------------------------------===//
 
-PowOpAdaptor::PowOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+PowOpAdaptor::PowOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.pow", odsAttrs.getContext());
+}
 
-PowOpAdaptor::PowOpAdaptor(PowOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+PowOpAdaptor::PowOpAdaptor(PowOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange PowOpAdaptor::getOperands() {
   return odsOperands;
@@ -8474,7 +8972,7 @@ void PowOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
   return verifyInvariantsImpl();
 }
 
-void PowOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void PowOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -8488,9 +8986,11 @@ namespace tosa {
 // mlir::tosa::ReciprocalOp definitions
 //===----------------------------------------------------------------------===//
 
-ReciprocalOpAdaptor::ReciprocalOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ReciprocalOpAdaptor::ReciprocalOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.reciprocal", odsAttrs.getContext());
+}
 
-ReciprocalOpAdaptor::ReciprocalOpAdaptor(ReciprocalOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ReciprocalOpAdaptor::ReciprocalOpAdaptor(ReciprocalOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ReciprocalOpAdaptor::getOperands() {
   return odsOperands;
@@ -8597,7 +9097,7 @@ void ReciprocalOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
   return verifyInvariantsImpl();
 }
 
-void ReciprocalOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ReciprocalOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -8611,9 +9111,11 @@ namespace tosa {
 // mlir::tosa::ReduceAllOp definitions
 //===----------------------------------------------------------------------===//
 
-ReduceAllOpAdaptor::ReduceAllOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ReduceAllOpAdaptor::ReduceAllOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.reduce_all", odsAttrs.getContext());
+}
 
-ReduceAllOpAdaptor::ReduceAllOpAdaptor(ReduceAllOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ReduceAllOpAdaptor::ReduceAllOpAdaptor(ReduceAllOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ReduceAllOpAdaptor::getOperands() {
   return odsOperands;
@@ -8639,8 +9141,8 @@ std::pair<unsigned, unsigned> ReduceAllOpAdaptor::getODSOperandIndexAndLength(un
 
 ::mlir::IntegerAttr ReduceAllOpAdaptor::axisAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("axis").cast<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ReduceAllOp::axisAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+    return attr;
 }
 
 uint64_t ReduceAllOpAdaptor::axis() {
@@ -8649,14 +9151,21 @@ uint64_t ReduceAllOpAdaptor::axis() {
 }
 
 ::mlir::LogicalResult ReduceAllOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_axis = odsAttrs.get("axis");
-    if (!tblgen_axis)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_axis;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.reduce_all' op ""requires attribute 'axis'");
-
-    if (tblgen_axis && !(((tblgen_axis.isa<::mlir::IntegerAttr>())) && ((tblgen_axis.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
-      return emitError(loc, "'tosa.reduce_all' op ""attribute 'axis' failed to satisfy constraint: 64-bit signless integer attribute");
+    if (namedAttrIt->getName() == ReduceAllOp::axisAttrName(*odsOpName)) {
+      tblgen_axis = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_axis && !(((tblgen_axis.isa<::mlir::IntegerAttr>())) && ((tblgen_axis.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
+    return emitError(loc, "'tosa.reduce_all' op ""attribute 'axis' failed to satisfy constraint: 64-bit signless integer attribute");
   return ::mlir::success();
 }
 
@@ -8695,7 +9204,7 @@ std::pair<unsigned, unsigned> ReduceAllOp::getODSResultIndexAndLength(unsigned i
 }
 
 ::mlir::IntegerAttr ReduceAllOp::axisAttr() {
-  return (*this)->getAttr(axisAttrName()).cast<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, axisAttrName()).cast<::mlir::IntegerAttr>();
 }
 
 uint64_t ReduceAllOp::axis() {
@@ -8742,14 +9251,21 @@ void ReduceAllOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 }
 
 ::mlir::LogicalResult ReduceAllOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_axis = (*this)->getAttr(axisAttrName());
-    if (!tblgen_axis)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_axis;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'axis'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps1(*this, tblgen_axis, "axis")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == axisAttrName()) {
+      tblgen_axis = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps1(*this, tblgen_axis, "axis")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -8775,7 +9291,7 @@ void ReduceAllOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   return verifyInvariantsImpl();
 }
 
-void ReduceAllOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ReduceAllOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -8789,9 +9305,11 @@ namespace tosa {
 // mlir::tosa::ReduceAnyOp definitions
 //===----------------------------------------------------------------------===//
 
-ReduceAnyOpAdaptor::ReduceAnyOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ReduceAnyOpAdaptor::ReduceAnyOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.reduce_any", odsAttrs.getContext());
+}
 
-ReduceAnyOpAdaptor::ReduceAnyOpAdaptor(ReduceAnyOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ReduceAnyOpAdaptor::ReduceAnyOpAdaptor(ReduceAnyOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ReduceAnyOpAdaptor::getOperands() {
   return odsOperands;
@@ -8817,8 +9335,8 @@ std::pair<unsigned, unsigned> ReduceAnyOpAdaptor::getODSOperandIndexAndLength(un
 
 ::mlir::IntegerAttr ReduceAnyOpAdaptor::axisAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("axis").cast<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ReduceAnyOp::axisAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+    return attr;
 }
 
 uint64_t ReduceAnyOpAdaptor::axis() {
@@ -8827,14 +9345,21 @@ uint64_t ReduceAnyOpAdaptor::axis() {
 }
 
 ::mlir::LogicalResult ReduceAnyOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_axis = odsAttrs.get("axis");
-    if (!tblgen_axis)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_axis;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.reduce_any' op ""requires attribute 'axis'");
-
-    if (tblgen_axis && !(((tblgen_axis.isa<::mlir::IntegerAttr>())) && ((tblgen_axis.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
-      return emitError(loc, "'tosa.reduce_any' op ""attribute 'axis' failed to satisfy constraint: 64-bit signless integer attribute");
+    if (namedAttrIt->getName() == ReduceAnyOp::axisAttrName(*odsOpName)) {
+      tblgen_axis = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_axis && !(((tblgen_axis.isa<::mlir::IntegerAttr>())) && ((tblgen_axis.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
+    return emitError(loc, "'tosa.reduce_any' op ""attribute 'axis' failed to satisfy constraint: 64-bit signless integer attribute");
   return ::mlir::success();
 }
 
@@ -8873,7 +9398,7 @@ std::pair<unsigned, unsigned> ReduceAnyOp::getODSResultIndexAndLength(unsigned i
 }
 
 ::mlir::IntegerAttr ReduceAnyOp::axisAttr() {
-  return (*this)->getAttr(axisAttrName()).cast<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, axisAttrName()).cast<::mlir::IntegerAttr>();
 }
 
 uint64_t ReduceAnyOp::axis() {
@@ -8920,14 +9445,21 @@ void ReduceAnyOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 }
 
 ::mlir::LogicalResult ReduceAnyOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_axis = (*this)->getAttr(axisAttrName());
-    if (!tblgen_axis)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_axis;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'axis'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps1(*this, tblgen_axis, "axis")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == axisAttrName()) {
+      tblgen_axis = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps1(*this, tblgen_axis, "axis")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -8953,7 +9485,7 @@ void ReduceAnyOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   return verifyInvariantsImpl();
 }
 
-void ReduceAnyOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ReduceAnyOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -8967,9 +9499,11 @@ namespace tosa {
 // mlir::tosa::ReduceMaxOp definitions
 //===----------------------------------------------------------------------===//
 
-ReduceMaxOpAdaptor::ReduceMaxOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ReduceMaxOpAdaptor::ReduceMaxOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.reduce_max", odsAttrs.getContext());
+}
 
-ReduceMaxOpAdaptor::ReduceMaxOpAdaptor(ReduceMaxOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ReduceMaxOpAdaptor::ReduceMaxOpAdaptor(ReduceMaxOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ReduceMaxOpAdaptor::getOperands() {
   return odsOperands;
@@ -8995,8 +9529,8 @@ std::pair<unsigned, unsigned> ReduceMaxOpAdaptor::getODSOperandIndexAndLength(un
 
 ::mlir::IntegerAttr ReduceMaxOpAdaptor::axisAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("axis").cast<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ReduceMaxOp::axisAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+    return attr;
 }
 
 uint64_t ReduceMaxOpAdaptor::axis() {
@@ -9005,14 +9539,21 @@ uint64_t ReduceMaxOpAdaptor::axis() {
 }
 
 ::mlir::LogicalResult ReduceMaxOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_axis = odsAttrs.get("axis");
-    if (!tblgen_axis)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_axis;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.reduce_max' op ""requires attribute 'axis'");
-
-    if (tblgen_axis && !(((tblgen_axis.isa<::mlir::IntegerAttr>())) && ((tblgen_axis.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
-      return emitError(loc, "'tosa.reduce_max' op ""attribute 'axis' failed to satisfy constraint: 64-bit signless integer attribute");
+    if (namedAttrIt->getName() == ReduceMaxOp::axisAttrName(*odsOpName)) {
+      tblgen_axis = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_axis && !(((tblgen_axis.isa<::mlir::IntegerAttr>())) && ((tblgen_axis.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
+    return emitError(loc, "'tosa.reduce_max' op ""attribute 'axis' failed to satisfy constraint: 64-bit signless integer attribute");
   return ::mlir::success();
 }
 
@@ -9051,7 +9592,7 @@ std::pair<unsigned, unsigned> ReduceMaxOp::getODSResultIndexAndLength(unsigned i
 }
 
 ::mlir::IntegerAttr ReduceMaxOp::axisAttr() {
-  return (*this)->getAttr(axisAttrName()).cast<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, axisAttrName()).cast<::mlir::IntegerAttr>();
 }
 
 uint64_t ReduceMaxOp::axis() {
@@ -9098,14 +9639,21 @@ void ReduceMaxOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 }
 
 ::mlir::LogicalResult ReduceMaxOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_axis = (*this)->getAttr(axisAttrName());
-    if (!tblgen_axis)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_axis;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'axis'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps1(*this, tblgen_axis, "axis")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == axisAttrName()) {
+      tblgen_axis = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps1(*this, tblgen_axis, "axis")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -9131,7 +9679,7 @@ void ReduceMaxOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   return verifyInvariantsImpl();
 }
 
-void ReduceMaxOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ReduceMaxOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -9145,9 +9693,11 @@ namespace tosa {
 // mlir::tosa::ReduceMinOp definitions
 //===----------------------------------------------------------------------===//
 
-ReduceMinOpAdaptor::ReduceMinOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ReduceMinOpAdaptor::ReduceMinOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.reduce_min", odsAttrs.getContext());
+}
 
-ReduceMinOpAdaptor::ReduceMinOpAdaptor(ReduceMinOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ReduceMinOpAdaptor::ReduceMinOpAdaptor(ReduceMinOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ReduceMinOpAdaptor::getOperands() {
   return odsOperands;
@@ -9173,8 +9723,8 @@ std::pair<unsigned, unsigned> ReduceMinOpAdaptor::getODSOperandIndexAndLength(un
 
 ::mlir::IntegerAttr ReduceMinOpAdaptor::axisAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("axis").cast<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ReduceMinOp::axisAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+    return attr;
 }
 
 uint64_t ReduceMinOpAdaptor::axis() {
@@ -9183,14 +9733,21 @@ uint64_t ReduceMinOpAdaptor::axis() {
 }
 
 ::mlir::LogicalResult ReduceMinOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_axis = odsAttrs.get("axis");
-    if (!tblgen_axis)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_axis;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.reduce_min' op ""requires attribute 'axis'");
-
-    if (tblgen_axis && !(((tblgen_axis.isa<::mlir::IntegerAttr>())) && ((tblgen_axis.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
-      return emitError(loc, "'tosa.reduce_min' op ""attribute 'axis' failed to satisfy constraint: 64-bit signless integer attribute");
+    if (namedAttrIt->getName() == ReduceMinOp::axisAttrName(*odsOpName)) {
+      tblgen_axis = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_axis && !(((tblgen_axis.isa<::mlir::IntegerAttr>())) && ((tblgen_axis.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
+    return emitError(loc, "'tosa.reduce_min' op ""attribute 'axis' failed to satisfy constraint: 64-bit signless integer attribute");
   return ::mlir::success();
 }
 
@@ -9229,7 +9786,7 @@ std::pair<unsigned, unsigned> ReduceMinOp::getODSResultIndexAndLength(unsigned i
 }
 
 ::mlir::IntegerAttr ReduceMinOp::axisAttr() {
-  return (*this)->getAttr(axisAttrName()).cast<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, axisAttrName()).cast<::mlir::IntegerAttr>();
 }
 
 uint64_t ReduceMinOp::axis() {
@@ -9276,14 +9833,21 @@ void ReduceMinOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 }
 
 ::mlir::LogicalResult ReduceMinOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_axis = (*this)->getAttr(axisAttrName());
-    if (!tblgen_axis)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_axis;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'axis'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps1(*this, tblgen_axis, "axis")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == axisAttrName()) {
+      tblgen_axis = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps1(*this, tblgen_axis, "axis")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -9309,7 +9873,7 @@ void ReduceMinOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   return verifyInvariantsImpl();
 }
 
-void ReduceMinOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ReduceMinOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -9323,9 +9887,11 @@ namespace tosa {
 // mlir::tosa::ReduceProdOp definitions
 //===----------------------------------------------------------------------===//
 
-ReduceProdOpAdaptor::ReduceProdOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ReduceProdOpAdaptor::ReduceProdOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.reduce_prod", odsAttrs.getContext());
+}
 
-ReduceProdOpAdaptor::ReduceProdOpAdaptor(ReduceProdOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ReduceProdOpAdaptor::ReduceProdOpAdaptor(ReduceProdOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ReduceProdOpAdaptor::getOperands() {
   return odsOperands;
@@ -9351,8 +9917,8 @@ std::pair<unsigned, unsigned> ReduceProdOpAdaptor::getODSOperandIndexAndLength(u
 
 ::mlir::IntegerAttr ReduceProdOpAdaptor::axisAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("axis").cast<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ReduceProdOp::axisAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+    return attr;
 }
 
 uint64_t ReduceProdOpAdaptor::axis() {
@@ -9361,14 +9927,21 @@ uint64_t ReduceProdOpAdaptor::axis() {
 }
 
 ::mlir::LogicalResult ReduceProdOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_axis = odsAttrs.get("axis");
-    if (!tblgen_axis)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_axis;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.reduce_prod' op ""requires attribute 'axis'");
-
-    if (tblgen_axis && !(((tblgen_axis.isa<::mlir::IntegerAttr>())) && ((tblgen_axis.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
-      return emitError(loc, "'tosa.reduce_prod' op ""attribute 'axis' failed to satisfy constraint: 64-bit signless integer attribute");
+    if (namedAttrIt->getName() == ReduceProdOp::axisAttrName(*odsOpName)) {
+      tblgen_axis = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_axis && !(((tblgen_axis.isa<::mlir::IntegerAttr>())) && ((tblgen_axis.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
+    return emitError(loc, "'tosa.reduce_prod' op ""attribute 'axis' failed to satisfy constraint: 64-bit signless integer attribute");
   return ::mlir::success();
 }
 
@@ -9407,7 +9980,7 @@ std::pair<unsigned, unsigned> ReduceProdOp::getODSResultIndexAndLength(unsigned 
 }
 
 ::mlir::IntegerAttr ReduceProdOp::axisAttr() {
-  return (*this)->getAttr(axisAttrName()).cast<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, axisAttrName()).cast<::mlir::IntegerAttr>();
 }
 
 uint64_t ReduceProdOp::axis() {
@@ -9454,14 +10027,21 @@ void ReduceProdOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
 }
 
 ::mlir::LogicalResult ReduceProdOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_axis = (*this)->getAttr(axisAttrName());
-    if (!tblgen_axis)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_axis;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'axis'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps1(*this, tblgen_axis, "axis")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == axisAttrName()) {
+      tblgen_axis = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps1(*this, tblgen_axis, "axis")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -9487,7 +10067,7 @@ void ReduceProdOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
   return verifyInvariantsImpl();
 }
 
-void ReduceProdOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ReduceProdOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -9501,9 +10081,11 @@ namespace tosa {
 // mlir::tosa::ReduceSumOp definitions
 //===----------------------------------------------------------------------===//
 
-ReduceSumOpAdaptor::ReduceSumOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ReduceSumOpAdaptor::ReduceSumOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.reduce_sum", odsAttrs.getContext());
+}
 
-ReduceSumOpAdaptor::ReduceSumOpAdaptor(ReduceSumOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ReduceSumOpAdaptor::ReduceSumOpAdaptor(ReduceSumOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ReduceSumOpAdaptor::getOperands() {
   return odsOperands;
@@ -9529,8 +10111,8 @@ std::pair<unsigned, unsigned> ReduceSumOpAdaptor::getODSOperandIndexAndLength(un
 
 ::mlir::IntegerAttr ReduceSumOpAdaptor::axisAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("axis").cast<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ReduceSumOp::axisAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+    return attr;
 }
 
 uint64_t ReduceSumOpAdaptor::axis() {
@@ -9539,14 +10121,21 @@ uint64_t ReduceSumOpAdaptor::axis() {
 }
 
 ::mlir::LogicalResult ReduceSumOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_axis = odsAttrs.get("axis");
-    if (!tblgen_axis)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_axis;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.reduce_sum' op ""requires attribute 'axis'");
-
-    if (tblgen_axis && !(((tblgen_axis.isa<::mlir::IntegerAttr>())) && ((tblgen_axis.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
-      return emitError(loc, "'tosa.reduce_sum' op ""attribute 'axis' failed to satisfy constraint: 64-bit signless integer attribute");
+    if (namedAttrIt->getName() == ReduceSumOp::axisAttrName(*odsOpName)) {
+      tblgen_axis = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_axis && !(((tblgen_axis.isa<::mlir::IntegerAttr>())) && ((tblgen_axis.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
+    return emitError(loc, "'tosa.reduce_sum' op ""attribute 'axis' failed to satisfy constraint: 64-bit signless integer attribute");
   return ::mlir::success();
 }
 
@@ -9585,7 +10174,7 @@ std::pair<unsigned, unsigned> ReduceSumOp::getODSResultIndexAndLength(unsigned i
 }
 
 ::mlir::IntegerAttr ReduceSumOp::axisAttr() {
-  return (*this)->getAttr(axisAttrName()).cast<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, axisAttrName()).cast<::mlir::IntegerAttr>();
 }
 
 uint64_t ReduceSumOp::axis() {
@@ -9632,14 +10221,21 @@ void ReduceSumOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 }
 
 ::mlir::LogicalResult ReduceSumOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_axis = (*this)->getAttr(axisAttrName());
-    if (!tblgen_axis)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_axis;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'axis'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps1(*this, tblgen_axis, "axis")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == axisAttrName()) {
+      tblgen_axis = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps1(*this, tblgen_axis, "axis")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -9665,7 +10261,7 @@ void ReduceSumOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   return verifyInvariantsImpl();
 }
 
-void ReduceSumOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ReduceSumOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -9679,9 +10275,11 @@ namespace tosa {
 // mlir::tosa::ReluNOp definitions
 //===----------------------------------------------------------------------===//
 
-ReluNOpAdaptor::ReluNOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ReluNOpAdaptor::ReluNOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.reluN", odsAttrs.getContext());
+}
 
-ReluNOpAdaptor::ReluNOpAdaptor(ReluNOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ReluNOpAdaptor::ReluNOpAdaptor(ReluNOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ReluNOpAdaptor::getOperands() {
   return odsOperands;
@@ -9707,8 +10305,8 @@ std::pair<unsigned, unsigned> ReluNOpAdaptor::getODSOperandIndexAndLength(unsign
 
 ::mlir::IntegerAttr ReluNOpAdaptor::max_intAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("max_int").cast<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, ReluNOp::max_intAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+    return attr;
 }
 
 uint64_t ReluNOpAdaptor::max_int() {
@@ -9718,8 +10316,8 @@ uint64_t ReluNOpAdaptor::max_int() {
 
 ::mlir::FloatAttr ReluNOpAdaptor::max_fpAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::FloatAttr attr = odsAttrs.get("max_fp").cast<::mlir::FloatAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, ReluNOp::max_fpAttrName(*odsOpName)).cast<::mlir::FloatAttr>();
+    return attr;
 }
 
 ::llvm::APFloat ReluNOpAdaptor::max_fp() {
@@ -9728,22 +10326,34 @@ uint64_t ReluNOpAdaptor::max_int() {
 }
 
 ::mlir::LogicalResult ReluNOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_max_int = odsAttrs.get("max_int");
-    if (!tblgen_max_int)
-      return emitError(loc, "'tosa.reluN' op ""requires attribute 'max_int'");
-
-    if (tblgen_max_int && !(((tblgen_max_int.isa<::mlir::IntegerAttr>())) && ((tblgen_max_int.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
-      return emitError(loc, "'tosa.reluN' op ""attribute 'max_int' failed to satisfy constraint: 64-bit signless integer attribute");
-  }
-  {
-    auto tblgen_max_fp = odsAttrs.get("max_fp");
-    if (!tblgen_max_fp)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_max_fp;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.reluN' op ""requires attribute 'max_fp'");
-
-    if (tblgen_max_fp && !(((tblgen_max_fp.isa<::mlir::FloatAttr>())) && ((tblgen_max_fp.cast<::mlir::FloatAttr>().getType().isF32()))))
-      return emitError(loc, "'tosa.reluN' op ""attribute 'max_fp' failed to satisfy constraint: 32-bit float attribute");
+    if (namedAttrIt->getName() == ReluNOp::max_fpAttrName(*odsOpName)) {
+      tblgen_max_fp = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+  ::mlir::Attribute tblgen_max_int;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'tosa.reluN' op ""requires attribute 'max_int'");
+    if (namedAttrIt->getName() == ReluNOp::max_intAttrName(*odsOpName)) {
+      tblgen_max_int = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
+  if (tblgen_max_int && !(((tblgen_max_int.isa<::mlir::IntegerAttr>())) && ((tblgen_max_int.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
+    return emitError(loc, "'tosa.reluN' op ""attribute 'max_int' failed to satisfy constraint: 64-bit signless integer attribute");
+
+  if (tblgen_max_fp && !(((tblgen_max_fp.isa<::mlir::FloatAttr>())) && ((tblgen_max_fp.cast<::mlir::FloatAttr>().getType().isF32()))))
+    return emitError(loc, "'tosa.reluN' op ""attribute 'max_fp' failed to satisfy constraint: 32-bit float attribute");
   return ::mlir::success();
 }
 
@@ -9782,7 +10392,7 @@ std::pair<unsigned, unsigned> ReluNOp::getODSResultIndexAndLength(unsigned index
 }
 
 ::mlir::IntegerAttr ReluNOp::max_intAttr() {
-  return (*this)->getAttr(max_intAttrName()).cast<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, max_intAttrName()).cast<::mlir::IntegerAttr>();
 }
 
 uint64_t ReluNOp::max_int() {
@@ -9791,7 +10401,7 @@ uint64_t ReluNOp::max_int() {
 }
 
 ::mlir::FloatAttr ReluNOp::max_fpAttr() {
-  return (*this)->getAttr(max_fpAttrName()).cast<::mlir::FloatAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, max_fpAttrName()).cast<::mlir::FloatAttr>();
 }
 
 ::llvm::APFloat ReluNOp::max_fp() {
@@ -9846,22 +10456,34 @@ void ReluNOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 ::mlir::LogicalResult ReluNOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_max_int = (*this)->getAttr(max_intAttrName());
-    if (!tblgen_max_int)
-      return emitOpError("requires attribute 'max_int'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps1(*this, tblgen_max_int, "max_int")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_max_fp = (*this)->getAttr(max_fpAttrName());
-    if (!tblgen_max_fp)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_max_fp;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'max_fp'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps5(*this, tblgen_max_fp, "max_fp")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == max_fpAttrName()) {
+      tblgen_max_fp = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+  ::mlir::Attribute tblgen_max_int;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'max_int'");
+    if (namedAttrIt->getName() == max_intAttrName()) {
+      tblgen_max_int = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps1(*this, tblgen_max_int, "max_int")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps5(*this, tblgen_max_fp, "max_fp")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -9887,7 +10509,7 @@ void ReluNOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   return verifyInvariantsImpl();
 }
 
-void ReluNOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ReluNOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -9901,9 +10523,11 @@ namespace tosa {
 // mlir::tosa::RescaleOp definitions
 //===----------------------------------------------------------------------===//
 
-RescaleOpAdaptor::RescaleOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+RescaleOpAdaptor::RescaleOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.rescale", odsAttrs.getContext());
+}
 
-RescaleOpAdaptor::RescaleOpAdaptor(RescaleOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+RescaleOpAdaptor::RescaleOpAdaptor(RescaleOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange RescaleOpAdaptor::getOperands() {
   return odsOperands;
@@ -9929,8 +10553,8 @@ std::pair<unsigned, unsigned> RescaleOpAdaptor::getODSOperandIndexAndLength(unsi
 
 ::mlir::IntegerAttr RescaleOpAdaptor::input_zpAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("input_zp").cast<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 5, RescaleOp::input_zpAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+    return attr;
 }
 
 uint32_t RescaleOpAdaptor::input_zp() {
@@ -9940,8 +10564,8 @@ uint32_t RescaleOpAdaptor::input_zp() {
 
 ::mlir::IntegerAttr RescaleOpAdaptor::output_zpAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("output_zp").cast<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 3, odsAttrs.end() - 3, RescaleOp::output_zpAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+    return attr;
 }
 
 uint32_t RescaleOpAdaptor::output_zp() {
@@ -9951,8 +10575,8 @@ uint32_t RescaleOpAdaptor::output_zp() {
 
 ::mlir::ArrayAttr RescaleOpAdaptor::multiplierAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("multiplier").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 4, RescaleOp::multiplierAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr RescaleOpAdaptor::multiplier() {
@@ -9962,8 +10586,8 @@ uint32_t RescaleOpAdaptor::output_zp() {
 
 ::mlir::ArrayAttr RescaleOpAdaptor::shiftAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("shift").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 6, odsAttrs.end() - 0, RescaleOp::shiftAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr RescaleOpAdaptor::shift() {
@@ -9973,8 +10597,8 @@ uint32_t RescaleOpAdaptor::output_zp() {
 
 ::mlir::BoolAttr RescaleOpAdaptor::scale32Attr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::BoolAttr attr = odsAttrs.get("scale32").cast<::mlir::BoolAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 5, odsAttrs.end() - 1, RescaleOp::scale32AttrName(*odsOpName)).cast<::mlir::BoolAttr>();
+    return attr;
 }
 
 bool RescaleOpAdaptor::scale32() {
@@ -9984,8 +10608,8 @@ bool RescaleOpAdaptor::scale32() {
 
 ::mlir::BoolAttr RescaleOpAdaptor::double_roundAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::BoolAttr attr = odsAttrs.get("double_round").cast<::mlir::BoolAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 6, RescaleOp::double_roundAttrName(*odsOpName)).cast<::mlir::BoolAttr>();
+    return attr;
 }
 
 bool RescaleOpAdaptor::double_round() {
@@ -9995,8 +10619,8 @@ bool RescaleOpAdaptor::double_round() {
 
 ::mlir::BoolAttr RescaleOpAdaptor::per_channelAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::BoolAttr attr = odsAttrs.get("per_channel").cast<::mlir::BoolAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 4, odsAttrs.end() - 2, RescaleOp::per_channelAttrName(*odsOpName)).cast<::mlir::BoolAttr>();
+    return attr;
 }
 
 bool RescaleOpAdaptor::per_channel() {
@@ -10005,62 +10629,99 @@ bool RescaleOpAdaptor::per_channel() {
 }
 
 ::mlir::LogicalResult RescaleOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_input_zp = odsAttrs.get("input_zp");
-    if (!tblgen_input_zp)
-      return emitError(loc, "'tosa.rescale' op ""requires attribute 'input_zp'");
-
-    if (tblgen_input_zp && !(((tblgen_input_zp.isa<::mlir::IntegerAttr>())) && ((tblgen_input_zp.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))))
-      return emitError(loc, "'tosa.rescale' op ""attribute 'input_zp' failed to satisfy constraint: 32-bit signless integer attribute");
-  }
-  {
-    auto tblgen_output_zp = odsAttrs.get("output_zp");
-    if (!tblgen_output_zp)
-      return emitError(loc, "'tosa.rescale' op ""requires attribute 'output_zp'");
-
-    if (tblgen_output_zp && !(((tblgen_output_zp.isa<::mlir::IntegerAttr>())) && ((tblgen_output_zp.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))))
-      return emitError(loc, "'tosa.rescale' op ""attribute 'output_zp' failed to satisfy constraint: 32-bit signless integer attribute");
-  }
-  {
-    auto tblgen_multiplier = odsAttrs.get("multiplier");
-    if (!tblgen_multiplier)
-      return emitError(loc, "'tosa.rescale' op ""requires attribute 'multiplier'");
-
-    if (tblgen_multiplier && !(((tblgen_multiplier.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_multiplier.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))); }))))
-      return emitError(loc, "'tosa.rescale' op ""attribute 'multiplier' failed to satisfy constraint: 32-bit integer array attribute");
-  }
-  {
-    auto tblgen_shift = odsAttrs.get("shift");
-    if (!tblgen_shift)
-      return emitError(loc, "'tosa.rescale' op ""requires attribute 'shift'");
-
-    if (tblgen_shift && !(((tblgen_shift.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_shift.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))); }))))
-      return emitError(loc, "'tosa.rescale' op ""attribute 'shift' failed to satisfy constraint: 32-bit integer array attribute");
-  }
-  {
-    auto tblgen_scale32 = odsAttrs.get("scale32");
-    if (!tblgen_scale32)
-      return emitError(loc, "'tosa.rescale' op ""requires attribute 'scale32'");
-
-    if (tblgen_scale32 && !((tblgen_scale32.isa<::mlir::BoolAttr>())))
-      return emitError(loc, "'tosa.rescale' op ""attribute 'scale32' failed to satisfy constraint: bool attribute");
-  }
-  {
-    auto tblgen_double_round = odsAttrs.get("double_round");
-    if (!tblgen_double_round)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_double_round;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.rescale' op ""requires attribute 'double_round'");
-
-    if (tblgen_double_round && !((tblgen_double_round.isa<::mlir::BoolAttr>())))
-      return emitError(loc, "'tosa.rescale' op ""attribute 'double_round' failed to satisfy constraint: bool attribute");
+    if (namedAttrIt->getName() == RescaleOp::double_roundAttrName(*odsOpName)) {
+      tblgen_double_round = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_per_channel = odsAttrs.get("per_channel");
-    if (!tblgen_per_channel)
+  ::mlir::Attribute tblgen_input_zp;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'tosa.rescale' op ""requires attribute 'input_zp'");
+    if (namedAttrIt->getName() == RescaleOp::input_zpAttrName(*odsOpName)) {
+      tblgen_input_zp = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_multiplier;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'tosa.rescale' op ""requires attribute 'multiplier'");
+    if (namedAttrIt->getName() == RescaleOp::multiplierAttrName(*odsOpName)) {
+      tblgen_multiplier = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_output_zp;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'tosa.rescale' op ""requires attribute 'output_zp'");
+    if (namedAttrIt->getName() == RescaleOp::output_zpAttrName(*odsOpName)) {
+      tblgen_output_zp = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_per_channel;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.rescale' op ""requires attribute 'per_channel'");
-
-    if (tblgen_per_channel && !((tblgen_per_channel.isa<::mlir::BoolAttr>())))
-      return emitError(loc, "'tosa.rescale' op ""attribute 'per_channel' failed to satisfy constraint: bool attribute");
+    if (namedAttrIt->getName() == RescaleOp::per_channelAttrName(*odsOpName)) {
+      tblgen_per_channel = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+  ::mlir::Attribute tblgen_scale32;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'tosa.rescale' op ""requires attribute 'scale32'");
+    if (namedAttrIt->getName() == RescaleOp::scale32AttrName(*odsOpName)) {
+      tblgen_scale32 = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_shift;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'tosa.rescale' op ""requires attribute 'shift'");
+    if (namedAttrIt->getName() == RescaleOp::shiftAttrName(*odsOpName)) {
+      tblgen_shift = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
+  if (tblgen_input_zp && !(((tblgen_input_zp.isa<::mlir::IntegerAttr>())) && ((tblgen_input_zp.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))))
+    return emitError(loc, "'tosa.rescale' op ""attribute 'input_zp' failed to satisfy constraint: 32-bit signless integer attribute");
+
+  if (tblgen_output_zp && !(((tblgen_output_zp.isa<::mlir::IntegerAttr>())) && ((tblgen_output_zp.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))))
+    return emitError(loc, "'tosa.rescale' op ""attribute 'output_zp' failed to satisfy constraint: 32-bit signless integer attribute");
+
+  if (tblgen_multiplier && !(((tblgen_multiplier.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_multiplier.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))); }))))
+    return emitError(loc, "'tosa.rescale' op ""attribute 'multiplier' failed to satisfy constraint: 32-bit integer array attribute");
+
+  if (tblgen_shift && !(((tblgen_shift.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_shift.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))); }))))
+    return emitError(loc, "'tosa.rescale' op ""attribute 'shift' failed to satisfy constraint: 32-bit integer array attribute");
+
+  if (tblgen_scale32 && !((tblgen_scale32.isa<::mlir::BoolAttr>())))
+    return emitError(loc, "'tosa.rescale' op ""attribute 'scale32' failed to satisfy constraint: bool attribute");
+
+  if (tblgen_double_round && !((tblgen_double_round.isa<::mlir::BoolAttr>())))
+    return emitError(loc, "'tosa.rescale' op ""attribute 'double_round' failed to satisfy constraint: bool attribute");
+
+  if (tblgen_per_channel && !((tblgen_per_channel.isa<::mlir::BoolAttr>())))
+    return emitError(loc, "'tosa.rescale' op ""attribute 'per_channel' failed to satisfy constraint: bool attribute");
   return ::mlir::success();
 }
 
@@ -10099,7 +10760,7 @@ std::pair<unsigned, unsigned> RescaleOp::getODSResultIndexAndLength(unsigned ind
 }
 
 ::mlir::IntegerAttr RescaleOp::input_zpAttr() {
-  return (*this)->getAttr(input_zpAttrName()).cast<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 5, input_zpAttrName()).cast<::mlir::IntegerAttr>();
 }
 
 uint32_t RescaleOp::input_zp() {
@@ -10108,7 +10769,7 @@ uint32_t RescaleOp::input_zp() {
 }
 
 ::mlir::IntegerAttr RescaleOp::output_zpAttr() {
-  return (*this)->getAttr(output_zpAttrName()).cast<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 3, (*this)->getAttrs().end() - 3, output_zpAttrName()).cast<::mlir::IntegerAttr>();
 }
 
 uint32_t RescaleOp::output_zp() {
@@ -10117,7 +10778,7 @@ uint32_t RescaleOp::output_zp() {
 }
 
 ::mlir::ArrayAttr RescaleOp::multiplierAttr() {
-  return (*this)->getAttr(multiplierAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 4, multiplierAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr RescaleOp::multiplier() {
@@ -10126,7 +10787,7 @@ uint32_t RescaleOp::output_zp() {
 }
 
 ::mlir::ArrayAttr RescaleOp::shiftAttr() {
-  return (*this)->getAttr(shiftAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 6, (*this)->getAttrs().end() - 0, shiftAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr RescaleOp::shift() {
@@ -10135,7 +10796,7 @@ uint32_t RescaleOp::output_zp() {
 }
 
 ::mlir::BoolAttr RescaleOp::scale32Attr() {
-  return (*this)->getAttr(scale32AttrName()).cast<::mlir::BoolAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 5, (*this)->getAttrs().end() - 1, scale32AttrName()).cast<::mlir::BoolAttr>();
 }
 
 bool RescaleOp::scale32() {
@@ -10144,7 +10805,7 @@ bool RescaleOp::scale32() {
 }
 
 ::mlir::BoolAttr RescaleOp::double_roundAttr() {
-  return (*this)->getAttr(double_roundAttrName()).cast<::mlir::BoolAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 6, double_roundAttrName()).cast<::mlir::BoolAttr>();
 }
 
 bool RescaleOp::double_round() {
@@ -10153,7 +10814,7 @@ bool RescaleOp::double_round() {
 }
 
 ::mlir::BoolAttr RescaleOp::per_channelAttr() {
-  return (*this)->getAttr(per_channelAttrName()).cast<::mlir::BoolAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 4, (*this)->getAttrs().end() - 2, per_channelAttrName()).cast<::mlir::BoolAttr>();
 }
 
 bool RescaleOp::per_channel() {
@@ -10248,62 +10909,99 @@ void RescaleOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 }
 
 ::mlir::LogicalResult RescaleOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_input_zp = (*this)->getAttr(input_zpAttrName());
-    if (!tblgen_input_zp)
-      return emitOpError("requires attribute 'input_zp'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps12(*this, tblgen_input_zp, "input_zp")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_output_zp = (*this)->getAttr(output_zpAttrName());
-    if (!tblgen_output_zp)
-      return emitOpError("requires attribute 'output_zp'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps12(*this, tblgen_output_zp, "output_zp")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_multiplier = (*this)->getAttr(multiplierAttrName());
-    if (!tblgen_multiplier)
-      return emitOpError("requires attribute 'multiplier'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps14(*this, tblgen_multiplier, "multiplier")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_shift = (*this)->getAttr(shiftAttrName());
-    if (!tblgen_shift)
-      return emitOpError("requires attribute 'shift'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps14(*this, tblgen_shift, "shift")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_scale32 = (*this)->getAttr(scale32AttrName());
-    if (!tblgen_scale32)
-      return emitOpError("requires attribute 'scale32'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps0(*this, tblgen_scale32, "scale32")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_double_round = (*this)->getAttr(double_roundAttrName());
-    if (!tblgen_double_round)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_double_round;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'double_round'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps0(*this, tblgen_double_round, "double_round")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == double_roundAttrName()) {
+      tblgen_double_round = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_per_channel = (*this)->getAttr(per_channelAttrName());
-    if (!tblgen_per_channel)
+  ::mlir::Attribute tblgen_input_zp;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'input_zp'");
+    if (namedAttrIt->getName() == input_zpAttrName()) {
+      tblgen_input_zp = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_multiplier;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'multiplier'");
+    if (namedAttrIt->getName() == multiplierAttrName()) {
+      tblgen_multiplier = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_output_zp;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'output_zp'");
+    if (namedAttrIt->getName() == output_zpAttrName()) {
+      tblgen_output_zp = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_per_channel;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'per_channel'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps0(*this, tblgen_per_channel, "per_channel")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == per_channelAttrName()) {
+      tblgen_per_channel = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+  ::mlir::Attribute tblgen_scale32;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'scale32'");
+    if (namedAttrIt->getName() == scale32AttrName()) {
+      tblgen_scale32 = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_shift;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'shift'");
+    if (namedAttrIt->getName() == shiftAttrName()) {
+      tblgen_shift = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps12(*this, tblgen_input_zp, "input_zp")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps12(*this, tblgen_output_zp, "output_zp")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps14(*this, tblgen_multiplier, "multiplier")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps14(*this, tblgen_shift, "shift")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps0(*this, tblgen_scale32, "scale32")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps0(*this, tblgen_double_round, "double_round")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps0(*this, tblgen_per_channel, "per_channel")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -10329,7 +11027,7 @@ void RescaleOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   return verifyInvariantsImpl();
 }
 
-void RescaleOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void RescaleOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -10343,9 +11041,11 @@ namespace tosa {
 // mlir::tosa::ReshapeOp definitions
 //===----------------------------------------------------------------------===//
 
-ReshapeOpAdaptor::ReshapeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ReshapeOpAdaptor::ReshapeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.reshape", odsAttrs.getContext());
+}
 
-ReshapeOpAdaptor::ReshapeOpAdaptor(ReshapeOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ReshapeOpAdaptor::ReshapeOpAdaptor(ReshapeOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ReshapeOpAdaptor::getOperands() {
   return odsOperands;
@@ -10371,8 +11071,8 @@ std::pair<unsigned, unsigned> ReshapeOpAdaptor::getODSOperandIndexAndLength(unsi
 
 ::mlir::ArrayAttr ReshapeOpAdaptor::new_shapeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("new_shape").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ReshapeOp::new_shapeAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr ReshapeOpAdaptor::new_shape() {
@@ -10381,14 +11081,21 @@ std::pair<unsigned, unsigned> ReshapeOpAdaptor::getODSOperandIndexAndLength(unsi
 }
 
 ::mlir::LogicalResult ReshapeOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_new_shape = odsAttrs.get("new_shape");
-    if (!tblgen_new_shape)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_new_shape;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.reshape' op ""requires attribute 'new_shape'");
-
-    if (tblgen_new_shape && !(((tblgen_new_shape.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_new_shape.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
-      return emitError(loc, "'tosa.reshape' op ""attribute 'new_shape' failed to satisfy constraint: 64-bit integer array attribute");
+    if (namedAttrIt->getName() == ReshapeOp::new_shapeAttrName(*odsOpName)) {
+      tblgen_new_shape = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_new_shape && !(((tblgen_new_shape.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_new_shape.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
+    return emitError(loc, "'tosa.reshape' op ""attribute 'new_shape' failed to satisfy constraint: 64-bit integer array attribute");
   return ::mlir::success();
 }
 
@@ -10427,7 +11134,7 @@ std::pair<unsigned, unsigned> ReshapeOp::getODSResultIndexAndLength(unsigned ind
 }
 
 ::mlir::ArrayAttr ReshapeOp::new_shapeAttr() {
-  return (*this)->getAttr(new_shapeAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, new_shapeAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr ReshapeOp::new_shape() {
@@ -10461,14 +11168,21 @@ void ReshapeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 }
 
 ::mlir::LogicalResult ReshapeOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_new_shape = (*this)->getAttr(new_shapeAttrName());
-    if (!tblgen_new_shape)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_new_shape;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'new_shape'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps15(*this, tblgen_new_shape, "new_shape")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == new_shapeAttrName()) {
+      tblgen_new_shape = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps15(*this, tblgen_new_shape, "new_shape")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -10494,7 +11208,7 @@ void ReshapeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   return verifyInvariantsImpl();
 }
 
-void ReshapeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ReshapeOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -10508,9 +11222,11 @@ namespace tosa {
 // mlir::tosa::ResizeOp definitions
 //===----------------------------------------------------------------------===//
 
-ResizeOpAdaptor::ResizeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ResizeOpAdaptor::ResizeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.resize", odsAttrs.getContext());
+}
 
-ResizeOpAdaptor::ResizeOpAdaptor(ResizeOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ResizeOpAdaptor::ResizeOpAdaptor(ResizeOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ResizeOpAdaptor::getOperands() {
   return odsOperands;
@@ -10536,8 +11252,8 @@ std::pair<unsigned, unsigned> ResizeOpAdaptor::getODSOperandIndexAndLength(unsig
 
 ::mlir::ArrayAttr ResizeOpAdaptor::output_sizeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("output_size").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 3, odsAttrs.end() - 3, ResizeOp::output_sizeAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr ResizeOpAdaptor::output_size() {
@@ -10547,8 +11263,8 @@ std::pair<unsigned, unsigned> ResizeOpAdaptor::getODSOperandIndexAndLength(unsig
 
 ::mlir::ArrayAttr ResizeOpAdaptor::strideAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("stride").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 5, odsAttrs.end() - 1, ResizeOp::strideAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr ResizeOpAdaptor::stride() {
@@ -10558,8 +11274,8 @@ std::pair<unsigned, unsigned> ResizeOpAdaptor::getODSOperandIndexAndLength(unsig
 
 ::mlir::ArrayAttr ResizeOpAdaptor::offsetAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("offset").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 5, ResizeOp::offsetAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr ResizeOpAdaptor::offset() {
@@ -10569,8 +11285,8 @@ std::pair<unsigned, unsigned> ResizeOpAdaptor::getODSOperandIndexAndLength(unsig
 
 ::mlir::IntegerAttr ResizeOpAdaptor::shiftAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("shift").cast<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 4, odsAttrs.end() - 2, ResizeOp::shiftAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+    return attr;
 }
 
 uint32_t ResizeOpAdaptor::shift() {
@@ -10580,8 +11296,8 @@ uint32_t ResizeOpAdaptor::shift() {
 
 ::mlir::ArrayAttr ResizeOpAdaptor::stride_fpAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("stride_fp").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 6, odsAttrs.end() - 0, ResizeOp::stride_fpAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr ResizeOpAdaptor::stride_fp() {
@@ -10591,8 +11307,8 @@ uint32_t ResizeOpAdaptor::shift() {
 
 ::mlir::ArrayAttr ResizeOpAdaptor::offset_fpAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("offset_fp").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 4, ResizeOp::offset_fpAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr ResizeOpAdaptor::offset_fp() {
@@ -10602,8 +11318,8 @@ uint32_t ResizeOpAdaptor::shift() {
 
 ::mlir::StringAttr ResizeOpAdaptor::modeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::StringAttr attr = odsAttrs.get("mode").cast<::mlir::StringAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 6, ResizeOp::modeAttrName(*odsOpName)).cast<::mlir::StringAttr>();
+    return attr;
 }
 
 ::llvm::StringRef ResizeOpAdaptor::mode() {
@@ -10612,62 +11328,99 @@ uint32_t ResizeOpAdaptor::shift() {
 }
 
 ::mlir::LogicalResult ResizeOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_output_size = odsAttrs.get("output_size");
-    if (!tblgen_output_size)
-      return emitError(loc, "'tosa.resize' op ""requires attribute 'output_size'");
-
-    if (tblgen_output_size && !((((tblgen_output_size.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_output_size.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_output_size.cast<::mlir::ArrayAttr>().size() == 2))))
-      return emitError(loc, "'tosa.resize' op ""attribute 'output_size' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
-  }
-  {
-    auto tblgen_stride = odsAttrs.get("stride");
-    if (!tblgen_stride)
-      return emitError(loc, "'tosa.resize' op ""requires attribute 'stride'");
-
-    if (tblgen_stride && !((((tblgen_stride.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_stride.cast<::mlir::ArrayAttr>().size() == 2))))
-      return emitError(loc, "'tosa.resize' op ""attribute 'stride' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
-  }
-  {
-    auto tblgen_offset = odsAttrs.get("offset");
-    if (!tblgen_offset)
-      return emitError(loc, "'tosa.resize' op ""requires attribute 'offset'");
-
-    if (tblgen_offset && !((((tblgen_offset.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_offset.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_offset.cast<::mlir::ArrayAttr>().size() == 2))))
-      return emitError(loc, "'tosa.resize' op ""attribute 'offset' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
-  }
-  {
-    auto tblgen_shift = odsAttrs.get("shift");
-    if (!tblgen_shift)
-      return emitError(loc, "'tosa.resize' op ""requires attribute 'shift'");
-
-    if (tblgen_shift && !(((tblgen_shift.isa<::mlir::IntegerAttr>())) && ((tblgen_shift.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))))
-      return emitError(loc, "'tosa.resize' op ""attribute 'shift' failed to satisfy constraint: 32-bit signless integer attribute");
-  }
-  {
-    auto tblgen_stride_fp = odsAttrs.get("stride_fp");
-    if (!tblgen_stride_fp)
-      return emitError(loc, "'tosa.resize' op ""requires attribute 'stride_fp'");
-
-    if (tblgen_stride_fp && !((((tblgen_stride_fp.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride_fp.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::FloatAttr>())) && ((attr.cast<::mlir::FloatAttr>().getType().isF32()))); }))) && ((tblgen_stride_fp.cast<::mlir::ArrayAttr>().size() == 2))))
-      return emitError(loc, "'tosa.resize' op ""attribute 'stride_fp' failed to satisfy constraint: 32-bit float array attribute with exactly 2 elements");
-  }
-  {
-    auto tblgen_offset_fp = odsAttrs.get("offset_fp");
-    if (!tblgen_offset_fp)
-      return emitError(loc, "'tosa.resize' op ""requires attribute 'offset_fp'");
-
-    if (tblgen_offset_fp && !((((tblgen_offset_fp.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_offset_fp.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::FloatAttr>())) && ((attr.cast<::mlir::FloatAttr>().getType().isF32()))); }))) && ((tblgen_offset_fp.cast<::mlir::ArrayAttr>().size() == 2))))
-      return emitError(loc, "'tosa.resize' op ""attribute 'offset_fp' failed to satisfy constraint: 32-bit float array attribute with exactly 2 elements");
-  }
-  {
-    auto tblgen_mode = odsAttrs.get("mode");
-    if (!tblgen_mode)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_mode;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.resize' op ""requires attribute 'mode'");
-
-    if (tblgen_mode && !((tblgen_mode.cast<StringAttr>().getValue() == "BILINEAR"  || tblgen_mode.cast<StringAttr>().getValue() == "NEAREST_NEIGHBOR")))
-      return emitError(loc, "'tosa.resize' op ""attribute 'mode' failed to satisfy constraint: Supported resize/upsampling strategies");
+    if (namedAttrIt->getName() == ResizeOp::modeAttrName(*odsOpName)) {
+      tblgen_mode = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+  ::mlir::Attribute tblgen_offset;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'tosa.resize' op ""requires attribute 'offset'");
+    if (namedAttrIt->getName() == ResizeOp::offsetAttrName(*odsOpName)) {
+      tblgen_offset = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_offset_fp;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'tosa.resize' op ""requires attribute 'offset_fp'");
+    if (namedAttrIt->getName() == ResizeOp::offset_fpAttrName(*odsOpName)) {
+      tblgen_offset_fp = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_output_size;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'tosa.resize' op ""requires attribute 'output_size'");
+    if (namedAttrIt->getName() == ResizeOp::output_sizeAttrName(*odsOpName)) {
+      tblgen_output_size = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_shift;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'tosa.resize' op ""requires attribute 'shift'");
+    if (namedAttrIt->getName() == ResizeOp::shiftAttrName(*odsOpName)) {
+      tblgen_shift = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_stride;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'tosa.resize' op ""requires attribute 'stride'");
+    if (namedAttrIt->getName() == ResizeOp::strideAttrName(*odsOpName)) {
+      tblgen_stride = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_stride_fp;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'tosa.resize' op ""requires attribute 'stride_fp'");
+    if (namedAttrIt->getName() == ResizeOp::stride_fpAttrName(*odsOpName)) {
+      tblgen_stride_fp = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
+  if (tblgen_output_size && !((((tblgen_output_size.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_output_size.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_output_size.cast<::mlir::ArrayAttr>().size() == 2))))
+    return emitError(loc, "'tosa.resize' op ""attribute 'output_size' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
+
+  if (tblgen_stride && !((((tblgen_stride.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_stride.cast<::mlir::ArrayAttr>().size() == 2))))
+    return emitError(loc, "'tosa.resize' op ""attribute 'stride' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
+
+  if (tblgen_offset && !((((tblgen_offset.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_offset.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_offset.cast<::mlir::ArrayAttr>().size() == 2))))
+    return emitError(loc, "'tosa.resize' op ""attribute 'offset' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
+
+  if (tblgen_shift && !(((tblgen_shift.isa<::mlir::IntegerAttr>())) && ((tblgen_shift.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(32)))))
+    return emitError(loc, "'tosa.resize' op ""attribute 'shift' failed to satisfy constraint: 32-bit signless integer attribute");
+
+  if (tblgen_stride_fp && !((((tblgen_stride_fp.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride_fp.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::FloatAttr>())) && ((attr.cast<::mlir::FloatAttr>().getType().isF32()))); }))) && ((tblgen_stride_fp.cast<::mlir::ArrayAttr>().size() == 2))))
+    return emitError(loc, "'tosa.resize' op ""attribute 'stride_fp' failed to satisfy constraint: 32-bit float array attribute with exactly 2 elements");
+
+  if (tblgen_offset_fp && !((((tblgen_offset_fp.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_offset_fp.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::FloatAttr>())) && ((attr.cast<::mlir::FloatAttr>().getType().isF32()))); }))) && ((tblgen_offset_fp.cast<::mlir::ArrayAttr>().size() == 2))))
+    return emitError(loc, "'tosa.resize' op ""attribute 'offset_fp' failed to satisfy constraint: 32-bit float array attribute with exactly 2 elements");
+
+  if (tblgen_mode && !((tblgen_mode.cast<StringAttr>().getValue() == "BILINEAR"  || tblgen_mode.cast<StringAttr>().getValue() == "NEAREST_NEIGHBOR")))
+    return emitError(loc, "'tosa.resize' op ""attribute 'mode' failed to satisfy constraint: Supported resize/upsampling strategies");
   return ::mlir::success();
 }
 
@@ -10706,7 +11459,7 @@ std::pair<unsigned, unsigned> ResizeOp::getODSResultIndexAndLength(unsigned inde
 }
 
 ::mlir::ArrayAttr ResizeOp::output_sizeAttr() {
-  return (*this)->getAttr(output_sizeAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 3, (*this)->getAttrs().end() - 3, output_sizeAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr ResizeOp::output_size() {
@@ -10715,7 +11468,7 @@ std::pair<unsigned, unsigned> ResizeOp::getODSResultIndexAndLength(unsigned inde
 }
 
 ::mlir::ArrayAttr ResizeOp::strideAttr() {
-  return (*this)->getAttr(strideAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 5, (*this)->getAttrs().end() - 1, strideAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr ResizeOp::stride() {
@@ -10724,7 +11477,7 @@ std::pair<unsigned, unsigned> ResizeOp::getODSResultIndexAndLength(unsigned inde
 }
 
 ::mlir::ArrayAttr ResizeOp::offsetAttr() {
-  return (*this)->getAttr(offsetAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 5, offsetAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr ResizeOp::offset() {
@@ -10733,7 +11486,7 @@ std::pair<unsigned, unsigned> ResizeOp::getODSResultIndexAndLength(unsigned inde
 }
 
 ::mlir::IntegerAttr ResizeOp::shiftAttr() {
-  return (*this)->getAttr(shiftAttrName()).cast<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 4, (*this)->getAttrs().end() - 2, shiftAttrName()).cast<::mlir::IntegerAttr>();
 }
 
 uint32_t ResizeOp::shift() {
@@ -10742,7 +11495,7 @@ uint32_t ResizeOp::shift() {
 }
 
 ::mlir::ArrayAttr ResizeOp::stride_fpAttr() {
-  return (*this)->getAttr(stride_fpAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 6, (*this)->getAttrs().end() - 0, stride_fpAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr ResizeOp::stride_fp() {
@@ -10751,7 +11504,7 @@ uint32_t ResizeOp::shift() {
 }
 
 ::mlir::ArrayAttr ResizeOp::offset_fpAttr() {
-  return (*this)->getAttr(offset_fpAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 4, offset_fpAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr ResizeOp::offset_fp() {
@@ -10760,7 +11513,7 @@ uint32_t ResizeOp::shift() {
 }
 
 ::mlir::StringAttr ResizeOp::modeAttr() {
-  return (*this)->getAttr(modeAttrName()).cast<::mlir::StringAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 6, modeAttrName()).cast<::mlir::StringAttr>();
 }
 
 ::llvm::StringRef ResizeOp::mode() {
@@ -10855,62 +11608,99 @@ void ResizeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 }
 
 ::mlir::LogicalResult ResizeOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_output_size = (*this)->getAttr(output_sizeAttrName());
-    if (!tblgen_output_size)
-      return emitOpError("requires attribute 'output_size'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps2(*this, tblgen_output_size, "output_size")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_stride = (*this)->getAttr(strideAttrName());
-    if (!tblgen_stride)
-      return emitOpError("requires attribute 'stride'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps2(*this, tblgen_stride, "stride")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_offset = (*this)->getAttr(offsetAttrName());
-    if (!tblgen_offset)
-      return emitOpError("requires attribute 'offset'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps2(*this, tblgen_offset, "offset")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_shift = (*this)->getAttr(shiftAttrName());
-    if (!tblgen_shift)
-      return emitOpError("requires attribute 'shift'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps12(*this, tblgen_shift, "shift")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_stride_fp = (*this)->getAttr(stride_fpAttrName());
-    if (!tblgen_stride_fp)
-      return emitOpError("requires attribute 'stride_fp'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps16(*this, tblgen_stride_fp, "stride_fp")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_offset_fp = (*this)->getAttr(offset_fpAttrName());
-    if (!tblgen_offset_fp)
-      return emitOpError("requires attribute 'offset_fp'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps16(*this, tblgen_offset_fp, "offset_fp")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_mode = (*this)->getAttr(modeAttrName());
-    if (!tblgen_mode)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_mode;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'mode'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps17(*this, tblgen_mode, "mode")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == modeAttrName()) {
+      tblgen_mode = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+  ::mlir::Attribute tblgen_offset;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'offset'");
+    if (namedAttrIt->getName() == offsetAttrName()) {
+      tblgen_offset = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_offset_fp;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'offset_fp'");
+    if (namedAttrIt->getName() == offset_fpAttrName()) {
+      tblgen_offset_fp = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_output_size;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'output_size'");
+    if (namedAttrIt->getName() == output_sizeAttrName()) {
+      tblgen_output_size = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_shift;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'shift'");
+    if (namedAttrIt->getName() == shiftAttrName()) {
+      tblgen_shift = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_stride;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'stride'");
+    if (namedAttrIt->getName() == strideAttrName()) {
+      tblgen_stride = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_stride_fp;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'stride_fp'");
+    if (namedAttrIt->getName() == stride_fpAttrName()) {
+      tblgen_stride_fp = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps2(*this, tblgen_output_size, "output_size")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps2(*this, tblgen_stride, "stride")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps2(*this, tblgen_offset, "offset")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps12(*this, tblgen_shift, "shift")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps16(*this, tblgen_stride_fp, "stride_fp")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps16(*this, tblgen_offset_fp, "offset_fp")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps17(*this, tblgen_mode, "mode")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -10936,7 +11726,7 @@ void ResizeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   return verifyInvariantsImpl();
 }
 
-void ResizeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ResizeOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -10950,9 +11740,11 @@ namespace tosa {
 // mlir::tosa::ReverseOp definitions
 //===----------------------------------------------------------------------===//
 
-ReverseOpAdaptor::ReverseOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ReverseOpAdaptor::ReverseOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.reverse", odsAttrs.getContext());
+}
 
-ReverseOpAdaptor::ReverseOpAdaptor(ReverseOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ReverseOpAdaptor::ReverseOpAdaptor(ReverseOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ReverseOpAdaptor::getOperands() {
   return odsOperands;
@@ -10978,8 +11770,8 @@ std::pair<unsigned, unsigned> ReverseOpAdaptor::getODSOperandIndexAndLength(unsi
 
 ::mlir::IntegerAttr ReverseOpAdaptor::axisAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("axis").cast<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ReverseOp::axisAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+    return attr;
 }
 
 uint64_t ReverseOpAdaptor::axis() {
@@ -10988,14 +11780,21 @@ uint64_t ReverseOpAdaptor::axis() {
 }
 
 ::mlir::LogicalResult ReverseOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_axis = odsAttrs.get("axis");
-    if (!tblgen_axis)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_axis;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.reverse' op ""requires attribute 'axis'");
-
-    if (tblgen_axis && !(((tblgen_axis.isa<::mlir::IntegerAttr>())) && ((tblgen_axis.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
-      return emitError(loc, "'tosa.reverse' op ""attribute 'axis' failed to satisfy constraint: 64-bit signless integer attribute");
+    if (namedAttrIt->getName() == ReverseOp::axisAttrName(*odsOpName)) {
+      tblgen_axis = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_axis && !(((tblgen_axis.isa<::mlir::IntegerAttr>())) && ((tblgen_axis.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
+    return emitError(loc, "'tosa.reverse' op ""attribute 'axis' failed to satisfy constraint: 64-bit signless integer attribute");
   return ::mlir::success();
 }
 
@@ -11034,7 +11833,7 @@ std::pair<unsigned, unsigned> ReverseOp::getODSResultIndexAndLength(unsigned ind
 }
 
 ::mlir::IntegerAttr ReverseOp::axisAttr() {
-  return (*this)->getAttr(axisAttrName()).cast<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, axisAttrName()).cast<::mlir::IntegerAttr>();
 }
 
 uint64_t ReverseOp::axis() {
@@ -11081,14 +11880,21 @@ void ReverseOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 }
 
 ::mlir::LogicalResult ReverseOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_axis = (*this)->getAttr(axisAttrName());
-    if (!tblgen_axis)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_axis;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'axis'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps1(*this, tblgen_axis, "axis")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == axisAttrName()) {
+      tblgen_axis = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps1(*this, tblgen_axis, "axis")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -11114,7 +11920,7 @@ void ReverseOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   return verifyInvariantsImpl();
 }
 
-void ReverseOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ReverseOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -11128,9 +11934,11 @@ namespace tosa {
 // mlir::tosa::RsqrtOp definitions
 //===----------------------------------------------------------------------===//
 
-RsqrtOpAdaptor::RsqrtOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+RsqrtOpAdaptor::RsqrtOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.rsqrt", odsAttrs.getContext());
+}
 
-RsqrtOpAdaptor::RsqrtOpAdaptor(RsqrtOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+RsqrtOpAdaptor::RsqrtOpAdaptor(RsqrtOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange RsqrtOpAdaptor::getOperands() {
   return odsOperands;
@@ -11237,7 +12045,7 @@ void RsqrtOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   return verifyInvariantsImpl();
 }
 
-void RsqrtOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void RsqrtOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -11251,9 +12059,11 @@ namespace tosa {
 // mlir::tosa::ScatterOp definitions
 //===----------------------------------------------------------------------===//
 
-ScatterOpAdaptor::ScatterOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ScatterOpAdaptor::ScatterOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.scatter", odsAttrs.getContext());
+}
 
-ScatterOpAdaptor::ScatterOpAdaptor(ScatterOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ScatterOpAdaptor::ScatterOpAdaptor(ScatterOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ScatterOpAdaptor::getOperands() {
   return odsOperands;
@@ -11404,7 +12214,7 @@ void ScatterOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   return verifyInvariantsImpl();
 }
 
-void ScatterOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ScatterOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -11418,9 +12228,11 @@ namespace tosa {
 // mlir::tosa::SelectOp definitions
 //===----------------------------------------------------------------------===//
 
-SelectOpAdaptor::SelectOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+SelectOpAdaptor::SelectOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.select", odsAttrs.getContext());
+}
 
-SelectOpAdaptor::SelectOpAdaptor(SelectOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+SelectOpAdaptor::SelectOpAdaptor(SelectOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange SelectOpAdaptor::getOperands() {
   return odsOperands;
@@ -11575,7 +12387,7 @@ void SelectOp::getCanonicalizationPatterns(::mlir::RewritePatternSet &results, :
   results.add(canonicalize);
 }
 
-void SelectOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void SelectOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -11589,9 +12401,11 @@ namespace tosa {
 // mlir::tosa::SigmoidOp definitions
 //===----------------------------------------------------------------------===//
 
-SigmoidOpAdaptor::SigmoidOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+SigmoidOpAdaptor::SigmoidOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.sigmoid", odsAttrs.getContext());
+}
 
-SigmoidOpAdaptor::SigmoidOpAdaptor(SigmoidOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+SigmoidOpAdaptor::SigmoidOpAdaptor(SigmoidOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange SigmoidOpAdaptor::getOperands() {
   return odsOperands;
@@ -11698,7 +12512,7 @@ void SigmoidOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   return verifyInvariantsImpl();
 }
 
-void SigmoidOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void SigmoidOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -11712,9 +12526,11 @@ namespace tosa {
 // mlir::tosa::SliceOp definitions
 //===----------------------------------------------------------------------===//
 
-SliceOpAdaptor::SliceOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+SliceOpAdaptor::SliceOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.slice", odsAttrs.getContext());
+}
 
-SliceOpAdaptor::SliceOpAdaptor(SliceOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+SliceOpAdaptor::SliceOpAdaptor(SliceOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange SliceOpAdaptor::getOperands() {
   return odsOperands;
@@ -11740,8 +12556,8 @@ std::pair<unsigned, unsigned> SliceOpAdaptor::getODSOperandIndexAndLength(unsign
 
 ::mlir::ArrayAttr SliceOpAdaptor::startAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("start").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, SliceOp::startAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr SliceOpAdaptor::start() {
@@ -11751,8 +12567,8 @@ std::pair<unsigned, unsigned> SliceOpAdaptor::getODSOperandIndexAndLength(unsign
 
 ::mlir::ArrayAttr SliceOpAdaptor::sizeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("size").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, SliceOp::sizeAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr SliceOpAdaptor::size() {
@@ -11761,22 +12577,34 @@ std::pair<unsigned, unsigned> SliceOpAdaptor::getODSOperandIndexAndLength(unsign
 }
 
 ::mlir::LogicalResult SliceOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_start = odsAttrs.get("start");
-    if (!tblgen_start)
-      return emitError(loc, "'tosa.slice' op ""requires attribute 'start'");
-
-    if (tblgen_start && !(((tblgen_start.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_start.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
-      return emitError(loc, "'tosa.slice' op ""attribute 'start' failed to satisfy constraint: 64-bit integer array attribute");
-  }
-  {
-    auto tblgen_size = odsAttrs.get("size");
-    if (!tblgen_size)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_size;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.slice' op ""requires attribute 'size'");
-
-    if (tblgen_size && !(((tblgen_size.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_size.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
-      return emitError(loc, "'tosa.slice' op ""attribute 'size' failed to satisfy constraint: 64-bit integer array attribute");
+    if (namedAttrIt->getName() == SliceOp::sizeAttrName(*odsOpName)) {
+      tblgen_size = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+  ::mlir::Attribute tblgen_start;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'tosa.slice' op ""requires attribute 'start'");
+    if (namedAttrIt->getName() == SliceOp::startAttrName(*odsOpName)) {
+      tblgen_start = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
+  if (tblgen_start && !(((tblgen_start.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_start.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
+    return emitError(loc, "'tosa.slice' op ""attribute 'start' failed to satisfy constraint: 64-bit integer array attribute");
+
+  if (tblgen_size && !(((tblgen_size.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_size.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
+    return emitError(loc, "'tosa.slice' op ""attribute 'size' failed to satisfy constraint: 64-bit integer array attribute");
   return ::mlir::success();
 }
 
@@ -11815,7 +12643,7 @@ std::pair<unsigned, unsigned> SliceOp::getODSResultIndexAndLength(unsigned index
 }
 
 ::mlir::ArrayAttr SliceOp::startAttr() {
-  return (*this)->getAttr(startAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, startAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr SliceOp::start() {
@@ -11824,7 +12652,7 @@ std::pair<unsigned, unsigned> SliceOp::getODSResultIndexAndLength(unsigned index
 }
 
 ::mlir::ArrayAttr SliceOp::sizeAttr() {
-  return (*this)->getAttr(sizeAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, sizeAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr SliceOp::size() {
@@ -11864,22 +12692,34 @@ void SliceOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 ::mlir::LogicalResult SliceOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_start = (*this)->getAttr(startAttrName());
-    if (!tblgen_start)
-      return emitOpError("requires attribute 'start'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps15(*this, tblgen_start, "start")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_size = (*this)->getAttr(sizeAttrName());
-    if (!tblgen_size)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_size;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'size'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps15(*this, tblgen_size, "size")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == sizeAttrName()) {
+      tblgen_size = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+  ::mlir::Attribute tblgen_start;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'start'");
+    if (namedAttrIt->getName() == startAttrName()) {
+      tblgen_start = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps15(*this, tblgen_start, "start")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps15(*this, tblgen_size, "size")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -11905,7 +12745,7 @@ void SliceOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   return verifyInvariantsImpl();
 }
 
-void SliceOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void SliceOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -11919,9 +12759,11 @@ namespace tosa {
 // mlir::tosa::SubOp definitions
 //===----------------------------------------------------------------------===//
 
-SubOpAdaptor::SubOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+SubOpAdaptor::SubOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.sub", odsAttrs.getContext());
+}
 
-SubOpAdaptor::SubOpAdaptor(SubOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+SubOpAdaptor::SubOpAdaptor(SubOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange SubOpAdaptor::getOperands() {
   return odsOperands;
@@ -12050,7 +12892,7 @@ void SubOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
   return verifyInvariantsImpl();
 }
 
-void SubOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void SubOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -12064,9 +12906,11 @@ namespace tosa {
 // mlir::tosa::TableOp definitions
 //===----------------------------------------------------------------------===//
 
-TableOpAdaptor::TableOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+TableOpAdaptor::TableOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.table", odsAttrs.getContext());
+}
 
-TableOpAdaptor::TableOpAdaptor(TableOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+TableOpAdaptor::TableOpAdaptor(TableOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange TableOpAdaptor::getOperands() {
   return odsOperands;
@@ -12195,7 +13039,7 @@ void TableOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   return verifyInvariantsImpl();
 }
 
-void TableOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void TableOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -12209,9 +13053,11 @@ namespace tosa {
 // mlir::tosa::TanhOp definitions
 //===----------------------------------------------------------------------===//
 
-TanhOpAdaptor::TanhOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+TanhOpAdaptor::TanhOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.tanh", odsAttrs.getContext());
+}
 
-TanhOpAdaptor::TanhOpAdaptor(TanhOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+TanhOpAdaptor::TanhOpAdaptor(TanhOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange TanhOpAdaptor::getOperands() {
   return odsOperands;
@@ -12318,7 +13164,7 @@ void TanhOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   return verifyInvariantsImpl();
 }
 
-void TanhOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void TanhOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -12332,9 +13178,11 @@ namespace tosa {
 // mlir::tosa::TileOp definitions
 //===----------------------------------------------------------------------===//
 
-TileOpAdaptor::TileOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+TileOpAdaptor::TileOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.tile", odsAttrs.getContext());
+}
 
-TileOpAdaptor::TileOpAdaptor(TileOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+TileOpAdaptor::TileOpAdaptor(TileOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange TileOpAdaptor::getOperands() {
   return odsOperands;
@@ -12360,8 +13208,8 @@ std::pair<unsigned, unsigned> TileOpAdaptor::getODSOperandIndexAndLength(unsigne
 
 ::mlir::ArrayAttr TileOpAdaptor::multiplesAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("multiples").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, TileOp::multiplesAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr TileOpAdaptor::multiples() {
@@ -12370,14 +13218,21 @@ std::pair<unsigned, unsigned> TileOpAdaptor::getODSOperandIndexAndLength(unsigne
 }
 
 ::mlir::LogicalResult TileOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_multiples = odsAttrs.get("multiples");
-    if (!tblgen_multiples)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_multiples;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.tile' op ""requires attribute 'multiples'");
-
-    if (tblgen_multiples && !(((tblgen_multiples.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_multiples.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
-      return emitError(loc, "'tosa.tile' op ""attribute 'multiples' failed to satisfy constraint: 64-bit integer array attribute");
+    if (namedAttrIt->getName() == TileOp::multiplesAttrName(*odsOpName)) {
+      tblgen_multiples = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_multiples && !(((tblgen_multiples.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_multiples.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
+    return emitError(loc, "'tosa.tile' op ""attribute 'multiples' failed to satisfy constraint: 64-bit integer array attribute");
   return ::mlir::success();
 }
 
@@ -12416,7 +13271,7 @@ std::pair<unsigned, unsigned> TileOp::getODSResultIndexAndLength(unsigned index)
 }
 
 ::mlir::ArrayAttr TileOp::multiplesAttr() {
-  return (*this)->getAttr(multiplesAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, multiplesAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr TileOp::multiples() {
@@ -12450,14 +13305,21 @@ void TileOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 }
 
 ::mlir::LogicalResult TileOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_multiples = (*this)->getAttr(multiplesAttrName());
-    if (!tblgen_multiples)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_multiples;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'multiples'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps15(*this, tblgen_multiples, "multiples")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == multiplesAttrName()) {
+      tblgen_multiples = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps15(*this, tblgen_multiples, "multiples")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -12483,7 +13345,7 @@ void TileOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   return verifyInvariantsImpl();
 }
 
-void TileOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void TileOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -12497,9 +13359,11 @@ namespace tosa {
 // mlir::tosa::TransposeConv2DOp definitions
 //===----------------------------------------------------------------------===//
 
-TransposeConv2DOpAdaptor::TransposeConv2DOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+TransposeConv2DOpAdaptor::TransposeConv2DOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.transpose_conv2d", odsAttrs.getContext());
+}
 
-TransposeConv2DOpAdaptor::TransposeConv2DOpAdaptor(TransposeConv2DOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+TransposeConv2DOpAdaptor::TransposeConv2DOpAdaptor(TransposeConv2DOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange TransposeConv2DOpAdaptor::getOperands() {
   return odsOperands;
@@ -12533,8 +13397,8 @@ std::pair<unsigned, unsigned> TransposeConv2DOpAdaptor::getODSOperandIndexAndLen
 
 ::mlir::ArrayAttr TransposeConv2DOpAdaptor::out_padAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("out_pad").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 2, TransposeConv2DOp::out_padAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr TransposeConv2DOpAdaptor::out_pad() {
@@ -12544,8 +13408,8 @@ std::pair<unsigned, unsigned> TransposeConv2DOpAdaptor::getODSOperandIndexAndLen
 
 ::mlir::ArrayAttr TransposeConv2DOpAdaptor::strideAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("stride").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 3, odsAttrs.end() - 0, TransposeConv2DOp::strideAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr TransposeConv2DOpAdaptor::stride() {
@@ -12555,8 +13419,8 @@ std::pair<unsigned, unsigned> TransposeConv2DOpAdaptor::getODSOperandIndexAndLen
 
 ::mlir::ArrayAttr TransposeConv2DOpAdaptor::dilationAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("dilation").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 3, TransposeConv2DOp::dilationAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr TransposeConv2DOpAdaptor::dilation() {
@@ -12566,8 +13430,8 @@ std::pair<unsigned, unsigned> TransposeConv2DOpAdaptor::getODSOperandIndexAndLen
 
 ::mlir::ArrayAttr TransposeConv2DOpAdaptor::out_shapeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("out_shape").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 1, TransposeConv2DOp::out_shapeAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr TransposeConv2DOpAdaptor::out_shape() {
@@ -12577,8 +13441,8 @@ std::pair<unsigned, unsigned> TransposeConv2DOpAdaptor::getODSOperandIndexAndLen
 
 mlir::tosa::ConvOpQuantizationAttr TransposeConv2DOpAdaptor::quantization_infoAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  mlir::tosa::ConvOpQuantizationAttr attr = odsAttrs.get("quantization_info").dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 3, odsAttrs.end() - 1, TransposeConv2DOp::quantization_infoAttrName(*odsOpName)).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
+    return attr;
 }
 
 ::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr> TransposeConv2DOpAdaptor::quantization_info() {
@@ -12587,43 +13451,67 @@ mlir::tosa::ConvOpQuantizationAttr TransposeConv2DOpAdaptor::quantization_infoAt
 }
 
 ::mlir::LogicalResult TransposeConv2DOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_out_pad = odsAttrs.get("out_pad");
-    if (!tblgen_out_pad)
-      return emitError(loc, "'tosa.transpose_conv2d' op ""requires attribute 'out_pad'");
-
-    if (tblgen_out_pad && !((((tblgen_out_pad.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_out_pad.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_out_pad.cast<::mlir::ArrayAttr>().size() == 2))))
-      return emitError(loc, "'tosa.transpose_conv2d' op ""attribute 'out_pad' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
-  }
-  {
-    auto tblgen_stride = odsAttrs.get("stride");
-    if (!tblgen_stride)
-      return emitError(loc, "'tosa.transpose_conv2d' op ""requires attribute 'stride'");
-
-    if (tblgen_stride && !((((tblgen_stride.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_stride.cast<::mlir::ArrayAttr>().size() == 2))))
-      return emitError(loc, "'tosa.transpose_conv2d' op ""attribute 'stride' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
-  }
-  {
-    auto tblgen_dilation = odsAttrs.get("dilation");
-    if (!tblgen_dilation)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_dilation;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.transpose_conv2d' op ""requires attribute 'dilation'");
-
-    if (tblgen_dilation && !((((tblgen_dilation.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_dilation.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_dilation.cast<::mlir::ArrayAttr>().size() == 2))))
-      return emitError(loc, "'tosa.transpose_conv2d' op ""attribute 'dilation' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
+    if (namedAttrIt->getName() == TransposeConv2DOp::dilationAttrName(*odsOpName)) {
+      tblgen_dilation = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_out_shape = odsAttrs.get("out_shape");
-    if (!tblgen_out_shape)
+  ::mlir::Attribute tblgen_out_pad;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'tosa.transpose_conv2d' op ""requires attribute 'out_pad'");
+    if (namedAttrIt->getName() == TransposeConv2DOp::out_padAttrName(*odsOpName)) {
+      tblgen_out_pad = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_out_shape;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.transpose_conv2d' op ""requires attribute 'out_shape'");
+    if (namedAttrIt->getName() == TransposeConv2DOp::out_shapeAttrName(*odsOpName)) {
+      tblgen_out_shape = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_stride;
+  ::mlir::Attribute tblgen_quantization_info;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'tosa.transpose_conv2d' op ""requires attribute 'stride'");
+    if (namedAttrIt->getName() == TransposeConv2DOp::strideAttrName(*odsOpName)) {
+      tblgen_stride = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == TransposeConv2DOp::quantization_infoAttrName(*odsOpName)) {
+      tblgen_quantization_info = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
 
-    if (tblgen_out_shape && !((((tblgen_out_shape.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_out_shape.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_out_shape.cast<::mlir::ArrayAttr>().size() <= 4))))
-      return emitError(loc, "'tosa.transpose_conv2d' op ""attribute 'out_shape' failed to satisfy constraint: 64-bit integer array attribute with at least 4 elements");
-  }
-  {
-    auto tblgen_quantization_info = odsAttrs.get("quantization_info");
-    if (tblgen_quantization_info && !((tblgen_quantization_info.isa<mlir::tosa::ConvOpQuantizationAttr>())))
-      return emitError(loc, "'tosa.transpose_conv2d' op ""attribute 'quantization_info' failed to satisfy constraint: Attribute for Conv type op quantization information.");
-  }
+  if (tblgen_out_pad && !((((tblgen_out_pad.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_out_pad.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_out_pad.cast<::mlir::ArrayAttr>().size() == 2))))
+    return emitError(loc, "'tosa.transpose_conv2d' op ""attribute 'out_pad' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
+
+  if (tblgen_stride && !((((tblgen_stride.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_stride.cast<::mlir::ArrayAttr>().size() == 2))))
+    return emitError(loc, "'tosa.transpose_conv2d' op ""attribute 'stride' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
+
+  if (tblgen_dilation && !((((tblgen_dilation.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_dilation.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_dilation.cast<::mlir::ArrayAttr>().size() == 2))))
+    return emitError(loc, "'tosa.transpose_conv2d' op ""attribute 'dilation' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
+
+  if (tblgen_out_shape && !((((tblgen_out_shape.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_out_shape.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_out_shape.cast<::mlir::ArrayAttr>().size() <= 4))))
+    return emitError(loc, "'tosa.transpose_conv2d' op ""attribute 'out_shape' failed to satisfy constraint: 64-bit integer array attribute with at least 4 elements");
+
+  if (tblgen_quantization_info && !((tblgen_quantization_info.isa<mlir::tosa::ConvOpQuantizationAttr>())))
+    return emitError(loc, "'tosa.transpose_conv2d' op ""attribute 'quantization_info' failed to satisfy constraint: Attribute for Conv type op quantization information.");
   return ::mlir::success();
 }
 
@@ -12682,7 +13570,7 @@ std::pair<unsigned, unsigned> TransposeConv2DOp::getODSResultIndexAndLength(unsi
 }
 
 ::mlir::ArrayAttr TransposeConv2DOp::out_padAttr() {
-  return (*this)->getAttr(out_padAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 2, out_padAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr TransposeConv2DOp::out_pad() {
@@ -12691,7 +13579,7 @@ std::pair<unsigned, unsigned> TransposeConv2DOp::getODSResultIndexAndLength(unsi
 }
 
 ::mlir::ArrayAttr TransposeConv2DOp::strideAttr() {
-  return (*this)->getAttr(strideAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 3, (*this)->getAttrs().end() - 0, strideAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr TransposeConv2DOp::stride() {
@@ -12700,7 +13588,7 @@ std::pair<unsigned, unsigned> TransposeConv2DOp::getODSResultIndexAndLength(unsi
 }
 
 ::mlir::ArrayAttr TransposeConv2DOp::dilationAttr() {
-  return (*this)->getAttr(dilationAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 3, dilationAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr TransposeConv2DOp::dilation() {
@@ -12709,7 +13597,7 @@ std::pair<unsigned, unsigned> TransposeConv2DOp::getODSResultIndexAndLength(unsi
 }
 
 ::mlir::ArrayAttr TransposeConv2DOp::out_shapeAttr() {
-  return (*this)->getAttr(out_shapeAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 1, out_shapeAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr TransposeConv2DOp::out_shape() {
@@ -12718,7 +13606,7 @@ std::pair<unsigned, unsigned> TransposeConv2DOp::getODSResultIndexAndLength(unsi
 }
 
 mlir::tosa::ConvOpQuantizationAttr TransposeConv2DOp::quantization_infoAttr() {
-  return (*this)->getAttr(quantization_infoAttrName()).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 3, (*this)->getAttrs().end() - 1, quantization_infoAttrName()).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
 }
 
 ::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr> TransposeConv2DOp::quantization_info() {
@@ -12796,43 +13684,67 @@ void TransposeConv2DOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
 }
 
 ::mlir::LogicalResult TransposeConv2DOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_out_pad = (*this)->getAttr(out_padAttrName());
-    if (!tblgen_out_pad)
-      return emitOpError("requires attribute 'out_pad'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps2(*this, tblgen_out_pad, "out_pad")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_stride = (*this)->getAttr(strideAttrName());
-    if (!tblgen_stride)
-      return emitOpError("requires attribute 'stride'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps2(*this, tblgen_stride, "stride")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_dilation = (*this)->getAttr(dilationAttrName());
-    if (!tblgen_dilation)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_dilation;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'dilation'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps2(*this, tblgen_dilation, "dilation")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == dilationAttrName()) {
+      tblgen_dilation = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_out_shape = (*this)->getAttr(out_shapeAttrName());
-    if (!tblgen_out_shape)
+  ::mlir::Attribute tblgen_out_pad;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'out_pad'");
+    if (namedAttrIt->getName() == out_padAttrName()) {
+      tblgen_out_pad = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_out_shape;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'out_shape'");
+    if (namedAttrIt->getName() == out_shapeAttrName()) {
+      tblgen_out_shape = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_stride;
+  ::mlir::Attribute tblgen_quantization_info;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'stride'");
+    if (namedAttrIt->getName() == strideAttrName()) {
+      tblgen_stride = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == quantization_infoAttrName()) {
+      tblgen_quantization_info = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
 
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps18(*this, tblgen_out_shape, "out_shape")))
-      return ::mlir::failure();
-  }
-  {
-    auto tblgen_quantization_info = (*this)->getAttr(quantization_infoAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps7(*this, tblgen_quantization_info, "quantization_info")))
-      return ::mlir::failure();
-  }
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps2(*this, tblgen_out_pad, "out_pad")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps2(*this, tblgen_stride, "stride")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps2(*this, tblgen_dilation, "dilation")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps18(*this, tblgen_out_shape, "out_shape")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps7(*this, tblgen_quantization_info, "quantization_info")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -12870,7 +13782,7 @@ void TransposeConv2DOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
   return verifyInvariantsImpl();
 }
 
-void TransposeConv2DOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void TransposeConv2DOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -12884,9 +13796,11 @@ namespace tosa {
 // mlir::tosa::TransposeOp definitions
 //===----------------------------------------------------------------------===//
 
-TransposeOpAdaptor::TransposeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+TransposeOpAdaptor::TransposeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.transpose", odsAttrs.getContext());
+}
 
-TransposeOpAdaptor::TransposeOpAdaptor(TransposeOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+TransposeOpAdaptor::TransposeOpAdaptor(TransposeOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange TransposeOpAdaptor::getOperands() {
   return odsOperands;
@@ -13015,7 +13929,7 @@ void TransposeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   return verifyInvariantsImpl();
 }
 
-void TransposeOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void TransposeOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa
@@ -13029,9 +13943,11 @@ namespace tosa {
 // mlir::tosa::WhileOp definitions
 //===----------------------------------------------------------------------===//
 
-WhileOpAdaptor::WhileOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+WhileOpAdaptor::WhileOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.while_loop", odsAttrs.getContext());
+}
 
-WhileOpAdaptor::WhileOpAdaptor(WhileOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+WhileOpAdaptor::WhileOpAdaptor(WhileOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange WhileOpAdaptor::getOperands() {
   return odsOperands;
@@ -13211,9 +14127,11 @@ namespace tosa {
 // mlir::tosa::YieldOp definitions
 //===----------------------------------------------------------------------===//
 
-YieldOpAdaptor::YieldOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+YieldOpAdaptor::YieldOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("tosa.yield", odsAttrs.getContext());
+}
 
-YieldOpAdaptor::YieldOpAdaptor(YieldOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+YieldOpAdaptor::YieldOpAdaptor(YieldOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange YieldOpAdaptor::getOperands() {
   return odsOperands;
@@ -13327,7 +14245,7 @@ void YieldOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   return verifyInvariantsImpl();
 }
 
-void YieldOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void YieldOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace tosa

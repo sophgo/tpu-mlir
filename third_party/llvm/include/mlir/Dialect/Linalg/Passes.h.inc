@@ -59,12 +59,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class LinalgBufferizeBase : public ::mlir::OperationPass<FuncOp> {
+class LinalgBufferizeBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = LinalgBufferizeBase;
 
-  LinalgBufferizeBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  LinalgBufferizeBase(const LinalgBufferizeBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  LinalgBufferizeBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  LinalgBufferizeBase(const LinalgBufferizeBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -109,65 +109,6 @@ public:
   MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LinalgBufferizeBase<DerivedT>)
 
 protected:
-};
-
-//===----------------------------------------------------------------------===//
-// LinalgComprehensiveModuleBufferize
-//===----------------------------------------------------------------------===//
-
-template <typename DerivedT>
-class LinalgComprehensiveModuleBufferizeBase : public ::mlir::OperationPass<ModuleOp> {
-public:
-  using Base = LinalgComprehensiveModuleBufferizeBase;
-
-  LinalgComprehensiveModuleBufferizeBase() : ::mlir::OperationPass<ModuleOp>(::mlir::TypeID::get<DerivedT>()) {}
-  LinalgComprehensiveModuleBufferizeBase(const LinalgComprehensiveModuleBufferizeBase &other) : ::mlir::OperationPass<ModuleOp>(other) {}
-
-  /// Returns the command-line argument attached to this pass.
-  static constexpr ::llvm::StringLiteral getArgumentName() {
-    return ::llvm::StringLiteral("linalg-comprehensive-module-bufferize");
-  }
-  ::llvm::StringRef getArgument() const override { return "linalg-comprehensive-module-bufferize"; }
-
-  ::llvm::StringRef getDescription() const override { return "Bufferize (tensor into memref) for a Module."; }
-
-  /// Returns the derived pass name.
-  static constexpr ::llvm::StringLiteral getPassName() {
-    return ::llvm::StringLiteral("LinalgComprehensiveModuleBufferize");
-  }
-  ::llvm::StringRef getName() const override { return "LinalgComprehensiveModuleBufferize"; }
-
-  /// Support isa/dyn_cast functionality for the derived pass class.
-  static bool classof(const ::mlir::Pass *pass) {
-    return pass->getTypeID() == ::mlir::TypeID::get<DerivedT>();
-  }
-
-  /// A clone method to create a copy of this pass.
-  std::unique_ptr<::mlir::Pass> clonePass() const override {
-    return std::make_unique<DerivedT>(*static_cast<const DerivedT *>(this));
-  }
-
-  /// Return the dialect that must be loaded in the context before this pass.
-  void getDependentDialects(::mlir::DialectRegistry &registry) const override {
-    
-  }
-
-  /// Explicitly declare the TypeID for this class. We declare an explicit private
-  /// instantiation because Pass classes should only be visible by the current
-  /// library.
-  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LinalgComprehensiveModuleBufferizeBase<DerivedT>)
-
-protected:
-  ::mlir::Pass::Option<bool> testAnalysisOnly{*this, "test-analysis-only", ::llvm::cl::desc("Only runs inplaceability analysis (for testing purposes only)"), ::llvm::cl::init(false)};
-  ::mlir::Pass::Option<bool> printConflicts{*this, "print-conflicts", ::llvm::cl::desc("Annotates IR with RaW conflicts. Requires test-analysis-only."), ::llvm::cl::init(false)};
-  ::mlir::Pass::Option<bool> allowReturnAllocs{*this, "allow-return-allocs", ::llvm::cl::desc("Allows returning/yielding new allocations from a block."), ::llvm::cl::init(false)};
-  ::mlir::Pass::Option<bool> allowUnknownOps{*this, "allow-unknown-ops", ::llvm::cl::desc("Allows unknown (not bufferizable) ops in the input IR."), ::llvm::cl::init(false)};
-  ::mlir::Pass::Option<bool> alwaysAliasingWithDest{*this, "always-aliasing-with-dest", ::llvm::cl::desc("Tensor OpResult cannot bufferize inplace OpOperands other than out or dest OpOperands (if the op has a notion of such operands)"), ::llvm::cl::init(true)};
-  ::mlir::Pass::Option<bool> useAlloca{*this, "use-alloca", ::llvm::cl::desc("Use stack allocations for memrefs (for testing purposes only)"), ::llvm::cl::init(false)};
-  ::mlir::Pass::Option<bool> fullyDynamicLayoutMaps{*this, "fully-dynamic-layout-maps", ::llvm::cl::desc("Generate MemRef types with dynamic offset+strides by default."), ::llvm::cl::init(true)};
-  ::mlir::Pass::Option<unsigned> analysisFuzzerSeed{*this, "analysis-fuzzer-seed", ::llvm::cl::desc("Analyze ops in random order with a given seed (fuzzer)"), ::llvm::cl::init(0)};
-  ::mlir::Pass::Option<bool> initTensorElimination{*this, "init-tensor-elimination", ::llvm::cl::desc("(Experimental) Try to eliminate init_tensor operations that are anchored at an insert_slice op"), ::llvm::cl::init(false)};
-  ::mlir::Pass::Option<bool> createDeallocs{*this, "create-deallocs", ::llvm::cl::desc("Specify if buffers should be deallocated. For compatibility with core bufferization passes."), ::llvm::cl::init(true)};
 };
 
 //===----------------------------------------------------------------------===//
@@ -273,61 +214,6 @@ public:
   MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LinalgElementwiseOpFusionBase<DerivedT>)
 
 protected:
-  ::mlir::Pass::Option<bool> allowFoldingUnitDimReshapes{*this, "allow-folding-unit-dim-reshapes", ::llvm::cl::desc("Allow fusing linalg.tensor_reshape ops that performs unit dimension collapsing"), ::llvm::cl::init(false)};
-};
-
-//===----------------------------------------------------------------------===//
-// LinalgFoldReshapeOpsByLinearization
-//===----------------------------------------------------------------------===//
-
-template <typename DerivedT>
-class LinalgFoldReshapeOpsByLinearizationBase : public ::mlir::OperationPass<> {
-public:
-  using Base = LinalgFoldReshapeOpsByLinearizationBase;
-
-  LinalgFoldReshapeOpsByLinearizationBase() : ::mlir::OperationPass<>(::mlir::TypeID::get<DerivedT>()) {}
-  LinalgFoldReshapeOpsByLinearizationBase(const LinalgFoldReshapeOpsByLinearizationBase &other) : ::mlir::OperationPass<>(other) {}
-
-  /// Returns the command-line argument attached to this pass.
-  static constexpr ::llvm::StringLiteral getArgumentName() {
-    return ::llvm::StringLiteral("linalg-fold-reshape-ops-by-linearization");
-  }
-  ::llvm::StringRef getArgument() const override { return "linalg-fold-reshape-ops-by-linearization"; }
-
-  ::llvm::StringRef getDescription() const override { return "Fold TensorReshapeOps with generic/indexed generic ops by linearization"; }
-
-  /// Returns the derived pass name.
-  static constexpr ::llvm::StringLiteral getPassName() {
-    return ::llvm::StringLiteral("LinalgFoldReshapeOpsByLinearization");
-  }
-  ::llvm::StringRef getName() const override { return "LinalgFoldReshapeOpsByLinearization"; }
-
-  /// Support isa/dyn_cast functionality for the derived pass class.
-  static bool classof(const ::mlir::Pass *pass) {
-    return pass->getTypeID() == ::mlir::TypeID::get<DerivedT>();
-  }
-
-  /// A clone method to create a copy of this pass.
-  std::unique_ptr<::mlir::Pass> clonePass() const override {
-    return std::make_unique<DerivedT>(*static_cast<const DerivedT *>(this));
-  }
-
-  /// Return the dialect that must be loaded in the context before this pass.
-  void getDependentDialects(::mlir::DialectRegistry &registry) const override {
-    
-  registry.insert<AffineDialect>();
-
-  registry.insert<memref::MemRefDialect>();
-
-  }
-
-  /// Explicitly declare the TypeID for this class. We declare an explicit private
-  /// instantiation because Pass classes should only be visible by the current
-  /// library.
-  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LinalgFoldReshapeOpsByLinearizationBase<DerivedT>)
-
-protected:
-  ::mlir::Pass::Option<bool> allowFoldingUnitDimReshapes{*this, "allow-folding-unit-dim-reshapes", ::llvm::cl::desc("Allow fusing linalg.tensor_reshape ops that performs unit dimension collapsing"), ::llvm::cl::init(false)};
 };
 
 //===----------------------------------------------------------------------===//
@@ -391,12 +277,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class LinalgGeneralizationBase : public ::mlir::OperationPass<FuncOp> {
+class LinalgGeneralizationBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = LinalgGeneralizationBase;
 
-  LinalgGeneralizationBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  LinalgGeneralizationBase(const LinalgGeneralizationBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  LinalgGeneralizationBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  LinalgGeneralizationBase(const LinalgGeneralizationBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -438,16 +324,65 @@ protected:
 };
 
 //===----------------------------------------------------------------------===//
+// LinalgInitTensorToAllocTensor
+//===----------------------------------------------------------------------===//
+
+template <typename DerivedT>
+class LinalgInitTensorToAllocTensorBase : public ::mlir::OperationPass<> {
+public:
+  using Base = LinalgInitTensorToAllocTensorBase;
+
+  LinalgInitTensorToAllocTensorBase() : ::mlir::OperationPass<>(::mlir::TypeID::get<DerivedT>()) {}
+  LinalgInitTensorToAllocTensorBase(const LinalgInitTensorToAllocTensorBase &other) : ::mlir::OperationPass<>(other) {}
+
+  /// Returns the command-line argument attached to this pass.
+  static constexpr ::llvm::StringLiteral getArgumentName() {
+    return ::llvm::StringLiteral("linalg-init-tensor-to-alloc-tensor");
+  }
+  ::llvm::StringRef getArgument() const override { return "linalg-init-tensor-to-alloc-tensor"; }
+
+  ::llvm::StringRef getDescription() const override { return "Replace all init_tensor ops by alloc_tensor ops."; }
+
+  /// Returns the derived pass name.
+  static constexpr ::llvm::StringLiteral getPassName() {
+    return ::llvm::StringLiteral("LinalgInitTensorToAllocTensor");
+  }
+  ::llvm::StringRef getName() const override { return "LinalgInitTensorToAllocTensor"; }
+
+  /// Support isa/dyn_cast functionality for the derived pass class.
+  static bool classof(const ::mlir::Pass *pass) {
+    return pass->getTypeID() == ::mlir::TypeID::get<DerivedT>();
+  }
+
+  /// A clone method to create a copy of this pass.
+  std::unique_ptr<::mlir::Pass> clonePass() const override {
+    return std::make_unique<DerivedT>(*static_cast<const DerivedT *>(this));
+  }
+
+  /// Return the dialect that must be loaded in the context before this pass.
+  void getDependentDialects(::mlir::DialectRegistry &registry) const override {
+    
+  }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LinalgInitTensorToAllocTensorBase<DerivedT>)
+
+protected:
+};
+
+//===----------------------------------------------------------------------===//
 // LinalgInlineScalarOperands
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class LinalgInlineScalarOperandsBase : public ::mlir::OperationPass<FuncOp> {
+class LinalgInlineScalarOperandsBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = LinalgInlineScalarOperandsBase;
 
-  LinalgInlineScalarOperandsBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  LinalgInlineScalarOperandsBase(const LinalgInlineScalarOperandsBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  LinalgInlineScalarOperandsBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  LinalgInlineScalarOperandsBase(const LinalgInlineScalarOperandsBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -493,12 +428,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class LinalgLowerToAffineLoopsBase : public ::mlir::OperationPass<FuncOp> {
+class LinalgLowerToAffineLoopsBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = LinalgLowerToAffineLoopsBase;
 
-  LinalgLowerToAffineLoopsBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  LinalgLowerToAffineLoopsBase(const LinalgLowerToAffineLoopsBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  LinalgLowerToAffineLoopsBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  LinalgLowerToAffineLoopsBase(const LinalgLowerToAffineLoopsBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -548,12 +483,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class LinalgLowerToLoopsBase : public ::mlir::OperationPass<FuncOp> {
+class LinalgLowerToLoopsBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = LinalgLowerToLoopsBase;
 
-  LinalgLowerToLoopsBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  LinalgLowerToLoopsBase(const LinalgLowerToLoopsBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  LinalgLowerToLoopsBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  LinalgLowerToLoopsBase(const LinalgLowerToLoopsBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -603,12 +538,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class LinalgLowerToParallelLoopsBase : public ::mlir::OperationPass<FuncOp> {
+class LinalgLowerToParallelLoopsBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = LinalgLowerToParallelLoopsBase;
 
-  LinalgLowerToParallelLoopsBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  LinalgLowerToParallelLoopsBase(const LinalgLowerToParallelLoopsBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  LinalgLowerToParallelLoopsBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  LinalgLowerToParallelLoopsBase(const LinalgLowerToParallelLoopsBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -713,12 +648,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class LinalgPromotionBase : public ::mlir::OperationPass<FuncOp> {
+class LinalgPromotionBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = LinalgPromotionBase;
 
-  LinalgPromotionBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  LinalgPromotionBase(const LinalgPromotionBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  LinalgPromotionBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  LinalgPromotionBase(const LinalgPromotionBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -766,12 +701,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class LinalgStrategyDecomposePassBase : public ::mlir::OperationPass<FuncOp> {
+class LinalgStrategyDecomposePassBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = LinalgStrategyDecomposePassBase;
 
-  LinalgStrategyDecomposePassBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  LinalgStrategyDecomposePassBase(const LinalgStrategyDecomposePassBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  LinalgStrategyDecomposePassBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  LinalgStrategyDecomposePassBase(const LinalgStrategyDecomposePassBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -818,12 +753,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class LinalgStrategyEnablePassBase : public ::mlir::OperationPass<FuncOp> {
+class LinalgStrategyEnablePassBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = LinalgStrategyEnablePassBase;
 
-  LinalgStrategyEnablePassBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  LinalgStrategyEnablePassBase(const LinalgStrategyEnablePassBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  LinalgStrategyEnablePassBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  LinalgStrategyEnablePassBase(const LinalgStrategyEnablePassBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -870,12 +805,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class LinalgStrategyGeneralizePassBase : public ::mlir::OperationPass<FuncOp> {
+class LinalgStrategyGeneralizePassBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = LinalgStrategyGeneralizePassBase;
 
-  LinalgStrategyGeneralizePassBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  LinalgStrategyGeneralizePassBase(const LinalgStrategyGeneralizePassBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  LinalgStrategyGeneralizePassBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  LinalgStrategyGeneralizePassBase(const LinalgStrategyGeneralizePassBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -923,12 +858,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class LinalgStrategyInterchangePassBase : public ::mlir::OperationPass<FuncOp> {
+class LinalgStrategyInterchangePassBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = LinalgStrategyInterchangePassBase;
 
-  LinalgStrategyInterchangePassBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  LinalgStrategyInterchangePassBase(const LinalgStrategyInterchangePassBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  LinalgStrategyInterchangePassBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  LinalgStrategyInterchangePassBase(const LinalgStrategyInterchangePassBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -975,12 +910,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class LinalgStrategyLowerVectorsPassBase : public ::mlir::OperationPass<FuncOp> {
+class LinalgStrategyLowerVectorsPassBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = LinalgStrategyLowerVectorsPassBase;
 
-  LinalgStrategyLowerVectorsPassBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  LinalgStrategyLowerVectorsPassBase(const LinalgStrategyLowerVectorsPassBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  LinalgStrategyLowerVectorsPassBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  LinalgStrategyLowerVectorsPassBase(const LinalgStrategyLowerVectorsPassBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -1027,12 +962,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class LinalgStrategyPadPassBase : public ::mlir::OperationPass<FuncOp> {
+class LinalgStrategyPadPassBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = LinalgStrategyPadPassBase;
 
-  LinalgStrategyPadPassBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  LinalgStrategyPadPassBase(const LinalgStrategyPadPassBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  LinalgStrategyPadPassBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  LinalgStrategyPadPassBase(const LinalgStrategyPadPassBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -1076,16 +1011,71 @@ protected:
 };
 
 //===----------------------------------------------------------------------===//
+// LinalgStrategyPeelPass
+//===----------------------------------------------------------------------===//
+
+template <typename DerivedT>
+class LinalgStrategyPeelPassBase : public ::mlir::OperationPass<func::FuncOp> {
+public:
+  using Base = LinalgStrategyPeelPassBase;
+
+  LinalgStrategyPeelPassBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  LinalgStrategyPeelPassBase(const LinalgStrategyPeelPassBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
+
+  /// Returns the command-line argument attached to this pass.
+  static constexpr ::llvm::StringLiteral getArgumentName() {
+    return ::llvm::StringLiteral("linalg-strategy-peel-pass");
+  }
+  ::llvm::StringRef getArgument() const override { return "linalg-strategy-peel-pass"; }
+
+  ::llvm::StringRef getDescription() const override { return "Configurable pass to apply pattern-based linalg peeling."; }
+
+  /// Returns the derived pass name.
+  static constexpr ::llvm::StringLiteral getPassName() {
+    return ::llvm::StringLiteral("LinalgStrategyPeelPass");
+  }
+  ::llvm::StringRef getName() const override { return "LinalgStrategyPeelPass"; }
+
+  /// Support isa/dyn_cast functionality for the derived pass class.
+  static bool classof(const ::mlir::Pass *pass) {
+    return pass->getTypeID() == ::mlir::TypeID::get<DerivedT>();
+  }
+
+  /// A clone method to create a copy of this pass.
+  std::unique_ptr<::mlir::Pass> clonePass() const override {
+    return std::make_unique<DerivedT>(*static_cast<const DerivedT *>(this));
+  }
+
+  /// Return the dialect that must be loaded in the context before this pass.
+  void getDependentDialects(::mlir::DialectRegistry &registry) const override {
+    
+  registry.insert<linalg::LinalgDialect>();
+
+  registry.insert<scf::SCFDialect>();
+
+  }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(LinalgStrategyPeelPassBase<DerivedT>)
+
+protected:
+  ::mlir::Pass::Option<std::string> anchorFuncName{*this, "anchor-func", ::llvm::cl::desc("Which func op is the anchor to latch on.")};
+  ::mlir::Pass::Option<std::string> anchorOpName{*this, "anchor-op", ::llvm::cl::desc("Which linalg op within the func is the anchor to latch on.")};
+};
+
+//===----------------------------------------------------------------------===//
 // LinalgStrategyPromotePass
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class LinalgStrategyPromotePassBase : public ::mlir::OperationPass<FuncOp> {
+class LinalgStrategyPromotePassBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = LinalgStrategyPromotePassBase;
 
-  LinalgStrategyPromotePassBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  LinalgStrategyPromotePassBase(const LinalgStrategyPromotePassBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  LinalgStrategyPromotePassBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  LinalgStrategyPromotePassBase(const LinalgStrategyPromotePassBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -1133,12 +1123,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class LinalgStrategyRemoveMarkersPassBase : public ::mlir::OperationPass<FuncOp> {
+class LinalgStrategyRemoveMarkersPassBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = LinalgStrategyRemoveMarkersPassBase;
 
-  LinalgStrategyRemoveMarkersPassBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  LinalgStrategyRemoveMarkersPassBase(const LinalgStrategyRemoveMarkersPassBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  LinalgStrategyRemoveMarkersPassBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  LinalgStrategyRemoveMarkersPassBase(const LinalgStrategyRemoveMarkersPassBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -1185,12 +1175,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class LinalgStrategyTileAndFusePassBase : public ::mlir::OperationPass<FuncOp> {
+class LinalgStrategyTileAndFusePassBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = LinalgStrategyTileAndFusePassBase;
 
-  LinalgStrategyTileAndFusePassBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  LinalgStrategyTileAndFusePassBase(const LinalgStrategyTileAndFusePassBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  LinalgStrategyTileAndFusePassBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  LinalgStrategyTileAndFusePassBase(const LinalgStrategyTileAndFusePassBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -1236,12 +1226,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class LinalgStrategyTilePassBase : public ::mlir::OperationPass<FuncOp> {
+class LinalgStrategyTilePassBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = LinalgStrategyTilePassBase;
 
-  LinalgStrategyTilePassBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  LinalgStrategyTilePassBase(const LinalgStrategyTilePassBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  LinalgStrategyTilePassBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  LinalgStrategyTilePassBase(const LinalgStrategyTilePassBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -1289,12 +1279,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class LinalgStrategyVectorizePassBase : public ::mlir::OperationPass<FuncOp> {
+class LinalgStrategyVectorizePassBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = LinalgStrategyVectorizePassBase;
 
-  LinalgStrategyVectorizePassBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  LinalgStrategyVectorizePassBase(const LinalgStrategyVectorizePassBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  LinalgStrategyVectorizePassBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  LinalgStrategyVectorizePassBase(const LinalgStrategyVectorizePassBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -1343,12 +1333,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class LinalgTilingBase : public ::mlir::OperationPass<FuncOp> {
+class LinalgTilingBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = LinalgTilingBase;
 
-  LinalgTilingBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  LinalgTilingBase(const LinalgTilingBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  LinalgTilingBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  LinalgTilingBase(const LinalgTilingBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -1421,16 +1411,6 @@ inline void registerLinalgBufferizePass() {
 }
 
 //===----------------------------------------------------------------------===//
-// LinalgComprehensiveModuleBufferize Registration
-//===----------------------------------------------------------------------===//
-
-inline void registerLinalgComprehensiveModuleBufferizePass() {
-  ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
-    return mlir::createLinalgComprehensiveModuleBufferizePass();
-  });
-}
-
-//===----------------------------------------------------------------------===//
 // LinalgDetensorize Registration
 //===----------------------------------------------------------------------===//
 
@@ -1451,16 +1431,6 @@ inline void registerLinalgElementwiseOpFusionPass() {
 }
 
 //===----------------------------------------------------------------------===//
-// LinalgFoldReshapeOpsByLinearization Registration
-//===----------------------------------------------------------------------===//
-
-inline void registerLinalgFoldReshapeOpsByLinearizationPass() {
-  ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
-    return mlir::createFoldReshapeOpsByLinearizationPass();
-  });
-}
-
-//===----------------------------------------------------------------------===//
 // LinalgFoldUnitExtentDims Registration
 //===----------------------------------------------------------------------===//
 
@@ -1477,6 +1447,16 @@ inline void registerLinalgFoldUnitExtentDimsPass() {
 inline void registerLinalgGeneralizationPass() {
   ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
     return mlir::createLinalgGeneralizationPass();
+  });
+}
+
+//===----------------------------------------------------------------------===//
+// LinalgInitTensorToAllocTensor Registration
+//===----------------------------------------------------------------------===//
+
+inline void registerLinalgInitTensorToAllocTensorPass() {
+  ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
+    return mlir::createLinalgInitTensorToAllocTensorPass();
   });
 }
 
@@ -1601,6 +1581,16 @@ inline void registerLinalgStrategyPadPassPass() {
 }
 
 //===----------------------------------------------------------------------===//
+// LinalgStrategyPeelPass Registration
+//===----------------------------------------------------------------------===//
+
+inline void registerLinalgStrategyPeelPassPass() {
+  ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
+    return mlir::createLinalgStrategyPeelPass();
+  });
+}
+
+//===----------------------------------------------------------------------===//
 // LinalgStrategyPromotePass Registration
 //===----------------------------------------------------------------------===//
 
@@ -1667,12 +1657,11 @@ inline void registerLinalgTilingPass() {
 inline void registerLinalgPasses() {
   registerConvertElementwiseToLinalgPass();
   registerLinalgBufferizePass();
-  registerLinalgComprehensiveModuleBufferizePass();
   registerLinalgDetensorizePass();
   registerLinalgElementwiseOpFusionPass();
-  registerLinalgFoldReshapeOpsByLinearizationPass();
   registerLinalgFoldUnitExtentDimsPass();
   registerLinalgGeneralizationPass();
+  registerLinalgInitTensorToAllocTensorPass();
   registerLinalgInlineScalarOperandsPass();
   registerLinalgLowerToAffineLoopsPass();
   registerLinalgLowerToLoopsPass();
@@ -1685,6 +1674,7 @@ inline void registerLinalgPasses() {
   registerLinalgStrategyInterchangePassPass();
   registerLinalgStrategyLowerVectorsPassPass();
   registerLinalgStrategyPadPassPass();
+  registerLinalgStrategyPeelPassPass();
   registerLinalgStrategyPromotePassPass();
   registerLinalgStrategyRemoveMarkersPassPass();
   registerLinalgStrategyTileAndFusePassPass();

@@ -1014,7 +1014,7 @@ class AccessChainOpAdaptor {
 public:
   AccessChainOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  AccessChainOpAdaptor(AccessChainOp &op);
+  AccessChainOpAdaptor(AccessChainOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -1027,8 +1027,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class AccessChainOp : public ::mlir::Op<AccessChainOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::AtLeastNOperands<1>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class AccessChainOp : public ::mlir::Op<AccessChainOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::AtLeastNOperands<1>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -1065,7 +1066,7 @@ public:
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -1083,7 +1084,7 @@ class AddressOfOpAdaptor {
 public:
   AddressOfOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  AddressOfOpAdaptor(AddressOfOp &op);
+  AddressOfOpAdaptor(AddressOfOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -1096,8 +1097,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class AddressOfOp : public ::mlir::Op<AddressOfOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::OpAsmOpInterface::Trait, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class AddressOfOp : public ::mlir::Op<AddressOfOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::OpAsmOpInterface::Trait, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -1144,7 +1146,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
     return getAttributeNameForIndex((*this)->getName(), index);
@@ -1172,7 +1174,7 @@ class AssumeTrueKHROpAdaptor {
 public:
   AssumeTrueKHROpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  AssumeTrueKHROpAdaptor(AssumeTrueKHROp &op);
+  AssumeTrueKHROpAdaptor(AssumeTrueKHROp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -1184,8 +1186,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class AssumeTrueKHROp : public ::mlir::Op<AssumeTrueKHROp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class AssumeTrueKHROp : public ::mlir::Op<AssumeTrueKHROp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -1233,7 +1236,7 @@ class AtomicAndOpAdaptor {
 public:
   AtomicAndOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  AtomicAndOpAdaptor(AtomicAndOp &op);
+  AtomicAndOpAdaptor(AtomicAndOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -1250,8 +1253,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class AtomicAndOp : public ::mlir::Op<AtomicAndOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::IntegerType>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class AtomicAndOp : public ::mlir::Op<AtomicAndOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::IntegerType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -1339,7 +1343,7 @@ class AtomicCompareExchangeOpAdaptor {
 public:
   AtomicCompareExchangeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  AtomicCompareExchangeOpAdaptor(AtomicCompareExchangeOp &op);
+  AtomicCompareExchangeOpAdaptor(AtomicCompareExchangeOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -1359,31 +1363,32 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class AtomicCompareExchangeOp : public ::mlir::Op<AtomicCompareExchangeOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::IntegerType>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<3>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class AtomicCompareExchangeOp : public ::mlir::Op<AtomicCompareExchangeOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::IntegerType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<3>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = AtomicCompareExchangeOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("memory_scope"), ::llvm::StringRef("equal_semantics"), ::llvm::StringRef("unequal_semantics")};
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("equal_semantics"), ::llvm::StringRef("memory_scope"), ::llvm::StringRef("unequal_semantics")};
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr memory_scopeAttrName() {
+  ::mlir::StringAttr equal_semanticsAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr memory_scopeAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr equal_semanticsAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr equal_semanticsAttrName() {
+  ::mlir::StringAttr memory_scopeAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr equal_semanticsAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr memory_scopeAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
   }
 
@@ -1460,7 +1465,7 @@ class AtomicCompareExchangeWeakOpAdaptor {
 public:
   AtomicCompareExchangeWeakOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  AtomicCompareExchangeWeakOpAdaptor(AtomicCompareExchangeWeakOp &op);
+  AtomicCompareExchangeWeakOpAdaptor(AtomicCompareExchangeWeakOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -1480,31 +1485,32 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class AtomicCompareExchangeWeakOp : public ::mlir::Op<AtomicCompareExchangeWeakOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::IntegerType>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<3>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class AtomicCompareExchangeWeakOp : public ::mlir::Op<AtomicCompareExchangeWeakOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::IntegerType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<3>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = AtomicCompareExchangeWeakOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("memory_scope"), ::llvm::StringRef("equal_semantics"), ::llvm::StringRef("unequal_semantics")};
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("equal_semantics"), ::llvm::StringRef("memory_scope"), ::llvm::StringRef("unequal_semantics")};
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr memory_scopeAttrName() {
+  ::mlir::StringAttr equal_semanticsAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr memory_scopeAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr equal_semanticsAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr equal_semanticsAttrName() {
+  ::mlir::StringAttr memory_scopeAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr equal_semanticsAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr memory_scopeAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
   }
 
@@ -1581,7 +1587,7 @@ class AtomicExchangeOpAdaptor {
 public:
   AtomicExchangeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  AtomicExchangeOpAdaptor(AtomicExchangeOp &op);
+  AtomicExchangeOpAdaptor(AtomicExchangeOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -1598,8 +1604,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class AtomicExchangeOp : public ::mlir::Op<AtomicExchangeOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class AtomicExchangeOp : public ::mlir::Op<AtomicExchangeOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -1686,7 +1693,7 @@ class AtomicFAddEXTOpAdaptor {
 public:
   AtomicFAddEXTOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  AtomicFAddEXTOpAdaptor(AtomicFAddEXTOp &op);
+  AtomicFAddEXTOpAdaptor(AtomicFAddEXTOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -1703,8 +1710,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class AtomicFAddEXTOp : public ::mlir::Op<AtomicFAddEXTOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class AtomicFAddEXTOp : public ::mlir::Op<AtomicFAddEXTOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -1791,7 +1799,7 @@ class AtomicIAddOpAdaptor {
 public:
   AtomicIAddOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  AtomicIAddOpAdaptor(AtomicIAddOp &op);
+  AtomicIAddOpAdaptor(AtomicIAddOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -1808,8 +1816,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class AtomicIAddOp : public ::mlir::Op<AtomicIAddOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::IntegerType>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class AtomicIAddOp : public ::mlir::Op<AtomicIAddOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::IntegerType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -1897,7 +1906,7 @@ class AtomicIDecrementOpAdaptor {
 public:
   AtomicIDecrementOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  AtomicIDecrementOpAdaptor(AtomicIDecrementOp &op);
+  AtomicIDecrementOpAdaptor(AtomicIDecrementOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -1913,8 +1922,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class AtomicIDecrementOp : public ::mlir::Op<AtomicIDecrementOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::IntegerType>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class AtomicIDecrementOp : public ::mlir::Op<AtomicIDecrementOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::IntegerType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -1999,7 +2009,7 @@ class AtomicIIncrementOpAdaptor {
 public:
   AtomicIIncrementOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  AtomicIIncrementOpAdaptor(AtomicIIncrementOp &op);
+  AtomicIIncrementOpAdaptor(AtomicIIncrementOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -2015,8 +2025,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class AtomicIIncrementOp : public ::mlir::Op<AtomicIIncrementOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::IntegerType>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class AtomicIIncrementOp : public ::mlir::Op<AtomicIIncrementOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::IntegerType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -2101,7 +2112,7 @@ class AtomicISubOpAdaptor {
 public:
   AtomicISubOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  AtomicISubOpAdaptor(AtomicISubOp &op);
+  AtomicISubOpAdaptor(AtomicISubOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -2118,8 +2129,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class AtomicISubOp : public ::mlir::Op<AtomicISubOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::IntegerType>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class AtomicISubOp : public ::mlir::Op<AtomicISubOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::IntegerType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -2207,7 +2219,7 @@ class AtomicOrOpAdaptor {
 public:
   AtomicOrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  AtomicOrOpAdaptor(AtomicOrOp &op);
+  AtomicOrOpAdaptor(AtomicOrOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -2224,8 +2236,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class AtomicOrOp : public ::mlir::Op<AtomicOrOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::IntegerType>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class AtomicOrOp : public ::mlir::Op<AtomicOrOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::IntegerType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -2313,7 +2326,7 @@ class AtomicSMaxOpAdaptor {
 public:
   AtomicSMaxOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  AtomicSMaxOpAdaptor(AtomicSMaxOp &op);
+  AtomicSMaxOpAdaptor(AtomicSMaxOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -2330,8 +2343,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class AtomicSMaxOp : public ::mlir::Op<AtomicSMaxOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::IntegerType>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class AtomicSMaxOp : public ::mlir::Op<AtomicSMaxOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::IntegerType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -2419,7 +2433,7 @@ class AtomicSMinOpAdaptor {
 public:
   AtomicSMinOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  AtomicSMinOpAdaptor(AtomicSMinOp &op);
+  AtomicSMinOpAdaptor(AtomicSMinOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -2436,8 +2450,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class AtomicSMinOp : public ::mlir::Op<AtomicSMinOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::IntegerType>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class AtomicSMinOp : public ::mlir::Op<AtomicSMinOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::IntegerType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -2525,7 +2540,7 @@ class AtomicUMaxOpAdaptor {
 public:
   AtomicUMaxOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  AtomicUMaxOpAdaptor(AtomicUMaxOp &op);
+  AtomicUMaxOpAdaptor(AtomicUMaxOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -2542,8 +2557,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class AtomicUMaxOp : public ::mlir::Op<AtomicUMaxOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::IntegerType>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UnsignedOp, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class AtomicUMaxOp : public ::mlir::Op<AtomicUMaxOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::IntegerType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UnsignedOp, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -2631,7 +2647,7 @@ class AtomicUMinOpAdaptor {
 public:
   AtomicUMinOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  AtomicUMinOpAdaptor(AtomicUMinOp &op);
+  AtomicUMinOpAdaptor(AtomicUMinOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -2648,8 +2664,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class AtomicUMinOp : public ::mlir::Op<AtomicUMinOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::IntegerType>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UnsignedOp, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class AtomicUMinOp : public ::mlir::Op<AtomicUMinOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::IntegerType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UnsignedOp, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -2737,7 +2754,7 @@ class AtomicXorOpAdaptor {
 public:
   AtomicXorOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  AtomicXorOpAdaptor(AtomicXorOp &op);
+  AtomicXorOpAdaptor(AtomicXorOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -2754,8 +2771,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class AtomicXorOp : public ::mlir::Op<AtomicXorOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::IntegerType>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class AtomicXorOp : public ::mlir::Op<AtomicXorOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::IntegerType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -2843,7 +2861,7 @@ class BitCountOpAdaptor {
 public:
   BitCountOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  BitCountOpAdaptor(BitCountOp &op);
+  BitCountOpAdaptor(BitCountOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -2855,8 +2873,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class BitCountOp : public ::mlir::Op<BitCountOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class BitCountOp : public ::mlir::Op<BitCountOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -2878,19 +2897,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -2908,7 +2928,7 @@ class BitFieldInsertOpAdaptor {
 public:
   BitFieldInsertOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  BitFieldInsertOpAdaptor(BitFieldInsertOp &op);
+  BitFieldInsertOpAdaptor(BitFieldInsertOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -2923,8 +2943,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class BitFieldInsertOp : public ::mlir::Op<BitFieldInsertOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<4>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
+class BitFieldInsertOp : public ::mlir::Op<BitFieldInsertOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<4>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -2965,7 +2986,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -2983,7 +3004,7 @@ class BitFieldSExtractOpAdaptor {
 public:
   BitFieldSExtractOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  BitFieldSExtractOpAdaptor(BitFieldSExtractOp &op);
+  BitFieldSExtractOpAdaptor(BitFieldSExtractOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -2997,8 +3018,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class BitFieldSExtractOp : public ::mlir::Op<BitFieldSExtractOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<3>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::SignedOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
+class BitFieldSExtractOp : public ::mlir::Op<BitFieldSExtractOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<3>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::SignedOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3037,7 +3059,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -3055,7 +3077,7 @@ class BitFieldUExtractOpAdaptor {
 public:
   BitFieldUExtractOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  BitFieldUExtractOpAdaptor(BitFieldUExtractOp &op);
+  BitFieldUExtractOpAdaptor(BitFieldUExtractOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -3069,8 +3091,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class BitFieldUExtractOp : public ::mlir::Op<BitFieldUExtractOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<3>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UnsignedOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
+class BitFieldUExtractOp : public ::mlir::Op<BitFieldUExtractOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<3>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UnsignedOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3109,7 +3132,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -3127,7 +3150,7 @@ class BitReverseOpAdaptor {
 public:
   BitReverseOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  BitReverseOpAdaptor(BitReverseOp &op);
+  BitReverseOpAdaptor(BitReverseOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -3139,8 +3162,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class BitReverseOp : public ::mlir::Op<BitReverseOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class BitReverseOp : public ::mlir::Op<BitReverseOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3162,19 +3186,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -3192,7 +3217,7 @@ class BitcastOpAdaptor {
 public:
   BitcastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  BitcastOpAdaptor(BitcastOp &op);
+  BitcastOpAdaptor(BitcastOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -3204,8 +3229,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class BitcastOp : public ::mlir::Op<BitcastOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class BitcastOp : public ::mlir::Op<BitcastOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3239,7 +3265,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -3257,7 +3283,7 @@ class BitwiseAndOpAdaptor {
 public:
   BitwiseAndOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  BitwiseAndOpAdaptor(BitwiseAndOp &op);
+  BitwiseAndOpAdaptor(BitwiseAndOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -3270,8 +3296,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class BitwiseAndOp : public ::mlir::Op<BitwiseAndOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class BitwiseAndOp : public ::mlir::Op<BitwiseAndOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3295,19 +3322,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand1, ::mlir::Value operand2);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -3325,7 +3353,7 @@ class BitwiseOrOpAdaptor {
 public:
   BitwiseOrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  BitwiseOrOpAdaptor(BitwiseOrOp &op);
+  BitwiseOrOpAdaptor(BitwiseOrOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -3338,8 +3366,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class BitwiseOrOp : public ::mlir::Op<BitwiseOrOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class BitwiseOrOp : public ::mlir::Op<BitwiseOrOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3363,19 +3392,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand1, ::mlir::Value operand2);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -3393,7 +3423,7 @@ class BitwiseXorOpAdaptor {
 public:
   BitwiseXorOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  BitwiseXorOpAdaptor(BitwiseXorOp &op);
+  BitwiseXorOpAdaptor(BitwiseXorOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -3406,8 +3436,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class BitwiseXorOp : public ::mlir::Op<BitwiseXorOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class BitwiseXorOp : public ::mlir::Op<BitwiseXorOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3431,19 +3462,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand1, ::mlir::Value operand2);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -3461,7 +3493,7 @@ class BranchConditionalOpAdaptor {
 public:
   BranchConditionalOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  BranchConditionalOpAdaptor(BranchConditionalOp &op);
+  BranchConditionalOpAdaptor(BranchConditionalOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -3477,8 +3509,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class BranchConditionalOp : public ::mlir::Op<BranchConditionalOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::NSuccessors<2>::Impl, ::mlir::OpTrait::AtLeastNOperands<1>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::BranchOpInterface::Trait, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::IsTerminator, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class BranchConditionalOp : public ::mlir::Op<BranchConditionalOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::NSuccessors<2>::Impl, ::mlir::OpTrait::AtLeastNOperands<1>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::BranchOpInterface::Trait, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::IsTerminator, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3534,12 +3567,12 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult verify();
-  ::mlir::Optional<::mlir::MutableOperandRange> getMutableSuccessorOperands(unsigned index);
+  ::mlir::SuccessorOperands getSuccessorOperands(unsigned index);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
     return getAttributeNameForIndex((*this)->getName(), index);
@@ -3606,7 +3639,7 @@ class BranchOpAdaptor {
 public:
   BranchOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  BranchOpAdaptor(BranchOp &op);
+  BranchOpAdaptor(BranchOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -3618,8 +3651,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class BranchOp : public ::mlir::Op<BranchOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::OneSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::OpInvariants, ::mlir::BranchOpInterface::Trait, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::IsTerminator, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class BranchOp : public ::mlir::Op<BranchOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::OneSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::OpInvariants, ::mlir::BranchOpInterface::Trait, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::IsTerminator, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3643,14 +3677,14 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Block *successor, ValueRange arguments = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
-  ::mlir::Optional<::mlir::MutableOperandRange> getMutableSuccessorOperands(unsigned index);
+  ::mlir::SuccessorOperands getSuccessorOperands(unsigned index);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
   /// Returns the branch target block.
   Block *getTarget() { return target(); }
@@ -3673,7 +3707,7 @@ class CompositeConstructOpAdaptor {
 public:
   CompositeConstructOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  CompositeConstructOpAdaptor(CompositeConstructOp &op);
+  CompositeConstructOpAdaptor(CompositeConstructOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -3685,8 +3719,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class CompositeConstructOp : public ::mlir::Op<CompositeConstructOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class CompositeConstructOp : public ::mlir::Op<CompositeConstructOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3718,7 +3753,7 @@ public:
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -3736,7 +3771,7 @@ class CompositeExtractOpAdaptor {
 public:
   CompositeExtractOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  CompositeExtractOpAdaptor(CompositeExtractOp &op);
+  CompositeExtractOpAdaptor(CompositeExtractOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -3750,8 +3785,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class CompositeExtractOp : public ::mlir::Op<CompositeExtractOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class CompositeExtractOp : public ::mlir::Op<CompositeExtractOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3798,7 +3834,7 @@ public:
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
     return getAttributeNameForIndex((*this)->getName(), index);
@@ -3826,7 +3862,7 @@ class CompositeInsertOpAdaptor {
 public:
   CompositeInsertOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  CompositeInsertOpAdaptor(CompositeInsertOp &op);
+  CompositeInsertOpAdaptor(CompositeInsertOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -3841,8 +3877,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class CompositeInsertOp : public ::mlir::Op<CompositeInsertOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class CompositeInsertOp : public ::mlir::Op<CompositeInsertOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3890,7 +3927,7 @@ public:
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
     return getAttributeNameForIndex((*this)->getName(), index);
@@ -3918,7 +3955,7 @@ class ConstantOpAdaptor {
 public:
   ConstantOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  ConstantOpAdaptor(ConstantOp &op);
+  ConstantOpAdaptor(ConstantOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -3931,8 +3968,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class ConstantOp : public ::mlir::Op<ConstantOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::ConstantLike, ::mlir::OpAsmOpInterface::Trait, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class ConstantOp : public ::mlir::Op<ConstantOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::ConstantLike, ::mlir::OpAsmOpInterface::Trait, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3977,7 +4015,7 @@ public:
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
     return getAttributeNameForIndex((*this)->getName(), index);
@@ -4014,7 +4052,7 @@ class ControlBarrierOpAdaptor {
 public:
   ControlBarrierOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  ControlBarrierOpAdaptor(ControlBarrierOp &op);
+  ControlBarrierOpAdaptor(ControlBarrierOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -4031,8 +4069,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class ControlBarrierOp : public ::mlir::Op<ControlBarrierOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class ControlBarrierOp : public ::mlir::Op<ControlBarrierOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4125,7 +4164,7 @@ class ConvertFToSOpAdaptor {
 public:
   ConvertFToSOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  ConvertFToSOpAdaptor(ConvertFToSOp &op);
+  ConvertFToSOpAdaptor(ConvertFToSOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -4137,8 +4176,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class ConvertFToSOp : public ::mlir::Op<ConvertFToSOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class ConvertFToSOp : public ::mlir::Op<ConvertFToSOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4171,7 +4211,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -4189,7 +4229,7 @@ class ConvertFToUOpAdaptor {
 public:
   ConvertFToUOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  ConvertFToUOpAdaptor(ConvertFToUOp &op);
+  ConvertFToUOpAdaptor(ConvertFToUOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -4201,8 +4241,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class ConvertFToUOp : public ::mlir::Op<ConvertFToUOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class ConvertFToUOp : public ::mlir::Op<ConvertFToUOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4235,7 +4276,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -4253,7 +4294,7 @@ class ConvertSToFOpAdaptor {
 public:
   ConvertSToFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  ConvertSToFOpAdaptor(ConvertSToFOp &op);
+  ConvertSToFOpAdaptor(ConvertSToFOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -4265,8 +4306,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class ConvertSToFOp : public ::mlir::Op<ConvertSToFOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::SignedOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class ConvertSToFOp : public ::mlir::Op<ConvertSToFOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::SignedOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4299,7 +4341,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -4317,7 +4359,7 @@ class ConvertUToFOpAdaptor {
 public:
   ConvertUToFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  ConvertUToFOpAdaptor(ConvertUToFOp &op);
+  ConvertUToFOpAdaptor(ConvertUToFOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -4329,8 +4371,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class ConvertUToFOp : public ::mlir::Op<ConvertUToFOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UnsignedOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class ConvertUToFOp : public ::mlir::Op<ConvertUToFOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UnsignedOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4363,7 +4406,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -4381,7 +4424,7 @@ class CooperativeMatrixLengthNVOpAdaptor {
 public:
   CooperativeMatrixLengthNVOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  CooperativeMatrixLengthNVOpAdaptor(CooperativeMatrixLengthNVOp &op);
+  CooperativeMatrixLengthNVOpAdaptor(CooperativeMatrixLengthNVOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -4394,8 +4437,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class CooperativeMatrixLengthNVOp : public ::mlir::Op<CooperativeMatrixLengthNVOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
+class CooperativeMatrixLengthNVOp : public ::mlir::Op<CooperativeMatrixLengthNVOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4443,7 +4487,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
     return getAttributeNameForIndex((*this)->getName(), index);
@@ -4471,7 +4515,7 @@ class CooperativeMatrixLoadNVOpAdaptor {
 public:
   CooperativeMatrixLoadNVOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  CooperativeMatrixLoadNVOpAdaptor(CooperativeMatrixLoadNVOp &op);
+  CooperativeMatrixLoadNVOpAdaptor(CooperativeMatrixLoadNVOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -4487,8 +4531,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class CooperativeMatrixLoadNVOp : public ::mlir::Op<CooperativeMatrixLoadNVOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<3>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class CooperativeMatrixLoadNVOp : public ::mlir::Op<CooperativeMatrixLoadNVOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<3>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4565,7 +4610,7 @@ class CooperativeMatrixMulAddNVOpAdaptor {
 public:
   CooperativeMatrixMulAddNVOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  CooperativeMatrixMulAddNVOpAdaptor(CooperativeMatrixMulAddNVOp &op);
+  CooperativeMatrixMulAddNVOpAdaptor(CooperativeMatrixMulAddNVOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -4579,8 +4624,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class CooperativeMatrixMulAddNVOp : public ::mlir::Op<CooperativeMatrixMulAddNVOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<3>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
+class CooperativeMatrixMulAddNVOp : public ::mlir::Op<CooperativeMatrixMulAddNVOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<3>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4620,7 +4666,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -4638,7 +4684,7 @@ class CooperativeMatrixStoreNVOpAdaptor {
 public:
   CooperativeMatrixStoreNVOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  CooperativeMatrixStoreNVOpAdaptor(CooperativeMatrixStoreNVOp &op);
+  CooperativeMatrixStoreNVOpAdaptor(CooperativeMatrixStoreNVOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -4655,8 +4701,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class CooperativeMatrixStoreNVOp : public ::mlir::Op<CooperativeMatrixStoreNVOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<4>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class CooperativeMatrixStoreNVOp : public ::mlir::Op<CooperativeMatrixStoreNVOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<4>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4734,7 +4781,7 @@ class CopyMemoryOpAdaptor {
 public:
   CopyMemoryOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  CopyMemoryOpAdaptor(CopyMemoryOp &op);
+  CopyMemoryOpAdaptor(CopyMemoryOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -4755,47 +4802,48 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class CopyMemoryOp : public ::mlir::Op<CopyMemoryOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class CopyMemoryOp : public ::mlir::Op<CopyMemoryOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = CopyMemoryOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("memory_access"), ::llvm::StringRef("alignment"), ::llvm::StringRef("source_memory_access"), ::llvm::StringRef("source_alignment")};
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("alignment"), ::llvm::StringRef("memory_access"), ::llvm::StringRef("source_alignment"), ::llvm::StringRef("source_memory_access")};
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr memory_accessAttrName() {
+  ::mlir::StringAttr alignmentAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr memory_accessAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr alignmentAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr alignmentAttrName() {
+  ::mlir::StringAttr memory_accessAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr alignmentAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr memory_accessAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
   }
 
-  ::mlir::StringAttr source_memory_accessAttrName() {
+  ::mlir::StringAttr source_alignmentAttrName() {
     return getAttributeNameForIndex(2);
   }
 
-  static ::mlir::StringAttr source_memory_accessAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr source_alignmentAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 2);
   }
 
-  ::mlir::StringAttr source_alignmentAttrName() {
+  ::mlir::StringAttr source_memory_accessAttrName() {
     return getAttributeNameForIndex(3);
   }
 
-  static ::mlir::StringAttr source_alignmentAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr source_memory_accessAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 3);
   }
 
@@ -4866,7 +4914,7 @@ class EntryPointOpAdaptor {
 public:
   EntryPointOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  EntryPointOpAdaptor(EntryPointOp &op);
+  EntryPointOpAdaptor(EntryPointOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -4883,8 +4931,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class EntryPointOp : public ::mlir::Op<EntryPointOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class EntryPointOp : public ::mlir::Op<EntryPointOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4978,7 +5027,7 @@ class ExecutionModeOpAdaptor {
 public:
   ExecutionModeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  ExecutionModeOpAdaptor(ExecutionModeOp &op);
+  ExecutionModeOpAdaptor(ExecutionModeOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -4995,31 +5044,32 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class ExecutionModeOp : public ::mlir::Op<ExecutionModeOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class ExecutionModeOp : public ::mlir::Op<ExecutionModeOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = ExecutionModeOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("fn"), ::llvm::StringRef("execution_mode"), ::llvm::StringRef("values")};
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("execution_mode"), ::llvm::StringRef("fn"), ::llvm::StringRef("values")};
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr fnAttrName() {
+  ::mlir::StringAttr execution_modeAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr fnAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr execution_modeAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr execution_modeAttrName() {
+  ::mlir::StringAttr fnAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr execution_modeAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr fnAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
   }
 
@@ -5089,7 +5139,7 @@ class FAddOpAdaptor {
 public:
   FAddOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  FAddOpAdaptor(FAddOp &op);
+  FAddOpAdaptor(FAddOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -5102,8 +5152,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class FAddOp : public ::mlir::Op<FAddOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class FAddOp : public ::mlir::Op<FAddOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -5127,19 +5178,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand1, ::mlir::Value operand2);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -5157,7 +5209,7 @@ class FConvertOpAdaptor {
 public:
   FConvertOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  FConvertOpAdaptor(FConvertOp &op);
+  FConvertOpAdaptor(FConvertOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -5169,8 +5221,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class FConvertOp : public ::mlir::Op<FConvertOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class FConvertOp : public ::mlir::Op<FConvertOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -5203,7 +5256,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -5221,7 +5274,7 @@ class FDivOpAdaptor {
 public:
   FDivOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  FDivOpAdaptor(FDivOp &op);
+  FDivOpAdaptor(FDivOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -5234,8 +5287,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class FDivOp : public ::mlir::Op<FDivOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class FDivOp : public ::mlir::Op<FDivOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -5259,19 +5313,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand1, ::mlir::Value operand2);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -5289,7 +5344,7 @@ class FModOpAdaptor {
 public:
   FModOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  FModOpAdaptor(FModOp &op);
+  FModOpAdaptor(FModOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -5302,8 +5357,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class FModOp : public ::mlir::Op<FModOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class FModOp : public ::mlir::Op<FModOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -5327,19 +5383,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand1, ::mlir::Value operand2);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -5357,7 +5414,7 @@ class FMulOpAdaptor {
 public:
   FMulOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  FMulOpAdaptor(FMulOp &op);
+  FMulOpAdaptor(FMulOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -5370,8 +5427,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class FMulOp : public ::mlir::Op<FMulOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class FMulOp : public ::mlir::Op<FMulOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -5395,19 +5453,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand1, ::mlir::Value operand2);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -5425,7 +5484,7 @@ class FNegateOpAdaptor {
 public:
   FNegateOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  FNegateOpAdaptor(FNegateOp &op);
+  FNegateOpAdaptor(FNegateOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -5437,8 +5496,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class FNegateOp : public ::mlir::Op<FNegateOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class FNegateOp : public ::mlir::Op<FNegateOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -5460,19 +5520,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -5490,7 +5551,7 @@ class FOrdEqualOpAdaptor {
 public:
   FOrdEqualOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  FOrdEqualOpAdaptor(FOrdEqualOp &op);
+  FOrdEqualOpAdaptor(FOrdEqualOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -5503,8 +5564,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class FOrdEqualOp : public ::mlir::Op<FOrdEqualOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class FOrdEqualOp : public ::mlir::Op<FOrdEqualOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -5539,7 +5601,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -5557,7 +5619,7 @@ class FOrdGreaterThanEqualOpAdaptor {
 public:
   FOrdGreaterThanEqualOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  FOrdGreaterThanEqualOpAdaptor(FOrdGreaterThanEqualOp &op);
+  FOrdGreaterThanEqualOpAdaptor(FOrdGreaterThanEqualOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -5570,8 +5632,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class FOrdGreaterThanEqualOp : public ::mlir::Op<FOrdGreaterThanEqualOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class FOrdGreaterThanEqualOp : public ::mlir::Op<FOrdGreaterThanEqualOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -5606,7 +5669,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -5624,7 +5687,7 @@ class FOrdGreaterThanOpAdaptor {
 public:
   FOrdGreaterThanOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  FOrdGreaterThanOpAdaptor(FOrdGreaterThanOp &op);
+  FOrdGreaterThanOpAdaptor(FOrdGreaterThanOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -5637,8 +5700,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class FOrdGreaterThanOp : public ::mlir::Op<FOrdGreaterThanOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class FOrdGreaterThanOp : public ::mlir::Op<FOrdGreaterThanOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -5673,7 +5737,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -5691,7 +5755,7 @@ class FOrdLessThanEqualOpAdaptor {
 public:
   FOrdLessThanEqualOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  FOrdLessThanEqualOpAdaptor(FOrdLessThanEqualOp &op);
+  FOrdLessThanEqualOpAdaptor(FOrdLessThanEqualOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -5704,8 +5768,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class FOrdLessThanEqualOp : public ::mlir::Op<FOrdLessThanEqualOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class FOrdLessThanEqualOp : public ::mlir::Op<FOrdLessThanEqualOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -5740,7 +5805,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -5758,7 +5823,7 @@ class FOrdLessThanOpAdaptor {
 public:
   FOrdLessThanOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  FOrdLessThanOpAdaptor(FOrdLessThanOp &op);
+  FOrdLessThanOpAdaptor(FOrdLessThanOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -5771,8 +5836,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class FOrdLessThanOp : public ::mlir::Op<FOrdLessThanOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class FOrdLessThanOp : public ::mlir::Op<FOrdLessThanOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -5807,7 +5873,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -5825,7 +5891,7 @@ class FOrdNotEqualOpAdaptor {
 public:
   FOrdNotEqualOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  FOrdNotEqualOpAdaptor(FOrdNotEqualOp &op);
+  FOrdNotEqualOpAdaptor(FOrdNotEqualOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -5838,8 +5904,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class FOrdNotEqualOp : public ::mlir::Op<FOrdNotEqualOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class FOrdNotEqualOp : public ::mlir::Op<FOrdNotEqualOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -5874,7 +5941,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -5892,7 +5959,7 @@ class FRemOpAdaptor {
 public:
   FRemOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  FRemOpAdaptor(FRemOp &op);
+  FRemOpAdaptor(FRemOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -5905,8 +5972,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class FRemOp : public ::mlir::Op<FRemOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class FRemOp : public ::mlir::Op<FRemOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -5930,19 +5998,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand1, ::mlir::Value operand2);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -5960,7 +6029,7 @@ class FSubOpAdaptor {
 public:
   FSubOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  FSubOpAdaptor(FSubOp &op);
+  FSubOpAdaptor(FSubOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -5973,8 +6042,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class FSubOp : public ::mlir::Op<FSubOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class FSubOp : public ::mlir::Op<FSubOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -5998,19 +6068,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand1, ::mlir::Value operand2);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -6028,7 +6099,7 @@ class FUnordEqualOpAdaptor {
 public:
   FUnordEqualOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  FUnordEqualOpAdaptor(FUnordEqualOp &op);
+  FUnordEqualOpAdaptor(FUnordEqualOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -6041,8 +6112,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class FUnordEqualOp : public ::mlir::Op<FUnordEqualOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class FUnordEqualOp : public ::mlir::Op<FUnordEqualOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -6077,7 +6149,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -6095,7 +6167,7 @@ class FUnordGreaterThanEqualOpAdaptor {
 public:
   FUnordGreaterThanEqualOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  FUnordGreaterThanEqualOpAdaptor(FUnordGreaterThanEqualOp &op);
+  FUnordGreaterThanEqualOpAdaptor(FUnordGreaterThanEqualOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -6108,8 +6180,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class FUnordGreaterThanEqualOp : public ::mlir::Op<FUnordGreaterThanEqualOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class FUnordGreaterThanEqualOp : public ::mlir::Op<FUnordGreaterThanEqualOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -6144,7 +6217,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -6162,7 +6235,7 @@ class FUnordGreaterThanOpAdaptor {
 public:
   FUnordGreaterThanOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  FUnordGreaterThanOpAdaptor(FUnordGreaterThanOp &op);
+  FUnordGreaterThanOpAdaptor(FUnordGreaterThanOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -6175,8 +6248,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class FUnordGreaterThanOp : public ::mlir::Op<FUnordGreaterThanOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class FUnordGreaterThanOp : public ::mlir::Op<FUnordGreaterThanOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -6211,7 +6285,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -6229,7 +6303,7 @@ class FUnordLessThanEqualOpAdaptor {
 public:
   FUnordLessThanEqualOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  FUnordLessThanEqualOpAdaptor(FUnordLessThanEqualOp &op);
+  FUnordLessThanEqualOpAdaptor(FUnordLessThanEqualOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -6242,8 +6316,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class FUnordLessThanEqualOp : public ::mlir::Op<FUnordLessThanEqualOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class FUnordLessThanEqualOp : public ::mlir::Op<FUnordLessThanEqualOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -6278,7 +6353,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -6296,7 +6371,7 @@ class FUnordLessThanOpAdaptor {
 public:
   FUnordLessThanOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  FUnordLessThanOpAdaptor(FUnordLessThanOp &op);
+  FUnordLessThanOpAdaptor(FUnordLessThanOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -6309,8 +6384,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class FUnordLessThanOp : public ::mlir::Op<FUnordLessThanOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class FUnordLessThanOp : public ::mlir::Op<FUnordLessThanOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -6345,7 +6421,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -6363,7 +6439,7 @@ class FUnordNotEqualOpAdaptor {
 public:
   FUnordNotEqualOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  FUnordNotEqualOpAdaptor(FUnordNotEqualOp &op);
+  FUnordNotEqualOpAdaptor(FUnordNotEqualOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -6376,8 +6452,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class FUnordNotEqualOp : public ::mlir::Op<FUnordNotEqualOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class FUnordNotEqualOp : public ::mlir::Op<FUnordNotEqualOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -6412,7 +6489,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -6430,7 +6507,7 @@ class FuncOpAdaptor {
 public:
   FuncOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  FuncOpAdaptor(FuncOp &op);
+  FuncOpAdaptor(FuncOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -6449,39 +6526,40 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class FuncOp : public ::mlir::Op<FuncOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::AutomaticAllocationScope, ::mlir::CallableOpInterface::Trait, ::mlir::FunctionOpInterface::Trait, ::mlir::OpTrait::IsIsolatedFromAbove, ::mlir::SymbolOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class FuncOp : public ::mlir::Op<FuncOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::AutomaticAllocationScope, ::mlir::CallableOpInterface::Trait, ::mlir::FunctionOpInterface::Trait, ::mlir::OpTrait::IsIsolatedFromAbove, ::mlir::SymbolOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = FuncOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("function_type"), ::llvm::StringRef("sym_name"), ::llvm::StringRef("function_control")};
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("function_control"), ::llvm::StringRef("function_type"), ::llvm::StringRef("sym_name")};
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr function_typeAttrName() {
+  ::mlir::StringAttr function_controlAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr function_typeAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr function_controlAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr sym_nameAttrName() {
+  ::mlir::StringAttr function_typeAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr sym_nameAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr function_typeAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
   }
 
-  ::mlir::StringAttr function_controlAttrName() {
+  ::mlir::StringAttr sym_nameAttrName() {
     return getAttributeNameForIndex(2);
   }
 
-  static ::mlir::StringAttr function_controlAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr sym_nameAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 2);
   }
 
@@ -6565,7 +6643,7 @@ class FunctionCallOpAdaptor {
 public:
   FunctionCallOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  FunctionCallOpAdaptor(FunctionCallOp &op);
+  FunctionCallOpAdaptor(FunctionCallOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -6579,8 +6657,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class FunctionCallOp : public ::mlir::Op<FunctionCallOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::OpInvariants, ::mlir::CallOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class FunctionCallOp : public ::mlir::Op<FunctionCallOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::OpInvariants, ::mlir::CallOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -6656,7 +6735,7 @@ class GLSLAcosOpAdaptor {
 public:
   GLSLAcosOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLAcosOpAdaptor(GLSLAcosOp &op);
+  GLSLAcosOpAdaptor(GLSLAcosOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -6668,8 +6747,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLAcosOp : public ::mlir::Op<GLSLAcosOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLAcosOp : public ::mlir::Op<GLSLAcosOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -6691,19 +6771,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -6721,7 +6802,7 @@ class GLSLAsinOpAdaptor {
 public:
   GLSLAsinOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLAsinOpAdaptor(GLSLAsinOp &op);
+  GLSLAsinOpAdaptor(GLSLAsinOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -6733,8 +6814,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLAsinOp : public ::mlir::Op<GLSLAsinOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLAsinOp : public ::mlir::Op<GLSLAsinOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -6756,19 +6838,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -6786,7 +6869,7 @@ class GLSLAtanOpAdaptor {
 public:
   GLSLAtanOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLAtanOpAdaptor(GLSLAtanOp &op);
+  GLSLAtanOpAdaptor(GLSLAtanOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -6798,8 +6881,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLAtanOp : public ::mlir::Op<GLSLAtanOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLAtanOp : public ::mlir::Op<GLSLAtanOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -6821,19 +6905,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -6851,7 +6936,7 @@ class GLSLCeilOpAdaptor {
 public:
   GLSLCeilOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLCeilOpAdaptor(GLSLCeilOp &op);
+  GLSLCeilOpAdaptor(GLSLCeilOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -6863,8 +6948,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLCeilOp : public ::mlir::Op<GLSLCeilOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLCeilOp : public ::mlir::Op<GLSLCeilOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -6886,19 +6972,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -6916,7 +7003,7 @@ class GLSLCosOpAdaptor {
 public:
   GLSLCosOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLCosOpAdaptor(GLSLCosOp &op);
+  GLSLCosOpAdaptor(GLSLCosOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -6928,8 +7015,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLCosOp : public ::mlir::Op<GLSLCosOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLCosOp : public ::mlir::Op<GLSLCosOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -6951,19 +7039,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -6981,7 +7070,7 @@ class GLSLCoshOpAdaptor {
 public:
   GLSLCoshOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLCoshOpAdaptor(GLSLCoshOp &op);
+  GLSLCoshOpAdaptor(GLSLCoshOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -6993,8 +7082,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLCoshOp : public ::mlir::Op<GLSLCoshOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLCoshOp : public ::mlir::Op<GLSLCoshOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -7016,19 +7106,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -7046,7 +7137,7 @@ class GLSLExpOpAdaptor {
 public:
   GLSLExpOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLExpOpAdaptor(GLSLExpOp &op);
+  GLSLExpOpAdaptor(GLSLExpOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -7058,8 +7149,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLExpOp : public ::mlir::Op<GLSLExpOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLExpOp : public ::mlir::Op<GLSLExpOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -7081,19 +7173,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -7111,7 +7204,7 @@ class GLSLFAbsOpAdaptor {
 public:
   GLSLFAbsOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLFAbsOpAdaptor(GLSLFAbsOp &op);
+  GLSLFAbsOpAdaptor(GLSLFAbsOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -7123,8 +7216,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLFAbsOp : public ::mlir::Op<GLSLFAbsOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLFAbsOp : public ::mlir::Op<GLSLFAbsOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -7146,19 +7240,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -7176,7 +7271,7 @@ class GLSLFClampOpAdaptor {
 public:
   GLSLFClampOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLFClampOpAdaptor(GLSLFClampOp &op);
+  GLSLFClampOpAdaptor(GLSLFClampOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -7190,8 +7285,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLFClampOp : public ::mlir::Op<GLSLFClampOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<3>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLFClampOp : public ::mlir::Op<GLSLFClampOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<3>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -7227,7 +7323,7 @@ public:
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -7245,7 +7341,7 @@ class GLSLFMaxOpAdaptor {
 public:
   GLSLFMaxOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLFMaxOpAdaptor(GLSLFMaxOp &op);
+  GLSLFMaxOpAdaptor(GLSLFMaxOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -7258,8 +7354,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLFMaxOp : public ::mlir::Op<GLSLFMaxOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLFMaxOp : public ::mlir::Op<GLSLFMaxOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -7283,19 +7380,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value lhs, ::mlir::Value rhs);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -7313,7 +7411,7 @@ class GLSLFMinOpAdaptor {
 public:
   GLSLFMinOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLFMinOpAdaptor(GLSLFMinOp &op);
+  GLSLFMinOpAdaptor(GLSLFMinOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -7326,8 +7424,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLFMinOp : public ::mlir::Op<GLSLFMinOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLFMinOp : public ::mlir::Op<GLSLFMinOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -7351,19 +7450,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value lhs, ::mlir::Value rhs);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -7381,7 +7481,7 @@ class GLSLFMixOpAdaptor {
 public:
   GLSLFMixOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLFMixOpAdaptor(GLSLFMixOp &op);
+  GLSLFMixOpAdaptor(GLSLFMixOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -7395,8 +7495,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLFMixOp : public ::mlir::Op<GLSLFMixOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<3>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
+class GLSLFMixOp : public ::mlir::Op<GLSLFMixOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<3>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -7435,7 +7536,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -7453,7 +7554,7 @@ class GLSLFSignOpAdaptor {
 public:
   GLSLFSignOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLFSignOpAdaptor(GLSLFSignOp &op);
+  GLSLFSignOpAdaptor(GLSLFSignOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -7465,8 +7566,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLFSignOp : public ::mlir::Op<GLSLFSignOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLFSignOp : public ::mlir::Op<GLSLFSignOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -7488,19 +7590,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -7518,7 +7621,7 @@ class GLSLFloorOpAdaptor {
 public:
   GLSLFloorOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLFloorOpAdaptor(GLSLFloorOp &op);
+  GLSLFloorOpAdaptor(GLSLFloorOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -7530,8 +7633,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLFloorOp : public ::mlir::Op<GLSLFloorOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLFloorOp : public ::mlir::Op<GLSLFloorOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -7553,19 +7657,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -7583,7 +7688,7 @@ class GLSLFmaOpAdaptor {
 public:
   GLSLFmaOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLFmaOpAdaptor(GLSLFmaOp &op);
+  GLSLFmaOpAdaptor(GLSLFmaOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -7597,8 +7702,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLFmaOp : public ::mlir::Op<GLSLFmaOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<3>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLFmaOp : public ::mlir::Op<GLSLFmaOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<3>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -7634,7 +7740,7 @@ public:
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -7652,7 +7758,7 @@ class GLSLFrexpStructOpAdaptor {
 public:
   GLSLFrexpStructOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLFrexpStructOpAdaptor(GLSLFrexpStructOp &op);
+  GLSLFrexpStructOpAdaptor(GLSLFrexpStructOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -7664,8 +7770,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLFrexpStructOp : public ::mlir::Op<GLSLFrexpStructOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLFrexpStructOp : public ::mlir::Op<GLSLFrexpStructOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -7698,7 +7805,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -7716,7 +7823,7 @@ class GLSLInverseSqrtOpAdaptor {
 public:
   GLSLInverseSqrtOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLInverseSqrtOpAdaptor(GLSLInverseSqrtOp &op);
+  GLSLInverseSqrtOpAdaptor(GLSLInverseSqrtOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -7728,8 +7835,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLInverseSqrtOp : public ::mlir::Op<GLSLInverseSqrtOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLInverseSqrtOp : public ::mlir::Op<GLSLInverseSqrtOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -7751,19 +7859,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -7781,7 +7890,7 @@ class GLSLLdexpOpAdaptor {
 public:
   GLSLLdexpOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLLdexpOpAdaptor(GLSLLdexpOp &op);
+  GLSLLdexpOpAdaptor(GLSLLdexpOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -7794,8 +7903,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLLdexpOp : public ::mlir::Op<GLSLLdexpOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
+class GLSLLdexpOp : public ::mlir::Op<GLSLLdexpOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -7833,7 +7943,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -7851,7 +7961,7 @@ class GLSLLogOpAdaptor {
 public:
   GLSLLogOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLLogOpAdaptor(GLSLLogOp &op);
+  GLSLLogOpAdaptor(GLSLLogOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -7863,8 +7973,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLLogOp : public ::mlir::Op<GLSLLogOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLLogOp : public ::mlir::Op<GLSLLogOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -7886,19 +7997,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -7916,7 +8028,7 @@ class GLSLPowOpAdaptor {
 public:
   GLSLPowOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLPowOpAdaptor(GLSLPowOp &op);
+  GLSLPowOpAdaptor(GLSLPowOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -7929,8 +8041,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLPowOp : public ::mlir::Op<GLSLPowOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLPowOp : public ::mlir::Op<GLSLPowOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -7954,19 +8067,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value lhs, ::mlir::Value rhs);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -7984,7 +8098,7 @@ class GLSLRoundOpAdaptor {
 public:
   GLSLRoundOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLRoundOpAdaptor(GLSLRoundOp &op);
+  GLSLRoundOpAdaptor(GLSLRoundOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -7996,8 +8110,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLRoundOp : public ::mlir::Op<GLSLRoundOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLRoundOp : public ::mlir::Op<GLSLRoundOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -8019,19 +8134,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -8049,7 +8165,7 @@ class GLSLSAbsOpAdaptor {
 public:
   GLSLSAbsOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLSAbsOpAdaptor(GLSLSAbsOp &op);
+  GLSLSAbsOpAdaptor(GLSLSAbsOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -8061,8 +8177,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLSAbsOp : public ::mlir::Op<GLSLSAbsOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLSAbsOp : public ::mlir::Op<GLSLSAbsOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -8084,19 +8201,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -8114,7 +8232,7 @@ class GLSLSClampOpAdaptor {
 public:
   GLSLSClampOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLSClampOpAdaptor(GLSLSClampOp &op);
+  GLSLSClampOpAdaptor(GLSLSClampOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -8128,8 +8246,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLSClampOp : public ::mlir::Op<GLSLSClampOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<3>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLSClampOp : public ::mlir::Op<GLSLSClampOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<3>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -8165,7 +8284,7 @@ public:
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -8183,7 +8302,7 @@ class GLSLSMaxOpAdaptor {
 public:
   GLSLSMaxOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLSMaxOpAdaptor(GLSLSMaxOp &op);
+  GLSLSMaxOpAdaptor(GLSLSMaxOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -8196,8 +8315,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLSMaxOp : public ::mlir::Op<GLSLSMaxOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLSMaxOp : public ::mlir::Op<GLSLSMaxOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -8221,19 +8341,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value lhs, ::mlir::Value rhs);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -8251,7 +8372,7 @@ class GLSLSMinOpAdaptor {
 public:
   GLSLSMinOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLSMinOpAdaptor(GLSLSMinOp &op);
+  GLSLSMinOpAdaptor(GLSLSMinOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -8264,8 +8385,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLSMinOp : public ::mlir::Op<GLSLSMinOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLSMinOp : public ::mlir::Op<GLSLSMinOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -8289,19 +8411,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value lhs, ::mlir::Value rhs);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -8319,7 +8442,7 @@ class GLSLSSignOpAdaptor {
 public:
   GLSLSSignOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLSSignOpAdaptor(GLSLSSignOp &op);
+  GLSLSSignOpAdaptor(GLSLSSignOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -8331,8 +8454,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLSSignOp : public ::mlir::Op<GLSLSSignOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLSSignOp : public ::mlir::Op<GLSLSSignOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -8354,19 +8478,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -8384,7 +8509,7 @@ class GLSLSinOpAdaptor {
 public:
   GLSLSinOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLSinOpAdaptor(GLSLSinOp &op);
+  GLSLSinOpAdaptor(GLSLSinOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -8396,8 +8521,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLSinOp : public ::mlir::Op<GLSLSinOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLSinOp : public ::mlir::Op<GLSLSinOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -8419,19 +8545,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -8449,7 +8576,7 @@ class GLSLSinhOpAdaptor {
 public:
   GLSLSinhOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLSinhOpAdaptor(GLSLSinhOp &op);
+  GLSLSinhOpAdaptor(GLSLSinhOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -8461,8 +8588,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLSinhOp : public ::mlir::Op<GLSLSinhOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLSinhOp : public ::mlir::Op<GLSLSinhOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -8484,19 +8612,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -8514,7 +8643,7 @@ class GLSLSqrtOpAdaptor {
 public:
   GLSLSqrtOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLSqrtOpAdaptor(GLSLSqrtOp &op);
+  GLSLSqrtOpAdaptor(GLSLSqrtOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -8526,8 +8655,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLSqrtOp : public ::mlir::Op<GLSLSqrtOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLSqrtOp : public ::mlir::Op<GLSLSqrtOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -8549,19 +8679,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -8579,7 +8710,7 @@ class GLSLTanOpAdaptor {
 public:
   GLSLTanOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLTanOpAdaptor(GLSLTanOp &op);
+  GLSLTanOpAdaptor(GLSLTanOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -8591,8 +8722,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLTanOp : public ::mlir::Op<GLSLTanOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLTanOp : public ::mlir::Op<GLSLTanOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -8614,19 +8746,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -8644,7 +8777,7 @@ class GLSLTanhOpAdaptor {
 public:
   GLSLTanhOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLTanhOpAdaptor(GLSLTanhOp &op);
+  GLSLTanhOpAdaptor(GLSLTanhOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -8656,8 +8789,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLTanhOp : public ::mlir::Op<GLSLTanhOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLTanhOp : public ::mlir::Op<GLSLTanhOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -8679,19 +8813,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -8709,7 +8844,7 @@ class GLSLUClampOpAdaptor {
 public:
   GLSLUClampOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLUClampOpAdaptor(GLSLUClampOp &op);
+  GLSLUClampOpAdaptor(GLSLUClampOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -8723,8 +8858,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLUClampOp : public ::mlir::Op<GLSLUClampOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<3>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLUClampOp : public ::mlir::Op<GLSLUClampOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<3>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -8760,7 +8896,7 @@ public:
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -8778,7 +8914,7 @@ class GLSLUMaxOpAdaptor {
 public:
   GLSLUMaxOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLUMaxOpAdaptor(GLSLUMaxOp &op);
+  GLSLUMaxOpAdaptor(GLSLUMaxOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -8791,8 +8927,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLUMaxOp : public ::mlir::Op<GLSLUMaxOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLUMaxOp : public ::mlir::Op<GLSLUMaxOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -8816,19 +8953,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value lhs, ::mlir::Value rhs);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -8846,7 +8984,7 @@ class GLSLUMinOpAdaptor {
 public:
   GLSLUMinOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GLSLUMinOpAdaptor(GLSLUMinOp &op);
+  GLSLUMinOpAdaptor(GLSLUMinOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -8859,8 +8997,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GLSLUMinOp : public ::mlir::Op<GLSLUMinOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GLSLUMinOp : public ::mlir::Op<GLSLUMinOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -8884,19 +9023,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value lhs, ::mlir::Value rhs);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -8914,7 +9054,7 @@ class GlobalVariableOpAdaptor {
 public:
   GlobalVariableOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GlobalVariableOpAdaptor(GlobalVariableOp &op);
+  GlobalVariableOpAdaptor(GlobalVariableOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -8939,71 +9079,72 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GlobalVariableOp : public ::mlir::Op<GlobalVariableOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::SymbolOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GlobalVariableOp : public ::mlir::Op<GlobalVariableOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::SymbolOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = GlobalVariableOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("type"), ::llvm::StringRef("sym_name"), ::llvm::StringRef("initializer"), ::llvm::StringRef("location"), ::llvm::StringRef("binding"), ::llvm::StringRef("descriptor_set"), ::llvm::StringRef("builtin")};
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("binding"), ::llvm::StringRef("builtin"), ::llvm::StringRef("descriptor_set"), ::llvm::StringRef("initializer"), ::llvm::StringRef("location"), ::llvm::StringRef("sym_name"), ::llvm::StringRef("type")};
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr typeAttrName() {
+  ::mlir::StringAttr bindingAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr typeAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr bindingAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr sym_nameAttrName() {
+  ::mlir::StringAttr builtinAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr sym_nameAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr builtinAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
   }
 
-  ::mlir::StringAttr initializerAttrName() {
+  ::mlir::StringAttr descriptor_setAttrName() {
     return getAttributeNameForIndex(2);
   }
 
-  static ::mlir::StringAttr initializerAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr descriptor_setAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 2);
   }
 
-  ::mlir::StringAttr locationAttrName() {
+  ::mlir::StringAttr initializerAttrName() {
     return getAttributeNameForIndex(3);
   }
 
-  static ::mlir::StringAttr locationAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr initializerAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 3);
   }
 
-  ::mlir::StringAttr bindingAttrName() {
+  ::mlir::StringAttr locationAttrName() {
     return getAttributeNameForIndex(4);
   }
 
-  static ::mlir::StringAttr bindingAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr locationAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 4);
   }
 
-  ::mlir::StringAttr descriptor_setAttrName() {
+  ::mlir::StringAttr sym_nameAttrName() {
     return getAttributeNameForIndex(5);
   }
 
-  static ::mlir::StringAttr descriptor_setAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr sym_nameAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 5);
   }
 
-  ::mlir::StringAttr builtinAttrName() {
+  ::mlir::StringAttr typeAttrName() {
     return getAttributeNameForIndex(6);
   }
 
-  static ::mlir::StringAttr builtinAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr typeAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 6);
   }
 
@@ -9090,7 +9231,7 @@ class GroupBroadcastOpAdaptor {
 public:
   GroupBroadcastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GroupBroadcastOpAdaptor(GroupBroadcastOp &op);
+  GroupBroadcastOpAdaptor(GroupBroadcastOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -9105,8 +9246,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GroupBroadcastOp : public ::mlir::Op<GroupBroadcastOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
+class GroupBroadcastOp : public ::mlir::Op<GroupBroadcastOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -9159,7 +9301,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
     return getAttributeNameForIndex((*this)->getName(), index);
@@ -9187,7 +9329,7 @@ class GroupNonUniformBallotOpAdaptor {
 public:
   GroupNonUniformBallotOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GroupNonUniformBallotOpAdaptor(GroupNonUniformBallotOp &op);
+  GroupNonUniformBallotOpAdaptor(GroupNonUniformBallotOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -9201,8 +9343,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GroupNonUniformBallotOp : public ::mlir::Op<GroupNonUniformBallotOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::VectorType>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GroupNonUniformBallotOp : public ::mlir::Op<GroupNonUniformBallotOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::VectorType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -9276,7 +9419,7 @@ class GroupNonUniformBroadcastOpAdaptor {
 public:
   GroupNonUniformBroadcastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GroupNonUniformBroadcastOpAdaptor(GroupNonUniformBroadcastOp &op);
+  GroupNonUniformBroadcastOpAdaptor(GroupNonUniformBroadcastOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -9291,8 +9434,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GroupNonUniformBroadcastOp : public ::mlir::Op<GroupNonUniformBroadcastOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
+class GroupNonUniformBroadcastOp : public ::mlir::Op<GroupNonUniformBroadcastOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -9345,7 +9489,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
     return getAttributeNameForIndex((*this)->getName(), index);
@@ -9373,7 +9517,7 @@ class GroupNonUniformElectOpAdaptor {
 public:
   GroupNonUniformElectOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GroupNonUniformElectOpAdaptor(GroupNonUniformElectOp &op);
+  GroupNonUniformElectOpAdaptor(GroupNonUniformElectOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -9386,8 +9530,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GroupNonUniformElectOp : public ::mlir::Op<GroupNonUniformElectOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
+class GroupNonUniformElectOp : public ::mlir::Op<GroupNonUniformElectOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -9463,7 +9608,7 @@ class GroupNonUniformFAddOpAdaptor {
 public:
   GroupNonUniformFAddOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GroupNonUniformFAddOpAdaptor(GroupNonUniformFAddOp &op);
+  GroupNonUniformFAddOpAdaptor(GroupNonUniformFAddOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -9480,8 +9625,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GroupNonUniformFAddOp : public ::mlir::Op<GroupNonUniformFAddOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::AtLeastNOperands<1>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GroupNonUniformFAddOp : public ::mlir::Op<GroupNonUniformFAddOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::AtLeastNOperands<1>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -9568,7 +9714,7 @@ class GroupNonUniformFMaxOpAdaptor {
 public:
   GroupNonUniformFMaxOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GroupNonUniformFMaxOpAdaptor(GroupNonUniformFMaxOp &op);
+  GroupNonUniformFMaxOpAdaptor(GroupNonUniformFMaxOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -9585,8 +9731,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GroupNonUniformFMaxOp : public ::mlir::Op<GroupNonUniformFMaxOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::AtLeastNOperands<1>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GroupNonUniformFMaxOp : public ::mlir::Op<GroupNonUniformFMaxOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::AtLeastNOperands<1>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -9673,7 +9820,7 @@ class GroupNonUniformFMinOpAdaptor {
 public:
   GroupNonUniformFMinOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GroupNonUniformFMinOpAdaptor(GroupNonUniformFMinOp &op);
+  GroupNonUniformFMinOpAdaptor(GroupNonUniformFMinOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -9690,8 +9837,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GroupNonUniformFMinOp : public ::mlir::Op<GroupNonUniformFMinOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::AtLeastNOperands<1>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GroupNonUniformFMinOp : public ::mlir::Op<GroupNonUniformFMinOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::AtLeastNOperands<1>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -9778,7 +9926,7 @@ class GroupNonUniformFMulOpAdaptor {
 public:
   GroupNonUniformFMulOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GroupNonUniformFMulOpAdaptor(GroupNonUniformFMulOp &op);
+  GroupNonUniformFMulOpAdaptor(GroupNonUniformFMulOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -9795,8 +9943,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GroupNonUniformFMulOp : public ::mlir::Op<GroupNonUniformFMulOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::AtLeastNOperands<1>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GroupNonUniformFMulOp : public ::mlir::Op<GroupNonUniformFMulOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::AtLeastNOperands<1>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -9883,7 +10032,7 @@ class GroupNonUniformIAddOpAdaptor {
 public:
   GroupNonUniformIAddOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GroupNonUniformIAddOpAdaptor(GroupNonUniformIAddOp &op);
+  GroupNonUniformIAddOpAdaptor(GroupNonUniformIAddOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -9900,8 +10049,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GroupNonUniformIAddOp : public ::mlir::Op<GroupNonUniformIAddOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::AtLeastNOperands<1>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GroupNonUniformIAddOp : public ::mlir::Op<GroupNonUniformIAddOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::AtLeastNOperands<1>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -9988,7 +10138,7 @@ class GroupNonUniformIMulOpAdaptor {
 public:
   GroupNonUniformIMulOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GroupNonUniformIMulOpAdaptor(GroupNonUniformIMulOp &op);
+  GroupNonUniformIMulOpAdaptor(GroupNonUniformIMulOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -10005,8 +10155,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GroupNonUniformIMulOp : public ::mlir::Op<GroupNonUniformIMulOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::AtLeastNOperands<1>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GroupNonUniformIMulOp : public ::mlir::Op<GroupNonUniformIMulOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::AtLeastNOperands<1>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -10093,7 +10244,7 @@ class GroupNonUniformSMaxOpAdaptor {
 public:
   GroupNonUniformSMaxOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GroupNonUniformSMaxOpAdaptor(GroupNonUniformSMaxOp &op);
+  GroupNonUniformSMaxOpAdaptor(GroupNonUniformSMaxOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -10110,8 +10261,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GroupNonUniformSMaxOp : public ::mlir::Op<GroupNonUniformSMaxOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::AtLeastNOperands<1>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::SignedOp, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GroupNonUniformSMaxOp : public ::mlir::Op<GroupNonUniformSMaxOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::AtLeastNOperands<1>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::SignedOp, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -10198,7 +10350,7 @@ class GroupNonUniformSMinOpAdaptor {
 public:
   GroupNonUniformSMinOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GroupNonUniformSMinOpAdaptor(GroupNonUniformSMinOp &op);
+  GroupNonUniformSMinOpAdaptor(GroupNonUniformSMinOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -10215,8 +10367,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GroupNonUniformSMinOp : public ::mlir::Op<GroupNonUniformSMinOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::AtLeastNOperands<1>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::SignedOp, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GroupNonUniformSMinOp : public ::mlir::Op<GroupNonUniformSMinOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::AtLeastNOperands<1>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::SignedOp, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -10303,7 +10456,7 @@ class GroupNonUniformUMaxOpAdaptor {
 public:
   GroupNonUniformUMaxOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GroupNonUniformUMaxOpAdaptor(GroupNonUniformUMaxOp &op);
+  GroupNonUniformUMaxOpAdaptor(GroupNonUniformUMaxOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -10320,8 +10473,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GroupNonUniformUMaxOp : public ::mlir::Op<GroupNonUniformUMaxOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::AtLeastNOperands<1>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UnsignedOp, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GroupNonUniformUMaxOp : public ::mlir::Op<GroupNonUniformUMaxOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::AtLeastNOperands<1>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UnsignedOp, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -10408,7 +10562,7 @@ class GroupNonUniformUMinOpAdaptor {
 public:
   GroupNonUniformUMinOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GroupNonUniformUMinOpAdaptor(GroupNonUniformUMinOp &op);
+  GroupNonUniformUMinOpAdaptor(GroupNonUniformUMinOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -10425,8 +10579,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GroupNonUniformUMinOp : public ::mlir::Op<GroupNonUniformUMinOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::AtLeastNOperands<1>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UnsignedOp, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class GroupNonUniformUMinOp : public ::mlir::Op<GroupNonUniformUMinOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::AtLeastNOperands<1>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UnsignedOp, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -10513,7 +10668,7 @@ class IAddOpAdaptor {
 public:
   IAddOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  IAddOpAdaptor(IAddOp &op);
+  IAddOpAdaptor(IAddOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -10526,8 +10681,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class IAddOp : public ::mlir::Op<IAddOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class IAddOp : public ::mlir::Op<IAddOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -10551,20 +10707,21 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand1, ::mlir::Value operand2);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::OpFoldResult fold(::llvm::ArrayRef<::mlir::Attribute> operands);
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -10582,7 +10739,7 @@ class IEqualOpAdaptor {
 public:
   IEqualOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  IEqualOpAdaptor(IEqualOp &op);
+  IEqualOpAdaptor(IEqualOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -10595,8 +10752,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class IEqualOp : public ::mlir::Op<IEqualOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class IEqualOp : public ::mlir::Op<IEqualOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -10631,7 +10789,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -10649,7 +10807,7 @@ class IMulOpAdaptor {
 public:
   IMulOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  IMulOpAdaptor(IMulOp &op);
+  IMulOpAdaptor(IMulOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -10662,8 +10820,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class IMulOp : public ::mlir::Op<IMulOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class IMulOp : public ::mlir::Op<IMulOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -10687,20 +10846,21 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand1, ::mlir::Value operand2);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::OpFoldResult fold(::llvm::ArrayRef<::mlir::Attribute> operands);
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -10718,7 +10878,7 @@ class INotEqualOpAdaptor {
 public:
   INotEqualOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  INotEqualOpAdaptor(INotEqualOp &op);
+  INotEqualOpAdaptor(INotEqualOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -10731,8 +10891,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class INotEqualOp : public ::mlir::Op<INotEqualOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class INotEqualOp : public ::mlir::Op<INotEqualOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -10767,7 +10928,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -10785,7 +10946,7 @@ class ISubOpAdaptor {
 public:
   ISubOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  ISubOpAdaptor(ISubOp &op);
+  ISubOpAdaptor(ISubOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -10798,8 +10959,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class ISubOp : public ::mlir::Op<ISubOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class ISubOp : public ::mlir::Op<ISubOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -10823,20 +10985,21 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand1, ::mlir::Value operand2);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::OpFoldResult fold(::llvm::ArrayRef<::mlir::Attribute> operands);
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -10854,7 +11017,7 @@ class ImageDrefGatherOpAdaptor {
 public:
   ImageDrefGatherOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  ImageDrefGatherOpAdaptor(ImageDrefGatherOp &op);
+  ImageDrefGatherOpAdaptor(ImageDrefGatherOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -10871,8 +11034,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class ImageDrefGatherOp : public ::mlir::Op<ImageDrefGatherOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::VectorType>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::AtLeastNOperands<3>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class ImageDrefGatherOp : public ::mlir::Op<ImageDrefGatherOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::VectorType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::AtLeastNOperands<3>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -10924,7 +11088,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
     return getAttributeNameForIndex((*this)->getName(), index);
@@ -10952,7 +11116,7 @@ class ImageOpAdaptor {
 public:
   ImageOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  ImageOpAdaptor(ImageOp &op);
+  ImageOpAdaptor(ImageOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -10964,8 +11128,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class ImageOp : public ::mlir::Op<ImageOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class ImageOp : public ::mlir::Op<ImageOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -10997,7 +11162,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -11015,7 +11180,7 @@ class ImageQuerySizeOpAdaptor {
 public:
   ImageQuerySizeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  ImageQuerySizeOpAdaptor(ImageQuerySizeOp &op);
+  ImageQuerySizeOpAdaptor(ImageQuerySizeOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -11027,8 +11192,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class ImageQuerySizeOp : public ::mlir::Op<ImageQuerySizeOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class ImageQuerySizeOp : public ::mlir::Op<ImageQuerySizeOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -11061,7 +11227,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -11079,7 +11245,7 @@ class InBoundsPtrAccessChainOpAdaptor {
 public:
   InBoundsPtrAccessChainOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  InBoundsPtrAccessChainOpAdaptor(InBoundsPtrAccessChainOp &op);
+  InBoundsPtrAccessChainOpAdaptor(InBoundsPtrAccessChainOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -11093,8 +11259,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class InBoundsPtrAccessChainOp : public ::mlir::Op<InBoundsPtrAccessChainOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::AtLeastNOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class InBoundsPtrAccessChainOp : public ::mlir::Op<InBoundsPtrAccessChainOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::AtLeastNOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -11132,7 +11299,7 @@ public:
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -11150,7 +11317,7 @@ class IsInfOpAdaptor {
 public:
   IsInfOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  IsInfOpAdaptor(IsInfOp &op);
+  IsInfOpAdaptor(IsInfOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -11162,8 +11329,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class IsInfOp : public ::mlir::Op<IsInfOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class IsInfOp : public ::mlir::Op<IsInfOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -11196,7 +11364,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -11214,7 +11382,7 @@ class IsNanOpAdaptor {
 public:
   IsNanOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  IsNanOpAdaptor(IsNanOp &op);
+  IsNanOpAdaptor(IsNanOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -11226,8 +11394,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class IsNanOp : public ::mlir::Op<IsNanOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class IsNanOp : public ::mlir::Op<IsNanOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -11260,7 +11429,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -11278,7 +11447,7 @@ class LoadOpAdaptor {
 public:
   LoadOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  LoadOpAdaptor(LoadOp &op);
+  LoadOpAdaptor(LoadOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -11294,31 +11463,32 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class LoadOp : public ::mlir::Op<LoadOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class LoadOp : public ::mlir::Op<LoadOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = LoadOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("memory_access"), ::llvm::StringRef("alignment")};
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("alignment"), ::llvm::StringRef("memory_access")};
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr memory_accessAttrName() {
+  ::mlir::StringAttr alignmentAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr memory_accessAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr alignmentAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr alignmentAttrName() {
+  ::mlir::StringAttr memory_accessAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr alignmentAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr memory_accessAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
   }
 
@@ -11381,7 +11551,7 @@ class LogicalAndOpAdaptor {
 public:
   LogicalAndOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  LogicalAndOpAdaptor(LogicalAndOp &op);
+  LogicalAndOpAdaptor(LogicalAndOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -11394,8 +11564,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class LogicalAndOp : public ::mlir::Op<LogicalAndOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class LogicalAndOp : public ::mlir::Op<LogicalAndOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -11431,7 +11602,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -11449,7 +11620,7 @@ class LogicalEqualOpAdaptor {
 public:
   LogicalEqualOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  LogicalEqualOpAdaptor(LogicalEqualOp &op);
+  LogicalEqualOpAdaptor(LogicalEqualOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -11462,8 +11633,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class LogicalEqualOp : public ::mlir::Op<LogicalEqualOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class LogicalEqualOp : public ::mlir::Op<LogicalEqualOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -11498,7 +11670,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -11516,7 +11688,7 @@ class LogicalNotEqualOpAdaptor {
 public:
   LogicalNotEqualOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  LogicalNotEqualOpAdaptor(LogicalNotEqualOp &op);
+  LogicalNotEqualOpAdaptor(LogicalNotEqualOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -11529,8 +11701,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class LogicalNotEqualOp : public ::mlir::Op<LogicalNotEqualOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class LogicalNotEqualOp : public ::mlir::Op<LogicalNotEqualOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -11565,7 +11738,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -11583,7 +11756,7 @@ class LogicalNotOpAdaptor {
 public:
   LogicalNotOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  LogicalNotOpAdaptor(LogicalNotOp &op);
+  LogicalNotOpAdaptor(LogicalNotOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -11595,8 +11768,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class LogicalNotOp : public ::mlir::Op<LogicalNotOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class LogicalNotOp : public ::mlir::Op<LogicalNotOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -11630,7 +11804,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -11648,7 +11822,7 @@ class LogicalOrOpAdaptor {
 public:
   LogicalOrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  LogicalOrOpAdaptor(LogicalOrOp &op);
+  LogicalOrOpAdaptor(LogicalOrOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -11661,8 +11835,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class LogicalOrOp : public ::mlir::Op<LogicalOrOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class LogicalOrOp : public ::mlir::Op<LogicalOrOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -11698,7 +11873,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -11716,7 +11891,7 @@ class LoopOpAdaptor {
 public:
   LoopOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  LoopOpAdaptor(LoopOp &op);
+  LoopOpAdaptor(LoopOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -11731,8 +11906,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class LoopOp : public ::mlir::Op<LoopOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class LoopOp : public ::mlir::Op<LoopOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -11820,7 +11996,7 @@ class MatrixTimesMatrixOpAdaptor {
 public:
   MatrixTimesMatrixOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  MatrixTimesMatrixOpAdaptor(MatrixTimesMatrixOp &op);
+  MatrixTimesMatrixOpAdaptor(MatrixTimesMatrixOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -11833,8 +12009,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class MatrixTimesMatrixOp : public ::mlir::Op<MatrixTimesMatrixOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class MatrixTimesMatrixOp : public ::mlir::Op<MatrixTimesMatrixOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -11869,7 +12046,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -11887,7 +12064,7 @@ class MatrixTimesScalarOpAdaptor {
 public:
   MatrixTimesScalarOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  MatrixTimesScalarOpAdaptor(MatrixTimesScalarOp &op);
+  MatrixTimesScalarOpAdaptor(MatrixTimesScalarOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -11900,8 +12077,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class MatrixTimesScalarOp : public ::mlir::Op<MatrixTimesScalarOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class MatrixTimesScalarOp : public ::mlir::Op<MatrixTimesScalarOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -11936,7 +12114,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -11954,7 +12132,7 @@ class MemoryBarrierOpAdaptor {
 public:
   MemoryBarrierOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  MemoryBarrierOpAdaptor(MemoryBarrierOp &op);
+  MemoryBarrierOpAdaptor(MemoryBarrierOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -11969,8 +12147,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class MemoryBarrierOp : public ::mlir::Op<MemoryBarrierOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class MemoryBarrierOp : public ::mlir::Op<MemoryBarrierOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -12052,7 +12231,7 @@ class MergeOpAdaptor {
 public:
   MergeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  MergeOpAdaptor(MergeOp &op);
+  MergeOpAdaptor(MergeOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -12063,8 +12242,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class MergeOp : public ::mlir::Op<MergeOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::IsTerminator, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class MergeOp : public ::mlir::Op<MergeOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::IsTerminator, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -12094,7 +12274,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -12112,7 +12292,7 @@ class ModuleOpAdaptor {
 public:
   ModuleOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  ModuleOpAdaptor(ModuleOp &op);
+  ModuleOpAdaptor(ModuleOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -12132,15 +12312,16 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class ModuleOp : public ::mlir::Op<ModuleOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::NoRegionArguments, ::mlir::OpTrait::NoTerminator, ::mlir::OpTrait::SingleBlock, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsIsolatedFromAbove, ::mlir::OpTrait::SymbolTable, ::mlir::SymbolOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class ModuleOp : public ::mlir::Op<ModuleOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::NoRegionArguments, ::mlir::OpTrait::NoTerminator, ::mlir::OpTrait::SingleBlock, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsIsolatedFromAbove, ::mlir::OpTrait::SymbolTable, ::mlir::SymbolOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = ModuleOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("addressing_model"), ::llvm::StringRef("memory_model"), ::llvm::StringRef("vce_triple"), ::llvm::StringRef("sym_name")};
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("addressing_model"), ::llvm::StringRef("memory_model"), ::llvm::StringRef("sym_name"), ::llvm::StringRef("vce_triple")};
     return ::llvm::makeArrayRef(attrNames);
   }
 
@@ -12160,19 +12341,19 @@ public:
     return getAttributeNameForIndex(name, 1);
   }
 
-  ::mlir::StringAttr vce_tripleAttrName() {
+  ::mlir::StringAttr sym_nameAttrName() {
     return getAttributeNameForIndex(2);
   }
 
-  static ::mlir::StringAttr vce_tripleAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr sym_nameAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 2);
   }
 
-  ::mlir::StringAttr sym_nameAttrName() {
+  ::mlir::StringAttr vce_tripleAttrName() {
     return getAttributeNameForIndex(3);
   }
 
-  static ::mlir::StringAttr sym_nameAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr vce_tripleAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 3);
   }
 
@@ -12241,7 +12422,7 @@ class NotOpAdaptor {
 public:
   NotOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  NotOpAdaptor(NotOp &op);
+  NotOpAdaptor(NotOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -12253,8 +12434,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class NotOp : public ::mlir::Op<NotOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class NotOp : public ::mlir::Op<NotOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -12276,19 +12458,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -12306,7 +12489,7 @@ class OCLCeilOpAdaptor {
 public:
   OCLCeilOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  OCLCeilOpAdaptor(OCLCeilOp &op);
+  OCLCeilOpAdaptor(OCLCeilOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -12318,8 +12501,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class OCLCeilOp : public ::mlir::Op<OCLCeilOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class OCLCeilOp : public ::mlir::Op<OCLCeilOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -12341,19 +12525,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -12371,7 +12556,7 @@ class OCLCosOpAdaptor {
 public:
   OCLCosOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  OCLCosOpAdaptor(OCLCosOp &op);
+  OCLCosOpAdaptor(OCLCosOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -12383,8 +12568,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class OCLCosOp : public ::mlir::Op<OCLCosOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class OCLCosOp : public ::mlir::Op<OCLCosOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -12406,19 +12592,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -12436,7 +12623,7 @@ class OCLErfOpAdaptor {
 public:
   OCLErfOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  OCLErfOpAdaptor(OCLErfOp &op);
+  OCLErfOpAdaptor(OCLErfOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -12448,8 +12635,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class OCLErfOp : public ::mlir::Op<OCLErfOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class OCLErfOp : public ::mlir::Op<OCLErfOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -12471,19 +12659,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -12501,7 +12690,7 @@ class OCLExpOpAdaptor {
 public:
   OCLExpOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  OCLExpOpAdaptor(OCLExpOp &op);
+  OCLExpOpAdaptor(OCLExpOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -12513,8 +12702,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class OCLExpOp : public ::mlir::Op<OCLExpOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class OCLExpOp : public ::mlir::Op<OCLExpOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -12536,19 +12726,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -12566,7 +12757,7 @@ class OCLFAbsOpAdaptor {
 public:
   OCLFAbsOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  OCLFAbsOpAdaptor(OCLFAbsOp &op);
+  OCLFAbsOpAdaptor(OCLFAbsOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -12578,8 +12769,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class OCLFAbsOp : public ::mlir::Op<OCLFAbsOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class OCLFAbsOp : public ::mlir::Op<OCLFAbsOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -12601,19 +12793,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -12631,7 +12824,7 @@ class OCLFloorOpAdaptor {
 public:
   OCLFloorOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  OCLFloorOpAdaptor(OCLFloorOp &op);
+  OCLFloorOpAdaptor(OCLFloorOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -12643,8 +12836,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class OCLFloorOp : public ::mlir::Op<OCLFloorOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class OCLFloorOp : public ::mlir::Op<OCLFloorOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -12666,19 +12860,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -12696,7 +12891,7 @@ class OCLFmaOpAdaptor {
 public:
   OCLFmaOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  OCLFmaOpAdaptor(OCLFmaOp &op);
+  OCLFmaOpAdaptor(OCLFmaOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -12710,8 +12905,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class OCLFmaOp : public ::mlir::Op<OCLFmaOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<3>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class OCLFmaOp : public ::mlir::Op<OCLFmaOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<3>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -12737,19 +12933,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value x, ::mlir::Value y, ::mlir::Value z);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value x, ::mlir::Value y, ::mlir::Value z);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value x, ::mlir::Value y, ::mlir::Value z);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value x, ::mlir::Value y, ::mlir::Value z);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -12767,7 +12964,7 @@ class OCLLogOpAdaptor {
 public:
   OCLLogOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  OCLLogOpAdaptor(OCLLogOp &op);
+  OCLLogOpAdaptor(OCLLogOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -12779,8 +12976,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class OCLLogOp : public ::mlir::Op<OCLLogOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class OCLLogOp : public ::mlir::Op<OCLLogOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -12802,19 +13000,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -12832,7 +13031,7 @@ class OCLPowOpAdaptor {
 public:
   OCLPowOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  OCLPowOpAdaptor(OCLPowOp &op);
+  OCLPowOpAdaptor(OCLPowOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -12845,8 +13044,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class OCLPowOp : public ::mlir::Op<OCLPowOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class OCLPowOp : public ::mlir::Op<OCLPowOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -12870,19 +13070,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value lhs, ::mlir::Value rhs);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -12900,7 +13101,7 @@ class OCLRsqrtOpAdaptor {
 public:
   OCLRsqrtOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  OCLRsqrtOpAdaptor(OCLRsqrtOp &op);
+  OCLRsqrtOpAdaptor(OCLRsqrtOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -12912,8 +13113,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class OCLRsqrtOp : public ::mlir::Op<OCLRsqrtOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class OCLRsqrtOp : public ::mlir::Op<OCLRsqrtOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -12935,19 +13137,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -12965,7 +13168,7 @@ class OCLSAbsOpAdaptor {
 public:
   OCLSAbsOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  OCLSAbsOpAdaptor(OCLSAbsOp &op);
+  OCLSAbsOpAdaptor(OCLSAbsOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -12977,8 +13180,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class OCLSAbsOp : public ::mlir::Op<OCLSAbsOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class OCLSAbsOp : public ::mlir::Op<OCLSAbsOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -13000,19 +13204,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -13030,7 +13235,7 @@ class OCLSinOpAdaptor {
 public:
   OCLSinOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  OCLSinOpAdaptor(OCLSinOp &op);
+  OCLSinOpAdaptor(OCLSinOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -13042,8 +13247,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class OCLSinOp : public ::mlir::Op<OCLSinOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class OCLSinOp : public ::mlir::Op<OCLSinOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -13065,19 +13271,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -13095,7 +13302,7 @@ class OCLSqrtOpAdaptor {
 public:
   OCLSqrtOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  OCLSqrtOpAdaptor(OCLSqrtOp &op);
+  OCLSqrtOpAdaptor(OCLSqrtOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -13107,8 +13314,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class OCLSqrtOp : public ::mlir::Op<OCLSqrtOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class OCLSqrtOp : public ::mlir::Op<OCLSqrtOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -13130,19 +13338,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -13160,7 +13369,7 @@ class OCLTanhOpAdaptor {
 public:
   OCLTanhOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  OCLTanhOpAdaptor(OCLTanhOp &op);
+  OCLTanhOpAdaptor(OCLTanhOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -13172,8 +13381,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class OCLTanhOp : public ::mlir::Op<OCLTanhOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class OCLTanhOp : public ::mlir::Op<OCLTanhOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -13195,19 +13405,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -13225,7 +13436,7 @@ class OrderedOpAdaptor {
 public:
   OrderedOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  OrderedOpAdaptor(OrderedOp &op);
+  OrderedOpAdaptor(OrderedOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -13238,8 +13449,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class OrderedOp : public ::mlir::Op<OrderedOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class OrderedOp : public ::mlir::Op<OrderedOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -13274,7 +13486,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -13292,7 +13504,7 @@ class PtrAccessChainOpAdaptor {
 public:
   PtrAccessChainOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  PtrAccessChainOpAdaptor(PtrAccessChainOp &op);
+  PtrAccessChainOpAdaptor(PtrAccessChainOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -13306,8 +13518,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class PtrAccessChainOp : public ::mlir::Op<PtrAccessChainOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::AtLeastNOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class PtrAccessChainOp : public ::mlir::Op<PtrAccessChainOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::AtLeastNOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -13345,7 +13558,7 @@ public:
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -13363,7 +13576,7 @@ class ReferenceOfOpAdaptor {
 public:
   ReferenceOfOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  ReferenceOfOpAdaptor(ReferenceOfOp &op);
+  ReferenceOfOpAdaptor(ReferenceOfOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -13376,8 +13589,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class ReferenceOfOp : public ::mlir::Op<ReferenceOfOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class ReferenceOfOp : public ::mlir::Op<ReferenceOfOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -13422,7 +13636,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
     return getAttributeNameForIndex((*this)->getName(), index);
@@ -13450,7 +13664,7 @@ class ReturnOpAdaptor {
 public:
   ReturnOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  ReturnOpAdaptor(ReturnOp &op);
+  ReturnOpAdaptor(ReturnOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -13461,8 +13675,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class ReturnOp : public ::mlir::Op<ReturnOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::IsTerminator, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class ReturnOp : public ::mlir::Op<ReturnOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::IsTerminator, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -13492,7 +13707,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -13510,7 +13725,7 @@ class ReturnValueOpAdaptor {
 public:
   ReturnValueOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  ReturnValueOpAdaptor(ReturnValueOp &op);
+  ReturnValueOpAdaptor(ReturnValueOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -13522,8 +13737,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class ReturnValueOp : public ::mlir::Op<ReturnValueOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::IsTerminator, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class ReturnValueOp : public ::mlir::Op<ReturnValueOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::IsTerminator, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -13555,7 +13771,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -13573,7 +13789,7 @@ class SConvertOpAdaptor {
 public:
   SConvertOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  SConvertOpAdaptor(SConvertOp &op);
+  SConvertOpAdaptor(SConvertOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -13585,8 +13801,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class SConvertOp : public ::mlir::Op<SConvertOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::OpTrait::spirv::SignedOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class SConvertOp : public ::mlir::Op<SConvertOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::OpTrait::spirv::SignedOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -13619,7 +13836,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -13637,7 +13854,7 @@ class SDivOpAdaptor {
 public:
   SDivOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  SDivOpAdaptor(SDivOp &op);
+  SDivOpAdaptor(SDivOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -13650,8 +13867,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class SDivOp : public ::mlir::Op<SDivOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class SDivOp : public ::mlir::Op<SDivOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -13675,19 +13893,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand1, ::mlir::Value operand2);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -13705,7 +13924,7 @@ class SGreaterThanEqualOpAdaptor {
 public:
   SGreaterThanEqualOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  SGreaterThanEqualOpAdaptor(SGreaterThanEqualOp &op);
+  SGreaterThanEqualOpAdaptor(SGreaterThanEqualOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -13718,8 +13937,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class SGreaterThanEqualOp : public ::mlir::Op<SGreaterThanEqualOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::OpTrait::spirv::SignedOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class SGreaterThanEqualOp : public ::mlir::Op<SGreaterThanEqualOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::OpTrait::spirv::SignedOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -13754,7 +13974,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -13772,7 +13992,7 @@ class SGreaterThanOpAdaptor {
 public:
   SGreaterThanOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  SGreaterThanOpAdaptor(SGreaterThanOp &op);
+  SGreaterThanOpAdaptor(SGreaterThanOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -13785,8 +14005,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class SGreaterThanOp : public ::mlir::Op<SGreaterThanOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::OpTrait::spirv::SignedOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class SGreaterThanOp : public ::mlir::Op<SGreaterThanOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::OpTrait::spirv::SignedOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -13821,7 +14042,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -13839,7 +14060,7 @@ class SLessThanEqualOpAdaptor {
 public:
   SLessThanEqualOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  SLessThanEqualOpAdaptor(SLessThanEqualOp &op);
+  SLessThanEqualOpAdaptor(SLessThanEqualOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -13852,8 +14073,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class SLessThanEqualOp : public ::mlir::Op<SLessThanEqualOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::OpTrait::spirv::SignedOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class SLessThanEqualOp : public ::mlir::Op<SLessThanEqualOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::OpTrait::spirv::SignedOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -13888,7 +14110,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -13906,7 +14128,7 @@ class SLessThanOpAdaptor {
 public:
   SLessThanOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  SLessThanOpAdaptor(SLessThanOp &op);
+  SLessThanOpAdaptor(SLessThanOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -13919,8 +14141,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class SLessThanOp : public ::mlir::Op<SLessThanOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::OpTrait::spirv::SignedOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class SLessThanOp : public ::mlir::Op<SLessThanOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::OpTrait::spirv::SignedOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -13955,7 +14178,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -13973,7 +14196,7 @@ class SModOpAdaptor {
 public:
   SModOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  SModOpAdaptor(SModOp &op);
+  SModOpAdaptor(SModOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -13986,8 +14209,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class SModOp : public ::mlir::Op<SModOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class SModOp : public ::mlir::Op<SModOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -14011,19 +14235,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand1, ::mlir::Value operand2);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -14041,7 +14266,7 @@ class SNegateOpAdaptor {
 public:
   SNegateOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  SNegateOpAdaptor(SNegateOp &op);
+  SNegateOpAdaptor(SNegateOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -14053,8 +14278,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class SNegateOp : public ::mlir::Op<SNegateOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class SNegateOp : public ::mlir::Op<SNegateOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -14076,19 +14302,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -14106,7 +14333,7 @@ class SRemOpAdaptor {
 public:
   SRemOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  SRemOpAdaptor(SRemOp &op);
+  SRemOpAdaptor(SRemOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -14119,8 +14346,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class SRemOp : public ::mlir::Op<SRemOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class SRemOp : public ::mlir::Op<SRemOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -14144,19 +14372,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand1, ::mlir::Value operand2);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -14174,7 +14403,7 @@ class SelectOpAdaptor {
 public:
   SelectOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  SelectOpAdaptor(SelectOp &op);
+  SelectOpAdaptor(SelectOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -14188,8 +14417,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class SelectOp : public ::mlir::Op<SelectOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<3>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
+class SelectOp : public ::mlir::Op<SelectOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<3>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -14229,7 +14459,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -14247,7 +14477,7 @@ class SelectionOpAdaptor {
 public:
   SelectionOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  SelectionOpAdaptor(SelectionOp &op);
+  SelectionOpAdaptor(SelectionOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -14262,8 +14492,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class SelectionOp : public ::mlir::Op<SelectionOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class SelectionOp : public ::mlir::Op<SelectionOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -14352,7 +14583,7 @@ class ShiftLeftLogicalOpAdaptor {
 public:
   ShiftLeftLogicalOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  ShiftLeftLogicalOpAdaptor(ShiftLeftLogicalOp &op);
+  ShiftLeftLogicalOpAdaptor(ShiftLeftLogicalOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -14365,8 +14596,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class ShiftLeftLogicalOp : public ::mlir::Op<ShiftLeftLogicalOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
+class ShiftLeftLogicalOp : public ::mlir::Op<ShiftLeftLogicalOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -14404,7 +14636,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -14422,7 +14654,7 @@ class ShiftRightArithmeticOpAdaptor {
 public:
   ShiftRightArithmeticOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  ShiftRightArithmeticOpAdaptor(ShiftRightArithmeticOp &op);
+  ShiftRightArithmeticOpAdaptor(ShiftRightArithmeticOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -14435,8 +14667,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class ShiftRightArithmeticOp : public ::mlir::Op<ShiftRightArithmeticOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
+class ShiftRightArithmeticOp : public ::mlir::Op<ShiftRightArithmeticOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -14474,7 +14707,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -14492,7 +14725,7 @@ class ShiftRightLogicalOpAdaptor {
 public:
   ShiftRightLogicalOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  ShiftRightLogicalOpAdaptor(ShiftRightLogicalOp &op);
+  ShiftRightLogicalOpAdaptor(ShiftRightLogicalOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -14505,8 +14738,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class ShiftRightLogicalOp : public ::mlir::Op<ShiftRightLogicalOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
+class ShiftRightLogicalOp : public ::mlir::Op<ShiftRightLogicalOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -14544,7 +14778,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -14562,7 +14796,7 @@ class SpecConstantCompositeOpAdaptor {
 public:
   SpecConstantCompositeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  SpecConstantCompositeOpAdaptor(SpecConstantCompositeOp &op);
+  SpecConstantCompositeOpAdaptor(SpecConstantCompositeOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -14579,23 +14813,24 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class SpecConstantCompositeOp : public ::mlir::Op<SpecConstantCompositeOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::SymbolOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class SpecConstantCompositeOp : public ::mlir::Op<SpecConstantCompositeOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::SymbolOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = SpecConstantCompositeOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("type"), ::llvm::StringRef("sym_name"), ::llvm::StringRef("constituents")};
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("constituents"), ::llvm::StringRef("sym_name"), ::llvm::StringRef("type")};
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr typeAttrName() {
+  ::mlir::StringAttr constituentsAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr typeAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr constituentsAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
@@ -14607,11 +14842,11 @@ public:
     return getAttributeNameForIndex(name, 1);
   }
 
-  ::mlir::StringAttr constituentsAttrName() {
+  ::mlir::StringAttr typeAttrName() {
     return getAttributeNameForIndex(2);
   }
 
-  static ::mlir::StringAttr constituentsAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr typeAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 2);
   }
 
@@ -14673,7 +14908,7 @@ class SpecConstantOpAdaptor {
 public:
   SpecConstantOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  SpecConstantOpAdaptor(SpecConstantOp &op);
+  SpecConstantOpAdaptor(SpecConstantOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -14688,31 +14923,32 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class SpecConstantOp : public ::mlir::Op<SpecConstantOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::SymbolOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class SpecConstantOp : public ::mlir::Op<SpecConstantOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::SymbolOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = SpecConstantOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("sym_name"), ::llvm::StringRef("default_value")};
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("default_value"), ::llvm::StringRef("sym_name")};
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr sym_nameAttrName() {
+  ::mlir::StringAttr default_valueAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr sym_nameAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr default_valueAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr default_valueAttrName() {
+  ::mlir::StringAttr sym_nameAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr default_valueAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr sym_nameAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
   }
 
@@ -14771,7 +15007,7 @@ class SpecConstantOperationOpAdaptor {
 public:
   SpecConstantOperationOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  SpecConstantOperationOpAdaptor(SpecConstantOperationOp &op);
+  SpecConstantOperationOpAdaptor(SpecConstantOperationOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -14784,8 +15020,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class SpecConstantOperationOp : public ::mlir::Op<SpecConstantOperationOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class SpecConstantOperationOp : public ::mlir::Op<SpecConstantOperationOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -14817,7 +15054,7 @@ public:
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -14835,7 +15072,7 @@ class StoreOpAdaptor {
 public:
   StoreOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  StoreOpAdaptor(StoreOp &op);
+  StoreOpAdaptor(StoreOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -14852,31 +15089,32 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class StoreOp : public ::mlir::Op<StoreOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class StoreOp : public ::mlir::Op<StoreOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = StoreOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("memory_access"), ::llvm::StringRef("alignment")};
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("alignment"), ::llvm::StringRef("memory_access")};
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr memory_accessAttrName() {
+  ::mlir::StringAttr alignmentAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr memory_accessAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr alignmentAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr alignmentAttrName() {
+  ::mlir::StringAttr memory_accessAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr alignmentAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr memory_accessAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
   }
 
@@ -14940,7 +15178,7 @@ class SubgroupBallotKHROpAdaptor {
 public:
   SubgroupBallotKHROpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  SubgroupBallotKHROpAdaptor(SubgroupBallotKHROp &op);
+  SubgroupBallotKHROpAdaptor(SubgroupBallotKHROp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -14952,8 +15190,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class SubgroupBallotKHROp : public ::mlir::Op<SubgroupBallotKHROp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::VectorType>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class SubgroupBallotKHROp : public ::mlir::Op<SubgroupBallotKHROp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::VectorType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -15002,7 +15241,7 @@ class SubgroupBlockReadINTELOpAdaptor {
 public:
   SubgroupBlockReadINTELOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  SubgroupBlockReadINTELOpAdaptor(SubgroupBlockReadINTELOp &op);
+  SubgroupBlockReadINTELOpAdaptor(SubgroupBlockReadINTELOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -15014,8 +15253,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class SubgroupBlockReadINTELOp : public ::mlir::Op<SubgroupBlockReadINTELOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class SubgroupBlockReadINTELOp : public ::mlir::Op<SubgroupBlockReadINTELOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -15065,7 +15305,7 @@ class SubgroupBlockWriteINTELOpAdaptor {
 public:
   SubgroupBlockWriteINTELOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  SubgroupBlockWriteINTELOpAdaptor(SubgroupBlockWriteINTELOp &op);
+  SubgroupBlockWriteINTELOpAdaptor(SubgroupBlockWriteINTELOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -15078,8 +15318,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class SubgroupBlockWriteINTELOp : public ::mlir::Op<SubgroupBlockWriteINTELOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class SubgroupBlockWriteINTELOp : public ::mlir::Op<SubgroupBlockWriteINTELOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -15130,7 +15371,7 @@ class TransposeOpAdaptor {
 public:
   TransposeOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  TransposeOpAdaptor(TransposeOp &op);
+  TransposeOpAdaptor(TransposeOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -15142,8 +15383,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class TransposeOp : public ::mlir::Op<TransposeOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class TransposeOp : public ::mlir::Op<TransposeOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -15176,7 +15418,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -15194,7 +15436,7 @@ class UConvertOpAdaptor {
 public:
   UConvertOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  UConvertOpAdaptor(UConvertOp &op);
+  UConvertOpAdaptor(UConvertOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -15206,8 +15448,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class UConvertOp : public ::mlir::Op<UConvertOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UnsignedOp, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class UConvertOp : public ::mlir::Op<UConvertOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UnsignedOp, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -15240,7 +15483,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -15258,7 +15501,7 @@ class UDivOpAdaptor {
 public:
   UDivOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  UDivOpAdaptor(UDivOp &op);
+  UDivOpAdaptor(UDivOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -15271,8 +15514,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class UDivOp : public ::mlir::Op<UDivOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UnsignedOp, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class UDivOp : public ::mlir::Op<UDivOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UnsignedOp, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -15296,19 +15540,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand1, ::mlir::Value operand2);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -15326,7 +15571,7 @@ class UGreaterThanEqualOpAdaptor {
 public:
   UGreaterThanEqualOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  UGreaterThanEqualOpAdaptor(UGreaterThanEqualOp &op);
+  UGreaterThanEqualOpAdaptor(UGreaterThanEqualOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -15339,8 +15584,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class UGreaterThanEqualOp : public ::mlir::Op<UGreaterThanEqualOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UnsignedOp, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class UGreaterThanEqualOp : public ::mlir::Op<UGreaterThanEqualOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UnsignedOp, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -15375,7 +15621,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -15393,7 +15639,7 @@ class UGreaterThanOpAdaptor {
 public:
   UGreaterThanOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  UGreaterThanOpAdaptor(UGreaterThanOp &op);
+  UGreaterThanOpAdaptor(UGreaterThanOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -15406,8 +15652,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class UGreaterThanOp : public ::mlir::Op<UGreaterThanOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UnsignedOp, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class UGreaterThanOp : public ::mlir::Op<UGreaterThanOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UnsignedOp, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -15442,7 +15689,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -15460,7 +15707,7 @@ class ULessThanEqualOpAdaptor {
 public:
   ULessThanEqualOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  ULessThanEqualOpAdaptor(ULessThanEqualOp &op);
+  ULessThanEqualOpAdaptor(ULessThanEqualOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -15473,8 +15720,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class ULessThanEqualOp : public ::mlir::Op<ULessThanEqualOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UnsignedOp, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class ULessThanEqualOp : public ::mlir::Op<ULessThanEqualOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UnsignedOp, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -15509,7 +15757,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -15527,7 +15775,7 @@ class ULessThanOpAdaptor {
 public:
   ULessThanOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  ULessThanOpAdaptor(ULessThanOp &op);
+  ULessThanOpAdaptor(ULessThanOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -15540,8 +15788,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class ULessThanOp : public ::mlir::Op<ULessThanOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UnsignedOp, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class ULessThanOp : public ::mlir::Op<ULessThanOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UnsignedOp, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -15576,7 +15825,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -15594,7 +15843,7 @@ class UModOpAdaptor {
 public:
   UModOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  UModOpAdaptor(UModOp &op);
+  UModOpAdaptor(UModOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -15607,8 +15856,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class UModOp : public ::mlir::Op<UModOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UnsignedOp, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class UModOp : public ::mlir::Op<UModOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::spirv::UnsignedOp, ::mlir::OpTrait::spirv::UsableInSpecConstantOp, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameOperandsAndResultType, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -15632,19 +15882,20 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value operand1, ::mlir::Value operand2);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand1, ::mlir::Value operand2);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::LogicalResult inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes);
   ::llvm::Optional<::mlir::spirv::Version> getMinVersion();
   ::llvm::Optional<::mlir::spirv::Version> getMaxVersion();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Extension>, 1> getExtensions();
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -15662,7 +15913,7 @@ class UndefOpAdaptor {
 public:
   UndefOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  UndefOpAdaptor(UndefOp &op);
+  UndefOpAdaptor(UndefOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -15673,8 +15924,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class UndefOp : public ::mlir::Op<UndefOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class UndefOp : public ::mlir::Op<UndefOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -15704,7 +15956,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -15722,7 +15974,7 @@ class UnorderedOpAdaptor {
 public:
   UnorderedOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  UnorderedOpAdaptor(UnorderedOp &op);
+  UnorderedOpAdaptor(UnorderedOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -15735,8 +15987,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class UnorderedOp : public ::mlir::Op<UnorderedOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class UnorderedOp : public ::mlir::Op<UnorderedOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsCommutative, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::SameTypeOperands, ::mlir::OpTrait::SameOperandsAndResultShape, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -15771,7 +16024,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -15789,7 +16042,7 @@ class UnreachableOpAdaptor {
 public:
   UnreachableOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  UnreachableOpAdaptor(UnreachableOp &op);
+  UnreachableOpAdaptor(UnreachableOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -15800,8 +16053,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class UnreachableOp : public ::mlir::Op<UnreachableOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsTerminator, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class UnreachableOp : public ::mlir::Op<UnreachableOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::IsTerminator, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -15848,7 +16102,7 @@ class VariableOpAdaptor {
 public:
   VariableOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  VariableOpAdaptor(VariableOp &op);
+  VariableOpAdaptor(VariableOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -15862,8 +16116,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class VariableOp : public ::mlir::Op<VariableOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class VariableOp : public ::mlir::Op<VariableOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::OpInvariants, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -15937,7 +16192,7 @@ class VectorExtractDynamicOpAdaptor {
 public:
   VectorExtractDynamicOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  VectorExtractDynamicOpAdaptor(VectorExtractDynamicOp &op);
+  VectorExtractDynamicOpAdaptor(VectorExtractDynamicOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -15950,8 +16205,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class VectorExtractDynamicOp : public ::mlir::Op<VectorExtractDynamicOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class VectorExtractDynamicOp : public ::mlir::Op<VectorExtractDynamicOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -15985,7 +16241,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -16003,7 +16259,7 @@ class VectorInsertDynamicOpAdaptor {
 public:
   VectorInsertDynamicOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  VectorInsertDynamicOpAdaptor(VectorInsertDynamicOp &op);
+  VectorInsertDynamicOpAdaptor(VectorInsertDynamicOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -16017,8 +16273,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class VectorInsertDynamicOp : public ::mlir::Op<VectorInsertDynamicOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::VectorType>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<3>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
+class VectorInsertDynamicOp : public ::mlir::Op<VectorInsertDynamicOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::VectorType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<3>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait, ::mlir::InferTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -16057,7 +16314,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -16075,7 +16332,7 @@ class VectorShuffleOpAdaptor {
 public:
   VectorShuffleOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  VectorShuffleOpAdaptor(VectorShuffleOp &op);
+  VectorShuffleOpAdaptor(VectorShuffleOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -16090,8 +16347,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class VectorShuffleOp : public ::mlir::Op<VectorShuffleOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::VectorType>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class VectorShuffleOp : public ::mlir::Op<VectorShuffleOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::VectorType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -16138,7 +16396,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
     return getAttributeNameForIndex((*this)->getName(), index);
@@ -16166,7 +16424,7 @@ class VectorTimesScalarOpAdaptor {
 public:
   VectorTimesScalarOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  VectorTimesScalarOpAdaptor(VectorTimesScalarOp &op);
+  VectorTimesScalarOpAdaptor(VectorTimesScalarOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -16179,8 +16437,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class VectorTimesScalarOp : public ::mlir::Op<VectorTimesScalarOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::VectorType>::Impl, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class VectorTimesScalarOp : public ::mlir::Op<VectorTimesScalarOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::VectorType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::NOperands<2>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -16215,7 +16474,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv
@@ -16233,7 +16492,7 @@ class YieldOpAdaptor {
 public:
   YieldOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  YieldOpAdaptor(YieldOp &op);
+  YieldOpAdaptor(YieldOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -16245,8 +16504,9 @@ private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class YieldOp : public ::mlir::Op<YieldOp, ::mlir::OpTrait::ZeroRegion, ::mlir::OpTrait::ZeroResult, ::mlir::OpTrait::ZeroSuccessor, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::HasParent<SpecConstantOperationOp>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::IsTerminator, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
+class YieldOp : public ::mlir::Op<YieldOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::HasParent<SpecConstantOperationOp>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::OpTrait::IsTerminator, ::mlir::spirv::QueryMinVersionInterface::Trait, ::mlir::spirv::QueryMaxVersionInterface::Trait, ::mlir::spirv::QueryExtensionInterface::Trait, ::mlir::spirv::QueryCapabilityInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -16277,7 +16537,7 @@ public:
   ::llvm::SmallVector<::llvm::ArrayRef<::mlir::spirv::Capability>, 1> getCapabilities();
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
-  void getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
 public:
 };
 } // namespace spirv

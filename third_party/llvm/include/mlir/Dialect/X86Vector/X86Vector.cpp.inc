@@ -207,9 +207,11 @@ namespace x86vector {
 // ::mlir::x86vector::DotIntrOp definitions
 //===----------------------------------------------------------------------===//
 
-DotIntrOpAdaptor::DotIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+DotIntrOpAdaptor::DotIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("x86vector.avx.intr.dp.ps.256", odsAttrs.getContext());
+}
 
-DotIntrOpAdaptor::DotIntrOpAdaptor(DotIntrOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+DotIntrOpAdaptor::DotIntrOpAdaptor(DotIntrOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange DotIntrOpAdaptor::getOperands() {
   return odsOperands;
@@ -342,7 +344,7 @@ void DotIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(DotIntrOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -397,11 +399,12 @@ void DotIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
 ::mlir::LogicalResult DotIntrOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = operands[1].getType();
+  ::mlir::Type odsInferredType0 = operands[1].getType();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
-void DotIntrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void DotIntrOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace x86vector
@@ -415,9 +418,11 @@ namespace x86vector {
 // ::mlir::x86vector::DotOp definitions
 //===----------------------------------------------------------------------===//
 
-DotOpAdaptor::DotOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+DotOpAdaptor::DotOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("x86vector.avx.intr.dot", odsAttrs.getContext());
+}
 
-DotOpAdaptor::DotOpAdaptor(DotOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+DotOpAdaptor::DotOpAdaptor(DotOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange DotOpAdaptor::getOperands() {
   return odsOperands;
@@ -499,6 +504,20 @@ void DotOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
   odsState.addTypes(res);
 }
 
+void DotOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value a, ::mlir::Value b) {
+  odsState.addOperands(a);
+  odsState.addOperands(b);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(DotOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void DotOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value a, ::mlir::Value b) {
   odsState.addOperands(a);
   odsState.addOperands(b);
@@ -514,18 +533,21 @@ void DotOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
   odsState.addTypes(resultTypes);
 }
 
-void DotOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value a, ::mlir::Value b) {
-  odsState.addOperands(a);
-  odsState.addOperands(b);
-  odsState.addTypes({a.getType()});
-
-}
-
 void DotOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(DotOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult DotOp::verifyInvariantsImpl() {
@@ -558,6 +580,14 @@ void DotOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 
 ::mlir::LogicalResult DotOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult DotOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult DotOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -616,7 +646,7 @@ void DotOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void DotOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void DotOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace x86vector
@@ -630,9 +660,11 @@ namespace x86vector {
 // ::mlir::x86vector::MaskCompressIntrOp definitions
 //===----------------------------------------------------------------------===//
 
-MaskCompressIntrOpAdaptor::MaskCompressIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+MaskCompressIntrOpAdaptor::MaskCompressIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("x86vector.avx512.intr.mask.compress", odsAttrs.getContext());
+}
 
-MaskCompressIntrOpAdaptor::MaskCompressIntrOpAdaptor(MaskCompressIntrOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+MaskCompressIntrOpAdaptor::MaskCompressIntrOpAdaptor(MaskCompressIntrOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange MaskCompressIntrOpAdaptor::getOperands() {
   return odsOperands;
@@ -765,7 +797,7 @@ void MaskCompressIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationS
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(MaskCompressIntrOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -822,11 +854,12 @@ void MaskCompressIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationS
 ::mlir::LogicalResult MaskCompressIntrOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = operands[1].getType();
+  ::mlir::Type odsInferredType0 = operands[1].getType();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
-void MaskCompressIntrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void MaskCompressIntrOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace x86vector
@@ -840,9 +873,11 @@ namespace x86vector {
 // ::mlir::x86vector::MaskCompressOp definitions
 //===----------------------------------------------------------------------===//
 
-MaskCompressOpAdaptor::MaskCompressOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+MaskCompressOpAdaptor::MaskCompressOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("x86vector.avx512.mask.compress", odsAttrs.getContext());
+}
 
-MaskCompressOpAdaptor::MaskCompressOpAdaptor(MaskCompressOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+MaskCompressOpAdaptor::MaskCompressOpAdaptor(MaskCompressOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange MaskCompressOpAdaptor::getOperands() {
   return odsOperands;
@@ -891,8 +926,8 @@ std::pair<unsigned, unsigned> MaskCompressOpAdaptor::getODSOperandIndexAndLength
 
 ::mlir::ElementsAttr MaskCompressOpAdaptor::constant_srcAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ElementsAttr attr = odsAttrs.get("constant_src").dyn_cast_or_null<::mlir::ElementsAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, MaskCompressOp::constant_srcAttrName(*odsOpName)).dyn_cast_or_null<::mlir::ElementsAttr>();
+    return attr;
 }
 
 ::llvm::Optional< ::mlir::ElementsAttr > MaskCompressOpAdaptor::constant_src() {
@@ -901,11 +936,21 @@ std::pair<unsigned, unsigned> MaskCompressOpAdaptor::getODSOperandIndexAndLength
 }
 
 ::mlir::LogicalResult MaskCompressOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_constant_src = odsAttrs.get("constant_src");
-    if (tblgen_constant_src && !((tblgen_constant_src.isa<::mlir::ElementsAttr>())))
-      return emitError(loc, "'x86vector.avx512.mask.compress' op ""attribute 'constant_src' failed to satisfy constraint: constant vector/tensor attribute");
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_constant_src;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == MaskCompressOp::constant_srcAttrName(*odsOpName)) {
+      tblgen_constant_src = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_constant_src && !((tblgen_constant_src.isa<::mlir::ElementsAttr>())))
+    return emitError(loc, "'x86vector.avx512.mask.compress' op ""attribute 'constant_src' failed to satisfy constraint: constant vector/tensor attribute");
   return ::mlir::success();
 }
 
@@ -979,7 +1024,7 @@ std::pair<unsigned, unsigned> MaskCompressOp::getODSResultIndexAndLength(unsigne
 }
 
 ::mlir::ElementsAttr MaskCompressOp::constant_srcAttr() {
-  return (*this)->getAttr(constant_srcAttrName()).dyn_cast_or_null<::mlir::ElementsAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, constant_srcAttrName()).dyn_cast_or_null<::mlir::ElementsAttr>();
 }
 
 ::llvm::Optional< ::mlir::ElementsAttr > MaskCompressOp::constant_src() {
@@ -1050,7 +1095,7 @@ void MaskCompressOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(MaskCompressOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -1063,11 +1108,21 @@ void MaskCompressOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
 }
 
 ::mlir::LogicalResult MaskCompressOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_constant_src = (*this)->getAttr(constant_srcAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_X86Vector0(*this, tblgen_constant_src, "constant_src")))
-      return ::mlir::failure();
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_constant_src;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == constant_srcAttrName()) {
+      tblgen_constant_src = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_X86Vector0(*this, tblgen_constant_src, "constant_src")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -1119,7 +1174,8 @@ void MaskCompressOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
 ::mlir::LogicalResult MaskCompressOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = operands[1].getType();
+  ::mlir::Type odsInferredType0 = operands[1].getType();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
@@ -1130,12 +1186,12 @@ void MaskCompressOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
   ::mlir::OpAsmParser::UnresolvedOperand aRawOperands[1];
   ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> aOperands(aRawOperands);  ::llvm::SMLoc aOperandsLoc;
   (void)aOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> srcOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> srcOperands;
   ::llvm::SMLoc srcOperandsLoc;
   (void)srcOperandsLoc;
   ::mlir::Type dstRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> dstTypes(dstRawTypes);
-  ::mlir::SmallVector<::mlir::Type, 1> srcTypes;
+  ::llvm::SmallVector<::mlir::Type, 1> srcTypes;
 
   kOperandsLoc = parser.getCurrentLocation();
   if (parser.parseOperand(kRawOperands[0]))
@@ -1231,7 +1287,7 @@ void MaskCompressOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void MaskCompressOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void MaskCompressOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace x86vector
@@ -1245,9 +1301,11 @@ namespace x86vector {
 // ::mlir::x86vector::MaskRndScaleOp definitions
 //===----------------------------------------------------------------------===//
 
-MaskRndScaleOpAdaptor::MaskRndScaleOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+MaskRndScaleOpAdaptor::MaskRndScaleOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("x86vector.avx512.mask.rndscale", odsAttrs.getContext());
+}
 
-MaskRndScaleOpAdaptor::MaskRndScaleOpAdaptor(MaskRndScaleOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+MaskRndScaleOpAdaptor::MaskRndScaleOpAdaptor(MaskRndScaleOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange MaskRndScaleOpAdaptor::getOperands() {
   return odsOperands;
@@ -1414,7 +1472,7 @@ void MaskRndScaleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(MaskRndScaleOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -1483,7 +1541,8 @@ void MaskRndScaleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
 ::mlir::LogicalResult MaskRndScaleOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = operands[2].getType();
+  ::mlir::Type odsInferredType0 = operands[2].getType();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
@@ -1594,7 +1653,7 @@ void MaskRndScaleOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void MaskRndScaleOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void MaskRndScaleOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace x86vector
@@ -1608,9 +1667,11 @@ namespace x86vector {
 // ::mlir::x86vector::MaskRndScalePDIntrOp definitions
 //===----------------------------------------------------------------------===//
 
-MaskRndScalePDIntrOpAdaptor::MaskRndScalePDIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+MaskRndScalePDIntrOpAdaptor::MaskRndScalePDIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("x86vector.avx512.intr.mask.rndscale.pd.512", odsAttrs.getContext());
+}
 
-MaskRndScalePDIntrOpAdaptor::MaskRndScalePDIntrOpAdaptor(MaskRndScalePDIntrOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+MaskRndScalePDIntrOpAdaptor::MaskRndScalePDIntrOpAdaptor(MaskRndScalePDIntrOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange MaskRndScalePDIntrOpAdaptor::getOperands() {
   return odsOperands;
@@ -1777,7 +1838,7 @@ void MaskRndScalePDIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operatio
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(MaskRndScalePDIntrOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -1844,11 +1905,12 @@ void MaskRndScalePDIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operatio
 ::mlir::LogicalResult MaskRndScalePDIntrOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = operands[2].getType();
+  ::mlir::Type odsInferredType0 = operands[2].getType();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
-void MaskRndScalePDIntrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void MaskRndScalePDIntrOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace x86vector
@@ -1862,9 +1924,11 @@ namespace x86vector {
 // ::mlir::x86vector::MaskRndScalePSIntrOp definitions
 //===----------------------------------------------------------------------===//
 
-MaskRndScalePSIntrOpAdaptor::MaskRndScalePSIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+MaskRndScalePSIntrOpAdaptor::MaskRndScalePSIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("x86vector.avx512.intr.mask.rndscale.ps.512", odsAttrs.getContext());
+}
 
-MaskRndScalePSIntrOpAdaptor::MaskRndScalePSIntrOpAdaptor(MaskRndScalePSIntrOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+MaskRndScalePSIntrOpAdaptor::MaskRndScalePSIntrOpAdaptor(MaskRndScalePSIntrOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange MaskRndScalePSIntrOpAdaptor::getOperands() {
   return odsOperands;
@@ -2031,7 +2095,7 @@ void MaskRndScalePSIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operatio
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(MaskRndScalePSIntrOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -2098,11 +2162,12 @@ void MaskRndScalePSIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operatio
 ::mlir::LogicalResult MaskRndScalePSIntrOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = operands[2].getType();
+  ::mlir::Type odsInferredType0 = operands[2].getType();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
-void MaskRndScalePSIntrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void MaskRndScalePSIntrOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace x86vector
@@ -2116,9 +2181,11 @@ namespace x86vector {
 // ::mlir::x86vector::MaskScaleFOp definitions
 //===----------------------------------------------------------------------===//
 
-MaskScaleFOpAdaptor::MaskScaleFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+MaskScaleFOpAdaptor::MaskScaleFOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("x86vector.avx512.mask.scalef", odsAttrs.getContext());
+}
 
-MaskScaleFOpAdaptor::MaskScaleFOpAdaptor(MaskScaleFOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+MaskScaleFOpAdaptor::MaskScaleFOpAdaptor(MaskScaleFOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange MaskScaleFOpAdaptor::getOperands() {
   return odsOperands;
@@ -2285,7 +2352,7 @@ void MaskScaleFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(MaskScaleFOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -2354,7 +2421,8 @@ void MaskScaleFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
 ::mlir::LogicalResult MaskScaleFOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = operands[2].getType();
+  ::mlir::Type odsInferredType0 = operands[2].getType();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
@@ -2465,7 +2533,7 @@ void MaskScaleFOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void MaskScaleFOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void MaskScaleFOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace x86vector
@@ -2479,9 +2547,11 @@ namespace x86vector {
 // ::mlir::x86vector::MaskScaleFPDIntrOp definitions
 //===----------------------------------------------------------------------===//
 
-MaskScaleFPDIntrOpAdaptor::MaskScaleFPDIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+MaskScaleFPDIntrOpAdaptor::MaskScaleFPDIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("x86vector.avx512.intr.mask.scalef.pd.512", odsAttrs.getContext());
+}
 
-MaskScaleFPDIntrOpAdaptor::MaskScaleFPDIntrOpAdaptor(MaskScaleFPDIntrOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+MaskScaleFPDIntrOpAdaptor::MaskScaleFPDIntrOpAdaptor(MaskScaleFPDIntrOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange MaskScaleFPDIntrOpAdaptor::getOperands() {
   return odsOperands;
@@ -2648,7 +2718,7 @@ void MaskScaleFPDIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationS
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(MaskScaleFPDIntrOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -2715,11 +2785,12 @@ void MaskScaleFPDIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationS
 ::mlir::LogicalResult MaskScaleFPDIntrOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = operands[2].getType();
+  ::mlir::Type odsInferredType0 = operands[2].getType();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
-void MaskScaleFPDIntrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void MaskScaleFPDIntrOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace x86vector
@@ -2733,9 +2804,11 @@ namespace x86vector {
 // ::mlir::x86vector::MaskScaleFPSIntrOp definitions
 //===----------------------------------------------------------------------===//
 
-MaskScaleFPSIntrOpAdaptor::MaskScaleFPSIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+MaskScaleFPSIntrOpAdaptor::MaskScaleFPSIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("x86vector.avx512.intr.mask.scalef.ps.512", odsAttrs.getContext());
+}
 
-MaskScaleFPSIntrOpAdaptor::MaskScaleFPSIntrOpAdaptor(MaskScaleFPSIntrOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+MaskScaleFPSIntrOpAdaptor::MaskScaleFPSIntrOpAdaptor(MaskScaleFPSIntrOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange MaskScaleFPSIntrOpAdaptor::getOperands() {
   return odsOperands;
@@ -2902,7 +2975,7 @@ void MaskScaleFPSIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationS
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(MaskScaleFPSIntrOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -2969,11 +3042,12 @@ void MaskScaleFPSIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationS
 ::mlir::LogicalResult MaskScaleFPSIntrOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = operands[2].getType();
+  ::mlir::Type odsInferredType0 = operands[2].getType();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
-void MaskScaleFPSIntrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void MaskScaleFPSIntrOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace x86vector
@@ -2987,9 +3061,11 @@ namespace x86vector {
 // ::mlir::x86vector::RsqrtIntrOp definitions
 //===----------------------------------------------------------------------===//
 
-RsqrtIntrOpAdaptor::RsqrtIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+RsqrtIntrOpAdaptor::RsqrtIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("x86vector.avx.intr.rsqrt.ps.256", odsAttrs.getContext());
+}
 
-RsqrtIntrOpAdaptor::RsqrtIntrOpAdaptor(RsqrtIntrOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+RsqrtIntrOpAdaptor::RsqrtIntrOpAdaptor(RsqrtIntrOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange RsqrtIntrOpAdaptor::getOperands() {
   return odsOperands;
@@ -3056,6 +3132,19 @@ void RsqrtIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
   odsState.addTypes(res);
 }
 
+void RsqrtIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value a) {
+  odsState.addOperands(a);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(RsqrtIntrOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void RsqrtIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value a) {
   odsState.addOperands(a);
   assert(resultTypes.size() == 1u && "mismatched number of results");
@@ -3070,17 +3159,21 @@ void RsqrtIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   odsState.addTypes(resultTypes);
 }
 
-void RsqrtIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value a) {
-  odsState.addOperands(a);
-  odsState.addTypes({a.getType()});
-
-}
-
 void RsqrtIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 1u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(RsqrtIntrOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult RsqrtIntrOp::verifyInvariantsImpl() {
@@ -3109,7 +3202,15 @@ void RsqrtIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
   return verifyInvariantsImpl();
 }
 
-void RsqrtIntrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+::mlir::LogicalResult RsqrtIntrOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
+}
+
+void RsqrtIntrOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace x86vector
@@ -3123,9 +3224,11 @@ namespace x86vector {
 // ::mlir::x86vector::RsqrtOp definitions
 //===----------------------------------------------------------------------===//
 
-RsqrtOpAdaptor::RsqrtOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+RsqrtOpAdaptor::RsqrtOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("x86vector.avx.rsqrt", odsAttrs.getContext());
+}
 
-RsqrtOpAdaptor::RsqrtOpAdaptor(RsqrtOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+RsqrtOpAdaptor::RsqrtOpAdaptor(RsqrtOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange RsqrtOpAdaptor::getOperands() {
   return odsOperands;
@@ -3192,6 +3295,19 @@ void RsqrtOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
   odsState.addTypes(b);
 }
 
+void RsqrtOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value a) {
+  odsState.addOperands(a);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(RsqrtOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
 void RsqrtOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value a) {
   odsState.addOperands(a);
   assert(resultTypes.size() == 1u && "mismatched number of results");
@@ -3206,17 +3322,21 @@ void RsqrtOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   odsState.addTypes(resultTypes);
 }
 
-void RsqrtOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value a) {
-  odsState.addOperands(a);
-  odsState.addTypes({a.getType()});
-
-}
-
 void RsqrtOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 1u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  odsState.addTypes({operands[0].getType()});
 
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(RsqrtOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult RsqrtOp::verifyInvariantsImpl() {
@@ -3243,6 +3363,14 @@ void RsqrtOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
 
 ::mlir::LogicalResult RsqrtOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult RsqrtOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 ::mlir::ParseResult RsqrtOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
@@ -3287,7 +3415,7 @@ void RsqrtOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void RsqrtOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void RsqrtOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace x86vector
@@ -3301,9 +3429,11 @@ namespace x86vector {
 // ::mlir::x86vector::Vp2IntersectDIntrOp definitions
 //===----------------------------------------------------------------------===//
 
-Vp2IntersectDIntrOpAdaptor::Vp2IntersectDIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+Vp2IntersectDIntrOpAdaptor::Vp2IntersectDIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("x86vector.avx512.intr.vp2intersect.d.512", odsAttrs.getContext());
+}
 
-Vp2IntersectDIntrOpAdaptor::Vp2IntersectDIntrOpAdaptor(Vp2IntersectDIntrOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+Vp2IntersectDIntrOpAdaptor::Vp2IntersectDIntrOpAdaptor(Vp2IntersectDIntrOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange Vp2IntersectDIntrOpAdaptor::getOperands() {
   return odsOperands;
@@ -3432,7 +3562,7 @@ void Vp2IntersectDIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
   return verifyInvariantsImpl();
 }
 
-void Vp2IntersectDIntrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void Vp2IntersectDIntrOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace x86vector
@@ -3446,9 +3576,11 @@ namespace x86vector {
 // ::mlir::x86vector::Vp2IntersectOp definitions
 //===----------------------------------------------------------------------===//
 
-Vp2IntersectOpAdaptor::Vp2IntersectOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+Vp2IntersectOpAdaptor::Vp2IntersectOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("x86vector.avx512.vp2intersect", odsAttrs.getContext());
+}
 
-Vp2IntersectOpAdaptor::Vp2IntersectOpAdaptor(Vp2IntersectOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+Vp2IntersectOpAdaptor::Vp2IntersectOpAdaptor(Vp2IntersectOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange Vp2IntersectOpAdaptor::getOperands() {
   return odsOperands;
@@ -3668,7 +3800,7 @@ void Vp2IntersectOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void Vp2IntersectOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void Vp2IntersectOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace x86vector
@@ -3682,9 +3814,11 @@ namespace x86vector {
 // ::mlir::x86vector::Vp2IntersectQIntrOp definitions
 //===----------------------------------------------------------------------===//
 
-Vp2IntersectQIntrOpAdaptor::Vp2IntersectQIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+Vp2IntersectQIntrOpAdaptor::Vp2IntersectQIntrOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("x86vector.avx512.intr.vp2intersect.q.512", odsAttrs.getContext());
+}
 
-Vp2IntersectQIntrOpAdaptor::Vp2IntersectQIntrOpAdaptor(Vp2IntersectQIntrOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+Vp2IntersectQIntrOpAdaptor::Vp2IntersectQIntrOpAdaptor(Vp2IntersectQIntrOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange Vp2IntersectQIntrOpAdaptor::getOperands() {
   return odsOperands;
@@ -3813,7 +3947,7 @@ void Vp2IntersectQIntrOp::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
   return verifyInvariantsImpl();
 }
 
-void Vp2IntersectQIntrOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void Vp2IntersectQIntrOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace x86vector

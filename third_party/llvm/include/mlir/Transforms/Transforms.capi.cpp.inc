@@ -95,6 +95,14 @@ void mlirRegisterTransformsSymbolPrivatize() {
 }
 
 
+MlirPass mlirCreateTransformsTopologicalSort() {
+  return wrap(mlir::createTopologicalSortPass().release());
+}
+void mlirRegisterTransformsTopologicalSort() {
+  registerTopologicalSortPass();
+}
+
+
 MlirPass mlirCreateTransformsViewOpGraph() {
   return wrap(mlir::createPrintOpGraphPass().release());
 }

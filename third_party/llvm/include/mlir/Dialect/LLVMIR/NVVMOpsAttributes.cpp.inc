@@ -126,7 +126,7 @@ MMAB1OpAttr MMAB1OpAttr::get(::mlir::MLIRContext *context, ::mlir::NVVM::MMAB1Op
       auto maybeEnum = ::mlir::NVVM::symbolizeMMAB1Op(enumKeyword);
       if (maybeEnum)
         return *maybeEnum;
-      return {(::mlir::LogicalResult)odsParser.emitError(loc, "expected ::mlir::NVVM::MMAB1Op to be one of: none, xor_popc, and_popc")};
+      return {(::mlir::LogicalResult)(odsParser.emitError(loc) << "expected " << "::mlir::NVVM::MMAB1Op" << " to be one of: " << "none" << ", " << "xor_popc" << ", " << "and_popc")};
     }();
   if (::mlir::failed(_result_value)) {
     odsParser.emitError(odsParser.getCurrentLocation(), "failed to parse MMAB1OpAttr parameter 'value' which is to be a `::mlir::NVVM::MMAB1Op`");
@@ -195,7 +195,7 @@ MMAFragAttr MMAFragAttr::get(::mlir::MLIRContext *context, ::mlir::NVVM::MMAFrag
       auto maybeEnum = ::mlir::NVVM::symbolizeMMAFrag(enumKeyword);
       if (maybeEnum)
         return *maybeEnum;
-      return {(::mlir::LogicalResult)odsParser.emitError(loc, "expected ::mlir::NVVM::MMAFrag to be one of: a, b, c")};
+      return {(::mlir::LogicalResult)(odsParser.emitError(loc) << "expected " << "::mlir::NVVM::MMAFrag" << " to be one of: " << "a" << ", " << "b" << ", " << "c")};
     }();
   if (::mlir::failed(_result_value)) {
     odsParser.emitError(odsParser.getCurrentLocation(), "failed to parse MMAFragAttr parameter 'value' which is to be a `::mlir::NVVM::MMAFrag`");
@@ -264,7 +264,7 @@ MMAIntOverflowAttr MMAIntOverflowAttr::get(::mlir::MLIRContext *context, ::mlir:
       auto maybeEnum = ::mlir::NVVM::symbolizeMMAIntOverflow(enumKeyword);
       if (maybeEnum)
         return *maybeEnum;
-      return {(::mlir::LogicalResult)odsParser.emitError(loc, "expected ::mlir::NVVM::MMAIntOverflow to be one of: satfinite, wrapped")};
+      return {(::mlir::LogicalResult)(odsParser.emitError(loc) << "expected " << "::mlir::NVVM::MMAIntOverflow" << " to be one of: " << "satfinite" << ", " << "wrapped")};
     }();
   if (::mlir::failed(_result_value)) {
     odsParser.emitError(odsParser.getCurrentLocation(), "failed to parse MMAIntOverflowAttr parameter 'value' which is to be a `::mlir::NVVM::MMAIntOverflow`");
@@ -333,7 +333,7 @@ MMALayoutAttr MMALayoutAttr::get(::mlir::MLIRContext *context, ::mlir::NVVM::MMA
       auto maybeEnum = ::mlir::NVVM::symbolizeMMALayout(enumKeyword);
       if (maybeEnum)
         return *maybeEnum;
-      return {(::mlir::LogicalResult)odsParser.emitError(loc, "expected ::mlir::NVVM::MMALayout to be one of: row, col")};
+      return {(::mlir::LogicalResult)(odsParser.emitError(loc) << "expected " << "::mlir::NVVM::MMALayout" << " to be one of: " << "row" << ", " << "col")};
     }();
   if (::mlir::failed(_result_value)) {
     odsParser.emitError(odsParser.getCurrentLocation(), "failed to parse MMALayoutAttr parameter 'value' which is to be a `::mlir::NVVM::MMALayout`");
@@ -402,7 +402,7 @@ MMATypesAttr MMATypesAttr::get(::mlir::MLIRContext *context, ::mlir::NVVM::MMATy
       auto maybeEnum = ::mlir::NVVM::symbolizeMMATypes(enumKeyword);
       if (maybeEnum)
         return *maybeEnum;
-      return {(::mlir::LogicalResult)odsParser.emitError(loc, "expected ::mlir::NVVM::MMATypes to be one of: f16, f32, tf32, bf16, s8, u8, s32, s4, u4, b1, f64")};
+      return {(::mlir::LogicalResult)(odsParser.emitError(loc) << "expected " << "::mlir::NVVM::MMATypes" << " to be one of: " << "f16" << ", " << "f32" << ", " << "tf32" << ", " << "bf16" << ", " << "s8" << ", " << "u8" << ", " << "s32" << ", " << "s4" << ", " << "u4" << ", " << "b1" << ", " << "f64")};
     }();
   if (::mlir::failed(_result_value)) {
     odsParser.emitError(odsParser.getCurrentLocation(), "failed to parse MMATypesAttr parameter 'value' which is to be a `::mlir::NVVM::MMATypes`");
@@ -469,7 +469,7 @@ ShflKindAttr ShflKindAttr::get(::mlir::MLIRContext *context, ::mlir::NVVM::ShflK
       auto maybeEnum = ::mlir::NVVM::symbolizeShflKind(enumKeyword);
       if (maybeEnum)
         return *maybeEnum;
-      return {(::mlir::LogicalResult)odsParser.emitError(loc, "expected ::mlir::NVVM::ShflKind to be one of: bfly, up, down, idx")};
+      return {(::mlir::LogicalResult)(odsParser.emitError(loc) << "expected " << "::mlir::NVVM::ShflKind" << " to be one of: " << "bfly" << ", " << "up" << ", " << "down" << ", " << "idx")};
     }();
   if (::mlir::failed(_result_value)) {
     odsParser.emitError(odsParser.getCurrentLocation(), "failed to parse ShflKindAttr parameter 'value' which is to be a `::mlir::NVVM::ShflKind`");
@@ -508,6 +508,7 @@ namespace NVVM {
     if (parseResult.hasValue())
       return attr;
   }
+  
   parser.emitError(typeLoc) << "unknown attribute `"
       << attrTag << "` in dialect `" << getNamespace() << "`";
   return {};
@@ -517,6 +518,7 @@ void NVVMDialect::printAttribute(::mlir::Attribute attr,
                          ::mlir::DialectAsmPrinter &printer) const {
   if (::mlir::succeeded(generatedAttributePrinter(attr, printer)))
     return;
+  
 }
 } // namespace NVVM
 } // namespace mlir

@@ -9,6 +9,7 @@
 #ifdef GET_OP_LIST
 #undef GET_OP_LIST
 
+::mlir::bufferization::AllocTensorOp,
 ::mlir::bufferization::CloneOp,
 ::mlir::bufferization::ToMemrefOp,
 ::mlir::bufferization::ToTensorOp
@@ -28,9 +29,9 @@ namespace bufferization {
 static ::mlir::LogicalResult __mlir_ods_local_type_constraint_BufferizationOps0(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
-  if (!((((type.isa<::mlir::UnrankedMemRefType>())) && ([](::mlir::Type elementType) { return (true); }(type.cast<::mlir::ShapedType>().getElementType()))) || (((type.isa<::mlir::MemRefType>())) && ([](::mlir::Type elementType) { return (true); }(type.cast<::mlir::ShapedType>().getElementType()))))) {
+  if (!((type.isa<::mlir::IndexType>()))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
-        << " must be unranked.memref of any type values or memref of any type values, but got " << type;
+        << " must be index, but got " << type;
   }
   return ::mlir::success();
 }
@@ -44,8 +45,211 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_BufferizationOps1(
   }
   return ::mlir::success();
 }
+
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_BufferizationOps2(
+    ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
+    unsigned valueIndex) {
+  if (!((((type.isa<::mlir::UnrankedMemRefType>())) && ([](::mlir::Type elementType) { return (true); }(type.cast<::mlir::ShapedType>().getElementType()))) || (((type.isa<::mlir::MemRefType>())) && ([](::mlir::Type elementType) { return (true); }(type.cast<::mlir::ShapedType>().getElementType()))))) {
+    return op->emitOpError(valueKind) << " #" << valueIndex
+        << " must be unranked.memref of any type values or memref of any type values, but got " << type;
+  }
+  return ::mlir::success();
+}
 } // namespace bufferization
 } // namespace mlir
+namespace mlir {
+namespace bufferization {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::bufferization::AllocTensorOp definitions
+//===----------------------------------------------------------------------===//
+
+AllocTensorOpAdaptor::AllocTensorOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("bufferization.alloc_tensor", odsAttrs.getContext());
+}
+
+AllocTensorOpAdaptor::AllocTensorOpAdaptor(AllocTensorOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange AllocTensorOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> AllocTensorOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (odsOperands.size() - 0) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::ValueRange AllocTensorOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::ValueRange AllocTensorOpAdaptor::dynamicSizes() {
+  return getODSOperands(0);
+}
+
+::mlir::DictionaryAttr AllocTensorOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult AllocTensorOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> AllocTensorOp::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (getOperation()->getNumOperands() - 0) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::Operation::operand_range AllocTensorOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Operation::operand_range AllocTensorOp::dynamicSizes() {
+  return getODSOperands(0);
+}
+
+::mlir::MutableOperandRange AllocTensorOp::dynamicSizesMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> AllocTensorOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range AllocTensorOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value AllocTensorOp::result() {
+  return *getODSResults(0).begin();
+}
+
+void AllocTensorOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::ValueRange dynamicSizes) {
+  odsState.addOperands(dynamicSizes);
+  odsState.addTypes(result);
+}
+
+void AllocTensorOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult AllocTensorOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_BufferizationOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_BufferizationOps1(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult AllocTensorOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
+}
+
+::mlir::ParseResult AllocTensorOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> dynamicSizesOperands;
+  ::llvm::SMLoc dynamicSizesOperandsLoc;
+  (void)dynamicSizesOperandsLoc;
+  ::mlir::Type resultRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
+  if (parser.parseLParen())
+    return ::mlir::failure();
+
+  dynamicSizesOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperandList(dynamicSizesOperands))
+    return ::mlir::failure();
+  if (parser.parseRParen())
+    return ::mlir::failure();
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  {
+    ::mlir::TensorType type;
+    if (parser.parseCustomTypeWithFallback(type))
+      return ::mlir::failure();
+    resultRawTypes[0] = type;
+  }
+  ::mlir::Type odsBuildableType0 = parser.getBuilder().getIndexType();
+  result.addTypes(resultTypes);
+  if (parser.resolveOperands(dynamicSizesOperands, odsBuildableType0, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void AllocTensorOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << "(";
+  _odsPrinter << dynamicSizes();
+  _odsPrinter << ")";
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  {
+    auto type = result().getType();
+    if (auto validType = type.dyn_cast<::mlir::TensorType>())
+      _odsPrinter.printStrippedAttrOrType(validType);
+   else
+     _odsPrinter << type;
+  }
+}
+
+} // namespace bufferization
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::bufferization::AllocTensorOp)
+
 namespace mlir {
 namespace bufferization {
 
@@ -53,9 +257,11 @@ namespace bufferization {
 // ::mlir::bufferization::CloneOp definitions
 //===----------------------------------------------------------------------===//
 
-CloneOpAdaptor::CloneOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+CloneOpAdaptor::CloneOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("bufferization.clone", odsAttrs.getContext());
+}
 
-CloneOpAdaptor::CloneOpAdaptor(CloneOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+CloneOpAdaptor::CloneOpAdaptor(CloneOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange CloneOpAdaptor::getOperands() {
   return odsOperands;
@@ -147,7 +353,7 @@ void CloneOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_BufferizationOps0(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_BufferizationOps2(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -156,7 +362,7 @@ void CloneOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_BufferizationOps0(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_BufferizationOps2(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -240,9 +446,11 @@ namespace bufferization {
 // ::mlir::bufferization::ToMemrefOp definitions
 //===----------------------------------------------------------------------===//
 
-ToMemrefOpAdaptor::ToMemrefOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ToMemrefOpAdaptor::ToMemrefOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("bufferization.to_memref", odsAttrs.getContext());
+}
 
-ToMemrefOpAdaptor::ToMemrefOpAdaptor(ToMemrefOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ToMemrefOpAdaptor::ToMemrefOpAdaptor(ToMemrefOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ToMemrefOpAdaptor::getOperands() {
   return odsOperands;
@@ -338,7 +546,7 @@ void ToMemrefOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_BufferizationOps0(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_BufferizationOps2(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -399,7 +607,7 @@ void ToMemrefOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void ToMemrefOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ToMemrefOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace bufferization
@@ -413,9 +621,11 @@ namespace bufferization {
 // ::mlir::bufferization::ToTensorOp definitions
 //===----------------------------------------------------------------------===//
 
-ToTensorOpAdaptor::ToTensorOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ToTensorOpAdaptor::ToTensorOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("bufferization.to_tensor", odsAttrs.getContext());
+}
 
-ToTensorOpAdaptor::ToTensorOpAdaptor(ToTensorOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ToTensorOpAdaptor::ToTensorOpAdaptor(ToTensorOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ToTensorOpAdaptor::getOperands() {
   return odsOperands;
@@ -508,7 +718,7 @@ void ToTensorOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_BufferizationOps0(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_BufferizationOps2(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -578,7 +788,7 @@ void ToTensorOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void ToTensorOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ToTensorOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
   for (::mlir::Value value : getODSOperands(0))
     effects.emplace_back(::mlir::MemoryEffects::Read::get(), value, ::mlir::SideEffects::DefaultResource::get());
 }

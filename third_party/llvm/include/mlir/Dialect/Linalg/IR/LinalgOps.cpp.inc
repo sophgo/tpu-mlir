@@ -81,9 +81,11 @@ namespace linalg {
 // ::mlir::linalg::IndexOp definitions
 //===----------------------------------------------------------------------===//
 
-IndexOpAdaptor::IndexOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+IndexOpAdaptor::IndexOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("linalg.index", odsAttrs.getContext());
+}
 
-IndexOpAdaptor::IndexOpAdaptor(IndexOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+IndexOpAdaptor::IndexOpAdaptor(IndexOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange IndexOpAdaptor::getOperands() {
   return odsOperands;
@@ -105,8 +107,8 @@ std::pair<unsigned, unsigned> IndexOpAdaptor::getODSOperandIndexAndLength(unsign
 
 ::mlir::IntegerAttr IndexOpAdaptor::dimAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::IntegerAttr attr = odsAttrs.get("dim").cast<::mlir::IntegerAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, IndexOp::dimAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+    return attr;
 }
 
 uint64_t IndexOpAdaptor::dim() {
@@ -115,14 +117,21 @@ uint64_t IndexOpAdaptor::dim() {
 }
 
 ::mlir::LogicalResult IndexOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_dim = odsAttrs.get("dim");
-    if (!tblgen_dim)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_dim;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'linalg.index' op ""requires attribute 'dim'");
-
-    if (tblgen_dim && !((((tblgen_dim.isa<::mlir::IntegerAttr>())) && ((tblgen_dim.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))) && ((tblgen_dim.cast<::mlir::IntegerAttr>().getInt() >= 0))))
-      return emitError(loc, "'linalg.index' op ""attribute 'dim' failed to satisfy constraint: 64-bit signless integer attribute whose minimum value is 0");
+    if (namedAttrIt->getName() == IndexOp::dimAttrName(*odsOpName)) {
+      tblgen_dim = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_dim && !((((tblgen_dim.isa<::mlir::IntegerAttr>())) && ((tblgen_dim.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))) && ((tblgen_dim.cast<::mlir::IntegerAttr>().getInt() >= 0))))
+    return emitError(loc, "'linalg.index' op ""attribute 'dim' failed to satisfy constraint: 64-bit signless integer attribute whose minimum value is 0");
   return ::mlir::success();
 }
 
@@ -151,7 +160,7 @@ std::pair<unsigned, unsigned> IndexOp::getODSResultIndexAndLength(unsigned index
 }
 
 ::mlir::IntegerAttr IndexOp::dimAttr() {
-  return (*this)->getAttr(dimAttrName()).cast<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, dimAttrName()).cast<::mlir::IntegerAttr>();
 }
 
 uint64_t IndexOp::dim() {
@@ -224,7 +233,7 @@ void IndexOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
 
-  ::mlir::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
   if (::mlir::succeeded(IndexOp::inferReturnTypes(odsBuilder.getContext(),
           odsState.location, operands,
           odsState.attributes.getDictionary(odsState.getContext()),
@@ -237,14 +246,21 @@ void IndexOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
 }
 
 ::mlir::LogicalResult IndexOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_dim = (*this)->getAttr(dimAttrName());
-    if (!tblgen_dim)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_dim;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'dim'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_LinalgOps0(*this, tblgen_dim, "dim")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == dimAttrName()) {
+      tblgen_dim = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_LinalgOps0(*this, tblgen_dim, "dim")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSResults(0);
@@ -266,7 +282,8 @@ void IndexOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
 ::mlir::LogicalResult IndexOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  inferredReturnTypes[0] = odsBuilder.getIndexType();
+  ::mlir::Type odsInferredType0 = odsBuilder.getIndexType();
+  inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
@@ -309,7 +326,7 @@ void IndexOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void IndexOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void IndexOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace linalg
@@ -323,9 +340,11 @@ namespace linalg {
 // ::mlir::linalg::InitTensorOp definitions
 //===----------------------------------------------------------------------===//
 
-InitTensorOpAdaptor::InitTensorOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+InitTensorOpAdaptor::InitTensorOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("linalg.init_tensor", odsAttrs.getContext());
+}
 
-InitTensorOpAdaptor::InitTensorOpAdaptor(InitTensorOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+InitTensorOpAdaptor::InitTensorOpAdaptor(InitTensorOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange InitTensorOpAdaptor::getOperands() {
   return odsOperands;
@@ -365,8 +384,8 @@ std::pair<unsigned, unsigned> InitTensorOpAdaptor::getODSOperandIndexAndLength(u
 
 ::mlir::ArrayAttr InitTensorOpAdaptor::static_sizesAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::ArrayAttr attr = odsAttrs.get("static_sizes").cast<::mlir::ArrayAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, InitTensorOp::static_sizesAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
 }
 
 ::mlir::ArrayAttr InitTensorOpAdaptor::static_sizes() {
@@ -375,14 +394,21 @@ std::pair<unsigned, unsigned> InitTensorOpAdaptor::getODSOperandIndexAndLength(u
 }
 
 ::mlir::LogicalResult InitTensorOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_static_sizes = odsAttrs.get("static_sizes");
-    if (!tblgen_static_sizes)
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_static_sizes;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'linalg.init_tensor' op ""requires attribute 'static_sizes'");
-
-    if (tblgen_static_sizes && !(((tblgen_static_sizes.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_sizes.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
-      return emitError(loc, "'linalg.init_tensor' op ""attribute 'static_sizes' failed to satisfy constraint: 64-bit integer array attribute");
+    if (namedAttrIt->getName() == InitTensorOp::static_sizesAttrName(*odsOpName)) {
+      tblgen_static_sizes = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (tblgen_static_sizes && !(((tblgen_static_sizes.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_sizes.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
+    return emitError(loc, "'linalg.init_tensor' op ""attribute 'static_sizes' failed to satisfy constraint: 64-bit integer array attribute");
   return ::mlir::success();
 }
 
@@ -435,7 +461,7 @@ std::pair<unsigned, unsigned> InitTensorOp::getODSResultIndexAndLength(unsigned 
 }
 
 ::mlir::ArrayAttr InitTensorOp::static_sizesAttr() {
-  return (*this)->getAttr(static_sizesAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, static_sizesAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr InitTensorOp::static_sizes() {
@@ -487,14 +513,21 @@ void InitTensorOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
 }
 
 ::mlir::LogicalResult InitTensorOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_static_sizes = (*this)->getAttr(static_sizesAttrName());
-    if (!tblgen_static_sizes)
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_static_sizes;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'static_sizes'");
-
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_LinalgOps1(*this, tblgen_static_sizes, "static_sizes")))
-      return ::mlir::failure();
+    if (namedAttrIt->getName() == static_sizesAttrName()) {
+      tblgen_static_sizes = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
   }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_LinalgOps1(*this, tblgen_static_sizes, "static_sizes")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
@@ -523,7 +556,7 @@ void InitTensorOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
 }
 
 ::mlir::ParseResult InitTensorOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> sizesOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> sizesOperands;
   ::llvm::SMLoc sizesOperandsLoc;
   (void)sizesOperandsLoc;
   ::mlir::ArrayAttr static_sizesAttr;
@@ -568,7 +601,7 @@ void InitTensorOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void InitTensorOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void InitTensorOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace linalg
@@ -582,9 +615,11 @@ namespace linalg {
 // ::mlir::linalg::YieldOp definitions
 //===----------------------------------------------------------------------===//
 
-YieldOpAdaptor::YieldOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+YieldOpAdaptor::YieldOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("linalg.yield", odsAttrs.getContext());
+}
 
-YieldOpAdaptor::YieldOpAdaptor(YieldOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+YieldOpAdaptor::YieldOpAdaptor(YieldOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange YieldOpAdaptor::getOperands() {
   return odsOperands;
@@ -704,7 +739,7 @@ void YieldOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   return ::mlir::failure();
 }
 
-void YieldOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void YieldOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace linalg

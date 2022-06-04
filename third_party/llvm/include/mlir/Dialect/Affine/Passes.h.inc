@@ -6,12 +6,12 @@
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class AffineDataCopyGenerationBase : public ::mlir::OperationPass<FuncOp> {
+class AffineDataCopyGenerationBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = AffineDataCopyGenerationBase;
 
-  AffineDataCopyGenerationBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  AffineDataCopyGenerationBase(const AffineDataCopyGenerationBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  AffineDataCopyGenerationBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  AffineDataCopyGenerationBase(const AffineDataCopyGenerationBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -64,12 +64,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class AffineLoopFusionBase : public ::mlir::OperationPass<FuncOp> {
+class AffineLoopFusionBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = AffineLoopFusionBase;
 
-  AffineLoopFusionBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  AffineLoopFusionBase(const AffineLoopFusionBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  AffineLoopFusionBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  AffineLoopFusionBase(const AffineLoopFusionBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -120,12 +120,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class AffineLoopInvariantCodeMotionBase : public ::mlir::OperationPass<FuncOp> {
+class AffineLoopInvariantCodeMotionBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = AffineLoopInvariantCodeMotionBase;
 
-  AffineLoopInvariantCodeMotionBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  AffineLoopInvariantCodeMotionBase(const AffineLoopInvariantCodeMotionBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  AffineLoopInvariantCodeMotionBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  AffineLoopInvariantCodeMotionBase(const AffineLoopInvariantCodeMotionBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -169,12 +169,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class AffineLoopNormalizeBase : public ::mlir::OperationPass<FuncOp> {
+class AffineLoopNormalizeBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = AffineLoopNormalizeBase;
 
-  AffineLoopNormalizeBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  AffineLoopNormalizeBase(const AffineLoopNormalizeBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  AffineLoopNormalizeBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  AffineLoopNormalizeBase(const AffineLoopNormalizeBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -218,12 +218,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class AffineLoopTilingBase : public ::mlir::OperationPass<FuncOp> {
+class AffineLoopTilingBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = AffineLoopTilingBase;
 
-  AffineLoopTilingBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  AffineLoopTilingBase(const AffineLoopTilingBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  AffineLoopTilingBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  AffineLoopTilingBase(const AffineLoopTilingBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -271,12 +271,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class AffineLoopUnrollBase : public ::mlir::OperationPass<FuncOp> {
+class AffineLoopUnrollBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = AffineLoopUnrollBase;
 
-  AffineLoopUnrollBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  AffineLoopUnrollBase(const AffineLoopUnrollBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  AffineLoopUnrollBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  AffineLoopUnrollBase(const AffineLoopUnrollBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -325,12 +325,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class AffineLoopUnrollAndJamBase : public ::mlir::OperationPass<FuncOp> {
+class AffineLoopUnrollAndJamBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = AffineLoopUnrollAndJamBase;
 
-  AffineLoopUnrollAndJamBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  AffineLoopUnrollAndJamBase(const AffineLoopUnrollAndJamBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  AffineLoopUnrollAndJamBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  AffineLoopUnrollAndJamBase(const AffineLoopUnrollAndJamBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -375,12 +375,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class AffineParallelizeBase : public ::mlir::OperationPass<FuncOp> {
+class AffineParallelizeBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = AffineParallelizeBase;
 
-  AffineParallelizeBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  AffineParallelizeBase(const AffineParallelizeBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  AffineParallelizeBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  AffineParallelizeBase(const AffineParallelizeBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -426,12 +426,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class AffinePipelineDataTransferBase : public ::mlir::OperationPass<FuncOp> {
+class AffinePipelineDataTransferBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = AffinePipelineDataTransferBase;
 
-  AffinePipelineDataTransferBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  AffinePipelineDataTransferBase(const AffinePipelineDataTransferBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  AffinePipelineDataTransferBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  AffinePipelineDataTransferBase(const AffinePipelineDataTransferBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -475,12 +475,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class AffineScalarReplacementBase : public ::mlir::OperationPass<FuncOp> {
+class AffineScalarReplacementBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = AffineScalarReplacementBase;
 
-  AffineScalarReplacementBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  AffineScalarReplacementBase(const AffineScalarReplacementBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  AffineScalarReplacementBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  AffineScalarReplacementBase(const AffineScalarReplacementBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -524,12 +524,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class AffineVectorizeBase : public ::mlir::OperationPass<FuncOp> {
+class AffineVectorizeBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = AffineVectorizeBase;
 
-  AffineVectorizeBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  AffineVectorizeBase(const AffineVectorizeBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  AffineVectorizeBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  AffineVectorizeBase(const AffineVectorizeBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -578,12 +578,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class LoopCoalescingBase : public ::mlir::OperationPass<FuncOp> {
+class LoopCoalescingBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = LoopCoalescingBase;
 
-  LoopCoalescingBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  LoopCoalescingBase(const LoopCoalescingBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  LoopCoalescingBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  LoopCoalescingBase(const LoopCoalescingBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {
@@ -629,12 +629,12 @@ protected:
 //===----------------------------------------------------------------------===//
 
 template <typename DerivedT>
-class SimplifyAffineStructuresBase : public ::mlir::OperationPass<FuncOp> {
+class SimplifyAffineStructuresBase : public ::mlir::OperationPass<func::FuncOp> {
 public:
   using Base = SimplifyAffineStructuresBase;
 
-  SimplifyAffineStructuresBase() : ::mlir::OperationPass<FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
-  SimplifyAffineStructuresBase(const SimplifyAffineStructuresBase &other) : ::mlir::OperationPass<FuncOp>(other) {}
+  SimplifyAffineStructuresBase() : ::mlir::OperationPass<func::FuncOp>(::mlir::TypeID::get<DerivedT>()) {}
+  SimplifyAffineStructuresBase(const SimplifyAffineStructuresBase &other) : ::mlir::OperationPass<func::FuncOp>(other) {}
 
   /// Returns the command-line argument attached to this pass.
   static constexpr ::llvm::StringLiteral getArgumentName() {

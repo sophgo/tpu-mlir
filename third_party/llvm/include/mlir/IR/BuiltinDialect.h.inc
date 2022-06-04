@@ -9,12 +9,7 @@
 namespace mlir {
 
 class BuiltinDialect : public ::mlir::Dialect {
-  explicit BuiltinDialect(::mlir::MLIRContext *context)
-    : ::mlir::Dialect(getDialectNamespace(), context,
-      ::mlir::TypeID::get<BuiltinDialect>()) {
-    
-    initialize();
-  }
+  explicit BuiltinDialect(::mlir::MLIRContext *context);
 
   void initialize();
   friend class ::mlir::MLIRContext;

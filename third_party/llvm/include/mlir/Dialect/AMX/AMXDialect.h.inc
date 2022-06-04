@@ -10,12 +10,7 @@ namespace mlir {
 namespace amx {
 
 class AMXDialect : public ::mlir::Dialect {
-  explicit AMXDialect(::mlir::MLIRContext *context)
-    : ::mlir::Dialect(getDialectNamespace(), context,
-      ::mlir::TypeID::get<AMXDialect>()) {
-    
-    initialize();
-  }
+  explicit AMXDialect(::mlir::MLIRContext *context);
 
   void initialize();
   friend class ::mlir::MLIRContext;

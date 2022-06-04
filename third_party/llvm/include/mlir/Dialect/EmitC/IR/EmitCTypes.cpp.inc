@@ -155,6 +155,7 @@ namespace emitc {
   auto parseResult = generatedTypeParser(parser, mnemonic, genType);
   if (parseResult.hasValue())
     return genType;
+  
   parser.emitError(typeLoc) << "unknown  type `"
       << mnemonic << "` in dialect `" << getNamespace() << "`";
   return {};
@@ -164,6 +165,7 @@ void EmitCDialect::printType(::mlir::Type type,
                     ::mlir::DialectAsmPrinter &printer) const {
   if (::mlir::succeeded(generatedTypePrinter(type, printer)))
     return;
+  
 }
 } // namespace emitc
 } // namespace mlir

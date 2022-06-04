@@ -83,9 +83,11 @@ namespace arm_neon {
 // ::mlir::arm_neon::SMullOp definitions
 //===----------------------------------------------------------------------===//
 
-SMullOpAdaptor::SMullOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+SMullOpAdaptor::SMullOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arm_neon.intr.smull", odsAttrs.getContext());
+}
 
-SMullOpAdaptor::SMullOpAdaptor(SMullOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+SMullOpAdaptor::SMullOpAdaptor(SMullOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange SMullOpAdaptor::getOperands() {
   return odsOperands;
@@ -294,7 +296,7 @@ void SMullOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void SMullOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void SMullOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arm_neon
@@ -308,9 +310,11 @@ namespace arm_neon {
 // ::mlir::arm_neon::Sdot2dOp definitions
 //===----------------------------------------------------------------------===//
 
-Sdot2dOpAdaptor::Sdot2dOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+Sdot2dOpAdaptor::Sdot2dOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arm_neon.2d.sdot", odsAttrs.getContext());
+}
 
-Sdot2dOpAdaptor::Sdot2dOpAdaptor(Sdot2dOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+Sdot2dOpAdaptor::Sdot2dOpAdaptor(Sdot2dOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange Sdot2dOpAdaptor::getOperands() {
   return odsOperands;
@@ -583,7 +587,7 @@ void Sdot2dOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void Sdot2dOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void Sdot2dOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arm_neon
@@ -597,9 +601,11 @@ namespace arm_neon {
 // ::mlir::arm_neon::SdotOp definitions
 //===----------------------------------------------------------------------===//
 
-SdotOpAdaptor::SdotOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+SdotOpAdaptor::SdotOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arm_neon.intr.sdot", odsAttrs.getContext());
+}
 
-SdotOpAdaptor::SdotOpAdaptor(SdotOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+SdotOpAdaptor::SdotOpAdaptor(SdotOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange SdotOpAdaptor::getOperands() {
   return odsOperands;
@@ -866,7 +872,7 @@ void SdotOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void SdotOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void SdotOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace arm_neon

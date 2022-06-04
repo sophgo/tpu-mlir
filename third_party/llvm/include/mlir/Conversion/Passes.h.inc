@@ -2,6 +2,59 @@
 #ifdef GEN_PASS_CLASSES
 
 //===----------------------------------------------------------------------===//
+// ConvertAMDGPUToROCDL
+//===----------------------------------------------------------------------===//
+
+template <typename DerivedT>
+class ConvertAMDGPUToROCDLBase : public ::mlir::OperationPass<> {
+public:
+  using Base = ConvertAMDGPUToROCDLBase;
+
+  ConvertAMDGPUToROCDLBase() : ::mlir::OperationPass<>(::mlir::TypeID::get<DerivedT>()) {}
+  ConvertAMDGPUToROCDLBase(const ConvertAMDGPUToROCDLBase &other) : ::mlir::OperationPass<>(other) {}
+
+  /// Returns the command-line argument attached to this pass.
+  static constexpr ::llvm::StringLiteral getArgumentName() {
+    return ::llvm::StringLiteral("convert-amdgpu-to-rocdl");
+  }
+  ::llvm::StringRef getArgument() const override { return "convert-amdgpu-to-rocdl"; }
+
+  ::llvm::StringRef getDescription() const override { return "Convert AMDGPU dialect to ROCDL dialect"; }
+
+  /// Returns the derived pass name.
+  static constexpr ::llvm::StringLiteral getPassName() {
+    return ::llvm::StringLiteral("ConvertAMDGPUToROCDL");
+  }
+  ::llvm::StringRef getName() const override { return "ConvertAMDGPUToROCDL"; }
+
+  /// Support isa/dyn_cast functionality for the derived pass class.
+  static bool classof(const ::mlir::Pass *pass) {
+    return pass->getTypeID() == ::mlir::TypeID::get<DerivedT>();
+  }
+
+  /// A clone method to create a copy of this pass.
+  std::unique_ptr<::mlir::Pass> clonePass() const override {
+    return std::make_unique<DerivedT>(*static_cast<const DerivedT *>(this));
+  }
+
+  /// Return the dialect that must be loaded in the context before this pass.
+  void getDependentDialects(::mlir::DialectRegistry &registry) const override {
+    
+  registry.insert<LLVM::LLVMDialect>();
+
+  registry.insert<ROCDL::ROCDLDialect>();
+
+  }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertAMDGPUToROCDLBase<DerivedT>)
+
+protected:
+};
+
+//===----------------------------------------------------------------------===//
 // ConvertAffineForToGPU
 //===----------------------------------------------------------------------===//
 
@@ -419,6 +472,57 @@ public:
   /// instantiation because Pass classes should only be visible by the current
   /// library.
   MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertComplexToLLVMBase<DerivedT>)
+
+protected:
+};
+
+//===----------------------------------------------------------------------===//
+// ConvertComplexToLibm
+//===----------------------------------------------------------------------===//
+
+template <typename DerivedT>
+class ConvertComplexToLibmBase : public ::mlir::OperationPass<ModuleOp> {
+public:
+  using Base = ConvertComplexToLibmBase;
+
+  ConvertComplexToLibmBase() : ::mlir::OperationPass<ModuleOp>(::mlir::TypeID::get<DerivedT>()) {}
+  ConvertComplexToLibmBase(const ConvertComplexToLibmBase &other) : ::mlir::OperationPass<ModuleOp>(other) {}
+
+  /// Returns the command-line argument attached to this pass.
+  static constexpr ::llvm::StringLiteral getArgumentName() {
+    return ::llvm::StringLiteral("convert-complex-to-libm");
+  }
+  ::llvm::StringRef getArgument() const override { return "convert-complex-to-libm"; }
+
+  ::llvm::StringRef getDescription() const override { return "Convert Complex dialect to libm calls"; }
+
+  /// Returns the derived pass name.
+  static constexpr ::llvm::StringLiteral getPassName() {
+    return ::llvm::StringLiteral("ConvertComplexToLibm");
+  }
+  ::llvm::StringRef getName() const override { return "ConvertComplexToLibm"; }
+
+  /// Support isa/dyn_cast functionality for the derived pass class.
+  static bool classof(const ::mlir::Pass *pass) {
+    return pass->getTypeID() == ::mlir::TypeID::get<DerivedT>();
+  }
+
+  /// A clone method to create a copy of this pass.
+  std::unique_ptr<::mlir::Pass> clonePass() const override {
+    return std::make_unique<DerivedT>(*static_cast<const DerivedT *>(this));
+  }
+
+  /// Return the dialect that must be loaded in the context before this pass.
+  void getDependentDialects(::mlir::DialectRegistry &registry) const override {
+    
+  registry.insert<func::FuncDialect>();
+
+  }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertComplexToLibmBase<DerivedT>)
 
 protected:
 };
@@ -1320,6 +1424,57 @@ protected:
 };
 
 //===----------------------------------------------------------------------===//
+// ConvertNVGPUToNVVM
+//===----------------------------------------------------------------------===//
+
+template <typename DerivedT>
+class ConvertNVGPUToNVVMBase : public ::mlir::OperationPass<> {
+public:
+  using Base = ConvertNVGPUToNVVMBase;
+
+  ConvertNVGPUToNVVMBase() : ::mlir::OperationPass<>(::mlir::TypeID::get<DerivedT>()) {}
+  ConvertNVGPUToNVVMBase(const ConvertNVGPUToNVVMBase &other) : ::mlir::OperationPass<>(other) {}
+
+  /// Returns the command-line argument attached to this pass.
+  static constexpr ::llvm::StringLiteral getArgumentName() {
+    return ::llvm::StringLiteral("convert-nvgpu-to-nvvm");
+  }
+  ::llvm::StringRef getArgument() const override { return "convert-nvgpu-to-nvvm"; }
+
+  ::llvm::StringRef getDescription() const override { return "Convert NVGPU dialect to NVVM dialect"; }
+
+  /// Returns the derived pass name.
+  static constexpr ::llvm::StringLiteral getPassName() {
+    return ::llvm::StringLiteral("ConvertNVGPUToNVVM");
+  }
+  ::llvm::StringRef getName() const override { return "ConvertNVGPUToNVVM"; }
+
+  /// Support isa/dyn_cast functionality for the derived pass class.
+  static bool classof(const ::mlir::Pass *pass) {
+    return pass->getTypeID() == ::mlir::TypeID::get<DerivedT>();
+  }
+
+  /// A clone method to create a copy of this pass.
+  std::unique_ptr<::mlir::Pass> clonePass() const override {
+    return std::make_unique<DerivedT>(*static_cast<const DerivedT *>(this));
+  }
+
+  /// Return the dialect that must be loaded in the context before this pass.
+  void getDependentDialects(::mlir::DialectRegistry &registry) const override {
+    
+  registry.insert<NVVM::NVVMDialect>();
+
+  }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertNVGPUToNVVMBase<DerivedT>)
+
+protected:
+};
+
+//===----------------------------------------------------------------------===//
 // ConvertOpenACCToLLVM
 //===----------------------------------------------------------------------===//
 
@@ -1789,6 +1944,59 @@ protected:
 };
 
 //===----------------------------------------------------------------------===//
+// ConvertTensorToLinalg
+//===----------------------------------------------------------------------===//
+
+template <typename DerivedT>
+class ConvertTensorToLinalgBase : public ::mlir::OperationPass<ModuleOp> {
+public:
+  using Base = ConvertTensorToLinalgBase;
+
+  ConvertTensorToLinalgBase() : ::mlir::OperationPass<ModuleOp>(::mlir::TypeID::get<DerivedT>()) {}
+  ConvertTensorToLinalgBase(const ConvertTensorToLinalgBase &other) : ::mlir::OperationPass<ModuleOp>(other) {}
+
+  /// Returns the command-line argument attached to this pass.
+  static constexpr ::llvm::StringLiteral getArgumentName() {
+    return ::llvm::StringLiteral("convert-tensor-to-linalg");
+  }
+  ::llvm::StringRef getArgument() const override { return "convert-tensor-to-linalg"; }
+
+  ::llvm::StringRef getDescription() const override { return "Convert some Tensor dialect ops to Linalg dialect"; }
+
+  /// Returns the derived pass name.
+  static constexpr ::llvm::StringLiteral getPassName() {
+    return ::llvm::StringLiteral("ConvertTensorToLinalg");
+  }
+  ::llvm::StringRef getName() const override { return "ConvertTensorToLinalg"; }
+
+  /// Support isa/dyn_cast functionality for the derived pass class.
+  static bool classof(const ::mlir::Pass *pass) {
+    return pass->getTypeID() == ::mlir::TypeID::get<DerivedT>();
+  }
+
+  /// A clone method to create a copy of this pass.
+  std::unique_ptr<::mlir::Pass> clonePass() const override {
+    return std::make_unique<DerivedT>(*static_cast<const DerivedT *>(this));
+  }
+
+  /// Return the dialect that must be loaded in the context before this pass.
+  void getDependentDialects(::mlir::DialectRegistry &registry) const override {
+    
+  registry.insert<arith::ArithmeticDialect>();
+
+  registry.insert<linalg::LinalgDialect>();
+
+  }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertTensorToLinalgBase<DerivedT>)
+
+protected:
+};
+
+//===----------------------------------------------------------------------===//
 // ConvertTensorToSPIRV
 //===----------------------------------------------------------------------===//
 
@@ -1883,6 +2091,12 @@ public:
 
   registry.insert<gpu::GPUDialect>();
 
+  registry.insert<AffineDialect>();
+
+  registry.insert<vector::VectorDialect>();
+
+  registry.insert<nvgpu::NVGPUDialect>();
+
   }
 
   /// Explicitly declare the TypeID for this class. We declare an explicit private
@@ -1891,6 +2105,7 @@ public:
   MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(ConvertVectorToGPUBase<DerivedT>)
 
 protected:
+  ::mlir::Pass::Option<bool> useNvGpu{*this, "use-nvgpu", ::llvm::cl::desc("convert to NvGPU ops instead of GPU dialect ops"), ::llvm::cl::init(false)};
 };
 
 //===----------------------------------------------------------------------===//
@@ -2463,6 +2678,7 @@ public:
 
 protected:
   ::mlir::Pass::Option<bool> includeApplyRescale{*this, "include-apply-rescale", ::llvm::cl::desc("Whether to include the lowering for tosa.apply_rescale to arith"), ::llvm::cl::init(false)};
+  ::mlir::Pass::Option<bool> use32Bit{*this, "use-32-bit", ::llvm::cl::desc("Whether to prioritze lowering to 32-bit operations"), ::llvm::cl::init(false)};
 };
 
 //===----------------------------------------------------------------------===//
@@ -2669,6 +2885,16 @@ protected:
 #ifdef GEN_PASS_REGISTRATION
 
 //===----------------------------------------------------------------------===//
+// ConvertAMDGPUToROCDL Registration
+//===----------------------------------------------------------------------===//
+
+inline void registerConvertAMDGPUToROCDLPass() {
+  ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
+    return mlir::createConvertAMDGPUToROCDLPass();
+  });
+}
+
+//===----------------------------------------------------------------------===//
 // ConvertAffineForToGPU Registration
 //===----------------------------------------------------------------------===//
 
@@ -2745,6 +2971,16 @@ inline void registerConvertBufferizationToMemRefPass() {
 inline void registerConvertComplexToLLVMPass() {
   ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
     return mlir::createConvertComplexToLLVMPass();
+  });
+}
+
+//===----------------------------------------------------------------------===//
+// ConvertComplexToLibm Registration
+//===----------------------------------------------------------------------===//
+
+inline void registerConvertComplexToLibmPass() {
+  ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
+    return mlir::createConvertComplexToLibmPass();
   });
 }
 
@@ -2919,6 +3155,16 @@ inline void registerConvertMemRefToSPIRVPass() {
 }
 
 //===----------------------------------------------------------------------===//
+// ConvertNVGPUToNVVM Registration
+//===----------------------------------------------------------------------===//
+
+inline void registerConvertNVGPUToNVVMPass() {
+  ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
+    return mlir::createConvertNVGPUToNVVMPass();
+  });
+}
+
+//===----------------------------------------------------------------------===//
 // ConvertOpenACCToLLVM Registration
 //===----------------------------------------------------------------------===//
 
@@ -3005,6 +3251,16 @@ inline void registerConvertShapeConstraintsPass() {
 inline void registerConvertShapeToStandardPass() {
   ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
     return mlir::createConvertShapeToStandardPass();
+  });
+}
+
+//===----------------------------------------------------------------------===//
+// ConvertTensorToLinalg Registration
+//===----------------------------------------------------------------------===//
+
+inline void registerConvertTensorToLinalgPass() {
+  ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
+    return mlir::createConvertTensorToLinalgPass();
   });
 }
 
@@ -3183,6 +3439,7 @@ inline void registerTosaToTensorPass() {
 //===----------------------------------------------------------------------===//
 
 inline void registerConversionPasses() {
+  registerConvertAMDGPUToROCDLPass();
   registerConvertAffineForToGPUPass();
   registerConvertAffineToStandardPass();
   registerConvertArithmeticToLLVMPass();
@@ -3191,6 +3448,7 @@ inline void registerConversionPasses() {
   registerConvertAsyncToLLVMPass();
   registerConvertBufferizationToMemRefPass();
   registerConvertComplexToLLVMPass();
+  registerConvertComplexToLibmPass();
   registerConvertComplexToStandardPass();
   registerConvertControlFlowToLLVMPass();
   registerConvertControlFlowToSPIRVPass();
@@ -3208,6 +3466,7 @@ inline void registerConversionPasses() {
   registerConvertMathToSPIRVPass();
   registerConvertMemRefToLLVMPass();
   registerConvertMemRefToSPIRVPass();
+  registerConvertNVGPUToNVVMPass();
   registerConvertOpenACCToLLVMPass();
   registerConvertOpenACCToSCFPass();
   registerConvertOpenMPToLLVMPass();
@@ -3217,6 +3476,7 @@ inline void registerConversionPasses() {
   registerConvertSPIRVToLLVMPass();
   registerConvertShapeConstraintsPass();
   registerConvertShapeToStandardPass();
+  registerConvertTensorToLinalgPass();
   registerConvertTensorToSPIRVPass();
   registerConvertVectorToGPUPass();
   registerConvertVectorToLLVMPass();

@@ -33,9 +33,6 @@ LogicalResult mlir::bufferization::BufferizableOpInterface::bufferize(RewriterBa
 bool mlir::bufferization::BufferizableOpInterface::isWritable(Value value, const AnalysisState & state) {
       return getImpl()->isWritable(getImpl(), getOperation(), value, state);
   }
-bool mlir::bufferization::BufferizableOpInterface::isAllocationHoistingBarrier() {
-      return getImpl()->isAllocationHoistingBarrier(getImpl(), getOperation());
-  }
 bool mlir::bufferization::BufferizableOpInterface::isNotConflicting(OpOperand * uRead, OpOperand * uWrite, const AnalysisState & state) {
       return getImpl()->isNotConflicting(getImpl(), getOperation(), uRead, uWrite, state);
   }

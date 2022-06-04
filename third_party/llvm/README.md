@@ -1,10 +1,12 @@
 ## clone and build llvm
 
 ``` shell
-# 2022-04-07 11:00
+# 2022-06-04 13:00
 git clone https://github.com/llvm/llvm-project.git
-cd llvm-project && git checkout f2796a5d444998ea73f02f433ed34b7c09e0f7d5 && cd ..
+cd llvm-project
+git checkout 15faac900d3b4fc17a04b3b9de421fab1bbe33db
 mkdir -p llvm-project/build
+git am 0001-ajust-for-tpu-mlir.patch
 cd llvm-project/build
 cmake -G Ninja ../llvm \
    -DLLVM_ENABLE_PROJECTS="mlir" \

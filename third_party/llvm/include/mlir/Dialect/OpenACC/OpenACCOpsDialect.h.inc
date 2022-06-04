@@ -10,12 +10,7 @@ namespace mlir {
 namespace acc {
 
 class OpenACCDialect : public ::mlir::Dialect {
-  explicit OpenACCDialect(::mlir::MLIRContext *context)
-    : ::mlir::Dialect(getDialectNamespace(), context,
-      ::mlir::TypeID::get<OpenACCDialect>()) {
-    
-    initialize();
-  }
+  explicit OpenACCDialect(::mlir::MLIRContext *context);
 
   void initialize();
   friend class ::mlir::MLIRContext;

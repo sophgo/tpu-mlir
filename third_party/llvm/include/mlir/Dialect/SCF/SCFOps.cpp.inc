@@ -12,8 +12,11 @@
 ::mlir::scf::ConditionOp,
 ::mlir::scf::ExecuteRegionOp,
 ::mlir::scf::ForOp,
+::mlir::scf::ForeachThreadOp,
 ::mlir::scf::IfOp,
+::mlir::scf::ParallelInsertSliceOp,
 ::mlir::scf::ParallelOp,
+::mlir::scf::PerformConcurrentlyOp,
 ::mlir::scf::ReduceOp,
 ::mlir::scf::ReduceReturnOp,
 ::mlir::scf::WhileOp,
@@ -61,6 +64,25 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SCFOps2(
   return ::mlir::success();
 }
 
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_SCFOps3(
+    ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
+    unsigned valueIndex) {
+  if (!((((type.isa<::mlir::TensorType>())) && ((type.cast<::mlir::ShapedType>().hasRank()))) && ([](::mlir::Type elementType) { return (true); }(type.cast<::mlir::ShapedType>().getElementType())))) {
+    return op->emitOpError(valueKind) << " #" << valueIndex
+        << " must be ranked tensor of any type values, but got " << type;
+  }
+  return ::mlir::success();
+}
+
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_SCFOps0(
+    ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
+  if (attr && !(((attr.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(attr.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); })))) {
+    return op->emitOpError("attribute '") << attrName
+        << "' failed to satisfy constraint: 64-bit integer array attribute";
+  }
+  return ::mlir::success();
+}
+
 static ::mlir::LogicalResult __mlir_ods_local_region_constraint_SCFOps0(
     ::mlir::Operation *op, ::mlir::Region &region, ::llvm::StringRef regionName,
     unsigned regionIndex) {
@@ -91,9 +113,11 @@ namespace scf {
 // ::mlir::scf::ConditionOp definitions
 //===----------------------------------------------------------------------===//
 
-ConditionOpAdaptor::ConditionOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ConditionOpAdaptor::ConditionOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("scf.condition", odsAttrs.getContext());
+}
 
-ConditionOpAdaptor::ConditionOpAdaptor(ConditionOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ConditionOpAdaptor::ConditionOpAdaptor(ConditionOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ConditionOpAdaptor::getOperands() {
   return odsOperands;
@@ -240,10 +264,10 @@ void ConditionOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   ::mlir::OpAsmParser::UnresolvedOperand conditionRawOperands[1];
   ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> conditionOperands(conditionRawOperands);  ::llvm::SMLoc conditionOperandsLoc;
   (void)conditionOperandsLoc;
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
   ::llvm::SMLoc argsOperandsLoc;
   (void)argsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> argsTypes;
+  ::llvm::SmallVector<::mlir::Type, 1> argsTypes;
   if (parser.parseLParen())
     return ::mlir::failure();
 
@@ -287,7 +311,7 @@ void ConditionOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void ConditionOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ConditionOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace scf
@@ -301,9 +325,11 @@ namespace scf {
 // ::mlir::scf::ExecuteRegionOp definitions
 //===----------------------------------------------------------------------===//
 
-ExecuteRegionOpAdaptor::ExecuteRegionOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ExecuteRegionOpAdaptor::ExecuteRegionOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("scf.execute_region", odsAttrs.getContext());
+}
 
-ExecuteRegionOpAdaptor::ExecuteRegionOpAdaptor(ExecuteRegionOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ExecuteRegionOpAdaptor::ExecuteRegionOpAdaptor(ExecuteRegionOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ExecuteRegionOpAdaptor::getOperands() {
   return odsOperands;
@@ -424,9 +450,11 @@ namespace scf {
 // ::mlir::scf::ForOp definitions
 //===----------------------------------------------------------------------===//
 
-ForOpAdaptor::ForOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ForOpAdaptor::ForOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("scf.for", odsAttrs.getContext());
+}
 
-ForOpAdaptor::ForOpAdaptor(ForOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ForOpAdaptor::ForOpAdaptor(ForOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ForOpAdaptor::getOperands() {
   return odsOperands;
@@ -645,12 +673,180 @@ namespace mlir {
 namespace scf {
 
 //===----------------------------------------------------------------------===//
+// ::mlir::scf::ForeachThreadOp definitions
+//===----------------------------------------------------------------------===//
+
+ForeachThreadOpAdaptor::ForeachThreadOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("scf.foreach_thread", odsAttrs.getContext());
+}
+
+ForeachThreadOpAdaptor::ForeachThreadOpAdaptor(ForeachThreadOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange ForeachThreadOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> ForeachThreadOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (odsOperands.size() - 0) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::ValueRange ForeachThreadOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::ValueRange ForeachThreadOpAdaptor::getNumThreads() {
+  return getODSOperands(0);
+}
+
+::mlir::DictionaryAttr ForeachThreadOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::RegionRange ForeachThreadOpAdaptor::getRegions() {
+  return odsRegions;
+}
+
+::mlir::Region &ForeachThreadOpAdaptor::getRegion() {
+  return *odsRegions[0];
+}
+
+::mlir::LogicalResult ForeachThreadOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> ForeachThreadOp::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (getOperation()->getNumOperands() - 0) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::Operation::operand_range ForeachThreadOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Operation::operand_range ForeachThreadOp::getNumThreads() {
+  return getODSOperands(0);
+}
+
+::mlir::MutableOperandRange ForeachThreadOp::getNumThreadsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> ForeachThreadOp::getODSResultIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (getOperation()->getNumResults() - 0) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::Operation::result_range ForeachThreadOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Operation::result_range ForeachThreadOp::getResults() {
+  return getODSResults(0);
+}
+
+::mlir::Region &ForeachThreadOp::getRegion() {
+  return (*this)->getRegion(0);
+}
+
+::mlir::LogicalResult ForeachThreadOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SCFOps2(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SCFOps1(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+
+    for (auto &region : ::llvm::makeMutableArrayRef((*this)->getRegion(0)))
+      if (::mlir::failed(__mlir_ods_local_region_constraint_SCFOps1(*this, region, "region", index++)))
+        return ::mlir::failure();
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult ForeachThreadOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
+}
+
+} // namespace scf
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::scf::ForeachThreadOp)
+
+namespace mlir {
+namespace scf {
+
+//===----------------------------------------------------------------------===//
 // ::mlir::scf::IfOp definitions
 //===----------------------------------------------------------------------===//
 
-IfOpAdaptor::IfOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+IfOpAdaptor::IfOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("scf.if", odsAttrs.getContext());
+}
 
-IfOpAdaptor::IfOpAdaptor(IfOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+IfOpAdaptor::IfOpAdaptor(IfOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange IfOpAdaptor::getOperands() {
   return odsOperands;
@@ -793,12 +989,547 @@ namespace mlir {
 namespace scf {
 
 //===----------------------------------------------------------------------===//
+// ::mlir::scf::ParallelInsertSliceOp definitions
+//===----------------------------------------------------------------------===//
+
+ParallelInsertSliceOpAdaptor::ParallelInsertSliceOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("scf.foreach_thread.parallel_insert_slice", odsAttrs.getContext());
+}
+
+ParallelInsertSliceOpAdaptor::ParallelInsertSliceOpAdaptor(ParallelInsertSliceOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange ParallelInsertSliceOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> ParallelInsertSliceOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  assert(odsAttrs && "missing segment size attribute for op");
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 3, ParallelInsertSliceOp::getOperandSegmentSizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
+
+  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
+  if (sizeAttr.isSplat())
+    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+
+  unsigned start = 0;
+  for (unsigned i = 0; i < index; ++i)
+    start += sizeAttrValueIt[i];
+  return {start, sizeAttrValueIt[index]};
+}
+
+::mlir::ValueRange ParallelInsertSliceOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value ParallelInsertSliceOpAdaptor::getSource() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value ParallelInsertSliceOpAdaptor::getDest() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::ValueRange ParallelInsertSliceOpAdaptor::getOffsets() {
+  return getODSOperands(2);
+}
+
+::mlir::ValueRange ParallelInsertSliceOpAdaptor::getSizes() {
+  return getODSOperands(3);
+}
+
+::mlir::ValueRange ParallelInsertSliceOpAdaptor::getStrides() {
+  return getODSOperands(4);
+}
+
+::mlir::DictionaryAttr ParallelInsertSliceOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::ArrayAttr ParallelInsertSliceOpAdaptor::getStaticOffsetsAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 2, ParallelInsertSliceOp::getStaticOffsetsAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
+}
+
+::mlir::ArrayAttr ParallelInsertSliceOpAdaptor::getStaticOffsets() {
+  auto attr = getStaticOffsetsAttr();
+  return attr;
+}
+
+::mlir::ArrayAttr ParallelInsertSliceOpAdaptor::getStaticSizesAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 1, ParallelInsertSliceOp::getStaticSizesAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
+}
+
+::mlir::ArrayAttr ParallelInsertSliceOpAdaptor::getStaticSizes() {
+  auto attr = getStaticSizesAttr();
+  return attr;
+}
+
+::mlir::ArrayAttr ParallelInsertSliceOpAdaptor::getStaticStridesAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 3, odsAttrs.end() - 0, ParallelInsertSliceOp::getStaticStridesAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+    return attr;
+}
+
+::mlir::ArrayAttr ParallelInsertSliceOpAdaptor::getStaticStrides() {
+  auto attr = getStaticStridesAttr();
+  return attr;
+}
+
+::mlir::LogicalResult ParallelInsertSliceOpAdaptor::verify(::mlir::Location loc) {
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'scf.foreach_thread.parallel_insert_slice' op ""requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == ParallelInsertSliceOp::getOperandSegmentSizesAttrName(*odsOpName)) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_static_offsets;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'scf.foreach_thread.parallel_insert_slice' op ""requires attribute 'static_offsets'");
+    if (namedAttrIt->getName() == ParallelInsertSliceOp::getStaticOffsetsAttrName(*odsOpName)) {
+      tblgen_static_offsets = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_static_sizes;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'scf.foreach_thread.parallel_insert_slice' op ""requires attribute 'static_sizes'");
+    if (namedAttrIt->getName() == ParallelInsertSliceOp::getStaticSizesAttrName(*odsOpName)) {
+      tblgen_static_sizes = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_static_strides;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'scf.foreach_thread.parallel_insert_slice' op ""requires attribute 'static_strides'");
+    if (namedAttrIt->getName() == ParallelInsertSliceOp::getStaticStridesAttrName(*odsOpName)) {
+      tblgen_static_strides = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
+  {
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
+    auto numElements =
+        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    if (numElements != 5)
+      return emitError(loc, "'scf.foreach_thread.parallel_insert_slice' op ""'operand_segment_sizes' attribute for specifying operand segments must have 5 "
+                "elements, but got ") << numElements;
+  }
+
+  if (tblgen_static_offsets && !(((tblgen_static_offsets.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_offsets.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
+    return emitError(loc, "'scf.foreach_thread.parallel_insert_slice' op ""attribute 'static_offsets' failed to satisfy constraint: 64-bit integer array attribute");
+
+  if (tblgen_static_sizes && !(((tblgen_static_sizes.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_sizes.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
+    return emitError(loc, "'scf.foreach_thread.parallel_insert_slice' op ""attribute 'static_sizes' failed to satisfy constraint: 64-bit integer array attribute");
+
+  if (tblgen_static_strides && !(((tblgen_static_strides.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_static_strides.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))))
+    return emitError(loc, "'scf.foreach_thread.parallel_insert_slice' op ""attribute 'static_strides' failed to satisfy constraint: 64-bit integer array attribute");
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> ParallelInsertSliceOp::getODSOperandIndexAndLength(unsigned index) {
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 3, getOperandSegmentSizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
+
+  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
+  if (sizeAttr.isSplat())
+    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+
+  unsigned start = 0;
+  for (unsigned i = 0; i < index; ++i)
+    start += sizeAttrValueIt[i];
+  return {start, sizeAttrValueIt[index]};
+}
+
+::mlir::Operation::operand_range ParallelInsertSliceOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value ParallelInsertSliceOp::getSource() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value ParallelInsertSliceOp::getDest() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::Operation::operand_range ParallelInsertSliceOp::getOffsets() {
+  return getODSOperands(2);
+}
+
+::mlir::Operation::operand_range ParallelInsertSliceOp::getSizes() {
+  return getODSOperands(3);
+}
+
+::mlir::Operation::operand_range ParallelInsertSliceOp::getStrides() {
+  return getODSOperands(4);
+}
+
+::mlir::MutableOperandRange ParallelInsertSliceOp::getSourceMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 3, getOperandSegmentSizesAttrName())));
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange ParallelInsertSliceOp::getDestMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 3, getOperandSegmentSizesAttrName())));
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange ParallelInsertSliceOp::getOffsetsMutable() {
+  auto range = getODSOperandIndexAndLength(2);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 3, getOperandSegmentSizesAttrName())));
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange ParallelInsertSliceOp::getSizesMutable() {
+  auto range = getODSOperandIndexAndLength(3);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(3u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 3, getOperandSegmentSizesAttrName())));
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange ParallelInsertSliceOp::getStridesMutable() {
+  auto range = getODSOperandIndexAndLength(4);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(4u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 3, getOperandSegmentSizesAttrName())));
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> ParallelInsertSliceOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range ParallelInsertSliceOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::ArrayAttr ParallelInsertSliceOp::getStaticOffsetsAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 2, getStaticOffsetsAttrName()).cast<::mlir::ArrayAttr>();
+}
+
+::mlir::ArrayAttr ParallelInsertSliceOp::getStaticOffsets() {
+  auto attr = getStaticOffsetsAttr();
+  return attr;
+}
+
+::mlir::ArrayAttr ParallelInsertSliceOp::getStaticSizesAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 1, getStaticSizesAttrName()).cast<::mlir::ArrayAttr>();
+}
+
+::mlir::ArrayAttr ParallelInsertSliceOp::getStaticSizes() {
+  auto attr = getStaticSizesAttr();
+  return attr;
+}
+
+::mlir::ArrayAttr ParallelInsertSliceOp::getStaticStridesAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 3, (*this)->getAttrs().end() - 0, getStaticStridesAttrName()).cast<::mlir::ArrayAttr>();
+}
+
+::mlir::ArrayAttr ParallelInsertSliceOp::getStaticStrides() {
+  auto attr = getStaticStridesAttr();
+  return attr;
+}
+
+void ParallelInsertSliceOp::setStaticOffsetsAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getStaticOffsetsAttrName(), attr);
+}
+
+void ParallelInsertSliceOp::setStaticSizesAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getStaticSizesAttrName(), attr);
+}
+
+void ParallelInsertSliceOp::setStaticStridesAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getStaticStridesAttrName(), attr);
+}
+
+void ParallelInsertSliceOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value source, ::mlir::Value dest, ::mlir::ValueRange offsets, ::mlir::ValueRange sizes, ::mlir::ValueRange strides, ::mlir::ArrayAttr static_offsets, ::mlir::ArrayAttr static_sizes, ::mlir::ArrayAttr static_strides) {
+  odsState.addOperands(source);
+  odsState.addOperands(dest);
+  odsState.addOperands(offsets);
+  odsState.addOperands(sizes);
+  odsState.addOperands(strides);
+  odsState.addAttribute(getOperandSegmentSizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({1, 1, static_cast<int32_t>(offsets.size()), static_cast<int32_t>(sizes.size()), static_cast<int32_t>(strides.size())}));
+  odsState.addAttribute(getStaticOffsetsAttrName(odsState.name), static_offsets);
+  odsState.addAttribute(getStaticSizesAttrName(odsState.name), static_sizes);
+  odsState.addAttribute(getStaticStridesAttrName(odsState.name), static_strides);
+}
+
+void ParallelInsertSliceOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value source, ::mlir::Value dest, ::mlir::ValueRange offsets, ::mlir::ValueRange sizes, ::mlir::ValueRange strides, ::mlir::ArrayAttr static_offsets, ::mlir::ArrayAttr static_sizes, ::mlir::ArrayAttr static_strides) {
+  odsState.addOperands(source);
+  odsState.addOperands(dest);
+  odsState.addOperands(offsets);
+  odsState.addOperands(sizes);
+  odsState.addOperands(strides);
+  odsState.addAttribute(getOperandSegmentSizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({1, 1, static_cast<int32_t>(offsets.size()), static_cast<int32_t>(sizes.size()), static_cast<int32_t>(strides.size())}));
+  odsState.addAttribute(getStaticOffsetsAttrName(odsState.name), static_offsets);
+  odsState.addAttribute(getStaticSizesAttrName(odsState.name), static_sizes);
+  odsState.addAttribute(getStaticStridesAttrName(odsState.name), static_strides);
+  assert(resultTypes.size() == 0u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void ParallelInsertSliceOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() >= 2u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 0u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult ParallelInsertSliceOp::verifyInvariantsImpl() {
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == getOperandSegmentSizesAttrName()) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_static_offsets;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'static_offsets'");
+    if (namedAttrIt->getName() == getStaticOffsetsAttrName()) {
+      tblgen_static_offsets = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_static_sizes;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'static_sizes'");
+    if (namedAttrIt->getName() == getStaticSizesAttrName()) {
+      tblgen_static_sizes = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_static_strides;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'static_strides'");
+    if (namedAttrIt->getName() == getStaticStridesAttrName()) {
+      tblgen_static_strides = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
+  {
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
+    auto numElements =
+        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    if (numElements != 5)
+      return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 5 "
+                "elements, but got ") << numElements;
+  }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_SCFOps0(*this, tblgen_static_offsets, "static_offsets")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_SCFOps0(*this, tblgen_static_sizes, "static_sizes")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_SCFOps0(*this, tblgen_static_strides, "static_strides")))
+    return ::mlir::failure();
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SCFOps3(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SCFOps3(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup2 = getODSOperands(2);
+
+    for (auto v : valueGroup2) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SCFOps2(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup3 = getODSOperands(3);
+
+    for (auto v : valueGroup3) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SCFOps2(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup4 = getODSOperands(4);
+
+    for (auto v : valueGroup4) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_SCFOps2(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult ParallelInsertSliceOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+::mlir::ParseResult ParallelInsertSliceOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::mlir::OpAsmParser::UnresolvedOperand sourceRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> sourceOperands(sourceRawOperands);  ::llvm::SMLoc sourceOperandsLoc;
+  (void)sourceOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand destRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> destOperands(destRawOperands);  ::llvm::SMLoc destOperandsLoc;
+  (void)destOperandsLoc;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> offsetsOperands;
+  ::llvm::SMLoc offsetsOperandsLoc;
+  (void)offsetsOperandsLoc;
+  ::mlir::ArrayAttr static_offsetsAttr;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> sizesOperands;
+  ::llvm::SMLoc sizesOperandsLoc;
+  (void)sizesOperandsLoc;
+  ::mlir::ArrayAttr static_sizesAttr;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> stridesOperands;
+  ::llvm::SMLoc stridesOperandsLoc;
+  (void)stridesOperandsLoc;
+  ::mlir::ArrayAttr static_stridesAttr;
+  ::mlir::Type sourceRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> sourceTypes(sourceRawTypes);
+  ::mlir::Type destRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> destTypes(destRawTypes);
+
+  sourceOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperand(sourceRawOperands[0]))
+    return ::mlir::failure();
+  if (parser.parseKeyword("into"))
+    return ::mlir::failure();
+
+  destOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperand(destRawOperands[0]))
+    return ::mlir::failure();
+  {
+    offsetsOperandsLoc = parser.getCurrentLocation();
+    if (parseOperandsOrIntegersOffsetsOrStridesList(parser, offsetsOperands, static_offsetsAttr))
+      return ::mlir::failure();
+    result.addAttribute("static_offsets", static_offsetsAttr);
+  }
+  {
+    sizesOperandsLoc = parser.getCurrentLocation();
+    if (parseOperandsOrIntegersSizesList(parser, sizesOperands, static_sizesAttr))
+      return ::mlir::failure();
+    result.addAttribute("static_sizes", static_sizesAttr);
+  }
+  {
+    stridesOperandsLoc = parser.getCurrentLocation();
+    if (parseOperandsOrIntegersOffsetsOrStridesList(parser, stridesOperands, static_stridesAttr))
+      return ::mlir::failure();
+    result.addAttribute("static_strides", static_stridesAttr);
+  }
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  {
+    ::mlir::TensorType type;
+    if (parser.parseCustomTypeWithFallback(type))
+      return ::mlir::failure();
+    sourceRawTypes[0] = type;
+  }
+  if (parser.parseKeyword("into"))
+    return ::mlir::failure();
+
+  {
+    ::mlir::TensorType type;
+    if (parser.parseCustomTypeWithFallback(type))
+      return ::mlir::failure();
+    destRawTypes[0] = type;
+  }
+  result.addAttribute("operand_segment_sizes", parser.getBuilder().getI32VectorAttr({1, 1, static_cast<int32_t>(offsetsOperands.size()), static_cast<int32_t>(sizesOperands.size()), static_cast<int32_t>(stridesOperands.size())}));
+  ::mlir::Type odsBuildableType0 = parser.getBuilder().getIndexType();
+  if (parser.resolveOperands(sourceOperands, sourceTypes, sourceOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(destOperands, destTypes, destOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(offsetsOperands, odsBuildableType0, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(sizesOperands, odsBuildableType0, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(stridesOperands, odsBuildableType0, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void ParallelInsertSliceOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ';
+  _odsPrinter << getSource();
+  _odsPrinter << ' ' << "into";
+  _odsPrinter << ' ';
+  _odsPrinter << getDest();
+  printOperandsOrIntegersOffsetsOrStridesList(_odsPrinter, *this, getOffsets(), getStaticOffsetsAttr());
+  _odsPrinter << ' ';
+  printOperandsOrIntegersSizesList(_odsPrinter, *this, getSizes(), getStaticSizesAttr());
+  _odsPrinter << ' ';
+  printOperandsOrIntegersOffsetsOrStridesList(_odsPrinter, *this, getStrides(), getStaticStridesAttr());
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"operand_segment_sizes", "static_offsets", "static_sizes", "static_strides"});
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  {
+    auto type = getSource().getType();
+    if (auto validType = type.dyn_cast<::mlir::TensorType>())
+      _odsPrinter.printStrippedAttrOrType(validType);
+   else
+     _odsPrinter << type;
+  }
+  _odsPrinter << ' ' << "into";
+  _odsPrinter << ' ';
+  {
+    auto type = getDest().getType();
+    if (auto validType = type.dyn_cast<::mlir::TensorType>())
+      _odsPrinter.printStrippedAttrOrType(validType);
+   else
+     _odsPrinter << type;
+  }
+}
+
+} // namespace scf
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::scf::ParallelInsertSliceOp)
+
+namespace mlir {
+namespace scf {
+
+//===----------------------------------------------------------------------===//
 // ::mlir::scf::ParallelOp definitions
 //===----------------------------------------------------------------------===//
 
-ParallelOpAdaptor::ParallelOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ParallelOpAdaptor::ParallelOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("scf.parallel", odsAttrs.getContext());
+}
 
-ParallelOpAdaptor::ParallelOpAdaptor(ParallelOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ParallelOpAdaptor::ParallelOpAdaptor(ParallelOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ParallelOpAdaptor::getOperands() {
   return odsOperands;
@@ -806,7 +1537,7 @@ ParallelOpAdaptor::ParallelOpAdaptor(ParallelOp &op) : odsOperands(op->getOperan
 
 std::pair<unsigned, unsigned> ParallelOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = odsAttrs.get("operand_segment_sizes").cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ParallelOp::getOperandSegmentSizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -853,10 +1584,21 @@ std::pair<unsigned, unsigned> ParallelOpAdaptor::getODSOperandIndexAndLength(uns
 }
 
 ::mlir::LogicalResult ParallelOpAdaptor::verify(::mlir::Location loc) {
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'scf.parallel' op ""requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == ParallelOp::getOperandSegmentSizesAttrName(*odsOpName)) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = odsAttrs.get("operand_segment_sizes").dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitError(loc, "'scf.parallel' op ""missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 4)
@@ -867,8 +1609,7 @@ std::pair<unsigned, unsigned> ParallelOpAdaptor::getODSOperandIndexAndLength(uns
 }
 
 std::pair<unsigned, unsigned> ParallelOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr =
-      (*this)->getAttr(getOperandSegmentSizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getOperandSegmentSizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
 
   const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
   if (sizeAttr.isSplat())
@@ -904,25 +1645,25 @@ std::pair<unsigned, unsigned> ParallelOp::getODSOperandIndexAndLength(unsigned i
 
 ::mlir::MutableOperandRange ParallelOp::getLowerBoundMutable() {
   auto range = getODSOperandIndexAndLength(0);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *getOperation()->getAttrDictionary().getNamed(getOperandSegmentSizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getOperandSegmentSizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ParallelOp::getUpperBoundMutable() {
   auto range = getODSOperandIndexAndLength(1);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *getOperation()->getAttrDictionary().getNamed(getOperandSegmentSizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getOperandSegmentSizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ParallelOp::getStepMutable() {
   auto range = getODSOperandIndexAndLength(2);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *getOperation()->getAttrDictionary().getNamed(getOperandSegmentSizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getOperandSegmentSizesAttrName())));
   return mutableRange;
 }
 
 ::mlir::MutableOperandRange ParallelOp::getInitValsMutable() {
   auto range = getODSOperandIndexAndLength(3);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(3u, *getOperation()->getAttrDictionary().getNamed(getOperandSegmentSizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(3u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getOperandSegmentSizesAttrName())));
   return mutableRange;
 }
 
@@ -959,10 +1700,21 @@ std::pair<unsigned, unsigned> ParallelOp::getODSResultIndexAndLength(unsigned in
 }
 
 ::mlir::LogicalResult ParallelOp::verifyInvariantsImpl() {
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == getOperandSegmentSizesAttrName()) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
   {
-    auto sizeAttr = (*this)->getAttr(getOperandSegmentSizesAttrName()).dyn_cast<::mlir::DenseIntElementsAttr>();
-    if (!sizeAttr)
-      return emitOpError("missing segment sizes attribute 'operand_segment_sizes'");
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
     auto numElements =
         sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
     if (numElements != 4)
@@ -1029,12 +1781,105 @@ namespace mlir {
 namespace scf {
 
 //===----------------------------------------------------------------------===//
+// ::mlir::scf::PerformConcurrentlyOp definitions
+//===----------------------------------------------------------------------===//
+
+PerformConcurrentlyOpAdaptor::PerformConcurrentlyOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("scf.foreach_thread.perform_concurrently", odsAttrs.getContext());
+}
+
+PerformConcurrentlyOpAdaptor::PerformConcurrentlyOpAdaptor(PerformConcurrentlyOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange PerformConcurrentlyOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> PerformConcurrentlyOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange PerformConcurrentlyOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::DictionaryAttr PerformConcurrentlyOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::RegionRange PerformConcurrentlyOpAdaptor::getRegions() {
+  return odsRegions;
+}
+
+::mlir::Region &PerformConcurrentlyOpAdaptor::getRegion() {
+  return *odsRegions[0];
+}
+
+::mlir::LogicalResult PerformConcurrentlyOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> PerformConcurrentlyOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range PerformConcurrentlyOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+std::pair<unsigned, unsigned> PerformConcurrentlyOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range PerformConcurrentlyOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Region &PerformConcurrentlyOp::getRegion() {
+  return (*this)->getRegion(0);
+}
+
+::mlir::LogicalResult PerformConcurrentlyOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+
+    for (auto &region : ::llvm::makeMutableArrayRef((*this)->getRegion(0)))
+      if (::mlir::failed(__mlir_ods_local_region_constraint_SCFOps1(*this, region, "region", index++)))
+        return ::mlir::failure();
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult PerformConcurrentlyOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
+}
+
+void PerformConcurrentlyOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace scf
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::scf::PerformConcurrentlyOp)
+
+namespace mlir {
+namespace scf {
+
+//===----------------------------------------------------------------------===//
 // ::mlir::scf::ReduceOp definitions
 //===----------------------------------------------------------------------===//
 
-ReduceOpAdaptor::ReduceOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ReduceOpAdaptor::ReduceOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("scf.reduce", odsAttrs.getContext());
+}
 
-ReduceOpAdaptor::ReduceOpAdaptor(ReduceOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ReduceOpAdaptor::ReduceOpAdaptor(ReduceOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ReduceOpAdaptor::getOperands() {
   return odsOperands;
@@ -1139,9 +1984,11 @@ namespace scf {
 // ::mlir::scf::ReduceReturnOp definitions
 //===----------------------------------------------------------------------===//
 
-ReduceReturnOpAdaptor::ReduceReturnOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ReduceReturnOpAdaptor::ReduceReturnOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("scf.reduce.return", odsAttrs.getContext());
+}
 
-ReduceReturnOpAdaptor::ReduceReturnOpAdaptor(ReduceReturnOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ReduceReturnOpAdaptor::ReduceReturnOpAdaptor(ReduceReturnOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ReduceReturnOpAdaptor::getOperands() {
   return odsOperands;
@@ -1277,7 +2124,7 @@ void ReduceReturnOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void ReduceReturnOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void ReduceReturnOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace scf
@@ -1291,9 +2138,11 @@ namespace scf {
 // ::mlir::scf::WhileOp definitions
 //===----------------------------------------------------------------------===//
 
-WhileOpAdaptor::WhileOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+WhileOpAdaptor::WhileOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("scf.while", odsAttrs.getContext());
+}
 
-WhileOpAdaptor::WhileOpAdaptor(WhileOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+WhileOpAdaptor::WhileOpAdaptor(WhileOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange WhileOpAdaptor::getOperands() {
   return odsOperands;
@@ -1473,9 +2322,11 @@ namespace scf {
 // ::mlir::scf::YieldOp definitions
 //===----------------------------------------------------------------------===//
 
-YieldOpAdaptor::YieldOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+YieldOpAdaptor::YieldOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("scf.yield", odsAttrs.getContext());
+}
 
-YieldOpAdaptor::YieldOpAdaptor(YieldOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+YieldOpAdaptor::YieldOpAdaptor(YieldOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange YieldOpAdaptor::getOperands() {
   return odsOperands;
@@ -1594,10 +2445,10 @@ void YieldOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 ::mlir::ParseResult YieldOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> resultsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> resultsOperands;
   ::llvm::SMLoc resultsOperandsLoc;
   (void)resultsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> resultsTypes;
+  ::llvm::SmallVector<::mlir::Type, 1> resultsTypes;
   if (parser.parseOptionalAttrDict(result.attributes))
     return ::mlir::failure();
 
@@ -1627,7 +2478,7 @@ void YieldOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
 }
 
-void YieldOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void YieldOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace scf

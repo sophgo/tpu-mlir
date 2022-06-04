@@ -10,12 +10,7 @@ namespace mlir {
 namespace emitc {
 
 class EmitCDialect : public ::mlir::Dialect {
-  explicit EmitCDialect(::mlir::MLIRContext *context)
-    : ::mlir::Dialect(getDialectNamespace(), context,
-      ::mlir::TypeID::get<EmitCDialect>()) {
-    
-    initialize();
-  }
+  explicit EmitCDialect(::mlir::MLIRContext *context);
 
   void initialize();
   friend class ::mlir::MLIRContext;

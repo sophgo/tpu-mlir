@@ -50,10 +50,10 @@ top::NoneOp Module::getNoneOp(Operation *op) {
     return noneOp;
   }
   FuncOp funcOp;
-  if (isa<mlir::FuncOp>(op)) {
-    funcOp = cast<mlir::FuncOp>(op);
+  if (isa<FuncOp>(op)) {
+    funcOp = cast<FuncOp>(op);
   } else {
-    funcOp = cast<mlir::FuncOp>(op->getParentOp());
+    funcOp = cast<FuncOp>(op->getParentOp());
   }
   auto &block = funcOp.front();
   auto &topOp = block.front();
@@ -70,7 +70,7 @@ top::NoneOp Module::getNoneOp(Operation *op) {
 
 ModuleOp Module::getModuleOp(Operation *op) {
   auto moduleOp = op;
-  while (moduleOp && !isa<mlir::ModuleOp>(moduleOp)) {
+  while (moduleOp && !isa<ModuleOp>(moduleOp)) {
     moduleOp = moduleOp->getParentOp();
   }
   if (!moduleOp) {
@@ -89,14 +89,14 @@ void Module::updateModuleTypes(ModuleOp module) {
     if (func.getName() == "main") {
       continue;
     }
-    std::vector<mlir::Type> returns;
+    std::vector<Type> returns;
     Block &entryBlock = func.front();
     auto returnOp = dyn_cast<func::ReturnOp>(entryBlock.back()).getOperation();
     for (uint32_t i = 0; i < returnOp->getNumOperands(); ++i) {
       returns.push_back(returnOp->getOperand(i).getType());
     }
     auto fnType = builder.getFunctionType(func.getArgumentTypes(),
-                                          llvm::ArrayRef<mlir::Type>{returns});
+                                          llvm::ArrayRef<Type>{returns});
     func.setType(fnType);
     auto callee = getCallOp(module, func);
     if (callee) {
@@ -114,13 +114,13 @@ void Module::updateModuleTypes(ModuleOp module) {
     if (!callee) {
       continue;
     }
-    std::vector<mlir::Type> arguments;
+    std::vector<Type> arguments;
     for (auto it :
          llvm::zip(callee.getOperandTypes(), func.front().getArguments())) {
       arguments.push_back(std::get<0>(it));
       std::get<1>(it).setType(std::get<0>(it));
     }
-    auto fnType = builder.getFunctionType(llvm::ArrayRef<mlir::Type>(arguments),
+    auto fnType = builder.getFunctionType(llvm::ArrayRef<Type>(arguments),
                                           func.getResultTypes());
     func.setType(fnType);
   }
@@ -128,12 +128,12 @@ void Module::updateModuleTypes(ModuleOp module) {
   auto mainFunc = getMainFuncOp(module);
   Block &entryBlock = mainFunc.front();
   auto returnOp = dyn_cast<func::ReturnOp>(entryBlock.back()).getOperation();
-  std::vector<mlir::Type> returns;
+  std::vector<Type> returns;
   for (uint32_t i = 0; i < returnOp->getNumOperands(); ++i) {
     returns.push_back(returnOp->getOperand(i).getType());
   }
   auto fnType = builder.getFunctionType(mainFunc.getArgumentTypes(),
-                                        llvm::ArrayRef<mlir::Type>{returns});
+                                        llvm::ArrayRef<Type>{returns});
   mainFunc.setType(fnType);
 }
 

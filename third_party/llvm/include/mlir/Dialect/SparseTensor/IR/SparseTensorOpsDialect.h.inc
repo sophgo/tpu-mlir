@@ -10,12 +10,7 @@ namespace mlir {
 namespace sparse_tensor {
 
 class SparseTensorDialect : public ::mlir::Dialect {
-  explicit SparseTensorDialect(::mlir::MLIRContext *context)
-    : ::mlir::Dialect(getDialectNamespace(), context,
-      ::mlir::TypeID::get<SparseTensorDialect>()) {
-    
-    initialize();
-  }
+  explicit SparseTensorDialect(::mlir::MLIRContext *context);
 
   void initialize();
   friend class ::mlir::MLIRContext;

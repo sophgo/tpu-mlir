@@ -84,7 +84,7 @@ ClauseDefaultValueAttr ClauseDefaultValueAttr::get(::mlir::MLIRContext *context,
       auto maybeEnum = ::mlir::acc::symbolizeClauseDefaultValue(enumKeyword);
       if (maybeEnum)
         return *maybeEnum;
-      return {(::mlir::LogicalResult)odsParser.emitError(loc, "expected ::mlir::acc::ClauseDefaultValue to be one of: present, none")};
+      return {(::mlir::LogicalResult)(odsParser.emitError(loc) << "expected " << "::mlir::acc::ClauseDefaultValue" << " to be one of: " << "present" << ", " << "none")};
     }();
   if (::mlir::failed(_result_value)) {
     odsParser.emitError(odsParser.getCurrentLocation(), "failed to parse DefaultValueAttr parameter 'value' which is to be a `::mlir::acc::ClauseDefaultValue`");
@@ -148,7 +148,7 @@ ReductionOpAttr ReductionOpAttr::get(::mlir::MLIRContext *context, ::mlir::acc::
       auto maybeEnum = ::mlir::acc::symbolizeReductionOp(enumKeyword);
       if (maybeEnum)
         return *maybeEnum;
-      return {(::mlir::LogicalResult)odsParser.emitError(loc, "expected ::mlir::acc::ReductionOp to be one of: redop_add, redop_mul, redop_max, redop_min, redop_and, redop_or, redop_xor, redop_leqv, redop_lneqv, redop_land, redop_lor")};
+      return {(::mlir::LogicalResult)(odsParser.emitError(loc) << "expected " << "::mlir::acc::ReductionOp" << " to be one of: " << "redop_add" << ", " << "redop_mul" << ", " << "redop_max" << ", " << "redop_min" << ", " << "redop_and" << ", " << "redop_or" << ", " << "redop_xor" << ", " << "redop_leqv" << ", " << "redop_lneqv" << ", " << "redop_land" << ", " << "redop_lor")};
     }();
   if (::mlir::failed(_result_value)) {
     odsParser.emitError(odsParser.getCurrentLocation(), "failed to parse OpenACC_ReductionOpAttr parameter 'value' which is to be a `::mlir::acc::ReductionOp`");
@@ -187,6 +187,7 @@ namespace acc {
     if (parseResult.hasValue())
       return attr;
   }
+  
   parser.emitError(typeLoc) << "unknown attribute `"
       << attrTag << "` in dialect `" << getNamespace() << "`";
   return {};
@@ -196,6 +197,7 @@ void OpenACCDialect::printAttribute(::mlir::Attribute attr,
                          ::mlir::DialectAsmPrinter &printer) const {
   if (::mlir::succeeded(generatedAttributePrinter(attr, printer)))
     return;
+  
 }
 } // namespace acc
 } // namespace mlir

@@ -11,8 +11,7 @@ class BranchOpInterface;
 namespace detail {
 struct BranchOpInterfaceInterfaceTraits {
   struct Concept {
-    ::mlir::Optional<::mlir::MutableOperandRange> (*getMutableSuccessorOperands)(const Concept *impl, ::mlir::Operation *, unsigned);
-    ::mlir::Optional<::mlir::OperandRange> (*getSuccessorOperands)(const Concept *impl, ::mlir::Operation *, unsigned);
+    ::mlir::SuccessorOperands (*getSuccessorOperands)(const Concept *impl, ::mlir::Operation *, unsigned);
     ::mlir::Optional<::mlir::BlockArgument> (*getSuccessorBlockArgument)(const Concept *impl, ::mlir::Operation *, unsigned);
     ::mlir::Block *(*getSuccessorForOperands)(const Concept *impl, ::mlir::Operation *, ::mlir::ArrayRef<::mlir::Attribute>);
     bool (*areTypesCompatible)(const Concept *impl, ::mlir::Operation *, ::mlir::Type, ::mlir::Type);
@@ -21,10 +20,9 @@ struct BranchOpInterfaceInterfaceTraits {
   class Model : public Concept {
   public:
     using Interface = ::mlir::BranchOpInterface;
-    Model() : Concept{getMutableSuccessorOperands, getSuccessorOperands, getSuccessorBlockArgument, getSuccessorForOperands, areTypesCompatible} {}
+    Model() : Concept{getSuccessorOperands, getSuccessorBlockArgument, getSuccessorForOperands, areTypesCompatible} {}
 
-    static inline ::mlir::Optional<::mlir::MutableOperandRange> getMutableSuccessorOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, unsigned index);
-    static inline ::mlir::Optional<::mlir::OperandRange> getSuccessorOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, unsigned index);
+    static inline ::mlir::SuccessorOperands getSuccessorOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, unsigned index);
     static inline ::mlir::Optional<::mlir::BlockArgument> getSuccessorBlockArgument(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, unsigned operandIndex);
     static inline ::mlir::Block *getSuccessorForOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::ArrayRef<::mlir::Attribute> operands);
     static inline bool areTypesCompatible(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Type lhs, ::mlir::Type rhs);
@@ -33,10 +31,9 @@ struct BranchOpInterfaceInterfaceTraits {
   class FallbackModel : public Concept {
   public:
     using Interface = ::mlir::BranchOpInterface;
-    FallbackModel() : Concept{getMutableSuccessorOperands, getSuccessorOperands, getSuccessorBlockArgument, getSuccessorForOperands, areTypesCompatible} {}
+    FallbackModel() : Concept{getSuccessorOperands, getSuccessorBlockArgument, getSuccessorForOperands, areTypesCompatible} {}
 
-    static inline ::mlir::Optional<::mlir::MutableOperandRange> getMutableSuccessorOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, unsigned index);
-    static inline ::mlir::Optional<::mlir::OperandRange> getSuccessorOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, unsigned index);
+    static inline ::mlir::SuccessorOperands getSuccessorOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, unsigned index);
     static inline ::mlir::Optional<::mlir::BlockArgument> getSuccessorBlockArgument(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, unsigned operandIndex);
     static inline ::mlir::Block *getSuccessorForOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::ArrayRef<::mlir::Attribute> operands);
     static inline bool areTypesCompatible(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Type lhs, ::mlir::Type rhs);
@@ -44,7 +41,6 @@ struct BranchOpInterfaceInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
-    ::mlir::Optional<::mlir::OperandRange> getSuccessorOperands(::mlir::Operation *tablegen_opaque_val, unsigned index) const;
     ::mlir::Block *getSuccessorForOperands(::mlir::Operation *tablegen_opaque_val, ::mlir::ArrayRef<::mlir::Attribute> operands) const;
     bool areTypesCompatible(::mlir::Operation *tablegen_opaque_val, ::mlir::Type lhs, ::mlir::Type rhs) const;
   };
@@ -57,8 +53,7 @@ public:
   using ::mlir::OpInterface<BranchOpInterface, detail::BranchOpInterfaceInterfaceTraits>::OpInterface;
   template <typename ConcreteOp>
   struct Trait : public detail::BranchOpInterfaceTrait<ConcreteOp> {};
-  ::mlir::Optional<::mlir::MutableOperandRange> getMutableSuccessorOperands(unsigned index);
-  ::mlir::Optional<::mlir::OperandRange> getSuccessorOperands(unsigned index);
+  ::mlir::SuccessorOperands getSuccessorOperands(unsigned index);
   ::mlir::Optional<::mlir::BlockArgument> getSuccessorBlockArgument(unsigned operandIndex);
   ::mlir::Block *getSuccessorForOperands(::mlir::ArrayRef<::mlir::Attribute> operands);
   bool areTypesCompatible(::mlir::Type lhs, ::mlir::Type rhs);
@@ -66,10 +61,6 @@ public:
 namespace detail {
   template <typename ConcreteOp>
   struct BranchOpInterfaceTrait : public ::mlir::OpInterface<BranchOpInterface, detail::BranchOpInterfaceInterfaceTraits>::Trait<ConcreteOp> {
-    ::mlir::Optional<::mlir::OperandRange> getSuccessorOperands(unsigned index) {
-      auto operands = (*static_cast<ConcreteOp *>(this)).getMutableSuccessorOperands(index);
-        return operands ? ::mlir::Optional<::mlir::OperandRange>(*operands) : ::llvm::None;
-    }
     ::mlir::Block *getSuccessorForOperands(::mlir::ArrayRef<::mlir::Attribute> operands) {
       return nullptr;
     }
@@ -79,7 +70,7 @@ namespace detail {
     static ::mlir::LogicalResult verifyTrait(::mlir::Operation *op) {
       auto concreteOp = ::mlir::cast<ConcreteOp>(op);
     for (unsigned i = 0, e = op->getNumSuccessors(); i != e; ++i) {
-      ::mlir::Optional<OperandRange> operands = concreteOp.getSuccessorOperands(i);
+      ::mlir::SuccessorOperands operands = concreteOp.getSuccessorOperands(i);
       if (::mlir::failed(::mlir::detail::verifyBranchSuccessorOperands(op, i, operands)))
         return ::mlir::failure();
     }
@@ -88,11 +79,7 @@ namespace detail {
   };
 }// namespace detail
 template<typename ConcreteOp>
-::mlir::Optional<::mlir::MutableOperandRange> detail::BranchOpInterfaceInterfaceTraits::Model<ConcreteOp>::getMutableSuccessorOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, unsigned index) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getMutableSuccessorOperands(index);
-}
-template<typename ConcreteOp>
-::mlir::Optional<::mlir::OperandRange> detail::BranchOpInterfaceInterfaceTraits::Model<ConcreteOp>::getSuccessorOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, unsigned index) {
+::mlir::SuccessorOperands detail::BranchOpInterfaceInterfaceTraits::Model<ConcreteOp>::getSuccessorOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, unsigned index) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getSuccessorOperands(index);
 }
 template<typename ConcreteOp>
@@ -115,11 +102,7 @@ bool detail::BranchOpInterfaceInterfaceTraits::Model<ConcreteOp>::areTypesCompat
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).areTypesCompatible(lhs, rhs);
 }
 template<typename ConcreteOp>
-::mlir::Optional<::mlir::MutableOperandRange> detail::BranchOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getMutableSuccessorOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, unsigned index) {
-  return static_cast<const ConcreteOp *>(impl)->getMutableSuccessorOperands(tablegen_opaque_val, index);
-}
-template<typename ConcreteOp>
-::mlir::Optional<::mlir::OperandRange> detail::BranchOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getSuccessorOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, unsigned index) {
+::mlir::SuccessorOperands detail::BranchOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getSuccessorOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, unsigned index) {
   return static_cast<const ConcreteOp *>(impl)->getSuccessorOperands(tablegen_opaque_val, index);
 }
 template<typename ConcreteOp>
@@ -133,11 +116,6 @@ template<typename ConcreteOp>
 template<typename ConcreteOp>
 bool detail::BranchOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::areTypesCompatible(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Type lhs, ::mlir::Type rhs) {
   return static_cast<const ConcreteOp *>(impl)->areTypesCompatible(tablegen_opaque_val, lhs, rhs);
-}
-template<typename ConcreteModel, typename ConcreteOp>
-::mlir::Optional<::mlir::OperandRange> detail::BranchOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getSuccessorOperands(::mlir::Operation *tablegen_opaque_val, unsigned index) const {
-auto operands = (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getMutableSuccessorOperands(index);
-        return operands ? ::mlir::Optional<::mlir::OperandRange>(*operands) : ::llvm::None;
 }
 template<typename ConcreteModel, typename ConcreteOp>
 ::mlir::Block *detail::BranchOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getSuccessorForOperands(::mlir::Operation *tablegen_opaque_val, ::mlir::ArrayRef<::mlir::Attribute> operands) const {
@@ -154,7 +132,7 @@ namespace detail {
 struct RegionBranchOpInterfaceInterfaceTraits {
   struct Concept {
     ::mlir::OperandRange (*getSuccessorEntryOperands)(const Concept *impl, ::mlir::Operation *, unsigned);
-    void (*getSuccessorRegions)(const Concept *impl, ::mlir::Operation *, ::mlir::Optional<unsigned>, ::mlir::ArrayRef<::mlir::Attribute>, ::mlir::SmallVectorImpl<::mlir::RegionSuccessor> &);
+    void (*getSuccessorRegions)(const Concept *impl, ::mlir::Operation *, ::mlir::Optional<unsigned>, ::mlir::ArrayRef<::mlir::Attribute>, ::llvm::SmallVectorImpl<::mlir::RegionSuccessor> &);
     void (*getRegionInvocationBounds)(const Concept *impl, ::mlir::Operation *, ::mlir::ArrayRef<::mlir::Attribute>, ::llvm::SmallVectorImpl<::mlir::InvocationBounds> &);
     bool (*areTypesCompatible)(const Concept *impl, ::mlir::Operation *, ::mlir::Type, ::mlir::Type);
   };
@@ -165,7 +143,7 @@ struct RegionBranchOpInterfaceInterfaceTraits {
     Model() : Concept{getSuccessorEntryOperands, getSuccessorRegions, getRegionInvocationBounds, areTypesCompatible} {}
 
     static inline ::mlir::OperandRange getSuccessorEntryOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, unsigned index);
-    static inline void getSuccessorRegions(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Optional<unsigned> index, ::mlir::ArrayRef<::mlir::Attribute> operands, ::mlir::SmallVectorImpl<::mlir::RegionSuccessor> & regions);
+    static inline void getSuccessorRegions(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Optional<unsigned> index, ::mlir::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::RegionSuccessor> & regions);
     static inline void getRegionInvocationBounds(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::InvocationBounds> & invocationBounds);
     static inline bool areTypesCompatible(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Type lhs, ::mlir::Type rhs);
   };
@@ -176,7 +154,7 @@ struct RegionBranchOpInterfaceInterfaceTraits {
     FallbackModel() : Concept{getSuccessorEntryOperands, getSuccessorRegions, getRegionInvocationBounds, areTypesCompatible} {}
 
     static inline ::mlir::OperandRange getSuccessorEntryOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, unsigned index);
-    static inline void getSuccessorRegions(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Optional<unsigned> index, ::mlir::ArrayRef<::mlir::Attribute> operands, ::mlir::SmallVectorImpl<::mlir::RegionSuccessor> & regions);
+    static inline void getSuccessorRegions(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Optional<unsigned> index, ::mlir::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::RegionSuccessor> & regions);
     static inline void getRegionInvocationBounds(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::InvocationBounds> & invocationBounds);
     static inline bool areTypesCompatible(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Type lhs, ::mlir::Type rhs);
   };
@@ -197,7 +175,7 @@ public:
   template <typename ConcreteOp>
   struct Trait : public detail::RegionBranchOpInterfaceTrait<ConcreteOp> {};
   ::mlir::OperandRange getSuccessorEntryOperands(unsigned index);
-  void getSuccessorRegions(::mlir::Optional<unsigned> index, ::mlir::ArrayRef<::mlir::Attribute> operands, ::mlir::SmallVectorImpl<::mlir::RegionSuccessor> & regions);
+  void getSuccessorRegions(::mlir::Optional<unsigned> index, ::mlir::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::RegionSuccessor> & regions);
   void getRegionInvocationBounds(::mlir::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::InvocationBounds> & invocationBounds);
   bool areTypesCompatible(::mlir::Type lhs, ::mlir::Type rhs);
 
@@ -207,6 +185,11 @@ public:
        SmallVector<Attribute, 2> nullAttrs(getOperation()->getNumOperands());
        getSuccessorRegions(index, nullAttrs, regions);
     }
+
+    /// Return `true` if control flow originating from the given region may
+    /// eventually branch back to the same region. (Maybe after passing through
+    /// other regions.)
+    bool isRepetitiveRegion(unsigned index);
   
 };
 namespace detail {
@@ -224,7 +207,7 @@ namespace detail {
       return lhs == rhs;
     }
     static ::mlir::LogicalResult verifyRegionTrait(::mlir::Operation *op) {
-      static_assert(!ConcreteOp::template hasTrait<OpTrait::ZeroRegion>(),
+      static_assert(!ConcreteOp::template hasTrait<OpTrait::ZeroRegions>(),
                   "expected operation to have non-zero regions");
     return detail::verifyTypesAlongControlFlowEdges(op);
     }
@@ -235,7 +218,7 @@ template<typename ConcreteOp>
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getSuccessorEntryOperands(index);
 }
 template<typename ConcreteOp>
-void detail::RegionBranchOpInterfaceInterfaceTraits::Model<ConcreteOp>::getSuccessorRegions(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Optional<unsigned> index, ::mlir::ArrayRef<::mlir::Attribute> operands, ::mlir::SmallVectorImpl<::mlir::RegionSuccessor> & regions) {
+void detail::RegionBranchOpInterfaceInterfaceTraits::Model<ConcreteOp>::getSuccessorRegions(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Optional<unsigned> index, ::mlir::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::RegionSuccessor> & regions) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getSuccessorRegions(index, operands, regions);
 }
 template<typename ConcreteOp>
@@ -251,7 +234,7 @@ template<typename ConcreteOp>
   return static_cast<const ConcreteOp *>(impl)->getSuccessorEntryOperands(tablegen_opaque_val, index);
 }
 template<typename ConcreteOp>
-void detail::RegionBranchOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getSuccessorRegions(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Optional<unsigned> index, ::mlir::ArrayRef<::mlir::Attribute> operands, ::mlir::SmallVectorImpl<::mlir::RegionSuccessor> & regions) {
+void detail::RegionBranchOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getSuccessorRegions(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Optional<unsigned> index, ::mlir::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::RegionSuccessor> & regions) {
   return static_cast<const ConcreteOp *>(impl)->getSuccessorRegions(tablegen_opaque_val, index, operands, regions);
 }
 template<typename ConcreteOp>
@@ -329,9 +312,9 @@ namespace detail {
     static ::mlir::LogicalResult verifyTrait(::mlir::Operation *op) {
       static_assert(ConcreteOp::template hasTrait<OpTrait::IsTerminator>(),
                   "expected operation to be a terminator");
-    static_assert(ConcreteOp::template hasTrait<OpTrait::ZeroResult>(),
+    static_assert(ConcreteOp::template hasTrait<OpTrait::ZeroResults>(),
                   "expected operation to have zero results");
-    static_assert(ConcreteOp::template hasTrait<OpTrait::ZeroSuccessor>(),
+    static_assert(ConcreteOp::template hasTrait<OpTrait::ZeroSuccessors>(),
                   "expected operation to have zero successors");
     return success();
     }

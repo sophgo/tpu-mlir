@@ -10,12 +10,7 @@ namespace mlir {
 namespace LLVM {
 
 class LLVMDialect : public ::mlir::Dialect {
-  explicit LLVMDialect(::mlir::MLIRContext *context)
-    : ::mlir::Dialect(getDialectNamespace(), context,
-      ::mlir::TypeID::get<LLVMDialect>()) {
-    
-    initialize();
-  }
+  explicit LLVMDialect(::mlir::MLIRContext *context);
 
   void initialize();
   friend class ::mlir::MLIRContext;

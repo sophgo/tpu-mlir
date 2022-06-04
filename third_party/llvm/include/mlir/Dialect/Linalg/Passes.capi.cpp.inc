@@ -23,14 +23,6 @@ void mlirRegisterLinalgLinalgBufferize() {
 }
 
 
-MlirPass mlirCreateLinalgLinalgComprehensiveModuleBufferize() {
-  return wrap(mlir::createLinalgComprehensiveModuleBufferizePass().release());
-}
-void mlirRegisterLinalgLinalgComprehensiveModuleBufferize() {
-  registerLinalgComprehensiveModuleBufferizePass();
-}
-
-
 MlirPass mlirCreateLinalgLinalgDetensorize() {
   return wrap(mlir::createLinalgDetensorizePass().release());
 }
@@ -47,14 +39,6 @@ void mlirRegisterLinalgLinalgElementwiseOpFusion() {
 }
 
 
-MlirPass mlirCreateLinalgLinalgFoldReshapeOpsByLinearization() {
-  return wrap(mlir::createFoldReshapeOpsByLinearizationPass().release());
-}
-void mlirRegisterLinalgLinalgFoldReshapeOpsByLinearization() {
-  registerLinalgFoldReshapeOpsByLinearizationPass();
-}
-
-
 MlirPass mlirCreateLinalgLinalgFoldUnitExtentDims() {
   return wrap(mlir::createLinalgFoldUnitExtentDimsPass().release());
 }
@@ -68,6 +52,14 @@ MlirPass mlirCreateLinalgLinalgGeneralization() {
 }
 void mlirRegisterLinalgLinalgGeneralization() {
   registerLinalgGeneralizationPass();
+}
+
+
+MlirPass mlirCreateLinalgLinalgInitTensorToAllocTensor() {
+  return wrap(mlir::createLinalgInitTensorToAllocTensorPass().release());
+}
+void mlirRegisterLinalgLinalgInitTensorToAllocTensor() {
+  registerLinalgInitTensorToAllocTensorPass();
 }
 
 
@@ -164,6 +156,14 @@ MlirPass mlirCreateLinalgLinalgStrategyPadPass() {
 }
 void mlirRegisterLinalgLinalgStrategyPadPass() {
   registerLinalgStrategyPadPassPass();
+}
+
+
+MlirPass mlirCreateLinalgLinalgStrategyPeelPass() {
+  return wrap(mlir::createLinalgStrategyPeelPass().release());
+}
+void mlirRegisterLinalgLinalgStrategyPeelPass() {
+  registerLinalgStrategyPeelPassPass();
 }
 
 

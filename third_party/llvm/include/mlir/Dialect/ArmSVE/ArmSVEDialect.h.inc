@@ -10,12 +10,7 @@ namespace mlir {
 namespace arm_sve {
 
 class ArmSVEDialect : public ::mlir::Dialect {
-  explicit ArmSVEDialect(::mlir::MLIRContext *context)
-    : ::mlir::Dialect(getDialectNamespace(), context,
-      ::mlir::TypeID::get<ArmSVEDialect>()) {
-    
-    initialize();
-  }
+  explicit ArmSVEDialect(::mlir::MLIRContext *context);
 
   void initialize();
   friend class ::mlir::MLIRContext;

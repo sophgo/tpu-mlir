@@ -782,6 +782,20 @@ namespace omp {
   static OmpClauseSet requiredClauses_OMPD_metadirective {
   };
 
+  // Sets for nothing
+
+  static OmpClauseSet allowedClauses_OMPD_nothing {
+  };
+
+  static OmpClauseSet allowedOnceClauses_OMPD_nothing {
+  };
+
+  static OmpClauseSet allowedExclusiveClauses_OMPD_nothing {
+  };
+
+  static OmpClauseSet requiredClauses_OMPD_nothing {
+  };
+
   // Sets for ordered
 
   static OmpClauseSet allowedClauses_OMPD_ordered {
@@ -1217,6 +1231,7 @@ namespace omp {
     llvm::omp::Clause::OMPC_depend,
     llvm::omp::Clause::OMPC_firstprivate,
     llvm::omp::Clause::OMPC_is_device_ptr,
+    llvm::omp::Clause::OMPC_has_device_addr,
     llvm::omp::Clause::OMPC_reduction,
     llvm::omp::Clause::OMPC_allocate,
     llvm::omp::Clause::OMPC_uses_allocators,
@@ -1303,6 +1318,7 @@ namespace omp {
     llvm::omp::Clause::OMPC_shared,
     llvm::omp::Clause::OMPC_reduction,
     llvm::omp::Clause::OMPC_is_device_ptr,
+    llvm::omp::Clause::OMPC_has_device_addr,
     llvm::omp::Clause::OMPC_allocate,
     llvm::omp::Clause::OMPC_uses_allocators,
   };
@@ -1333,6 +1349,7 @@ namespace omp {
     llvm::omp::Clause::OMPC_reduction,
     llvm::omp::Clause::OMPC_linear,
     llvm::omp::Clause::OMPC_is_device_ptr,
+    llvm::omp::Clause::OMPC_has_device_addr,
     llvm::omp::Clause::OMPC_allocator,
     llvm::omp::Clause::OMPC_order,
     llvm::omp::Clause::OMPC_uses_allocators,
@@ -1383,6 +1400,7 @@ namespace omp {
     llvm::omp::Clause::OMPC_simdlen,
     llvm::omp::Clause::OMPC_aligned,
     llvm::omp::Clause::OMPC_is_device_ptr,
+    llvm::omp::Clause::OMPC_has_device_addr,
     llvm::omp::Clause::OMPC_allocate,
     llvm::omp::Clause::OMPC_nontemporal,
     llvm::omp::Clause::OMPC_order,
@@ -1420,6 +1438,7 @@ namespace omp {
     llvm::omp::Clause::OMPC_ordered,
     llvm::omp::Clause::OMPC_linear,
     llvm::omp::Clause::OMPC_is_device_ptr,
+    llvm::omp::Clause::OMPC_has_device_addr,
     llvm::omp::Clause::OMPC_allocate,
     llvm::omp::Clause::OMPC_order,
     llvm::omp::Clause::OMPC_uses_allocators,
@@ -1459,6 +1478,7 @@ namespace omp {
     llvm::omp::Clause::OMPC_simdlen,
     llvm::omp::Clause::OMPC_aligned,
     llvm::omp::Clause::OMPC_is_device_ptr,
+    llvm::omp::Clause::OMPC_has_device_addr,
     llvm::omp::Clause::OMPC_allocate,
     llvm::omp::Clause::OMPC_nontemporal,
     llvm::omp::Clause::OMPC_order,
@@ -1482,6 +1502,7 @@ namespace omp {
     llvm::omp::Clause::OMPC_depend,
     llvm::omp::Clause::OMPC_firstprivate,
     llvm::omp::Clause::OMPC_is_device_ptr,
+    llvm::omp::Clause::OMPC_has_device_addr,
     llvm::omp::Clause::OMPC_lastprivate,
     llvm::omp::Clause::OMPC_linear,
     llvm::omp::Clause::OMPC_map,
@@ -1521,6 +1542,7 @@ namespace omp {
     llvm::omp::Clause::OMPC_depend,
     llvm::omp::Clause::OMPC_firstprivate,
     llvm::omp::Clause::OMPC_is_device_ptr,
+    llvm::omp::Clause::OMPC_has_device_addr,
     llvm::omp::Clause::OMPC_reduction,
     llvm::omp::Clause::OMPC_allocate,
     llvm::omp::Clause::OMPC_uses_allocators,
@@ -1551,6 +1573,7 @@ namespace omp {
     llvm::omp::Clause::OMPC_depend,
     llvm::omp::Clause::OMPC_firstprivate,
     llvm::omp::Clause::OMPC_is_device_ptr,
+    llvm::omp::Clause::OMPC_has_device_addr,
     llvm::omp::Clause::OMPC_reduction,
     llvm::omp::Clause::OMPC_allocate,
     llvm::omp::Clause::OMPC_uses_allocators,
@@ -1584,6 +1607,7 @@ namespace omp {
     llvm::omp::Clause::OMPC_depend,
     llvm::omp::Clause::OMPC_firstprivate,
     llvm::omp::Clause::OMPC_is_device_ptr,
+    llvm::omp::Clause::OMPC_has_device_addr,
     llvm::omp::Clause::OMPC_reduction,
     llvm::omp::Clause::OMPC_allocate,
     llvm::omp::Clause::OMPC_uses_allocators,
@@ -1623,6 +1647,7 @@ namespace omp {
     llvm::omp::Clause::OMPC_depend,
     llvm::omp::Clause::OMPC_firstprivate,
     llvm::omp::Clause::OMPC_is_device_ptr,
+    llvm::omp::Clause::OMPC_has_device_addr,
     llvm::omp::Clause::OMPC_reduction,
     llvm::omp::Clause::OMPC_allocate,
     llvm::omp::Clause::OMPC_uses_allocators,
@@ -1671,6 +1696,7 @@ namespace omp {
     llvm::omp::Clause::OMPC_defaultmap,
     llvm::omp::Clause::OMPC_firstprivate,
     llvm::omp::Clause::OMPC_is_device_ptr,
+    llvm::omp::Clause::OMPC_has_device_addr,
     llvm::omp::Clause::OMPC_default,
     llvm::omp::Clause::OMPC_shared,
     llvm::omp::Clause::OMPC_reduction,
@@ -1708,6 +1734,7 @@ namespace omp {
     llvm::omp::Clause::OMPC_defaultmap,
     llvm::omp::Clause::OMPC_firstprivate,
     llvm::omp::Clause::OMPC_is_device_ptr,
+    llvm::omp::Clause::OMPC_has_device_addr,
     llvm::omp::Clause::OMPC_default,
     llvm::omp::Clause::OMPC_shared,
     llvm::omp::Clause::OMPC_reduction,
@@ -1747,6 +1774,7 @@ namespace omp {
     llvm::omp::Clause::OMPC_firstprivate,
     llvm::omp::Clause::OMPC_if,
     llvm::omp::Clause::OMPC_is_device_ptr,
+    llvm::omp::Clause::OMPC_has_device_addr,
     llvm::omp::Clause::OMPC_lastprivate,
     llvm::omp::Clause::OMPC_linear,
     llvm::omp::Clause::OMPC_map,
@@ -2228,6 +2256,7 @@ namespace omp {
   static OmpClauseSet allowedClauses_OMPD_dispatch {
     llvm::omp::Clause::OMPC_device,
     llvm::omp::Clause::OMPC_is_device_ptr,
+    llvm::omp::Clause::OMPC_has_device_addr,
     llvm::omp::Clause::OMPC_nowait,
     llvm::omp::Clause::OMPC_depend,
     llvm::omp::Clause::OMPC_novariants,
@@ -2335,6 +2364,7 @@ namespace omp {
     llvm::omp::Clause::OMPC_device,
     llvm::omp::Clause::OMPC_firstprivate,
     llvm::omp::Clause::OMPC_is_device_ptr,
+    llvm::omp::Clause::OMPC_has_device_addr,
     llvm::omp::Clause::OMPC_lastprivate,
     llvm::omp::Clause::OMPC_map,
     llvm::omp::Clause::OMPC_private,
@@ -2370,6 +2400,7 @@ namespace omp {
     llvm::omp::Clause::OMPC_device,
     llvm::omp::Clause::OMPC_firstprivate,
     llvm::omp::Clause::OMPC_is_device_ptr,
+    llvm::omp::Clause::OMPC_has_device_addr,
     llvm::omp::Clause::OMPC_lastprivate,
     llvm::omp::Clause::OMPC_map,
     llvm::omp::Clause::OMPC_private,
@@ -2739,6 +2770,14 @@ namespace omp {
       llvm::omp::allowedOnceClauses_OMPD_metadirective,
       llvm::omp::allowedExclusiveClauses_OMPD_metadirective,
       llvm::omp::requiredClauses_OMPD_metadirective,
+    }
+  },
+  {llvm::omp::Directive::OMPD_nothing,
+    {
+      llvm::omp::allowedClauses_OMPD_nothing,
+      llvm::omp::allowedOnceClauses_OMPD_nothing,
+      llvm::omp::allowedExclusiveClauses_OMPD_nothing,
+      llvm::omp::requiredClauses_OMPD_nothing,
     }
   },
   {llvm::omp::Directive::OMPD_ordered,
@@ -3247,6 +3286,7 @@ WRAPPER_CLASS(Allocator, ScalarIntExpr);
 EMPTY_CLASS(AppendArgs);
 EMPTY_CLASS(AtomicDefaultMemOrder);
 EMPTY_CLASS(Bind);
+EMPTY_CLASS(CancellationConstructType);
 EMPTY_CLASS(Capture);
 WRAPPER_CLASS(Collapse, ScalarIntConstantExpr);
 EMPTY_CLASS(Compare);
@@ -3270,6 +3310,7 @@ EMPTY_CLASS(Flush);
 WRAPPER_CLASS(From, OmpObjectList);
 EMPTY_CLASS(Full);
 WRAPPER_CLASS(Grainsize, ScalarIntExpr);
+WRAPPER_CLASS(HasDeviceAddr, std::list<Name>);
 WRAPPER_CLASS(Hint, ConstantExpr);
 WRAPPER_CLASS(If, OmpIfClause);
 EMPTY_CLASS(InReduction);
@@ -3346,6 +3387,7 @@ AcqRel
 , AppendArgs
 , AtomicDefaultMemOrder
 , Bind
+, CancellationConstructType
 , Capture
 , Collapse
 , Compare
@@ -3369,6 +3411,7 @@ AcqRel
 , From
 , Full
 , Grainsize
+, HasDeviceAddr
 , Hint
 , If
 , InReduction
@@ -3445,6 +3488,7 @@ NODE(OmpClause, Allocator)
 NODE(OmpClause, AppendArgs)
 NODE(OmpClause, AtomicDefaultMemOrder)
 NODE(OmpClause, Bind)
+NODE(OmpClause, CancellationConstructType)
 NODE(OmpClause, Capture)
 NODE(OmpClause, Collapse)
 NODE(OmpClause, Compare)
@@ -3468,6 +3512,7 @@ NODE(OmpClause, Flush)
 NODE(OmpClause, From)
 NODE(OmpClause, Full)
 NODE(OmpClause, Grainsize)
+NODE(OmpClause, HasDeviceAddr)
 NODE(OmpClause, Hint)
 NODE(OmpClause, If)
 NODE(OmpClause, InReduction)
@@ -3559,6 +3604,7 @@ void Unparse(const OmpClause::Allocator &x) {
 void Before(const OmpClause::AppendArgs &) { Word("APPEND_ARGS"); }
 void Before(const OmpClause::AtomicDefaultMemOrder &) { Word("ATOMIC_DEFAULT_MEM_ORDER"); }
 void Before(const OmpClause::Bind &) { Word("BIND"); }
+void Before(const OmpClause::CancellationConstructType &) { Word("CANCELLATION_CONSTRUCT_TYPE"); }
 void Before(const OmpClause::Capture &) { Word("CAPTURE"); }
 void Unparse(const OmpClause::Collapse &x) {
   Word("COLLAPSE");
@@ -3643,6 +3689,12 @@ void Unparse(const OmpClause::Grainsize &x) {
   Word("GRAINSIZE");
   Put("(");
   Walk(x.v);
+  Put(")");
+}
+void Unparse(const OmpClause::HasDeviceAddr &x) {
+  Word("HAS_DEVICE_ADDR");
+  Put("(");
+  Walk(x.v, ",");
   Put(")");
 }
 void Unparse(const OmpClause::Hint &x) {
@@ -3854,6 +3906,7 @@ void Enter(const parser::OmpClause::Allocator &);
 void Enter(const parser::OmpClause::AppendArgs &);
 void Enter(const parser::OmpClause::AtomicDefaultMemOrder &);
 void Enter(const parser::OmpClause::Bind &);
+void Enter(const parser::OmpClause::CancellationConstructType &);
 void Enter(const parser::OmpClause::Capture &);
 void Enter(const parser::OmpClause::Collapse &);
 void Enter(const parser::OmpClause::Compare &);
@@ -3877,6 +3930,7 @@ void Enter(const parser::OmpClause::Flush &);
 void Enter(const parser::OmpClause::From &);
 void Enter(const parser::OmpClause::Full &);
 void Enter(const parser::OmpClause::Grainsize &);
+void Enter(const parser::OmpClause::HasDeviceAddr &);
 void Enter(const parser::OmpClause::Hint &);
 void Enter(const parser::OmpClause::If &);
 void Enter(const parser::OmpClause::InReduction &);
@@ -3964,6 +4018,8 @@ if constexpr (std::is_same_v<A, parser::OmpClause::AtomicDefaultMemOrder>)
   return llvm::omp::Clause::OMPC_atomic_default_mem_order;
 if constexpr (std::is_same_v<A, parser::OmpClause::Bind>)
   return llvm::omp::Clause::OMPC_bind;
+if constexpr (std::is_same_v<A, parser::OmpClause::CancellationConstructType>)
+  return llvm::omp::Clause::OMPC_cancellation_construct_type;
 if constexpr (std::is_same_v<A, parser::OmpClause::Capture>)
   return llvm::omp::Clause::OMPC_capture;
 if constexpr (std::is_same_v<A, parser::OmpClause::Collapse>)
@@ -4010,6 +4066,8 @@ if constexpr (std::is_same_v<A, parser::OmpClause::Full>)
   return llvm::omp::Clause::OMPC_full;
 if constexpr (std::is_same_v<A, parser::OmpClause::Grainsize>)
   return llvm::omp::Clause::OMPC_grainsize;
+if constexpr (std::is_same_v<A, parser::OmpClause::HasDeviceAddr>)
+  return llvm::omp::Clause::OMPC_has_device_addr;
 if constexpr (std::is_same_v<A, parser::OmpClause::Hint>)
   return llvm::omp::Clause::OMPC_hint;
 if constexpr (std::is_same_v<A, parser::OmpClause::If>)
@@ -4169,6 +4227,7 @@ __CLAUSE(allocator, OMPAllocatorClause)
 __CLAUSE_NO_CLASS(append_args)
 __CLAUSE(atomic_default_mem_order, OMPAtomicDefaultMemOrderClause)
 __CLAUSE(bind, OMPBindClause)
+__CLAUSE_NO_CLASS(cancellation_construct_type)
 __CLAUSE(capture, OMPCaptureClause)
 __CLAUSE(collapse, OMPCollapseClause)
 __CLAUSE(compare, OMPCompareClause)
@@ -4192,6 +4251,7 @@ __IMPLICIT_CLAUSE_CLASS(flush, "flush", OMPFlushClause)
 __CLAUSE(from, OMPFromClause)
 __CLAUSE(full, OMPFullClause)
 __CLAUSE(grainsize, OMPGrainsizeClause)
+__CLAUSE(has_device_addr, OMPHasDeviceAddrClause)
 __CLAUSE(hint, OMPHintClause)
 __CLAUSE(if, OMPIfClause)
 __CLAUSE(in_reduction, OMPInReductionClause)
@@ -4305,6 +4365,7 @@ Directive llvm::omp::getOpenMPDirectiveKind(llvm::StringRef Str) {
     .Case("master taskloop",OMPD_master_taskloop)
     .Case("master taskloop simd",OMPD_master_taskloop_simd)
     .Case("metadirective",OMPD_metadirective)
+    .Case("nothing",OMPD_nothing)
     .Case("ordered",OMPD_ordered)
     .Case("parallel",OMPD_parallel)
     .Case("parallel do",OMPD_parallel_do)
@@ -4449,6 +4510,8 @@ llvm::StringRef llvm::omp::getOpenMPDirectiveName(Directive Kind) {
       return "master taskloop simd";
     case OMPD_metadirective:
       return "metadirective";
+    case OMPD_nothing:
+      return "nothing";
     case OMPD_ordered:
       return "ordered";
     case OMPD_parallel:
@@ -4588,6 +4651,7 @@ Clause llvm::omp::getOpenMPClauseKind(llvm::StringRef Str) {
     .Case("append_args",OMPC_append_args)
     .Case("atomic_default_mem_order",OMPC_atomic_default_mem_order)
     .Case("bind",OMPC_bind)
+    .Case("cancellation_construct_type",OMPC_cancellation_construct_type)
     .Case("capture",OMPC_capture)
     .Case("collapse",OMPC_collapse)
     .Case("compare",OMPC_compare)
@@ -4611,6 +4675,7 @@ Clause llvm::omp::getOpenMPClauseKind(llvm::StringRef Str) {
     .Case("from",OMPC_from)
     .Case("full",OMPC_full)
     .Case("grainsize",OMPC_grainsize)
+    .Case("has_device_addr",OMPC_has_device_addr)
     .Case("hint",OMPC_hint)
     .Case("if",OMPC_if)
     .Case("in_reduction",OMPC_in_reduction)
@@ -4697,6 +4762,8 @@ llvm::StringRef llvm::omp::getOpenMPClauseName(Clause Kind) {
       return "atomic_default_mem_order";
     case OMPC_bind:
       return "bind";
+    case OMPC_cancellation_construct_type:
+      return "cancellation_construct_type";
     case OMPC_capture:
       return "capture";
     case OMPC_collapse:
@@ -4743,6 +4810,8 @@ llvm::StringRef llvm::omp::getOpenMPClauseName(Clause Kind) {
       return "full";
     case OMPC_grainsize:
       return "grainsize";
+    case OMPC_has_device_addr:
+      return "has_device_addr";
     case OMPC_hint:
       return "hint";
     case OMPC_if:
@@ -4863,6 +4932,32 @@ llvm::StringRef llvm::omp::getOpenMPClauseName(Clause Kind) {
       return "write";
   }
   llvm_unreachable("Invalid OpenMP Clause kind");
+}
+
+CancellationConstructType llvm::omp::getCancellationConstructType(llvm::StringRef Str) {
+  return llvm::StringSwitch<CancellationConstructType>(Str)
+    .Case("parallel",OMP_CANCELLATION_CONSTRUCT_Parallel)
+    .Case("loop",OMP_CANCELLATION_CONSTRUCT_Loop)
+    .Case("sections",OMP_CANCELLATION_CONSTRUCT_Sections)
+    .Case("taskgroup",OMP_CANCELLATION_CONSTRUCT_Taskgroup)
+    .Case("none",OMP_CANCELLATION_CONSTRUCT_None)
+    .Default(OMP_CANCELLATION_CONSTRUCT_None);
+}
+
+llvm::StringRef llvm::omp::getOpenMPCancellationConstructTypeName(llvm::omp::CancellationConstructType x) {
+  switch (x) {
+    case OMP_CANCELLATION_CONSTRUCT_Parallel:
+      return "parallel";
+    case OMP_CANCELLATION_CONSTRUCT_Loop:
+      return "loop";
+    case OMP_CANCELLATION_CONSTRUCT_Sections:
+      return "sections";
+    case OMP_CANCELLATION_CONSTRUCT_Taskgroup:
+      return "taskgroup";
+    case OMP_CANCELLATION_CONSTRUCT_None:
+      return "none";
+  }
+  llvm_unreachable("Invalid OpenMP CancellationConstructType kind");
 }
 
 MemoryOrderKind llvm::omp::getMemoryOrderKind(llvm::StringRef Str) {
@@ -5635,6 +5730,9 @@ bool llvm::omp::isAllowedClauseForDirective(Directive D, Clause C, unsigned Vers
           return false;
       }
       break;
+    case OMPD_nothing:
+      return false;
+      break;
     case OMPD_ordered:
       switch (C) {
         case OMPC_depend:
@@ -6124,6 +6222,8 @@ bool llvm::omp::isAllowedClauseForDirective(Directive D, Clause C, unsigned Vers
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_is_device_ptr:
           return 1 <= Version && 2147483647 >= Version;
+        case OMPC_has_device_addr:
+          return 51 <= Version && 2147483647 >= Version;
         case OMPC_reduction:
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_allocate:
@@ -6208,6 +6308,8 @@ bool llvm::omp::isAllowedClauseForDirective(Directive D, Clause C, unsigned Vers
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_is_device_ptr:
           return 1 <= Version && 2147483647 >= Version;
+        case OMPC_has_device_addr:
+          return 51 <= Version && 2147483647 >= Version;
         case OMPC_allocate:
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_uses_allocators:
@@ -6246,6 +6348,8 @@ bool llvm::omp::isAllowedClauseForDirective(Directive D, Clause C, unsigned Vers
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_is_device_ptr:
           return 1 <= Version && 2147483647 >= Version;
+        case OMPC_has_device_addr:
+          return 51 <= Version && 2147483647 >= Version;
         case OMPC_allocator:
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_order:
@@ -6324,6 +6428,8 @@ bool llvm::omp::isAllowedClauseForDirective(Directive D, Clause C, unsigned Vers
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_is_device_ptr:
           return 1 <= Version && 2147483647 >= Version;
+        case OMPC_has_device_addr:
+          return 51 <= Version && 2147483647 >= Version;
         case OMPC_allocate:
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_nontemporal:
@@ -6376,6 +6482,8 @@ bool llvm::omp::isAllowedClauseForDirective(Directive D, Clause C, unsigned Vers
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_is_device_ptr:
           return 1 <= Version && 2147483647 >= Version;
+        case OMPC_has_device_addr:
+          return 51 <= Version && 2147483647 >= Version;
         case OMPC_allocate:
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_order:
@@ -6432,6 +6540,8 @@ bool llvm::omp::isAllowedClauseForDirective(Directive D, Clause C, unsigned Vers
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_is_device_ptr:
           return 1 <= Version && 2147483647 >= Version;
+        case OMPC_has_device_addr:
+          return 51 <= Version && 2147483647 >= Version;
         case OMPC_allocate:
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_nontemporal:
@@ -6456,6 +6566,8 @@ bool llvm::omp::isAllowedClauseForDirective(Directive D, Clause C, unsigned Vers
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_is_device_ptr:
           return 1 <= Version && 2147483647 >= Version;
+        case OMPC_has_device_addr:
+          return 51 <= Version && 2147483647 >= Version;
         case OMPC_lastprivate:
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_linear:
@@ -6512,6 +6624,8 @@ bool llvm::omp::isAllowedClauseForDirective(Directive D, Clause C, unsigned Vers
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_is_device_ptr:
           return 1 <= Version && 2147483647 >= Version;
+        case OMPC_has_device_addr:
+          return 51 <= Version && 2147483647 >= Version;
         case OMPC_reduction:
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_allocate:
@@ -6550,6 +6664,8 @@ bool llvm::omp::isAllowedClauseForDirective(Directive D, Clause C, unsigned Vers
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_is_device_ptr:
           return 1 <= Version && 2147483647 >= Version;
+        case OMPC_has_device_addr:
+          return 51 <= Version && 2147483647 >= Version;
         case OMPC_reduction:
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_allocate:
@@ -6594,6 +6710,8 @@ bool llvm::omp::isAllowedClauseForDirective(Directive D, Clause C, unsigned Vers
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_is_device_ptr:
           return 1 <= Version && 2147483647 >= Version;
+        case OMPC_has_device_addr:
+          return 51 <= Version && 2147483647 >= Version;
         case OMPC_reduction:
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_allocate:
@@ -6650,6 +6768,8 @@ bool llvm::omp::isAllowedClauseForDirective(Directive D, Clause C, unsigned Vers
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_is_device_ptr:
           return 1 <= Version && 2147483647 >= Version;
+        case OMPC_has_device_addr:
+          return 51 <= Version && 2147483647 >= Version;
         case OMPC_reduction:
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_allocate:
@@ -6724,6 +6844,8 @@ bool llvm::omp::isAllowedClauseForDirective(Directive D, Clause C, unsigned Vers
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_is_device_ptr:
           return 1 <= Version && 2147483647 >= Version;
+        case OMPC_has_device_addr:
+          return 51 <= Version && 2147483647 >= Version;
         case OMPC_default:
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_shared:
@@ -6776,6 +6898,8 @@ bool llvm::omp::isAllowedClauseForDirective(Directive D, Clause C, unsigned Vers
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_is_device_ptr:
           return 1 <= Version && 2147483647 >= Version;
+        case OMPC_has_device_addr:
+          return 51 <= Version && 2147483647 >= Version;
         case OMPC_default:
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_shared:
@@ -6832,6 +6956,8 @@ bool llvm::omp::isAllowedClauseForDirective(Directive D, Clause C, unsigned Vers
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_is_device_ptr:
           return 1 <= Version && 2147483647 >= Version;
+        case OMPC_has_device_addr:
+          return 51 <= Version && 2147483647 >= Version;
         case OMPC_lastprivate:
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_linear:
@@ -7342,6 +7468,8 @@ bool llvm::omp::isAllowedClauseForDirective(Directive D, Clause C, unsigned Vers
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_is_device_ptr:
           return 1 <= Version && 2147483647 >= Version;
+        case OMPC_has_device_addr:
+          return 51 <= Version && 2147483647 >= Version;
         case OMPC_nowait:
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_depend:
@@ -7446,6 +7574,8 @@ bool llvm::omp::isAllowedClauseForDirective(Directive D, Clause C, unsigned Vers
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_is_device_ptr:
           return 1 <= Version && 2147483647 >= Version;
+        case OMPC_has_device_addr:
+          return 51 <= Version && 2147483647 >= Version;
         case OMPC_lastprivate:
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_map:
@@ -7494,6 +7624,8 @@ bool llvm::omp::isAllowedClauseForDirective(Directive D, Clause C, unsigned Vers
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_is_device_ptr:
           return 1 <= Version && 2147483647 >= Version;
+        case OMPC_has_device_addr:
+          return 51 <= Version && 2147483647 >= Version;
         case OMPC_lastprivate:
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_map:

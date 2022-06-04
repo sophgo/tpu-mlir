@@ -59,9 +59,11 @@ namespace mlir {
 // ::mlir::ModuleOp definitions
 //===----------------------------------------------------------------------===//
 
-ModuleOpAdaptor::ModuleOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+ModuleOpAdaptor::ModuleOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("builtin.module", odsAttrs.getContext());
+}
 
-ModuleOpAdaptor::ModuleOpAdaptor(ModuleOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+ModuleOpAdaptor::ModuleOpAdaptor(ModuleOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange ModuleOpAdaptor::getOperands() {
   return odsOperands;
@@ -83,8 +85,8 @@ std::pair<unsigned, unsigned> ModuleOpAdaptor::getODSOperandIndexAndLength(unsig
 
 ::mlir::StringAttr ModuleOpAdaptor::getSymNameAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::StringAttr attr = odsAttrs.get("sym_name").dyn_cast_or_null<::mlir::StringAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ModuleOp::getSymNameAttrName(*odsOpName)).dyn_cast_or_null<::mlir::StringAttr>();
+    return attr;
 }
 
 ::llvm::Optional< ::llvm::StringRef > ModuleOpAdaptor::getSymName() {
@@ -94,8 +96,8 @@ std::pair<unsigned, unsigned> ModuleOpAdaptor::getODSOperandIndexAndLength(unsig
 
 ::mlir::StringAttr ModuleOpAdaptor::getSymVisibilityAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  ::mlir::StringAttr attr = odsAttrs.get("sym_visibility").dyn_cast_or_null<::mlir::StringAttr>();
-  return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ModuleOp::getSymVisibilityAttrName(*odsOpName)).dyn_cast_or_null<::mlir::StringAttr>();
+    return attr;
 }
 
 ::llvm::Optional< ::llvm::StringRef > ModuleOpAdaptor::getSymVisibility() {
@@ -112,16 +114,28 @@ std::pair<unsigned, unsigned> ModuleOpAdaptor::getODSOperandIndexAndLength(unsig
 }
 
 ::mlir::LogicalResult ModuleOpAdaptor::verify(::mlir::Location loc) {
-  {
-    auto tblgen_sym_name = odsAttrs.get("sym_name");
-    if (tblgen_sym_name && !((tblgen_sym_name.isa<::mlir::StringAttr>())))
-      return emitError(loc, "'builtin.module' op ""attribute 'sym_name' failed to satisfy constraint: string attribute");
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_sym_name;
+  ::mlir::Attribute tblgen_sym_visibility;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == ModuleOp::getSymNameAttrName(*odsOpName)) {
+      tblgen_sym_name = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == ModuleOp::getSymVisibilityAttrName(*odsOpName)) {
+      tblgen_sym_visibility = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_sym_visibility = odsAttrs.get("sym_visibility");
-    if (tblgen_sym_visibility && !((tblgen_sym_visibility.isa<::mlir::StringAttr>())))
-      return emitError(loc, "'builtin.module' op ""attribute 'sym_visibility' failed to satisfy constraint: string attribute");
-  }
+
+  if (tblgen_sym_name && !((tblgen_sym_name.isa<::mlir::StringAttr>())))
+    return emitError(loc, "'builtin.module' op ""attribute 'sym_name' failed to satisfy constraint: string attribute");
+
+  if (tblgen_sym_visibility && !((tblgen_sym_visibility.isa<::mlir::StringAttr>())))
+    return emitError(loc, "'builtin.module' op ""attribute 'sym_visibility' failed to satisfy constraint: string attribute");
   return ::mlir::success();
 }
 
@@ -150,7 +164,7 @@ std::pair<unsigned, unsigned> ModuleOp::getODSResultIndexAndLength(unsigned inde
 }
 
 ::mlir::StringAttr ModuleOp::getSymNameAttr() {
-  return (*this)->getAttr(getSymNameAttrName()).dyn_cast_or_null<::mlir::StringAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getSymNameAttrName()).dyn_cast_or_null<::mlir::StringAttr>();
 }
 
 ::llvm::Optional< ::llvm::StringRef > ModuleOp::getSymName() {
@@ -159,7 +173,7 @@ std::pair<unsigned, unsigned> ModuleOp::getODSResultIndexAndLength(unsigned inde
 }
 
 ::mlir::StringAttr ModuleOp::getSymVisibilityAttr() {
-  return (*this)->getAttr(getSymVisibilityAttrName()).dyn_cast_or_null<::mlir::StringAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getSymVisibilityAttrName()).dyn_cast_or_null<::mlir::StringAttr>();
 }
 
 ::llvm::Optional< ::llvm::StringRef > ModuleOp::getSymVisibility() {
@@ -184,16 +198,28 @@ void ModuleOp::setSymVisibilityAttr(::mlir::StringAttr attr) {
 }
 
 ::mlir::LogicalResult ModuleOp::verifyInvariantsImpl() {
-  {
-    auto tblgen_sym_name = (*this)->getAttr(getSymNameAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_BuiltinOps0(*this, tblgen_sym_name, "sym_name")))
-      return ::mlir::failure();
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_sym_name;
+  ::mlir::Attribute tblgen_sym_visibility;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == getSymNameAttrName()) {
+      tblgen_sym_name = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == getSymVisibilityAttrName()) {
+      tblgen_sym_visibility = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
   }
-  {
-    auto tblgen_sym_visibility = (*this)->getAttr(getSymVisibilityAttrName());
-    if (::mlir::failed(__mlir_ods_local_attr_constraint_BuiltinOps0(*this, tblgen_sym_visibility, "sym_visibility")))
-      return ::mlir::failure();
-  }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_BuiltinOps0(*this, tblgen_sym_name, "sym_name")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_BuiltinOps0(*this, tblgen_sym_visibility, "sym_visibility")))
+    return ::mlir::failure();
   {
     unsigned index = 0; (void)index;
 
@@ -249,9 +275,11 @@ namespace mlir {
 // ::mlir::UnrealizedConversionCastOp definitions
 //===----------------------------------------------------------------------===//
 
-UnrealizedConversionCastOpAdaptor::UnrealizedConversionCastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {}
+UnrealizedConversionCastOpAdaptor::UnrealizedConversionCastOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("builtin.unrealized_conversion_cast", odsAttrs.getContext());
+}
 
-UnrealizedConversionCastOpAdaptor::UnrealizedConversionCastOpAdaptor(UnrealizedConversionCastOp &op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()) {}
+UnrealizedConversionCastOpAdaptor::UnrealizedConversionCastOpAdaptor(UnrealizedConversionCastOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
 ::mlir::ValueRange UnrealizedConversionCastOpAdaptor::getOperands() {
   return odsOperands;
@@ -388,11 +416,11 @@ void UnrealizedConversionCastOp::build(::mlir::OpBuilder &, ::mlir::OperationSta
 }
 
 ::mlir::ParseResult UnrealizedConversionCastOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> inputsOperands;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> inputsOperands;
   ::llvm::SMLoc inputsOperandsLoc;
   (void)inputsOperandsLoc;
-  ::mlir::SmallVector<::mlir::Type, 1> inputsTypes;
-  ::mlir::SmallVector<::mlir::Type, 1> outputsTypes;
+  ::llvm::SmallVector<::mlir::Type, 1> inputsTypes;
+  ::llvm::SmallVector<::mlir::Type, 1> outputsTypes;
 
   inputsOperandsLoc = parser.getCurrentLocation();
   if (parser.parseOperandList(inputsOperands))
@@ -431,7 +459,7 @@ void UnrealizedConversionCastOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
 }
 
-void UnrealizedConversionCastOp::getEffects(::mlir::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+void UnrealizedConversionCastOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
 }
 
 } // namespace mlir

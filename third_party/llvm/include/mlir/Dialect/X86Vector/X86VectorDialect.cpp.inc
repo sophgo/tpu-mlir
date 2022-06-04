@@ -10,6 +10,12 @@ MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::x86vector::X86VectorDialect)
 namespace mlir {
 namespace x86vector {
 
+X86VectorDialect::X86VectorDialect(::mlir::MLIRContext *context) 
+    : ::mlir::Dialect(getDialectNamespace(), context, ::mlir::TypeID::get<X86VectorDialect>()) {
+  
+  initialize();
+}
+
 X86VectorDialect::~X86VectorDialect() = default;
 
 } // namespace x86vector

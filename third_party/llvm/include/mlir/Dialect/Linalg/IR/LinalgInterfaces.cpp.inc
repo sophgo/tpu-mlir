@@ -189,13 +189,16 @@ AffineMap mlir::linalg::LinalgOp::getLoopsToShapesMap() {
 AffineMap mlir::linalg::LinalgOp::getShapesToLoopsMap() {
       return getImpl()->getShapesToLoopsMap(getImpl(), getOperation());
   }
+bool mlir::linalg::LinalgOp::canOpOperandsBeDropped(ArrayRef<OpOperand *> droppedOperands) {
+      return getImpl()->canOpOperandsBeDropped(getImpl(), getOperation(), droppedOperands);
+  }
 std::pair<int64_t, int64_t> mlir::linalg::LinalgOp::getResultsPositionInLoopsToShapeMap() {
       return getImpl()->getResultsPositionInLoopsToShapeMap(getImpl(), getOperation());
   }
 SmallVector<int64_t> mlir::linalg::LinalgOp::getStaticShape() {
       return getImpl()->getStaticShape(getImpl(), getOperation());
   }
-Optional<SmallVector<int64_t, 4>> mlir::linalg::LinalgOp::getStaticLoopRanges() {
+SmallVector<int64_t, 4> mlir::linalg::LinalgOp::getStaticLoopRanges() {
       return getImpl()->getStaticLoopRanges(getImpl(), getOperation());
   }
 Operation *mlir::linalg::LinalgOp::clone(OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands) {

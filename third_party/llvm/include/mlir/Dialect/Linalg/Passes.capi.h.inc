@@ -22,11 +22,6 @@ MLIR_CAPI_EXPORTED void mlirRegisterLinalgLinalgBufferize();
 
 
 /* Create Linalg Pass. */
-MLIR_CAPI_EXPORTED MlirPass mlirCreateLinalgLinalgComprehensiveModuleBufferize();
-MLIR_CAPI_EXPORTED void mlirRegisterLinalgLinalgComprehensiveModuleBufferize();
-
-
-/* Create Linalg Pass. */
 MLIR_CAPI_EXPORTED MlirPass mlirCreateLinalgLinalgDetensorize();
 MLIR_CAPI_EXPORTED void mlirRegisterLinalgLinalgDetensorize();
 
@@ -37,11 +32,6 @@ MLIR_CAPI_EXPORTED void mlirRegisterLinalgLinalgElementwiseOpFusion();
 
 
 /* Create Linalg Pass. */
-MLIR_CAPI_EXPORTED MlirPass mlirCreateLinalgLinalgFoldReshapeOpsByLinearization();
-MLIR_CAPI_EXPORTED void mlirRegisterLinalgLinalgFoldReshapeOpsByLinearization();
-
-
-/* Create Linalg Pass. */
 MLIR_CAPI_EXPORTED MlirPass mlirCreateLinalgLinalgFoldUnitExtentDims();
 MLIR_CAPI_EXPORTED void mlirRegisterLinalgLinalgFoldUnitExtentDims();
 
@@ -49,6 +39,11 @@ MLIR_CAPI_EXPORTED void mlirRegisterLinalgLinalgFoldUnitExtentDims();
 /* Create Linalg Pass. */
 MLIR_CAPI_EXPORTED MlirPass mlirCreateLinalgLinalgGeneralization();
 MLIR_CAPI_EXPORTED void mlirRegisterLinalgLinalgGeneralization();
+
+
+/* Create Linalg Pass. */
+MLIR_CAPI_EXPORTED MlirPass mlirCreateLinalgLinalgInitTensorToAllocTensor();
+MLIR_CAPI_EXPORTED void mlirRegisterLinalgLinalgInitTensorToAllocTensor();
 
 
 /* Create Linalg Pass. */
@@ -109,6 +104,11 @@ MLIR_CAPI_EXPORTED void mlirRegisterLinalgLinalgStrategyLowerVectorsPass();
 /* Create Linalg Pass. */
 MLIR_CAPI_EXPORTED MlirPass mlirCreateLinalgLinalgStrategyPadPass();
 MLIR_CAPI_EXPORTED void mlirRegisterLinalgLinalgStrategyPadPass();
+
+
+/* Create Linalg Pass. */
+MLIR_CAPI_EXPORTED MlirPass mlirCreateLinalgLinalgStrategyPeelPass();
+MLIR_CAPI_EXPORTED void mlirRegisterLinalgLinalgStrategyPeelPass();
 
 
 /* Create Linalg Pass. */
