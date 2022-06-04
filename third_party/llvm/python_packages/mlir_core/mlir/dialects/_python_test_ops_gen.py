@@ -26,7 +26,7 @@ class AttributedOp(_ods_ir.OpView):
 
   _ODS_REGIONS = (0, True)
 
-  def __init__(self, mandatory_i32, optional_i32, unit, *, loc=None, ip=None):
+  def __init__(self, mandatory_i32, *, optional_i32=None, unit=None, loc=None, ip=None):
     operands = []
     results = []
     attributes = {}
@@ -255,7 +255,7 @@ class OptionalOperandOp(_ods_ir.OpView):
 
   _ODS_REGIONS = (0, True)
 
-  def __init__(self, input, *, loc=None, ip=None):
+  def __init__(self, *, input=None, loc=None, ip=None):
     operands = []
     results = []
     attributes = {}

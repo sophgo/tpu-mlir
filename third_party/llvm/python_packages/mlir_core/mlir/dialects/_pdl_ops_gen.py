@@ -100,7 +100,7 @@ class AttributeOp(_ods_ir.OpView):
 
   _ODS_REGIONS = (0, True)
 
-  def __init__(self, attr, type, value, *, loc=None, ip=None):
+  def __init__(self, attr, *, type=None, value=None, loc=None, ip=None):
     operands = []
     results = []
     attributes = {}
@@ -167,7 +167,7 @@ class OperandOp(_ods_ir.OpView):
 
   _ODS_REGIONS = (0, True)
 
-  def __init__(self, val, type, *, loc=None, ip=None):
+  def __init__(self, val, *, type=None, loc=None, ip=None):
     operands = []
     results = []
     attributes = {}
@@ -194,7 +194,7 @@ class OperandsOp(_ods_ir.OpView):
 
   _ODS_REGIONS = (0, True)
 
-  def __init__(self, val, type, *, loc=None, ip=None):
+  def __init__(self, val, *, type=None, loc=None, ip=None):
     operands = []
     results = []
     attributes = {}
@@ -223,7 +223,7 @@ class OperationOp(_ods_ir.OpView):
 
   _ODS_REGIONS = (0, True)
 
-  def __init__(self, op, name, operands_, attributes_, attributeNames, types, *, loc=None, ip=None):
+  def __init__(self, op, operands_, attributes_, attributeNames, types, *, name=None, loc=None, ip=None):
     operands = []
     results = []
     attributes = {}
@@ -288,7 +288,7 @@ class PatternOp(_ods_ir.OpView):
 
   _ODS_REGIONS = (1, True)
 
-  def __init__(self, benefit, sym_name, *, loc=None, ip=None):
+  def __init__(self, benefit, *, sym_name=None, loc=None, ip=None):
     operands = []
     results = []
     attributes = {}
@@ -340,7 +340,7 @@ class ReplaceOp(_ods_ir.OpView):
 
   _ODS_REGIONS = (0, True)
 
-  def __init__(self, operation_, replOperation, replValues, *, loc=None, ip=None):
+  def __init__(self, operation_, replValues, *, replOperation=None, loc=None, ip=None):
     operands = []
     results = []
     attributes = {}
@@ -419,7 +419,7 @@ class ResultsOp(_ods_ir.OpView):
 
   _ODS_REGIONS = (0, True)
 
-  def __init__(self, val, parent, index, *, loc=None, ip=None):
+  def __init__(self, val, parent, *, index=None, loc=None, ip=None):
     operands = []
     results = []
     attributes = {}
@@ -466,7 +466,7 @@ class RewriteOp(_ods_ir.OpView):
 
   _ODS_REGIONS = (1, True)
 
-  def __init__(self, root, name, externalArgs, *, loc=None, ip=None):
+  def __init__(self, externalArgs, *, root=None, name=None, loc=None, ip=None):
     operands = []
     results = []
     attributes = {}
@@ -521,7 +521,7 @@ class TypeOp(_ods_ir.OpView):
 
   _ODS_REGIONS = (0, True)
 
-  def __init__(self, result, type, *, loc=None, ip=None):
+  def __init__(self, result, *, type=None, loc=None, ip=None):
     operands = []
     results = []
     attributes = {}
@@ -544,7 +544,7 @@ class TypesOp(_ods_ir.OpView):
 
   _ODS_REGIONS = (0, True)
 
-  def __init__(self, result, types, *, loc=None, ip=None):
+  def __init__(self, result, *, types=None, loc=None, ip=None):
     operands = []
     results = []
     attributes = {}

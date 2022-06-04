@@ -13,7 +13,7 @@ namespace llvm {
 namespace Intrinsic {
 enum AMDGCNIntrinsics : unsigned {
 // Enum values for intrinsics
-    amdgcn_alignbyte = 1261,                          // llvm.amdgcn.alignbyte
+    amdgcn_alignbyte = 1263,                          // llvm.amdgcn.alignbyte
     amdgcn_atomic_dec,                         // llvm.amdgcn.atomic.dec
     amdgcn_atomic_inc,                         // llvm.amdgcn.atomic.inc
     amdgcn_ballot,                             // llvm.amdgcn.ballot
@@ -95,6 +95,7 @@ enum AMDGCNIntrinsics : unsigned {
     amdgcn_global_atomic_fadd_v2bf16,          // llvm.amdgcn.global.atomic.fadd.v2bf16
     amdgcn_global_atomic_fmax,                 // llvm.amdgcn.global.atomic.fmax
     amdgcn_global_atomic_fmin,                 // llvm.amdgcn.global.atomic.fmin
+    amdgcn_global_load_lds,                    // llvm.amdgcn.global.load.lds
     amdgcn_groupstaticsize,                    // llvm.amdgcn.groupstaticsize
     amdgcn_icmp,                               // llvm.amdgcn.icmp
     amdgcn_if,                                 // llvm.amdgcn.if
@@ -660,6 +661,7 @@ enum AMDGCNIntrinsics : unsigned {
     amdgcn_raw_buffer_atomic_xor,              // llvm.amdgcn.raw.buffer.atomic.xor
     amdgcn_raw_buffer_load,                    // llvm.amdgcn.raw.buffer.load
     amdgcn_raw_buffer_load_format,             // llvm.amdgcn.raw.buffer.load.format
+    amdgcn_raw_buffer_load_lds,                // llvm.amdgcn.raw.buffer.load.lds
     amdgcn_raw_buffer_store,                   // llvm.amdgcn.raw.buffer.store
     amdgcn_raw_buffer_store_format,            // llvm.amdgcn.raw.buffer.store.format
     amdgcn_raw_tbuffer_load,                   // llvm.amdgcn.raw.tbuffer.load
@@ -696,6 +698,7 @@ enum AMDGCNIntrinsics : unsigned {
     amdgcn_sad_u16,                            // llvm.amdgcn.sad.u16
     amdgcn_sad_u8,                             // llvm.amdgcn.sad.u8
     amdgcn_sbfe,                               // llvm.amdgcn.sbfe
+    amdgcn_sched_barrier,                      // llvm.amdgcn.sched.barrier
     amdgcn_sdot2,                              // llvm.amdgcn.sdot2
     amdgcn_sdot4,                              // llvm.amdgcn.sdot4
     amdgcn_sdot8,                              // llvm.amdgcn.sdot8
@@ -730,6 +733,7 @@ enum AMDGCNIntrinsics : unsigned {
     amdgcn_struct_buffer_atomic_xor,           // llvm.amdgcn.struct.buffer.atomic.xor
     amdgcn_struct_buffer_load,                 // llvm.amdgcn.struct.buffer.load
     amdgcn_struct_buffer_load_format,          // llvm.amdgcn.struct.buffer.load.format
+    amdgcn_struct_buffer_load_lds,             // llvm.amdgcn.struct.buffer.load.lds
     amdgcn_struct_buffer_store,                // llvm.amdgcn.struct.buffer.store
     amdgcn_struct_buffer_store_format,         // llvm.amdgcn.struct.buffer.store.format
     amdgcn_struct_tbuffer_load,                // llvm.amdgcn.struct.tbuffer.load

@@ -130,7 +130,7 @@ class SwitchOp(_ods_ir.OpView):
 
   _ODS_REGIONS = (0, True)
 
-  def __init__(self, flag, defaultOperands, caseOperands, case_values, case_operand_segments, defaultDestination, caseDestinations, *, loc=None, ip=None):
+  def __init__(self, flag, defaultOperands, caseOperands, case_operand_segments, defaultDestination, caseDestinations, *, case_values=None, loc=None, ip=None):
     operands = []
     results = []
     attributes = {}

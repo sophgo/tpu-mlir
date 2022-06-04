@@ -1,3 +1,15 @@
+def CancellationConstructTypeparallel : I32EnumAttrCase<"Parallel", 0, "parallel">;
+def CancellationConstructTypeloop : I32EnumAttrCase<"Loop", 1, "loop">;
+def CancellationConstructTypesections : I32EnumAttrCase<"Sections", 2, "sections">;
+def CancellationConstructTypetaskgroup : I32EnumAttrCase<"Taskgroup", 3, "taskgroup">;
+def CancellationConstructType: I32EnumAttr<
+  "ClauseCancellationConstructType",
+  "CancellationConstructType Clause",
+  [CancellationConstructTypeparallel,CancellationConstructTypeloop,CancellationConstructTypesections,CancellationConstructTypetaskgroup]> {
+    let cppNamespace = "::mlir::omp";
+    let genSpecializedAttr = 0;
+}
+def CancellationConstructTypeAttr : EnumAttr<OpenMP_Dialect, CancellationConstructType, "cancellationconstructtype">;
 def MemoryOrderKindseq_cst : I32EnumAttrCase<"Seq_cst", 0, "seq_cst">;
 def MemoryOrderKindacq_rel : I32EnumAttrCase<"Acq_rel", 1, "acq_rel">;
 def MemoryOrderKindacquire : I32EnumAttrCase<"Acquire", 2, "acquire">;

@@ -393,7 +393,7 @@ class PadOp(_ods_ir.OpView):
 
   _ODS_REGIONS = (1, True)
 
-  def __init__(self, result, source, low, high, static_low, static_high, nofold, *, loc=None, ip=None):
+  def __init__(self, result, source, low, high, static_low, static_high, *, nofold=None, loc=None, ip=None):
     operands = []
     results = []
     attributes = {}

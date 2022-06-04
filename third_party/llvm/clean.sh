@@ -40,6 +40,7 @@ need_list=(
   "libMLIRPDLToPDLInterp.a"
   "libMLIRRewrite.a"
   "libMLIRSideEffectInterfaces.a"
+  "libMLIRInferIntRangeInterface.a"
   "libMLIRSupport.a"
   "libMLIRTransforms.a"
   "libMLIRTransformUtils.a"

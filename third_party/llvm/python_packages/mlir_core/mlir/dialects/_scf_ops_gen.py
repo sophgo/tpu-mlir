@@ -104,6 +104,27 @@ class ForOp(_ods_ir.OpView):
 
 @_ods_cext.register_operation(_Dialect)
 @_ods_extend_opview_class(_ods_ext_module)
+class ForeachThreadOp(_ods_ir.OpView):
+  OPERATION_NAME = "scf.foreach_thread"
+
+  _ODS_REGIONS = (1, True)
+
+  @builtins.property
+  def num_threads(self):
+    _ods_variadic_group_length = len(self.operation.operands) - 1 + 1
+    return self.operation.operands[0:0 + _ods_variadic_group_length]
+
+  @builtins.property
+  def results_(self):
+    _ods_variadic_group_length = len(self.operation.results) - 1 + 1
+    return self.operation.results[0:0 + _ods_variadic_group_length]
+
+  @builtins.property
+  def region(self):
+    return self.regions[0]
+
+@_ods_cext.register_operation(_Dialect)
+@_ods_extend_opview_class(_ods_ext_module)
 class IfOp(_ods_ir.OpView):
   OPERATION_NAME = "scf.if"
 
@@ -125,6 +146,68 @@ class IfOp(_ods_ir.OpView):
   @builtins.property
   def elseRegion(self):
     return self.regions[1]
+
+@_ods_cext.register_operation(_Dialect)
+@_ods_extend_opview_class(_ods_ext_module)
+class ParallelInsertSliceOp(_ods_ir.OpView):
+  OPERATION_NAME = "scf.foreach_thread.parallel_insert_slice"
+
+  _ODS_OPERAND_SEGMENTS = [1,1,-1,-1,-1,]
+
+  _ODS_REGIONS = (0, True)
+
+  def __init__(self, source, dest, offsets, sizes, strides, static_offsets, static_sizes, static_strides, *, loc=None, ip=None):
+    operands = []
+    results = []
+    attributes = {}
+    regions = None
+    operands.append(_get_op_result_or_value(source))
+    operands.append(_get_op_result_or_value(dest))
+    operands.append(_get_op_results_or_values(offsets))
+    operands.append(_get_op_results_or_values(sizes))
+    operands.append(_get_op_results_or_values(strides))
+    attributes["static_offsets"] = static_offsets
+    attributes["static_sizes"] = static_sizes
+    attributes["static_strides"] = static_strides
+    _ods_successors = None
+    super().__init__(self.build_generic(
+      attributes=attributes, results=results, operands=operands,
+      successors=_ods_successors, regions=regions, loc=loc, ip=ip))
+
+  @builtins.property
+  def source(self):
+    operand_range = _ods_segmented_accessor(
+         self.operation.operands,
+         self.operation.attributes["operand_segment_sizes"], 0)
+    return operand_range[0]
+
+  @builtins.property
+  def dest(self):
+    operand_range = _ods_segmented_accessor(
+         self.operation.operands,
+         self.operation.attributes["operand_segment_sizes"], 1)
+    return operand_range[0]
+
+  @builtins.property
+  def offsets(self):
+    operand_range = _ods_segmented_accessor(
+         self.operation.operands,
+         self.operation.attributes["operand_segment_sizes"], 2)
+    return operand_range
+
+  @builtins.property
+  def sizes(self):
+    operand_range = _ods_segmented_accessor(
+         self.operation.operands,
+         self.operation.attributes["operand_segment_sizes"], 3)
+    return operand_range
+
+  @builtins.property
+  def strides(self):
+    operand_range = _ods_segmented_accessor(
+         self.operation.operands,
+         self.operation.attributes["operand_segment_sizes"], 4)
+    return operand_range
 
 @_ods_cext.register_operation(_Dialect)
 @_ods_extend_opview_class(_ods_ext_module)
@@ -167,6 +250,17 @@ class ParallelOp(_ods_ir.OpView):
   def results_(self):
     _ods_variadic_group_length = len(self.operation.results) - 1 + 1
     return self.operation.results[0:0 + _ods_variadic_group_length]
+
+  @builtins.property
+  def region(self):
+    return self.regions[0]
+
+@_ods_cext.register_operation(_Dialect)
+@_ods_extend_opview_class(_ods_ext_module)
+class PerformConcurrentlyOp(_ods_ir.OpView):
+  OPERATION_NAME = "scf.foreach_thread.perform_concurrently"
+
+  _ODS_REGIONS = (1, True)
 
   @builtins.property
   def region(self):

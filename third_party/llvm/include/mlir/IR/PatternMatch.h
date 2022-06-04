@@ -943,9 +943,13 @@ struct ProcessDerivedPDLValue : public ProcessPDLValueBasedOn<T, BaseT> {
                          " to be of type: " + llvm::getTypeName<T>());
         });
   }
+  using ProcessPDLValueBasedOn<T, BaseT>::verifyAsArg;
+
   static T processAsArg(BaseT baseValue) {
     return baseValue.template cast<T>();
   }
+  using ProcessPDLValueBasedOn<T, BaseT>::processAsArg;
+
   static void processAsResult(PatternRewriter &, PDLResultList &results,
                               T value) {
     results.push_back(value);
@@ -967,6 +971,8 @@ template <>
 struct ProcessPDLValue<StringRef>
     : public ProcessPDLValueBasedOn<StringRef, StringAttr> {
   static StringRef processAsArg(StringAttr value) { return value.getValue(); }
+  using ProcessPDLValueBasedOn<StringRef, StringAttr>::processAsArg;
+
   static void processAsResult(PatternRewriter &rewriter, PDLResultList &results,
                               StringRef value) {
     results.push_back(rewriter.getStringAttr(value));
@@ -980,6 +986,7 @@ struct ProcessPDLValue<std::string>
     static_assert(always_false<T>,
                   "`std::string` arguments require a string copy, use "
                   "`StringRef` for string-like arguments instead");
+    return {};
   }
   static void processAsResult(PatternRewriter &rewriter, PDLResultList &results,
                               StringRef value) {
@@ -1089,10 +1096,9 @@ LogicalResult verifyAsArgs(PatternRewriter &rewriter, ArrayRef<PDLValue> values,
 template <typename PDLFnT, std::size_t... I>
 void assertArgs(PatternRewriter &rewriter, ArrayRef<PDLValue> values,
                 std::index_sequence<I...>) {
-  using FnTraitsT = llvm::function_traits<PDLFnT>;
-
   // We only want to do verification in debug builds, same as with `assert`.
 #if LLVM_ENABLE_ABI_BREAKING_CHECKS
+  using FnTraitsT = llvm::function_traits<PDLFnT>;
   auto errorFn = [&](const Twine &msg) -> LogicalResult {
     llvm::report_fatal_error(msg);
   };

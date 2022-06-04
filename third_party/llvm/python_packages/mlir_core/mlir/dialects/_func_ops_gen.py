@@ -104,7 +104,7 @@ class FuncOp(_ods_ir.OpView):
 
   _ODS_REGIONS = (1, True)
 
-  def __init__(self, sym_name, function_type, sym_visibility, *, loc=None, ip=None):
+  def __init__(self, sym_name, function_type, *, sym_visibility=None, loc=None, ip=None):
     operands = []
     results = []
     attributes = {}

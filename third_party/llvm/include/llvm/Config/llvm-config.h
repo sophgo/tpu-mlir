@@ -18,6 +18,7 @@
 /* #undef LLVM_ENABLE_DUMP */
 
 /* Target triple LLVM will generate code for by default */
+/* Doesn't use `cmakedefine` because it is allowed to be empty. */
 #define LLVM_DEFAULT_TARGET_TRIPLE "x86_64-unknown-linux-gnu"
 
 /* Define if threads enabled */
@@ -112,5 +113,8 @@
 /* Define if llvm_unreachable should be optimized with undefined behavior
  * in non assert builds */
 #define LLVM_UNREACHABLE_OPTIMIZE 1
+
+/* Define to 1 if you have the DIA SDK installed, and to 0 if you don't. */
+#define LLVM_ENABLE_DIA_SDK 0
 
 #endif

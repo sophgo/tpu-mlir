@@ -13,7 +13,7 @@ namespace llvm {
 namespace Intrinsic {
 enum RISCVIntrinsics : unsigned {
 // Enum values for intrinsics
-    riscv_aes32dsi = 7382,                            // llvm.riscv.aes32dsi
+    riscv_aes32dsi = 7391,                            // llvm.riscv.aes32dsi
     riscv_aes32dsmi,                           // llvm.riscv.aes32dsmi
     riscv_aes32esi,                            // llvm.riscv.aes32esi
     riscv_aes32esmi,                           // llvm.riscv.aes32esmi

@@ -26,44 +26,16 @@ DefaultValuedAttr<TypeFnAttr, "TypeFn::cast_signed">:$cast
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<CopyOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, CopyOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<CopyOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, CopyOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -80,21 +52,9 @@ DefaultValuedAttr<TypeFnAttr, "TypeFn::cast_signed">:$cast
        "ValueRange":$outputs, "Attribute":$cast,
        CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
   [{
-    $_state.addOperands(inputs);
-    $_state.addOperands(outputs);
-    $_state.addTypes(resultTensorTypes);
     $_state.addAttribute("cast", cast);
-    $_state.addAttributes(attributes);
-    $_state.addAttribute(
-      "operand_segment_sizes",
-      $_builder.getI32VectorAttr({
-        static_cast<int32_t>(inputs.size()),
-        static_cast<int32_t>(outputs.size())}));
-    createAndFillStructuredOpRegion<CopyOp>(
-      $_builder,
-      $_state,
-      TypeRange(inputs),
-      TypeRange(outputs));
+    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
+      attributes, CopyOp::getRegionBuilder());
   }]>
 
     ];
@@ -149,44 +109,16 @@ DefaultValuedAttr<TypeFnAttr, "TypeFn::cast_signed">:$cast
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<ElemwiseUnaryOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, ElemwiseUnaryOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<ElemwiseUnaryOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, ElemwiseUnaryOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -203,22 +135,10 @@ DefaultValuedAttr<TypeFnAttr, "TypeFn::cast_signed">:$cast
        "ValueRange":$outputs, "Attribute":$fun, "Attribute":$cast,
        CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
   [{
-    $_state.addOperands(inputs);
-    $_state.addOperands(outputs);
-    $_state.addTypes(resultTensorTypes);
     $_state.addAttribute("fun", fun);
 $_state.addAttribute("cast", cast);
-    $_state.addAttributes(attributes);
-    $_state.addAttribute(
-      "operand_segment_sizes",
-      $_builder.getI32VectorAttr({
-        static_cast<int32_t>(inputs.size()),
-        static_cast<int32_t>(outputs.size())}));
-    createAndFillStructuredOpRegion<ElemwiseUnaryOp>(
-      $_builder,
-      $_state,
-      TypeRange(inputs),
-      TypeRange(outputs));
+    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
+      attributes, ElemwiseUnaryOp::getRegionBuilder());
   }]>
 
     ];
@@ -273,44 +193,16 @@ DefaultValuedAttr<TypeFnAttr, "TypeFn::cast_signed">:$cast
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<ElemwiseBinaryOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, ElemwiseBinaryOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<ElemwiseBinaryOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, ElemwiseBinaryOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -327,22 +219,10 @@ DefaultValuedAttr<TypeFnAttr, "TypeFn::cast_signed">:$cast
        "ValueRange":$outputs, "Attribute":$fun, "Attribute":$cast,
        CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
   [{
-    $_state.addOperands(inputs);
-    $_state.addOperands(outputs);
-    $_state.addTypes(resultTensorTypes);
     $_state.addAttribute("fun", fun);
 $_state.addAttribute("cast", cast);
-    $_state.addAttributes(attributes);
-    $_state.addAttribute(
-      "operand_segment_sizes",
-      $_builder.getI32VectorAttr({
-        static_cast<int32_t>(inputs.size()),
-        static_cast<int32_t>(outputs.size())}));
-    createAndFillStructuredOpRegion<ElemwiseBinaryOp>(
-      $_builder,
-      $_state,
-      TypeRange(inputs),
-      TypeRange(outputs));
+    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
+      attributes, ElemwiseBinaryOp::getRegionBuilder());
   }]>
 
     ];
@@ -396,44 +276,16 @@ DefaultValuedAttr<TypeFnAttr, "TypeFn::cast_signed">:$cast
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<MatmulOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, MatmulOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<MatmulOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, MatmulOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -450,21 +302,9 @@ DefaultValuedAttr<TypeFnAttr, "TypeFn::cast_signed">:$cast
        "ValueRange":$outputs, "Attribute":$cast,
        CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
   [{
-    $_state.addOperands(inputs);
-    $_state.addOperands(outputs);
-    $_state.addTypes(resultTensorTypes);
     $_state.addAttribute("cast", cast);
-    $_state.addAttributes(attributes);
-    $_state.addAttribute(
-      "operand_segment_sizes",
-      $_builder.getI32VectorAttr({
-        static_cast<int32_t>(inputs.size()),
-        static_cast<int32_t>(outputs.size())}));
-    createAndFillStructuredOpRegion<MatmulOp>(
-      $_builder,
-      $_state,
-      TypeRange(inputs),
-      TypeRange(outputs));
+    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
+      attributes, MatmulOp::getRegionBuilder());
   }]>
 
     ];
@@ -517,44 +357,16 @@ them to the same data type as the accumulator/output.
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<MatmulUnsignedOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, MatmulUnsignedOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<MatmulUnsignedOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, MatmulUnsignedOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -618,44 +430,16 @@ matmul.
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<QuantizedMatmulOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, QuantizedMatmulOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<QuantizedMatmulOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, QuantizedMatmulOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -722,44 +506,16 @@ def Mmt4DOp : LinalgStructuredBase_Op<"mmt4d", !listconcat([AttrSizedOperandSegm
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<Mmt4DOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, Mmt4DOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<Mmt4DOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, Mmt4DOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -821,44 +577,16 @@ them to the same data type as the accumulator/output.
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<BatchMatmulOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, BatchMatmulOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<BatchMatmulOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, BatchMatmulOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -922,44 +650,16 @@ matmul.
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<QuantizedBatchMatmulOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, QuantizedBatchMatmulOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<QuantizedBatchMatmulOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, QuantizedBatchMatmulOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -1021,44 +721,16 @@ them to the same data type as the accumulator/output.
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<MatvecOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, MatvecOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<MatvecOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, MatvecOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -1120,44 +792,16 @@ them to the same data type as the accumulator/output.
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<VecmatOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, VecmatOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<VecmatOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, VecmatOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -1219,44 +863,16 @@ them to the same data type as the accumulator/output.
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<BatchMatvecOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, BatchMatvecOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<BatchMatvecOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, BatchMatvecOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -1318,44 +934,16 @@ them to the same data type as the accumulator/output.
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<DotOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, DotOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<DotOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, DotOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -1417,44 +1005,16 @@ them to the same data type as the accumulator/output.
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<Conv1DOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, Conv1DOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<Conv1DOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, Conv1DOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -1516,44 +1076,16 @@ them to the same data type as the accumulator/output.
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<Conv2DOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, Conv2DOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<Conv2DOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, Conv2DOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -1615,44 +1147,16 @@ them to the same data type as the accumulator/output.
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<Conv3DOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, Conv3DOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<Conv3DOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, Conv3DOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -1716,44 +1220,16 @@ DefaultValuedAttr<RankedI64ElementsAttr<[1]>, "{ static_cast<int64_t>(1) }">:$di
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<Conv1DNwcWcfOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, Conv1DNwcWcfOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<Conv1DNwcWcfOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, Conv1DNwcWcfOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -1770,22 +1246,10 @@ DefaultValuedAttr<RankedI64ElementsAttr<[1]>, "{ static_cast<int64_t>(1) }">:$di
        "ValueRange":$outputs, "Attribute":$strides, "Attribute":$dilations,
        CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
   [{
-    $_state.addOperands(inputs);
-    $_state.addOperands(outputs);
-    $_state.addTypes(resultTensorTypes);
     $_state.addAttribute("strides", strides);
 $_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
-    $_state.addAttribute(
-      "operand_segment_sizes",
-      $_builder.getI32VectorAttr({
-        static_cast<int32_t>(inputs.size()),
-        static_cast<int32_t>(outputs.size())}));
-    createAndFillStructuredOpRegion<Conv1DNwcWcfOp>(
-      $_builder,
-      $_state,
-      TypeRange(inputs),
-      TypeRange(outputs));
+    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
+      attributes, Conv1DNwcWcfOp::getRegionBuilder());
   }]>
 
     ];
@@ -1847,44 +1311,16 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<Conv2DNhwcHwcfOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, Conv2DNhwcHwcfOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<Conv2DNhwcHwcfOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, Conv2DNhwcHwcfOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -1901,22 +1337,10 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
        "ValueRange":$outputs, "Attribute":$strides, "Attribute":$dilations,
        CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
   [{
-    $_state.addOperands(inputs);
-    $_state.addOperands(outputs);
-    $_state.addTypes(resultTensorTypes);
     $_state.addAttribute("strides", strides);
 $_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
-    $_state.addAttribute(
-      "operand_segment_sizes",
-      $_builder.getI32VectorAttr({
-        static_cast<int32_t>(inputs.size()),
-        static_cast<int32_t>(outputs.size())}));
-    createAndFillStructuredOpRegion<Conv2DNhwcHwcfOp>(
-      $_builder,
-      $_state,
-      TypeRange(inputs),
-      TypeRange(outputs));
+    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
+      attributes, Conv2DNhwcHwcfOp::getRegionBuilder());
   }]>
 
     ];
@@ -1979,44 +1403,16 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<Conv2DNhwcHwcfQOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, Conv2DNhwcHwcfQOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<Conv2DNhwcHwcfQOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, Conv2DNhwcHwcfQOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -2033,22 +1429,10 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
        "ValueRange":$outputs, "Attribute":$strides, "Attribute":$dilations,
        CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
   [{
-    $_state.addOperands(inputs);
-    $_state.addOperands(outputs);
-    $_state.addTypes(resultTensorTypes);
     $_state.addAttribute("strides", strides);
 $_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
-    $_state.addAttribute(
-      "operand_segment_sizes",
-      $_builder.getI32VectorAttr({
-        static_cast<int32_t>(inputs.size()),
-        static_cast<int32_t>(outputs.size())}));
-    createAndFillStructuredOpRegion<Conv2DNhwcHwcfQOp>(
-      $_builder,
-      $_state,
-      TypeRange(inputs),
-      TypeRange(outputs));
+    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
+      attributes, Conv2DNhwcHwcfQOp::getRegionBuilder());
   }]>
 
     ];
@@ -2110,44 +1494,16 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<Conv2DNchwFchwOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, Conv2DNchwFchwOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<Conv2DNchwFchwOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, Conv2DNchwFchwOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -2164,22 +1520,10 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
        "ValueRange":$outputs, "Attribute":$strides, "Attribute":$dilations,
        CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
   [{
-    $_state.addOperands(inputs);
-    $_state.addOperands(outputs);
-    $_state.addTypes(resultTensorTypes);
     $_state.addAttribute("strides", strides);
 $_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
-    $_state.addAttribute(
-      "operand_segment_sizes",
-      $_builder.getI32VectorAttr({
-        static_cast<int32_t>(inputs.size()),
-        static_cast<int32_t>(outputs.size())}));
-    createAndFillStructuredOpRegion<Conv2DNchwFchwOp>(
-      $_builder,
-      $_state,
-      TypeRange(inputs),
-      TypeRange(outputs));
+    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
+      attributes, Conv2DNchwFchwOp::getRegionBuilder());
   }]>
 
     ];
@@ -2237,44 +1581,16 @@ DefaultValuedAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<Conv3DNdhwcDhwcfOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, Conv3DNdhwcDhwcfOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<Conv3DNdhwcDhwcfOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, Conv3DNdhwcDhwcfOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -2291,22 +1607,10 @@ DefaultValuedAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static
        "ValueRange":$outputs, "Attribute":$strides, "Attribute":$dilations,
        CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
   [{
-    $_state.addOperands(inputs);
-    $_state.addOperands(outputs);
-    $_state.addTypes(resultTensorTypes);
     $_state.addAttribute("strides", strides);
 $_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
-    $_state.addAttribute(
-      "operand_segment_sizes",
-      $_builder.getI32VectorAttr({
-        static_cast<int32_t>(inputs.size()),
-        static_cast<int32_t>(outputs.size())}));
-    createAndFillStructuredOpRegion<Conv3DNdhwcDhwcfOp>(
-      $_builder,
-      $_state,
-      TypeRange(inputs),
-      TypeRange(outputs));
+    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
+      attributes, Conv3DNdhwcDhwcfOp::getRegionBuilder());
   }]>
 
     ];
@@ -2365,44 +1669,16 @@ DefaultValuedAttr<RankedI64ElementsAttr<[1]>, "{ static_cast<int64_t>(1) }">:$di
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<DepthwiseConv1DNwcWcOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, DepthwiseConv1DNwcWcOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<DepthwiseConv1DNwcWcOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, DepthwiseConv1DNwcWcOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -2419,22 +1695,10 @@ DefaultValuedAttr<RankedI64ElementsAttr<[1]>, "{ static_cast<int64_t>(1) }">:$di
        "ValueRange":$outputs, "Attribute":$strides, "Attribute":$dilations,
        CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
   [{
-    $_state.addOperands(inputs);
-    $_state.addOperands(outputs);
-    $_state.addTypes(resultTensorTypes);
     $_state.addAttribute("strides", strides);
 $_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
-    $_state.addAttribute(
-      "operand_segment_sizes",
-      $_builder.getI32VectorAttr({
-        static_cast<int32_t>(inputs.size()),
-        static_cast<int32_t>(outputs.size())}));
-    createAndFillStructuredOpRegion<DepthwiseConv1DNwcWcOp>(
-      $_builder,
-      $_state,
-      TypeRange(inputs),
-      TypeRange(outputs));
+    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
+      attributes, DepthwiseConv1DNwcWcOp::getRegionBuilder());
   }]>
 
     ];
@@ -2493,44 +1757,16 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<DepthwiseConv2DNhwcHwcOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, DepthwiseConv2DNhwcHwcOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<DepthwiseConv2DNhwcHwcOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, DepthwiseConv2DNhwcHwcOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -2547,22 +1783,10 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
        "ValueRange":$outputs, "Attribute":$strides, "Attribute":$dilations,
        CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
   [{
-    $_state.addOperands(inputs);
-    $_state.addOperands(outputs);
-    $_state.addTypes(resultTensorTypes);
     $_state.addAttribute("strides", strides);
 $_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
-    $_state.addAttribute(
-      "operand_segment_sizes",
-      $_builder.getI32VectorAttr({
-        static_cast<int32_t>(inputs.size()),
-        static_cast<int32_t>(outputs.size())}));
-    createAndFillStructuredOpRegion<DepthwiseConv2DNhwcHwcOp>(
-      $_builder,
-      $_state,
-      TypeRange(inputs),
-      TypeRange(outputs));
+    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
+      attributes, DepthwiseConv2DNhwcHwcOp::getRegionBuilder());
   }]>
 
     ];
@@ -2620,44 +1844,16 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<DepthwiseConv2DNhwcHwcQOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, DepthwiseConv2DNhwcHwcQOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<DepthwiseConv2DNhwcHwcQOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, DepthwiseConv2DNhwcHwcQOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -2674,22 +1870,10 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
        "ValueRange":$outputs, "Attribute":$strides, "Attribute":$dilations,
        CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
   [{
-    $_state.addOperands(inputs);
-    $_state.addOperands(outputs);
-    $_state.addTypes(resultTensorTypes);
     $_state.addAttribute("strides", strides);
 $_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
-    $_state.addAttribute(
-      "operand_segment_sizes",
-      $_builder.getI32VectorAttr({
-        static_cast<int32_t>(inputs.size()),
-        static_cast<int32_t>(outputs.size())}));
-    createAndFillStructuredOpRegion<DepthwiseConv2DNhwcHwcQOp>(
-      $_builder,
-      $_state,
-      TypeRange(inputs),
-      TypeRange(outputs));
+    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
+      attributes, DepthwiseConv2DNhwcHwcQOp::getRegionBuilder());
   }]>
 
     ];
@@ -2747,44 +1931,16 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<DepthwiseConv2DNhwcHwcmOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, DepthwiseConv2DNhwcHwcmOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<DepthwiseConv2DNhwcHwcmOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, DepthwiseConv2DNhwcHwcmOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -2801,22 +1957,10 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
        "ValueRange":$outputs, "Attribute":$strides, "Attribute":$dilations,
        CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
   [{
-    $_state.addOperands(inputs);
-    $_state.addOperands(outputs);
-    $_state.addTypes(resultTensorTypes);
     $_state.addAttribute("strides", strides);
 $_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
-    $_state.addAttribute(
-      "operand_segment_sizes",
-      $_builder.getI32VectorAttr({
-        static_cast<int32_t>(inputs.size()),
-        static_cast<int32_t>(outputs.size())}));
-    createAndFillStructuredOpRegion<DepthwiseConv2DNhwcHwcmOp>(
-      $_builder,
-      $_state,
-      TypeRange(inputs),
-      TypeRange(outputs));
+    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
+      attributes, DepthwiseConv2DNhwcHwcmOp::getRegionBuilder());
   }]>
 
     ];
@@ -2874,44 +2018,16 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<DepthwiseConv2DNhwcHwcmQOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, DepthwiseConv2DNhwcHwcmQOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<DepthwiseConv2DNhwcHwcmQOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, DepthwiseConv2DNhwcHwcmQOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -2928,22 +2044,10 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
        "ValueRange":$outputs, "Attribute":$strides, "Attribute":$dilations,
        CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
   [{
-    $_state.addOperands(inputs);
-    $_state.addOperands(outputs);
-    $_state.addTypes(resultTensorTypes);
     $_state.addAttribute("strides", strides);
 $_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
-    $_state.addAttribute(
-      "operand_segment_sizes",
-      $_builder.getI32VectorAttr({
-        static_cast<int32_t>(inputs.size()),
-        static_cast<int32_t>(outputs.size())}));
-    createAndFillStructuredOpRegion<DepthwiseConv2DNhwcHwcmQOp>(
-      $_builder,
-      $_state,
-      TypeRange(inputs),
-      TypeRange(outputs));
+    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
+      attributes, DepthwiseConv2DNhwcHwcmQOp::getRegionBuilder());
   }]>
 
     ];
@@ -2982,7 +2086,11 @@ def PoolingNhwcSumOp : LinalgStructuredBase_Op<"pooling_nhwc_sum", !listconcat([
     
   let summary = [{ Performs sum pooling. }];
   let description = [{
-    Numeric casting is performed on the input operand, promoting it to the same
+    Layout:
+  * Input: NHWC.
+  * Kernel: HW.
+
+Numeric casting is performed on the input operand, promoting it to the same
 data type as the accumulator/output.
   }];
 
@@ -3001,44 +2109,16 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<PoolingNhwcSumOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, PoolingNhwcSumOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<PoolingNhwcSumOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, PoolingNhwcSumOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -3055,22 +2135,101 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
        "ValueRange":$outputs, "Attribute":$strides, "Attribute":$dilations,
        CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
   [{
-    $_state.addOperands(inputs);
-    $_state.addOperands(outputs);
-    $_state.addTypes(resultTensorTypes);
     $_state.addAttribute("strides", strides);
 $_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
-    $_state.addAttribute(
-      "operand_segment_sizes",
-      $_builder.getI32VectorAttr({
-        static_cast<int32_t>(inputs.size()),
-        static_cast<int32_t>(outputs.size())}));
-    createAndFillStructuredOpRegion<PoolingNhwcSumOp>(
-      $_builder,
-      $_state,
-      TypeRange(inputs),
-      TypeRange(outputs));
+    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
+      attributes, PoolingNhwcSumOp::getRegionBuilder());
+  }]>
+
+    ];
+    let hasCustomAssemblyFormat = 1;
+    let hasFolder = 1;
+    
+
+    let extraClassDeclaration = structuredOpsBaseDecls # [{
+      // Auto-generated.
+      ArrayAttr iterator_types();
+      ArrayAttr indexing_maps();
+      static void regionBuilder(ImplicitLocOpBuilder &b,
+                                Block &block, ArrayRef<NamedAttribute> attrs);
+      static std::function<void(ImplicitLocOpBuilder &,
+                                Block &, ArrayRef<NamedAttribute>)>
+      getRegionBuilder() {
+        return regionBuilder;
+      }
+
+      // Generic methods.
+      static unsigned getNumRegionArgs();
+      std::string getLibraryCallName();
+      
+        bool hasDynamicIndexingMaps();
+        LogicalResult verifyIndexingMapRequiredAttributes();
+      
+    }];
+}
+
+//===----------------------------------------------------------------------===//
+// Op definition for PoolingNchwSumOp
+//===----------------------------------------------------------------------===//
+
+def PoolingNchwSumOp : LinalgStructuredBase_Op<"pooling_nchw_sum", !listconcat([AttrSizedOperandSegments],
+  /*extraInterfaces=*/[LinalgConvolutionOpInterface])> {
+    
+  let summary = [{ Performs sum pooling. }];
+  let description = [{
+    Layout:
+  * Input: NCHW.
+  * Kernel: HW.
+
+Numeric casting is performed on the input operand, promoting it to the same
+data type as the accumulator/output.
+  }];
+
+    let arguments = (ins
+      Variadic<AnyType>:$inputs,
+      Variadic<AnyShaped>:$outputs,
+DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
+DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
+    );
+    let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
+    let regions = (region AnyRegion:$region);
+
+    let skipDefaultBuilders = 1;
+    let builders = [
+      OpBuilder<
+      (ins "ValueRange":$inputs, "ValueRange":$outputs,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, PoolingNchwSumOp::getRegionBuilder());
+      }]>,
+      OpBuilder<
+      (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
+            "ValueRange":$outputs,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, PoolingNchwSumOp::getRegionBuilder());
+      }]>,
+      OpBuilder<
+      (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        $_state.addOperands(operands);
+        $_state.addAttributes(attributes);
+        $_state.addTypes(resultTensorTypes);
+        (void)$_state.addRegion();
+      }]>
+      
+  , OpBuilder<
+  (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
+       "ValueRange":$outputs, "Attribute":$strides, "Attribute":$dilations,
+       CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+  [{
+    $_state.addAttribute("strides", strides);
+$_state.addAttribute("dilations", dilations);
+    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
+      attributes, PoolingNchwSumOp::getRegionBuilder());
   }]>
 
     ];
@@ -3128,44 +2287,16 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<PoolingNhwcMaxOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, PoolingNhwcMaxOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<PoolingNhwcMaxOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, PoolingNhwcMaxOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -3182,22 +2313,10 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
        "ValueRange":$outputs, "Attribute":$strides, "Attribute":$dilations,
        CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
   [{
-    $_state.addOperands(inputs);
-    $_state.addOperands(outputs);
-    $_state.addTypes(resultTensorTypes);
     $_state.addAttribute("strides", strides);
 $_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
-    $_state.addAttribute(
-      "operand_segment_sizes",
-      $_builder.getI32VectorAttr({
-        static_cast<int32_t>(inputs.size()),
-        static_cast<int32_t>(outputs.size())}));
-    createAndFillStructuredOpRegion<PoolingNhwcMaxOp>(
-      $_builder,
-      $_state,
-      TypeRange(inputs),
-      TypeRange(outputs));
+    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
+      attributes, PoolingNhwcMaxOp::getRegionBuilder());
   }]>
 
     ];
@@ -3255,44 +2374,16 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<PoolingNhwcMaxUnsignedOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, PoolingNhwcMaxUnsignedOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<PoolingNhwcMaxUnsignedOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, PoolingNhwcMaxUnsignedOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -3309,22 +2400,10 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
        "ValueRange":$outputs, "Attribute":$strides, "Attribute":$dilations,
        CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
   [{
-    $_state.addOperands(inputs);
-    $_state.addOperands(outputs);
-    $_state.addTypes(resultTensorTypes);
     $_state.addAttribute("strides", strides);
 $_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
-    $_state.addAttribute(
-      "operand_segment_sizes",
-      $_builder.getI32VectorAttr({
-        static_cast<int32_t>(inputs.size()),
-        static_cast<int32_t>(outputs.size())}));
-    createAndFillStructuredOpRegion<PoolingNhwcMaxUnsignedOp>(
-      $_builder,
-      $_state,
-      TypeRange(inputs),
-      TypeRange(outputs));
+    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
+      attributes, PoolingNhwcMaxUnsignedOp::getRegionBuilder());
   }]>
 
     ];
@@ -3382,44 +2461,16 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<PoolingNchwMaxOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, PoolingNchwMaxOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<PoolingNchwMaxOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, PoolingNchwMaxOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -3436,22 +2487,10 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
        "ValueRange":$outputs, "Attribute":$strides, "Attribute":$dilations,
        CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
   [{
-    $_state.addOperands(inputs);
-    $_state.addOperands(outputs);
-    $_state.addTypes(resultTensorTypes);
     $_state.addAttribute("strides", strides);
 $_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
-    $_state.addAttribute(
-      "operand_segment_sizes",
-      $_builder.getI32VectorAttr({
-        static_cast<int32_t>(inputs.size()),
-        static_cast<int32_t>(outputs.size())}));
-    createAndFillStructuredOpRegion<PoolingNchwMaxOp>(
-      $_builder,
-      $_state,
-      TypeRange(inputs),
-      TypeRange(outputs));
+    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
+      attributes, PoolingNchwMaxOp::getRegionBuilder());
   }]>
 
     ];
@@ -3509,44 +2548,16 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<PoolingNhwcMinOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, PoolingNhwcMinOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<PoolingNhwcMinOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, PoolingNhwcMinOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -3563,22 +2574,10 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
        "ValueRange":$outputs, "Attribute":$strides, "Attribute":$dilations,
        CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
   [{
-    $_state.addOperands(inputs);
-    $_state.addOperands(outputs);
-    $_state.addTypes(resultTensorTypes);
     $_state.addAttribute("strides", strides);
 $_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
-    $_state.addAttribute(
-      "operand_segment_sizes",
-      $_builder.getI32VectorAttr({
-        static_cast<int32_t>(inputs.size()),
-        static_cast<int32_t>(outputs.size())}));
-    createAndFillStructuredOpRegion<PoolingNhwcMinOp>(
-      $_builder,
-      $_state,
-      TypeRange(inputs),
-      TypeRange(outputs));
+    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
+      attributes, PoolingNhwcMinOp::getRegionBuilder());
   }]>
 
     ];
@@ -3636,44 +2635,16 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<PoolingNhwcMinUnsignedOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, PoolingNhwcMinUnsignedOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<PoolingNhwcMinUnsignedOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, PoolingNhwcMinUnsignedOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -3690,22 +2661,10 @@ DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static
        "ValueRange":$outputs, "Attribute":$strides, "Attribute":$dilations,
        CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
   [{
-    $_state.addOperands(inputs);
-    $_state.addOperands(outputs);
-    $_state.addTypes(resultTensorTypes);
     $_state.addAttribute("strides", strides);
 $_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
-    $_state.addAttribute(
-      "operand_segment_sizes",
-      $_builder.getI32VectorAttr({
-        static_cast<int32_t>(inputs.size()),
-        static_cast<int32_t>(outputs.size())}));
-    createAndFillStructuredOpRegion<PoolingNhwcMinUnsignedOp>(
-      $_builder,
-      $_state,
-      TypeRange(inputs),
-      TypeRange(outputs));
+    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
+      attributes, PoolingNhwcMinUnsignedOp::getRegionBuilder());
   }]>
 
     ];
@@ -3763,44 +2722,16 @@ DefaultValuedAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<PoolingNdhwcSumOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, PoolingNdhwcSumOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<PoolingNdhwcSumOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, PoolingNdhwcSumOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -3817,22 +2748,10 @@ DefaultValuedAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static
        "ValueRange":$outputs, "Attribute":$strides, "Attribute":$dilations,
        CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
   [{
-    $_state.addOperands(inputs);
-    $_state.addOperands(outputs);
-    $_state.addTypes(resultTensorTypes);
     $_state.addAttribute("strides", strides);
 $_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
-    $_state.addAttribute(
-      "operand_segment_sizes",
-      $_builder.getI32VectorAttr({
-        static_cast<int32_t>(inputs.size()),
-        static_cast<int32_t>(outputs.size())}));
-    createAndFillStructuredOpRegion<PoolingNdhwcSumOp>(
-      $_builder,
-      $_state,
-      TypeRange(inputs),
-      TypeRange(outputs));
+    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
+      attributes, PoolingNdhwcSumOp::getRegionBuilder());
   }]>
 
     ];
@@ -3890,44 +2809,16 @@ DefaultValuedAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<PoolingNdhwcMaxOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, PoolingNdhwcMaxOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<PoolingNdhwcMaxOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, PoolingNdhwcMaxOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -3944,22 +2835,10 @@ DefaultValuedAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static
        "ValueRange":$outputs, "Attribute":$strides, "Attribute":$dilations,
        CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
   [{
-    $_state.addOperands(inputs);
-    $_state.addOperands(outputs);
-    $_state.addTypes(resultTensorTypes);
     $_state.addAttribute("strides", strides);
 $_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
-    $_state.addAttribute(
-      "operand_segment_sizes",
-      $_builder.getI32VectorAttr({
-        static_cast<int32_t>(inputs.size()),
-        static_cast<int32_t>(outputs.size())}));
-    createAndFillStructuredOpRegion<PoolingNdhwcMaxOp>(
-      $_builder,
-      $_state,
-      TypeRange(inputs),
-      TypeRange(outputs));
+    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
+      attributes, PoolingNdhwcMaxOp::getRegionBuilder());
   }]>
 
     ];
@@ -4017,44 +2896,16 @@ DefaultValuedAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<PoolingNdhwcMinOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, PoolingNdhwcMinOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<PoolingNdhwcMinOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, PoolingNdhwcMinOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -4071,22 +2922,10 @@ DefaultValuedAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static
        "ValueRange":$outputs, "Attribute":$strides, "Attribute":$dilations,
        CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
   [{
-    $_state.addOperands(inputs);
-    $_state.addOperands(outputs);
-    $_state.addTypes(resultTensorTypes);
     $_state.addAttribute("strides", strides);
 $_state.addAttribute("dilations", dilations);
-    $_state.addAttributes(attributes);
-    $_state.addAttribute(
-      "operand_segment_sizes",
-      $_builder.getI32VectorAttr({
-        static_cast<int32_t>(inputs.size()),
-        static_cast<int32_t>(outputs.size())}));
-    createAndFillStructuredOpRegion<PoolingNdhwcMinOp>(
-      $_builder,
-      $_state,
-      TypeRange(inputs),
-      TypeRange(outputs));
+    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
+      attributes, PoolingNdhwcMinOp::getRegionBuilder());
   }]>
 
     ];
@@ -4143,44 +2982,16 @@ the value operand, promoting it to the same data type as the output.
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<FillOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, FillOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<FillOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, FillOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -4248,44 +3059,16 @@ the range of the generated random numbers.
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        SmallVector<Type> resultTensorTypes;
-        copy_if(outputs.getTypes(),
-                std::back_inserter(resultTensorTypes),
-                [](Type type) { return type.isa<RankedTensorType>(); });
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        $_state.addAttributes(attributes);
-        createAndFillStructuredOpRegion<FillRng2DOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, FillRng2DOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
       [{
-        $_state.addOperands(inputs);
-        $_state.addOperands(outputs);
-        $_state.addTypes(resultTensorTypes);
-        $_state.addAttributes(attributes);
-        $_state.addAttribute(
-          "operand_segment_sizes",
-          $_builder.getI32VectorAttr({
-            static_cast<int32_t>(inputs.size()),
-            static_cast<int32_t>(outputs.size())}));
-        createAndFillStructuredOpRegion<FillRng2DOp>(
-          $_builder,
-          $_state,
-          TypeRange(inputs),
-          TypeRange(outputs));
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, FillRng2DOp::getRegionBuilder());
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,

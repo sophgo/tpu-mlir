@@ -13,7 +13,7 @@ namespace llvm {
 namespace Intrinsic {
 enum HEXAGONIntrinsics : unsigned {
 // Enum values for intrinsics
-    hexagon_A2_abs = 2505,                            // llvm.hexagon.A2.abs
+    hexagon_A2_abs = 2511,                            // llvm.hexagon.A2.abs
     hexagon_A2_absp,                           // llvm.hexagon.A2.absp
     hexagon_A2_abssat,                         // llvm.hexagon.A2.abssat
     hexagon_A2_add,                            // llvm.hexagon.A2.add

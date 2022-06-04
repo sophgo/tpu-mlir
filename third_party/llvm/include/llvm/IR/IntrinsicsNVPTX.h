@@ -13,7 +13,7 @@ namespace llvm {
 namespace Intrinsic {
 enum NVVMIntrinsics : unsigned {
 // Enum values for intrinsics
-    nvvm_abs_bf16 = 5145,                             // llvm.nvvm.abs.bf16
+    nvvm_abs_bf16 = 5151,                             // llvm.nvvm.abs.bf16
     nvvm_abs_bf16x2,                           // llvm.nvvm.abs.bf16x2
     nvvm_add_rm_d,                             // llvm.nvvm.add.rm.d
     nvvm_add_rm_f,                             // llvm.nvvm.add.rm.f
@@ -451,6 +451,7 @@ enum NVVMIntrinsics : unsigned {
     nvvm_ptr_local_to_gen,                     // llvm.nvvm.ptr.local.to.gen
     nvvm_ptr_shared_to_gen,                    // llvm.nvvm.ptr.shared.to.gen
     nvvm_rcp_approx_ftz_d,                     // llvm.nvvm.rcp.approx.ftz.d
+    nvvm_rcp_approx_ftz_f,                     // llvm.nvvm.rcp.approx.ftz.f
     nvvm_rcp_rm_d,                             // llvm.nvvm.rcp.rm.d
     nvvm_rcp_rm_f,                             // llvm.nvvm.rcp.rm.f
     nvvm_rcp_rm_ftz_f,                         // llvm.nvvm.rcp.rm.ftz.f

@@ -19,7 +19,6 @@
 #include "mlir-c/Registration.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/SmallVector.h"
-#include <pybind11/stl.h>
 
 #include <utility>
 
@@ -504,6 +503,14 @@ PyMlirContext::LiveContextMap &PyMlirContext::getLiveContexts() {
 size_t PyMlirContext::getLiveCount() { return getLiveContexts().size(); }
 
 size_t PyMlirContext::getLiveOperationCount() { return liveOperations.size(); }
+
+size_t PyMlirContext::clearLiveOperations() {
+  for (auto &op : liveOperations)
+    op.second.second->setInvalid();
+  size_t numInvalidated = liveOperations.size();
+  liveOperations.clear();
+  return numInvalidated;
+}
 
 size_t PyMlirContext::getLiveModuleCount() { return liveModules.size(); }
 
@@ -2208,6 +2215,7 @@ void mlir::python::populateIRCore(py::module &m) {
              return ref.releaseObject();
            })
       .def("_get_live_operation_count", &PyMlirContext::getLiveOperationCount)
+      .def("_clear_live_operations", &PyMlirContext::clearLiveOperations)
       .def("_get_live_module_count", &PyMlirContext::getLiveModuleCount)
       .def_property_readonly(MLIR_PYTHON_CAPI_PTR_ATTR,
                              &PyMlirContext::getCapsule)
