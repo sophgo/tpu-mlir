@@ -231,11 +231,15 @@ stride_4D_t BM168x::getGlobalStride(int64_t N, int64_t C, int64_t H,
   return s;
 }
 stride_4D_t BM168x::getLocalStride(int64_t N, int64_t C, int64_t H, int64_t W,
-                                   int fmtBytes) {
+                                   int fmtBytes, bool eu_align) {
   stride_4D_t s;
   s.W = 1;
   s.H = W;
-  s.C = align_up(H * W, get_eu_num(fmtBytes));
+  if (eu_align) {
+    s.C = align_up(H * W, get_eu_num(fmtBytes));
+  } else {
+    s.C = H * W;
+  }
   s.N = ceiling_func(C, get_npu_num()) * s.C;
   return s;
 }
@@ -302,6 +306,7 @@ void BM168x::load_functions() {
   CAST_FUNCTION(allow_atomic_cmodel_assert);
   CAST_FUNCTION(forbid_atomic_cmodel_assert);
   CAST_FUNCTION(tensor_stride_move_gen_cmd);
+  CAST_FUNCTION(tensor_compact_move_gen_cmd);
   CAST_FUNCTION(set_total_id_ptr);
 }
 

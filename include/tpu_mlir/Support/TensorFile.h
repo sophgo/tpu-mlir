@@ -280,8 +280,6 @@ public:
     }
 
     cnpy::npz_save_all(filename, map);
-
-    int ret = cnt_add + cnt_del;
     cnt_add = 0;
     cnt_del = 0;
     return;

@@ -28,7 +28,7 @@ def model_inference(inputs: dict, model_file: str) -> dict:
         i.data[:] = inputs[i.name]
     net.forward()
     for i in net.outputs:
-        outputs[i.name] = i.data
+        outputs[i.name] = np.array(i.data)
     return outputs
 
 def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True) -> dict:

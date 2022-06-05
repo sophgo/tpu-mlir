@@ -36,7 +36,7 @@ int64_t tpu::LoadOp::getBufferSize_bm1686(int64_t out_n, int64_t out_c,
 
 void tpu::LoadOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
   char prefix[64];
-  CMD_ID_NODE *pid_node = (CMD_ID_NODE *)BM1686::instance().gdma_node;
+  auto pid_node = (CMD_ID_NODE *)BM1686::instance().gdma_node;
   auto gi = getGroupInfo(n_step, h_step);
   assert(false == gi.overstepped);
   sprintf(prefix, "LD_%s", name().data());
@@ -48,7 +48,7 @@ void tpu::LoadOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
   Module::getNCHW(output(), N, C, H, W);
   auto g_stride = BM1686::instance().getGlobalStride(N, C, H, W);
   auto s_stride = BM1686::instance().getLocalStride(gi.n_slice, C, gi.h_slice,
-                                                    W, fmt_bytes);
+                                                    W, fmt_bytes, gi.eu_align);
   auto g_addr = Module::getAddress(input());
   int64_t g_offset =
       (gi.n_idx * g_stride.N + gi.h_idx * g_stride.H) * fmt_bytes;

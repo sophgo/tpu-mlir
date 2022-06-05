@@ -135,6 +135,8 @@ class TensorCompare():
       similarities["close_order"] = order
       return (True, self.CLOSE, similarities, None)
 
+    d1[np.isnan(d1)] = 0.0
+    d2[np.isnan(d2)] = 0.0
     # check similarity
     # cosine similarity
     # cosine_similarity_my = self.cosine_similarity(d1.flatten(), d2.flatten())
@@ -144,7 +146,10 @@ class TensorCompare():
     m = (d1+d2)/2
     ed = self.euclidean_distance(d1.flatten(), d2.flatten())
     sr = self.square_rooted(m.flatten())
-    euclidean_similarity = 1 - ed / sr
+    if (np.isinf(ed) or np.isinf(sr)):
+      euclidean_similarity = 0.0
+    else:
+      euclidean_similarity = 1 - ed / sr
 
     sqnr = self.sqnr_similarity(d1, d2)
 

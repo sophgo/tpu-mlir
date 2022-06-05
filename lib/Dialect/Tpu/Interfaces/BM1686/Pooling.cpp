@@ -227,7 +227,7 @@ void tpu::MaxPoolOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
   sec_info.h_slice = in_gi.h_slice;
   sec_info.h_idx = in_gi.h_idx;
   sec_info.is_h_split =
-      (in_gi.h_idx == 0 && (in_gi.h_idx + in_gi.h_slice) == ih);
+      !(in_gi.h_idx == 0 && (in_gi.h_idx + in_gi.h_slice) == ih);
   sec_info.w_slice = iw;
   sec_info.out_n_slice = gi.n_slice;
   sec_info.out_h_slice = gi.h_slice;
@@ -245,12 +245,13 @@ void tpu::AvgPoolOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
   auto op = getOperation();
   auto input_spec = BM1686::get_input_local_spec(op);
   auto output_spec = BM1686::get_output_local_spec(op);
+  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   pooling_common_spec_t spec;
   memset(&spec, 0, sizeof(spec));
   spec.kh = kh;
   spec.kw = kw;
-  spec.pad_h_t = pt;
-  spec.pad_h_b = pb;
+  spec.pad_h_t = (in_gi.h_idx == 0 ? pt : 0);
+  spec.pad_h_b = (in_gi.h_idx + in_gi.h_slice == ih ? pb : 0);
   spec.pad_w_l = pl;
   spec.pad_w_r = pr;
   spec.stride_h = sh;
@@ -264,7 +265,6 @@ void tpu::AvgPoolOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
   spec.relu_upper_limit = 0;
   spec.ceil_mode = 0;
   spec.round_mode = ROUND_UP;
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   auto gi = getGroupInfo(n_step, h_step);
   local_sec_info_t sec_info;
   memset(&sec_info, 0, sizeof(sec_info));
@@ -272,7 +272,7 @@ void tpu::AvgPoolOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
   sec_info.h_slice = in_gi.h_slice;
   sec_info.h_idx = in_gi.h_idx;
   sec_info.is_h_split =
-      (in_gi.h_idx == 0 && (in_gi.h_idx + in_gi.h_slice) == ih);
+      !(in_gi.h_idx == 0 && (in_gi.h_idx + in_gi.h_slice) == ih);
   sec_info.w_slice = iw;
   sec_info.out_n_slice = gi.n_slice;
   sec_info.out_h_slice = gi.h_slice;
@@ -291,12 +291,13 @@ void tpu::MaxPoolOp::codegen_local_float_bm1686(int64_t n_step,
   auto op = getOperation();
   auto input_spec = BM1686::get_input_local_spec(op);
   auto output_spec = BM1686::get_output_local_spec(op);
+  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   pooling_common_spec_t spec;
   memset(&spec, 0, sizeof(spec));
   spec.kh = kh;
   spec.kw = kw;
-  spec.pad_h_t = pt;
-  spec.pad_h_b = pb;
+  spec.pad_h_t = (in_gi.h_idx == 0 ? pt : 0);
+  spec.pad_h_b = (in_gi.h_idx + in_gi.h_slice == ih ? pb : 0);
   spec.pad_w_l = pl;
   spec.pad_w_r = pr;
   spec.stride_h = sh;
@@ -310,7 +311,7 @@ void tpu::MaxPoolOp::codegen_local_float_bm1686(int64_t n_step,
   spec.relu_upper_limit = 0;
   spec.ceil_mode = 0;
   spec.round_mode = ROUND_UP;
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+
   auto gi = getGroupInfo(n_step, h_step);
   local_sec_info_t sec_info;
   memset(&sec_info, 0, sizeof(sec_info));
@@ -318,7 +319,7 @@ void tpu::MaxPoolOp::codegen_local_float_bm1686(int64_t n_step,
   sec_info.h_slice = in_gi.h_slice;
   sec_info.h_idx = in_gi.h_idx;
   sec_info.is_h_split =
-      (in_gi.h_idx == 0 && (in_gi.h_idx + in_gi.h_slice) == ih);
+      !(in_gi.h_idx == 0 && (in_gi.h_idx + in_gi.h_slice) == ih);
   sec_info.w_slice = iw;
   sec_info.out_n_slice = gi.n_slice;
   sec_info.out_h_slice = gi.h_slice;
@@ -364,7 +365,7 @@ void tpu::AvgPoolOp::codegen_local_float_bm1686(int64_t n_step,
   sec_info.h_slice = in_gi.h_slice;
   sec_info.h_idx = in_gi.h_idx;
   sec_info.is_h_split =
-      (in_gi.h_idx == 0 && (in_gi.h_idx + in_gi.h_slice) == ih);
+      !(in_gi.h_idx == 0 && (in_gi.h_idx + in_gi.h_slice) == ih);
   sec_info.w_slice = iw;
   sec_info.out_n_slice = gi.n_slice;
   sec_info.out_h_slice = gi.h_slice;

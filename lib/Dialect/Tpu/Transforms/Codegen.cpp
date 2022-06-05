@@ -153,6 +153,9 @@ CodegenPass::CreateTensorVector(const std::vector<Value> &values) {
   std::vector<Offset<bmodel::Tensor>> tensor_v;
   for (auto v : values) {
     auto op = v.getDefiningOp();
+    if (auto gOp = dyn_cast<tpu::GroupOp>(op)) {
+      op = gOp.getRefOp(v);
+    }
     auto op_name = Module::getName(op).str();
     auto type = Module::getStorageType(v);
     auto shape = Module::getShape(v);
@@ -254,7 +257,7 @@ void CodegenPass::codegen_for_group(tpu::GroupOp gOp) {
   auto nsecs = gOp.nsecs();
   auto hsecs = gOp.hsecs();
   auto &body = gOp.body().front();
-  int64_t timestep = -1;
+  int64_t timestep = 0;
   bm168x->divide_sync_id();
   for (uint64_t nstep = 0; nstep < nsecs; nstep++) {
     for (uint64_t hstep = 0; hstep < hsecs; hstep++) {

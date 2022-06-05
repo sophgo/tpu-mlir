@@ -20,7 +20,6 @@ void top::MatMulOp::parseParam(int64_t &batch, int64_t &M, int64_t &K,
                                int64_t &N, bool &with_bias, bool &relu) {
   auto i_s = input().getType().cast<RankedTensorType>().getShape();
   auto r_s = right().getType().cast<RankedTensorType>().getShape();
-  auto o_s = output().getType().cast<RankedTensorType>().getShape();
   with_bias = !bias().getType().isa<mlir::NoneType>();
   relu = do_relu();
   auto r_dims = r_s.size();

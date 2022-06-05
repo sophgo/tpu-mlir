@@ -132,7 +132,7 @@ Value top::ConvOp::lowering_fp(llvm::StringRef mode) {
     auto filter_f32 = filterOp.read<float>();
     auto filter_ui16 =
         std::make_shared<std::vector<uint16_t>>(filter_f32->size());
-    for (int i = 0; i < filter_f32->size(); i++) {
+    for (uint64_t i = 0; i < filter_f32->size(); i++) {
       if (mode == Quant::Type::F16) {
         filter_ui16->data()[i] = fp16_alt_from_fp32_value(filter_f32->data()[i]);
       } else {
@@ -158,7 +158,7 @@ Value top::ConvOp::lowering_fp(llvm::StringRef mode) {
       auto bias_fp32 = biasOp.read<float>();
       auto bias_ui16 =
           std::make_shared<std::vector<uint16_t>>(bias_fp32->size());
-      for (int i = 0; i < bias_fp32->size(); i++) {
+      for (uint64_t i = 0; i < bias_fp32->size(); i++) {
         if (mode == Quant::Type::F16) {
           bias_ui16->data()[i] = fp16_alt_from_fp32_value(bias_fp32->data()[i]);
         } else {

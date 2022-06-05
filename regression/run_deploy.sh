@@ -4,13 +4,13 @@ set -ex
 #########################
 # transform to top mlir
 #########################
-INPUT=../resnet18_in_f32_b4.npz
+INPUT=../resnet18_in_f32.npz
 mkdir -p tmp
 pushd tmp
 model_transform.py \
     --model_type onnx \
     --model_name resnet18 \
-    --input_shapes [[4,3,224,224]] \
+    --input_shapes [[1,3,224,224]] \
     --model_def  ../resnet18.onnx \
     --test_input $INPUT \
     --test_result resnet18_top_outputs.npz \
@@ -58,26 +58,26 @@ run_calibration.py resnet18.mlir \
     -o resnet18_cali_table
 
 # to symmetric
-model_deploy.py \
-  --mlir resnet18.mlir \
-  --quantize INT8 \
-  --calibration_table resnet18_cali_table \
-  --chip bm1686 \
-  --test_input $INPUT \
-  --test_reference resnet18_top_outputs.npz \
-  --tolerance 0.97,0.75 \
-  --model resnet18_1686_int8_sym.bmodel
+# model_deploy.py \
+#   --mlir resnet18.mlir \
+#   --quantize INT8 \
+#   --calibration_table resnet18_cali_table \
+#   --chip bm1686 \
+#   --tolerance 0.97,0.75 \
+#   --model resnet18_1686_int8_sym.bmodel
+#   --test_input $INPUT \
+#   --test_reference resnet18_top_outputs.npz \
 
 # to asymmetric
-model_deploy.py \
-  --mlir resnet18.mlir \
-  --quantize INT8 \
-  --asymmetric \
-  --calibration_table resnet18_cali_table \
-  --chip bm1686 \
-  --test_input $INPUT \
-  --test_reference resnet18_top_outputs.npz \
-  --tolerance 0.97,0.75 \
-  --model resnet18_1686_int8_asym.bmodel
+# model_deploy.py \
+#   --mlir resnet18.mlir \
+#   --quantize INT8 \
+#   --asymmetric \
+#   --calibration_table resnet18_cali_table \
+#   --chip bm1686 \
+#   --tolerance 0.97,0.75 \
+#   --model resnet18_1686_int8_asym.bmodel
+  # --test_input $INPUT \
+  # --test_reference resnet18_top_outputs.npz \
 
 popd

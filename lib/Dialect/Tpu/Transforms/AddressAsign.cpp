@@ -87,6 +87,7 @@ public:
         gOp.body().walk([&](tpu::StoreOp sOp) {
           auto addr = Module::getAddress(gOp.getResult(idx));
           Module::setAddress(sOp.output(), addr);
+          idx++;
         });
       });
     }

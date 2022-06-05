@@ -46,18 +46,28 @@ group_info_t LocalGenInterface::getGroupInfo(mlir::Operation *op,
   ginfo.buffer_addr = g_param.buffer_addr().getInt();
   ginfo.buffer_size = g_param.buffer_size().getInt();
   ginfo.timestep = g_param.timestep().getInt();
+  ginfo.eu_align = g_param.eu_align().getValue();
   auto n_idx_v = Module::getI64Array(g_param.n_idx());
   auto n_slice_v = Module::getI64Array(g_param.n_slice());
   auto h_idx_v = Module::getI64Array(g_param.h_idx());
   auto h_slice_v = Module::getI64Array(g_param.h_slice());
-  if (n_step >= n_idx_v->size() || h_step >= h_idx_v->size()) {
-    ginfo.overstepped = true;
+  if (n_idx_v->empty() && h_idx_v->empty()) {
+    int64_t n, c, h, w;
+    ginfo.overstepped = !(n_step == 0 && h_step == 0);
+    Module::getNCHW(op->getResult(0), n, c, h, w);
+    ginfo.n_slice = n;
+    ginfo.h_slice = h;
   } else {
-    ginfo.n_idx = n_idx_v->at(n_step);
-    ginfo.n_slice = n_slice_v->at(n_step);
-    ginfo.h_idx = h_idx_v->at(h_step);
-    ginfo.h_slice = h_slice_v->at(h_step);
-    ginfo.overstepped = false;
+    if (n_step >= (int64_t)n_idx_v->size() ||
+        h_step >= (int64_t)h_idx_v->size()) {
+      ginfo.overstepped = true;
+    } else {
+      ginfo.n_idx = n_idx_v->at(n_step);
+      ginfo.n_slice = n_slice_v->at(n_step);
+      ginfo.h_idx = h_idx_v->at(h_step);
+      ginfo.h_slice = h_slice_v->at(h_step);
+      ginfo.overstepped = false;
+    }
   }
   return ginfo;
 }

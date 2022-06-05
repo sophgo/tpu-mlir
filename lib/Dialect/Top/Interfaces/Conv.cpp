@@ -24,7 +24,6 @@ void top::ConvOp::parseParam(int64_t &n, int64_t &ic, int64_t &ih, int64_t &iw,
                              int64_t &dh, int64_t &dw, bool &is_dw,
                              bool &with_bias, bool &do_relu) {
   auto i_s = input().getType().cast<RankedTensorType>().getShape();
-  auto k_s = filter().getType().cast<RankedTensorType>().getShape();
   auto o_s = output().getType().cast<RankedTensorType>().getShape();
   do_relu = this->do_relu();
   with_bias = !bias().getType().isa<NoneType>();

@@ -44,6 +44,7 @@ struct lmem_info_t {
   lmem_type_t type;
   Value value;
   Operation *op;
+  bool eu_align;
   // slice info
   slice_info_t slice_info;
   bool is_input;  // input tensor
@@ -51,9 +52,10 @@ struct lmem_info_t {
   // init
   explicit lmem_info_t(lmem_type_t type, int64_t id, int64_t start_id,
                        int64_t end_id, Value v = nullptr,
-                       Operation *op = nullptr)
+                       Operation *op = nullptr, bool eu_align = true)
       : addr(-1), size(0), id(id), start_id(start_id), end_id(end_id),
-        type(type), value(v), op(op), is_input(false), is_output(false) {}
+        type(type), value(v), op(op), eu_align(eu_align), is_input(false),
+        is_output(false) {}
 };
 
 typedef std::shared_ptr<std::vector<lmem_info_t>> group_lmem_t;
@@ -85,13 +87,13 @@ protected:
   lmem_info_t *find_max_unalloc_lmem(group_lmem_t group_lmem,
                                      int64_t op_id = -1,
                                      lmem_type_t type = LMEM_ANY);
-  void free_unuse_lmem(group_lmem_t group_lmem, int64_t op_id);
+  void rebuild_alloc_lmem(group_lmem_t group_lmem, int64_t op_id);
   void set_lmem_size(group_lmem_t group_lmem);
   void assign_timestep(group_lmem_t group_lmem);
   void adjust_lmem_id(group_lmem_t group_lmem, int64_t nsecs, int64_t hsecs);
   bool assign_lmem_addr(group_lmem_t group_lmem, int64_t nsecs, int64_t hsecs);
   int64_t alloc_lmem(int64_t size);
-  void free_lmem(int64_t addr);
+  bool is_eu_align(Value opd, Operation *op);
   inline bool is_same_slice(const slice_pair_t &a, const slice_pair_t &b) {
     return a.first == b.first && a.second == b.second;
   }
@@ -103,8 +105,8 @@ protected:
                     const std::vector<mlir::Operation *> &ops);
   tpu::StoreOp CreateStoreOp(lmem_info_t &linfo);
   void UpdateOpLgParam(group_lmem_t group_lmem, lmem_info_t &linfo);
-  tpu::LayerGroup getLgParam(lmem_info_t &linfo, int64_t buffer_addr = 0,
-                             int64_t buffer_size = 0);
+  tpu::LayerGroup getLgParam(lmem_info_t &linfo, int64_t timestep,
+                             int64_t buffer_addr = 0, int64_t buffer_size = 0);
   bool need_none(group_lmem_t group_lmem);
   void buildGroupOp(group_lmem_t group_lmem);
 
@@ -118,6 +120,7 @@ protected:
   mlir::MLIRContext *ctx;
   Operation *current_op;
   Block *body;
+  int64_t MAX_ID;
 };
 
 } // namespace tpu
