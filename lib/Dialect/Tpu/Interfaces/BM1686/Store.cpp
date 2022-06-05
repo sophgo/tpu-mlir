@@ -42,7 +42,7 @@ void tpu::StoreOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
   Module::getNCHW(output(), N, C, H, W);
   auto g_stride = BM1686::instance().getGlobalStride(N, C, H, W);
   auto s_stride = BM1686::instance().getLocalStride(gi.n_slice, C, gi.h_slice,
-                                                    W, fmt_bytes);
+                                                    W, fmt_bytes, gi.eu_align);
   auto g_addr = Module::getAddress(output());
   int64_t g_offset =
       (gi.n_idx * g_stride.N + gi.h_idx * g_stride.H) * fmt_bytes;

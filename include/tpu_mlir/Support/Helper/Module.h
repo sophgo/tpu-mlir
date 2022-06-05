@@ -86,13 +86,7 @@ struct Module {
   static inline llvm::StringRef getName(ModuleOp module) {
     return module->getAttrOfType<StringAttr>(Attr::NAME).getValue();
   }
-  static inline llvm::StringRef getName(Operation *op) {
-    if (auto module = dyn_cast<ModuleOp>(op)) {
-      return getName(module);
-    }
-    assert(op->hasAttr("name"));
-    return op->getAttrOfType<StringAttr>("name").getValue();
-  }
+  static llvm::StringRef getName(Operation *op);
   static void getInputsOutputs(ModuleOp module, std::vector<Value> &inputs,
                                std::vector<Value> &outputs);
   static void getInputsOutputs(func::CallOp call, std::vector<Value> &inputs,

@@ -27,6 +27,7 @@ lmem_info_t *GroupOps::find_lmem_info(group_lmem_t group_lmem, mlir::Value v) {
   }
   return nullptr;
 }
+
 lmem_info_t *GroupOps::find_lmem_info(group_lmem_t group_lmem,
                                       mlir::Operation *op) {
   if (group_lmem == nullptr || op == nullptr) {
@@ -51,6 +52,15 @@ bool GroupOps::isWeightValue(Value v) {
   return false;
 }
 
+bool GroupOps::is_eu_align(Value opd, Operation *op) {
+  if (auto castOp = dyn_cast<tpu::ConvOp>(op)) {
+    if (opd == castOp.filter() || opd == castOp.bias()) {
+      return false;
+    }
+  }
+  return true;
+}
+
 group_lmem_t GroupOps::list_lmems(int64_t start_idx, int64_t end_idx) {
   assert(end_idx > start_idx);
   int64_t id = 0;
@@ -68,7 +78,8 @@ group_lmem_t GroupOps::list_lmems(int64_t start_idx, int64_t end_idx) {
           continue;
         }
         if (isa<top::WeightOp>(in_op_)) {
-          lmem_info_t li(LMEM_WEIGHT, id, op_id, op_id, opd, in_op_);
+          auto eu_align = is_eu_align(opd, op);
+          lmem_info_t li(LMEM_WEIGHT, id, op_id, op_id, opd, in_op_, eu_align);
           lmems->emplace_back(li);
           id++;
           continue;
@@ -110,6 +121,7 @@ group_lmem_t GroupOps::list_lmems(int64_t start_idx, int64_t end_idx) {
 
 GroupOps::GroupOps(::mlir::func::FuncOp func_) {
   int id = 1;
+  MAX_ID = llvm::maxIntN(64);
   func = func_;
   ctx = func.getContext();
   auto chip = Module::getChip(Module::getModuleOp(func.getOperation()));
@@ -141,7 +153,6 @@ bool GroupOps::isLgSupport(int64_t op_idx) {
 void GroupOps::buildGroups() {
   int64_t num_ops = all_ops.size();
   int64_t start_idx = 0, end_idx = num_ops - 1;
-  int64_t lmem_start = 0, lmem_end = 0;
   // from end to start search
   while (end_idx >= 0) {
     while (end_idx >= 0) {
@@ -317,7 +328,7 @@ void GroupOps::UpdateOpLgParam(group_lmem_t group_lmem, lmem_info_t &linfo) {
   auto op = linfo.op;
   auto output = find_lmem_info(group_lmem, linfo.value);
   op->setAttr(LocalGenInterface::kLayerGroupAttrName,
-              getLgParam(*output, linfo.addr, linfo.size));
+              getLgParam(*output, linfo.timestep, linfo.addr, linfo.size));
 }
 
 void GroupOps::CreateLoadOp(lmem_info_t &linfo,
@@ -336,7 +347,7 @@ void GroupOps::CreateLoadOp(lmem_info_t &linfo,
   }
   attrs.push_back(builder.getNamedAttr("name", builder.getStringAttr(name)));
   attrs.push_back(builder.getNamedAttr(LocalGenInterface::kLayerGroupAttrName,
-                                       getLgParam(linfo)));
+                                       getLgParam(linfo, linfo.timestep)));
   if (current_op != nullptr) {
     builder.setInsertionPointAfter(current_op);
   } else {
@@ -362,7 +373,7 @@ StoreOp GroupOps::CreateStoreOp(lmem_info_t &linfo) {
   std::string name = "store_" + Module::getName(outputOp).str();
   attrs.push_back(builder.getNamedAttr("name", builder.getStringAttr(name)));
   attrs.push_back(builder.getNamedAttr(LocalGenInterface::kLayerGroupAttrName,
-                                       getLgParam(linfo)));
+                                       getLgParam(linfo, linfo.timestep)));
   builder.setInsertionPointAfter(current_op);
   auto storeOp = builder.create<tpu::StoreOp>(func.getLoc(), output.getType(),
                                               ArrayRef<Value>{operands},
@@ -371,8 +382,8 @@ StoreOp GroupOps::CreateStoreOp(lmem_info_t &linfo) {
   return storeOp;
 }
 
-LayerGroup GroupOps::getLgParam(lmem_info_t &linfo, int64_t buffer_addr,
-                                int64_t buffer_size) {
+LayerGroup GroupOps::getLgParam(lmem_info_t &linfo, int64_t timestep,
+                                int64_t buffer_addr, int64_t buffer_size) {
   auto builder = OpBuilder(ctx);
   auto si = linfo.slice_info;
   std::vector<int64_t> h_idxs;
@@ -394,10 +405,11 @@ LayerGroup GroupOps::getLgParam(lmem_info_t &linfo, int64_t buffer_addr,
       builder.getI64IntegerAttr(linfo.addr),
       builder.getI64IntegerAttr(linfo.size),
       builder.getI64IntegerAttr(buffer_addr),
-      builder.getI64IntegerAttr(buffer_size), builder.getI64ArrayAttr(h_idxs),
+      builder.getI64IntegerAttr(buffer_size),
+      builder.getBoolAttr(linfo.eu_align), builder.getI64ArrayAttr(h_idxs),
       builder.getI64ArrayAttr(h_slices), builder.getI64ArrayAttr(n_idxs),
-      builder.getI64ArrayAttr(n_slices),
-      builder.getI64IntegerAttr(linfo.timestep), ctx);
+      builder.getI64ArrayAttr(n_slices), builder.getI64IntegerAttr(timestep),
+      ctx);
 }
 
 group_lmem_t GroupOps::CreateGroup(int64_t start_idx, int64_t end_idx,
@@ -519,7 +531,6 @@ bool GroupOps::backward_from_tensor(group_lmem_t group_lmem,
     }
   }
   auto op = linfo->value.getDefiningOp();
-  auto op_info = find_lmem_info(group_lmem, op);
   auto lg_op = cast<LocalGenInterface>(op);
   std::vector<slice_pair_t> slice_n;
   std::vector<slice_pair_t> slice_h;
@@ -601,10 +612,11 @@ void GroupOps::set_lmem_size(group_lmem_t group_lmem) {
   int64_t n, c, h, w, slice_n, slice_h;
   for (auto &linfo : *group_lmem) {
     if (LMEM_WEIGHT == linfo.type) {
-      linfo.size = bm168x->get_weight_lmem_bytes(linfo.value);
+      linfo.size = bm168x->get_weight_lmem_bytes(linfo.value, linfo.eu_align);
     } else if (LMEM_TENSOR == linfo.type) {
       get_max_slice_nh(linfo, slice_n, slice_h);
-      linfo.size = bm168x->get_tensor_lmem_bytes(linfo.value, slice_n, slice_h);
+      linfo.size = bm168x->get_tensor_lmem_bytes(linfo.value, slice_n, slice_h,
+                                                 linfo.eu_align);
     }
   }
   for (auto &linfo : *group_lmem) {
@@ -647,7 +659,7 @@ void GroupOps::adjust_lmem_id(group_lmem_t group_lmem, int64_t nsecs,
   for (auto &linfo : *group_lmem) {
     if (linfo.type == LMEM_WEIGHT && no_slice == false) {
       // ajust weight end
-      linfo.end_id = -1;
+      linfo.end_id = MAX_ID;
     }
     if (linfo.type == LMEM_OPERATION) {
       // get op pos
@@ -705,15 +717,14 @@ group_lmem_t GroupOps::CreateGroupBySecs(int64_t start_idx, int64_t end_idx,
 lmem_info_t *GroupOps::find_max_unalloc_lmem(group_lmem_t group_lmem,
                                              int64_t op_id, lmem_type_t type) {
   int64_t size = 0;
-  int64_t term = 0;
+  int64_t term = -1;
   lmem_info_t *p_li = nullptr;
   for (auto &linfo : *group_lmem) {
-    if (linfo.addr != -1) {
+    if (linfo.addr != -1 || linfo.size == 0) {
       continue;
     }
     if (op_id >= 0) {
-      if (linfo.start_id > op_id ||
-          (linfo.end_id < op_id && linfo.end_id != -1)) {
+      if (linfo.start_id > op_id || linfo.end_id < op_id) {
         continue;
       }
     }
@@ -723,8 +734,7 @@ lmem_info_t *GroupOps::find_max_unalloc_lmem(group_lmem_t group_lmem,
       }
     }
     auto term_ = linfo.end_id - linfo.start_id;
-    if ((term_ < 0 && term >= 0) || ((term_ * term) >= 0 && term_ > term) ||
-        (term_ == term && linfo.size > size)) {
+    if (term_ > term || (term_ == term && linfo.size > size)) {
       term = term_;
       size = linfo.size;
       p_li = &linfo;
@@ -758,7 +768,7 @@ bool GroupOps::assign_lmem_addr(group_lmem_t group_lmem, int64_t nsecs,
     }
   }
   for (auto op_id : op_ids) {
-    free_unuse_lmem(group_lmem, op_id);
+    rebuild_alloc_lmem(group_lmem, op_id);
     lmem_info_t *p_li = nullptr;
     do {
       p_li = find_max_unalloc_lmem(group_lmem, op_id);
@@ -809,24 +819,22 @@ int64_t GroupOps::alloc_lmem(int64_t size) {
   return -1;
 }
 
-void GroupOps::free_lmem(int64_t addr) {
-  for (auto it = allocated_lmems.begin(); it != allocated_lmems.end(); ++it) {
-    if (it->first == addr) {
-      allocated_lmems.erase(it);
-      return;
-    }
-  }
-}
-
-void GroupOps::free_unuse_lmem(group_lmem_t group_lmem, int64_t op_id) {
+void GroupOps::rebuild_alloc_lmem(group_lmem_t group_lmem, int64_t op_id) {
+  allocated_lmems.clear();
   for (auto &linfo : *group_lmem) {
-    if (linfo.addr == -1 || linfo.end_id == -1) {
-      continue;
-    }
     if (linfo.start_id <= op_id && linfo.end_id >= op_id) {
-      continue;
+      if (linfo.addr == -1 || linfo.size == 0) {
+        continue;
+      }
+      auto it = allocated_lmems.begin();
+      for (; it != allocated_lmems.end(); ++it) {
+        if (linfo.addr < it->first) {
+          break;
+        }
+      }
+      auto pair = addr_pair_t(linfo.addr, linfo.size);
+      allocated_lmems.insert(it, pair);
     }
-    free_lmem(linfo.addr);
   }
 }
 

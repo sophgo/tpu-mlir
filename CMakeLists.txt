@@ -94,7 +94,7 @@ set(MLIR_VERSION "${GIT_SHORT_HASH}:${BUILD_TIME}")
 message(STATUS "nntoolchain version: ${MLIR_VERSION}")
 add_definitions(-DMLIR_VERSION="${MLIR_VERSION}")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Wno-maybe-uninitialized -Wno-unused-result")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Werror -Wno-unused-result")
 add_subdirectory(include)
 add_subdirectory(third_party)
 add_subdirectory(lib)

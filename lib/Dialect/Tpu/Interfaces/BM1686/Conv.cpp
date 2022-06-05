@@ -217,6 +217,14 @@ void tpu::ConvOp::weight_reorder_float_bm1686() {
     dump();
     llvm_unreachable("op type not support");
   }
+
+  // bias op
+  if (with_bias) {
+    auto biasOp = bias().getDefiningOp<top::WeightOp>();
+    int64_t bias_shape[4] = {1, oc, 1, 1};
+    auto new_type = RankedTensorType::get(bias_shape, out_type);
+    bias().setType(new_type);
+  }
 }
 
 // ======================================
@@ -438,7 +446,8 @@ void tpu::ConvOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
   // int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
   //     pl, pr, dh, dw;
   // bool is_dw, with_bias, do_relu;
-  // parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
+  // parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt,
+  // pb,
   //            pl, pr, dh, dw, is_dw, with_bias, do_relu);
   // auto op = getOperation();
   // auto input_spec = BM1686::get_input_local_spec(op);
@@ -512,8 +521,8 @@ void tpu::ConvOp::codegen_local_float_bm1686(int64_t n_step, int64_t h_step) {
   common.stride_h = sh;
   common.stride_w = sw;
   common.groups = g;
-  common.pad_h_t = pt; // judge inner ? (in_gi.h_idx == 0 ? pt : 0);
-  common.pad_h_b = pb; // (in_gi.h_idx + in_gi.h_slice == ih ? pb : 0);
+  common.pad_h_t = (in_gi.h_idx == 0 ? pt : 0);
+  common.pad_h_b = (in_gi.h_idx + in_gi.h_slice == ih ? pb : 0);
   common.pad_w_l = pl;
   common.pad_w_r = pr;
   common.round_mode = ROUND_UP;
@@ -527,7 +536,7 @@ void tpu::ConvOp::codegen_local_float_bm1686(int64_t n_step, int64_t h_step) {
   sec_info.h_slice = in_gi.h_slice;
   sec_info.h_idx = in_gi.h_idx;
   sec_info.is_h_split =
-      (in_gi.h_idx == 0 && (in_gi.h_idx + in_gi.h_slice) == ih);
+      !(in_gi.h_idx == 0 && (in_gi.h_idx + in_gi.h_slice) == ih);
   sec_info.w_slice = iw;
   sec_info.out_n_slice = gi.n_slice;
   sec_info.out_h_slice = gi.h_slice;

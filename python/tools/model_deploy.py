@@ -14,13 +14,15 @@ import numpy as np
 import argparse
 from utils.mlir_shell import *
 from utils.mlir_parser import *
-from tools.model_runner import mlir_inference, onnx_inference, tflite_inference
+from tools.model_runner import mlir_inference, model_inference
 import pymlir
 
 
 def str2list(v):
     files = v.split(',')
     files = [s.strip() for s in files]
+    while files.count('') > 0:
+        files.remove('')
     return files
 
 
@@ -78,7 +80,7 @@ class DeployTool:
                 assert (infile.endswith(".npy"))
                 data = np.load(infile)
                 self.inputs[op.name] = data
-        np.savez(str(self.in_f32_npz), **self.inputs)
+        np.savez(self.in_f32_npz, **self.inputs)
         if len(self.ref_npz) == 0:
             self.ref_npz = self.module_name + "_top_outputs.npz"
             top_outputs = mlir_inference(self.inputs, self.mlir_file)
@@ -90,7 +92,7 @@ class DeployTool:
         np.savez(self.tpu_npz, **tpu_outputs)
         # compare fp32 blobs and quantized tensors with tolerance similarity
         ret = f32_blobs_compare(self.tpu_npz, self.ref_npz, self.tolerance, self.excepts)
-        check_return_value(ret == 0, "accuracy validation of tpu mlir failed")
+        check_return_value(ret == 0, "validation of tpu mlir failed")
 
     def build_model(self):
         ret = mlir_to_model(self.tpu_mlir, self.model, self.final_mlir)
@@ -99,7 +101,12 @@ class DeployTool:
             tool.validate_model()
 
     def validate_model(self):
-        print("TODO: run model by runner")
+        self.model_npz = self.module_name + "_{}_{}_model_outputs.npz".format(
+            self.chip, self.quantize)
+        model_outputs = model_inference(self.inputs, self.model)
+        np.savez(self.model_npz, **model_outputs)
+        ret = f32_blobs_compare(self.model_npz, self.tpu_npz, self.correctness)
+        check_return_value(ret == 0, "validation of model failed")
 
 
 if __name__ == '__main__':

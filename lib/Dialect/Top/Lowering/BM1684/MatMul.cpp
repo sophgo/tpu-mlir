@@ -30,7 +30,6 @@ Value top::MatMulOp::lowering_int8_bm1684() {
   bool with_bias, relu;
   parseParam(batch, M, K, N, with_bias, relu);
   assert(batch == 1); // only for fullyconnected now
-  const int nInputs = op->getNumOperands();
   auto th_output = Quant::getThreshold(output());
   auto th_input = Quant::getThreshold(input());
   auto filterOp = cast<top::WeightOp>(right().getDefiningOp());

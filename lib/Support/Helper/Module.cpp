@@ -354,6 +354,17 @@ func::CallOp Module::getCallOp(ModuleOp module, FuncOp func) {
   return call;
 }
 
+StringRef Module::getName(Operation *op) {
+  if (auto module = dyn_cast<ModuleOp>(op)) {
+    return getName(module);
+  }
+  if (false == op->hasAttr("name")) {
+    op->dump();
+    llvm_unreachable("op has no name!!!");
+  }
+  return op->getAttrOfType<StringAttr>("name").getValue();
+}
+
 void Module::getInputsOutputs(ModuleOp module, std::vector<Value> &inputs,
                               std::vector<Value> &outputs) {
   auto main_func = Module::getMainFuncOp(module);

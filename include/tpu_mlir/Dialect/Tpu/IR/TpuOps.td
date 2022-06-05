@@ -297,6 +297,9 @@ def Tpu_GroupOp:Tpu_BaseOp<"Group"> {
   );
   let results = (outs Variadic<AnyTensor>:$outputs);
   let regions = (region SizedRegion<1>:$body);
+  let extraClassDeclaration = [{
+    mlir::Operation* getRefOp(Value v);
+  }];
 }
 
 def Tpu_YieldOp : Tpu_BaseOp<"Yield", [NoSideEffect,

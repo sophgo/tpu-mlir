@@ -44,14 +44,14 @@ std::shared_ptr<std::vector<float>> WeightOp::read_as_float() {
   } else if (dtype.isF16()) {
     auto data_u16 = read<uint16_t>();
     auto data_f32 = std::make_shared<std::vector<float>>(data_u16->size());
-    for (int i = 0; i < data_u16->size(); i++) {
+    for (uint64_t i = 0; i < data_u16->size(); i++) {
       data_f32->data()[i] = fp16_alt_to_fp32_value(data_u16->data()[i]);
     }
     return data_f32;
   } else if (dtype.isBF16()) {
     auto data_u16 = read<uint16_t>();
     auto data_f32 = std::make_shared<std::vector<float>>(data_u16->size());
-    for (int i = 0; i < data_u16->size(); i++) {
+    for (uint64_t i = 0; i < data_u16->size(); i++) {
       data_f32->data()[i] = bf16_uint16_to_float_simple(data_u16->data()[i]);
     }
     return data_f32;

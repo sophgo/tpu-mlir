@@ -54,7 +54,7 @@ class ModelTransformTool(object):
         np.savez(in_f32_npz, **inputs)
 
         # original model inference to get blobs of all layer
-        ref_outputs = self.model_inference(inputs)
+        ref_outputs = self.origin_inference(inputs)
         ref_npz = self.model_name + '_ref_outputs.npz'
         np.savez(ref_npz, **ref_outputs)
 
@@ -68,7 +68,7 @@ class ModelTransformTool(object):
             raise RuntimeError("validate fail")
 
     @abc.abstractmethod
-    def model_inference(self, inputs: dict) -> dict:
+    def origin_inference(self, inputs: dict) -> dict:
         pass
 
 
@@ -80,7 +80,7 @@ class OnnxModelTransformTool(ModelTransformTool):
         self.input_shapes = input_shapes
         self.converter = OnnxConverter(self.model_name, self.model_def, self.input_shapes)
 
-    def model_inference(self, inputs: dict):
+    def origin_inference(self, inputs: dict):
         return onnx_inference(inputs, self.converter.onnx_file)
 
 
@@ -92,7 +92,7 @@ class TFLiteModelTransformTool(ModelTransformTool):
         self.input_shapes = input_shapes
         self.converter = TFLiteConverter(self.model_name, self.model_def, self.input_shapes)
 
-    def model_inference(self, inputs: dict):
+    def origin_inference(self, inputs: dict):
         return tflite_inference(inputs, self.converter.tflite_file)
 
 
@@ -113,6 +113,8 @@ def str2shape(v):
 def str2list(v):
     files = v.split(',')
     files = [s.strip() for s in files]
+    while files.count('') > 0:
+        files.remove('')
     return files
 
 
@@ -133,7 +135,7 @@ if __name__ == '__main__':
                         default=list(),
                         help="list of input shapes, like:[[2,3],[1,2]]")
     parser.add_argument("--test_input",
-                        default=None,
+                        default="",
                         type=str2list,
                         help="input npy/npz file for inference, "
                         "if has more than one input, join npy with semicolon")

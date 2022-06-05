@@ -171,6 +171,12 @@ typedef void (*tensor_stride_move_gen_cmd)(
     uint32_t dst_N_stride, uint32_t dst_C_stride, uint32_t dst_H_stride,
     uint32_t dst_W_stride, int src_format, int direction, int transpose,
     CMD_ID_NODE *pid_node);
+
+typedef void (*tensor_compact_move_gen_cmd)(
+    int local_mem_start_addr, int local_mem_idx, uint64_t sys_mem_start_addr,
+    int src_N, int src_C, int src_H, int src_W, int src_format, int direction,
+    int transpose, CMD_ID_NODE *pid_node);
+
 typedef void (*set_total_id_ptr)(uint32_t *gdma_total_id_ptr,
                                  uint32_t *bdc_total_id_ptr, void *cmdid_node,
                                  void *gdma_group_id_ptr,
@@ -210,6 +216,7 @@ public:
   allow_atomic_cmodel_assert dl_allow_atomic_cmodel_assert;
   forbid_atomic_cmodel_assert dl_forbid_atomic_cmodel_assert;
   tensor_stride_move_gen_cmd dl_tensor_stride_move_gen_cmd;
+  tensor_compact_move_gen_cmd dl_tensor_compact_move_gen_cmd;
   set_total_id_ptr dl_set_total_id_ptr;
   cmd_id_divide dl_cmd_id_divide;
   cmd_id_merge dl_cmd_id_merge;
@@ -236,7 +243,9 @@ public:
   virtual uint32_t get_bdc_len(int bdc_num, int group_id) = 0;
   virtual uint32_t get_gdma_len(int gdma_num, int group_id) = 0;
   uint64_t get_cmodel_gmem_size() { return 0x100000000ull; }
-  int64_t get_eu_num(int64_t dtype_bytes) { get_eu_bytes() / dtype_bytes; }
+  int64_t get_eu_num(int64_t dtype_bytes) {
+    return get_eu_bytes() / dtype_bytes;
+  }
   virtual int64_t get_n_align(int64_t dtype_bytes) { return 1; }
   int64_t get_lmem_bytes(int64_t n, int64_t c, int64_t h, int64_t w,
                          mlir::Type type, bool eu_align = true,
@@ -244,7 +253,6 @@ public:
   int64_t get_tensor_lmem_bytes(mlir::Value v, int64_t slice_n, int64_t slice_h,
                                 bool eu_align = true);
   int64_t get_weight_lmem_bytes(mlir::Value v, bool eu_align = true);
-
   static DATA_TYPE_T getDataType(mlir::Type type);
   static DATA_TYPE_T getDataType(mlir::Value v);
   static int getGdmaFormat(DATA_TYPE_T data_type);
@@ -263,7 +271,7 @@ public:
   static stride_4D_t getGlobalStride(int64_t N, int64_t C, int64_t H,
                                      int64_t W);
   stride_4D_t getLocalStride(int64_t N, int64_t C, int64_t H, int64_t W,
-                             int fmtBytes);
+                             int fmtBytes, bool eu_align = true);
 
 public:
   std::vector<uint32_t> bdc_buffer;

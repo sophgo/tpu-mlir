@@ -28,7 +28,6 @@ Value top::MatMulOp::lowering_int8_bm1686() {
   bool relu, with_bias;
   parseParam(batch, M, K, N, with_bias, relu);
   assert(batch == 1); // only for fullyconnected now
-  const int nInputs = op->getNumOperands();
   auto filterOp = cast<top::WeightOp>(right().getDefiningOp());
   auto filter_f32 = filterOp.read<float>();
   int64_t in_zp, out_zp;
@@ -39,7 +38,7 @@ Value top::MatMulOp::lowering_int8_bm1686() {
   double w_max = findMaxabs(filter_f32->data(), filter_f32->size());
   double w_scale = w_max / 127.0;
   auto filter_int8 = std::make_shared<std::vector<int8_t>>(filter_f32->size());
-  for (int t = 0; t < filter_f32->size(); t++) {
+  for (uint64_t t = 0; t < filter_f32->size(); t++) {
     filter_int8->data()[t] = Quant::to_int8(filter_f32->data()[t] / w_scale);
   }
 
@@ -125,7 +124,7 @@ Value top::MatMulOp::lowering_fp(llvm::StringRef mode) {
     auto filterOp = cast<top::WeightOp>(right().getDefiningOp());
     auto filter_f32 = filterOp.read<float>();
     auto filter_ui16 = std::make_shared<std::vector<uint16_t>>(filter_f32->size());
-    for (int i = 0; i < filter_f32->size(); i++) {
+    for (uint64_t i = 0; i < filter_f32->size(); i++) {
       if (mode == Quant::Type::F16) {
         filter_ui16->data()[i] = fp16_alt_from_fp32_value(filter_f32->data()[i]);
       } else {
@@ -145,7 +144,7 @@ Value top::MatMulOp::lowering_fp(llvm::StringRef mode) {
       auto biasOp = cast<top::WeightOp>(bias().getDefiningOp());
       auto bias_fp32 = biasOp.read<float>();
       auto bias_ui16 = std::make_shared<std::vector<uint16_t>>(bias_fp32->size());
-      for (int i = 0; i < bias_fp32->size(); i++) {
+      for (uint64_t i = 0; i < bias_fp32->size(); i++) {
         if (mode == Quant::Type::F16) {
           bias_ui16->data()[i] = fp16_alt_from_fp32_value(bias_fp32->data()[i]);
         } else {
