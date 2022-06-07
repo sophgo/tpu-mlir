@@ -396,5 +396,8 @@ class OnnxConverter(BaseConverter):
 
     def convert_reshape_op(self, onnx_node):
         assert (onnx_node.op_type == "Reshape")
-        # TODO: support reshape
-        raise RuntimeError("not support {}".format(onnx_node.op_type))
+        op = self.getOperand(onnx_node.inputs[0])
+        output_shape = self.getShape(onnx_node.name)
+        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+        new_op = self.mlir.create_reshape_op([op], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)

@@ -216,14 +216,14 @@ set(LLVM_HAVE_OPT_VIEWER_MODULES 0)
 set(LLVM_CONFIGURATION_TYPES )
 set(LLVM_ENABLE_SHARED_LIBS OFF)
 
-set(LLVM_DEFAULT_EXTERNAL_LIT "/workspace/third-party/llvm-project/build/./bin/llvm-lit")
+set(LLVM_DEFAULT_EXTERNAL_LIT "${CMAKE_BINARY_DIR}/bin/llvm-lit")
 set(LLVM_LIT_ARGS "-sv")
 
 set(LLVM_HAVE_LIBXAR "")
 
 if(NOT TARGET LLVMSupport)
   include("${LLVM_CMAKE_DIR}/LLVMExports.cmake")
-  
+
 endif()
 
 # By creating intrinsics_gen, omp_gen and acc_gen here, subprojects that depend

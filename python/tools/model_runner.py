@@ -15,7 +15,6 @@ import pymlir
 import pyruntime
 import onnx
 import onnxruntime
-from transform.TFLiteInterpreter import TFLiteInterpreter
 
 def model_inference(inputs: dict, model_file: str) -> dict:
     outputs = dict()
@@ -108,73 +107,40 @@ def tflite_inference(
     use_represent_type: bool = True,
     tf_layout: bool = False,  # if "True" the the layout is nhwc
 ) -> dict:
+    # TFLiteInterpreter is heavy, only import it when needed.
+    from transform.TFLiteInterpreter import TFLiteInterpreter
+
     session = TFLiteInterpreter(
         tflite_file,
         experimental_preserve_all_tensors=dump_all,
     )
 
-    def nhwc2nchw(x):
-        if x.ndim == 4:
-            return x.transpose([0, 3, 1, 2])
-        return x
+    def out_tensor_process(tensor_with_desc):
+        if use_represent_type:
+            tensor = session.to_represent_dat(tensor_with_desc)
+        else:
+            _, tensor = tensor_with_desc
 
-    def nchw2nhwc(x):
-        if x.ndim == 4:
-            return x.transpose([0, 2, 3, 1])
-        return x
-
-    def to_represent_dat(desc, v):
-        quantization_param = desc["quantization_parameters"]
-        scales = quantization_param["scales"]
-        zeros = quantization_param["zero_points"]
-        if not np.issubdtype(v.dtype.type, np.integer):
-            return v
-        try:
-            if len(zeros) == 1:
-                return (v.astype(np.int32) - zeros[0]) * scales[0]
-            if len(zeros) == 0:
-                return v
-            if len(zeros) > 1:
-                shape = np.ones(v.ndim, dtype=np.int64)
-                shape[quantization_param["quantized_dimension"]] = len(zeros)
-                zeros = np.reshape(zeros, shape)
-                scales = np.reshape(scales, shape)
-                return (v.astype(np.int32) - zeros) * scales
-        except:
-            print(desc)
-            raise ValueError()
+        if not tf_layout:
+            if tensor.ndim == 4:
+                return tensor.transpose([0, 3, 1, 2])
+        return tensor
 
     data = {}
     for input in session.inputs:
         name = input["name"]
-        input = inputs[name].astype(input["dtype"])
-        if input_is_nchw:
-            data[name] = nchw2nhwc(input)
-        else:
-            data[name] = input
-    outputs = session.run(**data)
-
-    if tf_layout:
-        layout_fun = lambda v: v
-    else:
-        layout_fun = nhwc2nchw
-
-    if use_represent_type:
-        rtp_fun = to_represent_dat
-    else:
-        rtp_fun = lambda k, v: v
-
-    fm_fun = lambda k, v: rtp_fun(k, layout_fun(v))
+        data[name] = inputs[name].astype(input["dtype"])
+    outputs = session.run(input_is_nchw, **data)
 
     if dump_all:
         return {
-            k["name"]: fm_fun(k, v)
+            k["name"]: out_tensor_process((k, v))
             for k, v in session.get_all_tensors()
             if v is not None
         }
 
     else:
-        return {k["name"]: fm_fun(k, v) for k, v in outputs.items()}
+        return {k["name"]: out_tensor_process((k, v)) for k, v in outputs}
 
 
 
