@@ -80,4 +80,4 @@ class TestTFLiteInterpreter:
         for desc, v in interpreter.get_all_tensors():
             if desc["name"] == "input_1_int8":
                 break
-        assert (v == -13).all()
+            assert (v == -13).all()

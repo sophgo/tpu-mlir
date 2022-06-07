@@ -79,6 +79,11 @@ void Conv::setup(float *input, float *weight, float *bias, float *output, int n,
       prop_kind::forward_inference, algorithm::convolution_direct, src_md,
       filter_md, bias_md, dst_md, strides, dilation, padding_l, padding_r);
 
+  if (bias == nullptr)
+    conv_desc = convolution_forward::desc(
+        prop_kind::forward_inference, algorithm::convolution_direct, src_md,
+        filter_md, dst_md, strides, dilation, padding_l, padding_r);
+
   post_ops ops;
   primitive_attr conv_attr;
 

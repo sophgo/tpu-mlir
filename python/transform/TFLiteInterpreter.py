@@ -48,22 +48,26 @@ class TFLiteInterpreter(TFLiteItp.Interpreter):
         if need_reallocate:
             self.allocate_tensors()
 
-    def run(self, **inputs):
+    def run(self, input_is_nchw=False, **inputs):
+        def nchw2nhwc(x):
+            if x.ndim == 4:
+                return x.transpose([0, 2, 3, 1])
+            return x
 
-        self.reshape(**{k: v.shape for k, v in inputs.items()})
-        for k, v in inputs.items():
+        input_data = inputs
+        if input_is_nchw:
+            input_data = {k: nchw2nhwc(v) for k, v in inputs.items()}
+
+        self.reshape(**{k: v.shape for k, v in input_data.items()})
+        for k, v in input_data.items():
             index = self.name2index[k]
             self.set_tensor(index, v)
 
         self.invoke()
-        output = {}
+        outs = []
         for out in self.get_output_details():
-            name = out["name"]
-            if name in output:
-                warnings.warn("Duplicate tensor name '{}'.".format(name))
-                continue
-            output[name] = self.get_tensor(out["index"])
-        return output
+            outs.append((out, self.get_tensor(out["index"])))
+        return outs
 
     def get_all_tensors(self):
         for t in self.get_tensor_details():
@@ -76,3 +80,27 @@ class TFLiteInterpreter(TFLiteItp.Interpreter):
                     )
                 )
                 yield (t, None)
+
+    def to_represent_dat(self, tensor_with_desc):
+        import numpy as np
+
+        desc, v = tensor_with_desc
+        quantization_param = desc["quantization_parameters"]
+        scales = quantization_param["scales"]
+        zeros = quantization_param["zero_points"]
+        if not np.issubdtype(v.dtype.type, np.integer):
+            return v
+        try:
+            if len(zeros) == 1:
+                return (v.astype(np.int32) - zeros[0]) * scales[0]
+            if len(zeros) == 0:
+                return v
+            if len(zeros) > 1:
+                shape = np.ones(v.ndim, dtype=np.int64)
+                shape[quantization_param["quantized_dimension"]] = len(zeros)
+                zeros = np.reshape(zeros, shape)
+                scales = np.reshape(scales, shape)
+                return (v.astype(np.int32) - zeros) * scales
+        except:
+            print(desc)
+            raise ValueError()

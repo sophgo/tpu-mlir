@@ -64,7 +64,10 @@ class Operation:
                 prev_op = body.operations[j]
                 if prev_op.result == opd:
                     if Operation.type(prev_op) not in [
-                            'tpu.none', 'tpu.load_weight', 'tpu.weight_file'
+                        "tpu.None",
+                        "top.None",
+                        "tpu.load_weight",
+                        "tpu.weight_file",
                     ]:
                         opds.append(Operation.name(prev_op))
         return opds
