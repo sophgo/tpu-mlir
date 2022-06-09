@@ -45,6 +45,6 @@ bias(f32): `[oc]`
 
 #### step 2: 仅改变Shape，不改摆放
 
-filter(f32): `[, oc, ic, kh*kw]`
+filter(f32): `[1, oc, ic, kh*kw]`
 bias(f32): `[1, oc, 1, 1]`
 
