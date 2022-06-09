@@ -1,0 +1,5 @@
+FROM sophgo/sophgo_dev:1.1-ubuntu-18.04
+
+RUN pip3 install --no-cache-dir kaleido plotly
+
+RUN rm -rf /tmp/*
