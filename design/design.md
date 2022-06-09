@@ -95,7 +95,7 @@ tosa定义的op还是太少，没有lrn、layernorm等等op；
 #### 开源后的亮点
 
 1 top层和quant层采用oneDNN和omp推导结果，做验证
-2 工具全部用python，方便使用和维护
+2 工具全部用python，方便使用和维护，以及与第三方应用对接
 3 可以随时更新到llvm最新版本
 
 #### 是否要支持预处理？以及将预处理合并到tpu layer?
