@@ -63,10 +63,10 @@ run_calibration.py resnet18.mlir \
 #   --quantize INT8 \
 #   --calibration_table resnet18_cali_table \
 #   --chip bm1686 \
-#   --tolerance 0.97,0.75 \
-#   --model resnet18_1686_int8_sym.bmodel
 #   --test_input $INPUT \
 #   --test_reference resnet18_top_outputs.npz \
+#   --tolerance 0.97,0.75 \
+#   --model resnet18_1686_int8_sym.bmodel
 
 # to asymmetric
 # model_deploy.py \

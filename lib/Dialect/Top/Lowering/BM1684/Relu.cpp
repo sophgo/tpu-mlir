@@ -19,22 +19,7 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
 Value top::ReluOp::lowering_int8_bm1684() {
-  auto op = getOperation();
-  OpBuilder builder(op);
-  std::vector<Value> operands;
-  const int nInputs = op->getNumOperands();
-  for (auto i = 0; i < nInputs; ++i) {
-    operands.push_back(op->getOperand(i));
-  }
-  std::vector<NamedAttribute> attrs;
-  for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
-  }
-  auto newOp = builder.create<tpu::ReluOp>(op->getLoc(), output().getType(),
-                                           ArrayRef<Value>{operands},
-                                           ArrayRef<NamedAttribute>{attrs});
-  Quant::setQuantInt8Type(newOp.output());
-  return newOp.output();
+  return lowering_common_int8<tpu::ReluOp>(getOperation());
 }
 
 Value top::ReluOp::lowering_f32_bm1684() {

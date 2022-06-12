@@ -16,7 +16,7 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-Value top::BatchNormOp::lowering_int8_bm1686() {
+Value top::BatchNormOp::lowering_int8_bm1686(bool asymetric) {
   llvm_unreachable("BatchNormOp to be supported");
   return nullptr;
 }

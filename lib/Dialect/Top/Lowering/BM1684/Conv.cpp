@@ -83,14 +83,11 @@ Value top::ConvOp::lowering_int8_bm1684() {
       "rshift", builder.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v})));
   attrs.push_back(
       builder.getNamedAttr("with_bias", builder.getBoolAttr(with_bias)));
-  auto newOp = builder.create<tpu::ConvOp>(op->getLoc(), output().getType(),
+  auto newType = Quant::getQuantInt8Type(output());
+  auto newOp = builder.create<tpu::ConvOp>(op->getLoc(), newType,
                                            ArrayRef<Value>{operands},
                                            ArrayRef<NamedAttribute>{attrs});
-  Quant::setQuantInt8Type(newOp.output());
   return newOp.output();
 }
 
-
-Value top::ConvOp::lowering_f32_bm1684() {
-  return lowering_f32_bm1686();
-}
+Value top::ConvOp::lowering_f32_bm1684() { return lowering_f32_bm1686(); }

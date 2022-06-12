@@ -64,8 +64,7 @@ public:
           break;
         }
         if (!isAsymmetric) {
-          //info.min = -info.threshold*128.0/127.0; //这样处理才和ufw cali完全对齐，但实测cos要略低一点点
-          info.min = -info.threshold;
+          info.min = info.min < 0 ? -info.threshold : 0;
           info.max = info.threshold;
         }
         calibration_map[name] = info;

@@ -78,10 +78,10 @@ Value top::MatMulOp::lowering_int8_bm1684() {
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  auto newOp = builder.create<tpu::MatMulOp>(op->getLoc(), output().getType(),
+  auto newType = Quant::getQuantInt8Type(output());
+  auto newOp = builder.create<tpu::MatMulOp>(op->getLoc(), newType,
                                              ArrayRef<Value>{operands},
                                              ArrayRef<NamedAttribute>{attrs});
-  Quant::setQuantInt8Type(newOp.output());
   return newOp.output();
 }
 

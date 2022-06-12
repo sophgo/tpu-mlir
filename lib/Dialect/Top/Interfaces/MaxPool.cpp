@@ -11,6 +11,7 @@
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
@@ -85,7 +86,7 @@ LogicalResult top::MaxPoolOp::inference(InferenceParameter &p) {
   auto pooling = (Pooling *)p.handle;
   pooling->run();
   if (do_relu()) {
-    relu(p.outputs[0], p.outputs[0], Module::getNumElements(output()));
+    function_relu(p.outputs[0], p.outputs[0], Module::getNumElements(output()));
   }
   return success();
 }

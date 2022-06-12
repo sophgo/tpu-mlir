@@ -42,17 +42,11 @@ gdb --args python /work/python/tools/model_runner.py --input resnet18_in_f32.npz
 
 ## 待解决问题
 
-* llvm库精简 (目前从2GB精简到200MB，希望能减到100MB以内)
-
 * docker需要配置成用普通用户权限
 
 * dnnl pool与conv参考matmul优化
 
-* 数据全部按f32存储，后续支持其他类型
-
 * 目前所有op都认为是一个输出，后续支持多输出op ?
-
-* tpuc-opt能否需要实现python版本？
 
 * top的pass只有一个：Fuse Relu到conv和add，其他pass需要补充完整
 
@@ -79,6 +73,10 @@ gdb --args python /work/python/tools/model_runner.py --input resnet18_in_f32.npz
 * 目前1684用batch 4验证，避免在4N存储的细节上花费太多时间；后续需要补上4N的逻辑
 
 * BM前缀是否都需要改成SG前缀？
+
+* 1686改成1684x ?
+
+* conv各种3ic的优化 ？
 
 ## 一些思考
 

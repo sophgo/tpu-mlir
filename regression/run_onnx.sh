@@ -110,7 +110,7 @@ model_runner.py \
 npz_tool.py compare \
     resnet18_int8_outputs_1686_sym.npz \
     resnet18_f32_outputs.npz \
-    --tolerance 0.90,0.54 -v
+    --tolerance 0.95,0.70 -v
 
 # convert f16
 tpuc-opt resnet18.mlir \
@@ -144,5 +144,5 @@ model_runner.py \
 npz_tool.py compare \
     resnet18_bf16_outputs_1686.npz \
     resnet18_f32_outputs.npz \
-    --tolerance 0.99,0.98 -v
+    --tolerance 0.99,0.96 -v
 popd

@@ -31,28 +31,68 @@ reshape_coeff_for_broadcast_channel(std::shared_ptr<std::vector<T>> &coeff,
                                     bool align = false) {
   int64_t n, c, h, w;
   Module::getNCHW(shape, n, c, h, w);
-  if (n != 1 || h != 1 || c <= BM1686::NPU_NUM) {
+  if (n != 1 || h != 1) {
     return;
   }
-  // convert (1, oc, 1, w) to (1, NPU_NUM, 1, DIV_UP(oc, NPU_NUM) * w)
-  int64_t new_c = BM1686::NPU_NUM;
   int type_len = sizeof(T);
-  auto c2w = ceiling_func(c, new_c);
   auto old_w_align = align_up(w, BM1686::instance().get_eu_num(type_len));
-  int new_w = (align ? old_w_align : w) * (c2w - 1) + w;
-  int64_t new_size = new_w * new_c * type_len;
-  auto filter_new = std::make_shared<std::vector<T>>(new_size, 0);
-  for (int i = 0; i < c2w; i++) {
-    for (int j = 0; j < new_c; j++) {
-      for (int k = 0; k < w; k++) {
-        int src_idx = i * new_c * w + j * w + k;
-        int dst_idx = j * new_w + i * (align ? old_w_align : w) + k;
-        filter_new->at(dst_idx) = coeff->at(src_idx);
+  if (c > BM1686::NPU_NUM) {
+    // convert (1, oc, 1, w) to (1, NPU_NUM, 1, DIV_UP(oc, NPU_NUM) * w)
+    int64_t new_c = BM1686::NPU_NUM;
+    auto c2w = ceiling_func(c, new_c);
+    int64_t new_w = (align ? old_w_align : w) * (c2w - 1) + w;
+    auto coeff_new = std::make_shared<std::vector<T>>(new_w * new_c, 0);
+    for (int i = 0; i < c2w; i++) {
+      for (int j = 0; j < new_c; j++) {
+        for (int k = 0; k < w; k++) {
+          int src_idx = i * new_c * w + j * w + k;
+          int dst_idx = j * new_w + i * (align ? old_w_align : w) + k;
+          coeff_new->at(dst_idx) = coeff->at(src_idx);
+        }
+      }
+    }
+    shape = {1, new_c, 1, new_w};
+    coeff = coeff_new;
+  } else if (align) {
+    auto coeff_new = std::make_shared<std::vector<T>>(old_w_align * c, 0);
+    for (int i = 0; i < c; i++) {
+      T *old_ptr = coeff->data() + i * w;
+      T *new_ptr = coeff_new->data() + i * old_w_align;
+      std::copy(old_ptr, old_ptr + w, new_ptr);
+    }
+    shape = {1, c, 1, old_w_align};
+    coeff = coeff_new;
+  }
+}
+
+template <typename T>
+static void filter_reorder(std::shared_ptr<std::vector<T>> &filter,
+                           std::vector<int64_t> &shape) {
+  int64_t oc, ic, kh, kw;
+  Module::getNCHW(shape, oc, ic, kh, kw);
+  auto type_bytes = sizeof(T);
+  int64_t IC_PARALLEL = 64 / type_bytes;
+  auto kernel_hw = kh * kw;
+  int64_t new_ic = ceiling_func(ic, IC_PARALLEL);
+  int64_t new_hw = kernel_hw * IC_PARALLEL;
+  auto filter_new = std::make_shared<std::vector<T>>(oc * new_ic * new_hw, 0);
+  for (int oc_idx = 0; oc_idx < oc; oc_idx++) {
+    for (int ic_idx = 0; ic_idx < new_ic; ic_idx++) {
+      for (int k_idx = 0; k_idx < kernel_hw; k_idx++) {
+        for (int inner = 0; inner < IC_PARALLEL; inner++) {
+          if (ic_idx * IC_PARALLEL + inner >= ic)
+            break;
+          int orig_offset = oc_idx * ic * kh * kw +
+                            (ic_idx * IC_PARALLEL + inner) * kernel_hw + k_idx;
+          int trans_offset = oc_idx * new_ic * new_hw + ic_idx * new_hw +
+                             k_idx * IC_PARALLEL + inner;
+          filter_new->at(trans_offset) = filter->at(orig_offset);
+        }
       }
     }
   }
-  shape = {1, new_c, 1, new_w};
-  coeff = filter_new;
+  filter = filter_new;
+  shape = {1, oc, 1, new_ic * new_hw};
 }
 
 // refer to net_compiler: bool BM1686CoeffArranger::ConvWeightArr(GraphEdge*
@@ -64,40 +104,17 @@ void tpu::ConvOp::weight_reorder_int8_bm1686() {
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
              pl, pr, dh, dw, is_dw, with_bias, relu);
   auto filterOp = filter().getDefiningOp<top::WeightOp>();
-  if (is_dw) {
+  if (is_dw || g > 1) {
     llvm_unreachable("depthwise should support !!");
   }
-  auto elem_type = Module::getStorageType(filter());
-  int64_t IC_PARALLEL = 64;
-  int64_t merge_w = 0;
-  auto type_bytes = elem_type.getIntOrFloatBitWidth() / 8;
-  size_t new_bytes = align_up(ic, IC_PARALLEL) * oc * kh * kw * type_bytes;
-  auto filter_i8 = filterOp.read_as_byte();
-  auto filter_new = std::make_shared<std::vector<uint8_t>>(new_bytes, 0);
-  auto kernel_hw = kh * kw;
-  int64_t new_ic = ceiling_func(ic, IC_PARALLEL);
-  int64_t new_hw = kernel_hw * IC_PARALLEL;
-  for (int oc_idx = 0; oc_idx < oc; oc_idx++) {
-    for (int ic_idx = 0; ic_idx < new_ic; ic_idx++) {
-      for (int k_idx = 0; k_idx < kernel_hw; k_idx++) {
-        for (int inner = 0; inner < IC_PARALLEL; inner++) {
-          if (ic_idx * IC_PARALLEL + inner >= ic)
-            break;
-          int orig_offset = oc_idx * ic * kh * kw +
-                            (ic_idx * IC_PARALLEL + inner) * kernel_hw + k_idx;
-          int trans_offset = oc_idx * new_ic * new_hw + ic_idx * new_hw +
-                             k_idx * IC_PARALLEL + inner;
-          filter_new->at(trans_offset) = filter_i8->at(orig_offset);
-        }
-      }
-    }
-  }
-  auto filter_type = filterOp.getType().cast<RankedTensorType>();
-  std::vector<int64_t> filter_shape = {1, oc, 1, new_ic * new_hw};
-  // refer to net_compier: reshape_coeff_for_broadcast_channel(weight, false);
-  reshape_coeff_for_broadcast_channel(filter_new, filter_shape);
+  auto filter_i8 = filterOp.read<int8_t>();
+  std::vector<int64_t> filter_shape = {oc, ic, kh, kw};
+  filter_reorder(filter_i8, filter_shape);
+  reshape_coeff_for_broadcast_channel(filter_i8, filter_shape);
+  int64_t new_oc = filter_shape[1];
 
-  auto filter_w_bytes = filter_shape[3];
+  int64_t merge_w = 0;
+  int64_t filter_w_bytes = filter_shape[3] * sizeof(int8_t);
   merge_w += filter_w_bytes;
   std::shared_ptr<std::vector<int32_t>> bias_new;
   std::vector<int64_t> bias_shape = {1, oc, 1, 1};
@@ -106,6 +123,7 @@ void tpu::ConvOp::weight_reorder_int8_bm1686() {
     auto biasOp = bias().getDefiningOp<top::WeightOp>();
     bias_new = biasOp.read<int32_t>();
     reshape_coeff_for_broadcast_channel(bias_new, bias_shape, false);
+    assert(new_oc == bias_shape[1]);
     bias_w_bytes = bias_shape[3] * sizeof(int32_t);
     merge_w += bias_w_bytes;
   }
@@ -123,17 +141,19 @@ void tpu::ConvOp::weight_reorder_int8_bm1686() {
     quant_data->at(i * 3 + 2) = qtype.getZeroPoint();
   }
   reshape_coeff_for_broadcast_channel(quant_data, quant_shape, true);
-  auto quant_w_bytes = quant_shape[3] * sizeof(int32_t);
+  assert(new_oc == quant_shape[1]);
+  int64_t quant_w_bytes = quant_shape[3] * sizeof(int32_t);
   merge_w += quant_w_bytes;
   // merge requant/bias/filter
   auto new_coeff =
-      std::make_shared<std::vector<int8_t>>(BM1686::NPU_NUM * merge_w, 0);
-  std::vector<int64_t> coeff_shape = {1, BM1686::NPU_NUM, 1, merge_w};
-  for (int i = 0; i < BM1686::NPU_NUM; i++) {
+      std::make_shared<std::vector<int8_t>>(new_oc * merge_w, 0);
+  std::vector<int64_t> coeff_shape = {1, new_oc, 1, merge_w};
+  for (int i = 0; i < new_oc; i++) {
     auto coeff_ptr = new_coeff->data() + i * merge_w;
     auto quant_ptr = quant_data->data() + i * quant_shape[3];
-    auto bias_ptr = with_bias ? bias_new->data() + i * bias_shape[3] : nullptr;
-    auto filter_ptr = filter_new->data() + i * filter_shape[3];
+    auto bias_ptr =
+        with_bias ? (bias_new->data() + i * bias_shape[3]) : nullptr;
+    auto filter_ptr = filter_i8->data() + i * filter_shape[3];
     // copy quant
     memcpy(coeff_ptr, quant_ptr, quant_w_bytes);
     coeff_ptr += quant_w_bytes;
@@ -144,7 +164,8 @@ void tpu::ConvOp::weight_reorder_int8_bm1686() {
     memcpy(coeff_ptr, filter_ptr, filter_w_bytes);
   }
   OpBuilder builder(getContext());
-  auto coeff_type = RankedTensorType::get(coeff_shape, builder.getI8Type());
+  auto elem_type = Module::getStorageType(filter());
+  auto coeff_type = RankedTensorType::get(coeff_shape, elem_type);
   auto coeff_op = top::WeightOp::create(op, "merge", *new_coeff, coeff_type);
   op->removeAttr("rshift");
   op->removeAttr("multiplier");
@@ -154,7 +175,32 @@ void tpu::ConvOp::weight_reorder_int8_bm1686() {
   op->setOperand(2, none.getResult());
 }
 
-void tpu::ConvOp::weight_reorder_float_bm1686() {
+void tpu::ConvOp::weight_reorder_bf16_bm1686() {
+  int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
+      pl, pr, dh, dw;
+  bool is_dw, with_bias, relu;
+  parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
+             pl, pr, dh, dw, is_dw, with_bias, relu);
+  auto filterOp = filter().getDefiningOp<top::WeightOp>();
+  if (is_dw || g > 1) {
+    llvm_unreachable("depthwise should support !!");
+  }
+  auto filter_u16 = filterOp.read<uint16_t>();
+  std::vector<int64_t> filter_shape = {oc, ic, kh, kw};
+  filter_reorder(filter_u16, filter_shape);
+  reshape_coeff_for_broadcast_channel(filter_u16, filter_shape);
+  auto op = getOperation();
+  OpBuilder builder(getContext());
+  auto filter_type = Module::getStorageType(filter());
+  auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
+  auto newFilterOp =
+      top::WeightOp::create(op, "_reordered", *filter_u16, new_filter_type);
+  op->setOperand(1, newFilterOp);
+}
+
+void tpu::ConvOp::weight_reorder_f16_bm1686() { weight_reorder_f16_bm1686(); }
+
+void tpu::ConvOp::weight_reorder_f32_bm1686() {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
   bool is_dw, with_bias, relu;
@@ -362,14 +408,16 @@ void tpu::ConvOp::codegen_global_int8_bm1686() {
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
              pl, pr, dh, dw, is_dw, with_bias, do_relu);
   auto op = getOperation();
+  auto in_qtype = Quant::getUniformQuantizedType(output());
   auto input_spec = BM1686::get_input_global_spec(op);
   auto output_spec = BM1686::get_output_global_spec(op);
-  conv_global_spec_t spec = {0};
+  conv_global_spec_t spec;
+  memset(&spec, 0, sizeof(spec));
   spec.merge_coeff = 2;
   auto &common = spec.common;
   common.input_c = ic;
   common.output_c = oc;
-  common.if_relu = false; // do_relu  = !output sign ?
+  common.if_relu = do_relu;
   common.upper_limit = 0;
   common.kh = kh;
   common.kw = kw;
@@ -383,10 +431,13 @@ void tpu::ConvOp::codegen_global_int8_bm1686() {
   common.pad_w_l = pl;
   common.pad_w_r = pr;
   common.round_mode = ROUND_UP;
+  common.is_asym = true;
   common.has_bias = with_bias;
   common.bias_sign = true;
   common.ipad_is_const = true;
-  common.ipad_value = 0;
+  common.ipad_value = in_qtype.getZeroPoint();
+  common.kzp_is_const = true;
+  common.kzp_value = 0;
   BM1686::instance().call_global_func("backend_api_conv_global", &spec,
                                       sizeof(spec), input_spec->data(),
                                       output_spec->data());
@@ -443,56 +494,59 @@ int64_t tpu::ConvOp::getBufferSize_bm1686(int64_t out_n, int64_t out_c,
 }
 
 void tpu::ConvOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
-  // int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-  //     pl, pr, dh, dw;
-  // bool is_dw, with_bias, do_relu;
-  // parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt,
-  // pb,
-  //            pl, pr, dh, dw, is_dw, with_bias, do_relu);
-  // auto op = getOperation();
-  // auto input_spec = BM1686::get_input_local_spec(op);
-  // auto output_spec = BM1686::get_output_local_spec(op);
-  // auto gi = getGroupInfo(n_step, h_step);
-  // auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
-  // conv_local_param_t p;
-  // memset(&p, 0, sizeof(p));
-  // p.spec.buffer_local_addr = gi.buffer_addr;
-  // p.spec.merge_coeff = 2;
-  // auto &common = p.spec.common;
-  // common.input_c = ic;
-  // common.output_c = oc;
-  // common.if_relu = false; //do_relu  = ! output sign ???
-  // common.upper_limit = 0;
-  // common.kh = kh;
-  // common.kw = kw;
-  // common.dh = dh;
-  // common.dw = dw;
-  // common.stride_h = sh;
-  // common.stride_w = sw;
-  // common.groups = g;
-  // common.pad_h_t = pt; // judge inner ? (in_gi.h_idx == 0 ? pt : 0);
-  // common.pad_h_b = pb; // (in_gi.h_idx + in_gi.h_slice == ih ? pb : 0);
-  // common.pad_w_l = pl;
-  // common.pad_w_r = pr;
-  // common.round_mode = ROUND_UP;
-  // common.has_bias = with_bias;
-  // common.bias_sign = true;
-  // common.ipad_is_const = true;
-  // common.ipad_value = 0;
-  // local_sec_info_t sec_info;
-  // memset(&sec_info, 0, sizeof(sec_info));
-  // sec_info.n_slice = in_gi.n_slice;
-  // sec_info.h_slice = in_gi.h_slice;
-  // sec_info.h_idx = in_gi.h_idx;
-  // sec_info.is_h_split =
-  //     (in_gi.h_idx == 0 && (in_gi.h_idx + in_gi.h_slice) == ih);
-  // sec_info.w_slice = iw;
-  // sec_info.out_n_slice = gi.n_slice;
-  // sec_info.out_h_slice = gi.h_slice;
-  // sec_info.out_w_slice = ow;
-  // BM1686::instance().call_local_func("backend_api_conv_local", &p, sizeof(p),
-  //                                    &sec_info, input_spec->data(),
-  //                                    output_spec->data());
+  int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
+      pl, pr, dh, dw;
+  bool is_dw, with_bias, do_relu;
+  parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
+             pl, pr, dh, dw, is_dw, with_bias, do_relu);
+  auto op = getOperation();
+  auto input_spec = BM1686::get_input_local_spec(op);
+  auto output_spec = BM1686::get_output_local_spec(op);
+  auto gi = getGroupInfo(n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  auto in_qtype = Quant::getUniformQuantizedType(input());
+  conv_local_param_t p;
+  memset(&p, 0, sizeof(p));
+  p.spec.buffer_local_addr = gi.buffer_addr;
+  p.spec.merge_coeff = 2;
+  auto &common = p.spec.common;
+  common.input_c = ic;
+  common.output_c = oc;
+  common.if_relu = do_relu;
+  common.upper_limit = 0;
+  common.kh = kh;
+  common.kw = kw;
+  common.dh = dh;
+  common.dw = dw;
+  common.stride_h = sh;
+  common.stride_w = sw;
+  common.groups = g;
+  common.pad_h_t = in_gi.h_idx == 0 ? pt : 0;
+  common.pad_h_b = in_gi.h_idx + in_gi.h_slice == ih ? pb : 0;
+  common.pad_w_l = pl;
+  common.pad_w_r = pr;
+  common.round_mode = ROUND_UP;
+  common.is_asym = true;
+  common.has_bias = with_bias;
+  common.bias_sign = true;
+  common.ipad_is_const = true;
+  common.ipad_value = in_qtype.getZeroPoint();
+  common.kzp_is_const = true;
+  common.kzp_value = 0;
+  local_sec_info_t sec_info;
+  memset(&sec_info, 0, sizeof(sec_info));
+  sec_info.n_slice = in_gi.n_slice;
+  sec_info.h_slice = in_gi.h_slice;
+  sec_info.h_idx = in_gi.h_idx;
+  sec_info.is_h_split =
+      (in_gi.h_idx == 0 && (in_gi.h_idx + in_gi.h_slice) == ih);
+  sec_info.w_slice = iw;
+  sec_info.out_n_slice = gi.n_slice;
+  sec_info.out_h_slice = gi.h_slice;
+  sec_info.out_w_slice = ow;
+  BM1686::instance().call_local_func("backend_api_conv_local", &p, sizeof(p),
+                                     &sec_info, input_spec->data(),
+                                     output_spec->data());
 }
 
 void tpu::ConvOp::codegen_local_float_bm1686(int64_t n_step, int64_t h_step) {

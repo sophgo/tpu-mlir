@@ -11,6 +11,7 @@
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
@@ -22,6 +23,6 @@ LogicalResult top::ReluOp::init(InferenceParameter &p) { return success(); }
 void top::ReluOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::ReluOp::inference(InferenceParameter &p) {
-  relu(p.inputs[0], p.outputs[0], Module::getNumElements(input()));
+  function_relu(p.inputs[0], p.outputs[0], Module::getNumElements(input()));
   return success();
 }

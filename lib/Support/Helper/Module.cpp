@@ -238,9 +238,8 @@ Module::getF64Array(Optional<ArrayAttr> arrayAttr, int64_t num_elem,
   return std::make_shared<std::vector<double>>(num_elem, default_value);
 }
 
-Type Module::getStorageType(Value v) {
-  auto type = v.getType().cast<RankedTensorType>();
-  auto etype = type.getElementType();
+Type Module::getStorageType(Type type) {
+  auto etype = type.cast<RankedTensorType>().getElementType();
   if (auto qType = etype.dyn_cast<quant::CalibratedQuantizedType>()) {
     return qType.getExpressedType();
   } else if (auto qType = etype.dyn_cast<quant::UniformQuantizedType>()) {
@@ -249,7 +248,7 @@ Type Module::getStorageType(Value v) {
     if (stype.isSignlessInteger()) {
       auto bits = stype.getIntOrFloatBitWidth();
       auto sign = isSign ? IntegerType::Signed : IntegerType::Unsigned;
-      return IntegerType::get(v.getContext(), bits, sign);
+      return IntegerType::get(type.getContext(), bits, sign);
     }
     return stype;
   } else if (auto qType =
@@ -258,6 +257,8 @@ Type Module::getStorageType(Value v) {
   }
   return etype;
 }
+
+Type Module::getStorageType(Value v) { return getStorageType(v.getType()); }
 
 static void getNCHW_align_right(llvm::ArrayRef<int64_t> &shape, int64_t &n,
                                 int64_t &c, int64_t &h, int64_t &w) {

@@ -12,6 +12,7 @@
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Helper/Module.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
@@ -85,6 +86,7 @@ LogicalResult tpu::ConvOp::inference(InferenceParameter &p) {
   // requant
   if (Quant::isUniformQuantized(output())) {
     int64_t n, c, h, w;
+    auto sType = Module::getStorageType(output());
     Module::getNCHW(output(), n, c, h, w);
     auto o_qtype = Quant::getUniformQuantizedType(output());
     auto rshift_v = Module::getI64Array(rshift().getValue());
@@ -99,7 +101,8 @@ LogicalResult tpu::ConvOp::inference(InferenceParameter &p) {
           int offset = (in * c + ic) * h * w + hw;
           auto v = (((int64_t)(p.outputs[0][offset] * multi)) >> shift) +
                    o_qtype.getZeroPoint();
-          p.outputs[0][offset] = Quant::to_int8(v);
+          p.outputs[0][offset] = sType.isUnsignedInteger(8) ? Quant::to_uint8(v)
+                                                            : Quant::to_int8(v);
         }
       }
     }

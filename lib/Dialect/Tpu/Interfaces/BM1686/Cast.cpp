@@ -137,7 +137,7 @@ void tpu::CastOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
     BM1686::instance().call_local_func("backend_api_requant_float_local",
                                        &param, sizeof(param));
   } else {
-    auto qtype = Quant::getUniformQuantizedType(output());
+    auto qtype = Quant::getUniformQuantizedType(input());
     dequant_fp_param_t param = {0};
     param.input_addr = in_gi.out_addr;
     param.output_addr = gi.out_addr;

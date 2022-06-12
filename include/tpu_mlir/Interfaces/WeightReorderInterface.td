@@ -36,7 +36,21 @@ def WeightReorderInterface : OpInterface<"WeightReorderInterface"> {
         /*desc=*/[{
         }],
         /*retType=*/"void",
-        /*methodName=*/"weight_reorder_float_bm1686",
+        /*methodName=*/"weight_reorder_bf16_bm1686",
+        /*args=*/(ins)
+      >,
+      InterfaceMethod<
+        /*desc=*/[{
+        }],
+        /*retType=*/"void",
+        /*methodName=*/"weight_reorder_f16_bm1686",
+        /*args=*/(ins)
+      >,
+      InterfaceMethod<
+        /*desc=*/[{
+        }],
+        /*retType=*/"void",
+        /*methodName=*/"weight_reorder_f32_bm1686",
         /*args=*/(ins)
       >,
       InterfaceMethod<
@@ -49,14 +63,16 @@ def WeightReorderInterface : OpInterface<"WeightReorderInterface"> {
         [{
           auto module = Module::getModuleOp($_op);
           auto chip = Module::getChip(module);
+          auto type = Module::getStorageType($_op.getResult());
           if (chip == Module::Chip::BM1684) {
-            if (Module::isFloatType($_op.getResult())) {
-            } else {
-              $_op.weight_reorder_int8_bm1684();
-            }
+            $_op.weight_reorder_int8_bm1684();
           } else if (chip == Module::Chip::BM1686) {
-            if (Module::isFloatType($_op.getResult())) {
-              $_op.weight_reorder_float_bm1686();
+            if (type.isF32()) {
+              $_op.weight_reorder_f32_bm1686();
+            } else if (type.isF16()) {
+              $_op.weight_reorder_f16_bm1686();
+            } else if (type.isBF16()) {
+              $_op.weight_reorder_bf16_bm1686();
             } else {
               $_op.weight_reorder_int8_bm1686();
             }

@@ -31,33 +31,32 @@ struct Quant {
     static constexpr llvm::StringRef F32 = "F32";
   };
 
+  // clang-format off
+  static bool isCalibratedType(mlir::Type type) {
+    return type.cast<RankedTensorType>().getElementType().isa<quant::CalibratedQuantizedType>();
+  }
+
   static bool isCalibratedType(Value v) {
-    return v.getType()
-        .cast<RankedTensorType>()
-        .getElementType()
-        .isa<quant::CalibratedQuantizedType>();
+    return isCalibratedType(v.getType());
+  }
+
+  static inline bool isUniformQuantized(mlir::Type type) {
+    return type.cast<RankedTensorType>().getElementType().isa<quant::UniformQuantizedType>();
   }
 
   static inline bool isUniformQuantized(Value v) {
-    return v.getType()
-        .cast<RankedTensorType>()
-        .getElementType()
-        .isa<quant::UniformQuantizedType>();
+    return isUniformQuantized(v.getType());
   }
 
   static inline quant::CalibratedQuantizedType getCalibratedType(Value v) {
-    return v.getType()
-        .cast<RankedTensorType>()
-        .getElementType()
-        .cast<quant::CalibratedQuantizedType>();
+    return v.getType().cast<RankedTensorType>().getElementType().cast<quant::CalibratedQuantizedType>();
   }
 
   static inline quant::UniformQuantizedType getUniformQuantizedType(Value v) {
-    return v.getType()
-        .cast<RankedTensorType>()
-        .getElementType()
-        .cast<quant::UniformQuantizedType>();
+    return v.getType().cast<RankedTensorType>().getElementType().cast<quant::UniformQuantizedType>();
   }
+
+  // clang-format on
 
   static inline double getThreshold(Value v) {
     auto type = getCalibratedType(v);
@@ -65,20 +64,24 @@ struct Quant {
     return type.getMax();
   }
 
+  // for asymetric
   static void getScaleAndZeroPoint(int64_t qmin, int64_t qmax, double rmin,
                                    double rmax, double &scale,
                                    int64_t &zeroPoint);
-  static void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint);
+  // for symetric
+  static double getScale(double threshold, bool sign);
+  static void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
+                                   bool asymetric);
 
-  template<typename T>
-  static inline int8_t to_int8(T value) {
+  template <typename T> static inline int8_t to_int8(T value) {
     auto v = std::round(value);
     return v > 127 ? 127 : v < -128 ? -128 : v;
   }
-
-  static void setQuantInt8Type(Value v, bool asymmetric = false,
-                               bool sighType = true);
-  static void setQuantExpressType(Value v);
+  template <typename T> static inline uint8_t to_uint8(T value) {
+    auto v = std::round(value);
+    return v > 255 ? 255 : v < 0 ? 0 : v;
+  }
+  static mlir::Type getQuantInt8Type(Value v, bool asymmetric = false);
 };
 } // namespace helper
 } // namespace tpu_mlir

@@ -44,11 +44,26 @@ void Quant::getScaleAndZeroPoint(int64_t qmin, int64_t qmax, double rmin,
   }
 }
 
-void Quant::getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint) {
+double Quant::getScale(double threshold, bool sign) {
+  if (sign) {
+    return threshold / 127.0;
+  } else {
+    return threshold / 255.0;
+  }
+}
+
+void Quant::getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
+                                 bool asymetric) {
   if (isCalibratedType(v)) {
     auto qtype = getCalibratedType(v);
-    getScaleAndZeroPoint(-128, 127, qtype.getMin(), qtype.getMax(), scale,
-                         zeropoint);
+    auto max = qtype.getMax();
+    auto min = qtype.getMin();
+    if (asymetric) {
+      getScaleAndZeroPoint(-128, 127, min, max, scale, zeropoint);
+    } else {
+      zeropoint = 0;
+      scale = getScale(max, min < 0);
+    }
   } else if (isUniformQuantized(v)) {
     auto qtype = getUniformQuantizedType(v);
     scale = qtype.getScale();
@@ -59,7 +74,7 @@ void Quant::getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint) {
   }
 }
 
-void Quant::setQuantInt8Type(Value v, bool asymmetric, bool signType) {
+mlir::Type Quant::getQuantInt8Type(Value v, bool asymmetric) {
   auto type = v.getType().cast<RankedTensorType>();
   auto ctx = v.getContext();
   auto cali_type = getCalibratedType(v);
@@ -67,35 +82,18 @@ void Quant::setQuantInt8Type(Value v, bool asymmetric, bool signType) {
   auto min = cali_type.getMin();
   double scale;
   int64_t zeropoint = 0;
+  getScaleAndZeroPoint(v, scale, zeropoint, asymmetric);
   int64_t qmin = -128, qmax = 127;
   uint32_t flag = quant::QuantizationFlags::Signed;
-  if (asymmetric) {
-    if (signType == false) {
-      flag = 0;
-      qmin = 0;
-      qmax = 255;
-    }
-    getScaleAndZeroPoint(qmin, qmax, min, max, scale, zeropoint);
-  } else {
-    assert(max == -min); //ufw 1686实现不是完全对称
-    scale = max / 127.0;
+  if (asymmetric == false && min >= 0) {
+    qmin = 0;
+    qmax = 255;
+    flag = 0;
   }
   auto qtype = quant::UniformQuantizedType::get(flag, IntegerType::get(ctx, 8),
                                                 cali_type.getExpressedType(),
                                                 scale, zeropoint, qmin, qmax);
-  auto new_type = RankedTensorType::get(type.getShape(), qtype);
-  v.setType(new_type);
-}
-
-void Quant::setQuantExpressType(Value v) {
-  if (!isUniformQuantized(v)) {
-    return;
-  }
-  auto type = v.getType().cast<RankedTensorType>();
-  auto expresstype =
-      type.getElementType().cast<quant::QuantizedType>().getExpressedType();
-  auto new_type = RankedTensorType::get(type.getShape(), expresstype);
-  v.setType(new_type);
+  return RankedTensorType::get(type.getShape(), qtype);
 }
 
 } // namespace helper
