@@ -39,8 +39,8 @@ Value top::AddOp::lowering_int8_bm1684() {
     auto input = op->getOperand(i);
     operands.push_back(input);
     auto th_input = Quant::getThreshold(input);
-    rshift_v[i] =
-        calRightShiftNumUseCblas(coeff_v[i], th_input, th_output, Quant::BITS_INT8);
+    rshift_v[i] = calRightShiftNumUseCblas(coeff_v[i], th_input, th_output,
+                                           Quant::BITS_INT8);
     float scale = 1.0 * (1 << rshift_v[i]) * th_input / th_output;
     int8_t multiplier_int8 = 0;
     float coeff = coeff_v[i];
@@ -50,14 +50,14 @@ Value top::AddOp::lowering_int8_bm1684() {
   std::vector<NamedAttribute> attrs;
   attrs.push_back(builder.getNamedAttr("name", nameAttr()));
   attrs.push_back(builder.getNamedAttr("do_relu", do_reluAttr()));
-  attrs.push_back(
-      builder.getNamedAttr("multipliers", builder.getI64ArrayAttr(multiplier_v)));
+  attrs.push_back(builder.getNamedAttr("multipliers",
+                                       builder.getI64ArrayAttr(multiplier_v)));
   attrs.push_back(
       builder.getNamedAttr("rshifts", builder.getI64ArrayAttr(rshift_v)));
-  auto newOp = builder.create<tpu::AddOp>(op->getLoc(), output().getType(),
+  auto newType = Quant::getQuantInt8Type(output());
+  auto newOp = builder.create<tpu::AddOp>(op->getLoc(), newType,
                                           ArrayRef<Value>{operands},
                                           ArrayRef<NamedAttribute>{attrs});
-  Quant::setQuantInt8Type(newOp.output());
   return newOp.output();
 }
 

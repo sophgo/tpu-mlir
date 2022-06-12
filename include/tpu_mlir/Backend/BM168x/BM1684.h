@@ -12,6 +12,7 @@
 
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
 
+// clang-format off
 typedef void (*tensor_align_move_gen_cmd)(int local_mem_start_addr, int local_mem_idx, uint64_t sys_mem_start_addr, int src_N, int src_C, int src_H, int src_W, int src_format, int direction, int transpose, CMD_ID_NODE *pid_node);
 typedef void (*general_matrix_move_gen_cmd)(int local_mem_start_addr, int local_mem_idx, uint64_t sys_mem_start_addr, int sec_size, int row_num, int col_num, uint32_t row_stride, int src_format, int direction, int transpose, int result_add, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_conv_forward_local)(int bottom_local_offset, int weight_local_offset, int bias_local_offset, int top_local_offset, int imm_local_offset, int *bottom_dim, int *top_dim, int groups, int kh, int kw, int dh, int dw, int up_pad_h, int down_pad_h, int left_pad_w, int right_pad_w, int stride_h, int stride_w, int using_bias, int result_add, int if_relu, float relu_upper_limit, int unused_ht_for_input_tensor, int unused_hb_for_input_tensor, int unused_wl_for_input_tensor, int unused_wr_for_input_tensor, void *id_node);
@@ -170,6 +171,7 @@ typedef void (*nodechip_global_int2float)(uint64_t bottom_global_offset, uint64_
 typedef void (*nodechip_float2int8_v2)(uint64_t A_global_offset, uint64_t R_global_offset, int input_n, int input_c, int input_h, int input_w, int sign_unsign, TENSOR_STORAGE_MODE stmode, ROUND_MODE_T round_mode, CMD_ID_NODE* id_node);
 typedef void (*nodechip_const_binary_local)(uint32_t bottom0_lo, uint32_t *bottom0_shape, float bottom1_val, uint32_t top_lo, int binary_op, int inversed, int if_relu, float relu_limit, CMD_ID_NODE *pid_node);
 
+// clang-format on
 namespace tpu_mlir {
 namespace backend {
 class BM1684 : public BM168x {
@@ -182,6 +184,7 @@ public:
   // -------------------------------------------------------------------
   // functions from nodechip
   // -------------------------------------------------------------------
+  // clang-format off
   allow_store_cmd dl_allow_store_cmd;
   forbid_store_cmd dl_forbid_store_cmd;
   tensor_align_move_gen_cmd dl_tensor_align_move_gen_cmd;
@@ -341,7 +344,7 @@ public:
   nodechip_global_int2float dl_nodechip_global_int2float;
   nodechip_float2int8_v2 dl_nodechip_float2int8_v2;
   nodechip_const_binary_local dl_nodechip_const_binary_local;
-
+  // clang-format on
 public:
   virtual uint64_t get_gmem_start() override;
   virtual uint64_t get_ctx_start_addr() override;
@@ -363,9 +366,11 @@ public:
   static const int64_t LMEM_BANKS = 8;
   static const int64_t LMEM_BANK_BYTES = LMEM_BYTES / LMEM_BANKS;
   static const int64_t BDC_CMD_ALIGNED_BIT = 7;
-  static const int64_t BDC_CMD_ALIGNED_NUM = (1 << BDC_CMD_ALIGNED_BIT) / sizeof(uint32_t);
+  static const int64_t BDC_CMD_ALIGNED_NUM =
+      (1 << BDC_CMD_ALIGNED_BIT) / sizeof(uint32_t);
   static const int64_t GDMA_CMD_ALIGNED_BIT = 7;
-  static const int64_t GDMA_CMD_ALIGNED_NUM = (1 << GDMA_CMD_ALIGNED_BIT) / sizeof(uint32_t);
+  static const int64_t GDMA_CMD_ALIGNED_NUM =
+      (1 << GDMA_CMD_ALIGNED_BIT) / sizeof(uint32_t);
   static constexpr llvm::StringRef LIB_NAME = "libbackend_1684.so";
 
 protected:

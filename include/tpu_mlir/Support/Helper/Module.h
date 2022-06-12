@@ -65,9 +65,7 @@ struct Module {
   static size_t getBytes(Value v);
   static int64_t getNumElements(Value v);
   static Type getStorageType(Value v);      // storage type
-  static inline bool isFloatType(Value v) { // f32/bf16/f16/...
-    return getStorageType(v).isa<FloatType>();
-  }
+  static Type getStorageType(Type type);
   static llvm::ArrayRef<int64_t> getShape(Value v);
   static inline FuncOp getMainFuncOp(ModuleOp module) {
     return getFuncOp(module, "main");

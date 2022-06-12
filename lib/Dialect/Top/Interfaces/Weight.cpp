@@ -12,7 +12,7 @@
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Helper/Module.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/fp16.h"
+#include "tpu_mlir/Support/Float16.h"
 
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;

@@ -34,6 +34,22 @@ w维度按照requant + bias + filter合并，
 coeff = `[1, 64, 1, w5]`
 令: `w5 = w4 + w3 + w2`
 
+## BF16/F16算子摆放
+
+### Conv2D
+
+#### step 1: 原始摆放
+
+filter(bf16): `[oc, ic, kh, kw]`
+bias(f32): `[oc]`
+
+#### step2 : 仅filter变化
+
+filter(int8): `[1, oc, UP(ic/32), kh*kw*32]` => `[1, oc, 1, w1]`
+令：`w1 = UP(ic/32) * kh * kw * 32`
+
+bias(f32): `[1, oc, 1, 1]`
+
 ## F32算子摆放
 
 ### Conv2D

@@ -13,13 +13,13 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/fp16.h"
+#include "tpu_mlir/Support/Float16.h"
 
 using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
-Value top::MatMulOp::lowering_int8_bm1686() {
+Value top::MatMulOp::lowering_int8_bm1686(bool asymetric) {
   // refer quantize_convlike_layer_int8
   auto op = getOperation();
   OpBuilder builder(op);
@@ -34,8 +34,8 @@ Value top::MatMulOp::lowering_int8_bm1686() {
   auto filter_f32 = filterOp.read<float>();
   int64_t in_zp, out_zp;
   double in_scale, out_scale;
-  Quant::getScaleAndZeroPoint(input(), in_scale, in_zp);
-  Quant::getScaleAndZeroPoint(output(), out_scale, out_zp);
+  Quant::getScaleAndZeroPoint(input(), in_scale, in_zp, asymetric);
+  Quant::getScaleAndZeroPoint(output(), out_scale, out_zp, asymetric);
 
   double w_max = findMaxabs(filter_f32->data(), filter_f32->size());
   double w_scale = w_max / 127.0;
@@ -96,10 +96,10 @@ Value top::MatMulOp::lowering_int8_bm1686() {
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  auto newOp = builder.create<tpu::MatMulOp>(op->getLoc(), output().getType(),
+  auto newType = Quant::getQuantInt8Type(output(), asymetric);
+  auto newOp = builder.create<tpu::MatMulOp>(op->getLoc(), newType,
                                              ArrayRef<Value>{operands},
                                              ArrayRef<NamedAttribute>{attrs});
-  Quant::setQuantInt8Type(newOp.output(), true);
   return newOp.output();
 }
 

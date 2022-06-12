@@ -28,11 +28,10 @@ static LogicalResult check_type(Value v) {
     if (etype.isIntOrFloat()) {
       return success();
     }
-    if (etype.isa<quant::UniformQuantizedType>()) {
+    if (etype.isa<quant::UniformQuantizedType, quant::CalibratedQuantizedType>()) {
       return success();
     }
   }
-  v.dump();
   return failure();
 }
 

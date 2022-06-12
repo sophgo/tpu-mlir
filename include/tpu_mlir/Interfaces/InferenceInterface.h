@@ -13,9 +13,6 @@
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Operation.h"
-#include "omp.h"
-
-//#define DEBUG_TPU_INFER
 
 namespace tpu_mlir {
 struct InferenceParameter {
@@ -23,11 +20,6 @@ struct InferenceParameter {
   std::vector<float *> outputs;
   void *handle = nullptr;
 };
-
-// commond interface
-int omp_schedule(int count);
-
-void relu(float *src, float *dst, int64_t size, mlir::Type elem_type = nullptr);
 
 } // namespace tpu_mlir
 

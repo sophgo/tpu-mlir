@@ -8,21 +8,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-#pragma once
-
-#if defined(__cplusplus) && (__cplusplus >= 201103L)
-#include <cstdint>
-#include <cmath>
-#elif !defined(__OPENCL_VERSION__)
-#include <stdint.h>
-#include <math.h>
-#endif
-
-#ifdef _MSC_VER
-#include <intrin.h>
-#endif
+#include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 #include "bitcasts.h"
+#include <math.h>
+
+namespace tpu_mlir {
 
 /*
  * Convert a 16-bit floating-point number in IEEE half-precision format, in bit
@@ -31,7 +23,7 @@
  *
  * @note The implementation doesn't use any floating-point operations.
  */
-static inline uint32_t fp16_ieee_to_fp32_bits(uint16_t h) {
+uint32_t fp16_ieee_to_fp32_bits(uint16_t h) {
   /*
    * Extend the half-precision floating-point number to 32 bits and shift to the
    * upper part of the 32-bit word:
@@ -129,7 +121,7 @@ static inline uint32_t fp16_ieee_to_fp32_bits(uint16_t h) {
  * mode and no operations on denormals) floating-point operations and bitcasts
  * between integer and floating-point variables.
  */
-static inline float fp16_ieee_to_fp32_value(uint16_t h) {
+float fp16_ieee_to_fp32_value(uint16_t h) {
   /*
    * Extend the half-precision floating-point number to 32 bits and shift to the
    * upper part of the 32-bit word:
@@ -264,7 +256,7 @@ static inline float fp16_ieee_to_fp32_value(uint16_t h) {
  * mode and no operations on denormals) floating-point operations and bitcasts
  * between integer and floating-point variables.
  */
-static inline uint16_t fp16_ieee_from_fp32_value(float f) {
+uint16_t fp16_ieee_from_fp32_value(float f) {
 #if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L) ||              \
     defined(__GNUC__) && !defined(__STRICT_ANSI__)
   const float scale_to_inf = 0x1.0p+112f;
@@ -299,7 +291,7 @@ static inline uint16_t fp16_ieee_from_fp32_value(float f) {
  *
  * @note The implementation doesn't use any floating-point operations.
  */
-static inline uint32_t fp16_alt_to_fp32_bits(uint16_t h) {
+uint32_t fp16_alt_to_fp32_bits(uint16_t h) {
   /*
    * Extend the half-precision floating-point number to 32 bits and shift to the
    * upper part of the 32-bit word:
@@ -385,7 +377,7 @@ static inline uint32_t fp16_alt_to_fp32_bits(uint16_t h) {
  * mode and no operations on denormals) floating-point operations and bitcasts
  * between integer and floating-point variables.
  */
-static inline float fp16_alt_to_fp32_value(uint16_t h) {
+float fp16_alt_to_fp32_value(uint16_t h) {
   /*
    * Extend the half-precision floating-point number to 32 bits and shift to the
    * upper part of the 32-bit word:
@@ -501,7 +493,7 @@ static inline float fp16_alt_to_fp32_value(uint16_t h) {
  * mode and no operations on denormals) floating-point operations and bitcasts
  * between integer and floating-point variables.
  */
-static inline uint16_t fp16_alt_from_fp32_value(float f) {
+uint16_t fp16_alt_from_fp32_value(float f) {
   const uint32_t w = fp32_to_bits(f);
   const uint32_t sign = w & UINT32_C(0x80000000);
   const uint32_t shl1_w = w + w;
@@ -525,13 +517,33 @@ static inline uint16_t fp16_alt_from_fp32_value(float f) {
                          (fp32_to_bits(base) & UINT32_C(0x00000FFF)));
 }
 
-static uint16_t float_to_bf16_uint16_simple(float x) {
+uint16_t float_to_bf16_uint16_simple(float x) {
   unsigned int *p = (unsigned int *)&x;
   return (uint16_t)((*p & 0xFFFF0000) >> 16);
 }
 
-static float bf16_uint16_to_float_simple(uint16_t x) {
+float bf16_uint16_to_float_simple(uint16_t x) {
   unsigned int tmp1 = x;
   tmp1 = tmp1 << 16;
   return *((float *)&tmp1);
 }
+
+void f32_to_f16(float *p_src, float *p_dst, int num) {
+  uint16_t tmp;
+#pragma omp parallel for schedule(static, omp_schedule(num))
+  for (int i = 0; i < num; i++) {
+    tmp = fp16_alt_from_fp32_value(p_src[i]);
+    p_dst[i] = fp16_alt_to_fp32_value(tmp);
+  }
+}
+
+void f32_to_bf16(float *p_src, float *p_dst, int num) {
+  uint16_t tmp;
+#pragma omp parallel for schedule(static, omp_schedule(num))
+  for (int i = 0; i < num; i++) {
+    tmp = float_to_bf16_uint16_simple(p_src[i]);
+    p_dst[i] = bf16_uint16_to_float_simple(tmp);
+  }
+}
+
+} // namespace tpu_mlir

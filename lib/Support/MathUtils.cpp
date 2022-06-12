@@ -9,9 +9,11 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
 #include "mlir/IR/PatternMatch.h"
 #include "float.h"
 #include <map>
+#include "omp.h"
 
 namespace tpu_mlir {
 
@@ -81,22 +83,23 @@ template float findMaxabs<float>(const float *pSrcData, int len);
 template float findMaxabs<int>(const int *pSrcData, int len);
 
 template <typename Dtype>
-void findMinMax(const Dtype *pSrcData, int len, float *minVal, float *maxVal) {
-  float fmin = (float)pSrcData[0];
-  float fmax = (float)pSrcData[0];
-  float dataTmp;
+void findMinMax(const Dtype *pSrcData, int len, Dtype *minVal, Dtype *maxVal) {
+  Dtype fmin = pSrcData[0];
+  Dtype fmax = pSrcData[0];
+  Dtype dataTmp;
   for (int i = 0; i < len; i++) {
-    dataTmp = (float)pSrcData[i];
+    dataTmp = pSrcData[i];
     fmin = dataTmp < fmin ? dataTmp : fmin;
     fmax = dataTmp > fmax ? dataTmp : fmax;
   }
   *minVal = fmin;
   *maxVal = fmax;
 }
+
 template void findMinMax<float>(const float *pSrcData, int len, float *minVal,
                                 float *maxVal);
-template void findMinMax<int>(const int *pSrcData, int len, float *minVal,
-                              float *maxVal);
+template void findMinMax<int>(const int *pSrcData, int len, int *minVal,
+                              int *maxVal);
 
 int calRightShiftNum(float fmax, double thBottom, double thTop, int numBits) {
   double dataTmp = 1.0 * fmax * thBottom / thTop;
@@ -227,6 +230,24 @@ void pad_tensor(float *p_after_pad, float *src, int n, int c, int h, int w,
           int s_offset = (i * h + j - pt) * w + k - pl;
           p_after_pad[d_offset] = src[s_offset];
         }
+      }
+    }
+  }
+}
+
+int omp_schedule(int count) {
+  return (count + omp_get_num_threads() - 1) / omp_get_num_threads();
+}
+
+void function_relu(float *src, float *dst, int64_t size, mlir::Type elem_type) {
+#pragma omp parallel for schedule(static, omp_schedule(size))
+  for (int64_t i = 0; i < size; ++i) {
+    dst[i] = src[i] > 0 ? src[i] : 0;
+    if (elem_type) {
+      if (elem_type.isUnsignedInteger(8)) {
+        dst[i] = helper::Quant::to_uint8(dst[i]);
+      } else if (elem_type.isInteger(8)) {
+        dst[i] = helper::Quant::to_int8(dst[i]);
       }
     }
   }

@@ -12,6 +12,7 @@
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
 #include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
@@ -100,7 +101,7 @@ LogicalResult tpu::AvgPoolOp::inference(InferenceParameter &p) {
   }
 
   if (do_relu()) {
-    relu(p.outputs[0], p.outputs[0], Module::getNumElements(output()));
+    function_relu(p.outputs[0], p.outputs[0], Module::getNumElements(output()));
   }
 
   if (Quant::isUniformQuantized(input())) {

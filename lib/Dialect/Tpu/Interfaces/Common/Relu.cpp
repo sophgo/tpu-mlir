@@ -12,6 +12,7 @@
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
 #include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
@@ -21,7 +22,7 @@ LogicalResult tpu::ReluOp::init(InferenceParameter &p) { return success(); }
 void tpu::ReluOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ReluOp::inference(InferenceParameter &p) {
-  relu(p.inputs[0], p.outputs[0], Module::getNumElements(output()),
+  function_relu(p.inputs[0], p.outputs[0], Module::getNumElements(output()),
        Module::getStorageType(output()));
   return success();
 }

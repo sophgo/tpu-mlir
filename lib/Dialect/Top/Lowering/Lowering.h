@@ -39,8 +39,43 @@ static mlir::Value lowering_common(Operation *from) {
     attrs.push_back(attr);
   }
   builder.setInsertionPointAfter(from);
+  auto output = from->getResult(0);
+  auto sType = Module::getStorageType(output);
+  auto shape = Module::getShape(output);
+  Type newType = output.getType();
+  if (sType.isa<ElemTy>() == false) {
+    if (Quant::isCalibratedType(output)) {
+      auto caliType = Quant::getCalibratedType(output);
+      auto newCaliType = quant::CalibratedQuantizedType::get(
+          ElemTy::get(ctx), caliType.getMin(), caliType.getMax());
+      newType = RankedTensorType::get(shape, newCaliType);
+    } else {
+      newType = RankedTensorType::get(shape, ElemTy::get(ctx));
+    }
+  }
+  auto newOp =
+      builder.create<OpTy>(from->getLoc(), newType, ArrayRef<Value>{operands},
+                           ArrayRef<NamedAttribute>{attrs});
+  return newOp.output();
+}
+
+template <typename OpTy>
+static mlir::Value lowering_common_int8(Operation *from,
+                                        bool asymetric = false) {
+  auto ctx = from->getContext();
+  OpBuilder builder(ctx);
+  std::vector<Value> operands;
+  const int nInputs = from->getNumOperands();
+  for (auto i = 0; i < nInputs; ++i) {
+    operands.push_back(from->getOperand(i));
+  }
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : from->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  builder.setInsertionPointAfter(from);
   auto resultType = from->getResult(0).getType().cast<RankedTensorType>();
-  auto newType = RankedTensorType::get(resultType.getShape(), ElemTy::get(ctx));
+  auto newType = Quant::getQuantInt8Type(from->getResult(0), asymetric);
   auto newOp =
       builder.create<OpTy>(from->getLoc(), newType, ArrayRef<Value>{operands},
                            ArrayRef<NamedAttribute>{attrs});

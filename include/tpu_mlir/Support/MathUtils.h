@@ -26,6 +26,14 @@ template <typename T> static inline T align_up(T x, T a) {
 }
 
 // =======================
+// interfece for inference
+// =======================
+int omp_schedule(int count);
+
+void function_relu(float *src, float *dst, int64_t size, mlir::Type elem_type = nullptr);
+
+
+// =======================
 // interfece for quantization
 // =======================
 void get_scale_and_shift(float scale_f, int &scale, int &shift,
@@ -37,7 +45,7 @@ void get_scale_and_shift_positive_maxshift(float scale_f, int &scale,
                                            int max_shift = 8);
 template <typename Dtype> float findMaxabs(const Dtype *pSrcData, int len);
 template <typename Dtype>
-void findMinMax(const Dtype *pSrcData, int len, float *minVal, float *maxVal);
+void findMinMax(const Dtype *pSrcData, int len, Dtype *minVal, Dtype *maxVal);
 int calRightShiftNum(float fmax, double thBottom, double thTop, int numBits);
 template <typename T> void func_abs(int n, T *src, T *dst);
 template <typename T> void func_log(int n, T *src, T *dst);
@@ -49,7 +57,6 @@ float quantizeToInt16(const float *pSrc, int16_t *pDst, int len, float scale,
 float quantizeToInt15(const float *pSrc, int16_t *pDst, int len, float scale,
                       int rshift = 0);
 void quantizeToInt8(const float *pSrc, int8_t *pDst, int len, float scale);
-
 
 void pad_tensor(float *p_after_pad, float *src, int n, int c, int h, int w,
                 int pt, int pb, int pl, int pr, float pad_value);

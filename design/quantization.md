@@ -16,6 +16,8 @@ Dequant:\quad &f32\_value = i8\_value \times \frac{threshold}{128}
 \end{align}
 $$
 
+* 在1686芯片中支持u8和i8混合运算，所以对于数值>=0的情况下，`scale = threshold / 255.0`
+
 ### 非对称量化
 
 用于BM1686
@@ -39,6 +41,8 @@ $$
 公式:\quad & q = \frac{r}{S} + Z
 \end{align}
 $$
+
+* 为了避免类型太过于混杂，1686非对称量化只用i8，不用u8
 
 ## 算子实现
 
