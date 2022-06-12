@@ -56,9 +56,8 @@ $$
 \begin{align}
 float:\quad & Y = A + B \\
 step 0\quad & => S_y (q_y-Z_y) = S_a(q_a-Z_a) + S_b(q_b - Z_b) \\
-step 1\quad & => q_y =  \frac{S_a}{S_y}q_a + \frac{S_b}{S_y}q_b + C_1 \\
-step 2\quad & => q_y = (q_a * M_a + q_b * M_b + C_2)_{i32} >> rshift \\
-\quad &其中M为int32，rshift是int8
+step 1(对称) \quad & => q_y = (q_a * M_a + q_b * M_b)_{i16} >> rshift_{i8} \\
+step 1(非对称) \quad & => q_y = requant(dequant(q_a) + dequant(q_b))
 \end{align}
 $$
 
@@ -69,7 +68,7 @@ $$
 ##### cv183x/cv182x/mars
 
 $$
-q_y = (q_a * M_a + q_b * M_b)_{i32} >> rshift
+q_y = (q_a * M_a + q_b * M_b)_{i16} >> rshift_{i8}
 $$
 
 
@@ -83,7 +82,7 @@ $$
 ##### 1686
 
 $$
-q_y = (q_a * M_a + q_b * M_b + C_2)_{i32} >> rshift
+q_y = requant(dequant(q_a) + dequant(q_b))
 $$
 
 
@@ -103,11 +102,11 @@ $$
 \begin{align}
 
 float:\quad & Y = X\times W + B \\
-step 0\quad & => S_y(q_y-Z_y) = S_x(q_x-Z_x)\times S_w(q_w-Z_w) + B \\
-step 1\quad & => q_y - Z_y = S_1(q_x-Z_x)\times (q_w-Z_w) + B_1 \\
-step 2\quad & => q_y - Z_y = S_1 q_x\times (q_w - Z_w)  + B_2 \\
-step 3\quad & => q_y = S_3 (q_x \times (q_w - Z_w) + B_3) + Z_{y} \\
-step 4\quad & => q_y = (q_x \times (q_w - Z_w) + b_{i32}) * M_{i32} >> rshift_{i8} + Z_{y}
+step 0\quad & => S_y(q_y-Z_y) = S_x(q_x-Z_x)\times S_wq_w + B \\
+step 1\quad & => q_y - Z_y = S_1(q_x-Z_x)\times q_w + B_1 \\
+step 2\quad & => q_y - Z_y = S_1 q_x\times q_w  + B_2 \\
+step 3\quad & => q_y = S_3 (q_x \times q_w + B_3) + Z_{y} \\
+step 4\quad & => q_y = (q_x \times q_w + b_{i32}) * M_{i32} >> rshift_{i8} + Z_{y}
 
 \end{align}
 $$
@@ -131,9 +130,9 @@ $$
 
 $$
 \begin{align}
-y_{i8} = & ((x_{i8}\times (w_{i8} -Z_w))_{i32} + b_{i32})_{i32} * M_{i32} >> rshift_{i8} + z_{i8} \\
+y_{i8} = & (x_{i8}\times w_{i8})_{i32} + b_{i32}) * M_{i32} >> rshift_{i8} + z_{i8} \\
 分两个算子实现:\quad& \\
-算子1:\quad &((x_{i8}\times (w_{i8} -Z_w))_{i32} + b_{i32})_{i32} \\
+算子1:\quad &((x_{i8}\times w_{i8})_{i32} + b_{i32})_{i32} \\
 算子2:\quad & * M_{i32} >> rshift_{i8} + z_{i8}
 \end{align}
 $$
