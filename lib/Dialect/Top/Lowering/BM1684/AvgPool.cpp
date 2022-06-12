@@ -8,6 +8,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "../Lowering.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/MathUtils.h"
@@ -37,19 +38,5 @@ Value top::AvgPoolOp::lowering_int8_bm1684() {
 }
 
 Value top::AvgPoolOp::lowering_f32_bm1684() {
-  auto op = getOperation();
-  OpBuilder builder(op);
-  std::vector<Value> operands;
-  const int nInputs = op->getNumOperands();
-  for (auto i = 0; i < nInputs; ++i) {
-    operands.push_back(op->getOperand(i));
-  }
-  std::vector<NamedAttribute> attrs;
-  for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
-  }
-  auto newOp = builder.create<tpu::AvgPoolOp>(op->getLoc(), output().getType(),
-                                              ArrayRef<Value>{operands},
-                                              ArrayRef<NamedAttribute>{attrs});
-  return newOp.output();
+  return lowering_common<tpu::AvgPoolOp>(getOperation());
 }

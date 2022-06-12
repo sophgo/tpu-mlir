@@ -8,6 +8,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "../Lowering.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/MathUtils.h"
@@ -22,6 +23,7 @@ Value top::MatMulOp::lowering_int8_bm1686() {
   // refer quantize_convlike_layer_int8
   auto op = getOperation();
   OpBuilder builder(op);
+  builder.setInsertionPointAfter(op);
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
   int64_t batch, M, K, N;
@@ -83,8 +85,7 @@ Value top::MatMulOp::lowering_int8_bm1686() {
   auto new_bias = bias();
   if (with_bias) {
     std::vector<int64_t> shape = {N};
-    auto new_type =
-        RankedTensorType::get(shape, builder.getI32Type());
+    auto new_type = RankedTensorType::get(shape, builder.getI32Type());
     new_bias = WeightOp::create(op, "bias_int32", *bias_int32, new_type);
     operands.push_back(new_bias);
   } else {
@@ -102,75 +103,55 @@ Value top::MatMulOp::lowering_int8_bm1686() {
   return newOp.output();
 }
 
-Value top::MatMulOp::lowering_fp(llvm::StringRef mode) {
+Value top::MatMulOp::lowering_f32_bm1686() {
+  return lowering_common<tpu::MatMulOp>(getOperation());
+}
+
+Value top::MatMulOp::lowering_f16_bm1686() {
+  auto ctx = getContext();
+  OpBuilder builder(ctx);
   auto op = getOperation();
-  OpBuilder builder(op);
+  builder.setInsertionPointAfter(op);
   std::vector<Value> operands;
-  std::vector<NamedAttribute> attrs;
-  int64_t batch, M, K, N;
-  bool relu, with_bias;
-  parseParam(batch, M, K, N, with_bias, relu);
+  const int nInputs = op->getNumOperands();
   operands.push_back(input());
-
-  if (mode == Quant::Type::F32) {
-    operands.push_back(right());
-    if (with_bias) {
-      operands.push_back(bias());
-    } else {
-      auto none = Module::getNoneOp(op);
-      operands.push_back(none);
-    }
-  } else {
-    auto filterOp = cast<top::WeightOp>(right().getDefiningOp());
-    auto filter_f32 = filterOp.read<float>();
-    auto filter_ui16 = std::make_shared<std::vector<uint16_t>>(filter_f32->size());
-    for (uint64_t i = 0; i < filter_f32->size(); i++) {
-      if (mode == Quant::Type::F16) {
-        filter_ui16->data()[i] = fp16_alt_from_fp32_value(filter_f32->data()[i]);
-      } else {
-        filter_ui16->data()[i] = float_to_bf16_uint16_simple(filter_f32->data()[i]);
-      }
-    }
-    auto filter_type = right().getType().cast<RankedTensorType>();
-    Type elementType = (mode == Quant::Type::F16) ? builder.getF16Type()
-                                                  : builder.getBF16Type();
-    llvm::StringRef suffix =
-        (mode == Quant::Type::F16) ? "filter_f16" : "filter_bf16";
-    auto new_type =
-        RankedTensorType::get(filter_type.getShape(), elementType);
-    auto new_filter = WeightOp::create(op, suffix, *filter_ui16, new_type);
-    operands.push_back(new_filter);
-    if (with_bias) {
-      auto biasOp = cast<top::WeightOp>(bias().getDefiningOp());
-      auto bias_fp32 = biasOp.read<float>();
-      auto bias_ui16 = std::make_shared<std::vector<uint16_t>>(bias_fp32->size());
-      for (uint64_t i = 0; i < bias_fp32->size(); i++) {
-        if (mode == Quant::Type::F16) {
-          bias_ui16->data()[i] = fp16_alt_from_fp32_value(bias_fp32->data()[i]);
-        } else {
-          bias_ui16->data()[i] = float_to_bf16_uint16_simple(bias_fp32->data()[i]);
-        }
-      }
-
-      auto bias_type = bias().getType().cast<RankedTensorType>();
-      Type elementType = (mode == Quant::Type::F16) ? builder.getF16Type()
-                                                    : builder.getBF16Type();
-      llvm::StringRef suffix =
-          (mode == Quant::Type::F16) ? "bias_f16" : "bias_bf16";
-      auto new_type =
-          RankedTensorType::get(bias_type.getShape(), elementType);
-      auto new_bias = WeightOp::create(op, suffix, *bias_ui16, new_type);
-      operands.push_back(new_bias);
-    } else {
-      auto none = Module::getNoneOp(op);
-      operands.push_back(none);
-    }
+  if (auto rightOp = dyn_cast<top::WeightOp>(right().getDefiningOp())) {
+    operands.push_back(rightOp.clone_f16(op));
   }
-
+  operands.push_back(bias());
+  std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  auto newOp = builder.create<tpu::MatMulOp>(op->getLoc(), output().getType(),
+  auto tensor_type = output().getType().cast<RankedTensorType>();
+  auto newType =
+      RankedTensorType::get(tensor_type.getShape(), builder.getF16Type());
+  auto newOp = builder.create<tpu::MatMulOp>(op->getLoc(), newType,
+                                             ArrayRef<Value>{operands},
+                                             ArrayRef<NamedAttribute>{attrs});
+  return newOp.output();
+}
+
+Value top::MatMulOp::lowering_bf16_bm1686() {
+  auto ctx = getContext();
+  OpBuilder builder(ctx);
+  auto op = getOperation();
+  builder.setInsertionPointAfter(op);
+  std::vector<Value> operands;
+  const int nInputs = op->getNumOperands();
+  operands.push_back(input());
+  if (auto rightOp = dyn_cast<top::WeightOp>(right().getDefiningOp())) {
+    operands.push_back(rightOp.clone_bf16(op));
+  }
+  operands.push_back(bias());
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  auto tensor_type = output().getType().cast<RankedTensorType>();
+  auto newType =
+      RankedTensorType::get(tensor_type.getShape(), builder.getBF16Type());
+  auto newOp = builder.create<tpu::MatMulOp>(op->getLoc(), newType,
                                              ArrayRef<Value>{operands},
                                              ArrayRef<NamedAttribute>{attrs});
   return newOp.output();

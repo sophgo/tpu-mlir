@@ -8,6 +8,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "../Lowering.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/MathUtils.h"
@@ -35,7 +36,8 @@ Value top::MatMulOp::lowering_int8_bm1684() {
   auto filterOp = cast<top::WeightOp>(right().getDefiningOp());
   auto filter_f32 = filterOp.read<float>();
   double filter_max = findMaxabs(filter_f32->data(), filter_f32->size());
-  int rshift = calRightShiftNum(filter_max, th_input, th_output, Quant::BITS_INT8);
+  int rshift =
+      calRightShiftNum(filter_max, th_input, th_output, Quant::BITS_INT8);
   rshift = rshift >= 0 ? rshift : 0;
   std::shared_ptr<std::vector<int16_t>> bias_int16;
   if (with_bias) {
@@ -83,31 +85,6 @@ Value top::MatMulOp::lowering_int8_bm1684() {
   return newOp.output();
 }
 
-
 Value top::MatMulOp::lowering_f32_bm1684() {
-  // refer quantize_convlike_layer_int8
-  auto op = getOperation();
-  OpBuilder builder(op);
-  std::vector<Value> operands;
-  std::vector<NamedAttribute> attrs;
-  int64_t batch, M, K, N;
-  bool relu, with_bias;
-  parseParam(batch, M, K, N, with_bias, relu);
-
-  operands.push_back(input());
-  operands.push_back(right());
-  if (with_bias) {
-    operands.push_back(bias());
-  } else {
-    auto none = Module::getNoneOp(op);
-    operands.push_back(none);
-  }
-
-  for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
-  }
-  auto newOp = builder.create<tpu::MatMulOp>(op->getLoc(), output().getType(),
-                                             ArrayRef<Value>{operands},
-                                             ArrayRef<NamedAttribute>{attrs});
-  return newOp.output();
+  return lowering_common<tpu::MatMulOp>(getOperation());
 }

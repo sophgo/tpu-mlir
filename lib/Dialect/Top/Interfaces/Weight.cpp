@@ -147,3 +147,56 @@ template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
 template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
                                 const std::vector<int32_t> &data,
                                 RankedTensorType &type);
+
+mlir::Value WeightOp::clone_bf16(Operation *OwnerOp) {
+  auto type = getType().cast<RankedTensorType>();
+  auto dtype = type.getElementType();
+  assert(dtype.isF32());
+  auto data = read<float>();
+  auto count = data->size();
+  auto data_bf16 = std::make_shared<std::vector<uint16_t>>(count);
+  for (uint32_t i = 0; i < count; i++) {
+    data_bf16->at(i) = float_to_bf16_uint16_simple(data->at(i));
+  }
+  auto ctx = OwnerOp->getContext();
+  OpBuilder builder(ctx);
+  builder.setInsertionPoint(OwnerOp);
+  auto dialect = ctx->getLoadedDialect("top");
+  auto topDialect = llvm::cast<TopDialect>(dialect);
+  assert(topDialect->wFile != nullptr);
+  std::string new_name = name().str() + "_bf16";
+  auto new_type = RankedTensorType::get(type.getShape(), builder.getBF16Type());
+  auto ret =
+      topDialect->wFile->addTensor(new_name, data_bf16->data(), new_type);
+  assert(succeeded(ret));
+  auto nameAttr = builder.getStringAttr(new_name);
+  auto newOp =
+      builder.create<top::WeightOp>(OwnerOp->getLoc(), new_type, nameAttr);
+  return newOp.getResult();
+};
+
+mlir::Value WeightOp::clone_f16(Operation *OwnerOp) {
+  auto type = getType().cast<RankedTensorType>();
+  auto dtype = type.getElementType();
+  assert(dtype.isF32());
+  auto data = read<float>();
+  auto count = data->size();
+  auto data_f16 = std::make_shared<std::vector<uint16_t>>(count);
+  for (uint32_t i = 0; i < count; i++) {
+    data_f16->at(i) = fp16_alt_from_fp32_value(data->at(i));
+  }
+  auto ctx = OwnerOp->getContext();
+  OpBuilder builder(ctx);
+  builder.setInsertionPoint(OwnerOp);
+  auto dialect = ctx->getLoadedDialect("top");
+  auto topDialect = llvm::cast<TopDialect>(dialect);
+  assert(topDialect->wFile != nullptr);
+  std::string new_name = name().str() + "_f16";
+  auto new_type = RankedTensorType::get(type.getShape(), builder.getF16Type());
+  auto ret = topDialect->wFile->addTensor(new_name, data_f16->data(), new_type);
+  assert(succeeded(ret));
+  auto nameAttr = builder.getStringAttr(new_name);
+  auto newOp =
+      builder.create<top::WeightOp>(OwnerOp->getLoc(), new_type, nameAttr);
+  return newOp.getResult();
+};
