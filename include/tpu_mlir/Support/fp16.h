@@ -9,8 +9,6 @@
 //===----------------------------------------------------------------------===//
 
 #pragma once
-#ifndef FP16_FP16_H
-#define FP16_FP16_H
 
 #if defined(__cplusplus) && (__cplusplus >= 201103L)
 #include <cstdint>
@@ -537,5 +535,3 @@ static float bf16_uint16_to_float_simple(uint16_t x) {
   tmp1 = tmp1 << 16;
   return *((float *)&tmp1);
 }
-
-#endif /* FP16_FP16_H */

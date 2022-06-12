@@ -8,6 +8,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "../Lowering.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/MathUtils.h"
@@ -61,25 +62,5 @@ Value top::AddOp::lowering_int8_bm1684() {
 }
 
 Value top::AddOp::lowering_f32_bm1684() {
-  auto op = getOperation();
-  OpBuilder builder(op);
-  std::vector<Value> operands;
-  const int nInputs = op->getNumOperands();
-  auto coeff_v = Module::getF64Array(coeff(), nInputs, 1.0);
-
-  for (int i = 0; i < nInputs; i++) {
-    auto input = op->getOperand(i);
-    operands.push_back(input);
-  }
-
-  std::vector<NamedAttribute> attrs;
-  attrs.push_back(builder.getNamedAttr("name", nameAttr()));
-  attrs.push_back(builder.getNamedAttr("do_relu", do_reluAttr()));
-  attrs.push_back(builder.getNamedAttr("coeff",
-                                       builder.getF64ArrayAttr(*coeff_v)));
-
-  auto newOp = builder.create<tpu::AddOp>(op->getLoc(), output().getType(),
-                                          ArrayRef<Value>{operands},
-                                          ArrayRef<NamedAttribute>{attrs});
-  return newOp.output();
+  return lowering_common<tpu::AddOp>(getOperation());
 }

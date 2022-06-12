@@ -83,6 +83,8 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
                             llvm::StringRef suffix,
                             const std::vector<T>& data,
                             mlir::RankedTensorType& type);
+  mlir::Value clone_bf16(mlir::Operation * OwnerOp);
+  mlir::Value clone_f16(mlir::Operation * OwnerOp);
   }];
 }
 

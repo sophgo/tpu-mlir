@@ -29,6 +29,13 @@ def LoweringInterface : OpInterface<"LoweringInterface"> {
         /*desc=*/[{
         }],
         /*retType=*/"mlir::Value",
+        /*methodName=*/"lowering_f32_bm1684",
+        /*args=*/(ins)
+      >,
+      InterfaceMethod<
+        /*desc=*/[{
+        }],
+        /*retType=*/"mlir::Value",
         /*methodName=*/"lowering_int8_bm1686",
         /*args=*/(ins)
       >,
@@ -36,16 +43,24 @@ def LoweringInterface : OpInterface<"LoweringInterface"> {
         /*desc=*/[{
         }],
         /*retType=*/"mlir::Value",
-        /*methodName=*/"lowering_fp",
-        /*args=*/(ins "llvm::StringRef":$mode)
+        /*methodName=*/"lowering_f32_bm1686",
+        /*args=*/(ins)
       >,
       InterfaceMethod<
         /*desc=*/[{
         }],
         /*retType=*/"mlir::Value",
-        /*methodName=*/"lowering_f32_bm1684",
+        /*methodName=*/"lowering_f16_bm1686",
         /*args=*/(ins)
-      >  ];
+      >,
+      InterfaceMethod<
+        /*desc=*/[{
+        }],
+        /*retType=*/"mlir::Value",
+        /*methodName=*/"lowering_bf16_bm1686",
+        /*args=*/(ins)
+      >,
+      ];
 
 }
 #endif // TPU_MLIR_LOWERINGINTERFACE

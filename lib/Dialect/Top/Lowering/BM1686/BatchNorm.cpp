@@ -21,7 +21,17 @@ Value top::BatchNormOp::lowering_int8_bm1686() {
   return nullptr;
 }
 
-Value top::BatchNormOp::lowering_fp(llvm::StringRef mode) {
+Value top::BatchNormOp::lowering_f32_bm1686() {
+  llvm_unreachable("BatchNormOp to be supported");
+  return nullptr;
+}
+
+Value top::BatchNormOp::lowering_bf16_bm1686() {
+  llvm_unreachable("BatchNormOp to be supported");
+  return nullptr;
+}
+
+Value top::BatchNormOp::lowering_f16_bm1686() {
   llvm_unreachable("BatchNormOp to be supported");
   return nullptr;
 }

@@ -176,8 +176,6 @@ struct LoweringPattern : public RewritePattern {
     }
     auto module = Module::getModuleOp(op);
     auto chip = Module::getChip(module);
-    // llvm::errs() << "LoweringPattern mode:" << mode <<" op
-    // name:"<<Module::getName(op)<<" chip:"<<chip<<"\n";
     Value newValue;
     if (chip == Module::Chip::BM1684) {
       if (mode == Quant::Type::F32) {
@@ -188,8 +186,14 @@ struct LoweringPattern : public RewritePattern {
     } else if (chip == Module::Chip::BM1686) {
       if (mode == Quant::Type::INT8) {
         newValue = lowering_op.lowering_int8_bm1686();
+      } else if (mode == Quant::Type::F32) {
+        newValue = lowering_op.lowering_f32_bm1686();
+      } else if (mode == Quant::Type::BF16) {
+        newValue = lowering_op.lowering_bf16_bm1686();
+      } else if (mode == Quant::Type::F16) {
+        newValue = lowering_op.lowering_f16_bm1686();
       } else {
-        newValue = lowering_op.lowering_fp(mode);
+        llvm_unreachable("unknown mode");
       }
     }
 

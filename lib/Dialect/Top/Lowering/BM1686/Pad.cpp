@@ -21,7 +21,17 @@ Value top::PadOp::lowering_int8_bm1686() {
   return nullptr;
 }
 
-Value top::PadOp::lowering_fp(llvm::StringRef mode) {
+Value top::PadOp::lowering_f32_bm1686() {
+  llvm_unreachable("PadOp to be supported");
+  return nullptr;
+}
+
+Value top::PadOp::lowering_bf16_bm1686() {
+  llvm_unreachable("PadOp to be supported");
+  return nullptr;
+}
+
+Value top::PadOp::lowering_f16_bm1686() {
   llvm_unreachable("PadOp to be supported");
   return nullptr;
 }
