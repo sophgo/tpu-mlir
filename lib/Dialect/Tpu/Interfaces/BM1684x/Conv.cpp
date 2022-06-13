@@ -201,9 +201,6 @@ void tpu::ConvOp::weight_reorder_f32_bm1684x() {
   bool is_dw, with_bias, relu;
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
              pl, pr, dh, dw, is_dw, with_bias, relu);
-  if (is_dw) {
-    llvm_unreachable("depthwise should support !!");
-  }
   auto op = getOperation();
   auto out_type = Module::getStorageType(output());
   // filter reorder
@@ -212,7 +209,7 @@ void tpu::ConvOp::weight_reorder_f32_bm1684x() {
   if (out_type.isF32()) {
     filter_shape[0] = 1;
     filter_shape[1] = oc;
-    filter_shape[2] = ic / g;
+    filter_shape[2] = is_dw ? 1 : ic / g;
     filter_shape[3] = kh * kw;
     auto new_type = RankedTensorType::get(filter_shape, out_type);
     filter().setType(new_type);
