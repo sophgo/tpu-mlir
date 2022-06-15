@@ -27,14 +27,21 @@ class DataSelector:
                     self.data_list.append(str(file))
         else:
             raise RuntimeError("Please specific dataset path by --dataset")
+        if len(self.data_list) == 0:
+            raise RuntimeError("There is no inputs")
         if num == 0 or num >= len(self.data_list):
             return
         random.shuffle(self.data_list)
         self.data_list = self.data_list[:num]
 
+
     @staticmethod
     def _is_cali_file(filename:str):
-        return filename.endswith(".npz") or filename.endswith(".npy")
+        support_list={'.jpg','.bmp','.png','.jpeg','.jfif','.npy','.npz'}
+        for type in support_list:
+            if filename.endswith(type):
+                return True
+        return False
 
     def _print(self):
         for i, img in enumerate(self.image_list):

@@ -9,15 +9,6 @@ from utils.mlir_parser import *
 
 logger = setup_logger('root', log_level="INFO")
 
-pixel_format_attributes = {
-    'rgb_planar':    (3, 'rgb'),
-    'rgb_packed':    (3, 'rgb'),
-    'bgr_planar':    (3, 'bgr'),
-    'bgr_packed':    (3, 'bgr'),
-    'gray':          (1,  ''),
-    'rgba_planar':   (4, 'rgba')
-}
-
 # fix bool bug of argparse
 def str2bool(v):
   return v.lower() in ("yes", "true", "1")
@@ -52,12 +43,12 @@ class ImageResizeTool:
 def add_preprocess_parser(parser):
     parser.add_argument("--resize_dims", type=str,
                         help="Image was resize to fixed 'h,w', default is same as net input dims")
-    parser.add_argument("--keep_aspect_ratio", type=str2bool, default=False,
+    parser.add_argument("--keep_aspect_ratio", action='store_true', default=False,
                         help="Resize image by keeping same ratio, any areas which" +
                              "are not taken are filled with 0")
     parser.add_argument("--mean", default='0,0,0', help="Per Channel image mean values")
     parser.add_argument("--scale", default='1,1,1', help="Per Channel image scale values")
-    parser.add_argument("--pixel_format", choices=list(pixel_format_attributes.keys()), default='bgr_planar',
+    parser.add_argument("--pixel_format", choices=['rgb','bgr','gray','rgba'], default='bgr',
                         help='fixel format of output data that sent into model')
     return parser
 
@@ -76,7 +67,7 @@ class preprocess(object):
         pass
 
     def config(self, net_input_dims=None, resize_dims=None, keep_aspect_ratio=False,
-               mean='0,0,0', scale='1,1,1', pixel_format='bgr_planar', **ignored):
+               mean='0,0,0', scale='1,1,1', pixel_format='bgr', **ignored):
         if net_input_dims:
             self.net_input_dims = [int(s) for s in net_input_dims.split(',')]
             if not resize_dims:
@@ -93,21 +84,19 @@ class preprocess(object):
         self.crop_method = 'center'
         self.keep_aspect_ratio = keep_aspect_ratio
         self.pixel_format = pixel_format
-        if self.pixel_format not in pixel_format_attributes:
-            raise RuntimeError("{} unsupported pixel format".format(pixel_format))
 
         self.input_name = 'input'
-        self.channel_num = pixel_format_attributes[self.pixel_format][0]
-        self.channel_order = pixel_format_attributes[self.pixel_format][1]
+        self.channel_num = 3
+        if self.pixel_format == 'gray':
+            self.channel_num = 1
+        elif self.pixel_format == 'rgba':
+            self.channel_num = 4
 
-        _mean = np.array([float(s) for s in mean.split(',')], dtype=np.float32)
-        assert(_mean.size >= self.channel_num)
-        _mean = _mean[:self.channel_num]
-        self.perchannel_mean = _mean[np.newaxis, :, np.newaxis, np.newaxis]
-        _scale = np.array([float(s) for s in scale.split(',')], dtype=np.float32)
-        assert(_scale.size >= self.channel_num)
-        _scale = _scale[:self.channel_num]
-        self.perchannel_scale = _scale[np.newaxis, :, np.newaxis, np.newaxis]
+        self.mean = np.array([float(s) for s in mean.split(',')], dtype=np.float32)
+        assert(self.mean.size >= self.channel_num)
+        self.scale = np.array([float(s) for s in scale.split(',')], dtype=np.float32)
+        assert(self.scale.size >= self.channel_num)
+
 
         info_str = \
             "\n\t _____________________________________________________________________ \n" + \
@@ -119,16 +108,13 @@ class preprocess(object):
                "\tresize_dims           : {}\n" + \
                "\tkeep_aspect_ratio     : {}\n" + \
                "\t--------------------------\n" + \
-               "\tperchannel_scale      : {}\n" + \
-               "\tperchannel_mean       : {}\n" + \
-               "\t   mean               : {}\n" + \
-               "\t   scale              : {}\n" + \
+               "\tmean                  : {}\n" + \
+               "\tscale                 : {}\n" + \
                "\t--------------------------\n" + \
                "\tpixel_format          : {}\n"
         resize_dims_str = resize_dims if resize_dims is not None else 'same to net input dims'
         info_str += format_str.format(resize_dims_str, self.keep_aspect_ratio,
-                list(self.perchannel_scale.flatten()), list(self.perchannel_mean.flatten()),
-                list(_mean.flatten()), list(_scale.flatten()), self.pixel_format)
+                list(self.mean.flatten()), list(self.scale.flatten()), self.pixel_format)
         logger.info(info_str)
 
     def load_config(self, input_op):
@@ -149,36 +135,36 @@ class preprocess(object):
 
         attrs =Operation.dictattr(input_op, 'preprocess')
         self.pixel_format = Operation.str(attrs['pixel_format'])
-        self.channel_order = pixel_format_attributes[self.pixel_format][1]
-        assert pixel_format_attributes[self.pixel_format][0] == self.channel_num
         self.keep_aspect_ratio = Operation.bool(attrs['keep_aspect_ratio'])
         self.resize_dims = Operation.int_array(attrs['resize_dims'])
         if len(self.resize_dims) == 0:
             self.resize_dims = self.net_input_dims
-        self.perchannel_mean = np.array(Operation.fp_array(attrs['mean'])).astype(np.float32)
-        self.perchannel_mean = self.perchannel_mean[np.newaxis, :,np.newaxis, np.newaxis]
-        self.perchannel_scale = np.array(Operation.fp_array(attrs['scale'])).astype(np.float32)
-        self.perchannel_scale = self.perchannel_scale[np.newaxis, :,np.newaxis, np.newaxis]
+        self.mean = np.array(Operation.fp_array(attrs['mean'])).astype(np.float32)
+        self.mean = self.mean[np.newaxis, :,np.newaxis, np.newaxis]
+        self.scale = np.array(Operation.fp_array(attrs['scale'])).astype(np.float32)
+        self.scale = self.scale[np.newaxis, :,np.newaxis, np.newaxis]
         self.crop_method = 'center'
 
         format_str = "\n  load_config Preprocess args : \n" + \
                "\tresize_dims           : {}\n" + \
                "\tkeep_aspect_ratio     : {}\n" + \
+               "\tinput_dims            : {}\n" + \
                "\t--------------------------\n" + \
-               "\tperchannel_scale      : {}\n" + \
-               "\tperchannel_mean       : {}\n" + \
+               "\tmean                  : {}\n" + \
+               "\tscale                 : {}\n" + \
                "\t--------------------------\n" + \
                "\tpixel_format          : {}\n"
         logger.info(format_str.format(self.resize_dims, self.keep_aspect_ratio,
-                list(self.perchannel_scale.flatten()), list(self.perchannel_mean.flatten()),
+                self.net_input_dims,
+                list(self.mean.flatten()), list(self.scale.flatten()),
                 self.pixel_format))
 
     def to_dict(self):
         return {
             'resize_dims': self.resize_dims,
             'keep_aspect_ratio': self.keep_aspect_ratio,
-            'perchannel_mean': list(self.perchannel_mean.flatten()),
-            'perchannel_scale': list(self.perchannel_scale.flatten()),
+            'mean': list(self.mean.flatten()),
+            'scale': list(self.scale.flatten()),
             'pixel_format': self.pixel_format
         }
 
@@ -249,104 +235,14 @@ class preprocess(object):
 
         x = x.astype(np.float32)
         if self.pixel_format == 'gray':
-            self.perchannel_mean = self.perchannel_mean[:,:1,:,:]
-            self.perchannel_scale = self.perchannel_scale[:,:1,:,:]
-            x = (x  - self.perchannel_mean)* self.perchannel_scale
-        elif self.pixel_format == 'rgba_planar' or self.pixel_format == 'rgb_planar' \
-            or self.pixel_format == 'bgr_planar':
-            if self.channel_order == 'rgb':
-                x = x[:, [2, 1, 0], :, :]
-            x = (x  - self.perchannel_mean)* self.perchannel_scale
-        elif self.pixel_format == 'rgb_packed' or self.pixel_format == 'bgr_packed':
-            if self.channel_order == "rgb":
-                x = x[:, [2, 1, 0], :, :]
-            x = (x  - self.perchannel_mean)* self.perchannel_scale
-            x = np.transpose(x, (0, 2, 3, 1))
+            self.mean = self.mean[:,:1,:,:]
+            self.scale = self.scale[:,:1,:,:]
+            x = (x  - self.mean)* self.scale
         else:
-            logger.info("unsupported pixel format");
-            assert(0)
+            if self.pixel_format == 'rgb':
+                x = x[:, [2, 1, 0], :, :]
+            x = (x  - self.mean)* self.scale
 
-        print('wxc2:', self.batch_size)
         if len(input.split(',')) == 1:
             x = np.repeat(x, self.batch_size, axis=0)
         return x
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--image')
-    args = parser.parse_args()
-
-    preprocesser = preprocess()
-
-    preprocesser.config(net_input_dims='244,224', pixel_format='bgr_planar')
-    x = preprocesser.run(args.image)
-    y=cv2.imread(args.image)
-    y=cv2.resize(y, (224, 244)) # w,h
-    y=np.transpose(y, (2, 0, 1))
-    if np.any(x != y):
-        raise Exception("1. BGR PLANAR test failed")
-    logger.info("1. BGR PLANAR test passed!!")
-
-    preprocesser.config(net_input_dims='244,224', pixel_format='rgb_planar')
-    x = preprocesser.run(args.image)
-    y=cv2.imread(args.image)
-    y=cv2.cvtColor(y, cv2.COLOR_BGR2RGB)
-    y=cv2.resize(y, (224, 244)) # w,h
-    y=np.transpose(y, (2, 0, 1))
-    if np.any(x != y):
-        raise Exception("2. RGB PLANAR test failed")
-    logger.info("2. RGB PLANAR test passed!!")
-
-    preprocesser.config(net_input_dims='244,224', pixel_format='bgr_packed')
-    x = preprocesser.run(args.image)
-    y=cv2.imread(args.image)
-    y=cv2.resize(y, (224, 244)) # w,h
-    if np.any(x != y):
-        raise Exception("3. BGR PACKED test failed")
-    logger.info("3. BGR PACKED test passed!!")
-
-    preprocesser.config(net_input_dims='244,224', pixel_format='rgb_packed')
-    x = preprocesser.run(args.image)
-    y=cv2.imread(args.image)
-    y=cv2.cvtColor(y, cv2.COLOR_BGR2RGB)
-    y=cv2.resize(y, (224, 244)) # w,h
-    if np.any(x != y):
-        raise Exception("RGB PACKED test failed")
-    logger.info("4. RGB PACKED test passed!!")
-
-    preprocesser.config(net_input_dims='244,224', pixel_format='gray')
-    x=preprocesser.run(args.image)
-    y=cv2.imread(args.image, cv2.IMREAD_GRAYSCALE)
-    y=cv2.resize(y, (224, 244)) # w,h
-    if np.any(x != y):
-        raise Exception("5. gray test failed")
-    logger.info("5. gray test passed!!")
-
-    preprocesser.config(net_input_dims='244,224', resize_dims='443,424',
-                        crop_method='center', pixel_format='bgr_packed')
-    x=preprocesser.run(args.image)
-    y=cv2.imread(args.image)
-    y=cv2.resize(y, (424, 443))
-    h_offset = (443 - 244) // 2
-    w_offset = (424 - 224) // 2
-    y = y[h_offset:h_offset + 244, w_offset : w_offset + 224]
-    if np.any(x != y):
-        raise Exception("6. Center crop test failed")
-    logger.info("6. Center Crop test passed!!")
-
-    preprocesser.config(net_input_dims='244,224', keep_aspect_ratio=True,
-                        pixel_format='bgr_packed')
-    x=preprocesser.run(args.image)
-    y=cv2.imread(args.image)
-    ih, iw, _ = y.shape
-    w, h = (224, 244)
-    scale = min(w/iw, h/ih)
-    nw = int(iw*scale)
-    nh = int(ih*scale)
-    y0 = cv2.resize(y, (nw,nh))
-    y = np.full((h, w, 3), 0, dtype='uint8')
-    y[(h - nh) // 2:(h - nh) // 2 + nh,
-            (w - nw) // 2:(w - nw) // 2 + nw, :] = y0
-    if np.any(x != y):
-        raise Exception("6. keep ratio resize test failed")
-    logger.info("6. keep ratio resize test passed!!")

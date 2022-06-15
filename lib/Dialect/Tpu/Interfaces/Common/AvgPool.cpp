@@ -56,7 +56,6 @@ LogicalResult tpu::AvgPoolOp::init(InferenceParameter &p) {
   auto pooling = new Pooling();
   int64_t n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value;
   bool relu, is_global, count_include_pad;
-  auto dt = getDnnlType(input());
   parseParam(n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value,
              relu, is_global, count_include_pad);
 
@@ -67,8 +66,7 @@ LogicalResult tpu::AvgPoolOp::init(InferenceParameter &p) {
   }
 
   pooling->setup(p.inputs[0], p.outputs[0], n, c, ih, iw, oh, ow, kh, kw, sh,
-                 sw, pt, pb, pl, pr, true, count_include_pad, izp, pad_value,
-                 dt);
+                 sw, pt, pb, pl, pr, true, count_include_pad, izp, pad_value);
   p.handle = (void *)pooling;
   return success();
 }
