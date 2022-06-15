@@ -16,7 +16,9 @@ from transform.OnnxConverter import OnnxConverter
 from transform.BaseConverter import BaseConverter
 from transform.TFLiteConverter import TFLiteConverter
 from utils.mlir_shell import *
+from utils.mlir_parser import *
 from tools.model_runner import mlir_inference, onnx_inference, tflite_inference
+from data.preprocess import get_preprocess_parser, preprocess
 import pymlir
 
 
@@ -38,6 +40,9 @@ class ModelTransformTool(object):
             raise RuntimeError("mlir graph optimize fail")
         print("Mlir file generated:{}".format(mlir_file))
 
+        self.module_parsered = MlirParser(self.mlir_file)
+        self.input_num = self.module_parsered.get_input_num()
+
     def model_validate(self, file_list: str, tolerance, excepts, test_result):
         in_f32_npz = self.model_name + '_in_f32.npz'
         inputs = dict()
@@ -46,6 +51,13 @@ class ModelTransformTool(object):
             for name in self.converter.input_names:
                 assert (name in npz_in.files)
                 inputs[name] = npz_in[name]
+        elif file_list[0].endswith('.jpg'): #todo add isPicture in util
+            ppa = preprocess()
+            for i in range(self.input_num):
+                pic_path = file_list[i] if i < len(file_list) else file_list[-1]
+                file = os.path.expanduser(pic_path)
+                ppa.load_config(self.module_parsered.get_input_op_by_idx(i))
+                inputs[ppa.input_name] = ppa.run(file)
         else:
             assert (len(file_list) == len(self.converter.input_names))
             for name, file in zip(self.converter.input_names, file_list):
@@ -74,11 +86,11 @@ class ModelTransformTool(object):
 
 class OnnxModelTransformTool(ModelTransformTool):
 
-    def __init__(self, model_name, model_def, input_shapes: list = []):
+    def __init__(self, model_name, model_def, input_shapes: list = [], preprocessor = None):
         super().__init__(model_name)
         self.model_def = model_def
         self.input_shapes = input_shapes
-        self.converter = OnnxConverter(self.model_name, self.model_def, self.input_shapes)
+        self.converter = OnnxConverter(self.model_name, self.model_def, input_shapes, preprocessor)
 
     def origin_inference(self, inputs: dict):
         return onnx_inference(inputs, self.converter.onnx_file)
@@ -117,6 +129,21 @@ def str2list(v):
         files.remove('')
     return files
 
+def get_model_transform(args):
+    preprocessor = preprocess()
+    preprocessor.config(**vars(args))
+
+    if not args.mlir.endswith('.mlir'):
+        raise RuntimeError("your mlir file should endswith .mlir, not:{}".format(args.mlir))
+    tool = None
+    if args.model_type == 'onnx':
+        tool = OnnxModelTransformTool(args.model_name, args.model_def, args.input_shapes, preprocessor.to_dict())
+    elif args.model_type == 'tflite':
+        tool = TFLiteModelTransformTool(args.model_name, args.model_def, args.input_shapes)
+    else:
+        # TODO: support more AI model types
+        raise RuntimeError("unsupport model type:{}".format(args.model_type))
+    return tool
 
 if __name__ == '__main__':
     print("SOPHGO Toolchain {}".format(pymlir.module().version))
@@ -137,8 +164,8 @@ if __name__ == '__main__':
     parser.add_argument("--test_input",
                         default="",
                         type=str2list,
-                        help="input npy/npz file for inference, "
-                        "if has more than one input, join npy with semicolon")
+                        help="input jpg/npy/npz file for inference, "
+                        "if has more than one input, join jpg or npy with semicolon")
     parser.add_argument("--test_result", default="", type=str,
                         help="if input is set, result is mlir inference result")
     parser.add_argument("--tolerance",
@@ -146,17 +173,9 @@ if __name__ == '__main__':
                         help="minimum similarity tolerance to model transform")
     parser.add_argument("--excepts", default='-', help="excepts")
     parser.add_argument("--mlir", type=str, required=True, help="output mlir model file")
+    parser = get_preprocess_parser(existed_parser=parser)
     args = parser.parse_args()
-    if not args.mlir.endswith('.mlir'):
-        raise RuntimeError("your mlir file should endswith .mlir, not:{}".format(args.mlir))
-    tool = None
-    if args.model_type == 'onnx':
-        tool = OnnxModelTransformTool(args.model_name, args.model_def, args.input_shapes)
-    elif args.model_type == 'tflite':
-        tool = TFLiteModelTransformTool(args.model_name, args.model_def, args.input_shapes)
-    else:
-        # TODO: support more AI model types
-        raise RuntimeError("unsupport model type:{}".format(args.model_type))
+    tool = get_model_transform(args)
     tool.model_transform(args.mlir)
     if args.test_input:
         assert(args.test_result)

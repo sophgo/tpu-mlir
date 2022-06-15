@@ -23,5 +23,6 @@
 #include "tpu_mlir/Support/TensorFile.h"
 #include "tpu_mlir/Traits/Traits.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOpsDialect.h.inc"
+#include "tpu_mlir/Dialect/Top/IR/TopAttr.h.inc"
 #define GET_OP_CLASSES
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h.inc"

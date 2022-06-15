@@ -24,6 +24,7 @@ class Operation:
         self.shape = Operation.shape(op)
         self.opds = Operation.operands(op, body, idx)
         self.attrs = Operation.attrs(op)
+        self.op = op
 
     def __str__(self):
         return self.name + "," + self.type + "," + self.loc + "," + str(self.shape) + "," + str(
@@ -38,6 +39,22 @@ class Operation:
         return op.operation.name
 
     @staticmethod
+    def str(value):
+        return mlir.ir.StringAttr(value).value
+
+    @staticmethod
+    def bool(value):
+        return mlir.ir.BoolAttr(value).value
+
+    @staticmethod
+    def int_array(value):
+        return [mlir.ir.IntegerAttr(x).value for x in mlir.ir.ArrayAttr(value)]
+
+    @staticmethod
+    def fp_array(value):
+        return [mlir.ir.FloatAttr(x).value for x in mlir.ir.ArrayAttr(value)]
+
+    @staticmethod
     def attrs(op):
         arr_map = {}
         for i in range(len(op.attributes)):
@@ -45,6 +62,10 @@ class Operation:
             k, v = str(attr.name), str(attr.attr)
             arr_map[k] = v
         return arr_map
+
+    @staticmethod
+    def dictattr(op, field_name):
+        return mlir.ir.DictAttr(op.attributes[field_name])
 
     @staticmethod
     def loc(op):
@@ -93,6 +114,15 @@ class MlirParser:
         for op in self.ops:
             if op.type == 'top.Input':
                 self.inputs.append(op)
+
+    def get_input_num(self):
+        return len(self.inputs)
+
+    def get_input_op_by_idx(self, idx):
+        return self.inputs[idx].op
+
+    def get_batch_size(self):
+        return Operation.shape(self.inputs[0].op)[0]
 
 if __name__ == '__main__':
     parser = MlirParser(sys.argv[1])

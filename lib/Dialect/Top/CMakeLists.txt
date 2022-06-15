@@ -17,6 +17,7 @@ add_mlir_library(TPUMLIRTop
   DEPENDS
   MLIRTopOpsIncGen
   MLIRTopPassIncGen
+  MLIRTopAttrGen
   MLIRInferenceInterfaceIncGen
   MLIRLoweringInterfaceIncGen
 

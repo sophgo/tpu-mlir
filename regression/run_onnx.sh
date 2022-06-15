@@ -1,9 +1,31 @@
 #!/bin/bash
 set -ex
 
-INPUT=../resnet18_in_f32.npz
 mkdir -p tmp
 pushd tmp
+
+INPUT=../image/dog/download.jpg #1.jpg,2.jpg
+model_transform.py \
+    --model_type onnx \
+    --model_name resnet18 \
+    --model_def  ../resnet18.onnx \
+    --test_input $INPUT \
+    --input_shapes [[1,3,224,224]] \
+    --resize_dims '256,256' \
+    --keep_aspect_ratio True \
+    --mean '103.939,116.778,123.68' \
+    --scale '0.0039215,0.0039215,0.0039215' \
+    --pixel_format 'bgr_planar' \
+    --test_result not_used.npz \
+    --mlir resnet18_for_img_cali.mlir
+
+image_list_path=../image/image_list.txt
+run_calibration.py resnet18_for_img_cali.mlir \
+    --data_list $image_list_path \
+    --input_num 2 \
+    -o resnet18_cali_table_not_used
+
+INPUT=../resnet18_in_f32.npz
 model_transform.py \
     --model_type onnx \
     --model_name resnet18 \
@@ -14,6 +36,7 @@ model_transform.py \
     --mlir resnet18.mlir
 
 # do calibration
+rm -rf dataset
 mkdir -p dataset
 cp $INPUT dataset/
 run_calibration.py resnet18.mlir \
