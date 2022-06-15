@@ -18,10 +18,10 @@ include "tpu_mlir/Dialect/Top/IR/TopBase.td"
 //===----------------------------------------------------------------------===//
 def Top_PreprocessParamAttr : StructAttr<"PreprocessParam", Top_Dialect, [
     StructFieldAttr<"pixel_format", StrAttr>,
-    StructFieldAttr<"resize_dims", I32ArrayAttr>,
+    StructFieldAttr<"resize_dims", I64ArrayAttr>,
     StructFieldAttr<"keep_aspect_ratio", BoolAttr>,
-    StructFieldAttr<"scale", F32ArrayAttr>,
-    StructFieldAttr<"mean", F32ArrayAttr>]> {
+    StructFieldAttr<"scale", F64ArrayAttr>,
+    StructFieldAttr<"mean", F64ArrayAttr>]> {
   let summary = "Structure of parameters for preprocess";
 }
 

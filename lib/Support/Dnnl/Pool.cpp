@@ -52,16 +52,16 @@ void Pooling::pad_init(float *input, int n, int ic, int ih, int iw, int& pt, int
 void Pooling::setup(float *input, float *output, int n, int c, int ih, int iw,
                     int oh, int ow, int kh, int kw, int sh, int sw, int pt,
                     int pb, int pl, int pr, bool is_avg, bool count_include_pad,
-                    int izp, int pad_value, memory::data_type dt) {
+                    int izp, int pad_value) {
   pad_init(input, n, c, ih, iw, pt, pb, pl, pr, izp);
   memory::dims dst_shape = {n, c, oh, ow};
   memory::dims strides = {sh, sw};
   memory::dims kernel = {kh, kw};
   memory::dims padding_tl = {pt, pl};
   memory::dims padding_br = {pb, pr};
-  auto src_md = memory::desc({src_shape}, dt,
+  auto src_md = memory::desc({src_shape}, memory::data_type::f32,
                              memory::format_tag::nchw);
-  auto dst_md = memory::desc({dst_shape}, dt,
+  auto dst_md = memory::desc({dst_shape}, memory::data_type::f32,
                              memory::format_tag::nchw);
   auto pool_avg_algo = count_include_pad
                            ? algorithm::pooling_avg_include_padding

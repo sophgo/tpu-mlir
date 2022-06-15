@@ -117,17 +117,17 @@ class MLIRImporter(object):
         assert (index < len(self.func_args))
         shape = [self.input_types[index].get_dim_size(x) \
                  for x in range(self.input_types[index].rank)]
-        mean = kargs.get('mean', [0, 0, 0])
-        scale = kargs.get('scale', [1, 1, 1])
-        pixel_format = kargs.get('pixel_format', 'BGR_PLANAR')
+        mean = kargs.get('mean', [0.0, 0.0, 0.0])
+        scale = kargs.get('scale', [1.0, 1.0, 1.0])
+        pixel_format = kargs.get('pixel_format', 'bgr')
         keep_aspect_ratio = kargs.get('keep_aspect_ratio', False)
         resize_dims = kargs.get('resize_dims', shape[-2:])
 
         preprocess_param = {
-            'mean': ArrayAttr.get([FloatAttr.get_f32(x) for x in mean]),
-            'scale':  ArrayAttr.get([FloatAttr.get_f32(x) for x in scale]),
+            'mean': ArrayAttr.get([FloatAttr.get_f64(x) for x in mean]),
+            'scale':  ArrayAttr.get([FloatAttr.get_f64(x) for x in scale]),
             'keep_aspect_ratio': BoolAttr.get(keep_aspect_ratio),
-            'resize_dims': ArrayAttr.get([IntegerAttr.get(self.mlir_type['INT32'], x) for x in resize_dims]),
+            'resize_dims': ArrayAttr.get([IntegerAttr.get(self.mlir_type['INT64'], x) for x in resize_dims]),
             'pixel_format': StringAttr.get(pixel_format)
         }
 
