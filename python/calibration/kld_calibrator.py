@@ -14,6 +14,8 @@ import pymlir
 from ctypes import *
 from tqdm import tqdm
 import datetime
+from data.preprocess import preprocess
+from utils.mlir_parser import *
 
 
 class BaseKldCalibrator:
@@ -90,6 +92,15 @@ class ActivationCalibrator(BaseKldCalibrator):
         self.module.load(mlir_file)
         self.fp32_mlir = mlir_file
 
+        self.ppa_list = []
+        self.module_parsered = MlirParser(mlir_file)
+        self.batch_size = self.module_parsered.get_batch_size()
+        self.input_num = self.module_parsered.get_input_num()
+        for i in range(self.input_num):
+            tmp = preprocess()
+            tmp.load_config(self.module_parsered.get_input_op_by_idx(i))
+            self.ppa_list.append(tmp)
+
         self.tensor_max = {}
         self.tensor_min = {}
         self.histogram_bin_num = histogram_bin_num
@@ -102,16 +113,32 @@ class ActivationCalibrator(BaseKldCalibrator):
         return size * 4
 
     def _activations_generator(self):
+        idx = 0
+        batched_inputs = self.input_num*['']
         for data in self.data_list:
             if data.endswith('.npz'):
                 x = np.load(data)
                 for k, v in x.items():
                     self.module.set_tensor(k, v)
                 self.module.invoke()
+            elif data.endswith('.jpg'): #暂定image_list文件中按10th_input1.jpg,10th_input2.jpg放置多个输入对应图片
+                inputs = data.split(',')
+                inputs = [s.strip() for s in inputs]
+                assert(self.input_num == len(inputs))
+                idx += 1
+                for i in range(self.input_num):
+                    batched_inputs[i] += '{},'.format(inputs[i])
+                    if idx == self.batch_size:
+                        x = self.ppa_list[i].run(batched_inputs[i][:-1])
+                        self.module.set_tensor(self.ppa_list[i].input_name, x)
+                if idx == self.batch_size:
+                    self.module.invoke()
+                    idx = 0
+                    batched_inputs = self.input_num*['']
             else:
                 inputs = data.split(',')
                 inputs = [s.strip() for s in inputs]
-                assert (len(self.input_names) == len(inputs))
+                assert (self.input_num == len(inputs))
                 for name, input in zip(self.module.input_names, inputs):
                     assert (input.endswith('.npy'))
                     x = np.load(input)

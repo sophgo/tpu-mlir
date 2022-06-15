@@ -19,22 +19,12 @@
 
 include "mlir/IR/OpBase.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
+include "tpu_mlir/Dialect/Top/IR/TopAttr.td"
 include "tpu_mlir/Interfaces/InferenceInterface.td"
 include "tpu_mlir/Interfaces/LoweringInterface.td"
 include "tpu_mlir/Interfaces/FlopsInterface.td"
 include "tpu_mlir/Traits/Traits.td"
 
-def Top_Dialect : Dialect {
-  let name = "top";
-  let summary = "A topdialect for the TPU_MLIR specification";
-  let cppNamespace = "::tpu_mlir::top";
-  let extraClassDeclaration = [{
-  void loadWeightFile(llvm::StringRef file) {
-    wFile = std::make_unique<mlir::TensorFile>(file, false);
-  }
-  std::unique_ptr<mlir::TensorFile> wFile;
-  }];
-}
 
 def AnyTenor: AnyTypeOf<[AnyRankedTensor]>;
 def AnyTensorOrNone: AnyTypeOf<[AnyRankedTensor, NoneType]>;
@@ -96,7 +86,8 @@ def Top_InputOp: Top_BaseOp<"Input"> {
 
   let arguments = (
     ins AnyTensor:$input,
-    StrAttr:$name
+    StrAttr:$name,
+    OptionalAttr<Top_PreprocessParamAttr>:$preprocess
   );
 
   let results = (outs AnyTensor:$output);

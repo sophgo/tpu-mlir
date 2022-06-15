@@ -92,7 +92,7 @@ class OnnxNode(BaseNode):
 
 class OnnxConverter(BaseConverter):
 
-    def __init__(self, model_name: str, onnx_file: str, input_shapes: list):
+    def __init__(self, model_name: str, onnx_file: str, input_shapes: list, preprocess_args = None):
         super().__init__()
         self.model_name = model_name
         self.weight_file = "{}_top_weight.npz".format(model_name)
@@ -100,6 +100,7 @@ class OnnxConverter(BaseConverter):
         self.mlir = None
         self.load_onnx_model(onnx_file, input_shapes)
         self.init_MLIRImporter()
+        self.preprocess_args = preprocess_args
 
         self.onnxop_factory = {
             "Add": lambda node: self.convert_add_op(node),
@@ -188,7 +189,20 @@ class OnnxConverter(BaseConverter):
         """convert all to mlir"""
         # add input op
         for idx, _name in enumerate(self.input_names):
-            input_op = self.mlir.create_input_op(_name, idx)
+            input_shape = self.getShape(_name)
+            image = (len(input_shape) == 4 and input_shape[1] <=4) or \
+                    (len(input_shape) == 3) # gray
+            if not self.preprocess_args or not image:
+                input_op = self.mlir.create_input_op(_name, idx, **{})
+            else:
+                preprocess_hint = {
+                    'mean': self.preprocess_args['perchannel_mean'],
+                    'scale':  self.preprocess_args['perchannel_scale'],
+                    'pixel_format': self.preprocess_args["pixel_format"],
+                    'resize_dims': self.preprocess_args['resize_dims'],
+                    'keep_aspect_ratio': self.preprocess_args['keep_aspect_ratio']
+                }
+                input_op = self.mlir.create_input_op(_name, idx, **preprocess_hint)
             self.addOperand(_name, input_op)
 
         def NoneAndRaise(node):

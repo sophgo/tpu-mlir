@@ -113,11 +113,31 @@ class MLIRImporter(object):
         self.insert_point.insert(op)
         return op.results[0]
 
-    def create_input_op(self, name, index):
+    def create_input_op(self, name, index, **kargs):
         assert (index < len(self.func_args))
+        shape = [self.input_types[index].get_dim_size(x) \
+                 for x in range(self.input_types[index].rank)]
+        mean = kargs.get('mean', [0, 0, 0])
+        scale = kargs.get('scale', [1, 1, 1])
+        pixel_format = kargs.get('pixel_format', 'BGR_PLANAR')
+        keep_aspect_ratio = kargs.get('keep_aspect_ratio', False)
+        resize_dims = kargs.get('resize_dims', shape[-2:])
+
+        preprocess_param = {
+            'mean': ArrayAttr.get([FloatAttr.get_f32(x) for x in mean]),
+            'scale':  ArrayAttr.get([FloatAttr.get_f32(x) for x in scale]),
+            'keep_aspect_ratio': BoolAttr.get(keep_aspect_ratio),
+            'resize_dims': ArrayAttr.get([IntegerAttr.get(self.mlir_type['INT32'], x) for x in resize_dims]),
+            'pixel_format': StringAttr.get(pixel_format)
+        }
+
         param = {
             "name": StringAttr.get(name),
         }
+
+        if len(kargs) > 0:
+            param["preprocess"] = DictAttr.get(preprocess_param)
+
         op = Operation.create(Top.InputOp,
                               results=[self.input_types[index]],
                               operands=[self.func_args[index]],

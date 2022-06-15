@@ -22,6 +22,7 @@ using namespace tpu_mlir::helper;
 // Dialect initialize method.
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Dialect/Top/IR/TopOpsDialect.cpp.inc"
+#include "tpu_mlir/Dialect/Top/IR/TopAttr.cpp.inc"
 
 void TopDialect::initialize() {
   addOperations<
