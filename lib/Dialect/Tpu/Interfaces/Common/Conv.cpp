@@ -13,6 +13,7 @@
 #include "tpu_mlir/Support/Helper/Module.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Float16.h"
 
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
@@ -84,7 +85,15 @@ LogicalResult tpu::ConvOp::inference(InferenceParameter &p) {
   auto conv = (Conv *)p.handle;
   conv->run();
   // requant
-  if (Quant::isUniformQuantized(output())) {
+  auto out_type = Module::getStorageType(output());
+  auto num_elem = Module::getNumElements(output());
+  if (out_type.isa<FloatType>()) {
+    if (out_type.isBF16()) {
+      f32_to_bf16(p.outputs[0], p.outputs[0], num_elem);
+    } else if (out_type.isF16()) {
+      f32_to_f16(p.outputs[0], p.outputs[0], num_elem);
+    }
+  } else if (Quant::isUniformQuantized(output())) {
     int64_t n, c, h, w;
     auto sType = Module::getStorageType(output());
     Module::getNCHW(output(), n, c, h, w);
@@ -107,6 +116,7 @@ LogicalResult tpu::ConvOp::inference(InferenceParameter &p) {
       }
     }
   }
+
   return success();
 }
 
