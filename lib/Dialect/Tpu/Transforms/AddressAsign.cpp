@@ -14,7 +14,7 @@
 #include "tpu_mlir/Support/Helper/Module.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
-#include "tpu_mlir/Backend/BM168x/BM1686.h"
+#include "tpu_mlir/Backend/BM168x/BM1684x.h"
 
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/Dialect/Quant/QuantTypes.h"
@@ -48,8 +48,8 @@ public:
     chip = Module::getChip(module);
     if (chip == Module::Chip::BM1684) {
       start_addr = BM1684::instance().get_ctx_start_addr();
-    } else if (chip == Module::Chip::BM1686) {
-      start_addr = BM1686::instance().get_ctx_start_addr();
+    } else if (chip == Module::Chip::BM1684x) {
+      start_addr = BM1684x::instance().get_ctx_start_addr();
     } else {
       llvm_unreachable("chip not support now");
     }
@@ -60,7 +60,7 @@ public:
       func.walk([&](top::WeightOp op) {
         Module::setAddress(op.output(), addr);
         int64_t bytes = Module::getBytes(op.output());
-        addr += align_up(bytes, alignment);
+        addr = align_up(addr + bytes, alignment);
       });
     }
     Module::setCoeffAddr(module, start_addr);
@@ -77,7 +77,7 @@ public:
           for (auto out : op->getResults()) {
             Module::setAddress(out, addr);
             int64_t bytes = Module::getBytes(out);
-            addr += align_up(bytes, alignment);
+            addr = align_up(addr + bytes, alignment);
           }
         }
       });
@@ -103,7 +103,7 @@ protected:
       return true;
     }
     if (auto castOp = dyn_cast<tpu::ReshapeOp>(op)) {
-      if (chip == Module::Chip::BM1686) {
+      if (chip == Module::Chip::BM1684x) {
         auto addr = Module::getAddress(castOp.input());
         Module::setAddress(castOp.output(), addr);
         return true;

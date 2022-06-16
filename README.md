@@ -69,11 +69,11 @@ model_transform.py \
 model_deploy.py \
   --mlir resnet18.mlir \
   --quantize F32 \
-  --chip bm1686 \
+  --chip bm1684x \
   --test_input resnet18_in.npz \
   --test_reference resnet18_top_outputs.npz \
   --tolerance 0.99,0.99 \
-  --model resnet18_1686_f32.bmodel
+  --model resnet18_1684x_f32.bmodel
 ```
 
 ### 转化为int8 `bmodel`
@@ -98,11 +98,11 @@ model_deploy.py \
   --mlir resnet18.mlir \
   --quantize INT8 \
   --calibration_table resnet18_cali_table \
-  --chip bm1686 \
+  --chip bm1684x \
   --test_input resnet18_in.npz \
   --test_reference resnet18_top_outputs.npz \
   --tolerance 0.97,0.75 \
-  --model resnet18_1686_int8_sym.bmodel
+  --model resnet18_1684x_int8_sym.bmodel
 ```
 
 ### 非对称量化
@@ -113,11 +113,11 @@ model_deploy.py \
   --quantize INT8 \
   --asymmetric \
   --calibration_table resnet18_cali_table \
-  --chip bm1686 \
+  --chip bm1684x \
   --test_input resnet18_in.npz \
   --test_reference resnet18_top_outputs.npz \
   --tolerance 0.97,0.75 \
-  --model resnet18_1686_int8_asym.bmodel
+  --model resnet18_1684x_int8_asym.bmodel
 ```
 
 ## 辅助工具
@@ -129,7 +129,7 @@ model_deploy.py \
 ``` shell
 model_runner.py \
   --input resnet18_in_f32.npz \
-  --model resnet18_1686_f32.bmodel \
+  --model resnet18_1684x_f32.bmodel \
   --output resnet18_output.npz
 ```
 
@@ -150,5 +150,5 @@ model_runner.py \
 例如, 获取`umodel`的基本信息：
 
 ``` shell
-model_tool --info resnet18_1686_f32.bmodel
+model_tool --info resnet18_1684x_f32.bmodel
 ```

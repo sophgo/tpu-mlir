@@ -10,7 +10,7 @@
 
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
-#include "tpu_mlir/Backend/BM168x/BM1686.h"
+#include "tpu_mlir/Backend/BM168x/BM1684x.h"
 #include "tpu_mlir/Interfaces/LocalGenInterface.h"
 #include "tpu_mlir/Support/Helper/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
@@ -143,10 +143,15 @@ int BM168x::getFmtBytes(DATA_TYPE_T data_type) {
   return data_byte_size;
 }
 
-global_tensor_spec_t BM168x::value_to_global(mlir::Value v) {
-  global_tensor_spec_t spec;
+tensor_spec_t BM168x::value_to_spec(mlir::Value v) {
+  tensor_spec_t spec;
   memset(&spec, 0, sizeof(spec));
-  spec.addr = Module::getAddress(v);
+  if (Module::isOpInGroup(v.getDefiningOp())) {
+    auto gi = LocalGenInterface::getGroupInfo(v);
+    spec.addr = gi.out_addr;
+  } else {
+    spec.addr = Module::getAddress(v);
+  }
   spec.dtype = getDataType(v);
   auto shape = Module::getShape(v);
   spec.dims = shape.size();
@@ -155,8 +160,8 @@ global_tensor_spec_t BM168x::value_to_global(mlir::Value v) {
   }
   return spec;
 }
-std::shared_ptr<std::vector<global_tensor_spec_t>>
-BM168x::get_input_global_spec(Operation *op) {
+std::shared_ptr<std::vector<tensor_spec_t>>
+BM168x::get_input_spec(Operation *op) {
   std::vector<Value> inputs;
   for (auto in : op->getOperands()) {
     if (in.getType().isa<NoneType>()) {
@@ -164,61 +169,17 @@ BM168x::get_input_global_spec(Operation *op) {
     }
     inputs.push_back(in);
   }
-  auto global_specs =
-      std::make_shared<std::vector<global_tensor_spec_t>>(inputs.size());
-  std::transform(inputs.begin(), inputs.end(), global_specs->begin(),
-                 value_to_global);
-  return std::move(global_specs);
+  auto specs = std::make_shared<std::vector<tensor_spec_t>>(inputs.size());
+  std::transform(inputs.begin(), inputs.end(), specs->begin(), value_to_spec);
+  return std::move(specs);
 }
 
-std::shared_ptr<std::vector<global_tensor_spec_t>>
-BM168x::get_output_global_spec(Operation *op) {
+std::shared_ptr<std::vector<tensor_spec_t>>
+BM168x::get_output_spec(Operation *op) {
   auto outputs = op->getResults();
-  auto global_specs =
-      std::make_shared<std::vector<global_tensor_spec_t>>(outputs.size());
-  std::transform(outputs.begin(), outputs.end(), global_specs->begin(),
-                 value_to_global);
-  return std::move(global_specs);
-}
-
-local_tensor_spec_t BM168x::value_to_local(mlir::Value v) {
-  local_tensor_spec_t spec;
-  memset(&spec, 0, sizeof(spec));
-  auto gi = LocalGenInterface::getGroupInfo(v);
-  spec.addr = gi.out_addr;
-  spec.dtype = getDataType(v);
-  auto shape = Module::getShape(v);
-  spec.dims = shape.size();
-  for (int i = 0; i < spec.dims; i++) {
-    spec.shape[i] = shape[i];
-  }
-  return spec;
-}
-
-std::shared_ptr<std::vector<local_tensor_spec_t>>
-BM168x::get_input_local_spec(mlir::Operation *op) {
-  std::vector<Value> inputs;
-  for (auto in : op->getOperands()) {
-    if (in.getType().isa<NoneType>()) {
-      continue;
-    }
-    inputs.push_back(in);
-  }
-  auto local_specs =
-      std::make_shared<std::vector<local_tensor_spec_t>>(inputs.size());
-  std::transform(inputs.begin(), inputs.end(), local_specs->begin(),
-                 value_to_local);
-  return std::move(local_specs);
-}
-
-std::shared_ptr<std::vector<local_tensor_spec_t>>
-BM168x::get_output_local_spec(mlir::Operation *op) {
-  auto outputs = op->getResults();
-  auto local_specs =
-      std::make_shared<std::vector<local_tensor_spec_t>>(outputs.size());
-  std::transform(outputs.begin(), outputs.end(), local_specs->begin(),
-                 value_to_local);
-  return std::move(local_specs);
+  auto specs = std::make_shared<std::vector<tensor_spec_t>>(outputs.size());
+  std::transform(outputs.begin(), outputs.end(), specs->begin(), value_to_spec);
+  return std::move(specs);
 }
 
 stride_4D_t BM168x::getGlobalStride(int64_t N, int64_t C, int64_t H,
@@ -365,8 +326,8 @@ BM168x *BM168x::instance(const StringRef chip) {
   BM168x *p_backend;
   if (chip == Module::Chip::BM1684) {
     return &BM1684::instance();
-  } else if (chip == Module::Chip::BM1686) {
-    return &BM1686::instance();
+  } else if (chip == Module::Chip::BM1684x) {
+    return &BM1684x::instance();
   } else {
     llvm_unreachable("unsupport chip");
   }

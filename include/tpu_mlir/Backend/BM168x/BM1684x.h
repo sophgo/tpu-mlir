@@ -18,10 +18,10 @@ typedef void (*set_cmd_len_ptr)(void *gdma_cmd_len_ptr, void *bdc_cmd_len_ptr);
 
 namespace tpu_mlir {
 namespace backend {
-class BM1686 : public BM168x {
+class BM1684x : public BM168x {
 public:
-  static BM1686 &instance() {
-    static BM1686 inst;
+  static BM1684x &instance() {
+    static BM1684x inst;
     return inst;
   }
 
@@ -58,11 +58,11 @@ public:
   static const int64_t LMEM_BYTES = 1 << 18; // 256KB
   static const int64_t LMEM_BANKS = 16;
   static const int64_t LMEM_BANK_BYTES = LMEM_BYTES / LMEM_BANKS;
-  static constexpr llvm::StringRef LIB_NAME = "libbackend_1686.so";
+  static constexpr llvm::StringRef LIB_NAME = "libbackend_1684x.so";
 
 protected:
-  BM1686();
-  ~BM1686(){};
+  BM1684x();
+  ~BM1684x(){};
 
   template <typename FPtrTy> FPtrTy CastToFPtr(const char *symbolName);
   virtual const char *get_lib_name() override { return LIB_NAME.data(); };

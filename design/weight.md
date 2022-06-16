@@ -1,4 +1,4 @@
-# BM1686 weight摆放
+# BM1684x weight摆放
 
 ## INT8算子摆放
 ### Conv2D

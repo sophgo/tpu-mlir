@@ -6,26 +6,7 @@
 #
 # ==============================================================================
 
-import subprocess
 import os
-
-
-def checkReturnValue(ret, func: str):
-    if ret.returncode == 0:
-        print("{} run success".format(func))
-    else:
-        print("[!Error]cmd: {}".format(" ".join(ret.args)))
-        print("error occured: {}, func: {}\nmsg: {}".format(ret.returncode, func, ret))
-
-
-def mlir_opt_for_top(mlirfile, opt_mlirfile):
-    ret = subprocess.run([
-        "tpuc-opt", "--canonicalize", "--mark-FLOPs", "--save-weight", mlirfile, "-o",
-        opt_mlirfile
-    ])
-    checkReturnValue(ret, "tpuc-opt")
-    return ret.returncode
-
 
 def _os_system(cmd: list):
     cmd_str = ""
@@ -38,6 +19,12 @@ def _os_system(cmd: list):
         print("[!Error]cmd: {}".format(cmd_str))
     return ret
 
+def mlir_opt_for_top(mlirfile, opt_mlirfile):
+    cmd = ([
+        "tpuc-opt", "--canonicalize", "--mark-FLOPs", "--save-weight", mlirfile, "-o",
+        opt_mlirfile
+    ])
+    return _os_system(cmd)
 
 def mlir_lowering(top_mlir: str,
                   tpu_mlir: str,
@@ -55,9 +42,6 @@ def mlir_lowering(top_mlir: str,
         mode.upper(), asymmetric, chip.lower())
     cmd.extend([lower_param, "--save-weight", "-o", tpu_mlir])
     return _os_system(cmd)
-    #ret = subprocess.run(cmd)
-    #checkReturnValue(ret, "tpuc-opt")
-    #return ret
 
 
 def mlir_to_model(tpu_mlir: str, model: str, final_mlir: str):
@@ -67,9 +51,6 @@ def mlir_to_model(tpu_mlir: str, model: str, final_mlir: str):
         "--address-asign", "--save-weight", codegen_param, "-o", final_mlir
     ]
     return _os_system(cmd)
-    #ret = subprocess.run(cmd)
-    #checkReturnValue(ret, "tpuc-opt")
-    # return ret
 
 
 def f32_blobs_compare(a_npz: str, b_npz: str, tolerance: str, excepts=None, show_detail=True):
@@ -78,6 +59,4 @@ def f32_blobs_compare(a_npz: str, b_npz: str, tolerance: str, excepts=None, show
         cmd.extend(["--except", excepts])
     if show_detail:
         cmd.append('-vv')
-    ret = subprocess.run(cmd)
-    checkReturnValue(ret, "compare")
-    return ret.returncode
+    return _os_system(cmd)

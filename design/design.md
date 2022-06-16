@@ -74,7 +74,7 @@ gdb --args python /work/python/tools/model_runner.py --input resnet18_in_f32.npz
 
 * BM前缀是否都需要改成SG前缀？
 
-* 1686改成1684x ?
+* 1684x改成1684x ?
 
 * conv各种3ic的优化 ？
 
@@ -104,4 +104,4 @@ tosa定义的op还是太少，没有lrn、layernorm等等op；
 
 #### backend库是动态加载还是静态加载？
 
-1684和1686的库的函数名都是重复的，静态加载会有符号冲突。所以cv18xx和bm16xx都用动态加载
+1684和1684x的库的函数名都是重复的，静态加载会有符号冲突。所以cv18xx和bm16xx都用动态加载

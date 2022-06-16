@@ -5,7 +5,7 @@ file(GLOB _sources
           Transforms/*.cpp
           Lowering/*.cpp
           Lowering/BM1684/*.cpp
-          Lowering/BM1686/*.cpp
+          Lowering/BM1684x/*.cpp
     )
 
 add_mlir_library(TPUMLIRTop

@@ -1,7 +1,7 @@
 file(GLOB _sources
           IR/*.cpp
           Interfaces/BM1684/*.cpp
-          Interfaces/BM1686/*.cpp
+          Interfaces/BM1684x/*.cpp
           Interfaces/Common/*.cpp
           Transforms/*.cpp
           Transforms/LayerGroup/*.cpp)

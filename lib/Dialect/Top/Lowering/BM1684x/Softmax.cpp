@@ -16,22 +16,22 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-Value top::SoftmaxOp::lowering_int8_bm1686(bool asymetric) {
+Value top::SoftmaxOp::lowering_int8_bm1684x(bool asymetric) {
   llvm_unreachable("SoftmaxOp to be supported");
   return nullptr;
 }
 
-Value top::SoftmaxOp::lowering_f32_bm1686() {
+Value top::SoftmaxOp::lowering_f32_bm1684x() {
   llvm_unreachable("SoftmaxOp to be supported");
   return nullptr;
 }
 
-Value top::SoftmaxOp::lowering_bf16_bm1686() {
+Value top::SoftmaxOp::lowering_bf16_bm1684x() {
   llvm_unreachable("SoftmaxOp to be supported");
   return nullptr;
 }
 
-Value top::SoftmaxOp::lowering_f16_bm1686() {
+Value top::SoftmaxOp::lowering_f16_bm1684x() {
   llvm_unreachable("SoftmaxOp to be supported");
   return nullptr;
 }

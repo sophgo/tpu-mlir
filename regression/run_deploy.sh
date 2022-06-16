@@ -25,29 +25,29 @@ model_transform.py \
 model_deploy.py \
   --mlir resnet18.mlir \
   --quantize F32 \
-  --chip bm1686 \
+  --chip bm1684x \
   --test_input resnet18_in_f32.npz \
   --test_reference resnet18_top_outputs.npz \
   --tolerance 0.99,0.99 \
-  --model resnet18_1686_f32.bmodel
+  --model resnet18_1684x_f32.bmodel
 
 # model_deploy.py \
 #   --mlir resnet18.mlir \
 #   --quantize F16 \
-#   --chip bm1686 \
+#   --chip bm1684x \
 #   --test_input resnet18_in_f32.npz \
 #   --test_reference resnet18_top_outputs.npz \
 #   --tolerance 0.99,0.99 \
-#   --model resnet18_1686_f16.bmodel
+#   --model resnet18_1684x_f16.bmodel
 
 # model_deploy.py \
 #   --mlir resnet18.mlir \
 #   --quantize BF16 \
-#   --chip bm1686 \
+#   --chip bm1684x \
 #   --test_input resnet18_in_f32.npz \
 #   --test_reference resnet18_top_outputs.npz \
 #   --tolerance 0.99,0.98 \
-#   --model resnet18_1686_bf16.bmodel
+#   --model resnet18_1684x_bf16.bmodel
 
 #########################
 # deploy to int8 bmodel
@@ -58,15 +58,16 @@ run_calibration.py resnet18.mlir \
     -o resnet18_cali_table
 
 # to symmetric
-# model_deploy.py \
-#   --mlir resnet18.mlir \
-#   --quantize INT8 \
-#   --calibration_table resnet18_cali_table \
-#   --chip bm1686 \
-#   --test_input resnet18_in_f32.npz \
-#   --test_reference resnet18_top_outputs.npz \
-#   --tolerance 0.97,0.75 \
-#   --model resnet18_1686_int8_sym.bmodel
+model_deploy.py \
+  --mlir resnet18.mlir \
+  --quantize INT8 \
+  --calibration_table resnet18_cali_table \
+  --chip bm1684x \
+  --model resnet18_1684x_int8_sym.bmodel
+
+  # --test_input resnet18_in_f32.npz \
+  # --test_reference resnet18_top_outputs.npz \
+  # --tolerance 0.95,0.72 \
 
 # to asymmetric
 # model_deploy.py \
@@ -74,9 +75,9 @@ run_calibration.py resnet18.mlir \
 #   --quantize INT8 \
 #   --asymmetric \
 #   --calibration_table resnet18_cali_table \
-#   --chip bm1686 \
+#   --chip bm1684x \
 #   --tolerance 0.97,0.75 \
-#   --model resnet18_1686_int8_asym.bmodel
+#   --model resnet18_1684x_int8_asym.bmodel
   # --test_input resnet18_in_f32.npz \
   # --test_reference resnet18_top_outputs.npz \
 

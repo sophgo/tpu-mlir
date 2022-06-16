@@ -634,7 +634,7 @@ class LoweringTopTFLitePass
 
     auto module = getOperation();
     Module::setState(module, Module::State::TPU_LOWERED);
-    Module::setChip(module, Module::Chip::BM1686);
+    Module::setChip(module, Module::Chip::BM1684x);
   }
 };
 } // namespace

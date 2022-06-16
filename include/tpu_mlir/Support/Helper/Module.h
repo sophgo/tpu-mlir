@@ -48,7 +48,7 @@ struct Module {
   struct Chip {
     static constexpr llvm::StringRef ALL = "ALL";
     static constexpr llvm::StringRef BM1684 = "BM1684";
-    static constexpr llvm::StringRef BM1686 = "BM1686";
+    static constexpr llvm::StringRef BM1684x = "BM1684X";
   };
 
   static top::NoneOp getNoneOp(Operation *op);

@@ -42,6 +42,7 @@ public:
         op.weight_reorder();
       });
     }
+    Module::updateModuleTypes(module);
     Module::setState(module, Module::State::TPU_REORDERED);
   }
 };

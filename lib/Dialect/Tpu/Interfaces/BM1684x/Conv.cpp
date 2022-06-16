@@ -9,7 +9,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Backend/BM168x/BM1686.h"
+#include "tpu_mlir/Backend/BM168x/BM1684x.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
 #include "tpu_mlir/Support/Helper/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
@@ -35,10 +35,10 @@ reshape_coeff_for_broadcast_channel(std::shared_ptr<std::vector<T>> &coeff,
     return;
   }
   int type_len = sizeof(T);
-  auto old_w_align = align_up(w, BM1686::instance().get_eu_num(type_len));
-  if (c > BM1686::NPU_NUM) {
+  auto old_w_align = align_up(w, BM1684x::instance().get_eu_num(type_len));
+  if (c > BM1684x::NPU_NUM) {
     // convert (1, oc, 1, w) to (1, NPU_NUM, 1, DIV_UP(oc, NPU_NUM) * w)
-    int64_t new_c = BM1686::NPU_NUM;
+    int64_t new_c = BM1684x::NPU_NUM;
     auto c2w = ceiling_func(c, new_c);
     int64_t new_w = (align ? old_w_align : w) * (c2w - 1) + w;
     auto coeff_new = std::make_shared<std::vector<T>>(new_w * new_c, 0);
@@ -95,9 +95,9 @@ static void filter_reorder(std::shared_ptr<std::vector<T>> &filter,
   shape = {1, oc, 1, new_ic * new_hw};
 }
 
-// refer to net_compiler: bool BM1686CoeffArranger::ConvWeightArr(GraphEdge*
+// refer to net_compiler: bool BM1684xCoeffArranger::ConvWeightArr(GraphEdge*
 // edge)
-void tpu::ConvOp::weight_reorder_int8_bm1686() {
+void tpu::ConvOp::weight_reorder_int8_bm1684x() {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
   bool is_dw, with_bias, relu;
@@ -145,8 +145,7 @@ void tpu::ConvOp::weight_reorder_int8_bm1686() {
   int64_t quant_w_bytes = quant_shape[3] * sizeof(int32_t);
   merge_w += quant_w_bytes;
   // merge requant/bias/filter
-  auto new_coeff =
-      std::make_shared<std::vector<int8_t>>(new_oc * merge_w, 0);
+  auto new_coeff = std::make_shared<std::vector<int8_t>>(new_oc * merge_w, 0);
   std::vector<int64_t> coeff_shape = {1, new_oc, 1, merge_w};
   for (int i = 0; i < new_oc; i++) {
     auto coeff_ptr = new_coeff->data() + i * merge_w;
@@ -175,7 +174,7 @@ void tpu::ConvOp::weight_reorder_int8_bm1686() {
   op->setOperand(2, none.getResult());
 }
 
-void tpu::ConvOp::weight_reorder_bf16_bm1686() {
+void tpu::ConvOp::weight_reorder_bf16_bm1684x() {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
   bool is_dw, with_bias, relu;
@@ -198,9 +197,9 @@ void tpu::ConvOp::weight_reorder_bf16_bm1686() {
   op->setOperand(1, newFilterOp);
 }
 
-void tpu::ConvOp::weight_reorder_f16_bm1686() { weight_reorder_f16_bm1686(); }
+void tpu::ConvOp::weight_reorder_f16_bm1684x() { weight_reorder_f16_bm1684x(); }
 
-void tpu::ConvOp::weight_reorder_f32_bm1686() {
+void tpu::ConvOp::weight_reorder_f32_bm1684x() {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
   bool is_dw, with_bias, relu;
@@ -401,7 +400,7 @@ typedef struct conv_local_param {
 }
 #endif
 
-void tpu::ConvOp::codegen_global_int8_bm1686() {
+void tpu::ConvOp::codegen_global_int8_bm1684x() {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
   bool is_dw, with_bias, do_relu;
@@ -409,8 +408,8 @@ void tpu::ConvOp::codegen_global_int8_bm1686() {
              pl, pr, dh, dw, is_dw, with_bias, do_relu);
   auto op = getOperation();
   auto in_qtype = Quant::getUniformQuantizedType(output());
-  auto input_spec = BM1686::get_input_global_spec(op);
-  auto output_spec = BM1686::get_output_global_spec(op);
+  auto input_spec = BM1684x::get_input_spec(op);
+  auto output_spec = BM1684x::get_output_spec(op);
   conv_global_spec_t spec;
   memset(&spec, 0, sizeof(spec));
   spec.merge_coeff = 2;
@@ -438,22 +437,23 @@ void tpu::ConvOp::codegen_global_int8_bm1686() {
   common.ipad_value = in_qtype.getZeroPoint();
   common.kzp_is_const = true;
   common.kzp_value = 0;
-  BM1686::instance().call_global_func("backend_api_conv_global", &spec,
-                                      sizeof(spec), input_spec->data(),
-                                      output_spec->data());
+  BM1684x::instance().call_global_func("backend_api_conv_global", &spec,
+                                       sizeof(spec), input_spec->data(),
+                                       output_spec->data());
 }
 
 // f32
-void tpu::ConvOp::codegen_global_float_bm1686() {
+void tpu::ConvOp::codegen_global_float_bm1684x() {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
   bool is_dw, with_bias, do_relu;
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
              pl, pr, dh, dw, is_dw, with_bias, do_relu);
   auto op = getOperation();
-  auto input_spec = BM1686::get_input_global_spec(op);
-  auto output_spec = BM1686::get_output_global_spec(op);
-  conv_global_spec_t spec = {0};
+  auto input_spec = BM1684x::get_input_spec(op);
+  auto output_spec = BM1684x::get_output_spec(op);
+  conv_global_spec_t spec;
+  memset(&spec, 0, sizeof(spec));
   auto &common = spec.common;
   common.input_c = ic;
   common.output_c = oc;
@@ -472,36 +472,37 @@ void tpu::ConvOp::codegen_global_float_bm1686() {
   common.pad_w_r = pr;
   common.round_mode = ROUND_UP;
   common.has_bias = with_bias;
+  common.kzp_is_const = 1;
   common.bias_sign = true;
   common.ipad_is_const = true;
   common.ipad_value = 0;
-  BM1686::instance().call_global_func("backend_api_conv_global", &spec,
-                                      sizeof(spec), input_spec->data(),
-                                      output_spec->data());
+  BM1684x::instance().call_global_func("backend_api_conv_global", &spec,
+                                       sizeof(spec), input_spec->data(),
+                                       output_spec->data());
 }
 
 // ======================================
 // LocalGenInterface
 // ======================================
 
-int64_t tpu::ConvOp::getBufferSize_bm1686(int64_t out_n, int64_t out_c,
-                                          int64_t out_h, int64_t out_w,
-                                          int64_t out_lmem_bytes) {
+int64_t tpu::ConvOp::getBufferSize_bm1684x(int64_t out_n, int64_t out_c,
+                                           int64_t out_h, int64_t out_w,
+                                           int64_t out_lmem_bytes) {
   if (coeff_merged() == false) {
     return 0;
   }
   return out_lmem_bytes * sizeof(int32_t);
 }
 
-void tpu::ConvOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
+void tpu::ConvOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
   bool is_dw, with_bias, do_relu;
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
              pl, pr, dh, dw, is_dw, with_bias, do_relu);
   auto op = getOperation();
-  auto input_spec = BM1686::get_input_local_spec(op);
-  auto output_spec = BM1686::get_output_local_spec(op);
+  auto input_spec = BM1684x::get_input_spec(op);
+  auto output_spec = BM1684x::get_output_spec(op);
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   auto in_qtype = Quant::getUniformQuantizedType(input());
@@ -542,22 +543,23 @@ void tpu::ConvOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
       (in_gi.h_idx == 0 && (in_gi.h_idx + in_gi.h_slice) == ih);
   sec_info.w_slice = iw;
   sec_info.out_n_slice = gi.n_slice;
+  sec_info.out_h_idx = gi.h_idx;
   sec_info.out_h_slice = gi.h_slice;
   sec_info.out_w_slice = ow;
-  BM1686::instance().call_local_func("backend_api_conv_local", &p, sizeof(p),
-                                     &sec_info, input_spec->data(),
-                                     output_spec->data());
+  BM1684x::instance().call_local_func("backend_api_conv_local", &p, sizeof(p),
+                                      &sec_info, input_spec->data(),
+                                      output_spec->data());
 }
 
-void tpu::ConvOp::codegen_local_float_bm1686(int64_t n_step, int64_t h_step) {
+void tpu::ConvOp::codegen_local_float_bm1684x(int64_t n_step, int64_t h_step) {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
   bool is_dw, with_bias, do_relu;
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
              pl, pr, dh, dw, is_dw, with_bias, do_relu);
   auto op = getOperation();
-  auto input_spec = BM1686::get_input_local_spec(op);
-  auto output_spec = BM1686::get_output_local_spec(op);
+  auto input_spec = BM1684x::get_input_spec(op);
+  auto output_spec = BM1684x::get_output_spec(op);
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   conv_local_param_t p;
@@ -593,9 +595,10 @@ void tpu::ConvOp::codegen_local_float_bm1686(int64_t n_step, int64_t h_step) {
       !(in_gi.h_idx == 0 && (in_gi.h_idx + in_gi.h_slice) == ih);
   sec_info.w_slice = iw;
   sec_info.out_n_slice = gi.n_slice;
+  sec_info.out_h_idx = gi.h_idx;
   sec_info.out_h_slice = gi.h_slice;
   sec_info.out_w_slice = ow;
-  BM1686::instance().call_local_func("backend_api_conv_local", &p, sizeof(p),
-                                     &sec_info, input_spec->data(),
-                                     output_spec->data());
+  BM1684x::instance().call_local_func("backend_api_conv_local", &p, sizeof(p),
+                                      &sec_info, input_spec->data(),
+                                      output_spec->data());
 }

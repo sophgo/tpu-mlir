@@ -37,13 +37,13 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
       InterfaceMethod<
         /*desc=*/[{}],
         /*retType=*/"void",
-        /*methodName=*/"codegen_local_int8_bm1686",
+        /*methodName=*/"codegen_local_int8_bm1684x",
         /*args=*/(ins "int64_t":$n_step, "int64_t":$h_step)
       >,
       InterfaceMethod<
         /*desc=*/[{}],
         /*retType=*/"void",
-        /*methodName=*/"codegen_local_float_bm1686",
+        /*methodName=*/"codegen_local_float_bm1684x",
         /*args=*/(ins "int64_t":$n_step, "int64_t":$h_step)
       >,
       InterfaceMethod<
@@ -58,11 +58,11 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
           auto type = Module::getStorageType($_op.getResult());
           if (chip == Module::Chip::BM1684) {
             $_op.codegen_local_int8_bm1684(n_step, h_step);
-          } else if (chip == Module::Chip::BM1686) {
+          } else if (chip == Module::Chip::BM1684x) {
             if (type.isInteger(8)) {
-              $_op.codegen_local_int8_bm1686(n_step, h_step);
+              $_op.codegen_local_int8_bm1684x(n_step, h_step);
             } else {
-              $_op.codegen_local_float_bm1686(n_step, h_step);
+              $_op.codegen_local_float_bm1684x(n_step, h_step);
             }
           }
         }]
@@ -110,7 +110,7 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
       InterfaceMethod<
         /*desc=*/[{}],
         /*retType=*/"int64_t",
-        /*methodName=*/"getBufferSize_bm1686",
+        /*methodName=*/"getBufferSize_bm1684x",
         /*args=*/(ins "int64_t":$out_n, "int64_t":$out_c, "int64_t":$out_h, "int64_t":$out_w, "int64_t":$out_lmem_bytes)
       >,
       InterfaceMethod<
@@ -124,8 +124,8 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
           auto chip = Module::getChip(module);
           if (chip == Module::Chip::BM1684) {
             return $_op.getBufferSize_bm1684(out_n, out_c, out_h, out_w, out_lmem_bytes);
-          } else if (chip == Module::Chip::BM1686) {
-            return $_op.getBufferSize_bm1686(out_n, out_c, out_h, out_w, out_lmem_bytes);
+          } else if (chip == Module::Chip::BM1684x) {
+            return $_op.getBufferSize_bm1684x(out_n, out_c, out_h, out_w, out_lmem_bytes);
           }
           return 0;
         }]

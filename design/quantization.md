@@ -16,11 +16,11 @@ Dequant:\quad &f32\_value = i8\_value \times \frac{threshold}{128}
 \end{align}
 $$
 
-* 在1686芯片中支持u8和i8混合运算，所以对于数值>=0的情况下，`scale = threshold / 255.0`
+* 在1684x芯片中支持u8和i8混合运算，所以对于数值>=0的情况下，`scale = threshold / 255.0`
 
 ### 非对称量化
 
-用于BM1686
+用于BM1684x
 
 ![](./assets/quant_asym.png)
 
@@ -42,7 +42,7 @@ $$
 \end{align}
 $$
 
-* 为了避免类型太过于混杂，1686非对称量化只用i8，不用u8
+* 为了避免类型太过于混杂，1684x非对称量化只用i8，不用u8
 
 ## 算子实现
 
@@ -83,7 +83,7 @@ q_y = ((q_a * M_a >> shift_a)_{i8} + (q_b * M_b >> shift_b)_{i8})_{i8}
 $$
 
 
-##### 1686
+##### 1684x
 
 $$
 q_y = requant(dequant(q_a) + dequant(q_b))
@@ -130,7 +130,7 @@ $$
 y_{i8} = ((x_{i8}\times w_{i8})_{i16} + b_{i16}) >> rshift_{i8}
 $$
 
-##### bm1686
+##### bm1684x
 
 $$
 \begin{align}
@@ -170,7 +170,7 @@ $$
 y_{i8} = ((x_{i8}\times k_{i8})_{i32}+b_{i32})>> rshift_{i8}^{oc}
 $$
 
-##### bm1686
+##### bm1684x
 
 weight当前采用perchannel对称量化，activation用perlayer非对称量化
 $$

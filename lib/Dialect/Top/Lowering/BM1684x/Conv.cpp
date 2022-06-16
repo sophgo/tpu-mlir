@@ -18,7 +18,7 @@ using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
-Value top::ConvOp::lowering_int8_bm1686(bool asymetric) {
+Value top::ConvOp::lowering_int8_bm1684x(bool asymetric) {
   auto op = getOperation();
   OpBuilder builder(op);
   builder.setInsertionPointAfter(op);
@@ -133,7 +133,7 @@ Value top::ConvOp::lowering_int8_bm1686(bool asymetric) {
   return newOp.output();
 }
 
-Value top::ConvOp::lowering_f32_bm1686() {
+Value top::ConvOp::lowering_f32_bm1684x() {
   auto ctx = getContext();
   OpBuilder builder(ctx);
   auto op = getOperation();
@@ -157,7 +157,7 @@ Value top::ConvOp::lowering_f32_bm1686() {
   return newOp.output();
 }
 
-Value top::ConvOp::lowering_f16_bm1686() {
+Value top::ConvOp::lowering_f16_bm1684x() {
   auto ctx = getContext();
   OpBuilder builder(ctx);
   auto op = getOperation();
@@ -184,7 +184,7 @@ Value top::ConvOp::lowering_f16_bm1686() {
   return newOp.output();
 }
 
-Value top::ConvOp::lowering_bf16_bm1686() {
+Value top::ConvOp::lowering_bf16_bm1684x() {
   auto ctx = getContext();
   OpBuilder builder(ctx);
   auto op = getOperation();

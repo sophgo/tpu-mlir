@@ -130,7 +130,7 @@ if __name__ == '__main__':
     parser.add_argument("--chip",
                         required=True,
                         type=str,
-                        choices=['bm1686', 'bm1684', 'cv183x', 'cv182x', 'mars'],
+                        choices=['bm1684x', 'bm1684', 'cv183x', 'cv182x', 'mars'],
                         help="chip platform name")
     parser.add_argument("--inputs_type",
                         default="F32",

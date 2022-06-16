@@ -18,19 +18,18 @@ using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
-Value top::AddOp::lowering_int8_bm1686(bool asymetric) {
-  llvm_unreachable("not support int8 now");
+Value top::AvgPoolOp::lowering_int8_bm1684x(bool asymetric) {
+  return lowering_common_int8<tpu::AvgPoolOp>(getOperation(), asymetric);
 }
 
-Value top::AddOp::lowering_f32_bm1686() {
-  return lowering_common<tpu::AddOp>(getOperation());
+Value top::AvgPoolOp::lowering_f32_bm1684x() {
+  return lowering_common<tpu::AvgPoolOp>(getOperation());
 }
 
-Value top::AddOp::lowering_bf16_bm1686() {
-  return lowering_common<tpu::AddOp, BFloat16Type>(getOperation());
+Value top::AvgPoolOp::lowering_bf16_bm1684x() {
+  return lowering_common<tpu::AvgPoolOp, BFloat16Type>(getOperation());
 }
 
-Value top::AddOp::lowering_f16_bm1686() {
-  return lowering_common<tpu::AddOp, Float16Type>(getOperation());
+Value top::AvgPoolOp::lowering_f16_bm1684x() {
+  return lowering_common<tpu::AvgPoolOp, Float16Type>(getOperation());
 }
-

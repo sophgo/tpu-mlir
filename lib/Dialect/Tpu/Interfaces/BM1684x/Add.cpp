@@ -9,7 +9,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Backend/BM168x/BM1686.h"
+#include "tpu_mlir/Backend/BM168x/BM1684x.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
 #include "tpu_mlir/Support/Helper/Module.h"
 
@@ -81,7 +81,7 @@ typedef struct {
 // =========================================
 
 // int8
-void tpu::AddOp::codegen_global_int8_bm1686() {
+void tpu::AddOp::codegen_global_int8_bm1684x() {
   int input_num = inputs().size();
   eltwise_fixed_global_param_t p;
   p.input_A_global_addr = Module::getAddress(inputs()[0]);
@@ -105,12 +105,12 @@ void tpu::AddOp::codegen_global_int8_bm1686() {
   p.dtype_A = BM168x::getDataType(inputs()[0]);
   p.dtype_B = BM168x::getDataType(inputs()[1]);
   p.round_mode = ROUND_UP;
-  BM1686::instance().call_global_func("backend_api_eltwise_fixed_global", &p,
+  BM1684x::instance().call_global_func("backend_api_eltwise_fixed_global", &p,
                                       sizeof(eltwise_fixed_global_param_t));
 }
 
 // f32
-void tpu::AddOp::codegen_global_float_bm1686() {
+void tpu::AddOp::codegen_global_float_bm1684x() {
   int num_inputs = inputs().size();
   llvm::SmallVector<float, 8> coeffs;
   llvm::SmallVector<float, 8> mask_index(num_inputs, 0.0f);
@@ -124,7 +124,7 @@ void tpu::AddOp::codegen_global_float_bm1686() {
     mask_index[i] = i;
     input_addr[i] = Module::getAddress(inputs()[i]);
   }
-  eltwise_float_global_param_t p;
+  eltwise_float_global_param_t p = {0};
   p.input_global_addr = input_addr.data();
   p.output_global_addr = Module::getAddress(output());
   p.mask_global_addr = 0;
@@ -139,7 +139,7 @@ void tpu::AddOp::codegen_global_float_bm1686() {
   p.mask_index = (int *)mask_index.data();
   p.if_relu = do_relu();
   p.dtype = BM168x::getDataType(output());
-  BM1686::instance().call_global_func("backend_api_eltwise_float_global", &p,
+  BM1684x::instance().call_global_func("backend_api_eltwise_float_global", &p,
                                       sizeof(eltwise_float_global_param_t));
 }
 
@@ -165,7 +165,7 @@ typedef struct {
   int round_mode;
 } eltwise_fixed_local_param_t;
 
-int64_t tpu::AddOp::getBufferSize_bm1686(int64_t out_n, int64_t out_c,
+int64_t tpu::AddOp::getBufferSize_bm1684x(int64_t out_n, int64_t out_c,
                                          int64_t out_h, int64_t out_w,
                                          int64_t out_lmem_bytes) {
   auto out_type = Module::getStorageType(output());
@@ -178,7 +178,7 @@ int64_t tpu::AddOp::getBufferSize_bm1686(int64_t out_n, int64_t out_c,
   return 0;
 }
 
-void tpu::AddOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
+void tpu::AddOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
   auto in0_gi = LocalGenInterface::getGroupInfo(inputs()[0], n_step, h_step);
   auto in1_gi = LocalGenInterface::getGroupInfo(inputs()[1], n_step, h_step);
   auto gi = getGroupInfo(n_step, h_step);
@@ -204,11 +204,11 @@ void tpu::AddOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
   p.rshift = r_v.data();
   p.if_relu = do_relu();
   p.round_mode = ROUND_UP;
-  BM1686::instance().call_local_func("backend_api_eltwise_fixed_local", &p,
+  BM1684x::instance().call_local_func("backend_api_eltwise_fixed_local", &p,
                                      sizeof(eltwise_float_local_param_t));
 }
 
-void tpu::AddOp::codegen_local_float_bm1686(int64_t n_step, int64_t h_step) {
+void tpu::AddOp::codegen_local_float_bm1684x(int64_t n_step, int64_t h_step) {
   auto in0_gi = LocalGenInterface::getGroupInfo(inputs()[0], n_step, h_step);
   auto in1_gi = LocalGenInterface::getGroupInfo(inputs()[1], n_step, h_step);
   auto gi = getGroupInfo(n_step, h_step);
@@ -232,6 +232,6 @@ void tpu::AddOp::codegen_local_float_bm1686(int64_t n_step, int64_t h_step) {
   p.input_local_cstride = NULL;
   p.if_relu = do_relu();
   p.dtype = BM168x::getDataType(output());
-  BM1686::instance().call_local_func("backend_api_eltwise_float_local", &p,
+  BM1684x::instance().call_local_func("backend_api_eltwise_float_local", &p,
                                      sizeof(eltwise_float_local_param_t));
 }
