@@ -36,7 +36,7 @@ def Lowering : Pass<"lowering", "ModuleOp"> {
     Option<"mode", "mode", "std::string", /*default=*/"",
            "default quantization mode: INT8/BF16/F32">,
     Option<"chip", "chip", "std::string", /*default=*/"",
-           "chip: cv183x/cv182x/bm1684/bm1686">,
+           "chip: cv183x/cv182x/bm1684/bm1684x">,
     Option<"isAsymmetric", "asymmetric", "bool", /*default=*/"false",
            "true for asymmetric quantization, or false for symmetric">,
   ];

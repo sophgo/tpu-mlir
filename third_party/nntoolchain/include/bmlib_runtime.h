@@ -128,7 +128,7 @@ struct bm_context;
 typedef struct bm_context *bm_handle_t;
 
 DECL_EXPORT void bmlib_log(const char *tag, int level, const char *fmt, ...);
- 
+
 #define BM_CHECK_RET(call)                     \
   do {                                         \
     bm_status_t ret = call;                    \
@@ -395,7 +395,7 @@ DECL_EXPORT bm_status_t bm_malloc_device_byte_heap_mask(bm_handle_t handle, bm_d
  */
 DECL_EXPORT void bm_free_device(bm_handle_t handle, bm_device_mem_t mem);
 
-// these two functions are not used for 1686
+// these two functions are not used for 1684x
 DECL_EXPORT unsigned long long bm_gmem_arm_reserved_request(bm_handle_t handle);
 DECL_EXPORT void bm_gmem_arm_reserved_release(bm_handle_t handle);
 

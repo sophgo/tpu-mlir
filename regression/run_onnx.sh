@@ -23,104 +23,104 @@ run_calibration.py resnet18.mlir \
     -o resnet18_cali_table
 
 #########################
-# BM1686
+# BM1684x
 #########################
 
 # convert to int8
 tpuc-opt resnet18.mlir \
     --import-calibration-table='file=resnet18_cali_table asymmetric=true' \
     --save-weight \
-    -o resnet18_cali_1686.mlir
+    -o resnet18_cali_1684x.mlir
 
-# quantize mlir for 1686 asymmetric
-tpuc-opt resnet18_cali_1686.mlir \
-    --lowering="mode=INT8 asymmetric=true chip=bm1686" \
+# quantize mlir for 1684x asymmetric
+tpuc-opt resnet18_cali_1684x.mlir \
+    --lowering="mode=INT8 asymmetric=true chip=bm1684x" \
     --save-weight \
-    -o resnet18_int8_1686_asym.mlir
+    -o resnet18_int8_1684x_asym.mlir
 
 model_runner.py \
-    --model resnet18_int8_1686_asym.mlir \
+    --model resnet18_int8_1684x_asym.mlir \
     --input resnet18_in_f32.npz \
     --dump_all_tensors \
-    --output resnet18_int8_outputs_1686_asym.npz
+    --output resnet18_int8_outputs_1684x_asym.npz
 
 npz_tool.py compare \
-    resnet18_int8_outputs_1686_asym.npz \
+    resnet18_int8_outputs_1684x_asym.npz \
     resnet18_f32_outputs.npz \
     --tolerance 0.90,0.54 -v
 
 # # with layer-group
-# tpuc-opt resnet18_int8_1686_asym.mlir \
+# tpuc-opt resnet18_int8_1684x_asym.mlir \
 #     --weight-reorder \
 #     --subnet-divide \
 #     --layer-group \
 #     --address-asign \
 #     --save-weight \
-#     --codegen="model_file=resnet18_int8_1686_lg.bmodel" \
-#     -o resnet18_int8_lg_1686_asym.mlir
+#     --codegen="model_file=resnet18_int8_1684x_lg.bmodel" \
+#     -o resnet18_int8_lg_1684x_asym.mlir
 
 # # no layer-group
-# tpuc-opt resnet18_int8_1686_asym.mlir \
+# tpuc-opt resnet18_int8_1684x_asym.mlir \
 #     --weight-reorder \
 #     --subnet-divide \
 #     --address-asign \
 #     --save-weight \
-#     --codegen="model_file=resnet18_int8_1686.bmodel" \
-#     -o resnet18_int8_addr_1686_asym.mlir
+#     --codegen="model_file=resnet18_int8_1684x.bmodel" \
+#     -o resnet18_int8_addr_1684x_asym.mlir
 
 tpuc-opt resnet18.mlir \
     --import-calibration-table='file=resnet18_cali_table asymmetric=false' \
     --save-weight \
-    -o resnet18_cali_1686_sym.mlir
+    -o resnet18_cali_1684x_sym.mlir
 
-# quantize mlir for 1686 symmetric
-tpuc-opt resnet18_cali_1686_sym.mlir \
-    --lowering="mode=INT8 asymmetric=false chip=bm1686" \
+# quantize mlir for 1684x symmetric
+tpuc-opt resnet18_cali_1684x_sym.mlir \
+    --lowering="mode=INT8 asymmetric=false chip=bm1684x" \
     --save-weight \
-    -o resnet18_int8_1686_sym.mlir
+    -o resnet18_int8_1684x_sym.mlir
 
 model_runner.py \
-    --model resnet18_int8_1686_sym.mlir \
+    --model resnet18_int8_1684x_sym.mlir \
     --input resnet18_in_f32.npz \
     --dump_all_tensors \
-    --output resnet18_int8_outputs_1686_sym.npz
+    --output resnet18_int8_outputs_1684x_sym.npz
 
 npz_tool.py compare \
-    resnet18_int8_outputs_1686_sym.npz \
+    resnet18_int8_outputs_1684x_sym.npz \
     resnet18_f32_outputs.npz \
     --tolerance 0.95,0.70 -v
 
 # convert f16
 tpuc-opt resnet18.mlir \
-    '--lowering=mode=F16 chip=bm1686' \
+    '--lowering=mode=F16 chip=bm1684x' \
     --save-weight \
-    -o resnet18_f16_1686.mlir
+    -o resnet18_f16_1684x.mlir
 
 model_runner.py \
-    --model resnet18_f16_1686.mlir \
+    --model resnet18_f16_1684x.mlir \
     --input resnet18_in_f32.npz \
     --dump_all_tensors \
-    --output resnet18_f16_outputs_1686.npz
+    --output resnet18_f16_outputs_1684x.npz
 
 npz_tool.py compare \
-    resnet18_f16_outputs_1686.npz \
+    resnet18_f16_outputs_1684x.npz \
     resnet18_f32_outputs.npz \
     --tolerance 0.99,0.97 -v
 
 # convert bf16
 tpuc-opt resnet18.mlir \
-    '--lowering=mode=BF16 chip=bm1686' \
+    '--lowering=mode=BF16 chip=bm1684x' \
     --save-weight \
-    -o resnet18_bf16_1686.mlir
+    -o resnet18_bf16_1684x.mlir
 
 model_runner.py \
-    --model resnet18_bf16_1686.mlir \
+    --model resnet18_bf16_1684x.mlir \
     --input resnet18_in_f32.npz \
     --dump_all_tensors \
-    --output resnet18_bf16_outputs_1686.npz
+    --output resnet18_bf16_outputs_1684x.npz
 
 npz_tool.py compare \
-    resnet18_bf16_outputs_1686.npz \
+    resnet18_bf16_outputs_1684x.npz \
     resnet18_f32_outputs.npz \
-    --tolerance 0.99,0.95 -v
+    --tolerance 0.99,0.94 -v
 popd

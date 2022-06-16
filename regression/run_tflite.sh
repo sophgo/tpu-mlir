@@ -13,22 +13,22 @@ model_transform.py \
     --mlir resnet50_tflite.mlir
 
 #########################
-# TFLite to TPU BM1686
+# TFLite to TPU BM1684x
 #########################
 tpuc-opt resnet50_tflite.mlir \
     --toptflite-to-tpu \
     --canonicalize \
     --save-weight \
-    -o resnet50_int8_1686.mlir
+    -o resnet50_int8_1684x.mlir
 
 #########################
-# TFLiteTPU BM1686 check
+# TFLiteTPU BM1684x check
 #########################
 model_runner.py \
-    --model resnet50_int8_1686.mlir \
+    --model resnet50_int8_1684x.mlir \
     --input $INPUT \
     --dump_all_tensors \
-    --output resnet50_int8_outputs_1686.npz
+    --output resnet50_int8_outputs_1684x.npz
 
 
 model_runner.py \
@@ -38,7 +38,7 @@ model_runner.py \
     --output resnet50_ref_outputs.npz
 
 npz_tool.py compare \
-    resnet50_int8_outputs_1686.npz \
+    resnet50_int8_outputs_1684x.npz \
     resnet50_ref_outputs.npz \
     --tolerance 0.89,0.50 -v
 

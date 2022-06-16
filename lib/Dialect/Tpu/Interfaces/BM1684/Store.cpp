@@ -9,7 +9,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Backend/BM168x/BM1686.h"
+#include "tpu_mlir/Backend/BM168x/BM1684x.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
 #include "tpu_mlir/Support/Helper/Module.h"
 

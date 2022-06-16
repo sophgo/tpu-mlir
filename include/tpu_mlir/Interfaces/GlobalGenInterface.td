@@ -27,13 +27,13 @@ def GlobalGenInterface : OpInterface<"GlobalGenInterface"> {
       InterfaceMethod<
         /*desc=*/[{}],
         /*retType=*/"void",
-        /*methodName=*/"codegen_global_int8_bm1686",
+        /*methodName=*/"codegen_global_int8_bm1684x",
         /*args=*/(ins)
       >,
       InterfaceMethod<
         /*desc=*/[{}],
         /*retType=*/"void",
-        /*methodName=*/"codegen_global_float_bm1686",
+        /*methodName=*/"codegen_global_float_bm1684x",
         /*args=*/(ins)
       >,
       InterfaceMethod<
@@ -48,11 +48,11 @@ def GlobalGenInterface : OpInterface<"GlobalGenInterface"> {
           auto type = Module::getStorageType($_op.getResult());
           if (chip == Module::Chip::BM1684) {
             $_op.codegen_global_int8_bm1684();
-          } else if (chip == Module::Chip::BM1686) {
+          } else if (chip == Module::Chip::BM1684x) {
             if (type.isInteger(8)) {
-              $_op.codegen_global_int8_bm1686();
+              $_op.codegen_global_int8_bm1684x();
             } else {
-              $_op.codegen_global_float_bm1686();
+              $_op.codegen_global_float_bm1684x();
             }
           }
         }]

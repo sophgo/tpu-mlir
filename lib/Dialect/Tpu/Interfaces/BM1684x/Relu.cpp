@@ -9,7 +9,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Backend/BM168x/BM1686.h"
+#include "tpu_mlir/Backend/BM168x/BM1684x.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
 #include "tpu_mlir/Support/Helper/Module.h"
 
@@ -22,11 +22,11 @@ using namespace tpu_mlir::backend;
 // GlobalGenInterface
 // =========================================
 
-void tpu::ReluOp::codegen_global_int8_bm1686() {
+void tpu::ReluOp::codegen_global_int8_bm1684x() {
   llvm_unreachable("Codegen to be supported");
 }
 
-void tpu::ReluOp::codegen_global_float_bm1686() {
+void tpu::ReluOp::codegen_global_float_bm1684x() {
   llvm_unreachable("Codegen to be supported");
 }
 
@@ -35,16 +35,16 @@ void tpu::ReluOp::codegen_global_float_bm1686() {
 // LocalGenInterface
 // =========================================
 
-int64_t tpu::ReluOp::getBufferSize_bm1686(int64_t out_n, int64_t out_c,
+int64_t tpu::ReluOp::getBufferSize_bm1684x(int64_t out_n, int64_t out_c,
                                           int64_t out_h, int64_t out_w,
                                           int64_t out_lmem_bytes) {
   return 0;
 }
 
-void tpu::ReluOp::codegen_local_int8_bm1686(int64_t n_step, int64_t h_step) {
+void tpu::ReluOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
   llvm_unreachable("support later");
 }
 
-void tpu::ReluOp::codegen_local_float_bm1686(int64_t n_step, int64_t h_step) {
+void tpu::ReluOp::codegen_local_float_bm1684x(int64_t n_step, int64_t h_step) {
   llvm_unreachable("support later");
 }

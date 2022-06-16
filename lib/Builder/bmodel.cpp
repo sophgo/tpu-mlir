@@ -817,7 +817,7 @@ bmodel::bmodel_mem_info_t ModelCtx::get_bmodel_mem_info()
                     int group_num = subnet->cmd_group()->size();
                     for (int group_idx = 0; group_idx < group_num; group_idx++) {
                       auto cmd_group = subnet->cmd_group()->Get(group_idx);
-                      // just for bm1684. bm1686 instructions may be of variable length
+                      // just for bm1684. bm1684x instructions may be of variable length
                       if(model()->chip()->str() == "BM1682"){
                         info.bd_cmd_mem_size += cmd_group->bdc_num()*(1<<8);
                         info.gdma_cmd_mem_size += cmd_group->gdma_num()*(1<<8);

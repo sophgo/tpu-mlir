@@ -42,7 +42,7 @@ constexpr llvm::StringRef Module::State::TPU_ADDRESSED;
 
 constexpr llvm::StringRef Module::Chip::ALL;
 constexpr llvm::StringRef Module::Chip::BM1684;
-constexpr llvm::StringRef Module::Chip::BM1686;
+constexpr llvm::StringRef Module::Chip::BM1684x;
 
 top::NoneOp Module::getNoneOp(Operation *op) {
   assert(op != nullptr);

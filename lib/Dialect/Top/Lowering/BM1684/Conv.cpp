@@ -90,4 +90,4 @@ Value top::ConvOp::lowering_int8_bm1684() {
   return newOp.output();
 }
 
-Value top::ConvOp::lowering_f32_bm1684() { return lowering_f32_bm1686(); }
+Value top::ConvOp::lowering_f32_bm1684() { return lowering_f32_bm1684x(); }

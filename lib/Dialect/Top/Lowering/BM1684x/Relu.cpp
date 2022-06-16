@@ -18,18 +18,18 @@ using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
-Value top::MaxPoolOp::lowering_int8_bm1686(bool asymetric) {
-  return lowering_common_int8<tpu::MaxPoolOp>(getOperation(), asymetric);
+Value top::ReluOp::lowering_int8_bm1684x(bool asymetric) {
+  return lowering_common_int8<tpu::ReluOp>(getOperation());
 }
 
-Value top::MaxPoolOp::lowering_f32_bm1686() {
-  return lowering_common<tpu::MaxPoolOp>(getOperation());
+Value top::ReluOp::lowering_f32_bm1684x() {
+  return lowering_common<tpu::ReluOp>(getOperation());
 }
 
-Value top::MaxPoolOp::lowering_bf16_bm1686() {
-  return lowering_common<tpu::MaxPoolOp, BFloat16Type>(getOperation());
+Value top::ReluOp::lowering_bf16_bm1684x() {
+  return lowering_common<tpu::ReluOp, BFloat16Type>(getOperation());
 }
 
-Value top::MaxPoolOp::lowering_f16_bm1686() {
-  return lowering_common<tpu::MaxPoolOp, Float16Type>(getOperation());
+Value top::ReluOp::lowering_f16_bm1684x() {
+  return lowering_common<tpu::ReluOp, Float16Type>(getOperation());
 }

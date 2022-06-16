@@ -107,22 +107,29 @@ typedef struct bmcompiler_mem_info bm_device_mem_t;
 static constexpr int MAX_SHAPE_DIMS = 8;
 
 typedef struct local_tensor_spec {
-  uint32_t addr;
-  int32_t dtype;
-  int32_t dims;
-  int32_t shape[MAX_SHAPE_DIMS];
-  uint8_t consume_num;
-} local_tensor_spec_t;
-
-typedef struct global_tensor_spec {
   uint64_t addr;
   int32_t dtype;
   int32_t dims;
   int32_t shape[MAX_SHAPE_DIMS];
+  uint8_t consume_num;
   int *host_data;
-} global_tensor_spec_t;
+} tensor_spec_t;
+
+typedef enum {
+  /* 3D group if this group has CONV3D/DECONV3D/POOL3D
+   * for 1684 float32, data in local memory storage as {d * n, c, h, w}
+   * for 1684 int8, data in local memory storage as {n, d * c, h, w}
+   * for 1684X, data in local memory storage as {d * n, c, h, w}
+   * data in global memory always storage as {n, c, d, h, w}
+   * group_type < 8, because 1684 dynamic compile reserved `3bit` for group_type
+   */
+  GROUP_NORMAL = 0,
+  GROUP_3D = 1,
+} group_type_t;
 
 typedef struct local_sec_info {
+  int32_t group_type;
+
   int32_t n_slice;
   int32_t out_n_slice;
 
@@ -131,11 +138,13 @@ typedef struct local_sec_info {
   int32_t is_h_split;
   int32_t h_idx;
   int32_t h_slice;
+  int32_t out_h_idx;
   int32_t out_h_slice;
 
   int32_t is_w_split;
   int32_t w_idx;
   int32_t w_slice;
+  int32_t out_w_idx;
   int32_t out_w_slice;
 } local_sec_info_t;
 
@@ -257,17 +266,12 @@ public:
   static DATA_TYPE_T getDataType(mlir::Value v);
   static int getGdmaFormat(DATA_TYPE_T data_type);
   static int getFmtBytes(DATA_TYPE_T data_type);
-  static global_tensor_spec_t value_to_global(mlir::Value v);
-  static std::shared_ptr<std::vector<global_tensor_spec_t>>
-  get_input_global_spec(mlir::Operation *op);
-  static std::shared_ptr<std::vector<global_tensor_spec_t>>
-  get_output_global_spec(mlir::Operation *op);
+  static tensor_spec_t value_to_spec(mlir::Value v);
+  static std::shared_ptr<std::vector<tensor_spec_t>>
+  get_input_spec(mlir::Operation *op);
+  static std::shared_ptr<std::vector<tensor_spec_t>>
+  get_output_spec(mlir::Operation *op);
 
-  static local_tensor_spec_t value_to_local(mlir::Value v);
-  static std::shared_ptr<std::vector<local_tensor_spec_t>>
-  get_input_local_spec(mlir::Operation *op);
-  static std::shared_ptr<std::vector<local_tensor_spec_t>>
-  get_output_local_spec(mlir::Operation *op);
   static stride_4D_t getGlobalStride(int64_t N, int64_t C, int64_t H,
                                      int64_t W);
   stride_4D_t getLocalStride(int64_t N, int64_t C, int64_t H, int64_t W,

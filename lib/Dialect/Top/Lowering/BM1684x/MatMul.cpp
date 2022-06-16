@@ -19,7 +19,7 @@ using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
-Value top::MatMulOp::lowering_int8_bm1686(bool asymetric) {
+Value top::MatMulOp::lowering_int8_bm1684x(bool asymetric) {
   // refer quantize_convlike_layer_int8
   auto op = getOperation();
   OpBuilder builder(op);
@@ -103,11 +103,11 @@ Value top::MatMulOp::lowering_int8_bm1686(bool asymetric) {
   return newOp.output();
 }
 
-Value top::MatMulOp::lowering_f32_bm1686() {
+Value top::MatMulOp::lowering_f32_bm1684x() {
   return lowering_common<tpu::MatMulOp>(getOperation());
 }
 
-Value top::MatMulOp::lowering_f16_bm1686() {
+Value top::MatMulOp::lowering_f16_bm1684x() {
   auto ctx = getContext();
   OpBuilder builder(ctx);
   auto op = getOperation();
@@ -132,7 +132,7 @@ Value top::MatMulOp::lowering_f16_bm1686() {
   return newOp.output();
 }
 
-Value top::MatMulOp::lowering_bf16_bm1686() {
+Value top::MatMulOp::lowering_bf16_bm1684x() {
   auto ctx = getContext();
   OpBuilder builder(ctx);
   auto op = getOperation();

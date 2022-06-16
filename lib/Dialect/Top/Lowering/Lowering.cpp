@@ -125,18 +125,20 @@ struct LoweringPattern : public RewritePattern {
       } else {
         newValue = lowering_op.lowering_int8_bm1684();
       }
-    } else if (chip == Module::Chip::BM1686) {
+    } else if (chip == Module::Chip::BM1684x) {
       if (real_mode == Quant::Type::INT8) {
-        newValue = lowering_op.lowering_int8_bm1686(asymetric);
+        newValue = lowering_op.lowering_int8_bm1684x(asymetric);
       } else if (real_mode == Quant::Type::F32) {
-        newValue = lowering_op.lowering_f32_bm1686();
+        newValue = lowering_op.lowering_f32_bm1684x();
       } else if (real_mode == Quant::Type::BF16) {
-        newValue = lowering_op.lowering_bf16_bm1686();
+        newValue = lowering_op.lowering_bf16_bm1684x();
       } else if (real_mode == Quant::Type::F16) {
-        newValue = lowering_op.lowering_f16_bm1686();
+        newValue = lowering_op.lowering_f16_bm1684x();
       } else {
         llvm_unreachable("unknown mode");
       }
+    } else {
+      llvm_unreachable("unknown chip");
     }
     rewriter.replaceOp(op, {newValue});
     return success();
@@ -291,7 +293,7 @@ protected:
   }
 
   void quant_for_special(Operation *op) {
-    if (chip_ == Module::Chip::BM1686) {
+    if (chip_ == Module::Chip::BM1684x) {
       if (mode_ == Quant::Type::INT8) {
         if (isa<top::AddOp>(op)) {
           quantize_map[op] = Quant::Type::F32;

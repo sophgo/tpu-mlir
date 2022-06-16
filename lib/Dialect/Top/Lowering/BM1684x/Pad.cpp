@@ -16,22 +16,22 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-Value top::BatchNormOp::lowering_int8_bm1686(bool asymetric) {
-  llvm_unreachable("BatchNormOp to be supported");
+Value top::PadOp::lowering_int8_bm1684x(bool asymetric) {
+  llvm_unreachable("PadOp to be supported");
   return nullptr;
 }
 
-Value top::BatchNormOp::lowering_f32_bm1686() {
-  llvm_unreachable("BatchNormOp to be supported");
+Value top::PadOp::lowering_f32_bm1684x() {
+  llvm_unreachable("PadOp to be supported");
   return nullptr;
 }
 
-Value top::BatchNormOp::lowering_bf16_bm1686() {
-  llvm_unreachable("BatchNormOp to be supported");
+Value top::PadOp::lowering_bf16_bm1684x() {
+  llvm_unreachable("PadOp to be supported");
   return nullptr;
 }
 
-Value top::BatchNormOp::lowering_f16_bm1686() {
-  llvm_unreachable("BatchNormOp to be supported");
+Value top::PadOp::lowering_f16_bm1684x() {
+  llvm_unreachable("PadOp to be supported");
   return nullptr;
 }

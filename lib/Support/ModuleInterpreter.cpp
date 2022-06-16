@@ -28,8 +28,7 @@ using namespace tpu_mlir::helper;
 namespace tpu_mlir {
 ModuleInterpreter::ModuleInterpreter(ModuleOp module) : module(module) {
   state = Module::getState(module);
-  if (state != Module::State::TOP_F32 &&
-      state != Module::State::TPU_LOWERED) {
+  if (state != Module::State::TOP_F32 && state != Module::State::TPU_LOWERED) {
     llvm_unreachable("mlir state not support");
   }
 }
@@ -80,6 +79,13 @@ void ModuleInterpreter::allocate_resources() {
         }
       }
     });
+    for (auto &name : output_names) {
+      if (std::find(all_tensor_names.begin(), all_tensor_names.end(), name) ==
+          all_tensor_names.end()) {
+        // if weight is output, then dump it
+        all_tensor_names.push_back(name);
+      }
+    }
 
     llvm::errs() << "fill InferenceParameter\n";
     // input output buffers for all ops
