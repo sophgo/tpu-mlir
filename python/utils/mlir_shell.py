@@ -14,7 +14,7 @@ def _os_system(cmd: list):
         cmd_str += s + " "
     ret = os.system(cmd_str)
     if ret == 0:
-        print("{} run success".format(cmd_str))
+        print("[Success]cmd: {}".format(cmd_str))
     else:
         print("[!Error]cmd: {}".format(cmd_str))
     return ret

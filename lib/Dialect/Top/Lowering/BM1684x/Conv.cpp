@@ -116,7 +116,6 @@ Value top::ConvOp::lowering_int8_bm1684x(bool asymetric) {
   }
 
   std::vector<NamedAttribute> attrs;
-
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }

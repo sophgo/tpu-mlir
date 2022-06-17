@@ -18,6 +18,9 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace tpu_mlir::backend;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 typedef struct {
   uint64_t input_addr;
   uint64_t output_addr;
@@ -49,6 +52,10 @@ typedef struct {
   int input_dtype;
 } dequant_fp_param_t;
 
+#ifdef __cplusplus
+}
+#endif
+
 // =========================================
 // GlobalGenInterface
 // =========================================
@@ -75,7 +82,7 @@ void tpu::CastOp::codegen_global_int8_bm1684x() {
     param.output_dtype = BM168x::getDataType(output());
     param.mode = 0;
     BM1684x::instance().call_global_func("backend_api_requant_float_global",
-                                        &param, sizeof(param));
+                                         &param, sizeof(param));
   } else {
     auto qtype = Quant::getUniformQuantizedType(input());
     dequant_fp_param_t param = {0};
@@ -90,7 +97,7 @@ void tpu::CastOp::codegen_global_int8_bm1684x() {
     param.offset_value = qtype.getZeroPoint();
     param.input_dtype = BM168x::getDataType(input());
     BM1684x::instance().call_global_func("backend_api_dequant_float_global",
-                                        &param, sizeof(param));
+                                         &param, sizeof(param));
   }
 }
 
@@ -104,10 +111,15 @@ void tpu::CastOp::codegen_global_float_bm1684x() {
 // LocalGenInterface
 // =========================================
 
-int64_t tpu::CastOp::getBufferSize_bm1684x(int64_t out_n, int64_t out_c,
-                                          int64_t out_h, int64_t out_w,
-                                          int64_t out_lmem_bytes) {
-  return 0;
+int64_t tpu::CastOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
+                                           int64_t out_lmem_bytes) {
+  if (input().hasOneUse()) {
+    return 0;
+  }
+  if (Quant::isUniformQuantized(input())) {
+    return 0;
+  }
+  return in_lmem_bytes;
 }
 
 void tpu::CastOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
@@ -119,11 +131,13 @@ void tpu::CastOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
   Module::getNCHW(output(), n, c, h, w);
   if (!qInput && qOutput) {
     auto qtype = Quant::getUniformQuantizedType(output());
+    uint32_t buffer_addr =
+        input().hasOneUse() ? in_gi.out_addr : gi.buffer_addr;
     requant_fp_param_t param = {0};
     param.input_addr = in_gi.out_addr;
     param.output_addr = gi.out_addr;
     param.requant_addr = 0;
-    param.buffer_local_addr = 0;
+    param.buffer_local_addr = buffer_addr;
     param.n = gi.n_slice;
     param.c = c;
     param.h = gi.h_slice;
@@ -135,7 +149,7 @@ void tpu::CastOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
     param.output_dtype = BM168x::getDataType(output());
     param.mode = 0;
     BM1684x::instance().call_local_func("backend_api_requant_float_local",
-                                       &param, sizeof(param));
+                                        &param, sizeof(param));
   } else {
     auto qtype = Quant::getUniformQuantizedType(input());
     dequant_fp_param_t param = {0};
@@ -151,7 +165,7 @@ void tpu::CastOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
     param.offset_value = qtype.getZeroPoint();
     param.input_dtype = BM168x::getDataType(input());
     BM1684x::instance().call_local_func("backend_api_dequant_float_local",
-                                       &param, sizeof(param));
+                                        &param, sizeof(param));
   }
 }
 

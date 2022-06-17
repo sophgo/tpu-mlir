@@ -23,8 +23,7 @@ void tpu::ReluOp::codegen_global_int8_bm1684() {
   llvm_unreachable("Codegen to be supported");
 }
 
-int64_t tpu::ReluOp::getBufferSize_bm1684(int64_t out_n, int64_t out_c,
-                                          int64_t out_h, int64_t out_w,
+int64_t tpu::ReluOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
                                           int64_t out_lmem_bytes) {
   return 0;
 }

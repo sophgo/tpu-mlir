@@ -40,14 +40,12 @@ void tpu::MaxPoolOp::codegen_global_int8_bm1684() {
       relu ? 1 : 0, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
 }
 
-int64_t tpu::AvgPoolOp::getBufferSize_bm1684(int64_t out_n, int64_t out_c,
-                                             int64_t out_h, int64_t out_w,
+int64_t tpu::AvgPoolOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
                                              int64_t out_lmem_bytes) {
   return 0;
 }
 
-int64_t tpu::MaxPoolOp::getBufferSize_bm1684(int64_t out_n, int64_t out_c,
-                                             int64_t out_h, int64_t out_w,
+int64_t tpu::MaxPoolOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
                                              int64_t out_lmem_bytes) {
   return 0;
 }

@@ -35,8 +35,7 @@ void tpu::ReluOp::codegen_global_float_bm1684x() {
 // LocalGenInterface
 // =========================================
 
-int64_t tpu::ReluOp::getBufferSize_bm1684x(int64_t out_n, int64_t out_c,
-                                          int64_t out_h, int64_t out_w,
+int64_t tpu::ReluOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
                                           int64_t out_lmem_bytes) {
   return 0;
 }

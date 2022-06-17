@@ -66,7 +66,7 @@ void tpu::MaxPoolOp::codegen_global_int8_bm1684x() {
   auto op = getOperation();
   auto input_spec = BM1684x::get_input_spec(op);
   auto output_spec = BM1684x::get_output_spec(op);
-  pooling_common_spec_t spec;
+  pooling_common_spec_t spec = {0};
   spec.kh = kh;
   spec.kw = kw;
   spec.pad_h_t = pt;
@@ -79,14 +79,14 @@ void tpu::MaxPoolOp::codegen_global_int8_bm1684x() {
   spec.dw = 1;
   spec.is_global_pooling = is_global;
   spec.is_avg_pooling = false;
-  spec.avg_pooling_mode = count_include_pad ? 0 : 1;
+  spec.avg_pooling_mode = 0;
   spec.if_relu = relu;
   spec.relu_upper_limit = 0;
   spec.ceil_mode = 0;
   spec.round_mode = ROUND_UP;
   BM1684x::instance().call_global_func("backend_api_pooling_global", &spec,
-                                      sizeof(spec), input_spec->data(),
-                                      output_spec->data());
+                                       sizeof(spec), input_spec->data(),
+                                       output_spec->data());
 }
 
 void tpu::AvgPoolOp::codegen_global_int8_bm1684x() {
@@ -97,7 +97,7 @@ void tpu::AvgPoolOp::codegen_global_int8_bm1684x() {
   auto op = getOperation();
   auto input_spec = BM1684x::get_input_spec(op);
   auto output_spec = BM1684x::get_output_spec(op);
-  pooling_common_spec_t spec;
+  pooling_common_spec_t spec = {0};
   spec.kh = kh;
   spec.kw = kw;
   spec.pad_h_t = pt;
@@ -116,8 +116,8 @@ void tpu::AvgPoolOp::codegen_global_int8_bm1684x() {
   spec.ceil_mode = 0;
   spec.round_mode = ROUND_UP;
   BM1684x::instance().call_global_func("backend_api_pooling_global", &spec,
-                                      sizeof(spec), input_spec->data(),
-                                      output_spec->data());
+                                       sizeof(spec), input_spec->data(),
+                                       output_spec->data());
 }
 
 // f32
@@ -129,7 +129,7 @@ void tpu::AvgPoolOp::codegen_global_float_bm1684x() {
   auto op = getOperation();
   auto input_spec = BM1684x::get_input_spec(op);
   auto output_spec = BM1684x::get_output_spec(op);
-  pooling_common_spec_t spec;
+  pooling_common_spec_t spec = {0};
   spec.kh = kh;
   spec.kw = kw;
   spec.pad_h_t = pt;
@@ -148,8 +148,8 @@ void tpu::AvgPoolOp::codegen_global_float_bm1684x() {
   spec.ceil_mode = 0;
   spec.round_mode = ROUND_UP;
   BM1684x::instance().call_global_func("backend_api_pooling_global", &spec,
-                                      sizeof(spec), input_spec->data(),
-                                      output_spec->data());
+                                       sizeof(spec), input_spec->data(),
+                                       output_spec->data());
 }
 
 void tpu::MaxPoolOp::codegen_global_float_bm1684x() {
@@ -160,7 +160,7 @@ void tpu::MaxPoolOp::codegen_global_float_bm1684x() {
   auto op = getOperation();
   auto input_spec = BM1684x::get_input_spec(op);
   auto output_spec = BM1684x::get_output_spec(op);
-  pooling_common_spec_t spec;
+  pooling_common_spec_t spec = {0};
   spec.kh = kh;
   spec.kw = kw;
   spec.pad_h_t = pt;
@@ -179,27 +179,26 @@ void tpu::MaxPoolOp::codegen_global_float_bm1684x() {
   spec.ceil_mode = 0;
   spec.round_mode = ROUND_UP;
   BM1684x::instance().call_global_func("backend_api_pooling_global", &spec,
-                                      sizeof(spec), input_spec->data(),
-                                      output_spec->data());
+                                       sizeof(spec), input_spec->data(),
+                                       output_spec->data());
 }
 
 // =========================================
 // LocalGenInterface
 // =========================================
 
-int64_t tpu::AvgPoolOp::getBufferSize_bm1684x(int64_t out_n, int64_t out_c,
-                                             int64_t out_h, int64_t out_w,
-                                             int64_t out_lmem_bytes) {
+int64_t tpu::AvgPoolOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
+                                              int64_t out_lmem_bytes) {
   return 0;
 }
 
-int64_t tpu::MaxPoolOp::getBufferSize_bm1684x(int64_t out_n, int64_t out_c,
-                                             int64_t out_h, int64_t out_w,
-                                             int64_t out_lmem_bytes) {
+int64_t tpu::MaxPoolOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
+                                              int64_t out_lmem_bytes) {
   return 0;
 }
 
-void tpu::MaxPoolOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
+void tpu::MaxPoolOp::codegen_local_int8_bm1684x(int64_t n_step,
+                                                int64_t h_step) {
   int64_t n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value;
   bool relu, is_global, count_include_pad;
   parseParam(n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value,
@@ -233,19 +232,19 @@ void tpu::MaxPoolOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) 
   sec_info.n_slice = in_gi.n_slice;
   sec_info.h_slice = in_gi.h_slice;
   sec_info.h_idx = in_gi.h_idx;
-  sec_info.is_h_split =
-      !(in_gi.h_idx == 0 && (in_gi.h_idx + in_gi.h_slice) == ih);
+  sec_info.is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == ih);
   sec_info.w_slice = iw;
   sec_info.out_n_slice = gi.n_slice;
   sec_info.out_h_idx = gi.h_idx;
   sec_info.out_h_slice = gi.h_slice;
   sec_info.out_w_slice = ow;
   BM1684x::instance().call_local_func("backend_api_pooling_local", &spec,
-                                     sizeof(spec), &sec_info,
-                                     input_spec->data(), output_spec->data());
+                                      sizeof(spec), &sec_info,
+                                      input_spec->data(), output_spec->data());
 }
 
-void tpu::AvgPoolOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
+void tpu::AvgPoolOp::codegen_local_int8_bm1684x(int64_t n_step,
+                                                int64_t h_step) {
   int64_t n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value;
   bool relu, is_global, count_include_pad;
   parseParam(n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value,
@@ -279,20 +278,19 @@ void tpu::AvgPoolOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) 
   sec_info.n_slice = in_gi.n_slice;
   sec_info.h_slice = in_gi.h_slice;
   sec_info.h_idx = in_gi.h_idx;
-  sec_info.is_h_split =
-      !(in_gi.h_idx == 0 && (in_gi.h_idx + in_gi.h_slice) == ih);
+  sec_info.is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == ih);
   sec_info.w_slice = iw;
   sec_info.out_n_slice = gi.n_slice;
   sec_info.out_h_idx = gi.h_idx;
   sec_info.out_h_slice = gi.h_slice;
   sec_info.out_w_slice = ow;
   BM1684x::instance().call_local_func("backend_api_pooling_local", &spec,
-                                     sizeof(spec), &sec_info,
-                                     input_spec->data(), output_spec->data());
+                                      sizeof(spec), &sec_info,
+                                      input_spec->data(), output_spec->data());
 }
 
 void tpu::MaxPoolOp::codegen_local_float_bm1684x(int64_t n_step,
-                                                int64_t h_step) {
+                                                 int64_t h_step) {
   int64_t n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value;
   bool relu, is_global, count_include_pad;
   parseParam(n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value,
@@ -327,20 +325,19 @@ void tpu::MaxPoolOp::codegen_local_float_bm1684x(int64_t n_step,
   sec_info.n_slice = in_gi.n_slice;
   sec_info.h_slice = in_gi.h_slice;
   sec_info.h_idx = in_gi.h_idx;
-  sec_info.is_h_split =
-      !(in_gi.h_idx == 0 && (in_gi.h_idx + in_gi.h_slice) == ih);
+  sec_info.is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == ih);
   sec_info.w_slice = iw;
   sec_info.out_n_slice = gi.n_slice;
   sec_info.out_h_idx = gi.h_idx;
   sec_info.out_h_slice = gi.h_slice;
   sec_info.out_w_slice = ow;
   BM1684x::instance().call_local_func("backend_api_pooling_local", &spec,
-                                     sizeof(spec), &sec_info,
-                                     input_spec->data(), output_spec->data());
+                                      sizeof(spec), &sec_info,
+                                      input_spec->data(), output_spec->data());
 }
 
 void tpu::AvgPoolOp::codegen_local_float_bm1684x(int64_t n_step,
-                                                int64_t h_step) {
+                                                 int64_t h_step) {
   int64_t n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value;
   bool relu, is_global, count_include_pad;
   parseParam(n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value,
@@ -374,14 +371,13 @@ void tpu::AvgPoolOp::codegen_local_float_bm1684x(int64_t n_step,
   sec_info.n_slice = in_gi.n_slice;
   sec_info.h_slice = in_gi.h_slice;
   sec_info.h_idx = in_gi.h_idx;
-  sec_info.is_h_split =
-      !(in_gi.h_idx == 0 && (in_gi.h_idx + in_gi.h_slice) == ih);
+  sec_info.is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == ih);
   sec_info.w_slice = iw;
   sec_info.out_n_slice = gi.n_slice;
   sec_info.out_h_idx = gi.h_idx;
   sec_info.out_h_slice = gi.h_slice;
   sec_info.out_w_slice = ow;
   BM1684x::instance().call_local_func("backend_api_pooling_local", &spec,
-                                     sizeof(spec), &sec_info,
-                                     input_spec->data(), output_spec->data());
+                                      sizeof(spec), &sec_info,
+                                      input_spec->data(), output_spec->data());
 }
