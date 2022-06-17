@@ -165,8 +165,7 @@ typedef struct {
   int round_mode;
 } eltwise_fixed_local_param_t;
 
-int64_t tpu::AddOp::getBufferSize_bm1684x(int64_t out_n, int64_t out_c,
-                                         int64_t out_h, int64_t out_w,
+int64_t tpu::AddOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
                                          int64_t out_lmem_bytes) {
   auto out_type = Module::getStorageType(output());
   if (out_type.isInteger(8)) {

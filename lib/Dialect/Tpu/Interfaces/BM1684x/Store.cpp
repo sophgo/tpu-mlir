@@ -26,9 +26,8 @@ void tpu::StoreOp::codegen_global_float_bm1684x() {
   llvm_unreachable("not support now");
 }
 
-int64_t tpu::StoreOp::getBufferSize_bm1684x(int64_t out_n, int64_t out_c,
-                                           int64_t out_h, int64_t out_w,
-                                           int64_t out_lmem_bytes) {
+int64_t tpu::StoreOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
+                                            int64_t out_lmem_bytes) {
   return 0;
 }
 
@@ -42,7 +41,7 @@ void tpu::StoreOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
   Module::getNCHW(output(), N, C, H, W);
   auto g_stride = BM1684x::instance().getGlobalStride(N, C, H, W);
   auto s_stride = BM1684x::instance().getLocalStride(gi.n_slice, C, gi.h_slice,
-                                                    W, fmt_bytes, gi.eu_align);
+                                                     W, fmt_bytes, gi.eu_align);
   auto g_addr = Module::getAddress(output());
   int64_t g_offset =
       (gi.n_idx * g_stride.N + gi.h_idx * g_stride.H) * fmt_bytes;

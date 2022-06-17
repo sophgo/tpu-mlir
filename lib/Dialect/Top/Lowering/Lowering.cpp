@@ -268,7 +268,11 @@ protected:
     } else if (sType.isBF16()) {
       suffix = "_bf16";
     } else if (sType.isInteger(8)) {
-      suffix = "_i8";
+      if (sType.isUnsignedInteger(8)) {
+        suffix = "_u8";
+      } else {
+        suffix = "_i8";
+      }
       if (Quant::isUniformQuantized(to) && Quant::isCalibratedType(v)) {
         newType = Quant::getQuantInt8Type(v, asymetric_);
       } else {

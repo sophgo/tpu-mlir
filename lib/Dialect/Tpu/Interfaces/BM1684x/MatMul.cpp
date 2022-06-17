@@ -61,9 +61,9 @@ void tpu::MatMulOp::codegen_global_int8_bm1684x() {
   spec.is_asymmetric = 1;
   spec.rzp_is_const = 1;
   spec.rzp_const_val = 0;
-  spec.requant_mode = 1;
+  spec.requant_mode = 2;
   spec.mul_val = multiplier();
-  spec.shift_val = rshift();
+  spec.shift_val = -rshift();
   auto output_type = Quant::getUniformQuantizedType(output());
   spec.offset_val = output_type.getZeroPoint();
   spec.have_bias = with_bias;

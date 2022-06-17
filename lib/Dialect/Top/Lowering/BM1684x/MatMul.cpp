@@ -41,7 +41,7 @@ Value top::MatMulOp::lowering_int8_bm1684x(bool asymetric) {
   double w_scale = w_max / 127.0;
   auto filter_int8 = std::make_shared<std::vector<int8_t>>(filter_f32->size());
   for (uint64_t t = 0; t < filter_f32->size(); t++) {
-    filter_int8->data()[t] = Quant::to_int8(filter_f32->data()[t] / w_scale);
+    filter_int8->at(t) = Quant::to_int8(filter_f32->at(t) / w_scale);
   }
 
   std::shared_ptr<std::vector<int32_t>> bias_int32;
@@ -57,12 +57,12 @@ Value top::MatMulOp::lowering_int8_bm1684x(bool asymetric) {
   for (int j = 0; j < N; j++) {
     int64_t bias_w_xz = 0;
     for (int i = 0; i < K; i++) {
-      bias_w_xz += (int64_t)filter_int8->data()[i * N + j] * in_zp;
+      bias_w_xz += (int64_t)filter_int8->at(i * N + j) * in_zp;
     }
 
     if (with_bias) {
       bias_int32->data()[j] =
-          std::round(bias_fp32->data()[j] / (w_scale * in_scale) - bias_w_xz);
+          std::round(bias_fp32->at(j) / (w_scale * in_scale) - bias_w_xz);
     } else {
       bias_int32->data()[j] = -bias_w_xz;
     }

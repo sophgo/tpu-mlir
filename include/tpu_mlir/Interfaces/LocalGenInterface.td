@@ -105,27 +105,27 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
         /*desc=*/[{}],
         /*retType=*/"int64_t",
         /*methodName=*/"getBufferSize_bm1684",
-        /*args=*/(ins "int64_t":$out_n, "int64_t":$out_c, "int64_t":$out_h, "int64_t":$out_w, "int64_t":$out_lmem_bytes)
+        /*args=*/(ins "int64_t":$in_lmem_bytes, "int64_t":$out_lmem_bytes)
       >,
       InterfaceMethod<
         /*desc=*/[{}],
         /*retType=*/"int64_t",
         /*methodName=*/"getBufferSize_bm1684x",
-        /*args=*/(ins "int64_t":$out_n, "int64_t":$out_c, "int64_t":$out_h, "int64_t":$out_w, "int64_t":$out_lmem_bytes)
+        /*args=*/(ins "int64_t":$in_lmem_bytes, "int64_t":$out_lmem_bytes)
       >,
       InterfaceMethod<
         /*desc=*/[{}],
         /*retType=*/"int64_t",
         /*methodName=*/"getBufferSize",
-        /*args=*/(ins "int64_t":$out_n, "int64_t":$out_c, "int64_t":$out_h, "int64_t":$out_w, "int64_t":$out_lmem_bytes),
+        /*args=*/(ins "int64_t":$in_lmem_bytes, "int64_t":$out_lmem_bytes),
         [{}],
         [{
           auto module = Module::getModuleOp($_op);
           auto chip = Module::getChip(module);
           if (chip == Module::Chip::BM1684) {
-            return $_op.getBufferSize_bm1684(out_n, out_c, out_h, out_w, out_lmem_bytes);
+            return $_op.getBufferSize_bm1684(in_lmem_bytes, out_lmem_bytes);
           } else if (chip == Module::Chip::BM1684x) {
-            return $_op.getBufferSize_bm1684x(out_n, out_c, out_h, out_w, out_lmem_bytes);
+            return $_op.getBufferSize_bm1684x(in_lmem_bytes, out_lmem_bytes);
           }
           return 0;
         }]

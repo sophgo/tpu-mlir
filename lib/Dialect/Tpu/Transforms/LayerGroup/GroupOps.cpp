@@ -622,12 +622,13 @@ void GroupOps::set_lmem_size(group_lmem_t group_lmem) {
   for (auto &linfo : *group_lmem) {
     if (LMEM_OPERATION == linfo.type) {
       auto lg_op = cast<LocalGenInterface>(linfo.op);
+      auto in = linfo.op->getOperand(0);
       auto out = linfo.op->getResult(0);
-      Module::getNCHW(out, n, c, h, w);
+      auto in_info = find_lmem_info(group_lmem, in);
+      assert(in_info != nullptr);
       auto out_info = find_lmem_info(group_lmem, out);
       assert(out_info != nullptr);
-      get_max_slice_nh(*out_info, slice_n, slice_h);
-      linfo.size = lg_op.getBufferSize(slice_n, c, slice_h, w, out_info->size);
+      linfo.size = lg_op.getBufferSize(in_info->size, out_info->size);
     }
   }
 }
