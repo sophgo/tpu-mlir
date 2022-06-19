@@ -1,6 +1,7 @@
 build/
 install/
 tmp/
+work_dir/
 ._*
 .DS_Store
 __pycache__
