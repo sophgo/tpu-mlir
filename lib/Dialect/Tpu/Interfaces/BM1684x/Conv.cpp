@@ -430,7 +430,7 @@ void tpu::ConvOp::codegen_global_int8_bm1684x() {
   common.has_bias = with_bias;
   common.bias_sign = true;
   common.ipad_is_const = true;
-  common.ipad_value = in_qtype.getZeroPoint();
+  common.ipad_value = -in_qtype.getZeroPoint();
   common.kzp_is_const = true;
   common.kzp_value = 0;
   BM1684x::instance().call_global_func("backend_api_conv_global", &spec,
@@ -527,7 +527,7 @@ void tpu::ConvOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
   common.has_bias = with_bias;
   common.bias_sign = true;
   common.ipad_is_const = true;
-  common.ipad_value = in_qtype.getZeroPoint();
+  common.ipad_value = -in_qtype.getZeroPoint();
   common.kzp_is_const = true;
   common.kzp_value = 0;
   local_sec_info_t sec_info;

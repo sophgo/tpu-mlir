@@ -48,7 +48,7 @@ typedef struct {
   int w;
   bool is_perchannel;
   float scale_value;
-  float offset_value;
+  int offset_value;
   int input_dtype;
 } dequant_fp_param_t;
 

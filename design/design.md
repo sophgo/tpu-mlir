@@ -74,8 +74,6 @@ gdb --args python /work/python/tools/model_runner.py --input resnet18_in_f32.npz
 
 * BM前缀是否都需要改成SG前缀？
 
-* 1684x改成1684x ?
-
 * conv各种3ic的优化 ？
 
 ## 一些思考

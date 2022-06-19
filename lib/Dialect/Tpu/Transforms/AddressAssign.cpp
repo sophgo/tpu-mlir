@@ -33,9 +33,9 @@ using namespace tpu_mlir::backend;
 namespace tpu_mlir {
 namespace tpu {
 
-class AddressAsignPass : public AddressAsignBase<AddressAsignPass> {
+class AddressAssignPass : public AddressAssignBase<AddressAssignPass> {
 public:
-  AddressAsignPass() {}
+  AddressAssignPass() {}
   void runOnOperation() override {
     auto module = getOperation();
     auto state = Module::getState(module);
@@ -54,7 +54,7 @@ public:
       llvm_unreachable("chip not support now");
     }
     Builder builder(module.getContext());
-    // asign weight first
+    // assign weight first
     auto addr = start_addr;
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](top::WeightOp op) {
@@ -65,7 +65,7 @@ public:
     }
     Module::setCoeffAddr(module, start_addr);
     Module::setCoeffSize(module, addr - start_addr);
-    // asign activation
+    // assign activation
     start_addr = addr;
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](Operation *op) {
@@ -114,8 +114,8 @@ protected:
   StringRef chip;
 };
 
-std::unique_ptr<OperationPass<ModuleOp>> createAddressAsignPass() {
-  return std::make_unique<AddressAsignPass>();
+std::unique_ptr<OperationPass<ModuleOp>> createAddressAssignPass() {
+  return std::make_unique<AddressAssignPass>();
 }
 } // namespace tpu
 } // namespace tpu_mlir

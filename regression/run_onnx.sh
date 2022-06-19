@@ -54,7 +54,7 @@ npz_tool.py compare \
 #     --weight-reorder \
 #     --subnet-divide \
 #     --layer-group \
-#     --address-asign \
+#     --address-assign \
 #     --save-weight \
 #     --codegen="model_file=resnet18_int8_1684x_lg.bmodel" \
 #     -o resnet18_int8_lg_1684x_asym.mlir
@@ -63,7 +63,7 @@ npz_tool.py compare \
 # tpuc-opt resnet18_int8_1684x_asym.mlir \
 #     --weight-reorder \
 #     --subnet-divide \
-#     --address-asign \
+#     --address-assign \
 #     --save-weight \
 #     --codegen="model_file=resnet18_int8_1684x.bmodel" \
 #     -o resnet18_int8_addr_1684x_asym.mlir
@@ -105,7 +105,7 @@ model_runner.py \
 npz_tool.py compare \
     resnet18_f16_outputs_1684x.npz \
     resnet18_f32_outputs.npz \
-    --tolerance 0.99,0.97 -v
+    --tolerance 0.99,0.90 -v
 
 # convert bf16
 tpuc-opt resnet18.mlir \
@@ -122,5 +122,5 @@ model_runner.py \
 npz_tool.py compare \
     resnet18_bf16_outputs_1684x.npz \
     resnet18_f32_outputs.npz \
-    --tolerance 0.99,0.94 -v
+    --tolerance 0.99,0.85 -v
 popd

@@ -1,5 +1,8 @@
 # BM1684x weight摆放
 
+* content
+{:toc}
+
 ## INT8算子摆放
 ### Conv2D
 
@@ -20,19 +23,21 @@ filter(int8): `[1, oc, UP(ic/64), kh*kw*64]` => `[1, oc, 1, w1]`
 #### step 3: broadcast channel
 
 filter(int8): `[1, 64, UP(oc/64), w1]` => `[1, 64, 1, w2]`
-令： `w2 = UP(oc/64) * w1`
+令： `w2 = UP(oc/64) * w1`,
 
-bias(int32): `[1, 64, 1, UP(oc/64)]` => `[1, 64, 1, w3]`
-令： `w3 = UP(oc/64)`
 
-requant(int32): `[1, 64, 1, UP(oc/64)*3]` => `[1, 64, 1, w4]`
-令： `w4 = EU_ALGIN(UP(oc/64)*3)`
+bias(int32): `[1, 64, 1, UP(oc/64)]` => (int8)`[1, 64, 1, w3]`
+令： `w3 = UP(oc/64) * 4`,
+
+requant(int32): `[1, 64, 1, UP(oc/64)*3]` => （int8)`[1, 64, 1, w4]`
+令：`w4 = (UP(oc/64)-1) * 64 + 12`
+注意是中间需要align
 
 #### step 4: merge coeff
 w维度按照requant + bias + filter合并，
 
 coeff = `[1, 64, 1, w5]`
-令: `w5 = w4 + w3 + w2`
+令: `w5 = align(w4 + w3, 64) + w2`
 
 #### 举例
 

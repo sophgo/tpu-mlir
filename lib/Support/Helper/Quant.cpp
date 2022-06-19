@@ -26,9 +26,10 @@ constexpr llvm::StringRef Quant::Type::BF16;
 constexpr llvm::StringRef Quant::Type::F16;
 constexpr llvm::StringRef Quant::Type::F32;
 
-void Quant::getScaleAndZeroPoint(int64_t qmin, int64_t qmax, double rmin,
-                                 double rmax, double &scale,
+void Quant::getScaleAndZeroPoint(double rmin, double rmax, double &scale,
                                  int64_t &zeroPoint) {
+  int qmin = rmin < 0 ? -128 : 0;
+  int qmax = rmin < 0 ? 127 : 255;
   // Determine the scale.
   double qminDouble = qmin;
   double qmaxDouble = qmax;
@@ -59,7 +60,7 @@ void Quant::getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
     auto max = qtype.getMax();
     auto min = qtype.getMin();
     if (asymetric) {
-      getScaleAndZeroPoint(-128, 127, min, max, scale, zeropoint);
+      getScaleAndZeroPoint(min, max, scale, zeropoint);
     } else {
       zeropoint = 0;
       scale = getScale(max, min < 0);
@@ -85,7 +86,7 @@ mlir::Type Quant::getQuantInt8Type(Value v, bool asymmetric) {
   getScaleAndZeroPoint(v, scale, zeropoint, asymmetric);
   int64_t qmin = -128, qmax = 127;
   uint32_t flag = quant::QuantizationFlags::Signed;
-  if (asymmetric == false && min >= 0) {
+  if (min >= 0) {
     qmin = 0;
     qmax = 255;
     flag = 0;
