@@ -69,18 +69,17 @@ model_deploy.py \
   --correctness 0.99,0.85 \
   --model resnet18_1684x_int8_sym.bmodel
 
-
-
 # to asymmetric
-# model_deploy.py \
-#   --mlir resnet18.mlir \
-#   --quantize INT8 \
-#   --asymmetric \
-#   --calibration_table resnet18_cali_table \
-#   --chip bm1684x \
-#   --tolerance 0.97,0.75 \
-#   --model resnet18_1684x_int8_asym.bmodel
-  # --test_input resnet18_in_f32.npz \
-  # --test_reference resnet18_top_outputs.npz \
+model_deploy.py \
+  --mlir resnet18.mlir \
+  --quantize INT8 \
+  --asymmetric \
+  --calibration_table resnet18_cali_table \
+  --chip bm1684x \
+  --test_input resnet18_in_f32.npz \
+  --test_reference resnet18_top_outputs.npz \
+  --tolerance 0.97,0.75 \
+  --correctness 0.99,0.85 \
+  --model resnet18_1684x_int8_asym.bmodel
 
 popd

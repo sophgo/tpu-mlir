@@ -21,7 +21,7 @@ namespace tpu {
 
 std::unique_ptr<OperationPass<ModuleOp>> createWeightReorderPass();
 std::unique_ptr<OperationPass<ModuleOp>> createSubnetDividePass();
-std::unique_ptr<OperationPass<ModuleOp>> createAddressAsignPass();
+std::unique_ptr<OperationPass<ModuleOp>> createAddressAssignPass();
 std::unique_ptr<OperationPass<ModuleOp>> createCodegenPass();
 std::unique_ptr<OperationPass<FuncOp>> createLayerGroupPass();
 

@@ -257,7 +257,7 @@ protected:
     auto sType = Module::getStorageType(to);
     auto eType = to.cast<RankedTensorType>().getElementType();
     auto shape = Module::getShape(v);
-    Type newType = RankedTensorType::get(shape, eType);
+    Type newType = RankedTensorType::get(shape, sType);
     auto ctx = v.getContext();
     OpBuilder builder(ctx);
     std::string suffix;

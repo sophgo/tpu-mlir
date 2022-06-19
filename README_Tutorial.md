@@ -209,13 +209,12 @@ tpuc-opt resnet18_f32_1684x.mlir \
     --weight-reorder \
     --subnet-divide \
     --layer-group \
-    --address-asign \
+    --address-assign \
     --save-weight \
     --codegen="model_file=resnet18_f32_1684x.bmodel" \
     -o resnet18_f32_1684x_final.mlir
 ```
 
-<mark>TODO: address-asign is a typo</mark>
 
 <mark>TODO: if give mode=FP32, or any invalid mode, will core dump and gives no hints, refine the error messages</mark>
 
@@ -338,7 +337,7 @@ tpuc-opt resnet18_int8_sym_1684x.mlir \
     --weight-reorder \
     --subnet-divide \
     --layer-group \
-    --address-asign \
+    --address-assign \
     --save-weight \
     --codegen="model_file=resnet18_int8_sym_1684x.bmodel" \
     -o resnet18_int8_sym_1684x_final.mlir
@@ -446,7 +445,7 @@ tpuc-opt resnet18_int8_asym_1684x.mlir \
     --weight-reorder \
     --subnet-divide \
     --layer-group \
-    --address-asign \
+    --address-assign \
     --save-weight \
     --codegen="model_file=resnet18_int8_asym_1684x.bmodel" \
     -o resnet18_int8_asym_1684x_final.mlir

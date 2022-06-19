@@ -65,8 +65,7 @@ struct Quant {
   }
 
   // for asymetric
-  static void getScaleAndZeroPoint(int64_t qmin, int64_t qmax, double rmin,
-                                   double rmax, double &scale,
+  static void getScaleAndZeroPoint(double rmin, double rmax, double &scale,
                                    int64_t &zeroPoint);
   // for symetric
   static double getScale(double threshold, bool sign);

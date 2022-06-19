@@ -31,9 +31,9 @@ def LayerGroup : Pass<"layer-group", "FuncOp"> {
   let dependentDialects = ["TpuDialect"];
 }
 
-def AddressAsign : Pass<"address-asign", "ModuleOp"> {
+def AddressAssign : Pass<"address-assign", "ModuleOp"> {
   let summary = "assign address in tpu by tpuc-opt";
-  let constructor = "createAddressAsignPass()";
+  let constructor = "createAddressAssignPass()";
   let dependentDialects = ["TpuDialect"];
 }
 
