@@ -51,6 +51,10 @@ void tpu::AvgPoolOp::parseParam(int64_t &n, int64_t &c, int64_t &ih,
   }
   pad_value = this->pad_value();
   count_include_pad = this->count_include_pad();
+  if ((pt == 0 && pb == 0 && pl == 0 && pr == 0) || is_global) {
+    // no pad
+    count_include_pad = true;
+  }
 }
 
 LogicalResult tpu::AvgPoolOp::init(InferenceParameter &p) {
@@ -87,48 +91,37 @@ LogicalResult tpu::AvgPoolOp::inference(InferenceParameter &p) {
   }
   auto pooling = (Pooling *)p.handle;
   pooling->run();
-
-  if (Quant::isUniformQuantized(input())) {
+  auto out_type = Module::getStorageType(output());
+  auto num_elem = Module::getNumElements(output());
+  if (out_type.isInteger(8)) {
     auto i_qtype = Quant::getUniformQuantizedType(input());
     auto o_qtype = Quant::getUniformQuantizedType(output());
-    auto num_elem = Module::getNumElements(output());
     double scale = i_qtype.getScale() / o_qtype.getScale();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int64_t i = 0; i < num_elem; ++i) {
-      p.outputs[0][i] = (p.outputs[0][i] - i_qtype.getZeroPoint()) * scale;
+      p.outputs[0][i] =
+          (std::round(p.outputs[0][i]) - i_qtype.getZeroPoint()) * scale;
+      if (do_relu() && p.outputs[0][i] < 0) {
+        p.outputs[0][i] = 0;
+      }
+      if (out_type.isUnsignedInteger(8)) {
+        p.outputs[0][i] =
+            Quant::to_uint8(p.outputs[0][i] + o_qtype.getZeroPoint());
+      } else {
+        p.outputs[0][i] =
+            Quant::to_int8(p.outputs[0][i] + o_qtype.getZeroPoint());
+      }
     }
-  }
-
-  if (do_relu()) {
-    function_relu(p.outputs[0], p.outputs[0], Module::getNumElements(output()));
-  }
-
-  auto out_type = Module::getStorageType(output());
-  auto num_elem = Module::getNumElements(output());
-  if (out_type.isa<FloatType>()) {
+  } else if (out_type.isa<FloatType>()) {
+    if (do_relu()) {
+      function_relu(p.outputs[0], p.outputs[0], num_elem);
+    }
     if (out_type.isBF16()) {
       f32_to_bf16(p.outputs[0], p.outputs[0], num_elem);
     } else if (out_type.isF16()) {
       f32_to_f16(p.outputs[0], p.outputs[0], num_elem);
     }
   }
-
-  if (Quant::isUniformQuantized(input())) {
-    int64_t num_elem = Module::getNumElements(output());
-    auto o_qtype = Quant::getUniformQuantizedType(output());
-#pragma omp parallel for schedule(static, omp_schedule(num_elem))
-    for (int64_t i = 0; i < num_elem; ++i) {
-      p.outputs[0][i] =
-          Quant::to_int8(p.outputs[0][i] + o_qtype.getZeroPoint());
-    }
-  }
-
-#ifdef DEBUG_TPU_INFER
-  llvm::errs() << "AvgPoolOp inference:" << this->name() << "\n";
-  for (int i = 0; i < 5; i++) {
-    printf("%d  %f -> %f\n", i, p.inputs[0][i], p.outputs[0][i]);
-  }
-#endif
 
   return success();
 }

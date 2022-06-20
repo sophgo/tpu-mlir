@@ -55,6 +55,10 @@ void top::AvgPoolOp::parseParam(int64_t &n, int64_t &c, int64_t &ih,
   }
   pad_value = this->pad_value();
   count_include_pad = this->count_include_pad();
+  if (pt == 0 && pb == 0 && pl == 0 && pr == 0) {
+    // no pad
+    count_include_pad = true;
+  }
 }
 
 LogicalResult top::AvgPoolOp::init(InferenceParameter &p) {

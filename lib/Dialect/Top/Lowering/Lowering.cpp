@@ -186,10 +186,13 @@ protected:
                  BackwardCalibartion<top::MaxPoolOp>>(ctx_);
     applyPatternsAndFoldGreedily(module, std::move(patterns));
     patterns.clear();
-    patterns.add<
-        ForwardCalibartion<top::ReluOp>, ForwardCalibartion<top::MaxPoolOp>,
-        ForwardCalibartion<top::AvgPoolOp>, ForwardCalibartion<top::ReshapeOp>>(
-        ctx_);
+    // clang-format off
+    patterns.add<ForwardCalibartion<top::ReluOp>,
+                 ForwardCalibartion<top::MaxPoolOp>,
+                 ForwardCalibartion<top::ReshapeOp>,
+                 ForwardCalibartion<top::AvgPoolOp>
+                >(ctx_);
+    // clang-format on
     applyPatternsAndFoldGreedily(module, std::move(patterns));
   }
 

@@ -37,16 +37,23 @@ void tpu::ConvOp::parseParam(int64_t &n, int64_t &ic, int64_t &ih, int64_t &iw,
   oc = o_s[1];
   oh = o_s[2];
   ow = o_s[3];
-  kh = kernel_shape().getValue()[0].cast<IntegerAttr>().getInt();
-  kw = kernel_shape().getValue()[1].cast<IntegerAttr>().getInt();
-  pt = pads().getValue()[0].cast<IntegerAttr>().getInt();
-  pl = pads().getValue()[1].cast<IntegerAttr>().getInt();
-  pb = pads().getValue()[2].cast<IntegerAttr>().getInt();
-  pr = pads().getValue()[3].cast<IntegerAttr>().getInt();
-  sh = strides().getValue()[0].cast<IntegerAttr>().getInt();
-  sw = strides().getValue()[1].cast<IntegerAttr>().getInt();
-  dh = dilations().getValue()[0].cast<IntegerAttr>().getInt();
-  dw = dilations().getValue()[1].cast<IntegerAttr>().getInt();
+  auto kernel = Module::getI64Array(kernel_shape());
+  kh = kernel->at(0);
+  kw = kernel->at(1);
+  auto pads_v = Module::getI64Array(pads());
+  pt = pads_v->at(0);
+  pl = pads_v->at(1);
+  pb = pads_v->at(2);
+  pr = pads_v->at(3);
+  auto strides_v = Module::getI64Array(strides());
+  sh = strides_v->at(0);
+  sw = strides_v->at(1);
+  auto dhdw = Module::getI64Array(dilations(), 2, 1);
+  dh = dhdw->at(0);
+  dw = dhdw->at(1);
+  auto ins = Module::getI64Array(inserts(), 2, 0);
+  ins_h = ins->at(0);
+  ins_w = ins->at(1);
   g = group();
   is_dw = (oc == ic && oc == g && g > 1);
   return;
@@ -108,7 +115,7 @@ LogicalResult tpu::ConvOp::inference(InferenceParameter &p) {
       for (int in = 0; in < n; in++) {
         for (int hw = 0; hw < h * w; hw++) {
           int offset = (in * c + ic) * h * w + hw;
-          auto v = (((int64_t)(p.outputs[0][offset] * multi)) >> shift) +
+          auto v = (((int64_t)(p.outputs[0][offset] * multi + (1 << (shift-1)))) >> shift) +
                    o_qtype.getZeroPoint();
           p.outputs[0][offset] = sType.isUnsignedInteger(8) ? Quant::to_uint8(v)
                                                             : Quant::to_int8(v);

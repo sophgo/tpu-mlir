@@ -84,7 +84,7 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
     auto num_output = Module::getNumElements(output());
 #pragma omp parallel for schedule(static, omp_schedule(num_output))
     for (int64_t i = 0; i < num_output; i++) {
-      auto v = (((int64_t)(p.outputs[0][i] * mlti)) >> rft);
+      auto v = (((int64_t)(p.outputs[0][i] * mlti) + (1 << (rft - 1))) >> rft);
       if (out_type.isUnsignedInteger(8)) {
         p.outputs[0][i] = Quant::to_uint8(v + o_qtype.getZeroPoint());
       } else {

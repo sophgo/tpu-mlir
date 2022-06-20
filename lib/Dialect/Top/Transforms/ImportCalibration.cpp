@@ -80,6 +80,10 @@ public:
       func.walk([&](Operation *op) {
         if (isa<tpu_mlir::InferenceInterface>(op) || isa<InputOp>(op)) {
           auto name = op->getAttrOfType<StringAttr>("name").str();
+          if (calibration_map.find(name)== calibration_map.end()) {
+            llvm::errs() << "[" << name << "] not in " << this->tableFile << "!!\n";
+            llvm_unreachable("Import Calibration failed!!\n");
+          }
           auto value = op->getResult(0);
           auto &info = calibration_map[name];
           auto type = value.getType().cast<RankedTensorType>();
