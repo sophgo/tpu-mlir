@@ -177,3 +177,24 @@ $$
 y_{i8} = (x_{i8}\times (k_{i8}-z_{k}^{oc}))_{i32}+b_{i32})\times M_{i32}^{oc} >> rshift_{i8}^{oc} + z_{yi8}
 $$
 
+
+
+### AvgPool
+
+#### 表达式
+
+$$
+Y_i = \frac{\sum_{j=0}^{k_hk_w}{(X_j)}}{k_h*k_w}
+$$
+
+#### 量化推导
+
+$$
+\begin{align}
+float:\quad & Y_i = \frac{\sum_{j=0}^{k_hk_w}{(X_j)}}{k_h*k_w} \\
+step0:\quad & => S_y(y_i - Z_y) = \frac{S_x\sum_{j=0}^{k_hk_w}(x_j-Z_x)}{k_h*k_w}\\
+step1:\quad & => y_i = \frac{S_x}{S_yk_hk_w}\sum_{j=0}^{k_hk_w}(x_j-Z_x) + Z_y \\
+step2:\quad & => y_i = \sum_{j=0}^{k_hk_w}(x_j-Z_x) * M_{i32} >> rshift_{i8} + Z_y \\
+\end{align}
+$$
+

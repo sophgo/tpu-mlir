@@ -96,17 +96,21 @@ void tpu::ConvOp::weight_reorder_int8_bm1684x() {
   bool is_dw, with_bias, relu;
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
              pl, pr, dh, dw, is_dw, with_bias, relu);
+
+  // filter
   auto filterOp = filter().getDefiningOp<top::WeightOp>();
-  if (is_dw || g > 1) {
-    llvm_unreachable("depthwise should support !!");
-  }
   auto filter_i8 = filterOp.read<int8_t>();
-  std::vector<int64_t> filter_shape = {oc, ic, kh, kw};
-  filter_reorder(filter_i8, filter_shape);
+  std::vector<int64_t> filter_shape = {oc, ic / g, kh, kw};
+  if (is_dw == false) {
+    filter_reorder(filter_i8, filter_shape);
+  } else {
+    filter_shape = {1, oc, 1, kh * kw};
+  }
   reshape_coeff_for_broadcast_channel(filter_i8, filter_shape, false);
   int64_t new_oc = filter_shape[1];
-
   int64_t filter_w_bytes = filter_shape[3] * sizeof(int8_t);
+
+  // bias
   std::shared_ptr<std::vector<int32_t>> bias_new;
   std::vector<int64_t> bias_shape = {1, oc, 1, 1};
   int64_t bias_w_bytes = 0;
@@ -118,7 +122,7 @@ void tpu::ConvOp::weight_reorder_int8_bm1684x() {
     bias_w_bytes = bias_shape[3] * sizeof(int32_t);
   }
 
-  // add requant op
+  // requant
   auto op = getOperation();
   auto qtype = Quant::getUniformQuantizedType(output());
   std::vector<int64_t> quant_shape = {1, oc, 1, 3};
@@ -133,15 +137,18 @@ void tpu::ConvOp::weight_reorder_int8_bm1684x() {
   reshape_coeff_for_broadcast_channel(quant_data, quant_shape, true);
   assert(new_oc == quant_shape[1]);
   int64_t quant_w_bytes = quant_shape[3] * sizeof(int32_t);
+
+  // merge
   int64_t quant_offset = 0, bias_offset = 0, filter_offset = 0;
+  int64_t filter_align = is_dw ? 1 : BM1684x::EU_BYTES;
   if (with_bias) {
     bias_offset =
         align_up(quant_offset + quant_w_bytes, (int64_t)sizeof(int32_t));
-    filter_offset = align_up(bias_offset + bias_w_bytes, BM1684x::EU_BYTES);
+    filter_offset = align_up(bias_offset + bias_w_bytes, filter_align);
   } else {
-    filter_offset = align_up(quant_offset + quant_w_bytes, BM1684x::EU_BYTES);
+    filter_offset = align_up(quant_offset + quant_w_bytes, filter_align);
   }
-  int merge_w = filter_offset + filter_w_bytes;
+  int64_t merge_w = filter_offset + filter_w_bytes;
   // merge requant/bias/filter
   auto new_coeff = std::make_shared<std::vector<int8_t>>(new_oc * merge_w, 0);
   std::vector<int64_t> coeff_shape = {1, new_oc, 1, merge_w};
@@ -157,6 +164,15 @@ void tpu::ConvOp::weight_reorder_int8_bm1684x() {
       memcpy(coeff_ptr + bias_offset, bias_ptr, bias_w_bytes);
     }
     memcpy(coeff_ptr + filter_offset, filter_ptr, filter_w_bytes);
+  }
+  if (merge_w > 65535) {
+    if (is_dw) {
+      coeff_shape[2] = ceiling_func(oc, (int64_t)64);
+      coeff_shape[3] /= coeff_shape[2];
+    } else {
+      coeff_shape[2] = 64;
+      coeff_shape[3] /= 64;
+    }
   }
   OpBuilder builder(getContext());
   auto elem_type = Module::getStorageType(filter());
@@ -209,7 +225,7 @@ void tpu::ConvOp::weight_reorder_f32_bm1684x() {
   if (out_type.isF32()) {
     filter_shape[0] = 1;
     filter_shape[1] = oc;
-    filter_shape[2] = is_dw ? 1 : ic / g;
+    filter_shape[2] = ic / g;
     filter_shape[3] = kh * kw;
     auto new_type = RankedTensorType::get(filter_shape, out_type);
     filter().setType(new_type);

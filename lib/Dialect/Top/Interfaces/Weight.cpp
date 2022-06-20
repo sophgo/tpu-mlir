@@ -35,7 +35,11 @@ template <typename T> std::shared_ptr<std::vector<T>> WeightOp::read() {
 std::shared_ptr<std::vector<float>> WeightOp::read_as_float() {
   auto type = getType().cast<RankedTensorType>();
   auto dtype = type.getElementType();
-  if (dtype.isInteger(8)) {
+  if (dtype.isUnsignedInteger(8)) {
+    auto data_u8 = read<uint8_t>();
+    return std::make_shared<std::vector<float>>(data_u8->begin(),
+                                                data_u8->end());
+  } else if (dtype.isInteger(8)) {
     auto data_i8 = read<int8_t>();
     return std::make_shared<std::vector<float>>(data_i8->begin(),
                                                 data_i8->end());
@@ -59,10 +63,18 @@ std::shared_ptr<std::vector<float>> WeightOp::read_as_float() {
     auto data_i8 = read<int8_t>();
     return std::make_shared<std::vector<float>>(data_i8->begin(),
                                                 data_i8->end());
+  } else if (dtype.isUnsignedInteger(16)) {
+    auto data_u16 = read<uint16_t>();
+    return std::make_shared<std::vector<float>>(data_u16->begin(),
+                                                data_u16->end());
   } else if (dtype.isInteger(16)) {
     auto data_i16 = read<int16_t>();
     return std::make_shared<std::vector<float>>(data_i16->begin(),
                                                 data_i16->end());
+  } else if (dtype.isUnsignedInteger(32)) {
+    auto data_u32 = read<uint32_t>();
+    return std::make_shared<std::vector<float>>(data_u32->begin(),
+                                                data_u32->end());
   } else if (dtype.isInteger(32)) {
     auto data_i32 = read<int32_t>();
     return std::make_shared<std::vector<float>>(data_i32->begin(),

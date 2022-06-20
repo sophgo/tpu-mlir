@@ -4,9 +4,9 @@
 {:toc}
 
 ## INT8算子摆放
-### Conv2D
+### 非DW Conv2D
 
-depthwise = false, 3ic_optimize = 0
+3ic_optimize = 0
 
 #### step 1: 原始摆放
 
@@ -17,8 +17,14 @@ requant(int32): `[1, oc, 1, 3]`
 
 #### step 2: filter变化
 
+* 非 depthwise
+
 filter(int8): `[1, oc, UP(ic/64), kh*kw*64]` => `[1, oc, 1, w1]`
 令：`w1 = UP(ic/64) * kh * kw * 64`
+
+* depthwise
+
+仅调整shape: `[1, oc, 1, w1]`, 令：`w1 = kh*kw`
 
 #### step 3: broadcast channel
 
@@ -37,7 +43,14 @@ requant(int32): `[1, 64, 1, UP(oc/64)*3]` => （int8)`[1, 64, 1, w4]`
 w维度按照requant + bias + filter合并，
 
 coeff = `[1, 64, 1, w5]`
+
+* 非detphwise
+
 令: `w5 = align(w4 + w3, 64) + w2`
+
+* depthwise
+
+令: `w5 = w4 + w3 + w2`
 
 #### 举例
 
@@ -49,6 +62,21 @@ filter(int8): `[128, 64, 3, 3]`, bias(int32):`[128]`, requant(int32):`[1,128,1,3
    requant(int8): `[1, 64, 2, 12]` = `[1, 64, 1, 64+12]`
 => merge(int8): w = up(up(88,4) + 8, 64) + 1152 = 1280
 => shape(int8): `[1, 64, 1, 1280]`
+
+### DW Conv2d
+
+3ic_optimize = 0
+
+#### step 1: 原始摆放
+
+filter(int8): `[oc, 1, kh, kw]`
+bias(int32): `[oc]`
+requant(int32): `[1, oc, 1, 3]`
+其中3表示：multiplier + rshift + input_ZeroPoint
+
+#### step 2: filter仅调整shape
+
+filter(int8): `[1, oc, 1, kh*kw]`
 
 ## BF16/F16算子摆放
 

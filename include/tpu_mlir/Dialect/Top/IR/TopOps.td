@@ -227,6 +227,7 @@ class Top_PoolOp <string mnemonic> : Top_Op<mnemonic,[SupportFuseRelu]> {
       int64_t &pl, int64_t &pr, int64_t &pad_value, bool &do_relu,
       bool &is_global, bool &count_include_pad);
   }];
+  let hasCanonicalizer = 1;
 }
 
 def Top_AvgPoolOp:Top_PoolOp<"AvgPool">;

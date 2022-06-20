@@ -50,8 +50,8 @@ Value top::ConvOp::lowering_int8_bm1684x(bool asymetric) {
     auto biasOp = cast<top::WeightOp>(bias().getDefiningOp());
     bias_fp32 = biasOp.read<float>();
     bias_int32 = std::make_shared<std::vector<int32_t>>(bias_fp32->size());
-  } else if (in_zp != 0) {
-    bias_int32 = std::make_shared<std::vector<int32_t>>(oc);
+  } else {
+    bias_int32 = std::make_shared<std::vector<int32_t>>(oc, 0);
   }
 
   std::vector<int64_t> rshift_v;
@@ -92,7 +92,7 @@ Value top::ConvOp::lowering_int8_bm1684x(bool asymetric) {
       bias_int32->data()[c] = std::round(-bias_w_xz);
     }
   }
-  with_bias = with_bias || 0 != in_zp;
+  with_bias = (bias_int32->empty() == false);
 
   auto filter_type = filter().getType().cast<RankedTensorType>();
   auto new_type = RankedTensorType::get(filter_type.getShape(),
@@ -105,9 +105,7 @@ Value top::ConvOp::lowering_int8_bm1684x(bool asymetric) {
     operands.push_back(new_filter);
   }
   if (with_bias) {
-    auto bias_type = bias().getType().cast<RankedTensorType>();
-    auto new_type =
-        RankedTensorType::get(bias_type.getShape(), builder.getI32Type());
+    auto new_type = RankedTensorType::get({1, oc, 1, 1}, builder.getI32Type());
     auto new_bias = WeightOp::create(op, "bias_int32", *bias_int32, new_type);
     operands.push_back(new_bias);
   } else {
