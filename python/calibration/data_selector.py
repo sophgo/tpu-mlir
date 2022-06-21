@@ -39,7 +39,7 @@ class DataSelector:
     def _is_cali_file(filename:str):
         support_list={'.jpg','.bmp','.png','.jpeg','.jfif','.npy','.npz'}
         for type in support_list:
-            if filename.endswith(type):
+            if filename.lower().endswith(type):
                 return True
         return False
 

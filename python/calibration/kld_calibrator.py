@@ -116,12 +116,12 @@ class ActivationCalibrator(BaseKldCalibrator):
         idx = 0
         batched_inputs = self.input_num*['']
         for data in self.data_list:
-            if data.endswith('.npz'):
+            if data.lower().endswith('.npz'):
                 x = np.load(data)
                 for k, v in x.items():
                     self.module.set_tensor(k, v)
                 self.module.invoke()
-            elif data.endswith('.jpg'): #暂定image_list文件中按10th_input1.jpg,10th_input2.jpg放置多个输入对应图片
+            elif data.lower().endswith('.jpg') or data.lower().endswith('.jpeg'):
                 inputs = data.split(',')
                 inputs = [s.strip() for s in inputs]
                 assert(self.input_num == len(inputs))
@@ -140,7 +140,7 @@ class ActivationCalibrator(BaseKldCalibrator):
                 inputs = [s.strip() for s in inputs]
                 assert (self.input_num == len(inputs))
                 for name, input in zip(self.module.input_names, inputs):
-                    assert (input.endswith('.npy'))
+                    assert (input.lower().endswith('.npy'))
                     x = np.load(input)
                     self.module.set_tensor(name, x)
                 self.module.invoke()
