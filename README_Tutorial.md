@@ -8,6 +8,7 @@ As shown in [README.md](./README.md), `model_transform.py` and `model_deploy.py`
 
 For more detailed instructions, this guide is showing step-by-step work flows of porting a model.
 
+
 # Build
 
 Refer to [README.md](./README.md).
@@ -17,13 +18,25 @@ docker pull sophgo/sophgo_dev:1.2-ubuntu-18.04
 
 cd sophgo-mlir
 
-docker run --name mymlir -v $PWD:/work -it sophgo/sophgo_dev:1.2-ubuntu-18.04
+# w/o dataset
+docker run --name mymlir \
+    -v $PWD:/work \
+    -it sophgo/sophgo_dev:1.2-ubuntu-18.04
 
+# w/ dataset mount as /dataset, for model eval
+docker run --name mymlir \
+    -v $PWD:/work \
+    -v /data/dataset:/dataset \
+    -it sophgo/sophgo_dev:1.2-ubuntu-18.04
+
+# to build
 source ./envsetup.sh
 ./build.sh
 
 # to cleanup
 rm ./build -rf
+docker stop mymlir
+docker rm mymlir
 ```
 
 
@@ -86,7 +99,27 @@ find ./dataset_cali -type f -name "*.jpg" > ./dataset_cali/image_list.txt
 
 ### 5. Prepare dataset for eval
 
-<mark>TODO: todo</mark>
+Download `ILSVRC2012_img_val.tar` from `http://image-net.org/download-images`.
+
+Check integrity and precess with [valprep.sh](https://raw.githubusercontent.com/soumith/imagenetloader.torch/master/valprep.sh).
+
+Assuming, `ILSVRC2012_img_val.tar` is in /dataset/ dir as we have mounted.
+
+```bash
+cd /dataset
+
+# check integrity
+md5sum -c <(echo "29b22e2961454d5413ddabcf34fc5622 ILSVRC2012_img_val.tar")
+
+# get valprep.sh
+# wget https://raw.githubusercontent.com/soumith/imagenetloader.torch/master/valprep.sh
+cp /work/regression/valprep.sh ./
+
+# unzip and build folder tree
+mkdir -p imagenet/val
+tar -xvf ILSVRC2012_img_val.tar -C ./imagenet/val
+pushd imagenet/val;bash ../../valprep.sh; popd
+```
 
 ## step 1. Import the model into MLIR TOP Dialect, and run test
 
@@ -326,7 +359,36 @@ npz_tool.py dump resnet18_all_tensors_int8_sym_1684x.npz output_Gemm 5
 
 ### 3. Run eval with the quantized mlir model
 
-<mark>TODO: run model_runner against real dataset, and check the accuracy.</mark>
+The preprocess info is stored in the MLIR IR.
+
+```bash
+# eval with 1000 images
+model_eval_imagenet.py \
+    --model resnet18_int8_sym_1684x.mlir \
+    --dataset /dataset/imagenet/val \
+    --count 1000
+
+# eval with the full dataset, which is 50000
+model_eval_imagenet.py \
+    --model resnet18_int8_sym_1684x.mlir \
+    --dataset /dataset/imagenet/val
+```
+
+This tutorial model will get accuracy around `Acc@1 100.00 ( 60.93)	Acc@5 100.00 ( 87.34)`, because we only used 2 images for calibration. Later we will show how to improve the accuracy.
+
+To compare with F32 model, we can run the eval with the f32 mlir model (assuming we have done Tutorial 1)
+
+```bash
+model_eval_imagenet.py \
+    --model resnet18.mlir \
+    --dataset /dataset/imagenet/val
+```
+
+The F32 model is around `Acc@1 100.00 ( 67.76)	Acc@5 100.00 ( 88.22)`.
+
+<mark>TODO: model_eval_imagenet.py support mlir only for now, need to support onnx, tflite, and bmodel</mark>
+
+<mark>TODO: bmodel needs to contain preprocess info</mark>
 
 ## step 4. Generate bmodel with INT8 symmetric quantization, and run test
 
@@ -434,7 +496,20 @@ npz_tool.py dump resnet18_all_tensors_int8_asym_1684x.npz output_Gemm 5
 
 ### 3. Run eval with the quantized mlir model
 
-<mark>TODO: run model_runner against real dataset, and check the accuracy.</mark>
+The preprocess info is stored in the MLIR IR.
+
+```bash
+# eval with 1000 images
+model_eval_imagenet.py \
+    --model resnet18_int8_asym_1684x.mlir \
+    --dataset /dataset/imagenet/val \
+    --count 1000
+
+# eval with the full dataset, which is 50000
+model_eval_imagenet.py \
+    --model resnet18_int8_asym_1684x.mlir \
+    --dataset /dataset/imagenet/val
+```
 
 ## step 4. Generate bmodel with INT8 Asymmetric quantization, and run test
 
@@ -467,7 +542,7 @@ Compare the results against the mlir interpreter results
 npz_tool.py compare \
     resnet18_all_tensors_int8_asym_1684x_bmodel.npz \
     resnet18_all_tensors_int8_asym_1684x.npz \
-    --tolerance 0.97,0.75 \
+    --tolerance 0.97,0.80 \
     -v
 ```
 
@@ -476,8 +551,6 @@ Check Top-K
 ```bash
 npz_tool.py dump resnet18_all_tensors_int8_asym_1684x_bmodel.npz output_Gemm_f32 5
 ```
-
-<mark>TODO: The result is wrong for now</mark>
 
 ### 3. Run bmodel with the TPU hardware
 
@@ -535,7 +608,20 @@ npz_tool.py dump resnet18_all_tensors_f16_1684x.npz output_Gemm 5
 
 ### 3. Run eval with the quantized mlir model
 
-<mark>TODO: run model_runner against real dataset, and check the accuracy.</mark>
+The preprocess info is stored in the MLIR IR.
+
+```bash
+# eval with 1000 images
+model_eval_imagenet.py \
+    --model resnet18_f16_1684x.mlir \
+    --dataset /dataset/imagenet/val \
+    --count 1000
+
+# eval with the full dataset, which is 50000
+model_eval_imagenet.py \
+    --model resnet18_f16_1684x.mlir \
+    --dataset /dataset/imagenet/val
+```
 
 ## step 3. Generate bmodel with F16, and run test
 
@@ -593,7 +679,20 @@ npz_tool.py dump resnet18_all_tensors_bf16_1684x.npz output_Gemm 5
 
 ### 3. Run eval with the quantized mlir model
 
-<mark>TODO: run model_runner against real dataset, and check the accuracy.</mark>
+The preprocess info is stored in the MLIR IR.
+
+```bash
+# eval with 1000 images
+model_eval_imagenet.py \
+    --model resnet18_bf16_1684x.mlir \
+    --dataset /dataset/imagenet/val \
+    --count 1000
+
+# eval with the full dataset, which is 50000
+model_eval_imagenet.py \
+    --model resnet18_bf16_1684x.mlir \
+    --dataset /dataset/imagenet/val
+```
 
 ## step 3. Generate bmodel with Bf16, and run test
 
