@@ -303,16 +303,26 @@ This table is used by both symmetric and asymmetric quantization.
 
 Use the dataset_cali dir, and the `image_list.txt` file describes the image file list.
 
-<mark>TODO: --dateset points to the image_list.txt file name should be more clear than pointing to the dir and using hardcoded file name.</mark>
-
 ```bash
 run_calibration.py resnet18.mlir \
-    --dataset ./dataset_cali \
+    --data_list ./dataset_cali/image_list.txt \
     --input_num 2 \
     -o resnet18_cali_table
 
 # resnet18_cali_table is a txt file
 cat resnet18_cali_table
+```
+
+Another way is to use `--dataset` argument, pointing to a dataset dir, e.g. the imagenet dataset. The calibration program will randomly select `--input_num` number of images from the dir.
+
+```bash
+run_calibration.py resnet18.mlir \
+    --dataset /dataset/imagenet/val \
+    --input_num 100 \
+    -o resnet18_cali_table_100
+
+# resnet18_cali_table is a txt file
+cat resnet18_cali_table_100
 ```
 
 ## step 3. Quantization, and run test and eval
@@ -699,16 +709,58 @@ model_eval_imagenet.py \
 <mark>TODO: todo</mark>
 
 
-# Tutorial 6. Port an ONNX model with mix-precision mode
+# Tutorial 6. Optimize quantization accuracy by refining threshold
+
+This Tutorial shows basic steps of optimizing quantization accuracy, including enlarging calibration dataset size, and threshold finetuning.
+
+## step 1. enlarge calibration dataset
+
+Use the imagenet val dataset, and randomly select `--input_num` number of images as calibration dataset.
+
+```bash
+# to use 1000 images
+run_calibration.py resnet18.mlir \
+    --dataset /dataset/imagenet/val \
+    --input_num 1000 \
+    -o resnet18_cali_table_1000
+```
+
+<mark>TODO: add progress bar for inferencing</mark>
+
+<mark>TODO: Optimize for memory usage, killed if dataset too large, may need to consider calibrate layer by layer, or batch of layers (run multiple times inferencing for each image though)</mark>
+
+For reference, accuracy of different mode is collected here.
+
+| Mode             |  Top-1   |  Top-5  |
+|------------------|----------|---------|
+| F32              |   67.76  |   88.22 |
+| F16              |   67.68  |   88.21 |
+| BF16             |   67.35  |   87.88 |
+| INT8_Sym(1000)   |   67.28  |   87.79 |
+| INT8_Asym(1000)  |   65.88  |   86.95 |
+
+## step 2. threshold finetuning
 
 <mark>TODO: todo</mark>
 
 
-# Tutorial 7. Port a TFLite Model with F32 mode
+# Tutorial 7. Optimize quantization accuracy by mix-precision
+
+This Tutorial shows steps of optimizing quantization accuracy by using mix-precision quantization.
 
 <mark>TODO: todo</mark>
 
 
-# Tutorial 8. Port a pre-quantized INT8 Asymmetric TFLite Model
+# Tutorial 8. Port a TFLite model and do quantization
+
+<mark>TODO: todo</mark>
+
+
+# Tutorial 9. Port a pre-quantized INT8 Asymmetric TFLite model
+
+<mark>TODO: todo</mark>
+
+
+# Tutorial 10. Port a Caffe model and do quantization
 
 <mark>TODO: todo</mark>
