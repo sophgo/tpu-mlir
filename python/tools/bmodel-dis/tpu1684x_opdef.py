@@ -1,3 +1,13 @@
+# ==============================================================================
+#
+# Copyright (c) 2020-2030 by Sophgo Technologies Inc. All rights reserved.
+#
+# Licensed under the Apache License v2.0.
+# See http://www.apache.org/licenses/LICENSE-2.0 for license information.
+# SPDX-License-Identifier: Apache-2.0
+#
+# ==============================================================================
+
 from abc import abstractmethod
 from collections import namedtuple
 import pandas as pd
@@ -163,7 +173,7 @@ class sconv_op(conv_op):
 @regist_bdc("MM")
 class mm_op(bdc_base):
     opcode = 2
-    eu_type = (1, 2, 3)
+    eu_type = {1: "mm.normal", 2: "mm.wrq", 3: "mm.wrqrelu"}
     description = "matrix multiply"
 
 
@@ -171,6 +181,19 @@ class mm_op(bdc_base):
 class smm_op(mm_op):
     short_cmd = True
     description = "short matrix multiply"
+
+    def get_elt(self):
+        attr = self.attribute  # type: ignore
+        res_shape = [attr[x] for x in ("des_res0_c", "des_res0_w")]
+        opd0_shape = [attr[x] for x in ("des_opd0_n", "des_opd0_c", "des_opd0_w")]
+        opd1_shape = [attr["des_opd1_w"]]
+        res_addr = attr["des_res0_addr"]
+        opd0_addr = attr["des_opd0_addr"]
+        opd1_addr = attr["des_opd1_addr"]
+        res = opopd(res_addr, res_shape, "f32")
+        opd0 = opopd(opd0_addr, opd0_shape, "f32")
+        opd1 = opopd(opd1_addr, opd1_shape, "f32")
+        return ([res], [opd0, opd1], None)
 
 
 @regist_bdc("MM2")
@@ -486,7 +509,7 @@ class dma_tensor(dma_base):
         src_addr = attr["src_start_addr_h8"] * 2**32 + attr["src_start_addr_l32"]
         dst_addr = format_addr(dst_addr)
         src_addr = format_addr(src_addr)
-        op_name = "GDMA"
+        op_name = "dma.tensor"
         return (
             f"{dst_addr} = {op_name}.{self.cmd_id} "
             + f"({src_addr} {src_shape}, {{{self.cmd_id_dep}}})"
@@ -497,6 +520,21 @@ class dma_tensor(dma_base):
 class dma_matrix(dma_base):
     opcode = 1
     description = "DMA matrix"
+
+    def __repr__(self):
+        attr = self.attribute  # type: ignore
+        src_shape = [
+            attr[x] for x in ("src_nsize", "src_csize", "src_hsize", "src_wsize")
+        ]
+        dst_addr = attr["dst_start_addr_l8"] * 2**32 + attr["dst_start_addr_h32"]
+        src_addr = attr["src_start_addr_l8"] * 2**32 + attr["src_start_addr_h32"]
+        dst_addr = format_addr(dst_addr)
+        src_addr = format_addr(src_addr)
+        op_name = "dma.matrix"
+        return (
+            f"{dst_addr} = {op_name}.{self.cmd_id} "
+            + f"({src_addr} {src_shape}, {{{self.cmd_id_dep}}})"
+        )
 
 
 @regist_dma("sDMA_matrix")
