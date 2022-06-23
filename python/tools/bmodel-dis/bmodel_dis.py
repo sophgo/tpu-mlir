@@ -1,3 +1,14 @@
+#!/usr/bin/env python3
+# ==============================================================================
+#
+# Copyright (c) 2020-2030 by Sophgo Technologies Inc. All rights reserved.
+#
+# Licensed under the Apache License v2.0.
+# See http://www.apache.org/licenses/LICENSE-2.0 for license information.
+# SPDX-License-Identifier: Apache-2.0
+#
+# ==============================================================================
+import sys
 from collections import namedtuple
 import numpy as np
 import tpu1684x_opdef
@@ -167,3 +178,15 @@ def decode_bdc(file_name):
 def decode_gdma(file_name):
     a = read_file(file_name)
     return [x for x in TPUCMD.decode_gdma(a)]
+
+
+if __name__ == "__main__":
+    args = sys.argv
+    assert (
+        len(args) == 2
+    ), f"The input should be a bmodel file. but more arguments are provided {args}"
+    tpu_cmd = TPUCMD(args[1])
+    for idx, cmd in enumerate(tpu_cmd.cmd):
+        fmt_cmd = ["\n    " + str(x) for x in cmd.all]
+        fmt_cmd = "".join(fmt_cmd) + "\n"
+        print(f"Net({idx}) {{{fmt_cmd}}}")
