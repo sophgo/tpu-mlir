@@ -61,7 +61,7 @@ model_deploy.py \
   --chip bm1684x \
   --test_input mobilenet_v2_in_f32.npz \
   --test_reference mobilenet_v2_f32_outputs.npz \
-  --tolerance 0.98,0.80 \
+  --tolerance 0.98,0.79 \
   --correctness 0.99,0.95 \
   --model mobilenet_v2_1684x_int8_asym.bmodel
 

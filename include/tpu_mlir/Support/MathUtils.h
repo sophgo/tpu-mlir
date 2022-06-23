@@ -30,8 +30,8 @@ template <typename T> static inline T align_up(T x, T a) {
 // =======================
 int omp_schedule(int count);
 
-void function_relu(float *src, float *dst, int64_t size, mlir::Type elem_type = nullptr);
-
+void function_relu(float *src, float *dst, int64_t size,
+                   mlir::Type elem_type = nullptr);
 
 // =======================
 // interfece for quantization
@@ -57,6 +57,12 @@ float quantizeToInt16(const float *pSrc, int16_t *pDst, int len, float scale,
 float quantizeToInt15(const float *pSrc, int16_t *pDst, int len, float scale,
                       int rshift = 0);
 void quantizeToInt8(const float *pSrc, int8_t *pDst, int len, float scale);
+
+static inline int64_t applyMultiplierAndRShift(int64_t v, int64_t multiplier,
+                                               int64_t rshift) {
+  int64_t half_overflow = rshift > 0 ? (int64_t)1 << (rshift - 1) : 0;
+  return (v * multiplier + half_overflow) >> rshift;
+}
 
 void pad_tensor(float *p_after_pad, float *src, int n, int c, int h, int w,
                 int pt, int pb, int pl, int pr, float pad_value);

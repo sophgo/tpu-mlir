@@ -27,9 +27,9 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
   int nInputs = inputs().size();
   auto num_elem = Module::getNumElements(output());
   auto out_type = Module::getStorageType(output());
+  memset(p.outputs[0], 0, num_elem * sizeof(float));
+  auto asym = Module::getAsymmetric(module);
   if (out_type.isa<FloatType>()) {
-    memset(p.outputs[0], 0, num_elem * sizeof(float));
-
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int64_t j = 0; j < num_elem; j++) {
       for (int i = 0; i < nInputs; i++) {
@@ -44,16 +44,33 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
     } else if (out_type.isF16()) {
       f32_to_f16(p.outputs[0], p.outputs[0], num_elem);
     }
+  } else if (asym == false) {
+    auto o_qtype = Quant::getUniformQuantizedType(output());
+    auto zp = o_qtype.getZeroPoint();
+    auto scale = o_qtype.getScale();
+    auto chip = Module::getChip(module);
+    auto op = getOperation();
+    auto multiplier_v = Module::getI64Array(multipliers(), 2, 1);
+    auto rshift_v = Module::getI64Array(rshifts(), 2, 0);
+    memset(p.outputs[0], 0, num_elem * sizeof(float));
+#pragma omp parallel for schedule(static, omp_schedule(num_elem))
+    for (int i = 0; i < num_elem; i++) {
+      int64_t data0 = applyMultiplierAndRShift(
+          p.inputs[0][i], multiplier_v->at(0), rshift_v->at(0));
+      int64_t data1 = applyMultiplierAndRShift(
+          p.inputs[1][i], multiplier_v->at(1), rshift_v->at(1));
+      int64_t sum = data0 + data1;
+      if (do_relu() && sum < 0) {
+        sum = 0;
+      }
+      p.outputs[0][i] = out_type.isUnsignedInteger(8) ? Quant::to_uint8(sum)
+                                                      : Quant::to_int8(sum);
+    }
   } else {
     auto o_qtype = Quant::getUniformQuantizedType(output());
     auto zp = o_qtype.getZeroPoint();
     auto scale = o_qtype.getScale();
-    auto b = rectified_bias().convertToDouble();
-    auto chip = Module::getChip(module);
     auto op = getOperation();
-    for (int i = 0; i < num_elem; i++) {
-      p.outputs[0][i] = 0;
-    }
     for (int i = 0; i < nInputs; i++) {
       auto input = inputs()[i];
       auto qtype = Quant::getUniformQuantizedType(input);
@@ -66,7 +83,10 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
       if (do_relu()) {
         p.outputs[0][i] = std::max(0.0f, p.outputs[0][i]);
       }
-      p.outputs[0][i] = Quant::to_int8(p.outputs[0][i] / scale + zp);
+      p.outputs[0][i] = p.outputs[0][i] / scale + zp;
+      p.outputs[0][i] = out_type.isUnsignedInteger(8)
+                            ? Quant::to_uint8(p.outputs[0][i])
+                            : Quant::to_int8(p.outputs[0][i]);
     }
     return success();
   }

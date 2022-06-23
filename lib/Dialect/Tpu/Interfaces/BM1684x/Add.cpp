@@ -61,6 +61,24 @@ typedef struct {
   uint32_t *input_local_addr;
   uint32_t output_local_addr;
   uint32_t buffer_local_addr;
+  int n;
+  int c;
+  int h;
+  int w;
+  int op_code;
+  int *input_local_cstride;
+  int *scale_weight;
+  int *rshift;
+  DATA_TYPE_T *input_dtype;
+  int input_num;
+  int if_relu;
+  int round_mode;
+} eltwise_fixed_local_param_t;
+
+typedef struct {
+  uint32_t *input_local_addr;
+  uint32_t output_local_addr;
+  uint32_t buffer_local_addr;
   int input_num;
   int n;
   int c;
@@ -96,7 +114,6 @@ void tpu::AddOp::codegen_global_int8_bm1684x() {
   p.op_code = ELTWISE_ADD;
   auto multipliers_v = Module::getI64Array(multipliers(), input_num, 1);
   auto rshift_v = Module::getI64Array(rshifts(), input_num, 0);
-
   p.scale_A = (int)multipliers_v->at(0);
   p.scale_B = (int)multipliers_v->at(1);
   p.rshift_A = (int)rshift_v->at(0);
@@ -106,7 +123,7 @@ void tpu::AddOp::codegen_global_int8_bm1684x() {
   p.dtype_B = BM168x::getDataType(inputs()[1]);
   p.round_mode = ROUND_UP;
   BM1684x::instance().call_global_func("backend_api_eltwise_fixed_global", &p,
-                                      sizeof(eltwise_fixed_global_param_t));
+                                       sizeof(eltwise_fixed_global_param_t));
 }
 
 // f32
@@ -140,37 +157,19 @@ void tpu::AddOp::codegen_global_float_bm1684x() {
   p.if_relu = do_relu();
   p.dtype = BM168x::getDataType(output());
   BM1684x::instance().call_global_func("backend_api_eltwise_float_global", &p,
-                                      sizeof(eltwise_float_global_param_t));
+                                       sizeof(eltwise_float_global_param_t));
 }
 
 // =========================================
 // LocalGenInterface
 // =========================================
 
-typedef struct {
-  uint32_t *input_local_addr;
-  uint32_t output_local_addr;
-  uint32_t buffer_local_addr;
-  int n;
-  int c;
-  int h;
-  int w;
-  int op_code;
-  int *input_local_cstride;
-  int *scale_weight;
-  int *rshift;
-  DATA_TYPE_T *input_dtype;
-  int input_num;
-  int if_relu;
-  int round_mode;
-} eltwise_fixed_local_param_t;
-
 int64_t tpu::AddOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
-                                         int64_t out_lmem_bytes) {
+                                          int64_t out_lmem_bytes) {
   auto out_type = Module::getStorageType(output());
   if (out_type.isInteger(8)) {
     // INT16 as middle result
-    return out_lmem_bytes * sizeof(short);
+    return 2 * out_lmem_bytes * sizeof(int16_t);
   } else if (out_type.isBF16() || out_type.isF16()) {
     return out_lmem_bytes;
   }
@@ -187,13 +186,17 @@ void tpu::AddOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
   Module::getNCHW(output(), n, c, h, w);
   auto multiplier_v = Module::getI64Array(multipliers(), 2, 1);
   auto rshift_v = Module::getI64Array(rshifts(), 2, 0);
-  SmallVector<int, 2> multi_v(multiplier_v->begin(), multiplier_v->end());
-  SmallVector<int, 2> r_v(rshift_v->begin(), rshift_v->end());
+  SmallVector<int32_t, 2> multi_v(multiplier_v->begin(), multiplier_v->end());
+  SmallVector<int32_t, 2> r_v(rshift_v->begin(), rshift_v->end());
+  DATA_TYPE_T input_types[2] = {BM168x::getDataType(inputs()[0]),
+                                BM1684x::getDataType(inputs()[1])};
   eltwise_fixed_local_param_t p = {0};
   p.input_local_addr = input_offset;
   p.buffer_local_addr = gi.buffer_addr;
   p.output_local_addr = gi.out_addr;
   p.input_num = 2;
+  p.input_dtype = input_types;
+  p.input_local_cstride = nullptr;
   p.n = gi.n_slice;
   p.c = c;
   p.h = gi.h_slice;
@@ -204,7 +207,7 @@ void tpu::AddOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
   p.if_relu = do_relu();
   p.round_mode = ROUND_UP;
   BM1684x::instance().call_local_func("backend_api_eltwise_fixed_local", &p,
-                                     sizeof(eltwise_float_local_param_t));
+                                      sizeof(eltwise_fixed_local_param_t));
 }
 
 void tpu::AddOp::codegen_local_float_bm1684x(int64_t n_step, int64_t h_step) {
@@ -232,5 +235,5 @@ void tpu::AddOp::codegen_local_float_bm1684x(int64_t n_step, int64_t h_step) {
   p.if_relu = do_relu();
   p.dtype = BM168x::getDataType(output());
   BM1684x::instance().call_local_func("backend_api_eltwise_float_local", &p,
-                                     sizeof(eltwise_float_local_param_t));
+                                      sizeof(eltwise_float_local_param_t));
 }
