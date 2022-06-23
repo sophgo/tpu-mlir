@@ -633,6 +633,7 @@ class LoweringTopTFLitePass
       signalPassFailure();
 
     auto module = getOperation();
+    Module::setAsymmetric(module, true);
     Module::setState(module, Module::State::TPU_LOWERED);
     Module::setChip(module, Module::Chip::BM1684x);
   }
