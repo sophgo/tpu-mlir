@@ -33,7 +33,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_list', type=str, help='Input list file contain all input')
     parser.add_argument('--input_num',
                         type=int,
-                        required=True,
+                        default=0,
                         help='num of images for calibration')
     parser.add_argument('--histogram_bin_num',
                         type=int,
