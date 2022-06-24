@@ -17,9 +17,11 @@ model_transform.py \
     --test_result resnet18_f32_outputs.npz \
     --mlir resnet18.mlir
 
+rm -rf dataset_cali
+cp ../dataset_cali.tar.gz .
+tar xzvf dataset_cali.tar.gz > /dev/null
 run_calibration.py resnet18.mlir \
-    --dataset ../image \
-    --input_num 2 \
+    --dataset ./dataset_cali/ \
     -o resnet18_cali_table
 
 #########################
@@ -48,6 +50,19 @@ npz_tool.py compare \
     resnet18_int8_outputs_1684x_asym.npz \
     resnet18_f32_outputs.npz \
     --tolerance 0.90,0.54 -v
+
+#ILSVRC2012_img_val_with_subdir is converted by valprep.sh
+#model_eval.py \
+#    --mlir_file resnet18_int8_1684x_asym.mlir \
+#    --dataset /data/ILSVRC2012_img_val_with_subdir/ \
+#    --count 1000
+
+#model_eval.py \
+#    --mlir_file resnet18_int8_1684x_asym.mlir \
+#    --data_list /data/list_val.txt  \
+#    --label_file /data/list_val.txt \
+#    --dataset_type user_define \
+#    --count 1000
 
 # # with layer-group
 # tpuc-opt resnet18_int8_1684x_asym.mlir \

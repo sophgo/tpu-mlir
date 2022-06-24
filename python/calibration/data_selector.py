@@ -18,9 +18,9 @@ class DataSelector:
         if data_list_file:
             with open(data_list_file, 'r') as f:
                 for line in f.readlines():
-                    line = line.strip()
-                    if len(line) != 0:
-                        self.data_list.append(line.strip())
+                    line = line.strip().split(' ')
+                    if len(line) > 0:
+                        self.data_list.append(line[0])
         elif dataset:
             for file in pathlib.Path(dataset).glob('**/*'):
                 if file.is_file() and self._is_cali_file(file.name):
@@ -31,7 +31,7 @@ class DataSelector:
             raise RuntimeError("There is no inputs")
         if num == 0 or num >= len(self.data_list):
             return
-        random.shuffle(self.data_list)
+        #random.shuffle(self.data_list)
         self.data_list = self.data_list[:num]
 
 
