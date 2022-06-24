@@ -21,6 +21,7 @@ from utils.mlir_parser import *
 
 class mlir_inference(object):
     def __init__(self, args):
+        self.idx = 0
         self.module = pymlir.module()
         self.module.load(args.mlir_file)
         self.postprocess_type = args.postprocess_type
@@ -36,6 +37,7 @@ class mlir_inference(object):
         self.score = eval('{}(args)'.format(args.postprocess_type))
 
     def run(self, idx, img_path, target = None) -> dict:
+        self.idx = idx
         self.batched_imgs += '{},'.format(img_path)
         if target is not None:
             self.batched_labels.append(target)
@@ -45,9 +47,9 @@ class mlir_inference(object):
             self.module.invoke()
             outputs = self.module.get_all_tensor()[self.module.output_names[0]]
             if len(self.batched_labels) > 0:
-                self.score.update(idx, outputs, self.batched_labels)
+                self.score.update(idx, outputs, labels = self.batched_labels)
             else:
-                self.score.update(idx, outputs)
+                self.score.update(idx, outputs, imgs_path = self.batched_imgs[:-1])
             self.batched_labels.clear()
             self.batched_imgs = ''
 
@@ -55,6 +57,25 @@ class mlir_inference(object):
                 self.score.print_info()
 
     def get_result(self):
+        if self.batched_imgs != '':
+            print('get_result do the remained imgs')
+            tmp = self.batched_imgs[:-1].split(',')
+            n = self.batch_size - len(tmp)
+            if n != 0:
+                for i in range(n):
+                    tmp.append(tmp[-1])
+                    if len(self.batched_labels) > 0:
+                        self.batched_labels.append(self.batched_labels[-1])
+            batched_imgs = ','.join(tmp)
+            x = self.img_proc.run(batched_imgs)
+            self.module.set_tensor(self.img_proc.input_name, x)
+            self.module.invoke()
+            outputs = self.module.get_all_tensor()[self.module.output_names[0]]
+            idx = self.idx + n
+            if len(self.batched_labels) > 0:
+                self.score.update(idx, outputs, labels = self.batched_labels)
+            else:
+                self.score.update(idx, outputs, imgs_path = batched_imgs)
         return self.score.get_result()
 
 #class onnx_inference()

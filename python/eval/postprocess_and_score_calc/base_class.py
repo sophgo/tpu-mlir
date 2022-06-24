@@ -5,7 +5,7 @@ class base_class(metaclass=abc.ABCMeta):
         self.init(args)
 
     @abc.abstractmethod
-    def update(self, idx, outputs, labels = None):
+    def update(self, idx, outputs, imgs_path = None, labels = None):
         pass
 
     @abc.abstractmethod
