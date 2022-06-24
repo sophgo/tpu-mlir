@@ -11,7 +11,7 @@
 import sys
 from collections import namedtuple
 import numpy as np
-import tpu1684x_opdef
+import opdef_1684x
 import bmodel_fbs
 import itertools
 
@@ -19,7 +19,7 @@ import itertools
 """
 # bmodel file
 code = TPUCMD(file_name)
-code.cmd[0].all
+
 
 # bdc binary file
 bdc_code = decode_bdc(file_name)
@@ -74,36 +74,50 @@ class BmodelReader:
             self.binary_desc = file_obj.read(self.head["flatbuffers_size"][0])
             self.binary = file_obj.read(self.head["binary_size"][0])
         bmodel = bmodel_fbs.Model.GetRootAsModel(self.binary_desc, 0)
-        self.cmd_group = []
-        for n in range(bmodel.NetLength()):
-            net = bmodel.Net(n)
-            if net is None:
-                return
-            for p in range(net.ParameterLength()):
-                param = net.Parameter(p)
-                if param is None:
-                    return
-                for s in range(param.CmdGroupLength()):
-                    cmd = param.CmdGroup(s)
-                    if cmd is None:
-                        return
-                    self.cmd_group.append(self.cmd_group_cls(cmd, self.binary))
+
+        def get_cmd(param, _fields):
+            field, *_fields = _fields
+            mult = []
+            for s in range(getattr(param, field + "Length")()):
+                cmd = getattr(param, field)(s)
+                # if cmd is None:
+                #     return mult
+                if _fields == []:
+                    mult.append(self.cmd_group_cls(cmd, self.binary))
+                else:
+                    mult.append(get_cmd(cmd, _fields))
+            return mult
+
+        # net{ stage{ subnet{ cmdgroup... }... }... }...
+        fields = ["Net", "Parameter", "SubNet", "CmdGroup"]
+        self.nets = get_cmd(bmodel, fields)
 
 
 class TPUCMD:
     _cmd = namedtuple("cmd", ["bdc", "gdma", "all"])
 
+    def decode_cmd(self, cmd):
+        bdc_cmd = read_buf(cmd.bdc_cmd)
+        gdma_cmd = read_buf(cmd.gdma_cmd)
+        bdc = itertools.islice(self.decode_bdc(bdc_cmd), cmd.bdc_num)
+        gdma = itertools.islice(self.decode_gdma(gdma_cmd), cmd.gdma_num)
+        bdc = list(bdc)
+        gdma = list(gdma)
+        return self._cmd(bdc, gdma, self.merge_cmd(gdma, bdc))
+
     def __init__(self, bmodel_file):
         self.bmodel = BmodelReader(bmodel_file)
-        self.cmd = []
-        for cmd in self.bmodel.cmd_group:
-            bdc_cmd = read_buf(cmd.bdc_cmd)
-            gdma_cmd = read_buf(cmd.gdma_cmd)
-            bdc = itertools.islice(self.decode_bdc(bdc_cmd), cmd.bdc_num)
-            gdma = itertools.islice(self.decode_gdma(gdma_cmd), cmd.gdma_num)
-            bdc = list(bdc)
-            gdma = list(gdma)
-            self.cmd.append(self._cmd(bdc, gdma, self.merge_cmd(gdma, bdc)))
+
+        def get_cmd(cmd, id):
+            for idx, v in enumerate(cmd):
+                id[-1] = idx
+                if isinstance(v, list):
+                    id.append(idx)
+                    yield from get_cmd(v, id)
+                else:
+                    yield (id, self.decode_cmd(v))
+
+        self.cmd = get_cmd(self.bmodel.nets, [0])
 
     @staticmethod
     def __decode(cmd_buf, cmd_bits, cmd_set, sys_end):
@@ -111,13 +125,13 @@ class TPUCMD:
         cur = 0
         l, h = cmd_bits
         while cmd_buf.size > 0:
-            cmd_key = tpu1684x_opdef.packbits(cmd_buf[l:h])
+            cmd_key = opdef_1684x.packbits(cmd_buf[l:h])
             if cmd_key in cmd_set:
                 recognize = False
                 for op in cmd_set[cmd_key]:
                     if op.is_comp(cmd_buf):
                         # check whether this command is recognized by the operation
-                        code = op(cmd_buf)
+                        code = op.decode(cmd_buf)
                         yield code
                         # consume this command_code
                         cmd_buf = cmd_buf[op.len :]
@@ -144,18 +158,18 @@ class TPUCMD:
     def decode_bdc(cmd_buf):
         return TPUCMD.__decode(
             cmd_buf,
-            tpu1684x_opdef.bdc_base.cmd_bits,
-            tpu1684x_opdef.bdc_cmd,
-            tpu1684x_opdef.sysid_op,
+            opdef_1684x.bdc_base.cmd_bits,
+            opdef_1684x.bdc_cmd,
+            opdef_1684x.sysid_op,
         )
 
     @staticmethod
     def decode_gdma(cmd_buf):
         return TPUCMD.__decode(
             cmd_buf,
-            tpu1684x_opdef.dma_base.cmd_bits,
-            tpu1684x_opdef.dma_cmd,
-            tpu1684x_opdef.sdma_sys,
+            opdef_1684x.dma_base.cmd_bits,
+            opdef_1684x.dma_cmd,
+            opdef_1684x.sdma_sys,
         )
 
     @staticmethod
@@ -186,7 +200,7 @@ if __name__ == "__main__":
         len(args) == 2
     ), f"The input should be a bmodel file. but more arguments are provided {args}"
     tpu_cmd = TPUCMD(args[1])
-    for idx, cmd in enumerate(tpu_cmd.cmd):
+    for idx, cmd in tpu_cmd.cmd:
         fmt_cmd = ["\n    " + str(x) for x in cmd.all]
         fmt_cmd = "".join(fmt_cmd) + "\n"
-        print(f"Net({idx}) {{{fmt_cmd}}}")
+        print(f"Net{tuple(idx)} {{{fmt_cmd}}}")
