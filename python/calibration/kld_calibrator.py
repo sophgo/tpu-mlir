@@ -85,9 +85,6 @@ class ActivationCalibrator(BaseKldCalibrator):
 
     def __init__(self, mlir_file: str, data_list: list, histogram_bin_num: int):
         super().__init__()
-        self.data_list = data_list
-        self.num_samples = len(data_list)
-
         self.module = pymlir.module()
         self.module.load(mlir_file)
         self.fp32_mlir = mlir_file
@@ -100,6 +97,13 @@ class ActivationCalibrator(BaseKldCalibrator):
             tmp = preprocess()
             tmp.load_config(self.module_parsered.get_input_op_by_idx(i))
             self.ppa_list.append(tmp)
+
+        n = len(data_list) % self.batch_size
+        if n != 0:
+            for i in range(n):
+                data_list.append(data_list[-1])
+        self.data_list = data_list
+        self.num_samples = len(data_list)
 
         self.tensor_max = {}
         self.tensor_min = {}
