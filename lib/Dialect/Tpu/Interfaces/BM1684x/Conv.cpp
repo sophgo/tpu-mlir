@@ -364,6 +364,7 @@ typedef struct conv_common_spec {
   int32_t ipad_is_const;
   int32_t ipad_value;
   int32_t bias_sign; // For merged coeff
+  int32_t use_3ic_optimize;
 } conv_common_spec_t;
 
 typedef struct conv_global_spec {
@@ -390,7 +391,6 @@ typedef struct conv_local_spec {
   int32_t unused_hb_for_input;
   int32_t unused_wl_for_input;
   int32_t unused_wr_for_input;
-  int32_t use_3ic_optimize;
   int32_t group_one_conv;
   int32_t with_requant;
   int32_t merge_coeff;

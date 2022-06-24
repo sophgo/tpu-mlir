@@ -92,7 +92,7 @@ Value top::ConvOp::lowering_int8_bm1684x(bool asymetric) {
       bias_int32->data()[c] = std::round(-bias_w_xz);
     }
   }
-  with_bias = (bias_int32->empty() == false);
+  with_bias = (bias_int32 != nullptr);
 
   auto filter_type = filter().getType().cast<RankedTensorType>();
   auto new_type = RankedTensorType::get(filter_type.getShape(),
