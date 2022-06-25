@@ -44,7 +44,7 @@ popd
 
 # 使用方法
 
-工具链相关串通流程可以参考：[regression](./regression/run_deploy.sh)
+工具链相关串通流程可以参考：[regression](./regression/basic/run_basic.sh)
 
 ## 将外部框架的模型转化为`mlir`(top)模型
 

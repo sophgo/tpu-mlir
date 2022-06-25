@@ -6,3 +6,4 @@ work_dir/
 .DS_Store
 __pycache__
 python/transform/tflite
+regression_out/
