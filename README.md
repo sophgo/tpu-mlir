@@ -50,18 +50,19 @@ popd
 
 ``` shell
 model_transform.py \
-    --model_type onnx \
     --model_name resnet18 \
-    --model_def  ../resnet18.onnx \
+    --model_def  resnet18.onnx \
     --input_shapes [[1,3,224,224]] \
     --resize_dims 256,256 \
     --mean 123.675,116.28,103.53 \
     --scale 0.0171,0.0175,0.0174 \
     --pixel_format rgb \
-    --test_input ../image/cat.jpg \
+    --test_input cat.jpg \
     --test_result resnet18_top_outputs.npz \
     --mlir resnet18.mlir
 ```
+
+该过程会生成top层mlir文件。如果传入了`test_input`参数，则会生成`resnet18_in_fp32.npz`文件，作为后续操作的测试输入；`test_result`生成每一层layer结果文件，作为后续操作的参考对比结果。
 
 ## 部署
 
@@ -82,14 +83,12 @@ model_deploy.py \
 
 ### 转化为int8 `bmodel`
 
-该过程需要经过量化。
-
-准备输入数据：将图片放置到单独文件夹下，此处为 "dataset"，然后进行量化标定。
+需要先做Calibration。准备输入数据，将图片放置到单独文件夹下，此处使用`regression/ILSVRC2012`下的200张图片；然后Calibration。如下：
 
 ``` shell
 run_calibration.py resnet18.mlir \
-    --dataset ../image \
-    --input_num 2 \
+    --dataset ILSVRC2012 \
+    --input_num 200 \
     -o resnet18_cali_table
 ```
 

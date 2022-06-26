@@ -64,13 +64,13 @@ struct Quant {
     return type.getMax();
   }
 
-  // for asymetric
+  // for asymmetric
   static void getScaleAndZeroPoint(double rmin, double rmax, double &scale,
                                    int64_t &zeroPoint);
-  // for symetric
+  // for symmetric
   static double getScale(double threshold, bool sign);
   static void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
-                                   bool asymetric);
+                                   bool asymmetric);
 
   template <typename T> static inline int8_t to_int8(T value) {
     auto v = std::round(value);

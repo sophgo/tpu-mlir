@@ -45,8 +45,6 @@ class DeployTool:
         self.cali_table = args.calibration_table
         self.quantize_table = args.quantize_table
         self.model = args.model
-        self.inpus_type = args.inputs_type
-        self.outputs_type = args.outputs_type
         self.test_input = args.test_input
         self.ref_npz = args.test_reference
         self.module = MlirParser(args.mlir)
@@ -132,14 +130,6 @@ if __name__ == '__main__':
                         type=str,
                         choices=['bm1684x', 'bm1684', 'cv183x', 'cv182x', 'mars'],
                         help="chip platform name")
-    parser.add_argument("--inputs_type",
-                        default="F32",
-                        choices=['AUTO', 'F32'],
-                        help="set inputs type. if AUTO, use input layer quantize type")
-    parser.add_argument("--outputs_type",
-                        default="F32",
-                        choices=['AUTO', 'F32'],
-                        help="set outputs type. if AUTO, use output layer quantize type")
     parser.add_argument("--test_input",
                         default="",
                         type=str2list,

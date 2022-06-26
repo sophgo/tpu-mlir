@@ -61,7 +61,7 @@ static mlir::Value lowering_common(Operation *from) {
 
 template <typename OpTy>
 static mlir::Value lowering_common_int8(Operation *from,
-                                        bool asymetric = false) {
+                                        bool asymmetric = false) {
   auto ctx = from->getContext();
   OpBuilder builder(ctx);
   std::vector<Value> operands;
@@ -75,7 +75,7 @@ static mlir::Value lowering_common_int8(Operation *from,
   }
   builder.setInsertionPointAfter(from);
   auto resultType = from->getResult(0).getType().cast<RankedTensorType>();
-  auto newType = Quant::getQuantInt8Type(from->getResult(0), asymetric);
+  auto newType = Quant::getQuantInt8Type(from->getResult(0), asymmetric);
   auto newOp =
       builder.create<OpTy>(from->getLoc(), newType, ArrayRef<Value>{operands},
                            ArrayRef<NamedAttribute>{attrs});

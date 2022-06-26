@@ -18,7 +18,7 @@ using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
-Value top::ConvOp::lowering_int8_bm1684x(bool asymetric) {
+Value top::ConvOp::lowering_int8_bm1684x(bool asymmetric) {
   auto op = getOperation();
   OpBuilder builder(op);
   builder.setInsertionPointAfter(op);
@@ -32,8 +32,8 @@ Value top::ConvOp::lowering_int8_bm1684x(bool asymetric) {
   // in/out scale/zp
   double in_scale, out_scale;
   int64_t in_zp, out_zp;
-  Quant::getScaleAndZeroPoint(input(), in_scale, in_zp, asymetric);
-  Quant::getScaleAndZeroPoint(output(), out_scale, out_zp, asymetric);
+  Quant::getScaleAndZeroPoint(input(), in_scale, in_zp, asymmetric);
+  Quant::getScaleAndZeroPoint(output(), out_scale, out_zp, asymmetric);
   // filter
   auto filterOp = cast<top::WeightOp>(filter().getDefiningOp());
   auto filter_f32 = filterOp.read<float>();
@@ -123,7 +123,7 @@ Value top::ConvOp::lowering_int8_bm1684x(bool asymetric) {
       "multiplier", builder.getI64ArrayAttr(ArrayRef<int64_t>{multiplier_v})));
   attrs.push_back(
       builder.getNamedAttr("with_bias", builder.getBoolAttr(with_bias)));
-  auto newType = Quant::getQuantInt8Type(output(), asymetric);
+  auto newType = Quant::getQuantInt8Type(output(), asymmetric);
   auto newOp = builder.create<tpu::ConvOp>(op->getLoc(), newType,
                                            ArrayRef<Value>{operands},
                                            ArrayRef<NamedAttribute>{attrs});

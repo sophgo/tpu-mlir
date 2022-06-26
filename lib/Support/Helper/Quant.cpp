@@ -54,12 +54,12 @@ double Quant::getScale(double threshold, bool sign) {
 }
 
 void Quant::getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
-                                 bool asymetric) {
+                                 bool asymmetric) {
   if (isCalibratedType(v)) {
     auto qtype = getCalibratedType(v);
     auto max = qtype.getMax();
     auto min = qtype.getMin();
-    if (asymetric) {
+    if (asymmetric) {
       getScaleAndZeroPoint(min, max, scale, zeropoint);
     } else {
       zeropoint = 0;

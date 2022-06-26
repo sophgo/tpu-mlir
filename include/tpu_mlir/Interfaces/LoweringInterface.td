@@ -37,7 +37,7 @@ def LoweringInterface : OpInterface<"LoweringInterface"> {
         }],
         /*retType=*/"mlir::Value",
         /*methodName=*/"lowering_int8_bm1684x",
-        /*args=*/(ins "bool":$asymetric)
+        /*args=*/(ins "bool":$asymmetric)
       >,
       InterfaceMethod<
         /*desc=*/[{

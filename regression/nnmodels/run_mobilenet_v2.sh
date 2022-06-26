@@ -5,7 +5,6 @@ mkdir -p mobilenet_v2
 pushd mobilenet_v2
 
 model_transform.py \
-    --model_type onnx \
     --model_name mobilenet_v2 \
     --model_def  ${NNMODELS_PATH}/onnx_models/mobilenetv2-7.onnx \
     --input_shapes [[1,3,224,224]] \

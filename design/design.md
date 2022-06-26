@@ -35,6 +35,8 @@
 
 * 为了可读性，头文件尽量不用宏定义成员或方法，源文件可以用宏定义
 
+* regression除了basic测试时会跑calibation，其余测试均使用calibration之后的文件，避免测试时间过长
+
 #### 调试方法
 ``` shell
 gdb --args python /work/python/tools/model_runner.py --input resnet18_in_f32.npz --model resnet18_opt.mlir --output resnet18_out.npz

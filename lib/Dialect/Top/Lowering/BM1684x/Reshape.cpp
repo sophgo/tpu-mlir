@@ -18,8 +18,8 @@ using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
-Value top::ReshapeOp::lowering_int8_bm1684x(bool asymetric) {
-  return lowering_common_int8<tpu::ReshapeOp>(getOperation(), asymetric);
+Value top::ReshapeOp::lowering_int8_bm1684x(bool asymmetric) {
+  return lowering_common_int8<tpu::ReshapeOp>(getOperation(), asymmetric);
 }
 
 

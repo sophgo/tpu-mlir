@@ -16,7 +16,7 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-Value top::SoftmaxOp::lowering_int8_bm1684x(bool asymetric) {
+Value top::SoftmaxOp::lowering_int8_bm1684x(bool asymmetric) {
   llvm_unreachable("SoftmaxOp to be supported");
   return nullptr;
 }

@@ -117,7 +117,7 @@ struct LoweringPattern : public RewritePattern {
     }
     auto module = Module::getModuleOp(op);
     auto chip = Module::getChip(module);
-    bool asymetric = Module::getAsymmetric(module);
+    bool asymmetric = Module::getAsymmetric(module);
     Value newValue;
     if (chip == Module::Chip::BM1684) {
       if (real_mode == Quant::Type::F32) {
@@ -127,7 +127,7 @@ struct LoweringPattern : public RewritePattern {
       }
     } else if (chip == Module::Chip::BM1684x) {
       if (real_mode == Quant::Type::INT8) {
-        newValue = lowering_op.lowering_int8_bm1684x(asymetric);
+        newValue = lowering_op.lowering_int8_bm1684x(asymmetric);
       } else if (real_mode == Quant::Type::F32) {
         newValue = lowering_op.lowering_f32_bm1684x();
       } else if (real_mode == Quant::Type::BF16) {
@@ -165,7 +165,7 @@ public:
     Module::setAsymmetric(module, isAsymmetric);
     mode_ = StringRef(mode).upper();
     ctx_ = module.getContext();
-    asymetric_ = isAsymmetric;
+    asymmetric_ = isAsymmetric;
     mainFunc_ = Module::getMainFuncOp(module);
 
     calibration_process();
@@ -277,7 +277,7 @@ protected:
         suffix = "_i8";
       }
       if (Quant::isUniformQuantized(to) && Quant::isCalibratedType(v)) {
-        newType = Quant::getQuantInt8Type(v, asymetric_);
+        newType = Quant::getQuantInt8Type(v, asymmetric_);
       } else {
         v.dump();
         to.dump();
@@ -301,7 +301,7 @@ protected:
 
   void quant_for_special(Operation *op) {
     if (chip_ == Module::Chip::BM1684x) {
-      if (mode_ == Quant::Type::INT8 && asymetric_) {
+      if (mode_ == Quant::Type::INT8 && asymmetric_) {
         if (isa<top::AddOp>(op)) {
           quantize_map[op] = Quant::Type::F32;
         }
@@ -315,7 +315,7 @@ protected:
   llvm::StringRef state_;
   std::string chip_;
   std::string mode_;
-  bool asymetric_;
+  bool asymmetric_;
   std::map<Operation *, llvm::StringRef> quantize_map;
   MLIRContext *ctx_;
 };

@@ -7,7 +7,6 @@ set -ex
 mkdir -p basic
 pushd basic
 model_transform.py \
-  --model_type onnx \
   --model_name resnet18 \
   --model_def  ${REGRESSION_PATH}/model/resnet18.onnx \
   --input_shapes [[1,3,224,224]] \
@@ -81,5 +80,22 @@ model_deploy.py \
   --tolerance 0.98,0.90 \
   --correctness 0.99,0.95 \
   --model resnet18_1684x_int8_asym.bmodel
+
+#########################
+# eval imagenet
+#########################
+
+#ILSVRC2012_img_val_with_subdir is converted by valprep.sh
+#model_eval.py \
+#    --mlir_file resnet18_int8_1684x_asym.mlir \
+#    --dataset /data/ILSVRC2012_img_val_with_subdir/ \
+#    --count 1000
+
+#model_eval.py \
+#    --mlir_file resnet18_int8_1684x_asym.mlir \
+#    --data_list /data/list_val.txt  \
+#    --label_file /data/list_val.txt \
+#    --dataset_type user_define \
+#    --count 1000
 
 popd
