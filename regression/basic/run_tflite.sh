@@ -6,7 +6,6 @@ INPUT=$REGRESSION_PATH/basic/resnet50_in_f32_b4.npz
 mkdir -p tflite
 pushd tflite
 model_transform.py \
-    --model_type tflite \
     --model_name resnet50 \
     --model_def  $REGRESSION_PATH/model/resnet50_quant_int8.tflite \
     --input_shapes [[4,3,224,224]] \

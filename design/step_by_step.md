@@ -1,17 +1,18 @@
-![](./design/assets/sophgo_chip.png)
+![](./assets/sophgo_chip.png)
 
 
 
 # Purpose
 
-As shown in [README.md](./README.md), `model_transform.py` and `model_deploy.py` are wrapper scripts for getting started quickly.
+As shown in [README.md](../README.md), `model_transform.py` and `model_deploy.py` are wrapper scripts for getting started quickly.
 
 For more detailed instructions, this guide is showing step-by-step work flows of porting a model.
 
+you can refer to script: [step_by_step](../regression/basic/run_step_by_step.sh)
 
 # Build
 
-Refer to [README.md](./README.md).
+Refer to [README.md](../README.md).
 
 ```bash
 docker pull sophgo/sophgo_dev:1.2-ubuntu-18.04
@@ -128,7 +129,6 @@ As a wrapper, `model_transform.py` can do importing, testing and result comparin
 ```bash
 # no need to run this, if run detailed steps separately
 model_transform.py \
-    --model_type onnx \
     --model_name resnet18 \
     --model_def ./resnet18.onnx \
     --input_shapes [[1,3,224,224]] \
@@ -150,7 +150,6 @@ Note: preprocess arguments are provided, and will be stored in the IR. Usage inc
 
 ```bash
 model_transform.py \
-    --model_type onnx \
     --model_name resnet18 \
     --model_def ./resnet18.onnx \
     --input_shapes [[1,3,224,224]] \

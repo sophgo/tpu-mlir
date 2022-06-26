@@ -136,25 +136,19 @@ def get_model_transform(args):
     if not args.mlir.endswith('.mlir'):
         raise RuntimeError("your mlir file should endswith .mlir, not:{}".format(args.mlir))
     tool = None
-    if args.model_type == 'onnx':
+    if args.model_def.endswith('.onnx'):
         tool = OnnxModelTransformTool(args.model_name, args.model_def, args.input_shapes, preprocessor.to_dict())
-    elif args.model_type == 'tflite':
+    elif args.model_def.endswith('.tflite'):
         tool = TFLiteModelTransformTool(args.model_name, args.model_def, args.input_shapes)
     else:
         # TODO: support more AI model types
-        raise RuntimeError("unsupport model type:{}".format(args.model_type))
+        raise RuntimeError("unsupport model:{}".format(args.model_def))
     return tool
 
 if __name__ == '__main__':
     print("SOPHGO Toolchain {}".format(pymlir.module().version))
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name", required=True, help="model name")
-    parser.add_argument(
-        "--model_type",
-        required=True,
-        choices=["onnx", "tflite"],
-        help="model_type",
-    )
     parser.add_argument("--model_def", required=True, help="model definition file.")
     parser.add_argument("--model_data", help="caffemodel, only for caffe model")
     parser.add_argument("--input_shapes",

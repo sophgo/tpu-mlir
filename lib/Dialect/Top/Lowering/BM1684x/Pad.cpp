@@ -16,7 +16,7 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-Value top::PadOp::lowering_int8_bm1684x(bool asymetric) {
+Value top::PadOp::lowering_int8_bm1684x(bool asymmetric) {
   llvm_unreachable("PadOp to be supported");
   return nullptr;
 }

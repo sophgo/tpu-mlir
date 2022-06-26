@@ -7,7 +7,6 @@ mkdir -p resnet50_v1
 pushd resnet50_v1
 
 model_transform.py \
-    --model_type onnx \
     --model_name resnet50_v1 \
     --model_def  ${NNMODELS_PATH}/onnx_models/resnet50-v1-7.onnx \
     --input_shapes [[1,3,224,224]] \

@@ -18,8 +18,8 @@ using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
-Value top::AddOp::lowering_int8_bm1684x(bool asymetric) {
-  if (asymetric == false) {
+Value top::AddOp::lowering_int8_bm1684x(bool asymmetric) {
+  if (asymmetric == false) {
     auto op = getOperation();
     OpBuilder builder(op);
     std::vector<Value> operands;
@@ -28,7 +28,7 @@ Value top::AddOp::lowering_int8_bm1684x(bool asymetric) {
     std::vector<int64_t> multiplier_v(nInputs, 1);
     int64_t o_zp;
     double o_scale;
-    Quant::getScaleAndZeroPoint(output(), o_scale, o_zp, asymetric);
+    Quant::getScaleAndZeroPoint(output(), o_scale, o_zp, asymmetric);
     auto coeff_v = Module::getF64Array(coeff(), nInputs, 1.0);
 
     double scale;
@@ -36,7 +36,7 @@ Value top::AddOp::lowering_int8_bm1684x(bool asymetric) {
     for (int i = 0; i < nInputs; i++) {
       auto input = op->getOperand(i);
       operands.push_back(input);
-      Quant::getScaleAndZeroPoint(input, scale, zeropoint, asymetric);
+      Quant::getScaleAndZeroPoint(input, scale, zeropoint, asymmetric);
       int scalei, shifti;
       auto scale_f = scale / o_scale;
       get_scale_and_shift(coeff_v->at(i) * scale_f, scalei, shifti, 8);
@@ -51,13 +51,13 @@ Value top::AddOp::lowering_int8_bm1684x(bool asymetric) {
         "multipliers", builder.getI64ArrayAttr(multiplier_v)));
     attrs.push_back(
         builder.getNamedAttr("rshifts", builder.getI64ArrayAttr(rshift_v)));
-    auto newType = Quant::getQuantInt8Type(output(), asymetric);
+    auto newType = Quant::getQuantInt8Type(output(), asymmetric);
     auto newOp = builder.create<tpu::AddOp>(op->getLoc(), newType,
                                             ArrayRef<Value>{operands},
                                             ArrayRef<NamedAttribute>{attrs});
     return newOp.output();
   } else {
-    llvm_unreachable("AddOp asymetric use f32");
+    llvm_unreachable("AddOp asymmetric use f32");
   }
 }
 

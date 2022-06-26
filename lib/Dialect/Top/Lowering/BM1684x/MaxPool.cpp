@@ -18,8 +18,8 @@ using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
-Value top::MaxPoolOp::lowering_int8_bm1684x(bool asymetric) {
-  return lowering_common_int8<tpu::MaxPoolOp>(getOperation(), asymetric);
+Value top::MaxPoolOp::lowering_int8_bm1684x(bool asymmetric) {
+  return lowering_common_int8<tpu::MaxPoolOp>(getOperation(), asymmetric);
 }
 
 Value top::MaxPoolOp::lowering_f32_bm1684x() {
