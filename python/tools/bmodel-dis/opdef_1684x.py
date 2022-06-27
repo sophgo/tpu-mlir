@@ -602,19 +602,18 @@ class dma_base:
         cls.set_elt()
         return cls
 
-    @classmethod
-    def is_comp_base(cls, cmd_reg):
-        if cmd_reg.size < cls.len:
+    def __is_comp_base(self, cmd_reg):
+        if cmd_reg.size < self.len:
             return False
-        if cls.short_cmd is not None and bool(cmd_reg[3]) != cls.short_cmd:
+        if self.short_cmd is not None and bool(cmd_reg[3]) != self.short_cmd:
             return False
-        if packbits(cmd_reg[cls.cmd_bits[0] : cls.cmd_bits[1]]) != cls.opcode:
+        if packbits(cmd_reg[self.cmd_bits[0] : self.cmd_bits[1]]) != self.opcode:
             return False
         return True
 
     @classmethod
     def is_comp(cls, cmd_reg):
-        return cls.is_comp_base(cmd_reg)
+        return cls.__is_comp_base(cls, cmd_reg)
 
     def set_elt(self):
         self.results = []

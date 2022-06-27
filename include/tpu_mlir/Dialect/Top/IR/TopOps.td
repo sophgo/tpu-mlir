@@ -93,7 +93,7 @@ def Top_InputOp: Top_BaseOp<"Input"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_BatchNormOp: Top_Op<"BatchNorm"> {
+def Top_BatchNormOp: Top_Op<"BatchNorm", [SupportFuseRelu]> {
   let summary = "BatchNormalization operation";
   let description = [{
     Applies Batch Normalization over a 4D input (a mini-batch of 2D inputs
@@ -103,7 +103,6 @@ def Top_BatchNormOp: Top_Op<"BatchNorm"> {
 
     ```math
         y = \frac{x - \mathrm{E}[x]}{ \sqrt{\mathrm{Var}[x] + \epsilon}} * \gamma + \beta
-        y = \frac{input - mean}{variance + epsilon} * scale + bias
     ```
 
     The mean and standard-deviation are calculated per-dimension over
@@ -112,11 +111,12 @@ def Top_BatchNormOp: Top_Op<"BatchNorm"> {
   }];
   let arguments = (ins
     AnyTensor:$input,
-    AnyTensor:$scale,
+    AnyTensor:$gamma,
+    AnyTensor:$beta,
     AnyTensor:$mean,
     AnyTensor:$variance,
-    AnyTensorOrNone:$bias,
     DefaultValuedAttr<F32Attr, "1e-05">:$epsilon,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     StrAttr:$name
   );
   let results = (outs AnyTensor:$output);
