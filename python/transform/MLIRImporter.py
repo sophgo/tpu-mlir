@@ -191,7 +191,7 @@ class MLIRImporter(object):
 
         param = {
             'name': StringAttr.get(kargs['name']),
-            'epsilon': FloatAttr.get_f32(kargs['epsilon'])
+            'epsilon': FloatAttr.get_f32(kargs['epsilon']),
         }
 
         return self.buildOp(Top.BatchNormOp, operands, [output_type], **param)

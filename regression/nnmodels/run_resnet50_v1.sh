@@ -1,8 +1,6 @@
 #!/bin/bash
 set -ex
 
-INPUT=../mobilenet_in_f32.npz
-
 mkdir -p resnet50_v1
 pushd resnet50_v1
 

@@ -240,9 +240,22 @@ class OnnxConverter(BaseConverter):
         return
 
     def convert_batchnorm_op(self, onnx_node):
-        assert (onnx_node.op_type == "BatchNormalization")
-        # TODO: support batchnorm
-        raise RuntimeError("not support {}".format(onnx_node.op_type))
+        assert onnx_node.op_type == "BatchNormalization"
+        op = self.getOperand(onnx_node.inputs[0])
+        gamma = self.getWeightOp(onnx_node.inputs[1])
+        beta = self.getWeightOp(onnx_node.inputs[2])
+        mean = self.getWeightOp(onnx_node.inputs[3])
+        variance = self.getWeightOp(onnx_node.inputs[4])
+        epsilon = onnx_node.attrs.get("epsilon")
+        output_shape = self.getShape(onnx_node.name)
+        p = {
+            "name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            "epsilon": epsilon,
+        }
+        new_op = self.mlir.create_batchnorm_op(
+            [op, gamma, beta, mean, variance], output_shape, **p
+        )
+        self.addOperand(onnx_node.name, new_op)
 
     def convert_conv_op(self, onnx_node):
         assert (onnx_node.op_type == "Conv")
