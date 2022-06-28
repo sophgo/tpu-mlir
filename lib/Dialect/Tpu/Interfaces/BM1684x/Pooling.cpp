@@ -224,7 +224,7 @@ void tpu::MaxPoolOp::codegen_local_int8_bm1684x(int64_t n_step,
   common.dw = 1;
   common.is_global_pooling = is_global;
   common.is_avg_pooling = false;
-  common.avg_pooling_mode = count_include_pad ? 0 : 1;
+  common.avg_pooling_mode = 0;
   common.if_relu = relu;
   common.relu_upper_limit = 0;
   common.ceil_mode = 0;

@@ -26,32 +26,29 @@ void tpu::AvgPoolOp::parseParam(int64_t &n, int64_t &c, int64_t &ih,
                                 int64_t &pl, int64_t &pr, int64_t &pad_value,
                                 bool &relu, bool &is_global,
                                 bool &count_include_pad) {
-  auto i_s = input().getType().cast<RankedTensorType>().getShape();
-  auto o_s = output().getType().cast<RankedTensorType>().getShape();
-  kh = kernel_shape().getValue()[0].cast<IntegerAttr>().getInt();
-  kw = kernel_shape().getValue()[1].cast<IntegerAttr>().getInt();
-  sh = strides().getValue()[0].cast<IntegerAttr>().getInt();
-  sw = strides().getValue()[1].cast<IntegerAttr>().getInt();
+  Module::getNCHW(input(), n, c, ih, iw);
+  int64_t on, oc;
+  Module::getNCHW(output(), on, oc, oh, ow);
+  assert(on == n && oc == c);
+  auto kernel = Module::getI64Array(kernel_shape());
+  kh = kernel->at(0);
+  kw = kernel->at(1);
+  auto stride = Module::getI64Array(strides());
+  sh = stride->at(0);
+  sw = stride->at(1);
   relu = do_relu();
-  size_t num_dims = i_s.size();
-  assert(num_dims == 4); // 4 dims now
-  n = i_s[0];
-  c = i_s[1];
-  ih = i_s[2];
-  iw = i_s[3];
-  oh = o_s[2];
-  ow = o_s[3];
-  pt = pads().getValue()[0].cast<IntegerAttr>().getInt();
-  pl = pads().getValue()[1].cast<IntegerAttr>().getInt();
-  pb = pads().getValue()[2].cast<IntegerAttr>().getInt();
-  pr = pads().getValue()[3].cast<IntegerAttr>().getInt();
+  auto pad = Module::getI64Array(pads());
+  pt = pad->at(0);
+  pl = pad->at(1);
+  pb = pad->at(2);
+  pr = pad->at(3);
   is_global = false;
   if (kh == ih && kw == iw && oh == 1 && ow == 1) {
     is_global = true;
   }
   pad_value = this->pad_value();
   count_include_pad = this->count_include_pad();
-  if ((pt == 0 && pb == 0 && pl == 0 && pr == 0) || is_global) {
+  if (pt == 0 && pb == 0 && pl == 0 && pr == 0) {
     // no pad
     count_include_pad = true;
   }

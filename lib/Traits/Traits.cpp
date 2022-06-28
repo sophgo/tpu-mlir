@@ -28,7 +28,8 @@ static LogicalResult check_type(Value v) {
     if (etype.isIntOrFloat()) {
       return success();
     }
-    if (etype.isa<quant::UniformQuantizedType, quant::CalibratedQuantizedType>()) {
+    if (etype.isa<quant::UniformQuantizedType,
+                  quant::CalibratedQuantizedType>()) {
       return success();
     }
   }
@@ -40,6 +41,17 @@ LogicalResult verifyTpuTypeRestrictTrait(Operation *op) {
     if (failed(check_type(out))) {
       return op->emitError("expected tpu supported type");
     }
+  }
+  return mlir::success();
+}
+
+LogicalResult verifyInOutSameShapeTrait(Operation *op) {
+  auto in_shape =
+      op->getOperand(0).getType().cast<RankedTensorType>().getShape();
+  auto out_shape =
+      op->getResult(0).getType().cast<RankedTensorType>().getShape();
+  if (in_shape != out_shape) {
+    return op->emitError("expected input and output with same shape");
   }
   return mlir::success();
 }

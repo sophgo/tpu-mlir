@@ -131,7 +131,7 @@ def Tpu_AvgPoolOp:Tpu_PoolOp<"AvgPool"> {
   );
 }
 
-def Tpu_AddOp: Tpu_Op<"Add", [SupportFuseRelu,
+def Tpu_AddOp: Tpu_Op<"Add", [SupportFuseRelu, InOutSameShape,
   DeclareOpInterfaceMethods<LocalGenInterface>]> {
   let summary = "add operator";
 
@@ -199,7 +199,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
 }
 
 def Tpu_ReluOp: Tpu_Op<"Relu",
-  [DeclareOpInterfaceMethods<LocalGenInterface>]>{
+  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]>{
   let summary = "Relu operator";
 
   let description = [{
@@ -230,7 +230,7 @@ def Tpu_ReshapeOp:Tpu_Op<"Reshape"> {
 }
 
 def Tpu_CastOp:Tpu_Op<"Cast",
-  [DeclareOpInterfaceMethods<LocalGenInterface>]> {
+  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
   let summary = "Cast operation";
   let description = [{
   }];
@@ -244,7 +244,7 @@ def Tpu_CastOp:Tpu_Op<"Cast",
 }
 
 def Tpu_LoadOp:Tpu_Op<"Load",
-  [DeclareOpInterfaceMethods<LocalGenInterface>]> {
+  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
   let summary = "Load operation";
   let description = [{
   }];
@@ -257,7 +257,7 @@ def Tpu_LoadOp:Tpu_Op<"Load",
 }
 
 def Tpu_StoreOp:Tpu_Op<"Store",
-  [DeclareOpInterfaceMethods<LocalGenInterface>]> {
+  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
   let summary = "Store operation";
   let description = [{
   }];
@@ -270,7 +270,7 @@ def Tpu_StoreOp:Tpu_Op<"Store",
 }
 
 def Tpu_RequantOp:Tpu_Op<"Requant",
-  [DeclareOpInterfaceMethods<LocalGenInterface>]> {
+  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
   let summary = "requant operation";
   let description = [{
   }];
@@ -316,7 +316,7 @@ def Tpu_YieldOp : Tpu_BaseOp<"Yield", [NoSideEffect,
   let assemblyFormat = "attr-dict ($operands^ `:` type($operands))?";
 }
 
-def Tpu_SoftmaxOp: Tpu_Op<"Softmax"> {
+def Tpu_SoftmaxOp: Tpu_Op<"Softmax", [InOutSameShape]> {
   let summary = "softmax operator";
 
   let description = [{
@@ -326,11 +326,12 @@ def Tpu_SoftmaxOp: Tpu_Op<"Softmax"> {
 
   let arguments = (ins
     AnyTensor:$input,
+    I64Attr:$axis,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     // quant param
     OptionalAttr<I64Attr>:$multiplier,
     OptionalAttr<I64Attr>:$rshift,
-    I64ArrayAttr:$table,
+    OptionalAttr<I64ArrayAttr>:$table,
     OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
     StrAttr:$name
   );

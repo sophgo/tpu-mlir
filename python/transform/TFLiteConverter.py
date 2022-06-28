@@ -245,8 +245,8 @@ class TFLiteConverter(BaseConverter):
             "CONV_2D": self.conv_2d_op,
             "FULLY_CONNECTED": self.fully_connected_op,
             "MAX_POOL_2D": self.maxpool_op,
-            "DEQUANTIZE": lambda _: ("quant.dcast", {}),
-            "QUANTIZE": lambda _: ("quant.qcast", {}),
+            "DEQUANTIZE": lambda _: ("top.Cast", {}),
+            "QUANTIZE": lambda _: ("top.Cast", {}),
         }
 
     def __del__(self):

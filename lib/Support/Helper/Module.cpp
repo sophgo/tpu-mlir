@@ -239,10 +239,12 @@ Module::getF64Array(Optional<ArrayAttr> arrayAttr, int64_t num_elem,
 }
 
 Type Module::getStorageType(Type type) {
-  auto etype = type.cast<RankedTensorType>().getElementType();
-  if (auto qType = etype.dyn_cast<quant::CalibratedQuantizedType>()) {
+  if (type.isa<RankedTensorType>()) {
+    type = type.cast<RankedTensorType>().getElementType();
+  }
+  if (auto qType = type.dyn_cast<quant::CalibratedQuantizedType>()) {
     return qType.getExpressedType();
-  } else if (auto qType = etype.dyn_cast<quant::UniformQuantizedType>()) {
+  } else if (auto qType = type.dyn_cast<quant::UniformQuantizedType>()) {
     auto stype = qType.getStorageType();
     bool isSign = qType.isSigned();
     if (stype.isSignlessInteger()) {
@@ -251,11 +253,10 @@ Type Module::getStorageType(Type type) {
       return IntegerType::get(type.getContext(), bits, sign);
     }
     return stype;
-  } else if (auto qType =
-                 etype.dyn_cast<quant::UniformQuantizedPerAxisType>()) {
+  } else if (auto qType = type.dyn_cast<quant::UniformQuantizedPerAxisType>()) {
     return qType.getStorageType();
   }
-  return etype;
+  return type;
 }
 
 Type Module::getStorageType(Value v) { return getStorageType(v.getType()); }

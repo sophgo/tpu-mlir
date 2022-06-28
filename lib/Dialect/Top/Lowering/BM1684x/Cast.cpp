@@ -8,6 +8,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "../Lowering.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Helper/Module.h"
@@ -16,26 +17,16 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-Value top::PadOp::lowering_int8_bm1684x(bool asymmetric) {
-  llvm_unreachable("PadOp to be supported");
-  return nullptr;
+Value top::CastOp::lowering_int8_bm1684x(bool asymmetric) {
+  return lowering_common<tpu::CastOp>(getOperation(), output().getType());
 }
 
-Value top::PadOp::lowering_f32_bm1684x() {
-  llvm_unreachable("PadOp to be supported");
-  return nullptr;
-}
+Value top::CastOp::lowering_f32_bm1684x() { return lowering_quant_bm1684x(); }
 
-Value top::PadOp::lowering_bf16_bm1684x() {
-  llvm_unreachable("PadOp to be supported");
-  return nullptr;
-}
+Value top::CastOp::lowering_bf16_bm1684x() { return lowering_quant_bm1684x(); }
 
-Value top::PadOp::lowering_f16_bm1684x() {
-  llvm_unreachable("PadOp to be supported");
-  return nullptr;
-}
+Value top::CastOp::lowering_f16_bm1684x() { return lowering_quant_bm1684x(); }
 
-Value top::PadOp::lowering_quant_bm1684x() {
-  llvm_unreachable("not support now");
+Value top::CastOp::lowering_quant_bm1684x() {
+  return lowering_int8_bm1684x(true);
 }

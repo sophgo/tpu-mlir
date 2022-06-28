@@ -14,6 +14,95 @@
 namespace tpu_mlir {
 namespace top {
 
+bool need_cast(Type from, Type to) {
+  auto f_eleType = Module::getStorageType(from);
+  auto t_eleType = Module::getStorageType(to);
+  if (f_eleType.isInteger(8) && t_eleType.isInteger(8) ||
+      f_eleType == t_eleType) {
+    return false;
+  }
+  return true;
+}
+
+Value do_cast(Value v, Type to, bool tensorType) {
+  if (need_cast(v.getType(), to) == false) {
+    return v;
+  }
+  auto from_stype = Module::getStorageType(v);
+  auto to_stype = Module::getStorageType(to);
+  // check whether value has been casted
+  for (auto user : v.getUsers()) {
+    if (false == isa<tpu::CastOp>(user)) {
+      continue;
+    }
+    if (need_cast(user->getResult(0).getType(), to) == false) {
+      return user->getResult(0);
+    }
+  }
+  auto ctx = v.getContext();
+  OpBuilder builder(ctx);
+  std::string suffix;
+  if (to_stype.isF32()) {
+    suffix = "_f32";
+  } else if (to_stype.isF16()) {
+    suffix = "_f16";
+  } else if (to_stype.isBF16()) {
+    suffix = "_bf16";
+  } else if (to_stype.isInteger(8)) {
+    if (to_stype.isUnsignedInteger(8)) {
+      suffix = "_u8";
+    } else {
+      suffix = "_i8";
+    }
+  } else {
+    llvm_unreachable("unknown type");
+  }
+  std::vector<Value> operands;
+  operands.push_back(v);
+  std::vector<NamedAttribute> attrs;
+  builder.setInsertionPointAfterValue(v);
+  std::string new_name = Module::getName(v.getDefiningOp()).str() + suffix;
+  auto newType = to;
+  if (tensorType == false) {
+    newType = RankedTensorType::get(Module::getShape(v), to_stype);
+  }
+  attrs.push_back(
+      builder.getNamedAttr("name", builder.getStringAttr(new_name)));
+  auto castOp = builder.create<tpu::CastOp>(v.getLoc(), newType,
+                                            ArrayRef<Value>{operands},
+                                            ArrayRef<NamedAttribute>{attrs});
+  return castOp.output();
+}
+
+Value do_quantize(Value v, bool asymmetric) {
+  // check whether value has been quantized
+  for (auto user : v.getUsers()) {
+    if (auto castOp = dyn_cast<tpu::CastOp>(user)) {
+      if (Quant::isUniformQuantized(castOp.output())) {
+        return castOp.output();
+      }
+    }
+  }
+  if (Quant::isCalibratedType(v) == false) {
+    v.dump();
+    llvm_unreachable("Only calibrated type can do quantize");
+  }
+  auto ctx = v.getContext();
+  OpBuilder builder(ctx);
+  auto newType = Quant::getQuantInt8Type(v, asymmetric);
+  std::vector<Value> operands;
+  operands.push_back(v);
+  builder.setInsertionPointAfterValue(v);
+  std::vector<NamedAttribute> attrs;
+  std::string new_name = Module::getName(v.getDefiningOp()).str() + "_i8";
+  attrs.push_back(
+      builder.getNamedAttr("name", builder.getStringAttr(new_name)));
+  auto castOp = builder.create<tpu::CastOp>(v.getLoc(), newType,
+                                            ArrayRef<Value>{operands},
+                                            ArrayRef<NamedAttribute>{attrs});
+  return castOp.output();
+}
+
 template <typename TyOp>
 struct ForwardCalibartion : public OpRewritePattern<TyOp> {
   using OpRewritePattern<TyOp>::OpRewritePattern;
@@ -117,7 +206,6 @@ struct LoweringPattern : public RewritePattern {
     }
     auto module = Module::getModuleOp(op);
     auto chip = Module::getChip(module);
-    bool asymmetric = Module::getAsymmetric(module);
     Value newValue;
     if (chip == Module::Chip::BM1684) {
       if (real_mode == Quant::Type::F32) {
@@ -126,7 +214,10 @@ struct LoweringPattern : public RewritePattern {
         newValue = lowering_op.lowering_int8_bm1684();
       }
     } else if (chip == Module::Chip::BM1684x) {
-      if (real_mode == Quant::Type::INT8) {
+      bool asymmetric = Module::getAsymmetric(module);
+      if (Quant::isUniformQuantized(op->getResult(0))) {
+        newValue = lowering_op.lowering_quant_bm1684x();
+      } else if (real_mode == Quant::Type::INT8) {
         newValue = lowering_op.lowering_int8_bm1684x(asymmetric);
       } else if (real_mode == Quant::Type::F32) {
         newValue = lowering_op.lowering_f32_bm1684x();
@@ -162,16 +253,21 @@ public:
 
     chip_ = StringRef(chip).upper();
     Module::setChip(module, chip_);
-    Module::setAsymmetric(module, isAsymmetric);
     mode_ = StringRef(mode).upper();
     ctx_ = module.getContext();
-    asymmetric_ = isAsymmetric;
     mainFunc_ = Module::getMainFuncOp(module);
 
-    calibration_process();
+    if (Module::State::TOP_QUANTIZED == state_) {
+      Module::setAsymmetric(module, true);
+      asymmetric_ = true;
+      //type_process();
+    } else {
+      Module::setAsymmetric(module, isAsymmetric);
+      asymmetric_ = isAsymmetric;
+      calibration_process();
+    }
     lowering_process();
     cast_process();
-
     Module::updateModuleTypes(module);
     Module::setState(module, Module::State::TPU_LOWERED);
   }
@@ -206,14 +302,25 @@ protected:
     applyPatternsAndFoldGreedily(module, std::move(patterns));
   }
 
-  bool need_cast(Type from, Type to) {
-    auto f_eleType = Module::getStorageType(from);
-    auto t_eleType = Module::getStorageType(to);
-    if (f_eleType.isInteger(8) && t_eleType.isInteger(8) ||
-        f_eleType == t_eleType) {
-      return false;
-    }
-    return true;
+  void type_process() {
+    // i8:f32 scale:-128 => u8:f32 scale
+    mainFunc_.walk([&](LoweringInterface op) {
+      for (auto result : op->getResults()) {
+        if (Quant::isUniformQuantized(result) == false) {
+          continue;
+        }
+        auto qtype = Quant::getUniformQuantizedType(result);
+        if (qtype.getZeroPoint() != -128) {
+          continue;
+        }
+        auto new_qtype = quant::UniformQuantizedType::get(
+            0, IntegerType::get(ctx_, 8), qtype.getExpressedType(),
+            qtype.getScale(), 0, 0, 255);
+        auto new_type =
+            RankedTensorType::get(Module::getShape(result), new_qtype);
+        result.setType(new_type);
+      }
+    });
   }
 
   void cast_process() {
@@ -249,57 +356,13 @@ protected:
 
   void DoCast(Operation *op, uint32_t opd_idx, Type to) {
     auto v = op->getOperand(opd_idx);
-    auto in_op = v.getDefiningOp();
-    // check whether cast
-    for (auto user : v.getUsers()) {
-      if (user == op || false == isa<tpu::CastOp>(user)) {
-        continue;
-      }
-      if (need_cast(user->getResult(0).getType(), to) == false) {
-        op->setOperand(opd_idx, user->getResult(0));
-        return;
-      }
-    }
-    auto sType = Module::getStorageType(to);
-    auto eType = to.cast<RankedTensorType>().getElementType();
-    auto shape = Module::getShape(v);
-    Type newType = RankedTensorType::get(shape, sType);
-    auto ctx = v.getContext();
-    OpBuilder builder(ctx);
-    std::string suffix;
-    if (sType.isF32()) {
-      suffix = "_f32";
-    } else if (sType.isF16()) {
-      suffix = "_f16";
-    } else if (sType.isBF16()) {
-      suffix = "_bf16";
-    } else if (sType.isInteger(8)) {
-      if (sType.isUnsignedInteger(8)) {
-        suffix = "_u8";
-      } else {
-        suffix = "_i8";
-      }
-      if (Quant::isUniformQuantized(to) && Quant::isCalibratedType(v)) {
-        newType = Quant::getQuantInt8Type(v, asymmetric_);
-      } else {
-        v.dump();
-        to.dump();
-        llvm_unreachable("cast not support now");
-      }
+    if (Quant::isUniformQuantized(to)) {
+      auto cast = do_quantize(v, asymmetric_);
+      op->setOperand(opd_idx, cast);
     } else {
-      llvm_unreachable("unknown type");
+      auto cast = do_cast(v, Module::getStorageType(to), false);
+      op->setOperand(opd_idx, cast);
     }
-    std::vector<Value> operands;
-    operands.push_back(v);
-    std::vector<NamedAttribute> attrs;
-    builder.setInsertionPointAfter(in_op);
-    std::string new_name = Module::getName(in_op).str() + suffix;
-    attrs.push_back(
-        builder.getNamedAttr("name", builder.getStringAttr(new_name)));
-    auto castOp = builder.create<tpu::CastOp>(in_op->getLoc(), newType,
-                                              ArrayRef<Value>{operands},
-                                              ArrayRef<NamedAttribute>{attrs});
-    op->setOperand(opd_idx, castOp.output());
   }
 
   void quant_for_special(Operation *op) {
@@ -326,5 +389,6 @@ protected:
 std::unique_ptr<OperationPass<ModuleOp>> createLoweringPass() {
   return std::make_unique<LoweringPass>();
 }
+
 } // namespace top
 } // namespace tpu_mlir

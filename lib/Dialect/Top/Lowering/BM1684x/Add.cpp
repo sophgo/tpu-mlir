@@ -62,13 +62,25 @@ Value top::AddOp::lowering_int8_bm1684x(bool asymmetric) {
 }
 
 Value top::AddOp::lowering_f32_bm1684x() {
-  return lowering_common<tpu::AddOp>(getOperation());
+  return lowering_common_float<tpu::AddOp>(getOperation());
 }
 
 Value top::AddOp::lowering_bf16_bm1684x() {
-  return lowering_common<tpu::AddOp, BFloat16Type>(getOperation());
+  return lowering_common_float<tpu::AddOp, BFloat16Type>(getOperation());
 }
 
 Value top::AddOp::lowering_f16_bm1684x() {
-  return lowering_common<tpu::AddOp, Float16Type>(getOperation());
+  return lowering_common_float<tpu::AddOp, Float16Type>(getOperation());
+}
+
+Value top::AddOp::lowering_quant_bm1684x() {
+  Builder builder(getContext());
+  auto in0_f32 = do_cast(inputs()[0], builder.getF32Type(), false);
+  auto in1_f32 = do_cast(inputs()[1], builder.getF32Type(), false);
+  auto op = getOperation();
+  op->setOperand(0, in0_f32);
+  op->setOperand(1, in1_f32);
+  auto type = output().getType();
+  auto v = lowering_common_float<tpu::AddOp>(op);
+  return do_cast(v, type, true);
 }

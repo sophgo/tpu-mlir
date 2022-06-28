@@ -23,5 +23,5 @@ Value top::AvgPoolOp::lowering_int8_bm1684() {
 }
 
 Value top::AvgPoolOp::lowering_f32_bm1684() {
-  return lowering_common<tpu::AvgPoolOp>(getOperation());
+  return lowering_common_float<tpu::AvgPoolOp>(getOperation());
 }

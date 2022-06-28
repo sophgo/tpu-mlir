@@ -35,3 +35,7 @@ Value top::BatchNormOp::lowering_f16_bm1684x() {
   llvm_unreachable("BatchNormOp to be supported");
   return nullptr;
 }
+
+Value top::BatchNormOp::lowering_quant_bm1684x() {
+  llvm_unreachable("not support now");
+}

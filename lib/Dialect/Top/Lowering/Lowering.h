@@ -25,8 +25,8 @@ using namespace tpu_mlir::helper;
 namespace tpu_mlir {
 namespace top {
 
-template <typename OpTy, typename ElemTy = Float32Type>
-static mlir::Value lowering_common(Operation *from) {
+template <typename OpTy>
+static mlir::Value lowering_common(Operation *from, Type newType) {
   auto ctx = from->getContext();
   OpBuilder builder(ctx);
   std::vector<Value> operands;
@@ -39,9 +39,26 @@ static mlir::Value lowering_common(Operation *from) {
     attrs.push_back(attr);
   }
   builder.setInsertionPointAfter(from);
+  auto newOp =
+      builder.create<OpTy>(from->getLoc(), newType, ArrayRef<Value>{operands},
+                           ArrayRef<NamedAttribute>{attrs});
+  return newOp.output();
+}
+
+template <typename OpTy>
+static mlir::Value lowering_common_int8(Operation *from,
+                                        bool asymmetric = false) {
+  auto resultType = from->getResult(0).getType().cast<RankedTensorType>();
+  auto newType = Quant::getQuantInt8Type(from->getResult(0), asymmetric);
+  return lowering_common<OpTy>(from, newType);
+}
+
+template <typename OpTy, typename ElemTy = Float32Type>
+static mlir::Value lowering_common_float(Operation *from) {
   auto output = from->getResult(0);
   auto sType = Module::getStorageType(output);
   auto shape = Module::getShape(output);
+  auto ctx = from->getContext();
   Type newType = output.getType();
   if (sType.isa<ElemTy>() == false) {
     if (Quant::isCalibratedType(output)) {
@@ -53,34 +70,12 @@ static mlir::Value lowering_common(Operation *from) {
       newType = RankedTensorType::get(shape, ElemTy::get(ctx));
     }
   }
-  auto newOp =
-      builder.create<OpTy>(from->getLoc(), newType, ArrayRef<Value>{operands},
-                           ArrayRef<NamedAttribute>{attrs});
-  return newOp.output();
+  return lowering_common<OpTy>(from, newType);
 }
 
-template <typename OpTy>
-static mlir::Value lowering_common_int8(Operation *from,
-                                        bool asymmetric = false) {
-  auto ctx = from->getContext();
-  OpBuilder builder(ctx);
-  std::vector<Value> operands;
-  const int nInputs = from->getNumOperands();
-  for (auto i = 0; i < nInputs; ++i) {
-    operands.push_back(from->getOperand(i));
-  }
-  std::vector<NamedAttribute> attrs;
-  for (auto &attr : from->getAttrs()) {
-    attrs.push_back(attr);
-  }
-  builder.setInsertionPointAfter(from);
-  auto resultType = from->getResult(0).getType().cast<RankedTensorType>();
-  auto newType = Quant::getQuantInt8Type(from->getResult(0), asymmetric);
-  auto newOp =
-      builder.create<OpTy>(from->getLoc(), newType, ArrayRef<Value>{operands},
-                           ArrayRef<NamedAttribute>{attrs});
-  return newOp.output();
-}
+Value do_cast(Value v, Type to, bool tensorType);
+Value do_quantize(Value v, bool asymmetric);
+
 
 } // namespace top
 } // namespace tpu_mlir

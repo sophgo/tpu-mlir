@@ -57,7 +57,9 @@ float quantizeToInt16(const float *pSrc, int16_t *pDst, int len, float scale,
 float quantizeToInt15(const float *pSrc, int16_t *pDst, int len, float scale,
                       int rshift = 0);
 void quantizeToInt8(const float *pSrc, int8_t *pDst, int len, float scale);
-
+// to compitable with tflite
+void QuantizeMultiplier(double double_multiplier, int64_t *quantized_multiplier,
+                        int64_t *shift);
 static inline int64_t applyMultiplierAndRShift(int64_t v, int64_t multiplier,
                                                int64_t rshift) {
   int64_t half_overflow = rshift > 0 ? (int64_t)1 << (rshift - 1) : 0;

@@ -8,20 +8,20 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "../Lowering.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Support/Dnnl/Dnnl.h"
+#include "tpu_mlir/Support/Helper/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
 
-using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
+using namespace mlir;
 
-Value top::ReluOp::lowering_int8_bm1684() {
-  return lowering_common_int8<tpu::ReluOp>(getOperation());
-}
+int64_t top::CastOp::getFLOPs() { return Module::getNumElements(output()); }
 
-Value top::ReluOp::lowering_f32_bm1684() {
-  return lowering_common_float<tpu::ReluOp>(getOperation());
+LogicalResult top::CastOp::init(InferenceParameter &p) { return success(); }
+void top::CastOp::deinit(InferenceParameter &p) {}
+
+LogicalResult top::CastOp::inference(InferenceParameter &p) {
+  llvm_unreachable("Not support now");
 }

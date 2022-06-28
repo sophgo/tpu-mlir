@@ -133,7 +133,7 @@ npz_tool.py compare \
 # Mlir to int8 asymmetric bmodel
 #################################
 
-# lowering to asymetric int8
+# lowering to asymmetric int8
 tpuc-opt resnet18.mlir \
     --import-calibration-table='file=resnet18_cali_table asymmetric=true' \
     --lowering="mode=INT8 asymmetric=true chip=bm1684x" \

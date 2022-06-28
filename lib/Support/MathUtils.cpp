@@ -215,6 +215,52 @@ void quantizeToInt8(const float *pSrc, int8_t *pDst, int len, float scale) {
   }
 }
 
+// tensorflow/lite/kernels/internal/quantization_util.cc
+// mlir/lib/Dialect/Tosa/Utils/QuantUtils.cpp
+// to compitable with tflite
+void QuantizeMultiplier(double double_multiplier, int64_t *quantized_multiplier,
+                        int64_t *shift) {
+  if (double_multiplier == 0.) {
+    *quantized_multiplier = 0;
+    *shift = 0;
+    return;
+  }
+  int shift_tmp;
+  const double q = std::frexp(double_multiplier, &shift_tmp);
+  *shift = shift_tmp;
+  auto q_fixed = static_cast<int64_t>(std::round(q * (1LL << 31)));
+  assert(q_fixed <= (1LL << 31));
+  if (q_fixed == (1LL << 31)) {
+    q_fixed /= 2;
+    ++*shift;
+  }
+  assert(q_fixed <= std::numeric_limits<int32_t>::max());
+  // A shift amount smaller than -31 would cause all bits to be shifted out
+  // and thus all results would be zero. We implement that instead with
+  // q_fixed==0, so as to avoid hitting issues with right-shift
+  // operations with shift amounts greater than 31. Note that this happens
+  // roughly when abs(double_multiplier) < 2^-31 and the present handling means
+  // that we're effectively flushing tiny double_multiplier's to zero.
+  // We could conceivably handle values in the range (roughly) [32, 63]
+  // as 'denormals' i.e. (shift==0, q_fixed < 2^30). In that point of view
+  // the present handling is just doing 'flush denormals to zero'. We could
+  // reconsider and actually generate nonzero denormals if a need arises.
+  if (*shift < -31) {
+    *shift = 0;
+    q_fixed = 0;
+  }
+  // Single-rounding MultiplyByQuantizedMultiplier doesn't support a shift > 30,
+  // saturate it.
+  if (*shift > 30) {
+    *shift = 30;
+    q_fixed = (1LL << 31) - 1;
+  }
+  // Sophgo expects right shift to be positive, and embed (1 << 31) into right
+  // shift bits.
+  *shift = (-*shift) + 31;
+  *quantized_multiplier = static_cast<int32_t>(q_fixed);
+}
+
 void pad_tensor(float *p_after_pad, float *src, int n, int c, int h, int w,
                 int pt, int pb, int pl, int pr, float pad_value) {
   int nc = n * c;

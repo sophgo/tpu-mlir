@@ -22,15 +22,18 @@ Value top::ReshapeOp::lowering_int8_bm1684x(bool asymmetric) {
   return lowering_common_int8<tpu::ReshapeOp>(getOperation(), asymmetric);
 }
 
-
 Value top::ReshapeOp::lowering_f32_bm1684x() {
-  return lowering_common<tpu::ReshapeOp>(getOperation());
+  return lowering_common_float<tpu::ReshapeOp>(getOperation());
 }
 
 Value top::ReshapeOp::lowering_bf16_bm1684x() {
-  return lowering_common<tpu::ReshapeOp, BFloat16Type>(getOperation());
+  return lowering_common_float<tpu::ReshapeOp, BFloat16Type>(getOperation());
 }
 
 Value top::ReshapeOp::lowering_f16_bm1684x() {
-  return lowering_common<tpu::ReshapeOp, Float16Type>(getOperation());
+  return lowering_common_float<tpu::ReshapeOp, Float16Type>(getOperation());
+}
+
+Value top::ReshapeOp::lowering_quant_bm1684x() {
+  return lowering_common<tpu::ReshapeOp>(getOperation(), output().getType());
 }
