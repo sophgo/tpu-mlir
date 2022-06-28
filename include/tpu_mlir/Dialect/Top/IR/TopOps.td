@@ -123,8 +123,20 @@ def Top_BatchNormOp: Top_Op<"BatchNorm", [SupportFuseRelu]> {
   let hasCanonicalizer = 1;
 }
 
+def Top_CastOp:Top_Op<"Cast",[InOutSameShape]> {
+  let summary = "Cast operation";
+  let description = [{
+    quant::UniformQuantizedType cast to float type; or float type cast to quant::UniformQuantizedType
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    StrAttr:$name
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_ConvOp: Top_Op<"Conv", [SupportFuseRelu]> {
-  let summary = "convolution operator";
+  let summary = "Convolution operator";
 
   let description = [{
     In the simplest case, the output value of the layer with input size
@@ -233,7 +245,7 @@ class Top_PoolOp <string mnemonic> : Top_Op<mnemonic,[SupportFuseRelu]> {
 def Top_AvgPoolOp:Top_PoolOp<"AvgPool">;
 def Top_MaxPoolOp:Top_PoolOp<"MaxPool">;
 
-def Top_AddOp: Top_Op<"Add", [SupportFuseRelu]> {
+def Top_AddOp: Top_Op<"Add", [SupportFuseRelu, InOutSameShape]> {
   let summary = "add operator";
 
   let description = [{
@@ -275,7 +287,7 @@ def Top_MatMulOp: Top_Op<"MatMul", [SupportFuseRelu]> {
   }];
 }
 
-def Top_ReluOp: Top_Op<"Relu"> {
+def Top_ReluOp: Top_Op<"Relu",[InOutSameShape]> {
   let summary = "Relu operator";
 
   let description = [{
@@ -307,7 +319,7 @@ def Top_ReshapeOp:Top_Op<"Reshape"> {
   let hasCanonicalizer = 1;
 }
 
-def Top_SoftmaxOp:Top_Op<"Softmax"> {
+def Top_SoftmaxOp:Top_Op<"Softmax",[InOutSameShape]> {
   let summary = "Softmax operation";
   let description = [{
     The operator computes the normalized exponential values for the given input.

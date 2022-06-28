@@ -30,6 +30,8 @@ def check_return_value(cond, msg):
     if not cond:
         raise RuntimeError(msg)
 
+def show_fake_cmd(in_npz:str, model:str, out_npz:str):
+    print("[CMD]: model_runner.py --input {} --model {} --output {}".format(in_npz, model, out_npz))
 
 class DeployTool:
 
@@ -81,11 +83,13 @@ class DeployTool:
         np.savez(self.in_f32_npz, **self.inputs)
         if len(self.ref_npz) == 0:
             self.ref_npz = self.module_name + "_top_outputs.npz"
+            show_fake_cmd(self.in_f32_npz, self.mlir_file, self.ref_npz)
             top_outputs = mlir_inference(self.inputs, self.mlir_file)
             np.savez(self.ref_npz, **top_outputs)
         self.tpu_npz = self.module_name + "_{}_{}_tpu_outputs.npz".format(self.chip, self.quantize)
 
     def validate_tpu_mlir(self):
+        show_fake_cmd(self.in_f32_npz, self.tpu_mlir, self.tpu_npz)
         tpu_outputs = mlir_inference(self.inputs, self.tpu_mlir)
         np.savez(self.tpu_npz, **tpu_outputs)
         # compare fp32 blobs and quantized tensors with tolerance similarity
@@ -101,6 +105,7 @@ class DeployTool:
     def validate_model(self):
         self.model_npz = self.module_name + "_{}_{}_model_outputs.npz".format(
             self.chip, self.quantize)
+        show_fake_cmd(self.in_f32_npz, self.model, self.model_npz)
         model_outputs = model_inference(self.inputs, self.model)
         np.savez(self.model_npz, **model_outputs)
         ret = f32_blobs_compare(self.model_npz, self.tpu_npz, self.correctness)
@@ -114,7 +119,7 @@ if __name__ == '__main__':
     parser.add_argument("--calibration_table", help="calibration table for int8 quantization")
     parser.add_argument("--quantize_table", help="table of OPs that quantized to specific mode")
     parser.add_argument("--quantize",
-                        required=True,
+                        default="F32",
                         type=str,
                         choices=['F32', 'BF16', 'F16', 'INT8'],
                         help="set default qauntization type: F32/BF16/F16/INT8")

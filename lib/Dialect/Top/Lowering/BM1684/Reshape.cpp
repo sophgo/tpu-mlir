@@ -23,5 +23,5 @@ Value top::ReshapeOp::lowering_int8_bm1684() {
 }
 
 Value top::ReshapeOp::lowering_f32_bm1684() {
-  return lowering_common<tpu::ReshapeOp>(getOperation());
+  return lowering_common_float<tpu::ReshapeOp>(getOperation());
 }

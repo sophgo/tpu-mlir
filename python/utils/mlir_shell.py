@@ -40,7 +40,7 @@ def mlir_lowering(top_mlir: str,
         cmd.extend([cali_param])
     lower_param = "--lowering=\"mode={} asymmetric={} chip={}\"".format(
         mode.upper(), asymmetric, chip.lower())
-    cmd.extend([lower_param, "--save-weight", "-o", tpu_mlir])
+    cmd.extend([lower_param, "--canonicalize", "--save-weight", "-o", tpu_mlir])
     return _os_system(cmd)
 
 

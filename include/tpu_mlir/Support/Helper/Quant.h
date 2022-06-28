@@ -32,12 +32,17 @@ struct Quant {
   };
 
   // clang-format off
-  static bool isCalibratedType(mlir::Type type) {
+  static inline bool isCalibratedType(mlir::Type type) {
     return type.cast<RankedTensorType>().getElementType().isa<quant::CalibratedQuantizedType>();
   }
 
-  static bool isCalibratedType(Value v) {
+  static inline bool isCalibratedType(Value v) {
     return isCalibratedType(v.getType());
+  }
+
+  template <typename... Args>
+  static inline bool isCalibratedType(Value v, Args... args) {
+    return isCalibratedType(v) && isCalibratedType(args...);
   }
 
   static inline bool isUniformQuantized(mlir::Type type) {
@@ -46,6 +51,11 @@ struct Quant {
 
   static inline bool isUniformQuantized(Value v) {
     return isUniformQuantized(v.getType());
+  }
+
+  template <typename... Args>
+  static inline bool isUniformQuantized(Value v, Args... args) {
+    return isUniformQuantized(v) && isUniformQuantized(args...);
   }
 
   static inline quant::CalibratedQuantizedType getCalibratedType(Value v) {

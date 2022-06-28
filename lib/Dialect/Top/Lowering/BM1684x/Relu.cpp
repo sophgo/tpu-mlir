@@ -23,13 +23,17 @@ Value top::ReluOp::lowering_int8_bm1684x(bool asymmetric) {
 }
 
 Value top::ReluOp::lowering_f32_bm1684x() {
-  return lowering_common<tpu::ReluOp>(getOperation());
+  return lowering_common_float<tpu::ReluOp>(getOperation());
 }
 
 Value top::ReluOp::lowering_bf16_bm1684x() {
-  return lowering_common<tpu::ReluOp, BFloat16Type>(getOperation());
+  return lowering_common_float<tpu::ReluOp, BFloat16Type>(getOperation());
 }
 
 Value top::ReluOp::lowering_f16_bm1684x() {
-  return lowering_common<tpu::ReluOp, Float16Type>(getOperation());
+  return lowering_common_float<tpu::ReluOp, Float16Type>(getOperation());
+}
+
+Value top::ReluOp::lowering_quant_bm1684x() {
+  llvm_unreachable("not support now");
 }

@@ -23,13 +23,17 @@ Value top::MaxPoolOp::lowering_int8_bm1684x(bool asymmetric) {
 }
 
 Value top::MaxPoolOp::lowering_f32_bm1684x() {
-  return lowering_common<tpu::MaxPoolOp>(getOperation());
+  return lowering_common_float<tpu::MaxPoolOp>(getOperation());
 }
 
 Value top::MaxPoolOp::lowering_bf16_bm1684x() {
-  return lowering_common<tpu::MaxPoolOp, BFloat16Type>(getOperation());
+  return lowering_common_float<tpu::MaxPoolOp, BFloat16Type>(getOperation());
 }
 
 Value top::MaxPoolOp::lowering_f16_bm1684x() {
-  return lowering_common<tpu::MaxPoolOp, Float16Type>(getOperation());
+  return lowering_common_float<tpu::MaxPoolOp, Float16Type>(getOperation());
+}
+
+Value top::MaxPoolOp::lowering_quant_bm1684x() {
+  return lowering_common<tpu::MaxPoolOp>(getOperation(), output().getType());
 }

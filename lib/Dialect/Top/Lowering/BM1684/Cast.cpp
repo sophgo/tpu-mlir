@@ -8,20 +8,20 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "../Lowering.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Dnnl/Dnnl.h"
+#include "tpu_mlir/Support/Helper/Module.h"
 
-using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
+using namespace mlir;
 
-Value top::ReluOp::lowering_int8_bm1684() {
-  return lowering_common_int8<tpu::ReluOp>(getOperation());
+Value top::CastOp::lowering_int8_bm1684() {
+  llvm_unreachable("CastOp to be supported");
+  return nullptr;
 }
 
-Value top::ReluOp::lowering_f32_bm1684() {
-  return lowering_common_float<tpu::ReluOp>(getOperation());
+Value top::CastOp::lowering_f32_bm1684() {
+  llvm_unreachable("CastOp to be supported");
+  return nullptr;
 }

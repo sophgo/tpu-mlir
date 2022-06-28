@@ -8,6 +8,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "../Lowering.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Helper/Module.h"
@@ -34,4 +35,18 @@ Value top::SoftmaxOp::lowering_bf16_bm1684x() {
 Value top::SoftmaxOp::lowering_f16_bm1684x() {
   llvm_unreachable("SoftmaxOp to be supported");
   return nullptr;
+}
+
+Value top::SoftmaxOp::lowering_quant_bm1684x() {
+  if (Quant::isUniformQuantized(input(), output()) == false) {
+    llvm_unreachable("input output should be quantized");
+  }
+  // use f32
+  Builder builder(getContext());
+  auto in_f32 = do_cast(input(), builder.getF32Type(), false);
+  auto op = getOperation();
+  op->setOperand(0, in_f32);
+  auto type = output().getType();
+  auto v =  lowering_common_float<tpu::SoftmaxOp>(op);
+  return do_cast(v, type, true);
 }

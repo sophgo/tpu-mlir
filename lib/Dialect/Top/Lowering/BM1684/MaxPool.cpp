@@ -23,5 +23,5 @@ Value top::MaxPoolOp::lowering_int8_bm1684() {
 }
 
 Value top::MaxPoolOp::lowering_f32_bm1684() {
-  return lowering_common<tpu::MaxPoolOp>(getOperation());
+  return lowering_common_float<tpu::MaxPoolOp>(getOperation());
 }

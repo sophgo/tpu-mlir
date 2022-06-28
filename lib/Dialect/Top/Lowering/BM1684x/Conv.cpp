@@ -109,8 +109,7 @@ Value top::ConvOp::lowering_int8_bm1684x(bool asymmetric) {
     auto new_bias = WeightOp::create(op, "bias_int32", *bias_int32, new_type);
     operands.push_back(new_bias);
   } else {
-    auto none = Module::getNoneOp(op);
-    operands.push_back(none);
+    operands.push_back(bias()); // none
   }
 
   std::vector<NamedAttribute> attrs;
@@ -203,6 +202,103 @@ Value top::ConvOp::lowering_bf16_bm1684x() {
   auto newType =
       RankedTensorType::get(tensor_type.getShape(), builder.getBF16Type());
   auto newOp = builder.create<tpu::ConvOp>(op->getLoc(), newType,
+                                           ArrayRef<Value>{operands},
+                                           ArrayRef<NamedAttribute>{attrs});
+  return newOp.output();
+}
+
+Value top::ConvOp::lowering_quant_bm1684x() {
+  if (Quant::isUniformQuantized(input(), output()) == false) {
+    llvm_unreachable("input output should be quantized");
+  }
+  int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
+      pl, pr, dh, dw;
+  bool is_dw, with_bias, relu;
+  parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
+             pl, pr, dh, dw, is_dw, with_bias, relu);
+  auto input_qtype = Quant::getUniformQuantizedType(input());
+  auto output_qtype = Quant::getUniformQuantizedType(output());
+  auto filter_type = filter().getType().cast<RankedTensorType>();
+  auto filter_qtype = filter_type.getElementType()
+                          .dyn_cast<quant::UniformQuantizedPerAxisType>();
+  if (!filter_qtype) {
+    llvm_unreachable("TODO: per layer to support");
+  }
+  auto filter_scales = filter_qtype.getScales();
+
+  SmallVector<int64_t> rshift(filter_scales.size());
+  SmallVector<int64_t> multiplier(filter_scales.size());
+
+  // tensorflow/lite/kernels/kernel_util.cc::PopulateConvolutionQuantizationParams
+  // Populate multiplier and shift using affine quantization.
+  auto input_scale = input_qtype.getScale();
+  auto output_scale = output_qtype.getScale();
+  for (auto filter : llvm::enumerate(filter_scales)) {
+    const double effective_output_scale =
+        input_scale * filter.value() / output_scale;
+    // int scale,shift;
+    // get_scale_and_shift(effective_output_scale, scale, shift, 32);
+    // multiplier[filter.index()] = scale;
+    // rshift[filter.index()] = shift;
+    QuantizeMultiplier(effective_output_scale, &multiplier[filter.index()],
+                       &rshift[filter.index()]);
+  }
+  auto ctx = getContext();
+  OpBuilder builder(ctx);
+  auto op = getOperation();
+  builder.setInsertionPointAfter(op);
+  std::vector<Value> operands;
+  operands.push_back(input());
+  auto filter_stype = Module::getStorageType(filter());
+  auto filter_new_type =
+      RankedTensorType::get(filter_type.getShape(), filter_stype);
+  filter().setType(filter_new_type);
+  operands.push_back(filter());
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  attrs.push_back(
+      builder.getNamedAttr("multiplier", builder.getI64ArrayAttr(multiplier)));
+  attrs.push_back(
+      builder.getNamedAttr("rshift", builder.getI64ArrayAttr(rshift)));
+  attrs.push_back(
+      builder.getNamedAttr("with_bias", builder.getBoolAttr(with_bias)));
+
+  int32_t input_zeroPoint = input_qtype.getZeroPoint();
+  if (input_zeroPoint != 0) {
+    // merge input_zeroPoint to bias
+    std::shared_ptr<std::vector<int32_t>> bias_quant;
+    std::shared_ptr<std::vector<int8_t>> filter_quant;
+    filter_quant = cast<top::WeightOp>(filter().getDefiningOp()).read<int8_t>();
+    if (with_bias) {
+      bias_quant = cast<top::WeightOp>(bias().getDefiningOp()).read<int32_t>();
+    } else {
+      bias_quant->resize(oc, 0);
+    }
+    int64_t oc = filter_type.getShape()[0];
+    int64_t kernel_size = filter_type.getNumElements() / oc;
+
+    for (size_t oc_ind = 0; oc_ind < oc; ++oc_ind) {
+      for (size_t kernel_ind = 0; kernel_ind < kernel_size; ++kernel_ind) {
+        bias_quant->data()[oc_ind] -=
+            input_zeroPoint *
+            filter_quant->at(kernel_ind + oc_ind * kernel_size);
+      }
+    }
+    auto bias_type = RankedTensorType::get({oc}, builder.getI32Type());
+    auto new_bias =
+        top::WeightOp::create(op, "_merge_bias", *bias_quant, bias_type);
+    operands.push_back(new_bias);
+  } else {
+    auto bias_stype = Module::getStorageType(bias());
+    auto bias_new_type =
+        RankedTensorType::get(Module::getShape(bias()), bias_stype);
+    bias().setType(bias_new_type);
+    operands.push_back(bias());
+  }
+
+  auto newOp = builder.create<tpu::ConvOp>(op->getLoc(), output().getType(),
                                            ArrayRef<Value>{operands},
                                            ArrayRef<NamedAttribute>{attrs});
   return newOp.output();

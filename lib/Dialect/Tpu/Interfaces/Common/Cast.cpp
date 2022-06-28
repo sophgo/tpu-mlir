@@ -56,3 +56,35 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
 
   return success();
 }
+
+struct SimplifyRedundantCast : public OpRewritePattern<tpu::CastOp> {
+  SimplifyRedundantCast(mlir::MLIRContext *context)
+      : OpRewritePattern<tpu::CastOp>(context, /*benefit=*/1) {}
+
+  LogicalResult
+  matchAndRewrite(tpu::CastOp op,
+                  mlir::PatternRewriter &rewriter) const override {
+    auto in = op.input();
+    auto in_type = in.getType();
+    auto out_type = op.output().getType();
+    if (in_type == out_type) {
+      rewriter.replaceOp(op, {in});
+      return success();
+    }
+    auto castInputOp = in.getDefiningOp<tpu::CastOp>();
+    if (!castInputOp) {
+      return failure();
+    }
+
+    if (out_type == castInputOp.input().getType()) {
+      rewriter.replaceOp(op, {castInputOp.input()});
+      return success();
+    }
+    return failure();
+  }
+};
+
+void tpu::CastOp::getCanonicalizationPatterns(RewritePatternSet &results,
+                                              MLIRContext *context) {
+  results.insert<SimplifyRedundantCast>(context);
+}

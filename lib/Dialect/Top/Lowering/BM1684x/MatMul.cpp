@@ -104,7 +104,7 @@ Value top::MatMulOp::lowering_int8_bm1684x(bool asymmetric) {
 }
 
 Value top::MatMulOp::lowering_f32_bm1684x() {
-  return lowering_common<tpu::MatMulOp>(getOperation());
+  return lowering_common_float<tpu::MatMulOp>(getOperation());
 }
 
 Value top::MatMulOp::lowering_f16_bm1684x() {
@@ -152,6 +152,82 @@ Value top::MatMulOp::lowering_bf16_bm1684x() {
   auto newType =
       RankedTensorType::get(tensor_type.getShape(), builder.getBF16Type());
   auto newOp = builder.create<tpu::MatMulOp>(op->getLoc(), newType,
+                                             ArrayRef<Value>{operands},
+                                             ArrayRef<NamedAttribute>{attrs});
+  return newOp.output();
+}
+
+Value top::MatMulOp::lowering_quant_bm1684x() {
+  if (!Quant::isUniformQuantized(input(), right(), output())) {
+    llvm_unreachable("input output should be quantized");
+  }
+  int64_t batch, M, K, N;
+  bool relu, with_bias;
+  parseParam(batch, M, K, N, with_bias, relu);
+  assert(batch == 1);
+  auto input_qtype = Quant::getUniformQuantizedType(input());
+  auto right_qtype = Quant::getUniformQuantizedType(right());
+  auto output_qtype = Quant::getUniformQuantizedType(output());
+
+  const double real_multiplier =
+      input_qtype.getScale() * right_qtype.getScale() / output_qtype.getScale();
+  int64_t multiplier, shift;
+  QuantizeMultiplier(real_multiplier, &multiplier, &shift);
+  auto ctx = getContext();
+  OpBuilder builder(ctx);
+  auto op = getOperation();
+  builder.setInsertionPointAfter(op);
+  std::vector<Value> operands;
+  operands.push_back(input());
+  auto right_stype = Module::getStorageType(right());
+  auto right_new_type =
+      RankedTensorType::get(Module::getShape(right()), right_stype);
+  right().setType(right_new_type);
+  operands.push_back(right());
+  if (with_bias) {
+    auto bias_stype = Module::getStorageType(bias());
+    auto bias_new_type =
+        RankedTensorType::get(Module::getShape(bias()), bias_stype);
+    bias().setType(bias_new_type);
+  }
+
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  attrs.push_back(builder.getNamedAttr("multiplier",
+                                       builder.getI64IntegerAttr(multiplier)));
+  attrs.push_back(
+      builder.getNamedAttr("rshift", builder.getI64IntegerAttr(shift)));
+
+  int32_t input_zeroPoint = input_qtype.getZeroPoint();
+
+  if (input_zeroPoint != 0) {
+    // merge input_zeroPoint to bias
+    std::shared_ptr<std::vector<int32_t>> bias_quant;
+    std::shared_ptr<std::vector<int8_t>> right_quant;
+    right_quant = cast<top::WeightOp>(right().getDefiningOp()).read<int8_t>();
+    if (isa<top::WeightOp>(bias().getDefiningOp())) {
+      bias_quant = cast<top::WeightOp>(bias().getDefiningOp()).read<int32_t>();
+    }
+    auto right_type = right().getType().cast<RankedTensorType>();
+    int64_t row_size = right_type.getShape()[0];
+    int64_t col_size = right_type.getShape()[1];
+    bias_quant->resize(col_size, 0);
+    for (size_t r_ind = 0; r_ind < row_size; ++r_ind) {
+      for (size_t c_ind = 0; c_ind < col_size; ++c_ind) {
+        bias_quant->data()[c_ind] -=
+            input_zeroPoint * right_quant->at(c_ind + r_ind * col_size);
+      }
+    }
+    auto bias_type = RankedTensorType::get({col_size}, builder.getI32Type());
+    auto new_bias = top::WeightOp::create(op, "MergedInputZeroPoint",
+                                          *bias_quant, bias_type);
+    operands.push_back(new_bias);
+  } else {
+    operands.push_back(bias());
+  }
+  auto newOp = builder.create<tpu::MatMulOp>(op->getLoc(), output().getType(),
                                              ArrayRef<Value>{operands},
                                              ArrayRef<NamedAttribute>{attrs});
   return newOp.output();

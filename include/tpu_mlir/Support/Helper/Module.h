@@ -38,7 +38,7 @@ struct Module {
   struct State {
     static constexpr llvm::StringRef TOP_F32 = "TOP_F32";
     static constexpr llvm::StringRef TOP_CALIBRATED = "TOP_CALIBRATED";
-    static constexpr llvm::StringRef TOP_QUANTIZED = "TOP_QUANTIED";
+    static constexpr llvm::StringRef TOP_QUANTIZED = "TOP_QUANTIZED";
     static constexpr llvm::StringRef TPU_LOWERED = "TPU_LOWERED";
     static constexpr llvm::StringRef TPU_REORDERED = "TPU_REORDERED";
     static constexpr llvm::StringRef TPU_DIVIDED = "TPU_DIVIDED";

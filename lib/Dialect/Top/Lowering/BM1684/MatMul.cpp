@@ -86,5 +86,5 @@ Value top::MatMulOp::lowering_int8_bm1684() {
 }
 
 Value top::MatMulOp::lowering_f32_bm1684() {
-  return lowering_common<tpu::MatMulOp>(getOperation());
+  return lowering_common_float<tpu::MatMulOp>(getOperation());
 }

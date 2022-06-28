@@ -62,5 +62,5 @@ Value top::AddOp::lowering_int8_bm1684() {
 }
 
 Value top::AddOp::lowering_f32_bm1684() {
-  return lowering_common<tpu::AddOp>(getOperation());
+  return lowering_common_float<tpu::AddOp>(getOperation());
 }
