@@ -19,12 +19,17 @@ public:
   Pooling();
   ~Pooling();
 
-  void pad_init(float *input, int n, int ic, int ih, int iw, int& pt, int& pb, int& pl, int& pr, int izp);
-  void setup(float *input, float*output, int n, int c, int ih, int iw, int oh, int ow, int kh, int kw,
-             int sh, int sw, int pt, int pb, int pl, int pr, bool is_avg,
-             bool count_include_pad, int izp = 0, int pad_value = 0);
+  void pad_init(float *input, int n, int ic, int ih, int iw, int &pt, int &pb,
+                int &pl, int &pr, int izp);
+  void setup(float *input, float *output, int n, int c, int ih, int iw, int oh,
+             int ow, int kh, int kw, int sh, int sw, int pt, int pb, int pl,
+             int pr, bool is_avg, bool count_include_pad, int izp = 0,
+             int pad_value = 0);
 
   void run();
+
+public:
+  int kh, kw;
 
 private:
   engine eng;
@@ -41,4 +46,4 @@ private:
   int _pt, _pb, _pl, _pr;
   int _izp;
 };
-} // namespace dnnl
+} // namespace tpu_mlir

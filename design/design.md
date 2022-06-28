@@ -72,8 +72,6 @@ gdb --args python /work/python/tools/model_runner.py --input resnet18_in_f32.npz
 
 * mlir近期Verifier.cpp加入了一个OpTrait::IsTerminator的判断，会触发assert，目前现象来看像是mlir自身的bug。先删掉这个判断，不会照成任何影响。后期再升级llvm，再看会不会触发这个问题。
 
-* ufw的bm1684的average pooling的量化实现有点迷，强行thx==thy，且mulipier和rshift用查表得到，后续看backend的实现，看是否可以优化
-
 * 目前1684用batch 4验证，避免在4N存储的细节上花费太多时间；后续需要补上4N的逻辑
 
 * BM前缀是否都需要改成SG前缀？

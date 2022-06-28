@@ -1,8 +1,6 @@
 #!/bin/bash
 set -ex
 
-export NNMODELS_PATH=${PROJECT_ROOT}/../nnmodels
-
 if [ ! -d ${NNMODELS_PATH} ]; then
   echo "[Warning] nnmodles does not exist; Skip nnmodels tests."
   exit 0

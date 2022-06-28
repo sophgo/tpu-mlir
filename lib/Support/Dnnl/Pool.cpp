@@ -53,6 +53,8 @@ void Pooling::setup(float *input, float *output, int n, int c, int ih, int iw,
                     int oh, int ow, int kh, int kw, int sh, int sw, int pt,
                     int pb, int pl, int pr, bool is_avg, bool count_include_pad,
                     int izp, int pad_value) {
+  this->kh = kh;
+  this->kw = kw;
   pad_init(input, n, c, ih, iw, pt, pb, pl, pr, izp);
   memory::dims dst_shape = {n, c, oh, ow};
   memory::dims strides = {sh, sw};

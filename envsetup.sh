@@ -11,6 +11,8 @@ echo "INSTALL_PATH : ${INSTALL_PATH}"
 
 # regression path
 export REGRESSION_PATH=$PROJECT_ROOT/regression
+export NNMODELS_PATH=${PROJECT_ROOT}/../nnmodels
+
 # run path
 export PATH=$INSTALL_PATH/bin:$PATH
 export PATH=$PROJECT_ROOT/llvm/bin:$PATH

@@ -96,21 +96,15 @@ LogicalResult tpu::AvgPoolOp::inference(InferenceParameter &p) {
   if (out_type.isInteger(8)) {
     auto i_qtype = Quant::getUniformQuantizedType(input());
     auto o_qtype = Quant::getUniformQuantizedType(output());
-    double scale = i_qtype.getScale() / o_qtype.getScale();
+    auto multi = multiplier();
+    auto rs = rshift();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int64_t i = 0; i < num_elem; ++i) {
-      p.outputs[0][i] =
-          (std::round(p.outputs[0][i]) - i_qtype.getZeroPoint()) * scale;
-      if (do_relu() && p.outputs[0][i] < 0) {
-        p.outputs[0][i] = 0;
-      }
-      if (out_type.isUnsignedInteger(8)) {
-        p.outputs[0][i] =
-            Quant::to_uint8(p.outputs[0][i] + o_qtype.getZeroPoint());
-      } else {
-        p.outputs[0][i] =
-            Quant::to_int8(p.outputs[0][i] + o_qtype.getZeroPoint());
-      }
+      p.outputs[0][i] = applyMultiplierAndRShift(
+          std::round(p.outputs[0][i] * pooling->kh * pooling->kw), multi, rs);
+      p.outputs[0][i] = out_type.isUnsignedInteger(8)
+                            ? Quant::to_uint8(p.outputs[0][i])
+                            : Quant::to_int8(p.outputs[0][i]);
     }
   } else if (out_type.isa<FloatType>()) {
     if (do_relu()) {

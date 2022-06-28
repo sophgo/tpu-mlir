@@ -189,10 +189,13 @@ protected:
     // clang-format off
     patterns.add<ForwardCalibartion<top::ReluOp>,
                  ForwardCalibartion<top::MaxPoolOp>,
-                 ForwardCalibartion<top::ReshapeOp>,
-                 ForwardCalibartion<top::AvgPoolOp>
+                 ForwardCalibartion<top::ReshapeOp>
                 >(ctx_);
     // clang-format on
+    if (chip_ == Module::Chip::BM1684) {
+      // TODO: support asymmetric mode
+      patterns.add<ForwardCalibartion<top::AvgPoolOp>>(ctx_);
+    }
     applyPatternsAndFoldGreedily(module, std::move(patterns));
   }
 
@@ -302,7 +305,7 @@ protected:
   void quant_for_special(Operation *op) {
     if (chip_ == Module::Chip::BM1684x) {
       if (mode_ == Quant::Type::INT8 && asymmetric_) {
-        if (isa<top::AddOp>(op)) {
+        if (isa<top::AddOp, top::AvgPoolOp>(op)) {
           quantize_map[op] = Quant::Type::F32;
         }
       }
