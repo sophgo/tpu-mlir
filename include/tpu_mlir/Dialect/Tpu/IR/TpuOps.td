@@ -67,8 +67,8 @@ def Tpu_ConvOp: Tpu_Op<"Conv",[
     //new param
     BoolAttr:$with_bias,
     DefaultValuedAttr<BoolAttr, "false">:$coeff_merged,
-    OptionalAttr<I64ArrayAttr>:$rshift,
     OptionalAttr<I64ArrayAttr>:$multiplier,
+    OptionalAttr<I64ArrayAttr>:$rshift,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
     StrAttr:$name
   );
@@ -124,8 +124,8 @@ def Tpu_AvgPoolOp:Tpu_PoolOp<"AvgPool"> {
     DefaultValuedAttr<I64Attr, "0">:$pad_value,
     DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<I64Attr, "0">:$multiplier,
     DefaultValuedAttr<I64Attr, "0">:$rshift,
-    DefaultValuedAttr<I64Attr, "1">:$multiplier,
     OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
     StrAttr:$name
   );
@@ -145,8 +145,8 @@ def Tpu_AddOp: Tpu_Op<"Add", [SupportFuseRelu,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     OptionalAttr<F64ArrayAttr>:$coeff,
     // quant param
-    OptionalAttr<I64ArrayAttr>:$rshifts,
     OptionalAttr<I64ArrayAttr>:$multipliers,
+    OptionalAttr<I64ArrayAttr>:$rshifts,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
     StrAttr:$name
   );
@@ -185,8 +185,8 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
     AnyTensor:$right,
     AnyTensorOrNone:$bias,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<I64Attr, "0">:$rshift,
     DefaultValuedAttr<I64Attr, "1">:$multiplier,
+    DefaultValuedAttr<I64Attr, "0">:$rshift,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
     StrAttr:$name
   );
@@ -328,8 +328,8 @@ def Tpu_SoftmaxOp: Tpu_Op<"Softmax"> {
     AnyTensor:$input,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     // quant param
-    OptionalAttr<I64Attr>:$rshift,
     OptionalAttr<I64Attr>:$multiplier,
+    OptionalAttr<I64Attr>:$rshift,
     I64ArrayAttr:$table,
     OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
     StrAttr:$name

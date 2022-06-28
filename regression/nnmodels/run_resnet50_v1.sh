@@ -16,7 +16,7 @@ model_transform.py \
     --pixel_format rgb \
     --test_input ${REGRESSION_PATH}/image/cat.jpg \
     --test_result resnet50_v1_top_outputs.npz \
-    --mlir resnet50_v1.mlir \
+    --mlir resnet50_v1.mlir
 
 
 #########################
@@ -49,7 +49,7 @@ model_deploy.py \
   --test_input resnet50_v1_in_f32.npz \
   --test_reference resnet50_v1_top_outputs.npz \
   --tolerance 0.95,0.72 \
-  --correctness 0.99,0.85 \
+  --correctness 0.99,0.95 \
   --model resnet50_v1_1684x_int8_sym.bmodel
 
 # to asymmetric
@@ -62,7 +62,7 @@ model_deploy.py \
   --test_input resnet50_v1_in_f32.npz \
   --test_reference resnet50_v1_top_outputs.npz \
   --tolerance 0.97,0.75 \
-  --correctness 0.99,0.85 \
+  --correctness 0.99,0.95 \
   --model resnet50_v1_1684x_int8_asym.bmodel
 
 popd

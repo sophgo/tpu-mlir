@@ -77,7 +77,7 @@ model_runner.py \
 
 npz_tool.py compare \
     resnet18_tpu_f32_outputs.npz \
-    resnet18_top_outputs.npz \
+    resnet18_model_f32_outputs.npz \
     --tolerance 0.99,0.99 -v
 
 
