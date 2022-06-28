@@ -22,7 +22,7 @@ CPU服务器以及相关产品的研发与销售。旗下算丰全系列人工�
 docker pull sophgo/sophgo_dev:1.2-ubuntu-18.04
 
 # myname1234 just a example, you can set your own name
-docker run --privileged --name myname1234 -v $PWD:/work -it sophgo/sophgo_dev:1.1-ubuntu-18.04
+docker run --privileged --name myname1234 -v $PWD:/work -it sophgo/sophgo_dev:1.2-ubuntu-18.04
 ```
 
 * 编译代码
