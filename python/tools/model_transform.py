@@ -27,6 +27,7 @@ class ModelTransformTool(object):
     def __init__(self, model_name):
         self.model_name = model_name
         self.converter = BaseConverter()
+        self.do_mlir_infer = True
 
     def cleanup(self):
         pass
@@ -67,17 +68,20 @@ class ModelTransformTool(object):
 
         # original model inference to get blobs of all layer
         ref_outputs = self.origin_inference(inputs)
-        ref_npz = self.model_name + '_ref_outputs.npz'
-        np.savez(ref_npz, **ref_outputs)
+        if self.do_mlir_infer:
+            ref_npz = self.model_name + '_ref_outputs.npz'
+            np.savez(ref_npz, **ref_outputs)
 
-        # inference of mlir model
-        f32_outputs = mlir_inference(inputs, self.mlir_file)
-        np.savez(test_result, **f32_outputs)
+            # inference of mlir model
+            f32_outputs = mlir_inference(inputs, self.mlir_file)
+            np.savez(test_result, **f32_outputs)
 
-        # compare all blobs layer by layers
-        ret = f32_blobs_compare(test_result, ref_npz, tolerance, excepts=excepts)
-        if ret != 0:
-            raise RuntimeError("validate fail")
+            # compare all blobs layer by layers
+            ret = f32_blobs_compare(test_result, ref_npz, tolerance, excepts=excepts)
+            if ret != 0:
+                raise RuntimeError("validate fail")
+        else:
+            np.savez(test_result, **ref_outputs)
 
     @abc.abstractmethod
     def origin_inference(self, inputs: dict) -> dict:
@@ -98,11 +102,12 @@ class OnnxModelTransformTool(ModelTransformTool):
 
 class TFLiteModelTransformTool(ModelTransformTool):
 
-    def __init__(self, model_name, model_def, input_shapes: list = []):
+    def __init__(self, model_name, model_def, input_shapes: list = [], preprocessor = None):
         super().__init__(model_name)
         self.model_def = model_def
         self.input_shapes = input_shapes
-        self.converter = TFLiteConverter(self.model_name, self.model_def, self.input_shapes)
+        self.do_mlir_infer = False
+        self.converter = TFLiteConverter(self.model_name, self.model_def, self.input_shapes, preprocessor)
 
     def origin_inference(self, inputs: dict):
         return tflite_inference(inputs, self.converter.tflite_file)
@@ -132,14 +137,13 @@ def str2list(v):
 def get_model_transform(args):
     preprocessor = preprocess()
     preprocessor.config(**vars(args))
-
     if not args.mlir.endswith('.mlir'):
         raise RuntimeError("your mlir file should endswith .mlir, not:{}".format(args.mlir))
     tool = None
     if args.model_def.endswith('.onnx'):
         tool = OnnxModelTransformTool(args.model_name, args.model_def, args.input_shapes, preprocessor.to_dict())
     elif args.model_def.endswith('.tflite'):
-        tool = TFLiteModelTransformTool(args.model_name, args.model_def, args.input_shapes)
+        tool = TFLiteModelTransformTool(args.model_name, args.model_def, args.input_shapes, preprocessor.to_dict())
     else:
         # TODO: support more AI model types
         raise RuntimeError("unsupport model:{}".format(args.model_def))
