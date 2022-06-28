@@ -207,22 +207,24 @@ class TFLiteConverter(BaseConverter):
         TensorType.UINT64: None,
     }
 
-    def __init__(self, model_name: str, tflite_file: str, input_shapes=None):
+    def __init__(self, model_name: str, tflite_file: str, input_shapes=None, preprocess_args = None):
         super().__init__()
         self.model_name = model_name
         self.tflite_file = tflite_file
         self.tflie = TFLiteReader(tflite_file)
         self.graph = next(self.tflie.subgraph)
         self.shape_infer = self.__shape_infer(input_shapes)
+        self.preprocess_args = preprocess_args
 
         for x in self.graph.inputs:
             self.__nhwc2nchw(x)
         for x in self.graph.outputs:
             self.__nhwc2nchw(x)
-
+        self.input_shapes = [x.shape for x in self.graph.inputs]
+        self.output_shapes = [x.shape for x in self.graph.outputs]
         self.mlir = MLIRImporter(
-            input_shapes=[x.shape for x in self.graph.inputs],
-            output_shapes=[x.shape for x in self.graph.outputs],
+            self.input_shapes,
+            self.output_shapes,
             model_name=self.model_name,
             input_types=[
                 self.TFLType2MLIRImporterTypeStr[x.type] for x in self.graph.inputs
@@ -548,7 +550,21 @@ class TFLiteConverter(BaseConverter):
 
         symbol_table = symbolTable(self.__create_weight_op)
         for idx, input in enumerate(subgraph.inputs):
-            symbol_table.update({input.id: self.mlir.create_input_op(input.name, idx)})
+            input_shape = self.input_shapes[idx]
+            image = (len(input_shape) == 4 and input_shape[1] <=4) or \
+                    (len(input_shape) == 3) # gray
+            if not self.preprocess_args or not image:
+                input_op = self.mlir.create_input_op(input.name, idx, **{})
+            else:
+                preprocess_hint = {
+                    'mean': self.preprocess_args['mean'],
+                    'scale':  self.preprocess_args['scale'],
+                    'pixel_format': self.preprocess_args["pixel_format"],
+                    'resize_dims': self.preprocess_args['resize_dims'],
+                    'keep_aspect_ratio': self.preprocess_args['keep_aspect_ratio']
+                }
+                input_op = self.mlir.create_input_op(input.name, idx, **preprocess_hint)
+            symbol_table.update({input.id: input_op})
 
         def add_operation(operation):
             op_type, attributes = self.BuiltinOptionsToAttributes[operation.type](
