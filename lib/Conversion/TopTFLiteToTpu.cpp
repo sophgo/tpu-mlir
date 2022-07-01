@@ -30,48 +30,35 @@
 
 using namespace mlir;
 using namespace llvm;
-using namespace mlir::quant;
+
 namespace tpu_mlir {
 #define GEN_PASS_CLASSES
 #include "tpu_mlir/Conversion/Passes.h.inc"
 
-Type getRankedTensorElementType(Value input) {
-  return input.getType().cast<RankedTensorType>().getElementType();
-}
-
 template <typename ElementType>
-ElementType getRankedTensorElementType(Value input) {
-  return getRankedTensorElementType(input).cast<ElementType>();
-}
-
-template <class T>
-bool isQuantized(T input) {
-  if (!input.getType().template isa<RankedTensorType>())
-    return false;
-  if (!getRankedTensorElementType(input).template isa<quant::QuantizedType>()) {
-    return false;
+ElementType dynGetElmentType(Value input) {
+  if (auto rank_type = input.getType().dyn_cast<RankedTensorType>()) {
+    return rank_type.getElementType().dyn_cast<ElementType>();
   }
-  return true;
-};
-
-template <typename T, typename... Args>
-bool isQuantized(T t, Args... args) {
-  return isQuantized(t) && isQuantized(args...);
-};
+  return ElementType(nullptr);
+}
 
 template <typename QuantizedType, typename T>
 bool isQuantized(T input) {
-  if (!input.getType().template isa<RankedTensorType>())
-    return false;
-  if (!getRankedTensorElementType(input).template isa<QuantizedType>()) {
-    return false;
-  }
-  return true;
+  if (auto rank_type = input.getType().template dyn_cast<RankedTensorType>())
+    if (rank_type.getElementType().template isa<QuantizedType>())
+      return true;
+  return false;
 };
 
 template <typename QuantizedType, typename T, typename... Args>
 bool isQuantized(T t, Args... args) {
   return isQuantized<QuantizedType>(t) && isQuantized<QuantizedType>(args...);
+};
+
+template <typename T, typename... Args>
+bool isQuantized(T t, Args... args) {
+  return isQuantized<quant::QuantizedType>(t, args...);
 };
 
 // tensorflow/lite/kernels/internal/quantization_util.cc
@@ -128,30 +115,26 @@ public:
   LogicalResult
   matchAndRewrite(top::ConvOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const final {
-    if (!isQuantized(op.input(), op.filter(), op.getResult()))
-      return failure();
     if (isQuantized(adaptor.filter()) || isQuantized(adaptor.bias()))
       return failure(); // make sure filter and bias are storage type
 
-    auto input_elem_type = getRankedTensorElementType(op.input());
-    auto filter_elm_type = getRankedTensorElementType(op.filter());
-    auto output_elm_type = getRankedTensorElementType(op.getResult());
+    auto filter_qtype_ = dynGetElmentType<quant::QuantizedType>(op.filter());
+    auto input_qtype =
+        dynGetElmentType<quant::UniformQuantizedType>(op.input());
+    auto output_qtype =
+        dynGetElmentType<quant::UniformQuantizedType>(op.getResult());
 
-    if (!input_elem_type.isa<UniformQuantizedType>() ||
-        !output_elm_type.isa<UniformQuantizedType>())
+    if (!input_qtype || !output_qtype || !filter_qtype_)
       return failure();
-    bool is_per_channel = filter_elm_type.isa<UniformQuantizedPerAxisType>();
 
-    auto input_qtype = input_elem_type.cast<UniformQuantizedType>();
-    auto output_qtype = output_elm_type.cast<UniformQuantizedType>();
     ArrayRef<double> filter_scales;
 
-    if (is_per_channel) {
-      filter_scales =
-          filter_elm_type.cast<UniformQuantizedPerAxisType>().getScales();
+    if (auto filter_qtype =
+            filter_qtype_.dyn_cast<quant::UniformQuantizedPerAxisType>()) {
+      filter_scales = filter_qtype.getScales();
     } else {
       filter_scales = ArrayRef<double>{
-          filter_elm_type.cast<UniformQuantizedType>().getScale()};
+          filter_qtype_.cast<quant::UniformQuantizedType>().getScale()};
     }
 
     SmallVector<int64_t> rshift(filter_scales.size());
@@ -182,8 +165,7 @@ public:
         isa<top::WeightOp, top::NoneOp>(adaptor.bias().getDefiningOp())) {
       // merge input_zeroPoint to bias
       std::shared_ptr<std::vector<int32_t>> bias_quant;
-      std::shared_ptr<std::vector<int8_t>> filter_quant;
-      filter_quant =
+      auto filter_quant =
           cast<top::WeightOp>(adaptor.filter().getDefiningOp()).read<int8_t>();
       if (isa<top::WeightOp>(adaptor.bias().getDefiningOp())) {
         bias_quant =
@@ -235,17 +217,18 @@ class AddOpLowering : public OpConversionPattern<top::AddOp> {
           return isQuantized<quant::UniformQuantizedType>(in);
         }))
       return failure();
-    if (!isQuantized<quant::UniformQuantizedType>(op.getResult()))
+    auto output_qtype =
+        dynGetElmentType<quant::UniformQuantizedType>(op.getResult());
+
+    if (!output_qtype)
       return failure();
 
     SmallVector<double> inputs_scale(op.inputs().size());
     for (auto item : llvm::enumerate(op.inputs())) {
       inputs_scale[item.index()] =
-          getRankedTensorElementType<quant::UniformQuantizedType>(item.value())
+          dynGetElmentType<quant::UniformQuantizedType>(item.value())
               .getScale();
     }
-    auto output_qtype =
-        getRankedTensorElementType<quant::UniformQuantizedType>(op.getResult());
 
     // Following quantization described in tensorflow/lite/kernels/add.cc::172
     // In details it does (the size of inputs is 2):
@@ -302,13 +285,14 @@ class AvgPoolOpLowering : public OpConversionPattern<top::AvgPoolOp> {
   LogicalResult
   matchAndRewrite(top::AvgPoolOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const final {
-    if (!isQuantized<quant::UniformQuantizedType>(op.input(), op.getResult()))
-      return failure();
 
     auto input_qtype =
-        getRankedTensorElementType<quant::UniformQuantizedType>(op.input());
+        dynGetElmentType<quant::UniformQuantizedType>(op.input());
     auto output_qtype =
-        getRankedTensorElementType<quant::UniformQuantizedType>(op.getResult());
+        dynGetElmentType<quant::UniformQuantizedType>(op.getResult());
+
+    if (!input_qtype || !output_qtype)
+      return failure();
 
     int64_t num_elements = 1;
     for (auto x : adaptor.kernel_shape())
@@ -378,18 +362,19 @@ class MatMulOpLowering : public OpConversionPattern<top::MatMulOp> {
   LogicalResult
   matchAndRewrite(top::MatMulOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const final {
-    if (!isQuantized<quant::UniformQuantizedType>(op.input(), op.right(),
-                                                  op.getResult()))
-      return failure();
-    if (isQuantized(adaptor.right()) || isQuantized(adaptor.bias()))
-      return failure(); // make sure filter and bias are storage type
 
     auto input_qtype =
-        getRankedTensorElementType<quant::UniformQuantizedType>(op.input());
+        dynGetElmentType<quant::UniformQuantizedType>(op.input());
     auto right_qtype =
-        getRankedTensorElementType<quant::UniformQuantizedType>(op.right());
+        dynGetElmentType<quant::UniformQuantizedType>(op.right());
     auto output_qtype =
-        getRankedTensorElementType<quant::UniformQuantizedType>(op.getResult());
+        dynGetElmentType<quant::UniformQuantizedType>(op.getResult());
+
+    if (!input_qtype || !right_qtype || !output_qtype)
+      return failure();
+
+    if (isQuantized(adaptor.right()) || isQuantized(adaptor.bias()))
+      return failure(); // make sure filter and bias are storage type
 
     const double real_multiplier = input_qtype.getScale() *
                                    right_qtype.getScale() /
@@ -408,9 +393,9 @@ class MatMulOpLowering : public OpConversionPattern<top::MatMulOp> {
       std::shared_ptr<std::vector<int8_t>> right_quant;
       right_quant =
           cast<top::WeightOp>(adaptor.right().getDefiningOp()).read<int8_t>();
-      if (isa<top::WeightOp>(adaptor.bias().getDefiningOp())) {
-        bias_quant =
-            cast<top::WeightOp>(adaptor.bias().getDefiningOp()).read<int32_t>();
+      if (auto bias_ =
+              dyn_cast<top::WeightOp>(adaptor.bias().getDefiningOp())) {
+        bias_quant = bias_.read<int32_t>();
       }
       auto right_type = adaptor.right().getType().cast<RankedTensorType>();
       int64_t row_size = right_type.getShape()[0];
@@ -454,14 +439,16 @@ class SoftmaxOpLowering : public OpConversionPattern<top::SoftmaxOp> {
   LogicalResult
   matchAndRewrite(top::SoftmaxOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const final {
-    if (!isQuantized<quant::UniformQuantizedType>(op.input(), op.getResult()))
+    auto input_qtype =
+        dynGetElmentType<quant::UniformQuantizedType>(op.input());
+    auto output_qtype =
+        dynGetElmentType<quant::UniformQuantizedType>(op.getResult());
+
+    if (!input_qtype || !output_qtype)
       return failure();
 
-    const double input_scale =
-        getRankedTensorElementType<UniformQuantizedType>(op.input()).getScale();
-    const double output_scale =
-        getRankedTensorElementType<UniformQuantizedType>(op.getResult())
-            .getScale();
+    const double input_scale = input_qtype.getScale();
+    const double output_scale = output_qtype.getScale();
     const double beta = 1.0; // TODO
     const double real_multiplier = beta * input_scale / output_scale;
     int64_t multiplier, shift;
@@ -469,9 +456,7 @@ class SoftmaxOpLowering : public OpConversionPattern<top::SoftmaxOp> {
 
     SmallVector<int64_t, 513> table;
 
-    int64_t input_zp =
-        getRankedTensorElementType<UniformQuantizedType>(op.input())
-            .getZeroPoint();
+    int64_t input_zp = input_qtype.getZeroPoint();
     const int sum_compacity = 12; // 2^12 - 1, should be the number of reduced.
     double output_inv_scale = static_cast<double>(1L << (31 - sum_compacity));
     // The (input - max(input)) is in [-256, 0].
@@ -496,9 +481,9 @@ class SoftmaxOpLowering : public OpConversionPattern<top::SoftmaxOp> {
     // use float computation
     auto input_type = adaptor.input().getType().cast<RankedTensorType>();
     auto cast_type = RankedTensorType::get(
-        input_type.getShape(),
-        getRankedTensorElementType<quant::UniformQuantizedType>(adaptor.input())
-            .getExpressedType());
+        input_type.getShape(), input_type.getElementType()
+                                   .cast<quant::UniformQuantizedType>()
+                                   .getExpressedType());
 
     std::string cast_name_prefix(adaptor.name());
     NamedAttrList cast_name;
@@ -531,23 +516,16 @@ class WeightOpLowering : public OpConversionPattern<top::WeightOp> {
   LogicalResult
   matchAndRewrite(top::WeightOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const final {
-    auto input_tensor_type = getRankedTensorElementType(op.getResult());
-    if (!input_tensor_type
-             .isa<UniformQuantizedPerAxisType, UniformQuantizedType>())
-      return failure();
-    Type storage_type;
     if (auto quant_type =
-            input_tensor_type.dyn_cast<UniformQuantizedPerAxisType>())
-      storage_type = quant_type.getStorageType();
-    else
-      storage_type =
-          input_tensor_type.cast<UniformQuantizedType>().getStorageType();
-
-    auto output_type = RankedTensorType::get(
-        op.getResult().getType().cast<RankedTensorType>().getShape(),
-        storage_type);
-    rewriter.replaceOpWithNewOp<top::WeightOp>(op, output_type, adaptor.name());
-    return success();
+            dynGetElmentType<quant::QuantizedType>(op.getResult())) {
+      auto input_tensor_type = cast<RankedTensorType>(op.getResult().getType());
+      auto output_type = RankedTensorType::get(input_tensor_type.getShape(),
+                                               quant_type.getStorageType());
+      rewriter.replaceOpWithNewOp<top::WeightOp>(op, output_type,
+                                                 adaptor.name());
+      return success();
+    }
+    return failure();
   }
 };
 
