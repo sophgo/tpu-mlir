@@ -92,13 +92,18 @@ class OnnxNode(BaseNode):
 
 class OnnxConverter(BaseConverter):
 
-    def __init__(self, model_name: str, onnx_file: str, input_shapes: list, preprocess_args = None):
+    def __init__(self,
+                 model_name: str,
+                 onnx_file: str,
+                 input_shapes: list,
+                 output_names: list,
+                 preprocess_args=None):
         super().__init__()
         self.model_name = model_name
         self.weight_file = "{}_top_weight.npz".format(model_name)
         self.model = None
         self.mlir = None
-        self.load_onnx_model(onnx_file, input_shapes)
+        self.load_onnx_model(onnx_file, input_shapes, output_names)
         self.init_MLIRImporter()
         self.preprocess_args = preprocess_args
 
@@ -120,7 +125,61 @@ class OnnxConverter(BaseConverter):
         if self.mlir != None:
             del self.mlir
 
-    def load_onnx_model(self, onnx_file, input_shapes: list):
+    def select_unuse(self, names):
+        for name in names:
+            if name in self.all_weights:
+                self.all_weights.pop(name)
+            if name in self.all_values:
+                self.all_values.pop(name)
+            if name in self.all_inputs:
+                self.all_inputs.remove(name)
+            if name in self.all_nodes:
+                cur_node = self.all_nodes.pop(name)
+                self.select_unuse(cur_node.input)
+
+    def select_output(self, output_names: list):
+        # set new output
+        find_names = []
+        ori_output = []
+        self.all_inputs = []
+        for x in self.model.graph.output:
+            ori_output.append(x)
+        for x in self.model.graph.input:
+            self.all_inputs.append(x)
+        self.all_values = {}
+        for x in self.model.graph.value_info:
+            self.all_values[x.name] = x
+            if x.name not in output_names:
+                continue
+            self.model.graph.output.append(x)
+            find_names.append(x.name)
+            output_names.remove(x.name)
+            if len(output_names) == 0:
+                break
+        if len(output_names) != 0:
+            raise RuntimeError("Error, can't find {} in model".format(output_names))
+        for x in ori_output:
+            self.model.graph.output.remove(x)
+        # node map name
+        self.all_nodes = {}
+        for x in self.model.graph.node:
+            self.all_nodes[x.name] = x
+        # weight map name
+        self.all_weights = {}
+        for w in self.model.graph.initializer:
+            self.all_weights[w.name] = w
+        # remove unused node
+        self.select_unuse(find_names)
+        for n in self.all_nodes.values():
+            self.model.graph.node.remove(n)
+        for i in self.all_weights.values():
+            self.model.graph.initializer.remove(i)
+        for v in self.all_values.values():
+            self.model.graph.value_info.remove(v)
+        for o in self.all_inputs:
+            self.model.graph.input.remove(o)
+
+    def load_onnx_model(self, onnx_file, input_shapes: list, output_names: list):
         self.model = onnx.load(onnx_file)
         self.input_names = onnxsim.get_input_names(self.model)
         self.num_input = len(self.input_names)
@@ -129,6 +188,8 @@ class OnnxConverter(BaseConverter):
         model_simplified, is_ok = onnxsim.simplify(self.model)
         if is_ok:
             self.model = model_simplified
+        if output_names:
+            self.select_output(output_names)
         # add all weight
         for tensor in self.model.graph.initializer:
             name = tensor.name
@@ -185,7 +246,7 @@ class OnnxConverter(BaseConverter):
         self.mlir = MLIRImporter(input_shapes, output_shapes, self.model_name)
         self.weight_file = self.mlir.weight_file
 
-    def generate_mlir(self, mlir_file:str):
+    def generate_mlir(self, mlir_file: str):
         """convert all to mlir"""
         # add input op
         for idx, _name in enumerate(self.input_names):
@@ -197,7 +258,7 @@ class OnnxConverter(BaseConverter):
             else:
                 preprocess_hint = {
                     'mean': self.preprocess_args['mean'],
-                    'scale':  self.preprocess_args['scale'],
+                    'scale': self.preprocess_args['scale'],
                     'pixel_format': self.preprocess_args["pixel_format"],
                     'resize_dims': self.preprocess_args['resize_dims'],
                     'keep_aspect_ratio': self.preprocess_args['keep_aspect_ratio']
@@ -252,9 +313,7 @@ class OnnxConverter(BaseConverter):
             "name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
             "epsilon": epsilon,
         }
-        new_op = self.mlir.create_batchnorm_op(
-            [op, gamma, beta, mean, variance], output_shape, **p
-        )
+        new_op = self.mlir.create_batchnorm_op([op, gamma, beta, mean, variance], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
     def convert_conv_op(self, onnx_node):

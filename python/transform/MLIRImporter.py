@@ -287,10 +287,9 @@ class MLIRImporter(object):
         for _idx, _type in enumerate(self.output_types):
             output_txt += _type.__str__()
             if (_idx + 1) < self.num_output:
-                args_txt += ", "
+                output_txt += ", "
         if self.num_output > 1:
             output_txt = "({})".format(output_txt)
-
         main_func = """
             module attributes {{module.name = \"{name}\", module.weight_file= \"{weight_file}\", module.state=\"{state}\", module.chip=\"{chip}\"}} {{
                 func.func @main({args}) -> {output} {{
