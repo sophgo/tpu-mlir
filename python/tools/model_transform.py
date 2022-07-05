@@ -21,8 +21,10 @@ from tools.model_runner import mlir_inference, onnx_inference, tflite_inference
 from data.preprocess import get_preprocess_parser, preprocess
 import pymlir
 
-def show_fake_cmd(in_npz:str, model:str, out_npz:str):
+
+def show_fake_cmd(in_npz: str, model: str, out_npz: str):
     print("[CMD]: model_runner.py --input {} --model {} --output {}".format(in_npz, model, out_npz))
+
 
 class ModelTransformTool(object):
 
@@ -54,7 +56,7 @@ class ModelTransformTool(object):
             for name in self.converter.input_names:
                 assert (name in npz_in.files)
                 inputs[name] = npz_in[name]
-        elif file_list[0].endswith('.jpg'): #todo add isPicture in util
+        elif file_list[0].endswith('.jpg'):  #todo add isPicture in util
             ppa = preprocess()
             for i in range(self.input_num):
                 pic_path = file_list[i] if i < len(file_list) else file_list[-1]
@@ -93,11 +95,17 @@ class ModelTransformTool(object):
 
 class OnnxModelTransformTool(ModelTransformTool):
 
-    def __init__(self, model_name, model_def, input_shapes: list = [], preprocessor = None):
+    def __init__(self,
+                 model_name,
+                 model_def,
+                 input_shapes: list = [],
+                 output_names=[],
+                 preprocessor=None):
         super().__init__(model_name)
         self.model_def = model_def
         self.input_shapes = input_shapes
-        self.converter = OnnxConverter(self.model_name, self.model_def, input_shapes, preprocessor)
+        self.converter = OnnxConverter(self.model_name, self.model_def, input_shapes, output_names,
+                                       preprocessor)
 
     def origin_inference(self, inputs: dict):
         return onnx_inference(inputs, self.converter.onnx_file)
@@ -105,12 +113,13 @@ class OnnxModelTransformTool(ModelTransformTool):
 
 class TFLiteModelTransformTool(ModelTransformTool):
 
-    def __init__(self, model_name, model_def, input_shapes: list = [], preprocessor = None):
+    def __init__(self, model_name, model_def, input_shapes: list = [], preprocessor=None):
         super().__init__(model_name)
         self.model_def = model_def
         self.input_shapes = input_shapes
         self.do_mlir_infer = False
-        self.converter = TFLiteConverter(self.model_name, self.model_def, self.input_shapes, preprocessor)
+        self.converter = TFLiteConverter(self.model_name, self.model_def, self.input_shapes,
+                                         preprocessor)
 
     def origin_inference(self, inputs: dict):
         return tflite_inference(inputs, self.converter.tflite_file)
@@ -137,6 +146,7 @@ def str2list(v):
         files.remove('')
     return files
 
+
 def get_model_transform(args):
     preprocessor = preprocess()
     preprocessor.config(**vars(args))
@@ -144,13 +154,16 @@ def get_model_transform(args):
         raise RuntimeError("your mlir file should endswith .mlir, not:{}".format(args.mlir))
     tool = None
     if args.model_def.endswith('.onnx'):
-        tool = OnnxModelTransformTool(args.model_name, args.model_def, args.input_shapes, preprocessor.to_dict())
+        tool = OnnxModelTransformTool(args.model_name, args.model_def, args.input_shapes,
+                                      args.output_names, preprocessor.to_dict())
     elif args.model_def.endswith('.tflite'):
-        tool = TFLiteModelTransformTool(args.model_name, args.model_def, args.input_shapes, preprocessor.to_dict())
+        tool = TFLiteModelTransformTool(args.model_name, args.model_def, args.input_shapes,
+                                        preprocessor.to_dict())
     else:
         # TODO: support more AI model types
         raise RuntimeError("unsupport model:{}".format(args.model_def))
     return tool
+
 
 if __name__ == '__main__':
     print("SOPHGO Toolchain {}".format(pymlir.module().version))
@@ -162,12 +175,18 @@ if __name__ == '__main__':
                         type=str2shape,
                         default=list(),
                         help="list of input shapes, like:[[2,3],[1,2]]")
+    parser.add_argument("--output_names",
+                        type=str2list,
+                        default=list(),
+                        help="if set, will find names in model and set as real outputs")
     parser.add_argument("--test_input",
                         default="",
                         type=str2list,
                         help="input jpg/npy/npz file for inference, "
                         "if has more than one input, join jpg or npy with semicolon")
-    parser.add_argument("--test_result", default="", type=str,
+    parser.add_argument("--test_result",
+                        default="",
+                        type=str,
                         help="if input is set, result is mlir inference result")
     parser.add_argument("--tolerance",
                         default='0.99,0.99',
@@ -179,6 +198,6 @@ if __name__ == '__main__':
     tool = get_model_transform(args)
     tool.model_transform(args.mlir)
     if args.test_input:
-        assert(args.test_result)
+        assert (args.test_result)
         tool.model_validate(args.test_input, args.tolerance, args.excepts, args.test_result)
     tool.cleanup()
