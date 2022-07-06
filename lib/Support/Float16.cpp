@@ -518,8 +518,8 @@ uint16_t fp16_alt_from_fp32_value(float f) {
 }
 
 uint16_t float_to_bf16_uint16_simple(float x) {
-  unsigned int *p = (unsigned int *)&x;
-  return (uint16_t)((*p & 0xFFFF0000) >> 16);
+  uint16_t *p = (uint16_t *)&x;
+  return p[1];
 }
 
 float bf16_uint16_to_float_simple(uint16_t x) {
