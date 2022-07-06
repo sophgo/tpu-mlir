@@ -244,9 +244,9 @@ class ActivationCalibrator(BaseKldCalibrator):
         activations_statistics = self.find_min_max_abs()
 
         # step 2: set histogram bins
-        hist_bin_nums = [(2**i) * 512 for i in range(7)]
-        if self.histogram_bin_num not in hist_bin_nums:
-            hist_bin_nums.append(self.histogram_bin_num)
+        # hist_bin_nums = [(2**i) * 512 for i in range(7)]
+        # if self.histogram_bin_num not in hist_bin_nums:
+        hist_bin_nums = [self.histogram_bin_num]
 
         # step 3: calculate threshold with histogram bins
         thresholds_map = self.calc_thresholds(activations_statistics, hist_bin_nums)

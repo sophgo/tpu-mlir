@@ -219,7 +219,7 @@ model_runner.py \
 npz_tool.py compare \
     resnet18_bf16_outputs_1684x.npz \
     resnet18_top_outputs.npz \
-    --tolerance 0.99,0.85 -v
+    --tolerance 0.99,0.80 -v
 
 # ToDo (convert to bf16 bmodel)
 # tpuc-opt resnet18_tpu_bf16.mlir \
