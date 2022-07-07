@@ -9,6 +9,7 @@
 #
 # ==============================================================================
 
+import os
 import numpy as np
 import pymlir
 from ctypes import *
@@ -16,7 +17,13 @@ from tqdm import tqdm
 import datetime
 from data.preprocess import preprocess
 from utils.mlir_parser import *
+import pdb
+from utils.log_setting import setup_logger
 
+have_weight_op = [
+    'top.Conv',
+    'top.MatMul'
+]
 
 class BaseKldCalibrator:
 
@@ -45,52 +52,347 @@ class BaseKldCalibrator:
         return threshold
 
 
-class ThresholdTable:
+class CalibrationTable:
+    def __init__(self, table):
+        self.headers, self.thresholds_map = self.parse(table)
 
-    def __init__(self, candidate_threshold_map, activations_statistics):
-        self.candidate_threshold_map = self.transform_threshold_map(candidate_threshold_map)
-        self.activations_statistics = activations_statistics
-        self.thresholds_map = {}
-        for k, v in self.candidate_threshold_map.items():
-            self.thresholds_map[k] = v[0]
+    def parse(self, table):
+        thresholds_map = dict()
+        headers = []
+        with open(table, 'r') as f:
+            for line in f.readlines():
+                line = line.strip()
+                if line.startswith('#'):
+                    headers.append(line)
+                    continue
+                # op_name    threshold    min    max
+                fields = line.split(' ')
+                if len(fields) != 4:
+                    print(
+                        "Table format should be 'op_name, threshold, min, max'")
+                    raise RuntimeError("Error with parse {} in {}".format(line, table))
 
-    def transform_threshold_map(self, candidate_threshold_map):
-        threshold_list_map = {}
-        for k, _map in candidate_threshold_map.items():
-            for op, threshold in _map.items():
-                if op not in threshold_list_map:
-                    threshold_list_map[op] = [threshold]
-                else:
-                    threshold_list_map[op].append(threshold)
-        return threshold_list_map
+                op_name, threshold, _min, _max = fields
+                thresholds_map[op_name] = [float(threshold), float(_min), float(_max)]
+        return headers, thresholds_map
+
+    def dump(self, dest_table):
+        with open(dest_table, "w") as f:
+            for line in self.headers:
+                f.write(line + "\n")
+            for k, v in self.thresholds_map.items():
+                f.write("{} {:.7f} {:.7f} {:.7f}\n".format(k, *v))
+
+    def update(self, target_op, new_threshold):
+        _, _min, _max = self.thresholds_map[target_op]
+        self.thresholds_map[target_op] = [new_threshold, _min, _max]
 
     def update_to(self, dest_table, target_op, new_threshold):
         with open(dest_table, "w") as f:
+            for line in self.headers:
+                f.write(line + "\n")
             for k, v in self.thresholds_map.items():
-                _min, _max, _ = self.activations_statistics[k]
                 if k == target_op:
-                    threshold = new_threshold
+                    f.write("{} {:.7f} {:.7f} {:.7f}\n".format(
+                            k, new_threshold, v[1], v[2]))
                 else:
-                    threshold = v
-                f.write("{} {:.7f} {:.7f} {:.7f}\n".format(k, threshold, _min, _max))
+                    f.write("{} {:.7f} {:.7f} {:.7f}\n".format(k, *v))
 
-    def update(self, target_op, best_threshold):
-        self.thresholds_map[target_op] = best_threshold
+def read_weight(weight_file):
+  weight_dict = {}
+  data = np.load(weight_file)
+  for key in data.files:
+    weight_dict[key] = data[key]
+  return weight_dict
 
-    def candidate_thresholds(self, target_op):
-        return self.candidate_threshold_map[target_op]
+def is_npz(image):
+    return True if image.split('.')[-1] == 'npz' else False
+
+def is_npy(image):
+    return True if image.split('.')[-1] == 'npy' else False
+
+def import_quant_bias(value, threshold):
+    scale = 127 / threshold
+    value = np.round(value * scale)
+    value[value > 127] = 127
+    value[value < -128] = -128
+    value /= scale
+    return value
+
+class SimpleTuner:
+    def __init__(self, fp32_mlir, calibration_table,
+                 images, image_num, ppa_list, debug_cmd):
+        image_num = min(len(images), image_num)
+        self.tune_iteration = 4
+        self.threshold_update_factor = 0.01
+        self.images = images[:image_num]
+        self.tuned_op = []
+        self.fp32_mlir = fp32_mlir
+        self.ppa_list = ppa_list
+        self.threshold_table = CalibrationTable(calibration_table)
+        self.module = pymlir.module()
+        self.module.load(fp32_mlir)
+        self.module_parsered = MlirParser(fp32_mlir)
+        self.num_inputs = self.module_parsered.get_input_num()
+        weight_file = self.module_parsered.attrs['module.weight_file'][1:-1]
+        self.weight = read_weight(weight_file)
+        self.debug_cmd = debug_cmd
+        log_level="DEBUG" if debug_cmd is not None and 'debug_log' in debug_cmd else "INFO"
+        self.logger = setup_logger('auto_tune', log_level = log_level)
+
+        data_dict = {}
+        for op_name in self.module.all_tensor_names:
+            op_type = self.module_parsered.get_op_type_by_op_name(op_name)
+            if op_type not in have_weight_op:
+                continue
+            if op_name not in self.threshold_table.thresholds_map:
+                continue
+            input = self.module_parsered.get_pre_op_by_op_name(op_name)
+            assert len(input) == 1
+            threshold = self.threshold_table.thresholds_map[input[0]][0]
+            opds = self.module_parsered.get_opds_by_op_name(op_name)
+            data_dict[opds[1]], data_dict[opds[2]] = self.weight_fake_quant(threshold, opds, op_type)
+
+        os.system('rm -f {}'.format(weight_file))
+        np.savez(weight_file, **data_dict)
+        self.module_dq = pymlir.module()
+        self.module_dq.load(fp32_mlir)
+        self.load_net_input()
+
+    def print_dbg(self, *para):
+        tmp = [str(item) for item in para]
+        tmpStr = ' '.join(tmp)
+        self.logger.debug(tmpStr)
+
+    def print_info(self, *para):
+        tmp = [str(item) for item in para]
+        tmpStr = ' '.join(tmp)
+        self.logger.info(tmpStr)
+
+    def weight_fake_quant(self, threshold, opds, op_type):
+        bias = None
+        if op_type == 'top.Conv':
+            weight = self.weight[opds[1]]
+            max_per_chan = np.max(weight.reshape(weight.shape[0], -1), axis = 1)
+            scale = 127/max_per_chan
+            weight = np.round(weight*scale[:,None,None,None])
+            weight /= scale[:,None,None,None]
+            if len(opds) > 2:
+                bias = self.weight[opds[2]]
+                bias = np.round(bias*scale*127/threshold)
+                bias = bias*threshold/scale/127
+        elif op_type == 'top.MatMul':
+            weight = self.weight[opds[1]]
+            max = np.max(weight.reshape(-1))
+            scale = 127/max
+            weight = np.round(weight*scale)
+            weight /= scale
+            if len(opds) > 2:
+                bias = self.weight[opds[2]]
+                bias = np.round(bias*scale*127/threshold)
+                bias = bias*threshold/scale/127
+        return weight, bias
+
+    def load_net_input(self):
+        self.dq_activations = {}
+        self.ref_activations = {}
+        count = self.module_parsered.get_user_count_by_op_name(self.ppa_list[0].input_name)
+        for i, image in enumerate(self.images):
+            if is_npy(image):
+                x = np.load(image)
+            else:
+                x = self.ppa_list[0].run(image)
+            self.dq_activations[i] = {self.ppa_list[0].input_name:[x, count]}
+            self.ref_activations[i] = {self.ppa_list[0].input_name:[x, count]}
+
+    def get_input_tensor(self, i, op_name):
+        if op_name in self.dq_activations[i]:
+            return self.dq_activations[i][op_name][0]
+
+    def clear_input_tensor(self, i, op_name):
+        input_ops = self.module_parsered.get_pre_op_by_op_name(op_name)
+        for input_op in input_ops:
+            if input_op in self.dq_activations[i]:
+                if self.dq_activations[i][input_op][1] == 1:
+                    self.dq_activations[i].pop(input_op)
+                else:
+                    self.dq_activations[i][input_op][1] -= 1
+
+    def gen_input_tensor(self, i, op_name):
+        self.print_dbg('gen {}th pic, {}\'s input_tensor'.format(i, op_name))
+        if op_name in self.dq_activations[i]:
+            self.print_dbg('exist, return')
+            return
+
+        input_ops = self.module_parsered.get_pre_op_by_op_name(op_name)
+        if len(input_ops) == 0:
+            self.print_dbg('no input_ops')
+        threshold = None
+        for input_op in input_ops:
+            data = self.get_input_tensor(i, input_op)
+            threshold = self.threshold_table.thresholds_map[input_op][0]
+            data = import_quant_bias(data, threshold)
+            self.print_dbg('input is {}, tuned_th:{}'.format(input_op, threshold))
+            self.module_dq.set_tensor(input_op, data)
+
+        if len(input_ops) > 0:
+            self.bias_fake_quant(op_name, threshold)
+            value = self.module_dq.invoke_at(op_name)
+            count = self.module_parsered.get_user_count_by_op_name(op_name)
+            self.dq_activations[i][op_name] = [value, count]
+            self.print_dbg('module_dq.invoke_at({}), ret shape:'.format(op_name), value.shape, ' refcount:', count)
+
+    def gen_ref_tensor(self, i, op_name):
+        if op_name in self.ref_activations[i]:
+            return
+
+        self.print_dbg('gen {}th pic, {}\'s ref_tensor'.format(i, op_name))
+        input_ops = self.module_parsered.get_pre_op_by_op_name(op_name)
+        if len(input_ops) == 0:
+            self.print_dbg('no input_ops')
+        for input_op in input_ops:
+            data = self.ref_activations[i][input_op][0]
+            if self.ref_activations[i][input_op][1] == 1:
+                self.ref_activations[i].pop(input_op)
+                self.print_dbg('pop its input:{}'.format(input_op))
+            else:
+                self.ref_activations[i][input_op][1] -= 1
+                tmp = self.ref_activations[i][input_op][1]
+                self.print_dbg('dec {}\'s refcount:{} > {}'.format(input_op, tmp+1, tmp))
+            self.module.set_tensor(input_op, data)
+        if len(input_ops) > 0:
+            value = self.module.invoke_at(op_name)
+            count = self.module_parsered.get_user_count_by_op_name(op_name)
+            self.print_dbg('have {} users as refcount:'.format(count))
+            self.ref_activations[i][op_name] = [value, count]
+            self.print_dbg('module.invoke_at({}), ret shape:'.format(op_name), value.shape)
+
+    def bias_fake_quant(self, op_name, threshold):
+        op_type = self.module_parsered.get_op_type_by_op_name(op_name)
+        if op_type in have_weight_op:
+            opds = self.module_parsered.get_opds_by_op_name(op_name)
+            _, bias = self.weight_fake_quant(threshold, opds, op_type)
+            if bias is not None:
+                self.module_dq.set_tensor(opds[2], bias)
+    def calc_distance(self, op_name, input, threshold):
+        distance = 0
+        self.bias_fake_quant(op_name, threshold)
+        for idx in range(len(self.images)):
+            for input in self.module_parsered.get_pre_op_by_op_name(op_name):
+                value = self.get_input_tensor(idx, input)
+                value = import_quant_bias(value, threshold)
+                self.module_dq.set_tensor(input, value)
+            target_activations = self.module_dq.invoke_at(op_name)
+            target_fp32_activations = self.ref_activations[idx][op_name][0]
+            diff = target_fp32_activations.flatten() - target_activations.flatten()
+            norm_2 = np.linalg.norm(diff)
+            norm_1 = np.linalg.norm(target_fp32_activations.flatten(), ord=1)
+            distance += norm_2 / norm_1
+        return distance
+
+    def find_better_threshold(self, op_name, input):
+        try_cnt = 0
+        fail_cnt = 0
+        prev_distance = -1
+        threshold = self.threshold_table.thresholds_map[input][0]
+        abs_max = max(map(abs,self.threshold_table.thresholds_map[input][1:]))
+        self.print_dbg('>>>op_name:', op_name,', input:',input, ', threshold:', threshold, 'abs_max:', abs_max)
+        cur_threshold = threshold
+        best_threshold = threshold
+
+        for idx in range(len(self.images)):
+            self.gen_ref_tensor(idx, op_name)
+            for pre_op in self.module_parsered.get_pre_op_by_op_name(op_name):
+                self.gen_input_tensor(idx, pre_op)
+
+        delta_sum = 0
+        while fail_cnt < self.tune_iteration:
+            delta_sum += cur_threshold * self.threshold_update_factor
+            delta = delta_sum / (try_cnt + 1)
+            cur_threshold += delta
+            if cur_threshold > abs_max:
+                self.print_dbg('meet cur_threshold > abs_max, find_better_threshold break')
+                break
+            try_cnt += 1
+
+            cur_distance = self.calc_distance(op_name, input, cur_threshold)
+            # try:
+            #     cur_distance = self.calc_distance(target_op, op_name, cur_threshold)
+            # except Exception as e:
+            #     self.print_dbg("warning but continue: {}".format(e))
+            #     fail_cnt += 1
+            #     continue
+
+            self.print_dbg("cur[{}] threshold: {:5f}, distance: {:5f}".format(
+                        try_cnt, cur_threshold, cur_distance))
+
+            if prev_distance == -1:
+                prev_distance = cur_distance
+                prev_threshold = cur_threshold
+            elif cur_distance < prev_distance:
+                self.print_dbg("### tuning {}, find a better threshold:"
+                            "{:5f} -> {:5f}, distance: {:9f} -> {:9f}".format(
+                            op_name, prev_threshold, cur_threshold,
+                            prev_distance, cur_distance))
+                best_threshold = cur_threshold
+                prev_distance = cur_distance
+                prev_threshold = cur_threshold
+                #fail_cnt = 0 #若成功时是否清零失败次数，即连续4次失败才退出循环
+            else:
+                fail_cnt += 1
+
+        for idx in range(len(self.images)):
+            for pre_op in self.module_parsered.get_pre_op_by_op_name(op_name):
+                self.clear_input_tensor(idx, pre_op)
+
+        self.threshold_table.update(input, best_threshold)
+
+    def isAllInputTuned(self, op_name):
+        pre_ops = self.module_parsered.get_pre_op_by_op_name(op_name)
+        for pre_op in pre_ops:
+            if pre_op not in self.tuned_op:
+                return False
+        return True
+
+    def run(self):
+        #pdb.set_trace()
+        for op_name in self.module.all_tensor_names:
+            if self.module_parsered.get_op_type_by_op_name(op_name) == 'top.Input':
+                continue
+
+            pre_ops = self.module_parsered.get_pre_op_by_op_name(op_name)
+            #若op的多个输入都已调节过，那任挑其中1个来调节，暂定第1个
+            if self.isAllInputTuned(op_name):
+                self.find_better_threshold(op_name, pre_ops[0])
+                self.tuned_op.append(pre_ops[0])
+                continue
+            for pre_op in pre_ops:
+                #op的多个输入，调节那些没有调节过的；
+                if pre_op not in self.tuned_op:
+                    self.find_better_threshold(op_name, pre_op)
+                    self.tuned_op.append(pre_op)
+            self.print_dbg(op_name, 'dq keys:', list(self.dq_activations[0].keys()))
+            for i in self.dq_activations[0]:
+                self.print_dbg('key', i, ' count:', self.dq_activations[0][i][1])
+            self.print_dbg(op_name, 'ref keys:', list(self.ref_activations[0].keys()))
+            for i in self.ref_activations[0]:
+                self.print_dbg('key', i, ' count:', self.ref_activations[0][i][1])
+
+        print('auto tune end')
+        return self.threshold_table.thresholds_map
 
 
 class ActivationCalibrator(BaseKldCalibrator):
-
-    def __init__(self, mlir_file: str, data_list: list, histogram_bin_num: int):
+    def __init__(self, args, data_list: list):
         super().__init__()
         self.module = pymlir.module()
-        self.module.load(mlir_file)
-        self.fp32_mlir = mlir_file
+        self.module.load(args.mlir_file)
+        self.fp32_mlir = args.mlir_file
+        self.tune_num = args.tune_num
+        self.args = args
 
         self.ppa_list = []
-        self.module_parsered = MlirParser(mlir_file)
+        self.module_parsered = MlirParser(args.mlir_file)
         self.batch_size = self.module_parsered.get_batch_size()
         self.input_num = self.module_parsered.get_input_num()
         for i in range(self.input_num):
@@ -107,7 +409,7 @@ class ActivationCalibrator(BaseKldCalibrator):
 
         self.tensor_max = {}
         self.tensor_min = {}
-        self.histogram_bin_num = histogram_bin_num
+        self.histogram_bin_num = args.histogram_bin_num
         self.buffered_activations = dict()
 
     def _activations_size(self, tensors):
@@ -237,23 +539,23 @@ class ActivationCalibrator(BaseKldCalibrator):
         pbar.close()
         return thresholds
 
-    def run(self, output_calibration_table):
+    def run(self):
         # step 1: find min max
         op_layers = self.module.all_tensor_names
         self._activations_generator()
         activations_statistics = self.find_min_max_abs()
 
         # step 2: set histogram bins
-        # hist_bin_nums = [(2**i) * 512 for i in range(7)]
-        # if self.histogram_bin_num not in hist_bin_nums:
-        hist_bin_nums = [self.histogram_bin_num]
+        hist_bin_nums = [(2**i) * 512 for i in range(7)]
+        if self.histogram_bin_num not in hist_bin_nums:
+            hist_bin_nums.append(self.histogram_bin_num)
 
         # step 3: calculate threshold with histogram bins
         thresholds_map = self.calc_thresholds(activations_statistics, hist_bin_nums)
         self._clean_resource()
 
         # step 6: dump threshold table of default histogram bins
-        with open(output_calibration_table, 'w') as f:
+        with open(self.args.calibration_table, 'w') as f:
             f.write("# genetated time: {}\n".format(datetime.datetime.now()))
             f.write("# histogram number: {}\n".format(self.histogram_bin_num))
             f.write("# sample number: {}\n###\n".format(self.num_samples))
@@ -262,4 +564,40 @@ class ActivationCalibrator(BaseKldCalibrator):
                 threshold = thresholds_map[self.histogram_bin_num][op_name]
                 min_value, max_value, _ = activations_statistics[op_name]
                 f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold, min_value,
-                                                           max_value))
+                                                        max_value))
+        if self.tune_num <= 0:
+                return
+
+        # setp 4: tune to get better threshold of each layers.
+        self.module = SimpleTuner(self.fp32_mlir, self.args.calibration_table,
+                                 self.data_list,  self.tune_num, self.ppa_list, self.args.debug_cmd)
+        thresholds = self.module.run()
+
+        # step 5: dump threshold table after tuning
+        with open(self.args.calibration_table + '.tuned', 'w') as f:
+            f.write("# genetated time: {}\n".format(datetime.datetime.now()))
+            f.write("# sample number: {}\n###\n".format(self.num_samples))
+            f.write("# op_name    threshold    min    max\n")
+            for op_name in op_layers:
+                threshold = thresholds[op_name]
+                min_value, max_value, _ = activations_statistics[op_name]
+                f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold[0],
+                                                           min_value, max_value))
+
+
+        # step 7: dump all thresholds to csv files
+        with open(self.args.calibration_table + '.tuned.csv', 'w') as f:
+            f.write("name,default({}),best,min,max,abs,{}\n".format(self.histogram_bin_num,
+                   ','.join([str(x) for x in hist_bin_nums])))
+            for op_name in op_layers:
+                default_threshold = thresholds_map[self.histogram_bin_num][op_name]
+                best_threshold = thresholds[op_name]
+                min_value, max_value, abs_value = activations_statistics[op_name]
+                f.write("{},{:.7f},{:.7f},{:.7f},{:.7f},{:5f},".format(
+                        op_name, default_threshold,
+                        best_threshold[0], min_value, max_value, abs_value))
+                _str_thres = []
+                for x in hist_bin_nums:
+                    _str_thres.append('{:.7f}'.format(thresholds_map[x][op_name]))
+                f.write(','.join(_str_thres))
+                f.write('\n')

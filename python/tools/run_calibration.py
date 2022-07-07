@@ -35,16 +35,19 @@ if __name__ == '__main__':
                         type=int,
                         default=0,
                         help='num of images for calibration')
+    parser.add_argument('--tune_num', type=int, default=0,
+                        help='num of images for tune')
     parser.add_argument('--histogram_bin_num',
                         type=int,
                         default=2048,
                         help='Specify histogram bin numer for kld calculate')
     parser.add_argument('-o', '--calibration_table', type=str, help='output threshold table')
+    parser.add_argument('--debug_cmd', type=str, help='debug cmd')
     args = parser.parse_args()
 
     selector = DataSelector(args.dataset, args.input_num, args.data_list)
     selector.dump('{}_calibration_list.txt'.format(args.calibration_table.split('.')[0]))
 
     # calibration
-    calibrator = ActivationCalibrator(args.mlir_file, selector.data_list, args.histogram_bin_num)
-    calibrator.run(args.calibration_table)
+    calibrator = ActivationCalibrator(args, selector.data_list)
+    calibrator.run()
