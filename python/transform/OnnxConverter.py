@@ -229,6 +229,11 @@ class OnnxConverter(BaseConverter):
                 self.addShape(output.name, shape)
         self.onnx_file = "{}_opt.onnx".format(self.model_name)
         onnx.save(self.model, self.onnx_file)
+        strip_model = onnx.ModelProto()
+        strip_model.CopyFrom(self.model)
+        strip_model.graph.ClearField("initializer")
+        with open(self.onnx_file + ".prototxt", "w") as f:
+            f.write(str(strip_model))
 
     def model_shape_infer(self, input_shapes):
         inputs = onnxsim.get_inputs(self.model)
@@ -341,16 +346,13 @@ class OnnxConverter(BaseConverter):
         assert (onnx_node.op_type == "Concat")
         output_shape = self.getShape(onnx_node.name)
         num_dims = len(output_shape)
-        operands = list()
         axis = onnx_node.attrs['axis']
         if axis < 0:
             axis += num_dims
-        for i in onnx_node.inputs:
-            op = self.getOperand(i)
-            operands.append(op)
+        operands = [self.getOperand(x) for x in onnx_node.inputs]
         p = {
             "name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
-            "axis": axis,
+            "axis": axis
         }
         new_op = self.mlir.create_concat_op(operands, output_shape, **p)
         self.addOperand(onnx_node.name, new_op)

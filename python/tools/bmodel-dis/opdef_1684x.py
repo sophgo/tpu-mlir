@@ -8,11 +8,8 @@
 #
 # ==============================================================================
 
-from abc import abstractmethod
-from collections import namedtuple
 import numpy as np
 from enum import Enum
-from typing import Tuple
 import regdef_1684x
 
 # global data and type
@@ -55,11 +52,12 @@ def get_dtype(prec, sign=1):  # unsigned -> 0; sign -> 1
 
 
 class MemRef:
-    def __init__(self, addr, shape, dtype: DType, relative_addr=False):
+    def __init__(self, addr, shape, stride, dtype: DType, relative_addr=False):
         self.addr = addr
         self.shape = shape
         self.dtype = dtype
         self.relative_addr = relative_addr
+        self.stride = stride
 
     @property
     def addr_str(self):
@@ -74,6 +72,8 @@ class MemRef:
     @property
     def shape_str(self):
         s = [str(s) for s in self.shape]
+        if self.stride:
+            return f"<{'x'.join(s)}x{self.dtype.name} {self.stride}>"
         return f"<{'x'.join(s)}x{self.dtype.name}>"
 
     def fmt_lmem(self, addr):
@@ -198,7 +198,7 @@ class bdc_base:
             elif isinstance(dtype, tuple):
                 _type, _sign = dtype
                 dtype = get_dtype(self.des_attr[_type], self.des_attr[_sign])
-            yield MemRef(addr, shape, dtype, True)
+            yield MemRef(addr, shape, None, dtype, True)
 
     def memref(self, reg_field):
         return list(self.__memref(reg_field))
@@ -621,12 +621,13 @@ class dma_base:
         self.attribute = {}
 
     def __memref(self, reg_field):
-        for addr, shape, dtype in zip(*(reg_field[i::3] for i in range(3))):  # type: ignore
+        for addr, shape, stride, dtype in zip(*(reg_field[i::4] for i in range(4))):  # type: ignore
             h8, l32 = addr
             addr = self.des_attr[h8] * 2**32 + self.des_attr[l32]
             shape = [self.des_attr[x] for x in shape]
+            stride = [self.des_attr[x] for x in stride]
             dtype = get_dtype(self.des_attr[dtype])
-            yield MemRef(addr, shape, dtype, False)
+            yield MemRef(addr, shape, stride, dtype, False)
 
     def memref(self, reg_field):
         return list(self.__memref(reg_field))
@@ -634,12 +635,12 @@ class dma_base:
     def __repr__(self):
         if self.operands == []:
             return self.description
-        res_str = [x.addr_str for x in self.results]
         opd_str, opd_shape_t = zip(*((x.addr_str, x.shape_str) for x in self.operands))
+        res_str, res_shape_t = zip(*((x.addr_str, x.shape_str) for x in self.results))
         return (
             f"{', '.join(res_str)} = {self.op_name}.{self.cmd_id}"
             + f" ({', '.join(opd_str)}, {{{self.cmd_id_dep}}}) "
-            + f"{{{self.attribute}}} : {opd_shape_t[0]}"
+            + f"{{{self.attribute}}} : {opd_shape_t[0]} -> {res_shape_t[0]}"
         )
 
 
@@ -652,12 +653,14 @@ class dma_tensor(dma_base):
     def set_elt(self):
         results = (
             ("dst_start_addr_h8", "dst_start_addr_l32"),
-            [],
+            ("dst_nsize", "dst_csize", "dst_hsize", "dst_wsize"),
+            ("dst_nstride", "dst_cstride", "dst_hstride", "dst_wstride"),
             "src_data_format",
         )
         operands = (
             ("src_start_addr_h8", "src_start_addr_l32"),
             ("src_nsize", "src_csize", "src_hsize", "src_wsize"),
+            ("src_nstride", "src_cstride", "src_hstride", "src_wstride"),
             "src_data_format",
         )
         self.results = self.memref(results)
@@ -674,12 +677,14 @@ class dma_matrix(dma_base):
     def set_elt(self):
         results = (
             ("dst_start_addr_l8", "dst_start_addr_h32"),
-            [],
+            ("dst_nsize", "dst_csize", "dst_hsize", "dst_wsize"),
+            ("dst_nstride", "dst_cstride", "dst_hstride", "dst_wstride"),
             "src_data_format",
         )
         operands = (
             ("src_start_addr_l8", "src_start_addr_h32"),
             ("src_nsize", "src_csize", "src_hsize", "src_wsize"),
+            ("src_nstride", "src_cstride", "src_hstride", "src_wstride"),
             "src_data_format",
         )
         self.results = self.memref(results)
