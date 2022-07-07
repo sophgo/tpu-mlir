@@ -142,6 +142,27 @@ void ModuleInterpreter::invoke(bool express_type) {
   }
 }
 
+std::shared_ptr<std::vector<float>>
+ModuleInterpreter::invoke_at(std::string op_name) {
+  if (state != Module::State::TOP_F32) {
+    llvm_unreachable("invoke_at failed!!");
+  }
+
+  for (auto func : module.getOps<FuncOp>()) {
+    func.walk([&](InferenceInterface infer_op) {
+      auto name = infer_op->getAttrOfType<StringAttr>("name").str();
+      if (op_name == name) {
+        if (failed(infer_op.inference(*inference_map[name]))) {
+          infer_op.dump();
+          llvm_unreachable("infer_op.inference failed!!");
+        }
+      }
+    });
+  }
+
+  return getTensor(op_name);
+}
+
 void ModuleInterpreter::setTensor(const std::string &name, const void *data,
                                   size_t size) {
   auto it = mem_map.find(name);

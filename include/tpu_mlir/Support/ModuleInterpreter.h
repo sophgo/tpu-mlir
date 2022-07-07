@@ -39,6 +39,7 @@ public:
   virtual ~ModuleInterpreter();
   void allocate_resources();
   void invoke(bool express_type = true);
+  std::shared_ptr<std::vector<float>> invoke_at(std::string name);
   void setTensor(const std::string &name, const void *data, size_t size);
   std::shared_ptr<std::vector<float>> getTensor(const std::string &name);
   llvm::ArrayRef<int64_t> getTensorShape(const std::string &name);
