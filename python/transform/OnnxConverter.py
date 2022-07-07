@@ -132,52 +132,58 @@ class OnnxConverter(BaseConverter):
             if name in self.all_values:
                 self.all_values.pop(name)
             if name in self.all_inputs:
-                self.all_inputs.remove(name)
+                self.all_inputs.pop(name)
             if name in self.all_nodes:
                 cur_node = self.all_nodes.pop(name)
+                for o in cur_node.output:
+                    if o in self.all_nodes:
+                        self.all_nodes.pop(o)
                 self.select_unuse(cur_node.input)
 
     def select_output(self, output_names: list):
         # set new output
-        find_names = []
-        ori_output = []
-        self.all_inputs = []
-        for x in self.model.graph.output:
-            ori_output.append(x)
+        self.all_outputs = []
+        self.all_inputs = {}
         for x in self.model.graph.input:
-            self.all_inputs.append(x)
+            self.all_inputs[x.name] = x
         self.all_values = {}
         for x in self.model.graph.value_info:
             self.all_values[x.name] = x
             if x.name not in output_names:
                 continue
             self.model.graph.output.append(x)
-            find_names.append(x.name)
+            self.all_outputs.append(x.name)
             output_names.remove(x.name)
             if len(output_names) == 0:
                 break
         if len(output_names) != 0:
             raise RuntimeError("Error, can't find {} in model".format(output_names))
-        for x in ori_output:
-            self.model.graph.output.remove(x)
         # node map name
         self.all_nodes = {}
         for x in self.model.graph.node:
-            self.all_nodes[x.name] = x
+            for o in x.output:
+                self.all_nodes[o] = x
         # weight map name
         self.all_weights = {}
         for w in self.model.graph.initializer:
             self.all_weights[w.name] = w
         # remove unused node
-        self.select_unuse(find_names)
+        self.select_unuse(self.all_outputs)
         for n in self.all_nodes.values():
-            self.model.graph.node.remove(n)
-        for i in self.all_weights.values():
-            self.model.graph.initializer.remove(i)
+            if n in self.model.graph.node:
+                self.model.graph.node.remove(n)
+        for w in self.all_weights.values():
+            self.model.graph.initializer.remove(w)
+        for i in self.all_inputs.values():
+            self.model.graph.input.remove(i)
         for v in self.all_values.values():
             self.model.graph.value_info.remove(v)
-        for o in self.all_inputs:
-            self.model.graph.input.remove(o)
+        unuse_output=[]
+        for o in self.model.graph.output:
+            if o.name not in self.all_outputs:
+                unuse_output.append(o)
+        for o in unuse_output:
+            self.model.graph.output.remove(o)
 
     def load_onnx_model(self, onnx_file, input_shapes: list, output_names: list):
         self.model = onnx.load(onnx_file)
