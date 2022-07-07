@@ -635,14 +635,22 @@ void GroupOps::set_lmem_size(group_lmem_t group_lmem) {
 
 void GroupOps::assign_timestep(group_lmem_t group_lmem) {
   int64_t timestep = 0;
+  lmem_type_t last_type = LMEM_ANY;
   for (auto &linfo : *group_lmem) {
     switch (linfo.type) {
     case LMEM_OPERATION:
-      timestep++;
+      if (last_type != LMEM_OPERATION) {
+        timestep++;
+        last_type = linfo.type;
+      }
+      break;
+    case LMEM_WEIGHT:
+      last_type = linfo.type;
       break;
     case LMEM_TENSOR:
-      if (linfo.is_output) {
+      if (linfo.is_output && last_type == LMEM_OPERATION) {
         timestep++;
+        last_type = linfo.type;
       }
       break;
     default:
