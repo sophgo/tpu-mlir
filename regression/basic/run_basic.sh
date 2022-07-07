@@ -56,6 +56,13 @@ run_calibration.py resnet18.mlir \
   --input_num 2 \
   -o resnet18_cali_table
 
+#auto tune
+# run_calibration.py resnet18.mlir \
+#   --dataset ${REGRESSION_PATH}/ILSVRC2012 \
+#   --input_num 200 \
+#   --tune_num 30 \
+#   -o resnet18_cali_table --debug_cmd 'info_log'
+
 # to symmetric
 model_deploy.py \
   --mlir resnet18.mlir \
@@ -87,7 +94,7 @@ model_deploy.py \
 
 #ILSVRC2012_img_val_with_subdir is converted by valprep.sh
 #model_eval.py \
-#    --mlir_file resnet18_int8_1684x_asym.mlir \
+#    --mlir_file resnet18_bm1684x_tpu_int8.mlir \
 #    --dataset /data/ILSVRC2012_img_val_with_subdir/ \
 #    --count 1000
 
