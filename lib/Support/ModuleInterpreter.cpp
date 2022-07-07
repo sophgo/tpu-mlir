@@ -143,21 +143,24 @@ void ModuleInterpreter::invoke(bool express_type) {
 }
 
 std::shared_ptr<std::vector<float>>
-ModuleInterpreter::invoke_at(std::string op_name) {
+ModuleInterpreter::invoke_at(const std::string op_name) {
   if (state != Module::State::TOP_F32) {
     llvm_unreachable("invoke_at failed!!");
   }
-
-  for (auto func : module.getOps<FuncOp>()) {
-    func.walk([&](InferenceInterface infer_op) {
-      auto name = infer_op->getAttrOfType<StringAttr>("name").str();
-      if (op_name == name) {
-        if (failed(infer_op.inference(*inference_map[name]))) {
-          infer_op.dump();
-          llvm_unreachable("infer_op.inference failed!!");
-        }
-      }
-    });
+  if (value_map.find(op_name) == value_map.end()) {
+    llvm::errs() << "Can't find op:" << op_name << "\n";
+    llvm_unreachable("invoke_at op_name error");
+  }
+  auto v = value_map[op_name];
+  auto op = v.getDefiningOp();
+  if (op == nullptr || false == isa<InferenceInterface>(op)) {
+    llvm::errs() << "Op :" << op_name << " can't do inference";
+    llvm_unreachable("invoke_at infer error");
+  }
+  auto infer_op = cast<InferenceInterface>(op);
+  if (failed(infer_op.inference(*inference_map[op_name]))) {
+    infer_op.dump();
+    llvm_unreachable("infer_op.inference failed!!");
   }
 
   return getTensor(op_name);

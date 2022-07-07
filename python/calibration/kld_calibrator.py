@@ -489,14 +489,11 @@ class ActivationCalibrator(BaseKldCalibrator):
         pbar.close()
         return activations_statistics
 
-    def calc_thresholds(self, activations_statistics, hist_bin_nums):
+    def calc_thresholds(self, activations_statistics):
         print("calculate histogram..")
 
         histogram_data_map = {}
         histogram_width_map = {}
-        for bin_num in hist_bin_nums:
-            histogram_data_map[bin_num] = {}
-            histogram_width_map[bin_num] = {}
 
         pbar = tqdm(self.data_list, total=self.num_samples, position=0, leave=True)
         for file, activations in self.buffered_activations.items():
@@ -506,20 +503,16 @@ class ActivationCalibrator(BaseKldCalibrator):
 
             for op_name, activation in activations.items():
                 _, _, abs_value = activations_statistics[op_name]
-                for bin_num in histogram_data_map.keys():
-                    hist, width = self.histogram(activation, abs_value, bin_num)
-                    if op_name not in histogram_data_map[bin_num]:
-                        histogram_data_map[bin_num][op_name] = hist
-                        histogram_width_map[bin_num][op_name] = width
-                    else:
-                        histogram_data_map[bin_num][op_name] += hist
+                hist, width = self.histogram(activation, abs_value, self.histogram_bin_num)
+                if op_name not in histogram_data_map:
+                    histogram_data_map[op_name] = hist
+                    histogram_width_map[op_name] = width
+                else:
+                    histogram_data_map[op_name] += hist
             del activations
         pbar.close()
 
-        thresholds_map = {}
-        for bin_num in histogram_data_map.keys():
-            thresholds_map[bin_num] = self.find_threshold(histogram_data_map[bin_num],
-                                                          histogram_width_map[bin_num], bin_num)
+        thresholds_map = self.find_threshold(histogram_data_map, histogram_width_map)
         thresholds_map['abs_max'] = {}
         for k, v in activations_statistics.items():
             _, _, abs_val = v
@@ -527,15 +520,15 @@ class ActivationCalibrator(BaseKldCalibrator):
 
         return thresholds_map
 
-    def find_threshold(self, histogram_data_map, histogram_width_map, histogram_bin_num):
+    def find_threshold(self, histogram_data_map, histogram_width_map):
         thresholds = {}
         num = len(histogram_data_map)
         pbar = tqdm(range(num), total=num, position=0, leave=True)
         for item in histogram_data_map:
-            pbar.set_description("[{}] threshold: {}".format(histogram_bin_num, item))
+            pbar.set_description("[{}] threshold: {}".format(self.histogram_bin_num, item))
             pbar.update(1)
             thresholds[item] = self.kld_threshold(histogram_data_map[item],
-                                                  histogram_width_map[item], histogram_bin_num)
+                                                  histogram_width_map[item], self.histogram_bin_num)
         pbar.close()
         return thresholds
 
@@ -545,23 +538,21 @@ class ActivationCalibrator(BaseKldCalibrator):
         self._activations_generator()
         activations_statistics = self.find_min_max_abs()
 
-        # step 2: set histogram bins
-        hist_bin_nums = [(2**i) * 512 for i in range(7)]
-        if self.histogram_bin_num not in hist_bin_nums:
-            hist_bin_nums.append(self.histogram_bin_num)
-
-        # step 3: calculate threshold with histogram bins
-        thresholds_map = self.calc_thresholds(activations_statistics, hist_bin_nums)
+        # step 2: calculate threshold with histogram bins
+        thresholds_map = self.calc_thresholds(activations_statistics)
         self._clean_resource()
 
-        # step 6: dump threshold table of default histogram bins
-        with open(self.args.calibration_table, 'w') as f:
+        # step 3: dump threshold table of default histogram bins
+        cali_table = self.args.calibration_table
+        if self.tune_num > 0:
+            cali_table += "_tmp"
+        with open(cali_table, 'w') as f:
             f.write("# genetated time: {}\n".format(datetime.datetime.now()))
             f.write("# histogram number: {}\n".format(self.histogram_bin_num))
             f.write("# sample number: {}\n###\n".format(self.num_samples))
             f.write("# op_name    threshold    min    max\n")
             for op_name in op_layers:
-                threshold = thresholds_map[self.histogram_bin_num][op_name]
+                threshold = thresholds_map[op_name]
                 min_value, max_value, _ = activations_statistics[op_name]
                 f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold, min_value,
                                                         max_value))
@@ -574,8 +565,9 @@ class ActivationCalibrator(BaseKldCalibrator):
         thresholds = self.module.run()
 
         # step 5: dump threshold table after tuning
-        with open(self.args.calibration_table + '.tuned', 'w') as f:
+        with open(self.args.calibration_table, 'w') as f:
             f.write("# genetated time: {}\n".format(datetime.datetime.now()))
+            f.write("# histogram number: {}\n".format(self.histogram_bin_num))
             f.write("# sample number: {}\n###\n".format(self.num_samples))
             f.write("# op_name    threshold    min    max\n")
             for op_name in op_layers:
@@ -584,20 +576,3 @@ class ActivationCalibrator(BaseKldCalibrator):
                 f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold[0],
                                                            min_value, max_value))
 
-
-        # step 7: dump all thresholds to csv files
-        with open(self.args.calibration_table + '.tuned.csv', 'w') as f:
-            f.write("name,default({}),best,min,max,abs,{}\n".format(self.histogram_bin_num,
-                   ','.join([str(x) for x in hist_bin_nums])))
-            for op_name in op_layers:
-                default_threshold = thresholds_map[self.histogram_bin_num][op_name]
-                best_threshold = thresholds[op_name]
-                min_value, max_value, abs_value = activations_statistics[op_name]
-                f.write("{},{:.7f},{:.7f},{:.7f},{:.7f},{:5f},".format(
-                        op_name, default_threshold,
-                        best_threshold[0], min_value, max_value, abs_value))
-                _str_thres = []
-                for x in hist_bin_nums:
-                    _str_thres.append('{:.7f}'.format(thresholds_map[x][op_name]))
-                f.write(','.join(_str_thres))
-                f.write('\n')
