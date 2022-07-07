@@ -115,6 +115,9 @@ class MlirParser:
             if op.type == 'top.Input':
                 self.inputs.append(op)
 
+    def get_op_name_list(self):
+        return [op.name for op in self.ops]
+
     def get_input_num(self):
         return len(self.inputs)
 
@@ -123,6 +126,46 @@ class MlirParser:
 
     def get_batch_size(self):
         return Operation.shape(self.inputs[0].op)[0]
+
+    def get_pre_op_by_op_name(self, op_name):
+        op_input_tensor = []
+        for op in self.ops:
+            if op.name == op_name:
+                for opd in op.opds:
+                    if opd in self.get_op_name_list():
+                        op_input_tensor.append(opd)
+        return op_input_tensor
+
+    def get_user_count_by_op_name(self, op_name):
+        count = 0
+        for op in self.ops:
+            if op_name in op.opds:
+                count += 1
+        return count
+
+
+    def get_op_by_op_name(self, op_name):
+        for op in self.ops:
+            if op.name == op_name:
+                return op.op
+        return None
+
+    def get_opds_by_op_name(self, op_name):
+        for op in self.ops:
+            if op.name == op_name:
+                return op.opds
+        return None
+
+    def get_op_type_by_op_name(self, op_name):
+        for op in self.ops:
+            if op.name == op_name:
+                return op.type
+        return None
+
+
+
+
+
 
 if __name__ == '__main__':
     parser = MlirParser(sys.argv[1])
