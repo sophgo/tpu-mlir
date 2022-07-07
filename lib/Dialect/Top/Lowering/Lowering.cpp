@@ -219,6 +219,32 @@ struct ForwardQuantType : public OpRewritePattern<TyOp> {
   }
 };
 
+struct BackwardConcat : public OpRewritePattern<top::ConcatOp> {
+  using OpRewritePattern<top::ConcatOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(top::ConcatOp op,
+                                PatternRewriter &rewriter) const override {
+
+    if (!llvm::all_of(op.inputs(), [](Value in) {
+          return Quant::isCalibratedType(in) && in.getDefiningOp()->hasOneUse();
+        }))
+      return failure();
+
+    auto out = op.output();
+    if (!Quant::isCalibratedType(out)) {
+      return failure();
+    }
+    auto out_qtype = Quant::getCalibratedType(out);
+
+    for (auto in : op.inputs()) {
+      auto in_shape = in.getType().cast<RankedTensorType>().getShape();
+      auto new_type = RankedTensorType::get(in_shape, out_qtype);
+      in.setType(new_type);
+    }
+    return success();
+  }
+};
+
 struct LoweringPattern : public RewritePattern {
   LoweringPattern(MLIRContext *context, StringRef mode,
                   const std::map<Operation *, llvm::StringRef> &quantize_map)
@@ -323,6 +349,9 @@ protected:
       // TODO: support asymmetric mode
       patterns.add<ForwardCalibartion<top::AvgPoolOp>>(ctx_);
     }
+    applyPatternsAndFoldGreedily(module, std::move(patterns));
+    patterns.clear();
+    patterns.add<BackwardConcat>(ctx_);
     applyPatternsAndFoldGreedily(module, std::move(patterns));
   }
 

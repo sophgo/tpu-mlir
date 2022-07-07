@@ -441,4 +441,19 @@ def Tpu_LeakyReluOp: Tpu_Op<"LeakyRelu", [
   );
   let results = (outs AnyTenor:$output);
 }
+
+def Tpu_ConcatOp:Tpu_Op<"Concat"> {
+  let summary = "Concatate operation";
+  let description = [{
+  Concatenates the given sequence of seq tensors in the given dimension.
+  All tensors must either have the same shape (except in the concatenating dimension) or be empty.
+  }];
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs,
+    I64Attr:$axis,
+    StrAttr:$name
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 #endif // TPU_OPS

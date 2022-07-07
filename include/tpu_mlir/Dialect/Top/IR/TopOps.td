@@ -139,7 +139,8 @@ def Top_ConcatOp: Top_Op<"Concat", [SupportFuseRelu]> {
   let summary = "Concat operator";
 
   let description = [{
-    Performs concat operation on inputs.
+  Concatenates the given sequence of seq tensors in the given dimension.
+  All tensors must either have the same shape (except in the concatenating dimension) or be empty.
   }];
 
   let arguments = (

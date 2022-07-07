@@ -29,6 +29,7 @@ TEST_ONNX_IR = [
     "Conv2d",
     "MaxPool",
     "SiLU",
+    "Concat",
 ]
 
 
@@ -55,6 +56,7 @@ class ONNX_IR_TESTER(object):
             "AveragePool": self.test_AveragePool,
             "MaxPool": self.test_MaxPool,
             "SiLU": self.test_SiLU,
+            "Concat": self.test_Concat,
         }
         self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
 
@@ -252,6 +254,33 @@ class ONNX_IR_TESTER(object):
         )
         graph_def = helper.make_graph([sigmoid_def, mul_def], test_case, [input], [output])
         self.convert_and_test({'input': input_data}, graph_def, test_case)
+
+    def test_Concat(self):
+        test_case = "Concat"
+        input_shape = {"input1": [1, 4, 32], "input2": [1, 4, 64], "input3": [1, 4, 64]}
+        output_shape = [1, 4, 32 + 64 + 64]
+        input_data = {
+            k: np.random.randn(*x).astype(np.float32) for k, x in input_shape.items()
+        }
+
+        inputs = [
+            helper.make_tensor_value_info(k, TensorProto.FLOAT, x)
+            for k, x in input_shape.items()
+        ]
+        output = helper.make_tensor_value_info(
+            "output", TensorProto.FLOAT, output_shape
+        )
+
+        concat_def = helper.make_node(
+            "Concat", inputs=list(input_shape.keys()), outputs=["output"], axis=2
+        )
+
+        graph_def = helper.make_graph([concat_def], test_case, inputs, [output])
+        self.convert_and_test(
+            input_data,
+            graph_def,
+            test_case,
+        )
 
 
 if __name__ == "__main__":
