@@ -16,12 +16,26 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-Value top::PadOp::lowering_int8_bm1684() {
-  llvm_unreachable("SliceOp to be supported");
+Value top::ConcatOp::lowering_int8_bm1684x(bool asymmetric) {
+  llvm_unreachable("ConcatOp to be supported");
   return nullptr;
 }
 
-Value top::PadOp::lowering_f32_bm1684() {
-  llvm_unreachable("SliceOp to be supported");
+Value top::ConcatOp::lowering_f32_bm1684x() {
+  llvm_unreachable("ConcatOp to be supported");
   return nullptr;
+}
+
+Value top::ConcatOp::lowering_bf16_bm1684x() {
+  llvm_unreachable("ConcatOp to be supported");
+  return nullptr;
+}
+
+Value top::ConcatOp::lowering_f16_bm1684x() {
+  llvm_unreachable("ConcatOp to be supported");
+  return nullptr;
+}
+
+Value top::ConcatOp::lowering_quant_bm1684x() {
+  llvm_unreachable("ConcatOp not support now");
 }

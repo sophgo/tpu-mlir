@@ -93,7 +93,7 @@ def Top_InputOp: Top_BaseOp<"Input"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_BatchNormOp: Top_Op<"BatchNorm", [SupportFuseRelu]> {
+def Top_BatchNormOp: Top_Op<"BatchNorm", [SupportFuseRelu, InOutSameShape]> {
   let summary = "BatchNormalization operation";
   let description = [{
     Applies Batch Normalization over a 4D input (a mini-batch of 2D inputs
@@ -115,7 +115,7 @@ def Top_BatchNormOp: Top_Op<"BatchNorm", [SupportFuseRelu]> {
     AnyTensor:$beta,
     AnyTensor:$mean,
     AnyTensor:$variance,
-    DefaultValuedAttr<F32Attr, "1e-05">:$epsilon,
+    DefaultValuedAttr<F64Attr, "1e-05">:$epsilon,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     StrAttr:$name
   );
@@ -132,6 +132,23 @@ def Top_CastOp:Top_Op<"Cast",[InOutSameShape]> {
     AnyTensor:$input,
     StrAttr:$name
   );
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_ConcatOp: Top_Op<"Concat", [SupportFuseRelu]> {
+  let summary = "Concat operator";
+
+  let description = [{
+    Performs concat operation on inputs.
+  }];
+
+  let arguments = (
+    ins Variadic<AnyTensor>:$inputs,
+    DefaultValuedAttr<I64Attr, "1">:$axis,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    StrAttr:$name
+  );
+
   let results = (outs AnyTensor:$output);
 }
 
@@ -263,6 +280,23 @@ def Top_AddOp: Top_Op<"Add", [SupportFuseRelu, InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_MulOp: Top_Op<"Mul", [SupportFuseRelu, InOutSameShape]> {
+  let summary = "Mul operator";
+
+  let description = [{
+    Elementwise mul of input1 and input2. Axis of size 1 will be broadcast,
+    as necessary.
+  }];
+
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    StrAttr:$name
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_MatMulOp: Top_Op<"MatMul", [SupportFuseRelu]> {
   let summary = "matmul operator";
 
@@ -285,6 +319,41 @@ def Top_MatMulOp: Top_Op<"MatMul", [SupportFuseRelu]> {
     void parseParam(
       int64_t &batch, int64_t &M, int64_t &K, int64_t &N, bool &with_bias, bool &do_relu);
   }];
+}
+
+def Top_PadOp:Top_Op<"Pad"> {
+  let summary = "Pad operation";
+  let description = [{
+    This operation pads a tensor according to the paddings you specify.
+    paddings is an integer tensor with shape [n, 2], where n is the rank of tensor.
+    For each dimension D of input, paddings[D, 0] indicates how many values to add
+    before the contents of tensor in that dimension, and paddings[D, 1] indicates
+    how many values to add after the contents of tensor in that dimension.
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    I64ArrayAttr:$paddings,
+    StrAttr:$name
+  );
+  let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
+}
+
+def Top_PermuteOp: Top_Op<"Permute"> {
+
+  let summary = "Permute operator";
+
+  let description = [{
+      Perform permute on input.
+  }];
+
+  let arguments = (
+    ins AnyTensor:$input,
+    I64ArrayAttr:$order,
+    StrAttr:$name
+  );
+
+  let results = (outs AnyTensor:$output);
 }
 
 def Top_ReluOp: Top_Op<"Relu",[InOutSameShape]> {
@@ -319,6 +388,37 @@ def Top_ReshapeOp:Top_Op<"Reshape"> {
   let hasCanonicalizer = 1;
 }
 
+def Top_SigmoidOp : Top_Op<"Sigmoid", [InOutSameShape]> {
+  let summary = " Exp operator,  scale * sigmoid + bias";
+  let description = [{
+     Y = scale * Sigmoid(x) + bias
+  }];
+  let arguments = (
+    ins Variadic<AnyTensor>:$input,
+    DefaultValuedAttr<F64Attr, "1">:$scale,
+    DefaultValuedAttr<F64Attr, "0">:$bias,
+    StrAttr:$name
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_SliceOp: Top_Op<"Slice"> {
+  let summary = "Slice operator";
+
+  let description = [{
+    Slice Operation on input.
+  }];
+
+  let arguments = (
+    ins AnyTensor:$input,
+    I64ArrayAttr:$offset,
+    OptionalAttr<I64ArrayAttr>:$steps,
+    StrAttr:$name
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_SoftmaxOp:Top_Op<"Softmax",[InOutSameShape]> {
   let summary = "Softmax operation";
   let description = [{
@@ -330,24 +430,6 @@ def Top_SoftmaxOp:Top_Op<"Softmax",[InOutSameShape]> {
     StrAttr:$name
   );
   let results = (outs AnyTensor:$output);
-}
-
-def Top_PadOp:Top_Op<"Pad"> {
-  let summary = "Pad operation";
-  let description = [{
-    This operation pads a tensor according to the paddings you specify.
-    paddings is an integer tensor with shape [n, 2], where n is the rank of tensor.
-    For each dimension D of input, paddings[D, 0] indicates how many values to add
-    before the contents of tensor in that dimension, and paddings[D, 1] indicates
-    how many values to add after the contents of tensor in that dimension.
-  }];
-  let arguments = (ins
-    AnyTensor:$input,
-    I64ArrayAttr:$paddings,
-    StrAttr:$name
-  );
-  let results = (outs AnyTensor:$output);
-  let hasCanonicalizer = 1;
 }
 
 #endif // Top_OPS

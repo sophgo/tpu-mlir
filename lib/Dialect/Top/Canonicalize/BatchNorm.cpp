@@ -35,7 +35,7 @@ struct TopBatchNormToDwConv : public OpRewritePattern<BatchNormOp> {
     std::vector<float> scale(channel);
     std::vector<float> bias(channel);
 
-    auto eps = FloatAttr::getValueAsDouble(op.epsilon());
+    auto eps = op.epsilon().convertToDouble();
     for (int i = 0; i < channel; ++i) {
       scale[i] = 1 / std::sqrt(variance_d->at(i) + eps) * gamma_d->at(i);
       bias[i] = -mean_d->at(i) * scale[i] + beta_d->at(i);

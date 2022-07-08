@@ -111,14 +111,20 @@ class OnnxConverter(BaseConverter):
             "Add": lambda node: self.convert_add_op(node),
             "AveragePool": lambda node: self.convert_avgpool_op(node),
             "BatchNormalization": lambda node: self.convert_batchnorm_op(node),
+            "Concat": lambda node: self.convert_concat_op(node),
             "Conv": lambda node: self.convert_conv_op(node),
             "Flatten": lambda node: self.convert_flatten_op(node),
             "Gemm": lambda node: self.convert_gemm_op(node),
             "GlobalAveragePool": lambda node: self.convert_global_avgpool_op(node),
             "GlobalMaxPool": lambda node: self.convert_global_maxpool_op(node),
             "MaxPool": lambda node: self.convert_maxpool_op(node),
+            "Mul": lambda node: self.convert_mul_op(node),
             "Relu": lambda node: self.convert_relu_op(node),
-            "Reshape": lambda node: self.convert_reshape_op(node)
+            "Reshape": lambda node: self.convert_reshape_op(node),
+            "Resize": lambda node: self.convert_resize_op(node),
+            "Sigmoid": lambda node: self.convert_sigmoid_op(node),
+            "Slice": lambda node: self.convert_slice_op(node),
+            "Transpose": lambda node: self.convert_transpose_op(node),
         }
 
     def __del__(self):
@@ -147,6 +153,12 @@ class OnnxConverter(BaseConverter):
         for x in self.model.graph.input:
             self.all_inputs[x.name] = x
         self.all_values = {}
+        for x in self.model.graph.output:
+            if x.name in output_names:
+                self.all_outputs.append(x.name)
+                output_names.remove(x.name)
+                if len(output_names) == 0:
+                    break
         for x in self.model.graph.value_info:
             self.all_values[x.name] = x
             if x.name not in output_names:
@@ -154,8 +166,6 @@ class OnnxConverter(BaseConverter):
             self.model.graph.output.append(x)
             self.all_outputs.append(x.name)
             output_names.remove(x.name)
-            if len(output_names) == 0:
-                break
         if len(output_names) != 0:
             raise RuntimeError("Error, can't find {} in model".format(output_names))
         # node map name
@@ -178,7 +188,7 @@ class OnnxConverter(BaseConverter):
             self.model.graph.input.remove(i)
         for v in self.all_values.values():
             self.model.graph.value_info.remove(v)
-        unuse_output=[]
+        unuse_output = []
         for o in self.model.graph.output:
             if o.name not in self.all_outputs:
                 unuse_output.append(o)
@@ -307,7 +317,7 @@ class OnnxConverter(BaseConverter):
         return
 
     def convert_batchnorm_op(self, onnx_node):
-        assert onnx_node.op_type == "BatchNormalization"
+        assert (onnx_node.op_type == "BatchNormalization")
         op = self.getOperand(onnx_node.inputs[0])
         gamma = self.getWeightOp(onnx_node.inputs[1])
         beta = self.getWeightOp(onnx_node.inputs[2])
@@ -320,6 +330,24 @@ class OnnxConverter(BaseConverter):
             "epsilon": epsilon,
         }
         new_op = self.mlir.create_batchnorm_op([op, gamma, beta, mean, variance], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_concat_op(self, onnx_node):
+        assert (onnx_node.op_type == "Concat")
+        output_shape = self.getShape(onnx_node.name)
+        num_dims = len(output_shape)
+        operands = list()
+        axis = onnx_node.attrs['axis']
+        if axis < 0:
+            axis += num_dims
+        for i in onnx_node.inputs:
+            op = self.getOperand(i)
+            operands.append(op)
+        p = {
+            "name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            "axis": axis,
+        }
+        new_op = self.mlir.create_concat_op(operands, output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
     def convert_conv_op(self, onnx_node):
@@ -478,6 +506,19 @@ class OnnxConverter(BaseConverter):
         new_op = self.mlir.create_maxpool_op([op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
+    def convert_mul_op(self, onnx_node):
+        assert (len(onnx_node.inputs) == 2)
+        if self.isTensor(onnx_node.inputs[0]) or self.isTensor(onnx_node.inputs[1]):
+            # TODO: support tensor
+            raise RuntimeError("not support Tensor")
+        op0 = self.getOperand(onnx_node.inputs[0])
+        op1 = self.getOperand(onnx_node.inputs[1])
+        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+        output_shape = self.getShape(onnx_node.name)
+        add_op = self.mlir.create_mul_op([op0, op1], output_shape, **p)
+        self.addOperand(onnx_node.name, add_op)
+        return
+
     def convert_relu_op(self, onnx_node):
         assert (onnx_node.op_type == "Relu")
         op = self.getOperand(onnx_node.inputs[0])
@@ -492,4 +533,153 @@ class OnnxConverter(BaseConverter):
         output_shape = self.getShape(onnx_node.name)
         p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
         new_op = self.mlir.create_reshape_op([op], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+
+    # when resize by nearest, with integer scale_h and integer scale_w
+    def resize_to_conv(self, onnx_node, op, input_shape, output_shape, scale_h, scale_w):
+        operands = [op]
+        ic = input_shape[1]
+        # use conv(depthwise)
+        kh = int(scale_h)
+        kw = int(scale_w)
+        p = {
+            'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            'kernel_shape': [kh, kw],
+            'strides': [1, 1],
+            'pads': [kh - 1, kw - 1, kh - 1, kw - 1],
+            'inserts': [kh - 1, kw - 1],
+            'dilations': [1, 1],
+            'group': ic,
+            'with_bias': False,
+            'do_relu': False,
+        }
+
+        # conv weight all one
+        weight_shape = [ic, 1, 1, int(scale_h), int(scale_w)]
+        tensor_data = np.full(weight_shape, 1, np.float32)
+        weight_name = "{}_filter".format(onnx_node.name)
+        self.addTensor(weight_name, tensor_data)
+        operands.append(self.getWeightOp(weight_name))
+        operands.append(self.mlir.none_op)
+        new_op = self.mlir.create_conv_op(operands, output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+        return
+
+    def convert_resize_op(self, onnx_node):
+        assert (onnx_node.op_type == "Resize")
+        mode = onnx_node.attrs.get("mode", "nearest")
+
+        op = self.getOperand(onnx_node.inputs[0])
+        input_shape = self.getShape(onnx_node.inputs[0])
+        scale_factor = []
+        sizes = []
+
+        if len(onnx_node.inputs) > 2:
+            # onnx opset 11
+            scale_factor = self.getTensor(onnx_node.inputs[2])
+            if len(scale_factor) == 0:
+                sizes = self.getTensor(onnx_node.inputs[3])
+                scale_factor = sizes / input_shape
+            else:
+                sizes = input_shape * scale_factor
+        else:
+            # opset 10
+            scale_factor = self.getTensor(onnx_node.inputs[1])
+            sizes = input_shape * scale_factor
+
+        if scale_factor[0] != 1.0 or scale_factor[1] != 1.0:
+            raise RuntimeError("Resize only support h/w")
+
+        output_shape = [int(i) for i in sizes]
+        scale_h = scale_factor[2]
+        scale_w = scale_factor[3]
+        if scale_h == 1.0 and scale_w == 1.0:
+            self.addOperand(onnx_node.name, op)
+            return
+        coord_mode = onnx_node.attrs.get("coordinate_transformation_mode", "half_pixel")
+        if mode == b'nearest':
+            if scale_h == int(scale_h) and scale_w == int(scale_w):
+                self.resize_to_conv(onnx_node, op, input_shape, output_shape, scale_h, scale_w)
+                return
+        raise RuntimeError("[{}] Unsupported mode: {}, coord_mode: {}".format(
+            onnx_node.name, mode, coord_mode))
+
+    def convert_sigmoid_op(self, onnx_node):
+        assert (onnx_node.op_type == "Sigmoid")
+        op = self.getOperand(onnx_node.inputs[0])
+        scale = onnx_node.attrs.get('scale', 1)
+        bias = onnx_node.attrs.get('bias', 0)
+        output_shape = self.getShape(onnx_node.name)
+        p = {
+            'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            'scale': scale,
+            'bias': bias
+        }
+        new_op = self.mlir.create_sigmoid_op([op], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_slice_op(self, onnx_node):
+        assert (onnx_node.op_type == "Slice")
+        op = self.getOperand(onnx_node.inputs[0])
+        input_shape = self.getShape(onnx_node.inputs[0])
+        output_shape = self.getShape(onnx_node.name)
+        starts = []
+        ends = []
+        axes = []
+        num_input = len(onnx_node.inputs)
+        num_dims = len(input_shape)
+        if num_input > 1:
+            starts = self.getTensor(onnx_node.inputs[1]).astype(int)
+            ends = self.getTensor(onnx_node.inputs[2]).astype(int)
+            axes = self.getTensor(onnx_node.inputs[3]).astype(int) if num_input > 3 else list(
+                np.arange(num_dims))
+            steps = self.getTensor(
+                onnx_node.inputs[4]).astype(int) if num_input > 4 else [1] * len(axes)
+        else:
+            starts = onnx_node.attrs.get('starts')
+            ends = onnx_node.attrs.get('ends')
+            axes = onnx_node.attrs.get('axes')
+            steps = [1] * len(axes)
+        assert (len(starts) == len(ends))
+        assert (len(axes) == len(ends))
+        slice_shape = list(input_shape)
+        slice_offset = [0] * num_dims
+        slice_step = [1] * num_dims
+        for start, end, axis, step in zip(starts, ends, axes, steps):
+            start, end, axis, step = int(start), int(end), int(axis), int(step)
+            assert (step > 0)
+            if axis < 0:
+                axis = axis + num_dims
+            if end < 0:
+                end = end + input_shape[axis]
+            if start < 0:
+                start = start + input_shape[axis]
+            if end > input_shape[axis] or end < 0:
+                end = input_shape[axis]
+            slice_shape[axis] = (end - start + step - 1) // step
+            slice_offset[axis] = start
+            slice_step[axis] = step
+        assert (slice_shape == output_shape)
+        p = {
+            'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            'offset': list(slice_offset),
+            'steps': list(slice_step)
+        }
+        new_op = self.mlir.create_slice_op([op], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_transpose_op(self, onnx_node):
+        assert(onnx_node.op_type == "Transpose")
+        op = self.getOperand(onnx_node.inputs[0])
+        input_shape = self.getShape(onnx_node.inputs[0])
+        output_shape = self.getShape(onnx_node.name)
+        # default revert it, eg: shape (2, 3, 4)->(4, 3, 2), per=[2, 1, 0]
+        perm_default = list(np.arange(len(input_shape))[::-1])
+        transpose_perm = onnx_node.attrs.get('perm', perm_default)
+        assert(len(input_shape) == len(transpose_perm))
+        p = {
+            'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            'order': transpose_perm,
+        }
+        new_op = self.mlir.create_permute_op([op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)

@@ -16,12 +16,12 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-Value top::PadOp::lowering_int8_bm1684() {
-  llvm_unreachable("SliceOp to be supported");
+Value top::PermuteOp::lowering_int8_bm1684() {
+  llvm_unreachable("PermuteOp to be supported");
   return nullptr;
 }
 
-Value top::PadOp::lowering_f32_bm1684() {
-  llvm_unreachable("SliceOp to be supported");
+Value top::PermuteOp::lowering_f32_bm1684() {
+  llvm_unreachable("PermuteOp to be supported");
   return nullptr;
 }
