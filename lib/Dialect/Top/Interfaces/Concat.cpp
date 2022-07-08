@@ -16,12 +16,12 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-Value top::PadOp::lowering_int8_bm1684() {
-  llvm_unreachable("SliceOp to be supported");
-  return nullptr;
-}
+int64_t top::ConcatOp::getFLOPs() { return 0; }
 
-Value top::PadOp::lowering_f32_bm1684() {
-  llvm_unreachable("SliceOp to be supported");
-  return nullptr;
+LogicalResult top::ConcatOp::init(InferenceParameter &p) { return success(); }
+void top::ConcatOp::deinit(InferenceParameter &p) {}
+
+LogicalResult top::ConcatOp::inference(InferenceParameter &p) {
+  llvm_unreachable("ConcatOp to be supported");
+  return success();
 }

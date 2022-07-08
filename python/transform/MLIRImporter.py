@@ -15,17 +15,24 @@ class Top:
     AddOp = 'top.Add'
     AvgPoolOp = 'top.AvgPool'
     BatchNormOp = 'top.BatchNorm'
+    ConcatOp = 'top.Concat'
     ConvOp = 'top.Conv'
+    MulOp = 'top.Mul'
     MatMulOp = 'top.MatMul'
     MaxPoolOp = 'top.MaxPool'
+    PermuteOp = 'top.Permute'
     ReshapeOp = 'top.Reshape'
     ReluOp = 'top.Relu'
+    SliceOp = 'top.Slice'
+    SigmoidOp = 'top.Sigmoid'
+
 
 class State:
     TOP_F32 = 'TOP_F32'
     TOP_QUANTIZED = 'TOP_QUANTIZED'
 
-def get_weight_file(model_name:str, state:str, chip:str):
+
+def get_weight_file(model_name: str, state: str, chip: str):
     name = "{}_{}_{}_weight.npz".format(model_name, state, chip)
     return name.lower()
 
@@ -36,6 +43,7 @@ def checkType(obj, type):
 
 
 class MLIRImporter(object):
+
     def __init__(self,
                  input_shapes: list,
                  output_shapes: list,
@@ -124,11 +132,16 @@ class MLIRImporter(object):
         resize_dims = kargs.get('resize_dims', shape[-2:])
 
         preprocess_param = {
-            'mean': ArrayAttr.get([FloatAttr.get_f64(x) for x in mean]),
-            'scale':  ArrayAttr.get([FloatAttr.get_f64(x) for x in scale]),
-            'keep_aspect_ratio': BoolAttr.get(keep_aspect_ratio),
-            'resize_dims': ArrayAttr.get([IntegerAttr.get(self.mlir_type['INT64'], x) for x in resize_dims]),
-            'pixel_format': StringAttr.get(pixel_format)
+            'mean':
+            ArrayAttr.get([FloatAttr.get_f64(x) for x in mean]),
+            'scale':
+            ArrayAttr.get([FloatAttr.get_f64(x) for x in scale]),
+            'keep_aspect_ratio':
+            BoolAttr.get(keep_aspect_ratio),
+            'resize_dims':
+            ArrayAttr.get([IntegerAttr.get(self.mlir_type['INT64'], x) for x in resize_dims]),
+            'pixel_format':
+            StringAttr.get(pixel_format)
         }
 
         param = {
@@ -168,6 +181,13 @@ class MLIRImporter(object):
             param['coeff'] = self.ArrayAttr(kargs['coeff'], self.mlir_type['F64'])
         return self.buildOp(Top.AddOp, operands, [output_type], **param)
 
+    def create_mul_op(self, operands, output_shape, **kargs):
+        if len(operands) < 2:
+            raise RuntimeError("input operand must great than 2")
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {'name': StringAttr.get(kargs['name']), 'do_relu': BoolAttr.get(False)}
+        return self.buildOp(Top.MulOp, operands, [output_type], **param)
+
     def create_avgpool_op(self, operands, output_shape, **kargs):
         """
             operands: List[pybind.op]
@@ -188,13 +208,19 @@ class MLIRImporter(object):
 
     def create_batchnorm_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
-
         param = {
             'name': StringAttr.get(kargs['name']),
-            'epsilon': FloatAttr.get_f32(kargs['epsilon']),
+            'epsilon': FloatAttr.get_f64(kargs['epsilon']),
         }
-
         return self.buildOp(Top.BatchNormOp, operands, [output_type], **param)
+
+    def create_concat_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': StringAttr.get(kargs['name']),
+            'axis': IntegerAttr.get(self.mlir_type['INT64'], kargs['axis']),
+        }
+        return self.buildOp(Top.ConcatOp, operands, [output_type], **param)
 
     def create_conv_op(self, operands, output_shape, **kargs):
         """
@@ -236,6 +262,15 @@ class MLIRImporter(object):
         }
         return self.buildOp(Top.MaxPoolOp, operands, [output_type], **param)
 
+    def create_permute_op(self, operands, output_shape, **kargs):
+        # get_value_type
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': StringAttr.get(kargs['name']),
+            'order': self.ArrayAttr(kargs['order']),
+        }
+        return self.buildOp(Top.PermuteOp, operands, [output_type], **param)
+
     def create_matmul_op(self, operands, output_shape, **kargs):
         # get_value_type
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
@@ -260,6 +295,26 @@ class MLIRImporter(object):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         reshape_name = StringAttr.get(kargs['name'])
         return self.buildOp(Top.ReshapeOp, operands, [output_type], name=reshape_name)
+
+    def create_slice_op(self, operands, output_shape, **kargs):
+        # get_value_type
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': StringAttr.get(kargs['name']),
+            'offset': self.ArrayAttr(kargs['offset']),
+            'steps': self.ArrayAttr(kargs['steps']),
+        }
+        return self.buildOp(Top.SliceOp, operands, [output_type], **param)
+
+    def create_sigmoid_op(self, operands, output_shape, **kargs):
+        # get_value_type
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': StringAttr.get(kargs['name']),
+            'scale': FloatAttr.get_f64(kargs['scale']),
+            'bias': FloatAttr.get_f64(kargs['bias']),
+        }
+        return self.buildOp(Top.SigmoidOp, operands, [output_type], **param)
 
     def print_module(self):
         mlir_format = str(self.mlir_module)
@@ -295,7 +350,12 @@ class MLIRImporter(object):
                 func.func @main({args}) -> {output} {{
                     %0 = \"top.None\"() : () -> none
             }}}}
-        """.format(name = self.model_name,weight_file=self.weight_file, state=self.state, chip=self.chip, args=args_txt, output=output_txt)
+        """.format(name=self.model_name,
+                   weight_file=self.weight_file,
+                   state=self.state,
+                   chip=self.chip,
+                   args=args_txt,
+                   output=output_txt)
         self.mlir_module = Module.parse(main_func, self.ctx)
         self.func = self.mlir_module.body.operations[0]
         self.entry_block = self.func.regions[0].blocks[0]
