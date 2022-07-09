@@ -150,6 +150,7 @@ def Top_ConcatOp: Top_Op<"Concat", [SupportFuseRelu]> {
   );
 
   let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
 }
 
 def Top_ConvOp: Top_Op<"Conv", [SupportFuseRelu]> {
@@ -274,6 +275,31 @@ def Top_AddOp: Top_Op<"Add", [SupportFuseRelu, InOutSameShape]> {
     Variadic<AnyTensor>:$inputs,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     OptionalAttr<F64ArrayAttr>:$coeff,
+    StrAttr:$name
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_Depth2SpaceOp: Top_Op<"Depth2Space"> {
+
+  let summary = "Depth2Space operator";
+
+  let description = [{
+    Refer to `https://github.com/onnx/onnx/blob/main/docs/Operators.md#depthtospace`
+    [n, c, h, w] => [n, c / (block_h * block_w), h * block_h, w * block_w];
+    if inversed, [n, c, h, w] => [n, c * block_h * block_w, h / block_h, w / block_w];
+
+    if DCR(depth-column-row), channel ordered by block_h * block_w * c;
+    else CRD(column-row-depth), chennel ordered by c * block_h * block_w;
+  }];
+
+  let arguments = (
+    ins AnyTensor:$input,
+    I64Attr:$block_h,
+    I64Attr:$block_w,
+    BoolAttr:$is_CRD,
+    BoolAttr:$is_inversed,
     StrAttr:$name
   );
 
@@ -413,10 +439,11 @@ def Top_SliceOp: Top_Op<"Slice"> {
   let arguments = (
     ins AnyTensor:$input,
     I64ArrayAttr:$offset,
-    OptionalAttr<I64ArrayAttr>:$steps,
+    I64ArrayAttr:$steps,
     StrAttr:$name
   );
   let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
 }
 
 def Top_SoftmaxOp:Top_Op<"Softmax",[InOutSameShape]> {

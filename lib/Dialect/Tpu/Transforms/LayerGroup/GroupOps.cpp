@@ -419,14 +419,14 @@ group_lmem_t GroupOps::CreateGroup(int64_t start_idx, int64_t end_idx,
   }
   int nsecs = 1, hsecs = 1;
   // try no slice first
-  new_start_idx = start_idx;
-  while (new_start_idx < end_idx) {
-    auto group_lmem = CreateGroupBySecs(new_start_idx, end_idx, nsecs, hsecs);
-    if (group_lmem) {
-      return group_lmem;
-    }
-    new_start_idx++;
-  }
+  // new_start_idx = start_idx;
+  // while (new_start_idx < end_idx) {
+  //   auto group_lmem = CreateGroupBySecs(new_start_idx, end_idx, nsecs, hsecs);
+  //   if (group_lmem) {
+  //     return group_lmem;
+  //   }
+  //   new_start_idx++;
+  // }
   auto end_op = all_ops[end_idx];
   auto out = end_op->getResult(0);
   int64_t n, c, h, w;
@@ -437,16 +437,16 @@ group_lmem_t GroupOps::CreateGroup(int64_t start_idx, int64_t end_idx,
   new_start_idx = start_idx;
   while (end_idx > new_start_idx) {
     no_more_try_secs = false;
-    hsecs = 1;
-    for (nsecs = 2; no_more_try_secs == false && nsecs <= max_nsecs; nsecs++) {
+    // slice n first
+    for (nsecs = 1, hsecs = 1; no_more_try_secs == false && nsecs <= max_nsecs; nsecs++) {
       auto group_lmem = CreateGroupBySecs(new_start_idx, end_idx, nsecs, hsecs);
       if (group_lmem) {
         return group_lmem;
       }
     }
-
+    // slice h
     nsecs = max_nsecs;
-    for (hsecs = 2; no_more_try_secs == false && hsecs <= max_hsecs; hsecs++) {
+    for (hsecs = 1; no_more_try_secs == false && hsecs <= max_hsecs; hsecs++) {
       auto group_lmem = CreateGroupBySecs(new_start_idx, end_idx, nsecs, hsecs);
       if (group_lmem) {
         return group_lmem;

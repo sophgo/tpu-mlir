@@ -113,6 +113,7 @@ class OnnxConverter(BaseConverter):
             "BatchNormalization": lambda node: self.convert_batchnorm_op(node),
             "Concat": lambda node: self.convert_concat_op(node),
             "Conv": lambda node: self.convert_conv_op(node),
+            "DepthToSpace": lambda node: self.convert_depth2space_op(node),
             "Flatten": lambda node: self.convert_flatten_op(node),
             "Gemm": lambda node: self.convert_gemm_op(node),
             "GlobalAveragePool": lambda node: self.convert_global_avgpool_op(node),
@@ -381,6 +382,22 @@ class OnnxConverter(BaseConverter):
         }
         output_shape = self.getShape(onnx_node.name)
         new_op = self.mlir.create_conv_op(operands, output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_depth2space_op(self, onnx_node):
+        assert (onnx_node.op_type == "DepthToSpace")
+        op = self.getOperand(onnx_node.inputs[0])
+        blocksize = onnx_node.attrs['blocksize']
+        mode = onnx_node.attrs.get("mode", "DCR")
+        output_shape = self.getShape(onnx_node.name)
+        p = {
+            "name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            "block_h": blocksize,
+            "block_w": blocksize,
+            "is_CRD": mode != "DCR",
+            "is_inversed": False,
+        }
+        new_op = self.mlir.create_depth2space_op([op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
     def convert_flatten_op(self, onnx_node):
@@ -681,14 +698,14 @@ class OnnxConverter(BaseConverter):
         self.addOperand(onnx_node.name, new_op)
 
     def convert_transpose_op(self, onnx_node):
-        assert(onnx_node.op_type == "Transpose")
+        assert (onnx_node.op_type == "Transpose")
         op = self.getOperand(onnx_node.inputs[0])
         input_shape = self.getShape(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
         # default revert it, eg: shape (2, 3, 4)->(4, 3, 2), per=[2, 1, 0]
         perm_default = list(np.arange(len(input_shape))[::-1])
         transpose_perm = onnx_node.attrs.get('perm', perm_default)
-        assert(len(input_shape) == len(transpose_perm))
+        assert (len(input_shape) == len(transpose_perm))
         p = {
             'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
             'order': transpose_perm,
