@@ -171,6 +171,31 @@ def Tpu_AddOp: Tpu_Op<"Add", [SupportFuseRelu, InOutSameShape,
 //   let results = (outs AnyTensor:$output);
 // }
 
+def Tpu_Depth2SpaceOp: Tpu_Op<"Depth2Space"> {
+
+  let summary = "Depth2Space operator";
+
+  let description = [{
+    Refer to `https://github.com/onnx/onnx/blob/main/docs/Operators.md#depthtospace`
+    [n, c, h, w] => [n, c / (block_h * block_w), h * block_h, w * block_w];
+    if inversed, [n, c, h, w] => [n, c * block_h * block_w, h / block_h, w / block_w];
+
+    if DCR(depth-column-row), channel ordered by block_h * block_w * c;
+    else CRD(column-row-depth), chennel ordered by c * block_h * block_w;
+  }];
+
+  let arguments = (
+    ins AnyTensor:$input,
+    I64Attr:$block_h,
+    I64Attr:$block_w,
+    BoolAttr:$is_CRD,
+    BoolAttr:$is_inversed,
+    StrAttr:$name
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
   let summary = "matmul operator";
 

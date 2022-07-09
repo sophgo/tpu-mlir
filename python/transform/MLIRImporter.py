@@ -17,6 +17,7 @@ class Top:
     BatchNormOp = 'top.BatchNorm'
     ConcatOp = 'top.Concat'
     ConvOp = 'top.Conv'
+    Depth2SpaceOp = 'top.Depth2Space'
     MulOp = 'top.Mul'
     MatMulOp = 'top.MatMul'
     MaxPoolOp = 'top.MaxPool'
@@ -243,6 +244,17 @@ class MLIRImporter(object):
         if 'inserts' in kargs:
             param['inserts'] = self.ArrayAttr(kargs['inserts'])
         return self.buildOp(Top.ConvOp, operands, [output_type], **param)
+
+    def create_depth2space_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        p = {
+            'name': StringAttr.get(kargs['name']),
+            "block_h": IntegerAttr.get(self.mlir_type['INT64'], kargs['block_h']),
+            "block_w": IntegerAttr.get(self.mlir_type['INT64'], kargs['block_w']),
+            "is_CRD": BoolAttr.get(kargs['is_CRD']),
+            "is_inversed": BoolAttr.get(kargs['is_inversed']),
+        }
+        return self.buildOp(Top.Depth2SpaceOp, operands, [output_type], **p)
 
     def create_leaky_relu_op(self, operands, output_shape, **kargs):
         """
