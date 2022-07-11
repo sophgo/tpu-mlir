@@ -90,7 +90,7 @@ execute_process(
 
 string(STRIP ${GIT_SHORT_HASH} GIT_SHORT_HASH)
 string(TIMESTAMP BUILD_TIME "%Y%m%d")
-set(MLIR_VERSION "${GIT_SHORT_HASH}:${BUILD_TIME}")
+set(MLIR_VERSION "${GIT_SHORT_HASH}-${BUILD_TIME}" CACHE STRING "nntoolchain version" FORCE)
 message(STATUS "nntoolchain version: ${MLIR_VERSION}")
 add_definitions(-DMLIR_VERSION="${MLIR_VERSION}")
 
