@@ -1,8 +1,6 @@
 #!/bin/bash
 set -e
 
-PROJECT_ROOT="$( cd "$(dirname "$0")" ; pwd -P )"
-
 if [[ -z "$INSTALL_PATH" ]]; then
   echo "Please source envsetup.sh firstly."
   exit 1
@@ -22,7 +20,7 @@ pushd $BUILD_PATH
 cmake -G Ninja \
     $BUILD_FLAG \
     -DCMAKE_INSTALL_PREFIX=$INSTALL_PATH \
-    $PROJECT_ROOT
+    ${PROJECT_ROOT}
 cmake --build . --target install mlir-doc
 popd
 

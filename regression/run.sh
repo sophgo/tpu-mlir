@@ -1,7 +1,7 @@
 #!/bin/bash
 set -ex
 
-DIR="$( cd "$(dirname "$0")" ; pwd -P )"
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 rm -rf regression_out
 mkdir regression_out
