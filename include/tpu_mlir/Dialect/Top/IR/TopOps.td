@@ -432,4 +432,19 @@ def Top_SoftmaxOp:Top_Op<"Softmax",[InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_LeakyReluOp : Top_Op<"LeakyRelu", [InOutSameShape]> {
+  let summary = "LeakyRelu peration";
+  let description = [{
+    LeakyRelu takes input data (Tensor<T>) and an argument alpha,
+    and produces one output data (Tensor<T>)
+    where the function f(x) = alpha * x for x < 0, f(x) = x for x >= 0,
+    is applied to the data tensor elementwise.
+  }];
+  let arguments = (ins
+    AnyTenor:$input,
+    F64Attr:$alpha,
+    StrAttr:$name
+  );
+  let results = (outs AnyTenor:$output);
+}
 #endif // Top_OPS

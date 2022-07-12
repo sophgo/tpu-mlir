@@ -339,4 +339,20 @@ def Tpu_SoftmaxOp: Tpu_Op<"Softmax", [InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_LeakyReluOp: Tpu_Op<"LeakyRelu", [
+    DeclareOpInterfaceMethods<LocalGenInterface>,
+    InOutSameShape]> {
+  let summary = "leakyrelu operation";
+  let description = [{
+    The LeakyRelu operation multiples alpha with negative values, and the others keep changeless
+  }];
+
+  let arguments = (ins
+    AnyTenor:$input,
+    F64Attr:$alpha,
+    StrAttr:$name,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+  );
+  let results = (outs AnyTenor:$output);
+}
 #endif // TPU_OPS
