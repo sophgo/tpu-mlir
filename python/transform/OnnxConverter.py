@@ -94,7 +94,7 @@ class OnnxConverter(BaseConverter):
 
     def __init__(self,
                  model_name: str,
-                 onnx_file: str,
+                 onnx_file,
                  input_shapes: list,
                  output_names: list,
                  preprocess_args=None):
@@ -198,7 +198,10 @@ class OnnxConverter(BaseConverter):
             self.model.graph.output.remove(o)
 
     def load_onnx_model(self, onnx_file, input_shapes: list, output_names: list):
-        self.model = onnx.load(onnx_file)
+        if isinstance(onnx_file, str):
+            self.model = onnx.load(onnx_file)
+        else:
+            self.model = onnx_file
         self.input_names = onnxsim.get_input_names(self.model)
         self.num_input = len(self.input_names)
         self.model_shape_infer(input_shapes)

@@ -18,6 +18,7 @@ export PATH=$INSTALL_PATH/bin:$PATH
 export PATH=$PROJECT_ROOT/llvm/bin:$PATH
 export PATH=$PROJECT_ROOT/python/tools:$PATH
 export PATH=$PROJECT_ROOT/python/utils:$PATH
+export PATH=$PROJECT_ROOT/python/test:$PATH
 
 export LD_LIBRARY_PATH=$INSTALL_PATH/lib:$LD_LIBRARY_PATH
 
