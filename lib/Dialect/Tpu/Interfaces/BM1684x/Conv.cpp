@@ -557,6 +557,13 @@ void tpu::ConvOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
   sec_info.h_slice = in_gi.h_slice;
   sec_info.h_idx = in_gi.h_idx;
   sec_info.is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == ih);
+  // to be compatible with nntoolchain
+  if (sec_info.is_h_split) {
+    sec_info.h_idx = h_step == 0 ? -pt : in_gi.h_idx;
+    sec_info.h_slice = sec_info.h_idx < 0 ? sec_info.h_slice - sec_info.h_idx
+                                          : sec_info.h_slice;
+    sec_info.h_slice = sec_info.h_slice + common.pad_h_b;
+  }
   sec_info.w_slice = iw;
   sec_info.out_n_slice = gi.n_slice;
   sec_info.out_h_idx = gi.h_idx;
@@ -608,6 +615,13 @@ void tpu::ConvOp::codegen_local_float_bm1684x(int64_t n_step, int64_t h_step) {
   sec_info.h_slice = in_gi.h_slice;
   sec_info.h_idx = in_gi.h_idx;
   sec_info.is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == ih);
+  // to be compatible with nntoolchain
+  if (sec_info.is_h_split) {
+    sec_info.h_idx = h_step == 0 ? -pt : in_gi.h_idx;
+    sec_info.h_slice = sec_info.h_idx < 0 ? sec_info.h_slice - sec_info.h_idx
+                                          : sec_info.h_slice;
+    sec_info.h_slice = sec_info.h_slice + common.pad_h_b;
+  }
   sec_info.w_slice = iw;
   sec_info.out_n_slice = gi.n_slice;
   sec_info.out_h_idx = gi.h_idx;

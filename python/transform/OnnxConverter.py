@@ -125,6 +125,7 @@ class OnnxConverter(BaseConverter):
             "Sigmoid": lambda node: self.convert_sigmoid_op(node),
             "Slice": lambda node: self.convert_slice_op(node),
             "Transpose": lambda node: self.convert_transpose_op(node),
+            "LeakyRelu": lambda node: self.convert_leaky_relu_op(node),
         }
 
     def __del__(self):
@@ -525,6 +526,17 @@ class OnnxConverter(BaseConverter):
         output_shape = self.getShape(onnx_node.name)
         p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
         new_op = self.mlir.create_relu_op([op], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_leaky_relu_op(self, onnx_node):
+        assert (onnx_node.op_type == "LeakyRelu")
+        op = self.getOperand(onnx_node.inputs[0])
+        output_shape = self.getShape(onnx_node.name)
+        p = {
+            'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            'alpha': onnx_node.attrs.get("alpha", 0.)
+        }
+        new_op = self.mlir.create_leaky_relu_op([op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
     def convert_reshape_op(self, onnx_node):
