@@ -52,6 +52,15 @@ cd regression
 
 After run regression test, all the bmodels will be in regression_out.
 
+3. collect bmodels for runtime test
+
+``` bash
+mkdir bmodels_rttest
+pushd bmodels_rttest
+../prepare_bmrttest.py ../regression_out
+popd bmodels_rttest
+```
+
 //MY_CODE_STREAM
 
 

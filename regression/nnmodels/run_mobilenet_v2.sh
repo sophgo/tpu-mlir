@@ -13,7 +13,7 @@ model_transform.py \
     --scale 0.0171,0.0175,0.0174 \
     --pixel_format rgb \
     --test_input ${REGRESSION_PATH}/image/cat.jpg \
-    --test_result mobilenet_v2_f32_outputs.npz \
+    --test_result mobilenet_v2_top_outputs.npz \
     --mlir mobilenet_v2.mlir \
 
 
@@ -25,9 +25,9 @@ model_deploy.py \
   --quantize F32 \
   --chip bm1684x \
   --test_input mobilenet_v2_in_f32.npz \
-  --test_reference mobilenet_v2_f32_outputs.npz \
+  --test_reference mobilenet_v2_top_outputs.npz \
   --tolerance 0.99,0.99 \
-  --model mobilenet_v2_1686_f32.bmodel
+  --model mobilenet_v2_1684x_f32.bmodel
 
 
 #########################
@@ -45,7 +45,7 @@ model_deploy.py \
   --calibration_table mobilenet_v2_cali_table \
   --chip bm1684x \
   --test_input mobilenet_v2_in_f32.npz \
-  --test_reference mobilenet_v2_f32_outputs.npz \
+  --test_reference mobilenet_v2_top_outputs.npz \
   --tolerance 0.96,0.73 \
   --correctness 0.99,0.95 \
   --model mobilenet_v2_1684x_int8_sym.bmodel
@@ -58,7 +58,7 @@ model_deploy.py \
   --calibration_table mobilenet_v2_cali_table \
   --chip bm1684x \
   --test_input mobilenet_v2_in_f32.npz \
-  --test_reference mobilenet_v2_f32_outputs.npz \
+  --test_reference mobilenet_v2_top_outputs.npz \
   --tolerance 0.98,0.79 \
   --correctness 0.99,0.95 \
   --model mobilenet_v2_1684x_int8_asym.bmodel
