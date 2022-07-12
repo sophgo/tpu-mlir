@@ -103,8 +103,11 @@ class DeployTool:
             tool.validate_model()
 
     def validate_model(self):
-        self.model_npz = self.module_name + "_{}_{}_model_outputs.npz".format(
-            self.chip, self.quantize)
+        postfix = ""
+        if self.quantize == "int8":
+            postfix = "_asym" if self.asymmetric else "_sym"
+        self.model_npz = self.module_name + "_{}_{}{}_model_outputs.npz".format(
+            self.chip, self.quantize, postfix)
         show_fake_cmd(self.in_f32_npz, self.model, self.model_npz)
         model_outputs = model_inference(self.inputs, self.model)
         np.savez(self.model_npz, **model_outputs)
