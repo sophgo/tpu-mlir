@@ -88,6 +88,53 @@ static void filter_reorder(std::shared_ptr<std::vector<T>> &filter,
   shape = {1, oc, 1, new_ic * new_hw};
 }
 
+template <typename T>
+static void reshape_coeff_for_3ic(std::shared_ptr<std::vector<T>> &weight,
+                                  std::vector<int64_t> &shape,
+                                  int64_t use_3ic_optimize) {
+  int64_t oc, ic, kh, kw;
+  Module::getNCHW(shape, oc, ic, kh, kw);
+  use_3ic_optimize = use_3ic_optimize & 0x3;
+
+  // if merge kw to ic, it need convert (oc, ic, kh, kw) to (oc, ic, kw, kh).
+  if (use_3ic_optimize == 2) {
+    auto khw = std::make_shared<std::vector<T>>(kh * kw, 0);
+    for (uint i = 0; i < oc * ic; ++i) {
+      for (uint j = 0; j < kh; ++j) {
+        for (uint k = 0; k < kw; ++k) {
+          khw->at(k * kh + j) = weight->at(i * kh * kw + j * kw + k);
+        }
+      }
+      for (uint j = 0; j < kh * kw; ++j) {
+        weight->at(i * kh * kw + j) = khw->at(j);
+      }
+    }
+  }
+
+  int64_t new_ic, new_kernel;
+  switch (use_3ic_optimize) {
+    case 1:   // merge kh to ic
+      new_ic = ic * kh;
+      new_kernel = kw;
+      break;
+    case 2:   // merge kw to ic
+      new_ic = ic * kw;
+      new_kernel = kh;
+      break;
+    case 3:   // merge kh and kw to ic
+      new_ic = ic * kh * kw;
+      new_kernel = 1;
+      break;
+    default:  // not merge
+      new_ic = ic;
+      new_kernel = kh * kw;
+      break;
+  }
+
+  shape = {oc, new_ic, 1, new_kernel};
+  filter_reorder(weight, shape);
+}
+
 // refer to net_compiler: bool BM1684xCoeffArranger::ConvWeightArr(GraphEdge*
 // edge)
 void tpu::ConvOp::weight_reorder_int8_bm1684x() {
@@ -101,8 +148,24 @@ void tpu::ConvOp::weight_reorder_int8_bm1684x() {
   auto filterOp = filter().getDefiningOp<top::WeightOp>();
   auto filter_i8 = filterOp.read<int8_t>();
   std::vector<int64_t> filter_shape = {oc, ic / g, kh, kw};
+  int IC_PARALLEL = 64;
+  int use_3ic_optimize = 0;
+  if (ic * kh * kw <= IC_PARALLEL && kh > 1 && kw > 1) {
+    use_3ic_optimize = 3; // merge kh and kw to ic
+  } else if (ic * kw <= IC_PARALLEL && kw > 1 && (kh < kw || ic * kh > IC_PARALLEL)) {
+    use_3ic_optimize = 2; // merge kw to ic
+  } else if (ic * kh <= IC_PARALLEL && kh > 1) {
+    use_3ic_optimize = 1; // merge kh to ic
+  } else {
+    use_3ic_optimize = 0;
+  }
+  if (use_3ic_optimize) {
+    // Now only support broadcast using BDC when it is a local layer.
+    use_3ic_optimize |= 0x10;
+  }
+
   if (is_dw == false) {
-    filter_reorder(filter_i8, filter_shape);
+    reshape_coeff_for_3ic(filter_i8, filter_shape, use_3ic_optimize);
   } else {
     filter_shape = {1, oc, 1, kh * kw};
   }
@@ -181,6 +244,7 @@ void tpu::ConvOp::weight_reorder_int8_bm1684x() {
   op->removeAttr("rshift");
   op->removeAttr("multiplier");
   op->setAttr("coeff_merged", builder.getBoolAttr(true));
+  op->setAttr("use_3ic_optimize", builder.getI64IntegerAttr(use_3ic_optimize));
   op->setOperand(1, coeff_op);
   auto none = Module::getNoneOp(op);
   op->setOperand(2, none.getResult());
@@ -209,7 +273,7 @@ void tpu::ConvOp::weight_reorder_bf16_bm1684x() {
   op->setOperand(1, newFilterOp);
 }
 
-void tpu::ConvOp::weight_reorder_f16_bm1684x() { weight_reorder_f16_bm1684x(); }
+void tpu::ConvOp::weight_reorder_f16_bm1684x() { weight_reorder_bf16_bm1684x();}
 
 void tpu::ConvOp::weight_reorder_f32_bm1684x() {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
@@ -450,6 +514,7 @@ void tpu::ConvOp::codegen_global_int8_bm1684x() {
   common.ipad_value = in_qtype.getZeroPoint();
   common.kzp_is_const = true;
   common.kzp_value = 0;
+  common.use_3ic_optimize = use_3ic_optimize();
   BM1684x::instance().call_global_func("backend_api_conv_global", &spec,
                                        sizeof(spec), input_spec->data(),
                                        output_spec->data());
@@ -503,10 +568,40 @@ int64_t tpu::ConvOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
                                            int64_t in_nslice, int64_t in_hslice,
                                            int64_t out_nslice,
                                            int64_t out_hslice) {
+  int64_t sz = out_lmem_bytes * sizeof(int32_t);
   if (coeff_merged() == false) {
-    return 0;
+    sz = 0;
   }
-  return out_lmem_bytes * sizeof(int32_t);
+
+  auto i_s = input().getType().cast<RankedTensorType>().getShape();
+  auto o_s = output().getType().cast<RankedTensorType>().getShape();
+  auto kernel = Module::getI64Array(kernel_shape());
+  int64_t n = i_s[0];
+  int64_t ih = i_s[2];
+  int64_t iw = i_s[3];
+  int64_t oh = o_s[2];
+  int64_t ow = o_s[3];
+  int64_t kh = kernel->at(0);
+  int64_t kw = kernel->at(1);
+  auto data_type = BM168x::getDataType(output());
+  int type_len = BM168x::getFmtBytes(data_type);
+  int64_t eu_num = BM1684x::instance().get_eu_num(type_len);
+
+  int use_3ic = (use_3ic_optimize() & 0x3);
+  if (use_3ic == 1) { // merge kh to ic
+    sz += align_up(out_hslice * iw, eu_num) * n * type_len;
+    sz += 64 * 2;
+    sz += kh * type_len;
+  } else if (use_3ic == 2) { // merge kw to ic
+    sz += align_up(in_hslice * ow, eu_num) * n * type_len;
+    sz += 64 * 2;
+    sz += kw * type_len;
+  } else if (use_3ic == 3) { // merge kh and kw to ic
+    sz += align_up(out_hslice * ow, eu_num) * n * type_len;
+    sz += 64 * 2;
+    sz += kh * kw * type_len;
+  }
+  return sz;
 }
 
 void tpu::ConvOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
@@ -554,6 +649,7 @@ void tpu::ConvOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
   common.ipad_value = in_qtype.getZeroPoint();
   common.kzp_is_const = true;
   common.kzp_value = 0;
+  common.use_3ic_optimize = use_3ic_optimize();
   local_sec_info_t sec_info;
   memset(&sec_info, 0, sizeof(sec_info));
   sec_info.n_slice = in_gi.n_slice;

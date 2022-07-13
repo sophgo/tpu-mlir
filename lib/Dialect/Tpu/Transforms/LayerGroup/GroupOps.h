@@ -30,7 +30,7 @@ typedef std::pair<int64_t, int64_t> group_pair_t; // start_idx, and end_idx
 typedef std::pair<int64_t, int64_t> addr_pair_t;  // lmem addr, and size
 struct slice_info_t {
   std::vector<slice_pair_t> h; // h_idx and h_slice
-  std::vector<slice_pair_t> n; // h_idx and n_slice
+  std::vector<slice_pair_t> n; // n_idx and n_slice
 };
 
 struct lmem_info_t {
