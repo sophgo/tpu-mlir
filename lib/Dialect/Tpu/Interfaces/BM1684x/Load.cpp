@@ -49,6 +49,10 @@ void tpu::LoadOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
   int64_t N, C, H, W;
   Module::getNCHW(output(), N, C, H, W);
   auto g_stride = BM1684x::instance().getGlobalStride(N, C, H, W);
+  if (do_bcast() == true) {
+    C = BM1684x::NPU_NUM;
+    g_stride.C = 0;
+  }
   auto s_stride = BM1684x::instance().getLocalStride(gi.n_slice, C, gi.h_slice,
                                                      W, fmt_bytes, gi.eu_align);
   auto g_addr = Module::getAddress(input());

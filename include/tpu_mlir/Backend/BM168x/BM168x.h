@@ -152,6 +152,54 @@ typedef struct stride {
   int64_t N, C, H, W;
 } stride_4D_t;
 
+typedef enum {
+  ACTIVE_TANH = 0,
+  ACTIVE_SIGMOID = 1,
+  ACTIVE_RELU = 2,
+  ACTIVE_EXP = 3,
+  ACTIVE_ELU = 4,
+  ACTIVE_SQRT = 5,
+  ACTIVE_SQUARE = 6,
+  ACTIVE_RSQRT = 7,
+  ACTIVE_ABSVAL = 8,
+  ACTIVE_LN = 9,
+  ACTIVE_ROUND = 10,
+  ACTIVE_CEIL = 11,
+  ACTIVE_FLOOR = 12,
+  ACTIVE_SIN = 13,
+  ACTIVE_COS = 14,
+  ACTIVE_IS_FINITE = 15,
+  ACTIVE_MISH = 16,
+  ACTIVE_SWISH = 17,
+  ACTIVE_HSWISH = 18,
+  ACTIVE_SILU = 19,
+  ACTIVE_ARCSIN = 20,
+  ACTIVE_ARCCOS = 21,
+  ACTIVE_ARCSINH = 22,
+  ACTIVE_ARCCOSH = 23,
+  ACTIVE_ARCTANH = 24,
+  ACTIVE_SINH = 25,
+  ACTIVE_COSH = 26,
+  ACTIVE_TAN = 27,
+  ACTIVE_SIGN = 28,
+  ACTIVE_GELU = 29,
+  ACTIVE_ERF = 30,
+  ACTIVE_HSIGMOID = 31,
+  ACTIVE_LOG_SIGMOID = 32,
+  ACTIVE_SOFT_PLUS = 33,
+  ACTIVE_SOFT_SIGN = 34,
+} active_type_t;
+
+typedef struct {
+  uint64_t input_addr;
+  uint64_t output_addr;
+  uint32_t buffer_local_addr; // for local layer param
+  int shape[MAX_SHAPE_DIMS];
+  int shape_dim;
+  int dtype;
+  int active_type;
+} active_param_t;
+
 #ifdef __cplusplus
 }
 #endif

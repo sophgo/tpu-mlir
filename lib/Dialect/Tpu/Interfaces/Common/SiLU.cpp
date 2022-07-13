@@ -8,8 +8,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
 #include "tpu_mlir/Support/Helper/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
@@ -17,12 +18,15 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-int64_t top::SigmoidOp::getFLOPs() { return 0; }
+LogicalResult tpu::SiLUOp::init(InferenceParameter &p) { return success(); }
+void tpu::SiLUOp::deinit(InferenceParameter &p) {}
 
-LogicalResult top::SigmoidOp::init(InferenceParameter &p) { return success(); }
-void top::SigmoidOp::deinit(InferenceParameter &p) {}
-
-LogicalResult top::SigmoidOp::inference(InferenceParameter &p) {
-  llvm_unreachable("SigmoidOp to be supported");
+LogicalResult tpu::SiLUOp::inference(InferenceParameter &p) {
+  auto num_element = Module::getNumElements(input());
+#pragma omp parallel for schedule(static, omp_schedule(num_element))
+  for (int i = 0; i < num_element; ++i) {
+    auto val = p.inputs[0][i];
+    p.outputs[0][i] = val / (1 + std::exp(-val));
+  }
   return success();
 }

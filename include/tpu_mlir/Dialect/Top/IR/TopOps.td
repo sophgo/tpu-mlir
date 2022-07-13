@@ -322,6 +322,7 @@ def Top_MulOp: Top_Op<"Mul", [SupportFuseRelu, InOutSameShape]> {
   );
 
   let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
 }
 
 def Top_MatMulOp: Top_Op<"MatMul", [SupportFuseRelu]> {
@@ -416,14 +417,27 @@ def Top_ReshapeOp:Top_Op<"Reshape"> {
 }
 
 def Top_SigmoidOp : Top_Op<"Sigmoid", [InOutSameShape]> {
-  let summary = " Exp operator,  scale * sigmoid + bias";
+  let summary = " Exp operator,  scale * Sigmoid + bias";
   let description = [{
      Y = scale * Sigmoid(x) + bias
   }];
   let arguments = (
-    ins Variadic<AnyTensor>:$input,
+    ins AnyTensor:$input,
     DefaultValuedAttr<F64Attr, "1">:$scale,
     DefaultValuedAttr<F64Attr, "0">:$bias,
+    StrAttr:$name
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_SiLUOp : Top_Op<"SiLU", [InOutSameShape]> {
+  let summary = " SiLU operator,  y = x * Sigmoid(x)";
+  let description = [{
+     Y = x * Sigmoid(x)
+  }];
+  let arguments = (
+    ins AnyTensor:$input,
     StrAttr:$name
   );
 

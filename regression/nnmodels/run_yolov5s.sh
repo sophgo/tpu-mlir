@@ -10,7 +10,7 @@ model_transform.py \
     --mean 0.0,0.0,0.0 \
     --scale 0.0039216,0.0039216,0.0039216 \
     --keep_aspect_ratio \
-    --output_names 168 \
+    --output_names 170 \
     --test_input ${REGRESSION_PATH}/image/dog.jpg \
     --test_result yolov5s_top_outputs.npz \
     --mlir yolov5s.mlir

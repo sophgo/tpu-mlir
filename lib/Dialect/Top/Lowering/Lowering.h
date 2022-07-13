@@ -76,6 +76,10 @@ static mlir::Value lowering_common_float(Operation *from) {
 Value do_cast(Value v, Type to, bool tensorType);
 Value do_quantize(Value v, bool asymmetric);
 
+typedef double (*activate_f)(double);
+
+Value create_lookup_table(Value in, Value out, activate_f func,
+                          bool asymmetric);
 
 } // namespace top
 } // namespace tpu_mlir

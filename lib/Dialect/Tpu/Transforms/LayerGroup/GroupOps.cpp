@@ -61,6 +61,18 @@ bool GroupOps::is_eu_align(Value opd, Operation *op) {
   return true;
 }
 
+bool GroupOps::need_bcast(Value opd) {
+  if (opd.hasOneUse() == false) {
+    return false;
+  }
+  auto use_op = *opd.getUsers().begin();
+  auto lut_op = dyn_cast<tpu::LutOp>(use_op);
+  if (!lut_op) {
+    return false;
+  }
+  return opd == lut_op.table();
+}
+
 group_lmem_t GroupOps::list_lmems(int64_t start_idx, int64_t end_idx) {
   assert(end_idx > start_idx);
   int64_t id = 0;
@@ -346,6 +358,10 @@ void GroupOps::CreateLoadOp(lmem_info_t &linfo,
     name = name + std::to_string(input.cast<BlockArgument>().getArgNumber());
   }
   attrs.push_back(builder.getNamedAttr("name", builder.getStringAttr(name)));
+  if (need_bcast(input)) {
+    attrs.push_back(
+        builder.getNamedAttr("do_bcast", builder.getBoolAttr(true)));
+  }
   attrs.push_back(builder.getNamedAttr(LocalGenInterface::kLayerGroupAttrName,
                                        getLgParam(linfo, linfo.timestep)));
   if (current_op != nullptr) {

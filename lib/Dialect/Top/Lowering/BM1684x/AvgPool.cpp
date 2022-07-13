@@ -26,8 +26,6 @@ Value top::AvgPoolOp::lowering_int8_bm1684x(bool asymmetric) {
   auto op = getOperation();
   auto ctx = getContext();
   OpBuilder builder(ctx);
-  std::vector<Value> operands;
-  operands.push_back(input());
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
@@ -46,9 +44,8 @@ Value top::AvgPoolOp::lowering_int8_bm1684x(bool asymmetric) {
       builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
   builder.setInsertionPointAfter(op);
   auto newType = Quant::getQuantInt8Type(output(), asymmetric);
-  auto newOp = builder.create<tpu::AvgPoolOp>(getLoc(), newType,
-                                              ArrayRef<Value>{operands},
-                                              ArrayRef<NamedAttribute>{attrs});
+  auto newOp = builder.create<tpu::AvgPoolOp>(
+      getLoc(), newType, ValueRange{input()}, ArrayRef<NamedAttribute>{attrs});
   return newOp.output();
 }
 

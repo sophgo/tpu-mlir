@@ -11,18 +11,17 @@
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-int64_t top::SigmoidOp::getFLOPs() { return 0; }
+Value top::SiLUOp::lowering_int8_bm1684() {
+  llvm_unreachable("SiLUOp to be supported");
+  return nullptr;
+}
 
-LogicalResult top::SigmoidOp::init(InferenceParameter &p) { return success(); }
-void top::SigmoidOp::deinit(InferenceParameter &p) {}
-
-LogicalResult top::SigmoidOp::inference(InferenceParameter &p) {
-  llvm_unreachable("SigmoidOp to be supported");
-  return success();
+Value top::SiLUOp::lowering_f32_bm1684() {
+  llvm_unreachable("SiLUOp to be supported");
+  return nullptr;
 }

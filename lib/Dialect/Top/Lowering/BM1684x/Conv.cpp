@@ -50,7 +50,7 @@ Value top::ConvOp::lowering_int8_bm1684x(bool asymmetric) {
     auto biasOp = cast<top::WeightOp>(bias().getDefiningOp());
     bias_fp32 = biasOp.read<float>();
     bias_int32 = std::make_shared<std::vector<int32_t>>(bias_fp32->size());
-  } else {
+  } else if (in_zp) {
     bias_int32 = std::make_shared<std::vector<int32_t>>(oc, 0);
   }
 

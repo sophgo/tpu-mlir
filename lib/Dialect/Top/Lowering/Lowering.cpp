@@ -57,8 +57,6 @@ Value do_cast(Value v, Type to, bool tensorType) {
   } else {
     llvm_unreachable("unknown type");
   }
-  std::vector<Value> operands;
-  operands.push_back(v);
   std::vector<NamedAttribute> attrs;
   builder.setInsertionPointAfterValue(v);
   std::string new_name = Module::getName(v.getDefiningOp()).str() + suffix;
@@ -68,10 +66,46 @@ Value do_cast(Value v, Type to, bool tensorType) {
   }
   attrs.push_back(
       builder.getNamedAttr("name", builder.getStringAttr(new_name)));
-  auto castOp = builder.create<tpu::CastOp>(v.getLoc(), newType,
-                                            ArrayRef<Value>{operands},
+  auto castOp = builder.create<tpu::CastOp>(v.getLoc(), newType, ValueRange{v},
                                             ArrayRef<NamedAttribute>{attrs});
   return castOp.output();
+}
+
+Value create_lookup_table(Value in, Value out, activate_f func,
+                          bool asymmetric) {
+  assert(func != nullptr);
+  double in_scale, out_scale;
+  int64_t in_zp, out_zp;
+  bool in_sign, out_sign;
+  Quant::getScaleAndZeroPoint(in, in_scale, in_zp, in_sign, asymmetric);
+  Quant::getScaleAndZeroPoint(out, out_scale, out_zp, out_sign, asymmetric);
+  int64_t min = in_sign ? -128 : 0;
+  int64_t max = in_sign ? 127 : 255;
+  auto op = out.getDefiningOp();
+  OpBuilder builder(op->getContext());
+  auto table_type = RankedTensorType::get({1, 1, 1, 256},
+                                          builder.getIntegerType(8, out_sign));
+  if (out_sign) {
+    std::vector<int8_t> table(256, 0);
+    for (auto i = min; i <= max; i++) {
+      double data = (i - in_zp) * in_scale;
+      data = func(data) / out_scale + out_zp;
+      int index = i < 0 ? 127 - i : i;
+      table[index] = Quant::to_int8(data);
+    }
+    return top::WeightOp::create(out.getDefiningOp(), "table", table,
+                                 table_type);
+  } else {
+    std::vector<uint8_t> table(256, 0);
+    for (auto i = min; i <= max; i++) {
+      double data = (i - in_zp) * in_scale;
+      data = func(data) / out_scale + out_zp;
+      int index = i < 0 ? 127 - i : i;
+      table[index] = Quant::to_uint8(data);
+    }
+    return top::WeightOp::create(out.getDefiningOp(), "table", table,
+                                 table_type);
+  }
 }
 
 Value do_quantize(Value v, bool asymmetric) {
@@ -90,15 +124,12 @@ Value do_quantize(Value v, bool asymmetric) {
   auto ctx = v.getContext();
   OpBuilder builder(ctx);
   auto newType = Quant::getQuantInt8Type(v, asymmetric);
-  std::vector<Value> operands;
-  operands.push_back(v);
   builder.setInsertionPointAfterValue(v);
   std::vector<NamedAttribute> attrs;
   std::string new_name = Module::getName(v.getDefiningOp()).str() + "_i8";
   attrs.push_back(
       builder.getNamedAttr("name", builder.getStringAttr(new_name)));
-  auto castOp = builder.create<tpu::CastOp>(v.getLoc(), newType,
-                                            ArrayRef<Value>{operands},
+  auto castOp = builder.create<tpu::CastOp>(v.getLoc(), newType, ValueRange{v},
                                             ArrayRef<NamedAttribute>{attrs});
   return castOp.output();
 }
@@ -260,7 +291,7 @@ public:
     if (Module::State::TOP_QUANTIZED == state_) {
       Module::setAsymmetric(module, true);
       asymmetric_ = true;
-      //type_process();
+      // type_process();
     } else {
       Module::setAsymmetric(module, isAsymmetric);
       asymmetric_ = isAsymmetric;
