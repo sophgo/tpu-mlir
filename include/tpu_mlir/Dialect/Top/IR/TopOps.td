@@ -317,6 +317,7 @@ def Top_MulOp: Top_Op<"Mul", [SupportFuseRelu, InOutSameShape]> {
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    OptionalAttr<F64ArrayAttr>:$coeff,
     StrAttr:$name
   );
 

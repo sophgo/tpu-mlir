@@ -528,6 +528,7 @@ class OnnxConverter(BaseConverter):
         self.addOperand(onnx_node.name, new_op)
 
     def convert_mul_op(self, onnx_node):
+        assert (onnx_node.op_type == "Mul")
         assert (len(onnx_node.inputs) == 2)
         if self.isTensor(onnx_node.inputs[0]) or self.isTensor(onnx_node.inputs[1]):
             # TODO: support tensor
