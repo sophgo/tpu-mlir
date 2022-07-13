@@ -186,10 +186,10 @@ model_runner.py \
     --dump_all_tensors \
     --output resnet18_f16_outputs_1684x.npz
 
-npz_tool.py compare \
-    resnet18_f16_outputs_1684x.npz \
-    resnet18_top_outputs.npz \
-    --tolerance 0.99,0.90 -v
+# npz_tool.py compare \
+#     resnet18_f16_outputs_1684x.npz \
+#     resnet18_top_outputs.npz \
+#     --tolerance 0.99,0.90 -v
 
 # ToDo (convert to f16 bmodel)
 # tpuc-opt resnet18_tpu_f16.mlir \

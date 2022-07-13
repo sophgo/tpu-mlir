@@ -28,6 +28,7 @@ def get_bmodel_io_info(bmodel):
             m = re.search(input_rg + shape_rg, meg)
             if m:
                 inputs.append(name_shape(m)[0])
+                continue
             m = re.search(output_rg + shape_rg, meg)
             if m:
                 outputs.append(name_shape(m)[0])

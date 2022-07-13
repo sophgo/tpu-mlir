@@ -37,13 +37,13 @@ echo "Create readme.md" 1>&2
 more > "${release_archive}/readme.md" <<'//MY_CODE_STREAM'
 For test
 
-1. set environment
+1. Set environment
 
 ``` bash
 source ./envsetup.sh
 ```
 
-2. run regression
+2. Run regression
 
 ``` bash
 cd regression
@@ -52,19 +52,26 @@ cd regression
 
 After run regression test, all the bmodels will be in regression_out.
 
-3. collect bmodels for runtime test
+3. Collect bmodels for runtime test
 
 ``` bash
 mkdir bmodels_rttest
 pushd bmodels_rttest
 ../prepare_bmrttest.py ../regression_out
-popd bmodels_rttest
+popd
 ```
 
+4. Copy bmodels_rttest to BM1684X device(PCIE/SOC)
+
+```
+cp run_bmrttest.py /to/your/device
+cp bmodels_rttest /to/your/device
+./run_bmrttest.py ./bmodels_rttest
+```
+
+A ".csv" file(report) will be generated in this folder.
+
 //MY_CODE_STREAM
-
-
-
 
 tar -cvzf "tpu-mlir_${mlir_version}.tar.gz" ${release_archive}
 rm -rf ${release_archive}
