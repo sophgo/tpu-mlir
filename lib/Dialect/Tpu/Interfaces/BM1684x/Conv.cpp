@@ -499,7 +499,10 @@ void tpu::ConvOp::codegen_global_float_bm1684x() {
 // ======================================
 
 int64_t tpu::ConvOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
-                                           int64_t out_lmem_bytes) {
+                                           int64_t out_lmem_bytes,
+                                           int64_t in_nslice, int64_t in_hslice,
+                                           int64_t out_nslice,
+                                           int64_t out_hslice) {
   if (coeff_merged() == false) {
     return 0;
   }

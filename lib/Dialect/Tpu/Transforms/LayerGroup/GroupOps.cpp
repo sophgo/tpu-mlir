@@ -421,8 +421,8 @@ group_lmem_t GroupOps::CreateGroup(int64_t start_idx, int64_t end_idx,
   // try no slice first
   // new_start_idx = start_idx;
   // while (new_start_idx < end_idx) {
-  //   auto group_lmem = CreateGroupBySecs(new_start_idx, end_idx, nsecs, hsecs);
-  //   if (group_lmem) {
+  //   auto group_lmem = CreateGroupBySecs(new_start_idx, end_idx, nsecs,
+  //   hsecs); if (group_lmem) {
   //     return group_lmem;
   //   }
   //   new_start_idx++;
@@ -438,7 +438,8 @@ group_lmem_t GroupOps::CreateGroup(int64_t start_idx, int64_t end_idx,
   while (end_idx > new_start_idx) {
     no_more_try_secs = false;
     // slice n first
-    for (nsecs = 1, hsecs = 1; no_more_try_secs == false && nsecs <= max_nsecs; nsecs++) {
+    for (nsecs = 1, hsecs = 1; no_more_try_secs == false && nsecs <= max_nsecs;
+         nsecs++) {
       auto group_lmem = CreateGroupBySecs(new_start_idx, end_idx, nsecs, hsecs);
       if (group_lmem) {
         return group_lmem;
@@ -628,7 +629,11 @@ void GroupOps::set_lmem_size(group_lmem_t group_lmem) {
       assert(in_info != nullptr);
       auto out_info = find_lmem_info(group_lmem, out);
       assert(out_info != nullptr);
-      linfo.size = lg_op.getBufferSize(in_info->size, out_info->size);
+      int64_t in_nslice, in_hslice, out_nslice, out_hslice;
+      get_max_slice_nh(*in_info, in_nslice, in_hslice);
+      get_max_slice_nh(*out_info, out_nslice, out_hslice);
+      linfo.size = lg_op.getBufferSize(in_info->size, out_info->size, in_nslice,
+                                       in_hslice, out_nslice, out_hslice);
     }
   }
 }

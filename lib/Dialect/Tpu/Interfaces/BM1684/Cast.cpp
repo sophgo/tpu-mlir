@@ -51,7 +51,10 @@ void tpu::CastOp::codegen_global_int8_bm1684() {
 }
 
 int64_t tpu::CastOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
-                                          int64_t out_lmem_bytes) {
+                                          int64_t out_lmem_bytes,
+                                          int64_t in_nslice, int64_t in_hslice,
+                                          int64_t out_nslice,
+                                          int64_t out_hslice) {
 
   return 0;
 }

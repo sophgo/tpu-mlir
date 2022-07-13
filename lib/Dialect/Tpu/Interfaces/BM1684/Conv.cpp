@@ -33,8 +33,8 @@ void tpu::ConvOp::weight_reorder_int8_bm1684() {
     for (int ic_idx = 0; ic_idx < ic; ic_idx++) {
       for (int k_idx = 0; k_idx < kh * kw; k_idx++) {
         int orig_offset = ic_idx * kh * kw + k_idx + oc_idx * kh * kw * ic;
-        int trans_offset =
-            ic_idx + k_idx * align_up(ic, 4l) + oc_idx * (kh * kw * align_up(ic, 4l));
+        int trans_offset = ic_idx + k_idx * align_up(ic, 4l) +
+                           oc_idx * (kh * kw * align_up(ic, 4l));
         filter_new->at(trans_offset) = filter_int8->at(orig_offset);
       }
     }
@@ -59,8 +59,10 @@ void tpu::ConvOp::codegen_global_int8_bm1684() {
         Module::getAddress(input()), Module::getAddress(output()),
         Module::getAddress(filter()),
         with_bias ? Module::getAddress(bias()) : 0, n, ic, ih, iw, kh, kw, pt,
-        pb, pl, pr, sh, sw, ins_h, ins_w, rshift().getValue()[0].cast<IntegerAttr>().getInt(), with_bias ? 1 : 0, 0, 1, 1,
-        1, 1, relu ? 1 : 0, (CMD_ID_NODE*)BM1684::instance().cmdid_node);
+        pb, pl, pr, sh, sw, ins_h, ins_w,
+        rshift().getValue()[0].cast<IntegerAttr>().getInt(), with_bias ? 1 : 0,
+        0, 1, 1, 1, 1, relu ? 1 : 0,
+        (CMD_ID_NODE *)BM1684::instance().cmdid_node);
   } else {
     auto weight_addr = Module::getAddress(filter());
     auto bias_offset = align_up(ic / g, 4l) * kh * kw;
@@ -69,13 +71,16 @@ void tpu::ConvOp::codegen_global_int8_bm1684() {
         Module::getAddress(filter()),
         with_bias ? Module::getAddress(bias()) : 0, n, ic, ih, iw, g, oc, kh,
         kw, dh, dw, pt, pb, pl, pr, sh, sw, with_bias ? 1 : 0, 0, relu ? 1 : 0,
-        0, 1, 0, 0, rshift().getValue()[0].cast<IntegerAttr>().getInt(), 1, 1, 1, 3, 0, 0, 0, 0, 0,
-        (CMD_ID_NODE*)BM1684::instance().cmdid_node);
+        0, 1, 0, 0, rshift().getValue()[0].cast<IntegerAttr>().getInt(), 1, 1,
+        1, 3, 0, 0, 0, 0, 0, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
   }
 }
 
 int64_t tpu::ConvOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
-                                          int64_t out_lmem_bytes) {
+                                          int64_t out_lmem_bytes,
+                                          int64_t in_nslice, int64_t in_hslice,
+                                          int64_t out_nslice,
+                                          int64_t out_hslice) {
   // TODO for spicial situation
   return 0;
 }

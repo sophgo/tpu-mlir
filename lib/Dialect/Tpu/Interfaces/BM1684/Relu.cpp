@@ -24,7 +24,10 @@ void tpu::ReluOp::codegen_global_int8_bm1684() {
 }
 
 int64_t tpu::ReluOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
-                                          int64_t out_lmem_bytes) {
+                                          int64_t out_lmem_bytes,
+                                          int64_t in_nslice, int64_t in_hslice,
+                                          int64_t out_nslice,
+                                          int64_t out_hslice) {
   return 0;
 }
 
