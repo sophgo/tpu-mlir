@@ -48,7 +48,10 @@ void tpu::AddOp::codegen_global_int8_bm1684() {
 }
 
 int64_t tpu::AddOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
-                                         int64_t out_lmem_bytes) {
+                                         int64_t out_lmem_bytes,
+                                         int64_t in_nslice, int64_t in_hslice,
+                                         int64_t out_nslice,
+                                         int64_t out_hslice) {
   auto stype = Module::getStorageType(output());
   if (stype.isF32()) {
     return 0;

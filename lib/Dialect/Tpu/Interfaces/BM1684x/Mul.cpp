@@ -107,7 +107,10 @@ void tpu::MulOp::codegen_global_float_bm1684x() {
 // =========================================
 
 int64_t tpu::MulOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
-                                          int64_t out_lmem_bytes) {
+                                          int64_t out_lmem_bytes,
+                                          int64_t in_nslice, int64_t in_hslice,
+                                          int64_t out_nslice,
+                                          int64_t out_hslice) {
   return 0;
 }
 
@@ -142,4 +145,3 @@ void tpu::MulOp::codegen_local_float_bm1684x(int64_t n_step, int64_t h_step) {
   BM1684x::instance().call_local_func("backend_api_eltwise_float_local", &p,
                                       sizeof(eltwise_float_local_param_t));
 }
-
