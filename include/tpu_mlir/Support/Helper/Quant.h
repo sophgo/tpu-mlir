@@ -81,6 +81,8 @@ struct Quant {
   static double getScale(double threshold, bool sign);
   static void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
                                    bool asymmetric);
+  static void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
+                                   bool &sign, bool asymmetric);
 
   template <typename T> static inline int8_t to_int8(T value) {
     auto v = std::round(value);

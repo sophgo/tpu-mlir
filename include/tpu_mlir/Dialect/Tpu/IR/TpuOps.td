@@ -220,6 +220,24 @@ def Tpu_Depth2SpaceOp: Tpu_Op<"Depth2Space"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_LutOp: Tpu_Op<"Lut",
+  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]>{
+  let summary = "Lut operator";
+
+  let description = [{
+    lookup table in index [0-255], y[i] = table(x[i])
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$table,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
+    StrAttr:$name
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
   let summary = "matmul operator";
 
@@ -296,9 +314,12 @@ def Tpu_LoadOp:Tpu_Op<"Load",
   [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
   let summary = "Load operation";
   let description = [{
+    load input or weight from gmem to lmem;
+    if do_bcast, [1,1,1,w] will load to [1,npu,1,w]
   }];
   let arguments = (ins
     AnyTensor:$input,
+    DefaultValuedAttr<BoolAttr, "false">:$do_bcast,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
     StrAttr:$name
   );
@@ -322,6 +343,7 @@ def Tpu_RequantOp:Tpu_Op<"Requant",
   [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
   let summary = "requant operation";
   let description = [{
+    Requant int32 or f32 data to int8 or uint8 data
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -337,6 +359,7 @@ def Tpu_RequantOp:Tpu_Op<"Requant",
 def Tpu_GroupOp:Tpu_BaseOp<"Group"> {
   let summary = "Group operation";
   let description = [{
+    Make ops in one group to inferece by local mem
   }];
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
@@ -365,13 +388,27 @@ def Tpu_YieldOp : Tpu_BaseOp<"Yield", [NoSideEffect,
   let assemblyFormat = "attr-dict ($operands^ `:` type($operands))?";
 }
 
+def Tpu_SiLUOp : Tpu_Op<"SiLU",
+    [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
+  let summary = " SiLU operator,  y = x * Sigmoid(x)";
+  let description = [{
+     Y = x * Sigmoid(x)
+  }];
+  let arguments = (
+    ins AnyTensor:$input,
+    StrAttr:$name
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Tpu_SoftmaxOp: Tpu_Op<"Softmax", [InOutSameShape]> {
   let summary = "softmax operator";
 
   let description = [{
-  The softmax function, also known as softargmax or normalized exponential
-  function, is a generalization of the logistic function to multiple dimensions.
-}];
+    The softmax function, also known as softargmax or normalized exponential
+    function, is a generalization of the logistic function to multiple dimensions.
+  }];
 
   let arguments = (ins
     AnyTensor:$input,

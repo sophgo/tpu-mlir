@@ -55,20 +55,28 @@ double Quant::getScale(double threshold, bool sign) {
 
 void Quant::getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
                                  bool asymmetric) {
+  bool sign;
+  getScaleAndZeroPoint(v, scale, zeropoint, sign, asymmetric);
+}
+
+void Quant::getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
+                                 bool &sign, bool asymmetric) {
   if (isCalibratedType(v)) {
     auto qtype = getCalibratedType(v);
     auto max = qtype.getMax();
     auto min = qtype.getMin();
+    sign = min < 0;
     if (asymmetric) {
       getScaleAndZeroPoint(min, max, scale, zeropoint);
     } else {
       zeropoint = 0;
-      scale = getScale(max, min < 0);
+      scale = getScale(max, sign);
     }
   } else if (isUniformQuantized(v)) {
     auto qtype = getUniformQuantizedType(v);
     scale = qtype.getScale();
     zeropoint = qtype.getZeroPoint();
+    sign = qtype.isSigned();
   } else {
     v.dump();
     llvm_unreachable("can't get scale and zeropoint");

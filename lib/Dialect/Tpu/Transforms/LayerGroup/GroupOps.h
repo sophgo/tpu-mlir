@@ -93,7 +93,8 @@ protected:
   void adjust_lmem_id(group_lmem_t group_lmem, int64_t nsecs, int64_t hsecs);
   bool assign_lmem_addr(group_lmem_t group_lmem, int64_t nsecs, int64_t hsecs);
   int64_t alloc_lmem(int64_t size);
-  bool is_eu_align(Value opd, Operation *op);
+  bool is_eu_align(mlir::Value opd, Operation *op);
+  bool need_bcast(mlir::Value opd);
   inline bool is_same_slice(const slice_pair_t &a, const slice_pair_t &b) {
     return a.first == b.first && a.second == b.second;
   }

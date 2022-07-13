@@ -17,12 +17,17 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-int64_t top::SigmoidOp::getFLOPs() { return 0; }
+int64_t top::SiLUOp::getFLOPs() { return Module::getNumElements(output()) * 5; }
 
-LogicalResult top::SigmoidOp::init(InferenceParameter &p) { return success(); }
-void top::SigmoidOp::deinit(InferenceParameter &p) {}
+LogicalResult top::SiLUOp::init(InferenceParameter &p) { return success(); }
+void top::SiLUOp::deinit(InferenceParameter &p) {}
 
-LogicalResult top::SigmoidOp::inference(InferenceParameter &p) {
-  llvm_unreachable("SigmoidOp to be supported");
+LogicalResult top::SiLUOp::inference(InferenceParameter &p) {
+  auto num_element = Module::getNumElements(input());
+#pragma omp parallel for schedule(static, omp_schedule(num_element))
+  for (int i = 0; i < num_element; ++i) {
+    auto val = p.inputs[0][i];
+    p.outputs[0][i] = val / (1 + std::exp(-val));
+  }
   return success();
 }
