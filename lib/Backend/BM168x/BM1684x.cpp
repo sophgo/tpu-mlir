@@ -94,6 +94,7 @@ void BM1684x::load_functions() {
 
 void BM1684x::init() {
   BM168x::init();
+  dl_load_lookup_tables();
   dl_set_cmd_len_ptr((void *)&gdma_bytes, (void *)&bdc_bytes);
 }
 

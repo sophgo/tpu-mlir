@@ -43,8 +43,9 @@ typedef struct pooling_common_spec {
   int32_t ceil_mode;
   int32_t round_mode;
   int32_t avg_pooling_quant_mode;
+  int32_t max_pooling_with_mask; //1: with mask 0: no mask
   int32_t multiplier;
-  int32_t shift;
+  int32_t rshiftbits;
 } pooling_common_spec_t;
 
 typedef struct {
@@ -117,7 +118,7 @@ void tpu::AvgPoolOp::codegen_global_int8_bm1684x() {
   spec.relu_upper_limit = 0;
   spec.ceil_mode = 0;
   spec.multiplier = multiplier();
-  spec.shift = rshift();
+  spec.rshiftbits = rshift();
   spec.round_mode = ROUND_UP;
   BM1684x::instance().call_global_func("backend_api_pooling_global", &spec,
                                        sizeof(spec), input_spec->data(),
@@ -285,7 +286,7 @@ void tpu::AvgPoolOp::codegen_local_int8_bm1684x(int64_t n_step,
   common.relu_upper_limit = 0;
   common.ceil_mode = 0;
   common.multiplier = multiplier();
-  common.shift = rshift();
+  common.rshiftbits = rshift();
   common.round_mode = ROUND_UP;
   auto gi = getGroupInfo(n_step, h_step);
   local_sec_info_t sec_info;

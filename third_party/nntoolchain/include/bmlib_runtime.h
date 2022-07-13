@@ -27,13 +27,17 @@
 
 #ifndef BMLIB_RUNTIME_H_
 #define BMLIB_RUNTIME_H_
-
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdarg.h>
-#define DECL_EXPORT
-#define DECL_IMPORT
-
+#if defined(_WIN32) && !defined(__MINGW32__)
+    #include <vadefs.h>
+    #define DECL_EXPORT __declspec(dllexport)
+    #define DECL_IMPORT __declspec(dllimport)
+#else
+	#include <stdbool.h>
+	#include <stddef.h>
+	#include <stdarg.h>
+    #define DECL_EXPORT
+    #define DECL_IMPORT
+#endif
 
 #if defined(__cplusplus)
 extern "C" {
@@ -80,6 +84,12 @@ typedef enum {
   PERF_MONITOR_TPU = 1
 } PERF_MONITOR_ID;
 
+typedef enum {
+  BMCPU_IDLE    = 0,
+  BMCPU_RUNNING = 1,
+  BMCPU_FAULT   = 2
+} bm_cpu_status_t;
+
 /*
 * bm performace monitor
 */
@@ -102,9 +112,11 @@ typedef union {
 typedef struct bm_mem_desc {
   union {
     struct {
-
+#ifdef __linux__
       unsigned long device_addr;
-
+#else
+      unsigned long long device_addr;
+#endif
       unsigned int reserved;
       int dmabuf_fd;
     } device;
@@ -129,6 +141,16 @@ typedef struct bm_context *bm_handle_t;
 
 DECL_EXPORT void bmlib_log(const char *tag, int level, const char *fmt, ...);
 
+#ifndef USING_CMODEL
+#define BM_CHECK_RET(call)                                                    \
+  do {                                                                        \
+    bm_status_t ret = (bm_status_t)call;                                                   \
+    if (ret != BM_SUCCESS) {                                                  \
+      bmlib_log("BM_CHECK",16,"BM_CHECK_RET fail %s: %s: %d\n", __FILE__, __func__, __LINE__); \
+      return ret;                                                             \
+    }                                                                         \
+  } while (0)
+#else
 #define BM_CHECK_RET(call)                     \
   do {                                         \
     bm_status_t ret = call;                    \
@@ -138,7 +160,7 @@ DECL_EXPORT void bmlib_log(const char *tag, int level, const char *fmt, ...);
       exit(-ret);                              \
     }                                          \
   } while (0)
-
+#endif
 
 /*******************handle releated functions *********************************/
 /**
@@ -395,8 +417,22 @@ DECL_EXPORT bm_status_t bm_malloc_device_byte_heap_mask(bm_handle_t handle, bm_d
  */
 DECL_EXPORT void bm_free_device(bm_handle_t handle, bm_device_mem_t mem);
 
-// these two functions are not used for 1684x
+/**
+ * @name    bm_gmem_arm_reserved_request
+ * @brief   To obtain the address of global memory reserved for arm926
+ * @param [in]  handle  The device handle
+ *
+ * @retval unsigned long long  The absolute address of gmem reserved for arm926
+ */
 DECL_EXPORT unsigned long long bm_gmem_arm_reserved_request(bm_handle_t handle);
+
+/**
+ * @name    bm_gmem_arm_reserved_release
+ * @brief   To release the global memory reserved for arm926
+ * @ingroup bmlib_runtime
+ *
+ * @param [in] handle  The device handle
+ */
 DECL_EXPORT void bm_gmem_arm_reserved_release(bm_handle_t handle);
 
 /*******************memory copy functions *************************************/
@@ -866,6 +902,7 @@ DECL_EXPORT bm_status_t bm_thread_sync(bm_handle_t handle);
 
 /*******************trace and profile releated functions **********************/
 typedef struct bm_profile {
+#ifdef __linux__
   unsigned long cdma_in_time;
   unsigned long cdma_in_counter;
   unsigned long cdma_out_time;
@@ -873,6 +910,15 @@ typedef struct bm_profile {
   unsigned long tpu_process_time;
   unsigned long sent_api_counter;
   unsigned long completed_api_counter;
+#else
+  unsigned long long cdma_in_time;
+  unsigned long long cdma_in_counter;
+  unsigned long long cdma_out_time;
+  unsigned long long cdma_out_counter;
+  unsigned long long tpu_process_time;
+  unsigned long long sent_api_counter;
+  unsigned long long completed_api_counter;
+#endif
 } bm_profile_t;
 /**
  * @name    bm_get_profile
@@ -891,9 +937,13 @@ DECL_EXPORT bm_status_t bm_get_profile(bm_handle_t handle, bm_profile_t *profile
  * @name    bm_get_last_api_process_time_us
  * @brief   This function is abandoned.
  */
+#ifdef __linux__
 DECL_EXPORT bm_status_t bm_get_last_api_process_time_us(bm_handle_t handle,
                                             unsigned long *time_us);
-
+#else
+DECL_EXPORT bm_status_t bm_get_last_api_process_time_us(bm_handle_t handle,
+											unsigned long long *time_us);
+#endif
 /*******************tpu clock and module reset releated functions *************/
 
 /**
@@ -931,8 +981,12 @@ struct bm_misc_info {
   unsigned int chipid;
 #define BM1682_CHIPID_BIT_MASK (0X1 << 0)
 #define BM1684_CHIPID_BIT_MASK (0X1 << 1)
-
+#define BM1686_CHIPID_BIT_MASK (0X1 << 2)
+#ifdef __linux__
   unsigned long chipid_bit_mask;
+#else
+	unsigned long long chipid_bit_mask;
+#endif
   unsigned int driver_version;
   int domain_bdf;
   int board_version; /*hardware board version [23:16]-mcu sw version, [15:8]-board type, [7:0]-hw version*/
@@ -1025,6 +1079,17 @@ DECL_EXPORT void bm_set_debug_mode(bm_handle_t handle, int mode);
 typedef void (*bmlib_api_dbg_callback)(int, int, int, const char*);
 // api, result, duratioin, log, third int for api duration for future
 DECL_EXPORT void bmlib_set_api_dbg_callback(bmlib_api_dbg_callback callback);
+
+/**
+ * @name    bmcpu_get_cpu_status
+ * @brief   Get bmcpu status
+ * @ingroup bmlib_log
+ *
+ * @param [in]  handle          The device handle
+ * @retval  BMCPU_RUNNING  bmcpu is running.
+ *          Other code  Fails.
+ */
+DECL_EXPORT bm_cpu_status_t bmcpu_get_cpu_status(bm_handle_t handle);
 
 /**
  * @name    bmcpu_start_cpu
@@ -1456,9 +1521,11 @@ DECL_EXPORT bm_status_t bm_get_fan_speed(bm_handle_t handle, unsigned int *fan);
  * @retval  BM_SUCCESS  Succeeds.
  *          Other code  Fails.
  */
-
+#ifdef __linux__
 DECL_EXPORT bm_status_t bm_get_ecc_correct_num(bm_handle_t handle, unsigned long *ecc_correct_num);
-
+#else
+DECL_EXPORT bm_status_t bm_get_ecc_correct_num(bm_handle_t handle, unsigned long long *ecc_correct_num);
+#endif
 /**
  * @name    bm_get_12v_atx
  * @brief   get atx_12v

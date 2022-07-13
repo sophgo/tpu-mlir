@@ -67,6 +67,7 @@ def Tpu_ConvOp: Tpu_Op<"Conv",[
     //new param
     BoolAttr:$with_bias,
     DefaultValuedAttr<BoolAttr, "false">:$coeff_merged,
+    DefaultValuedAttr<I64Attr, "0">:$use_3ic_optimize,
     OptionalAttr<I64ArrayAttr>:$multiplier,
     OptionalAttr<I64ArrayAttr>:$rshift,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
