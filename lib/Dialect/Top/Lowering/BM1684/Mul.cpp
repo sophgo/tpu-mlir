@@ -8,6 +8,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "../Lowering.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Helper/Module.h"
@@ -22,6 +23,5 @@ Value top::MulOp::lowering_int8_bm1684() {
 }
 
 Value top::MulOp::lowering_f32_bm1684() {
-  llvm_unreachable("MulOp to be supported");
-  return nullptr;
+  return lowering_common_float<tpu::MulOp, Float32Type>(getOperation());
 }

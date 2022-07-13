@@ -154,6 +154,29 @@ def Tpu_AddOp: Tpu_Op<"Add", [SupportFuseRelu, InOutSameShape,
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_MulOp: Tpu_Op<"Mul", [SupportFuseRelu, InOutSameShape,
+  DeclareOpInterfaceMethods<LocalGenInterface>]> {
+  let summary = "mul operator";
+
+  let description = [{
+    Elementwise mul of input1 and input2. Axis of size 1 will be broadcast,
+    as necessary.
+  }];
+
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    OptionalAttr<F64ArrayAttr>:$coeff,
+    // quant param
+    OptionalAttr<I64ArrayAttr>:$multipliers,
+    OptionalAttr<I64ArrayAttr>:$rshifts,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
+    StrAttr:$name
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 // def Tpu_ConcatOp: Tpu_Op<"Concat", [SupportFuseRelu,
 //   DeclareOpInterfaceMethods<LocalGenInterface>]> {
 //   let summary = "concat operator";
