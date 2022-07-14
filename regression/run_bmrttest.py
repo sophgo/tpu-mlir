@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from time import gmtime, strftime
 import subprocess
-import numpy as np
 import os
 import sys
 import re
@@ -39,7 +38,8 @@ def run_bmrtttest(bmodel, loopnum=100):
     print(f"[run test]: {bmodel}")
     out = subprocess.run(
         ["bmrt_test", "--context_dir", bmodel, "--loopnum", str(loopnum)],
-        capture_output=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
     )
     for meg in out.stdout.decode().split("\n"):
         if failed_regx.search(meg):
@@ -57,12 +57,12 @@ def run_bmrtttest(bmodel, loopnum=100):
                         out_msg.setdefault(k + _k, []).append(_t)
                 else:
                     out_msg.setdefault(k, []).append(f(meg))
-                continue
+                break
 
     out = {}
     for k, v in out_msg.items():
         if isinstance(v[0], float):
-            __out = (np.min(v), np.max(v), np.mean(v))
+            __out = (min(v), max(v), sum(v) / len(v))
             out[k + " min"] = __out[0]
             out[k + " max"] = __out[1]
             out[k + " mean"] = __out[2]
@@ -78,9 +78,11 @@ def gen_bmodel_test_info(dir):
     bmrt_test_info = []
     keys = set()
     for f in files:
-        info = run_bmrtttest(os.path.join(dir, f))
-        keys.update(info.keys())
-        bmrt_test_info.append(info)
+        folder = os.path.join(dir, f)
+        if os.path.isdir(folder):
+            info = run_bmrtttest(os.path.join(dir, f))
+            keys.update(info.keys())
+            bmrt_test_info.append(info)
     keys = sorted(keys)
     fname = f"{strftime('%Y-%m-%d_%H.%M.%S.csv', gmtime())}"
     with open(fname, "w") as fb:
@@ -94,6 +96,9 @@ def gen_bmodel_test_info(dir):
 if __name__ == "__main__":
     args = sys.argv
     assert (
-        len(args) == 2
+        len(args) <= 2
     ), f"The input should be a folder. but more arguments are provided {args}"
-    gen_bmodel_test_info(args[1])
+    if len(args) == 2:
+        gen_bmodel_test_info(args[1])
+    elif len(args) == 1:
+        gen_bmodel_test_info("./")

@@ -108,8 +108,9 @@ def prepare_bmodel_test(dir):
 def bmodel_out(dir):
     folders = os.listdir(dir)
     for f in folders:
-        if "step_by_step" not in f:
-            prepare_bmodel_test(os.path.join(dir, f))
+        folder = os.path.join(dir, f)
+        if "step_by_step" not in f and os.path.isdir(folder):
+            prepare_bmodel_test(folder)
 
 
 if __name__ == "__main__":

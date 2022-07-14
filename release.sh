@@ -13,6 +13,15 @@ cp -rf ${INSTALL_PATH} ${release_archive}
 
 cp -rf ${PROJECT_ROOT}/regression ${release_archive}
 
+# commands to bmrt_test
+regression_sh=${release_archive}/regression/run.sh
+echo "# for test" >> ${regression_sh}
+echo "mkdir -p bmodels" >> ${regression_sh}
+echo "pushd bmodels" >> ${regression_sh}
+echo "../prepare_bmrttest.py ../regression_out" >> ${regression_sh}
+echo "cp -f ../run_bmrttest.py ./run.py" >> ${regression_sh}
+echo "popd" >> ${regression_sh}
+
 # build a envsetup.sh
 __envsetupfile=${release_archive}/envsetup.sh
 rm -f __envsetupfile
@@ -52,21 +61,27 @@ cd regression
 
 After run regression test, all the bmodels will be in regression_out.
 
-3. Collect bmodels for runtime test
+
+3. [Copy] bmodels to BM1684X device(PCIE/SOC)
+
+- If your BM1684X devide runs in PCIE mode, use the commands below.
+
+Sophgo-MLIR does not provide "bmrt_test" excutable file.
+It would be best to have an environment where "bmrt_test" is available.
 
 ``` bash
-mkdir bmodels_rttest
-pushd bmodels_rttest
-../prepare_bmrttest.py ../regression_out
-popd
+cd to/the/folder/of/bmodels
+./run.py
 ```
 
-4. Copy bmodels_rttest to BM1684X device(PCIE/SOC)
+A ".csv" file(report) will be generated in this folder.
 
-```
-cp run_bmrttest.py /to/your/device
-cp bmodels_rttest /to/your/device
-./run_bmrttest.py ./bmodels_rttest
+-  If your BM1684X device runs in SOC mode, use the commands below.
+
+``` bash
+cp -rf bmodels /to/your/BM1684X/soc/board # eg. ~/
+cd /to/bmodels # eg. ~/
+./run.py
 ```
 
 A ".csv" file(report) will be generated in this folder.
