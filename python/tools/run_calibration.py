@@ -42,7 +42,7 @@ if __name__ == '__main__':
                         default=2048,
                         help='Specify histogram bin numer for kld calculate')
     parser.add_argument('-o', '--calibration_table', type=str, help='output threshold table')
-    parser.add_argument('--debug_cmd', type=str, help='debug cmd')
+    parser.add_argument('--debug_cmd', type=str, default='', help='debug cmd')
     args = parser.parse_args()
 
     selector = DataSelector(args.dataset, args.input_num, args.data_list)

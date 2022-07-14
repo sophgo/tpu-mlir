@@ -1,0 +1,62 @@
+!/bin/bash
+set -ex
+
+rm -rf mobilenet_v2
+mkdir -p mobilenet_v2
+pushd mobilenet_v2
+
+model_transform.py \
+    --model_name mobilenet_v2 \
+    --model_def  ${NNMODELS_PATH}/onnx_models/mobilenetv2-7.onnx \
+    --input_shapes [[1,3,224,224]] \
+    --resize_dims 256,256 \
+    --mean 123.675,116.28,103.53 \
+    --scale 0.0171,0.0175,0.0174 \
+    --pixel_format rgb \
+    --test_input ${REGRESSION_PATH}/image/cat.jpg \
+    --test_result mobilenet_v2_f32_outputs.npz \
+    --mlir mobilenet_v2.mlir \
+
+model_eval.py \
+   --mlir_file mobilenet_v2.mlir \
+   --dataset /data/ILSVRC2012_img_val_with_subdir/ \
+   --count 1000
+
+# calibration
+run_calibration.py mobilenet_v2.mlir \
+  --dataset $REGRESSION_PATH/ILSVRC2012 \
+  --input_num 200 \
+  -o mobilenet_v2_cali_table
+
+# lowering to symetric int8
+tpuc-opt mobilenet_v2.mlir \
+    --import-calibration-table='file=mobilenet_v2_cali_table asymmetric=false' \
+    --lowering="mode=INT8 asymmetric=false chip=bm1684x" \
+    --save-weight \
+    -o mobilenet_v2_tpu_int8_sym.mlir
+
+
+model_eval.py \
+   --mlir_file mobilenet_v2_tpu_int8_sym.mlir \
+   --dataset /data/ILSVRC2012_img_val_with_subdir/ \
+   --count 1000
+
+# calibration
+run_calibration.py mobilenet_v2.mlir \
+  --dataset $REGRESSION_PATH/ILSVRC2012 \
+  --input_num 200 \
+  --tune_num 30 \
+  -o mobilenet_v2_cali_table_tuned  #--debug_cmd 'debug_log'
+
+tpuc-opt mobilenet_v2.mlir \
+    --import-calibration-table='file=mobilenet_v2_cali_table_tuned asymmetric=false' \
+    --lowering="mode=INT8 asymmetric=false chip=bm1684x" \
+    --save-weight \
+    -o mobilenet_v2_tpu_int8_sym_tuned.mlir
+
+model_eval.py \
+   --mlir_file mobilenet_v2_tpu_int8_sym_tuned.mlir \
+   --dataset /data/ILSVRC2012_img_val_with_subdir/ \
+   --count 1000
+
+popd

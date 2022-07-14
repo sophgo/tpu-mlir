@@ -70,6 +70,7 @@ void ModuleInterpreter::allocate_resources() {
         value_map[name] = result;
         if (auto wOp = llvm::dyn_cast<top::WeightOp>(op)) {
           mem_map[name] = wOp.read_as_float();
+          all_weight_names.push_back(name);
         } else {
           mem_map[name] = std::make_shared<std::vector<float>>(count);
           all_tensor_names.push_back(name);
@@ -115,6 +116,16 @@ void ModuleInterpreter::allocate_resources() {
         inference_map[name] = param;
       }
     });
+  }
+}
+
+void ModuleInterpreter::fake_quant_weight() {
+  for (auto &name : all_weight_names) {
+    auto mem = *mem_map.at(name);
+    auto max_value = std::max(std::abs(*std::max_element(mem.begin(), mem.end())), std::abs(*std::min_element(mem.begin(), mem.end())));
+    for (auto &data : mem) {
+      data = std::round(data*127/max_value)*max_value/127;
+    }
   }
 }
 
