@@ -146,6 +146,8 @@ public:
     return getPythonArray(tensor.get(), shape);
   }
   void invoke() { interpreter_->invoke(); }
+  void fake_quant_weight() { interpreter_->fake_quant_weight(); }
+
   py::array invoke_at(const std::string name) {
     auto tensor = interpreter_->invoke_at(name);
     std::vector<int64_t> shape = interpreter_->getTensorShape(name);
@@ -182,6 +184,7 @@ PYBIND11_MODULE(pymlir, m) {
       .def("get_tensor", &py_module::get_tensor, "get one tensor data")
       .def("get_all_tensor", &py_module::getAllTensor, "dump all tensor data")
       .def("invoke", &py_module::invoke)
+      .def("fake_quant_weight", &py_module::fake_quant_weight)
       .def("invoke_at", &py_module::invoke_at, "invote at specified layer")
       .def_readonly("input_names", &py_module::input_names)
       .def_readonly("output_names", &py_module::output_names)
