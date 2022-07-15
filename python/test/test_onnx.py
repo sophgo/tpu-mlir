@@ -72,85 +72,41 @@ class ONNX_IR_TESTER(object):
                         top_mlir_outs: dict,
                         quant_mode: str,
                         isAsym: bool = False):
-        if quant_mode != "fp32":
-            tpu_mlir, bmodel = self.quantization(model_name, top_mlir_outs, quant_mode, isAsym)
-        else:
-            # lowering
-            tpu_mlir = "{}_tpu_f32".format(model_name)
-            os.system(
-                "tpuc-opt {}.mlir --lowering='mode=F32 chip=bm1684x' --save-weight -o {}.mlir".
-                format(model_name, tpu_mlir))
-            # weight reorder
-            tpu_reorder = "{}_reordered".format(tpu_mlir)
-            os.system("tpuc-opt {}.mlir --weight-reorder --save-weight -o {}.mlir".format(
-                tpu_mlir, tpu_reorder))
-            # subnet divide
-            tpu_subnet = tpu_reorder.replace("reordered", "subnet")
-            os.system("tpuc-opt {}.mlir --subnet-divide --save-weight -o {}.mlir".format(
-                tpu_reorder, tpu_subnet))
-            # layer group
-            tpu_lg = tpu_subnet.replace("subnet", "lg")
-            os.system("tpuc-opt {}.mlir --layer-group --save-weight -o {}.mlir".format(
-                tpu_subnet, tpu_lg))
-            # address assign (global memory)
-            tpu_addr = tpu_lg.replace("lg", "addr")
-            os.system("tpuc-opt {}.mlir --address-assign --save-weight -o {}.mlir".format(
-                tpu_lg, tpu_addr))
-            # bmodel generation
-            bmodel = tpu_addr.replace("addr", "1684x.bmodel")
-            tpu_final = tpu_addr.replace("addr", "final")
-            os.system("tpuc-opt {}.mlir --codegen='model_file={}' -o {}.mlir".format(
-                tpu_addr, bmodel, tpu_final))
+        table_name = None
+        top_mlir = "{}.mlir".format(model_name)
+        tpu_mlir = "{}_tpu_{}".format(model_name, quant_mode)
+        if quant_mode == "int8":
+            table_name = "{}_cali_table".format(model_name)
+            make_test_calibration_table(top_mlir_outs, table_name)
+            tpu_mlir += "_asym" if isAsym else "_sym"
+        # lowering
+        mlir_lowering(top_mlir,
+                      tpu_mlir + ".mlir",
+                      mode="F32",
+                      chip="bm1684x",
+                      cali_table=table_name,
+                      asymmetric=isAsym)
+        # transform
+        bmodel = tpu_mlir + "_1684x.bmodel"
+        tpu_final = tpu_mlir + "_final.mlir"
+        mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final)
 
         return (tpu_mlir + ".mlir", bmodel)
 
-    def quantization(self, model_name: str, tensors: dict, quant_mode: str, isAsym: bool = False):
-        # int8 qunatization
-        tpu_mlir = "{}_tpu_{}".format(model_name, quant_mode)
-        bmodel = tpu_mlir.replace("_tpu", "")
-        if quant_mode == "int8":
-            if isAsym:
-                tpu_mlir += "_asym"
-                bmodel += "_asym"
-            else:
-                tpu_mlir += "_sym"
-                bmodel += "_sym"
-            asym = str(isAsym).lower()
-            bmodel += "_1684x.bmodel"
-            table_name = "{}_cali_table".format(model_name)
-            make_test_calibration_table(tensors, table_name)
-            os.system("tpuc-opt {0}.mlir --import-calibration-table='file={1} asymmetric={2}' \
-                --lowering='mode=INT8 asymmetric={2} chip=bm1684x' --save-weight -o {3}.mlir".
-                      format(model_name, table_name, asym, tpu_mlir))
-            os.system(
-                "tpuc-opt {0}.mlir --weight-reorder --subnet-divide --layer-group --address-assign\
-                --save-weight --codegen='model_file={1}' -o {0}_final.mlir".format(
-                    tpu_mlir, bmodel))
-
-        # bf16 quantization
-        elif quant_mode == "bf16":
-            # Todo: add bf16 quant and transform
-            pass
-        else:
-            raise RuntimeError("Not support quant mode {}".format(quant_mode))
-
-        return (tpu_mlir, bmodel)
-
     def inference_and_compare(self,
-                           top_mlir_output: dict,
-                           tpu_mlir: str,
-                           bmodel: str,
-                           input_npz: str,
-                           quant_mode: str,
-                           model_name: str,
-                           isAsym: bool = False):
+                              top_mlir_output: dict,
+                              tpu_mlir: str,
+                              bmodel: str,
+                              input_npz: str,
+                              quant_mode: str,
+                              model_name: str,
+                              isAsym: bool = False):
         input_data = np.load(input_npz)
 
         # tpu mlir inference
         tpu_mlir_outs = mlir_inference(input_data, tpu_mlir, dump_all=True)
         # bmodel inference
         bmodel_outs = model_inference(input_data, bmodel)
-        # top_mlir_output.pop("input", None)
 
         ref_npz = "{}_top_mlir_out.npz".format(model_name)
         np.savez(ref_npz, **top_mlir_output)
@@ -165,9 +121,9 @@ class ONNX_IR_TESTER(object):
 
         msg = quant_mode.upper()
         if quant_mode == "int8":
-            msg += " Asymmetric: {}".format(isAsym)
+            msg += ", Asymmetric: {}".format(isAsym)
 
-        print("* {} test success *".format(msg))
+        print("* {}, test success *".format(msg))
 
     def convert_and_test(self, input_data: dict, model_def, model_name: str, input_shapes: list):
         onnx_outs, top_mlir_outs, input_npz = self.onnx_convert(input_data, model_def, model_name,
@@ -183,12 +139,12 @@ class ONNX_IR_TESTER(object):
                 for isAsym in [True, False]:
                     tpu_mlir, bmodel = self.bmodel_generate(model_name, top_mlir_outs, quant_mode,
                                                             isAsym)
-                    self.inference_and_compare(top_mlir_outs, tpu_mlir, bmodel,
-                                            input_npz, quant_mode, model_name, isAsym)
+                    self.inference_and_compare(top_mlir_outs, tpu_mlir, bmodel, input_npz,
+                                               quant_mode, model_name, isAsym)
             else:
                 tpu_mlir, bmodel = self.bmodel_generate(model_name, top_mlir_outs, quant_mode)
-                self.inference_and_compare(top_mlir_outs, tpu_mlir, bmodel, input_npz,
-                                        quant_mode, model_name)
+                self.inference_and_compare(top_mlir_outs, tpu_mlir, bmodel, input_npz, quant_mode,
+                                           model_name)
 
     # adding operator starts from here
     def test_Conv2d(self):
@@ -234,8 +190,8 @@ class ONNX_IR_TESTER(object):
 
 
 if __name__ == "__main__":
-    os.makedirs("./python/test/onnx_test", exist_ok=True)
-    os.chdir("./python/test/onnx_test")
+    os.makedirs("onnx_test", exist_ok=True)
+    os.chdir("onnx_test")
     tester = ONNX_IR_TESTER()
 
     for test_item in TEST_ONNX_IR:
