@@ -17,13 +17,17 @@ from tools.npz_tool import npz_compare
 from tools.model_transform import *
 from utils.mlir_shell import *
 import os
+import gc
 '''
     There are 3 places to add new operator:
       1. TEST_ONNX_IR: list
       2. ONNX_IR_TESTER.test_function: dict
       3. for function of building new operator plz add at the tail of the class
 '''
-TEST_ONNX_IR = ["Conv2d"]
+TEST_ONNX_IR = [
+    "Conv2d",
+    "Pool"
+]
 
 
 def make_test_calibration_table(tensors, table_name):
@@ -43,10 +47,10 @@ class ONNX_IR_TESTER(object):
     '''
 
     def __init__(self):
-        self.converter = None
         self.test_function = {
             # Todo: add more operators
             "Conv2d": self.test_Conv2d,
+            "Pool": self.test_Pool,
         }
         self.quant_modes = ["fp32", "int8"]  # no quantization when quant_mode == "fp32"
 
@@ -62,7 +66,7 @@ class ONNX_IR_TESTER(object):
             input_data[name] = input_data[name].astype(np.float32)
         np.savez(input_npz, **input_data)
         # top mlir outputs will be inferenced first in case the quant mode is int8
-        onnx_outs = onnx_inference(input_data, onnx_model, False)
+        onnx_outs = onnx_inference(input_data, onnx_model, True)
         top_mlir_outs = mlir_inference(input_data, fp32_mlir, True)
 
         return (onnx_outs, top_mlir_outs, input_npz)
@@ -130,9 +134,16 @@ class ONNX_IR_TESTER(object):
                                                                 input_shapes)
 
         # test onnx and mlir outputs
-        top_mlir_output = list(top_mlir_outs.values())[1].flatten()
-        onnx_output = list(onnx_outs.values())[0].flatten()
-        np.testing.assert_allclose(top_mlir_output, onnx_output, rtol=1e-5, atol=1e-1)
+        counter = 0
+        for name in onnx_outs:
+            # top_mlir_name = name + "_{}".format(model_name)
+            if name in top_mlir_outs:
+                top_mlir_output = top_mlir_outs[name].flatten()
+                onnx_output = onnx_outs[name].flatten()
+                np.testing.assert_allclose(top_mlir_output, onnx_output, rtol=1e-5, atol=1e-1)
+                print("* Onnx and TOP result compared *")
+                counter += 1
+        assert (counter > 0)
 
         for quant_mode in self.quant_modes:
             if quant_mode == "int8":
@@ -146,7 +157,63 @@ class ONNX_IR_TESTER(object):
                 self.inference_and_compare(top_mlir_outs, tpu_mlir, bmodel, input_npz, quant_mode,
                                            model_name)
 
-    # adding operator starts from here
+    ##################################
+    # adding operators from here
+    ##################################
+
+    def test_Pool(self):
+        # For average and max pooling
+        for test_case in ["AveragePool", "MaxPool"]:
+            batch_size = 4
+            ic = 3
+            oc = 5
+            input_size = 28
+            output_size = 14
+            conv_kernel = 3
+            pool_kernel = 2
+            input_data = np.random.randn(batch_size, ic, input_size, input_size).astype(np.float32)
+
+            # Conv
+            weight_data = np.random.randn(oc, ic, conv_kernel, conv_kernel).astype(np.float32)
+            bias_data = np.random.randn(oc).astype(np.float32)
+            conv_input = helper.make_tensor_value_info('input', TensorProto.FLOAT,
+                                                       list(input_data.shape))
+            # conv_output = helper.make_tensor_value_info('conv_output', TensorProto.FLOAT, [batch_size, oc, 28, 28])
+            weight = helper.make_tensor('weight', TensorProto.FLOAT, list(weight_data.shape),
+                                        weight_data)
+            bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape), bias_data)
+            conv_node_def = helper.make_node(
+                "Conv",
+                inputs=['input', 'weight', 'bias'],
+                outputs=['conv_output'],
+                kernel_shape=[conv_kernel, conv_kernel],
+                pads=[1, 1, 1, 1],
+                strides=[1, 1],
+                dilations=[1, 1],
+                group=1,
+            )
+
+            # Pool
+            # pool_input = helper.make_tensor_value_info('conv_output', TensorProto.FLOAT, [batch_size, oc, input_size, input_size])
+            pool_output = helper.make_tensor_value_info('output', TensorProto.FLOAT,
+                                                        [batch_size, oc, 14, 14])
+
+            pool_node_def = onnx.helper.make_node(
+                test_case,
+                inputs=['conv_output'],
+                outputs=['output'],
+                kernel_shape=[pool_kernel, pool_kernel],
+                strides=[2, 2],
+            )
+            graph_def = helper.make_graph([conv_node_def, pool_node_def],
+                                          test_case, [conv_input], [pool_output],
+                                          initializer=[weight, bias])
+            model_def = helper.make_model(graph_def, producer_name=test_case)
+            model_def.opset_import[0].version = 13
+            onnx.checker.check_model(model_def)
+            self.convert_and_test({"input": input_data}, model_def, test_case,
+                                  [[batch_size, ic, input_size, input_size]])
+
     def test_Conv2d(self):
         test_case = 'Conv2d'
         batch_size = 4
