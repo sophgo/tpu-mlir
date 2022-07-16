@@ -44,15 +44,53 @@ export REGRESSION_PATH=${TPUC_ROOT}/regression
 # generate readme.md
 echo "Create readme.md" 1>&2
 more > "${release_archive}/readme.md" <<'//MY_CODE_STREAM'
-For test
+# For test
 
-1. Set environment
+0. Setup
+
+If you have this file, congratulation, you have finished the first step of
+exploring the "TPU-MLIR" release SDK.
+
+Before getting a start, you need to prepare some configuration.
+
+- a. Get the sohgo-sdk docker image `docker pull mattlu/sophgo:18.04`.
+
+- b. Clone the "nnmodels" repository to the same directory in which you unpack
+  TPU-MLIR. `git clone ssh://YourName@gerrit-ai.sophgo.vip:29418/nnmodels`.
+
+
+- c. (Optional, If you want to test more cases.) get into the nnmodels folder and
+  pull LFS files from the server.
+  `git lfs install && git lfs pull --include "*.onnx`
+
+- d. Create a docker container and map the directory of "TPU-MLIR" to it.
+  `docker run -v $PWD:/workspace/ -ti mattlu/sophgo:18.04 /bin/bash`
+
+- e. If everything goes well, you can go to the next stage.
+
+1. Set envrironment variables.
+
+You need to set some system variables to ensure all the functions of TPU-MLIR
+can work well. The commands below will make all the executable files provided by
+TPU-MLIR visible to the system.
 
 ``` bash
 source ./envsetup.sh
 ```
 
-2. Run regression
+2. Run demo
+
+This step will run lots of test cases to demonstrate all the features of
+TPU-MLIR, which include:
+
+- a. Translate ONNX/TFLite models to framework-independent TOP MLIR.
+
+- b. (Optional) Do calibration, and tranform float computes model to integer computations
+  which are friendly to hardware.
+
+- c. Transform TOP MLIR to TPU MLIR, which is close to the hardware.
+
+- d. Generate bm1684x machine code (bmodel).
 
 ``` bash
 cd regression
@@ -61,22 +99,21 @@ cd regression
 
 After run regression test, all the bmodels will be in regression_out.
 
+3. Test the performance of Bmodels on BM1684X.
 
-3. [Copy] bmodels to BM1684X device(PCIE/SOC)
+TPU-MLIR does not provide "bmrt_test" excutable file. It would be best to have
+an environment where "bmrt_test" is available.
 
 - If your BM1684X devide runs in PCIE mode, use the commands below.
-
-Sophgo-MLIR does not provide "bmrt_test" excutable file.
-It would be best to have an environment where "bmrt_test" is available.
 
 ``` bash
 cd to/the/folder/of/bmodels
 ./run.py
 ```
 
-A ".csv" file(report) will be generated in this folder.
+A "*.csv" file(report) will be generated in this folder.
 
--  If your BM1684X device runs in SOC mode, use the commands below.
+- If your BM1684X device runs in SOC mode, use the commands below.
 
 ``` bash
 cp -rf bmodels /to/your/BM1684X/soc/board # eg. ~/
@@ -84,7 +121,8 @@ cd /to/bmodels # eg. ~/
 ./run.py
 ```
 
-A ".csv" file(report) will be generated in this folder.
+A "*.csv" file(report) will be generated in this folder.
+
 
 //MY_CODE_STREAM
 
