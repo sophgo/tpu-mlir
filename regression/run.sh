@@ -7,6 +7,9 @@ rm -rf regression_out
 mkdir regression_out
 pushd regression_out
 
+# run onnx operation test
+test_onnx.py
+
 # run basic regression
 $DIR/basic/run.sh
 
