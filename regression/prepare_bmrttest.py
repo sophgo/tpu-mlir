@@ -107,10 +107,11 @@ def prepare_bmodel_test(dir):
 
 def bmodel_out(dir):
     folders = os.listdir(dir)
+    except_folder = ["step_by_step", "onnx_test"]
+    folders = list(set(folders).difference(set(except_folder)))
     for f in folders:
         folder = os.path.join(dir, f)
-        if "step_by_step" not in f and os.path.isdir(folder):
-            prepare_bmodel_test(folder)
+        prepare_bmodel_test(folder)
 
 
 if __name__ == "__main__":
