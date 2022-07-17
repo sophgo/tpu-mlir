@@ -26,12 +26,9 @@ def str2list(v):
     return files
 
 
-def check_return_value(cond, msg):
-    if not cond:
-        raise RuntimeError(msg)
-
-def show_fake_cmd(in_npz:str, model:str, out_npz:str):
+def show_fake_cmd(in_npz: str, model: str, out_npz: str):
     print("[CMD]: model_runner.py --input {} --model {} --output {}".format(in_npz, model, out_npz))
+
 
 class DeployTool:
 
@@ -58,9 +55,8 @@ class DeployTool:
     def lowering(self):
         self.tpu_mlir = "{}_{}_tpu_{}.mlir".format(self.module_name, self.chip, self.quantize)
         self.final_mlir = "{}_{}_{}_final.mlir".format(self.module_name, self.chip, self.quantize)
-        ret = mlir_lowering(self.mlir_file, self.tpu_mlir, self.quantize, self.chip,
-                            self.cali_table, self.asymmetric, self.quantize_table)
-        check_return_value(ret == 0, 'lowering failed')
+        mlir_lowering(self.mlir_file, self.tpu_mlir, self.quantize, self.chip, self.cali_table,
+                      self.asymmetric, self.quantize_table)
         if self.do_validate:
             tool.validate_tpu_mlir()
 
@@ -93,12 +89,10 @@ class DeployTool:
         tpu_outputs = mlir_inference(self.inputs, self.tpu_mlir)
         np.savez(self.tpu_npz, **tpu_outputs)
         # compare fp32 blobs and quantized tensors with tolerance similarity
-        ret = f32_blobs_compare(self.tpu_npz, self.ref_npz, self.tolerance, self.excepts)
-        check_return_value(ret == 0, "validation of tpu mlir failed")
+        f32_blobs_compare(self.tpu_npz, self.ref_npz, self.tolerance, self.excepts)
 
     def build_model(self):
-        ret = mlir_to_model(self.tpu_mlir, self.model, self.final_mlir)
-        check_return_value(ret == 0, "failed to generate model")
+        mlir_to_model(self.tpu_mlir, self.model, self.final_mlir)
         if self.do_validate:
             tool.validate_model()
 
@@ -111,8 +105,7 @@ class DeployTool:
         show_fake_cmd(self.in_f32_npz, self.model, self.model_npz)
         model_outputs = model_inference(self.inputs, self.model)
         np.savez(self.model_npz, **model_outputs)
-        ret = f32_blobs_compare(self.model_npz, self.tpu_npz, self.correctness)
-        check_return_value(ret == 0, "validation of model failed")
+        f32_blobs_compare(self.model_npz, self.tpu_npz, self.correctness)
 
 
 if __name__ == '__main__':

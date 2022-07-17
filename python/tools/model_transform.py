@@ -40,9 +40,7 @@ class ModelTransformTool(object):
         self.mlir_file = mlir_file
         mlir_origin = mlir_file.replace('.mlir', '_origin.mlir', 1)
         self.converter.generate_mlir(mlir_origin)
-        ret = mlir_opt_for_top(mlir_origin, self.mlir_file)
-        if ret != 0:
-            raise RuntimeError("mlir graph optimize fail")
+        mlir_opt_for_top(mlir_origin, self.mlir_file)
         print("Mlir file generated:{}".format(mlir_file))
 
         self.module_parsered = MlirParser(self.mlir_file)
@@ -82,9 +80,7 @@ class ModelTransformTool(object):
             np.savez(test_result, **f32_outputs)
 
             # compare all blobs layer by layers
-            ret = f32_blobs_compare(test_result, ref_npz, tolerance, excepts=excepts)
-            if ret != 0:
-                raise RuntimeError("validate fail")
+            f32_blobs_compare(test_result, ref_npz, tolerance, excepts=excepts)
         else:
             np.savez(test_result, **ref_outputs)
 

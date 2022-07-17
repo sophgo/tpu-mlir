@@ -16,15 +16,14 @@ def _os_system(cmd: list):
     if ret == 0:
         print("[Success]cmd: {}".format(cmd_str))
     else:
-        print("[!Error]cmd: {}".format(cmd_str))
-    return ret
+        raise RuntimeError("[!Error]cmd: {}".format(cmd_str))
 
 def mlir_opt_for_top(mlirfile, opt_mlirfile):
     cmd = ([
         "tpuc-opt", "--canonicalize", "--mark-FLOPs", "--save-weight", mlirfile, "-o",
         opt_mlirfile
     ])
-    return _os_system(cmd)
+    _os_system(cmd)
 
 def mlir_lowering(top_mlir: str,
                   tpu_mlir: str,
@@ -41,7 +40,7 @@ def mlir_lowering(top_mlir: str,
     lower_param = "--lowering=\"mode={} asymmetric={} chip={}\"".format(
         mode.upper(), asymmetric, chip.lower())
     cmd.extend([lower_param, "--canonicalize", "--save-weight", "-o", tpu_mlir])
-    return _os_system(cmd)
+    _os_system(cmd)
 
 
 def mlir_to_model(tpu_mlir: str, model: str, final_mlir: str):
@@ -50,7 +49,7 @@ def mlir_to_model(tpu_mlir: str, model: str, final_mlir: str):
         "tpuc-opt", tpu_mlir, "--weight-reorder", "--subnet-divide", "--layer-group",
         "--address-assign", "--save-weight", codegen_param, "-o", final_mlir
     ]
-    return _os_system(cmd)
+    _os_system(cmd)
 
 
 def f32_blobs_compare(a_npz: str, b_npz: str, tolerance: str, excepts=None, show_detail=True):
@@ -59,4 +58,4 @@ def f32_blobs_compare(a_npz: str, b_npz: str, tolerance: str, excepts=None, show
         cmd.extend(["--except", excepts])
     if show_detail:
         cmd.append('-vv')
-    return _os_system(cmd)
+    _os_system(cmd)

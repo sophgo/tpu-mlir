@@ -195,6 +195,9 @@ CodegenPass::CreateTensorVector(const std::vector<Value> &values) {
 Offset<bmodel::CoeffMem>
 CodegenPass::CreateCoeffMem(std::vector<top::WeightOp> &coeffs,
                             uint64_t coeff_addr, uint64_t coeff_size) {
+  if (coeff_size == 0) {
+    return 0;
+  }
   auto data_u8 = std::make_shared<std::vector<uint8_t>>(coeff_size, 0);
   uint64_t offset = 0;
   for (auto weight : coeffs) {
