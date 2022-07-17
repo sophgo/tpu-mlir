@@ -29,7 +29,7 @@ LogicalResult tpu::LutOp::inference(InferenceParameter &p) {
     for (int i = 0; i < num_element; ++i) {
       int offset = p.inputs[0][i];
       if (offset < 0) {
-        offset = 127 - offset;
+        offset += 256;
       }
       assert(offset >= 0 && offset <= 255);
       p.outputs[0][i] = p.inputs[1][offset];

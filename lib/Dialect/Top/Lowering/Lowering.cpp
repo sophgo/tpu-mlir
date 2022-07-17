@@ -90,7 +90,7 @@ Value create_lookup_table(Value in, Value out, activate_f func,
     for (auto i = min; i <= max; i++) {
       double data = (i - in_zp) * in_scale;
       data = func(data) / out_scale + out_zp;
-      int index = i < 0 ? 127 - i : i;
+      int index = i < 0 ? 256 + i : i;
       table[index] = Quant::to_int8(data);
     }
     return top::WeightOp::create(out.getDefiningOp(), "table", table,
@@ -100,7 +100,7 @@ Value create_lookup_table(Value in, Value out, activate_f func,
     for (auto i = min; i <= max; i++) {
       double data = (i - in_zp) * in_scale;
       data = func(data) / out_scale + out_zp;
-      int index = i < 0 ? 127 - i : i;
+      int index = i < 0 ? 256 + i : i;
       table[index] = Quant::to_uint8(data);
     }
     return top::WeightOp::create(out.getDefiningOp(), "table", table,
