@@ -28,7 +28,7 @@ TEST_ONNX_IR = [
     "AveragePool",
     "Conv2d",
     "MaxPool",
-    #"SiLU",
+    "SiLU",
 ]
 
 

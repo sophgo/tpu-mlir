@@ -51,7 +51,9 @@ void tpu::LoadOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
   auto g_stride = BM1684x::instance().getGlobalStride(N, C, H, W);
   if (do_bcast() == true) {
     C = BM1684x::NPU_NUM;
+    g_stride.N = 0;
     g_stride.C = 0;
+    g_stride.H = 0;
   }
   auto s_stride = BM1684x::instance().getLocalStride(gi.n_slice, C, gi.h_slice,
                                                      W, fmt_bytes, gi.eu_align);

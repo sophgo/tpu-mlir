@@ -96,9 +96,9 @@ void tpu::LutOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
   p.shape_dim = 4;
   int64_t n, c, h, w;
   Module::getNCHW(input(), n, c, h, w);
-  p.shape[0] = n;
+  p.shape[0] = gi.n_slice;
   p.shape[1] = c;
-  p.shape[2] = h;
+  p.shape[2] = gi.h_slice;
   p.shape[3] = w;
   BM1684x::instance().call_local_func("backend_api_lut", &p, sizeof(p));
 }
