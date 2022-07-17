@@ -75,6 +75,15 @@ def npz_to_bin(args):
             exit(-1)
     d.tofile(args[2])
 
+def npz_to_dat(args):
+    if len(args) != 2:
+        print("Usage: {} to_dat filename.npz filename.bin".format(sys.argv[0]))
+        exit(-1)
+    datas = np.load(args[0])
+    with open(args[1], "wb") as f:
+        for i in datas:
+            f.write(datas[i].tobytes())
+
 def npz_bf16_to_fp32(args):
     if len(args) < 2:
         print("Usage: {} bf16_to_fp32 in.npz out.npz".format(sys.argv[0]))

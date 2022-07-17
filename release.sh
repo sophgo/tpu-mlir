@@ -3,6 +3,7 @@ set -e
 
 source envsetup.sh
 rm -rf ${INSTALL_PATH}
+rm -rf ${PROJECT_ROOT}/regression/regression_out
 source build.sh RELEASE
 
 mlir_version="$(grep MLIR_VERSION ${BUILD_PATH}/CMakeCache.txt | cut -d "=" -f2)"
