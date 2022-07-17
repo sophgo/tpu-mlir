@@ -26,7 +26,8 @@ import gc
 '''
 TEST_ONNX_IR = [
     "Conv2d",
-    "Pool"
+    "Pool",
+    "SiLU",
 ]
 
 
@@ -51,13 +52,16 @@ class ONNX_IR_TESTER(object):
             # Todo: add more operators
             "Conv2d": self.test_Conv2d,
             "Pool": self.test_Pool,
+            "SiLU": self.test_SiLU,
         }
-        self.quant_modes = ["fp32", "int8"]  # no quantization when quant_mode == "fp32"
+        self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
 
-    def onnx_convert(self, input_data: dict, model_def, model_name: str, input_shapes: list):
+    def onnx_convert(self, input_data: dict, graph_def, model_name: str):
         # onnx --> mlir conversion (origin and optimized mlir models will be generated and saved)
         fp32_mlir = "{}.mlir".format(model_name)
-        tool = OnnxModelTransformTool(model_name, model_def, input_shapes, preprocessor=None)
+        model_def = helper.make_model(graph_def, producer_name=model_name)
+        onnx.checker.check_model(model_def)
+        tool = OnnxModelTransformTool(model_name, model_def)
         tool.model_transform(fp32_mlir)
 
         onnx_model = "{}_opt.onnx".format(model_name)
@@ -114,9 +118,9 @@ class ONNX_IR_TESTER(object):
 
         ref_npz = "{}_top_mlir_out.npz".format(model_name)
         np.savez(ref_npz, **top_mlir_output)
-        tpu_mlir_out = tpu_mlir.replace(".mlir", "_out.npz")
+        tpu_mlir_out = tpu_mlir.replace(".mlir", "_tpu_out.npz")
         np.savez(tpu_mlir_out, **tpu_mlir_outs)
-        bmodel_out = bmodel.replace(".bmodel", "_out.npz")
+        bmodel_out = bmodel.replace(".bmodel", "_model_out.npz")
         np.savez(bmodel_out, **bmodel_outs)
 
         # compare
@@ -127,11 +131,10 @@ class ONNX_IR_TESTER(object):
         if quant_mode == "int8":
             msg += ", Asymmetric: {}".format(isAsym)
 
-        print("* {}, test success *".format(msg))
+        print("[Success] test {} {}".format(model_name, msg))
 
-    def convert_and_test(self, input_data: dict, model_def, model_name: str, input_shapes: list):
-        onnx_outs, top_mlir_outs, input_npz = self.onnx_convert(input_data, model_def, model_name,
-                                                                input_shapes)
+    def convert_and_test(self, input_data: dict, graph_def, model_name: str):
+        onnx_outs, top_mlir_outs, input_npz = self.onnx_convert(input_data, graph_def, model_name)
 
         # test onnx and mlir outputs
         counter = 0
@@ -147,7 +150,7 @@ class ONNX_IR_TESTER(object):
 
         for quant_mode in self.quant_modes:
             if quant_mode == "int8":
-                for isAsym in [True, False]:
+                for isAsym in [False, True]:
                     tpu_mlir, bmodel = self.bmodel_generate(model_name, top_mlir_outs, quant_mode,
                                                             isAsym)
                     self.inference_and_compare(top_mlir_outs, tpu_mlir, bmodel, input_npz,
@@ -208,37 +211,28 @@ class ONNX_IR_TESTER(object):
             graph_def = helper.make_graph([conv_node_def, pool_node_def],
                                           test_case, [conv_input], [pool_output],
                                           initializer=[weight, bias])
-            model_def = helper.make_model(graph_def, producer_name=test_case)
-            model_def.opset_import[0].version = 13
-            onnx.checker.check_model(model_def)
-            self.convert_and_test({"input": input_data}, model_def, test_case,
-                                  [[batch_size, ic, input_size, input_size]])
+            self.convert_and_test({"input": input_data}, graph_def, test_case)
 
     def test_Conv2d(self):
         test_case = 'Conv2d'
-        batch_size = 4
-        input_size = 10
-        ic = 3
-        oc = 5
-        kernel_size = 3
-        input_data = np.random.randn(batch_size, ic, input_size, input_size).astype(np.float32)
-        weight_data = np.random.randn(oc, ic, kernel_size, kernel_size).astype(np.float32)
+        oc = 32
+        input_shape = [1, 16, 100, 100]
+        filter_shape = [oc, 16, 3, 3]
+        output_shape = [1, oc, 100, 100]
+        input_data = np.random.randn(*input_shape).astype(np.float32)
+        weight_data = np.random.randn(*filter_shape).astype(np.float32)
         bias_data = np.random.randn(oc).astype(np.float32)
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, list(input_data.shape))
-
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT,
-                                               list([batch_size, oc, 10, 10]))
-
-        weight = helper.make_tensor('weight', TensorProto.FLOAT, list(weight_data.shape),
-                                    weight_data)
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
         bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape), bias_data)
 
         node_def = helper.make_node(
             "Conv",
             inputs=['input', 'weight', 'bias'],
             outputs=['output'],
-            kernel_shape=[kernel_size, kernel_size],
+            kernel_shape=[3, 3],
             pads=[1, 1, 1, 1],
             strides=[1, 1],
             dilations=[1, 1],
@@ -248,12 +242,45 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([node_def],
                                       test_case, [input], [output],
                                       initializer=[weight, bias])
+        self.convert_and_test({'input': input_data}, graph_def, test_case)
 
-        model_def = helper.make_model(graph_def, producer_name=test_case)
-        onnx.checker.check_model(model_def)
+    def test_SiLU(self):
+        test_case = 'SiLU'
+        input_shape = [1, 16, 100, 100]
+        filter_shape = [16, 16, 3, 3]
+        input_data = np.random.randn(*input_shape).astype(np.float32)
+        weight_data = np.random.randn(*filter_shape).astype(np.float32)
 
-        self.convert_and_test({'input': input_data}, model_def, test_case,
-                              [[batch_size, ic, input_size, input_size]])
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
+        weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
+
+        sigmoid_def = helper.make_node(
+            "Sigmoid",
+            inputs=['input'],
+            outputs=['x1'],
+        )
+        mul_def = helper.make_node(
+            "Mul",
+            inputs=['input', 'x1'],
+            outputs=['x2'],
+        )
+        conv_def = helper.make_node(
+            "Conv",
+            inputs=['x2', 'weight'],
+            outputs=['output'],
+            kernel_shape=[3, 3],
+            pads=[1, 1, 1, 1],
+            strides=[1, 1],
+            dilations=[1, 1],
+            group=1,
+        )
+
+        graph_def = helper.make_graph([sigmoid_def, mul_def, conv_def],
+                                      test_case, [input], [output],
+                                      initializer=[weight])
+
+        self.convert_and_test({'input': input_data}, graph_def, test_case)
 
 
 if __name__ == "__main__":
@@ -261,6 +288,9 @@ if __name__ == "__main__":
     os.chdir("onnx_test")
     tester = ONNX_IR_TESTER()
 
-    for test_item in TEST_ONNX_IR:
-        tester.test_function[test_item]()
-        print("****** TEST {} success ******".format(test_item))
+    if len(sys.argv) == 2:
+        tester.test_function[sys.argv[1]]()
+    else:
+        for test_item in TEST_ONNX_IR:
+            tester.test_function[test_item]()
+            print("====== TEST {} Success ======".format(test_item))
