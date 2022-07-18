@@ -18,15 +18,15 @@ model_transform.py \
 #########################
 # TFLite to TPU BM1684x
 #########################
-model_deploy.py \
-  --mlir resnet50_tf.mlir \
-  --chip bm1684x \
-  --quantize INT8 \
-  --asymmetric \
-  --test_input resnet50_tf_in_f32.npz \
-  --test_reference resnet50_tf_top_outputs.npz \
-  --tolerance 0.95,0.71 \
-  --correctness 0.99,0.92 \
-  --model resnet50_tf_1684x_int8_asym.bmodel
+# model_deploy.py \
+#   --mlir resnet50_tf.mlir \
+#   --chip bm1684x \
+#   --quantize INT8 \
+#   --asymmetric \
+#   --test_input resnet50_tf_in_f32.npz \
+#   --test_reference resnet50_tf_top_outputs.npz \
+#   --tolerance 0.95,0.71 \
+#   --correctness 0.99,0.92 \
+#   --model resnet50_tf_1684x_int8_asym.bmodel
 
 popd

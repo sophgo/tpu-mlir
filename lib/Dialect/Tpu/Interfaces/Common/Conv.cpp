@@ -116,7 +116,8 @@ LogicalResult tpu::ConvOp::inference(InferenceParameter &p) {
         for (int hw = 0; hw < h * w; hw++) {
           int offset = (in * c + ic) * h * w + hw;
           auto v =
-              applyMultiplierAndRShift(p.outputs[0][offset], multi, shift) +
+              MultiplyByQuantizedMultiplier((int32_t)p.outputs[0][offset],
+                                            (int32_t)multi, (int32_t)shift) +
               o_qtype.getZeroPoint();
           p.outputs[0][offset] = sType.isUnsignedInteger(8) ? Quant::to_uint8(v)
                                                             : Quant::to_int8(v);
