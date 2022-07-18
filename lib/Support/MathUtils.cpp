@@ -261,6 +261,62 @@ void QuantizeMultiplier(double double_multiplier, int64_t *quantized_multiplier,
   *quantized_multiplier = static_cast<int32_t>(q_fixed);
 }
 
+template <typename T>
+T RightShiftRound(T src, int shift_num, RoundingMode round_mode) {
+  if (shift_num == 0)
+    return src;
+  if (shift_num > 63)
+    shift_num = 63;
+  T val, res;
+  val = src >> shift_num;
+  res = val;
+  T lo_mask = (1ull << shift_num) - 1;
+  T mant = src & lo_mask;
+  T mant_0d5 = 1ull << (shift_num - 1);
+  if (round_mode == ROUNDING_HALF_TO_EVEN) {
+    if (mant == mant_0d5)
+      res = val + (val & 1);
+    else if (mant > mant_0d5)
+      res = val + 1;
+  } else if (round_mode == ROUNDING_HALF_AWAY_FROM_ZERO) {
+    if (src >= 0 && mant >= mant_0d5)
+      res = val + 1;
+    else if (src < 0 && mant > mant_0d5)
+      res = val + 1;
+  } else if (round_mode == ROUNDING_TOWARDS_ZERO) {
+    if (src < 0)
+      res = val + (mant != 0);
+  } else if (round_mode == ROUNDING_DOWN)
+    res = val;
+  else if (round_mode == ROUNDING_UP)
+    res = val + (mant != 0);
+  else if (round_mode == ROUNDING_HALF_UP) {
+    if (mant >= mant_0d5)
+      res = val + 1;
+  } else if (round_mode == ROUNDING_HALF_DOWN) {
+    if (mant > mant_0d5)
+      res = val + 1;
+  }
+  return res;
+}
+
+// to compilable with tflite
+// tensorflow/lite/kernels/internal/common.h:MultiplyByQuantizedMultiplier()
+int32_t MultiplyByQuantizedMultiplier(int32_t x, int32_t multiplier,
+                                      int shift) {
+  shift = -(shift - 31);
+  int64_t value = shift > 0 ? x << shift : x;
+  value = RightShiftRound(value * multiplier, 31, ROUNDING_HALF_UP);
+  if (value > (1ll << 31) - 1)
+    value = (1ll << 31) - 1;
+  else if (value < -(1ll << 31))
+    value = -(1ll << 31);
+  if (shift < 0) {
+    value = RightShiftRound(value, -shift, ROUNDING_HALF_AWAY_FROM_ZERO);
+  }
+  return (int32_t)value;
+}
+
 void pad_tensor(float *p_after_pad, float *src, int n, int c, int h, int w,
                 int pt, int pb, int pl, int pr, float pad_value) {
   int nc = n * c;

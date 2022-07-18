@@ -65,6 +65,21 @@ static inline int64_t applyMultiplierAndRShift(int64_t v, int64_t multiplier,
   int64_t half_overflow = rshift > 0 ? (int64_t)1 << (rshift - 1) : 0;
   return (v * multiplier + half_overflow) >> rshift;
 }
+// define round mode
+typedef enum {
+  ROUNDING_HALF_TO_EVEN = 0,
+  ROUNDING_HALF_AWAY_FROM_ZERO = 1,
+  ROUNDING_TOWARDS_ZERO = 2,
+  ROUNDING_DOWN = 3, /* FLOOR */
+  ROUNDING_UP = 4,   /* CEIL */
+  ROUNDING_HALF_UP = 5,
+  ROUNDING_HALF_DOWN = 6,
+  ROUNDING_UNKNOWN = -1
+} RoundingMode;
+template <typename T>
+T RightShiftRound(T src, int shift_num, RoundingMode round_mode);
+// to compilable with tflite
+int32_t MultiplyByQuantizedMultiplier(int32_t x, int32_t multiplier, int shift);
 
 void pad_tensor(float *p_after_pad, float *src, int n, int c, int h, int w,
                 int pt, int pb, int pl, int pr, float pad_value);
