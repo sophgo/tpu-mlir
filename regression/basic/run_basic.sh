@@ -4,8 +4,8 @@ set -ex
 #########################
 # transform to top mlir
 #########################
-mkdir -p basic
-pushd basic
+mkdir -p resnet18
+pushd resnet18
 model_transform.py \
   --model_name resnet18 \
   --model_def  ${REGRESSION_PATH}/model/resnet18.onnx \
