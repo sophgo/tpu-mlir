@@ -51,7 +51,7 @@ def get_io_data(dir):
         f32_outdata=re.compile(".+f32_model_outputs\.npz$"),
     )
     files = os.listdir(dir)
-    name = os.path.commonprefix(files)
+    name = os.path.basename(dir)
     out = {}
     for k, v in __regx.items():
         for f in files:
