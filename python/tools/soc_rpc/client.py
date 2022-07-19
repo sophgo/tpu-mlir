@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # ==============================================================================
 #
 # Copyright (c) 2020-2030 by Sophgo Technologies Inc. All rights reserved.
@@ -36,7 +35,7 @@ class file_helper:
         )
 
 
-class Client:
+class SOCClient:
     def __init__(self, url="http://localhost:8000/") -> None:
         self.proxy = xmlrpc.client.ServerProxy(url, allow_none=True)
 
@@ -72,7 +71,7 @@ class Client:
 
     def run_file(self, cmd, file):
         try:
-            md5 = self.send(file)
+            md5 = self.send(file) if file else None
             return self.proxy.run(cmd, md5)
         except Exception as e:
             raise e
@@ -86,6 +85,3 @@ class Client:
             return out["stdout"].data.decode()  # type: ignore
         else:
             return {k: out[k].data.decode() for k in ("stdout", "stderr")}  # type: ignore
-
-
-# client = Client("http://172.28.1.80:8000/")
