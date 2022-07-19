@@ -456,4 +456,22 @@ def Tpu_ConcatOp:Tpu_Op<"Concat"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_PermuteOp: Tpu_Op<"Permute"> {
+
+  let summary = "Permute operator";
+
+  let description = [{
+      Perform permute on input.
+  }];
+
+  let arguments = (
+    ins AnyTensor:$input,
+    I64ArrayAttr:$order,
+    StrAttr:$name,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 #endif // TPU_OPS
