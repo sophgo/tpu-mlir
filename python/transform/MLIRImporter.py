@@ -27,6 +27,7 @@ class Top:
     SliceOp = 'top.Slice'
     SigmoidOp = 'top.Sigmoid'
     LeakyRelu = 'top.LeakyRelu'
+    Dropout = 'top.Dropout'
 
 class State:
     TOP_F32 = 'TOP_F32'
@@ -270,6 +271,21 @@ class MLIRImporter(object):
             'alpha': FloatAttr.get_f64(kargs['alpha']),
         }
         return self.buildOp(Top.LeakyRelu, operands, [output_type], **param)
+
+    def create_dropout_op(self, operands, output_shape, **kargs):
+        """
+            operands: List[pybind.op]
+            output_tensorshape: List[int] output tensor type
+            attrs: Dict, about op attrs
+        """
+        # get_value_type
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+
+        param = {
+            'name': StringAttr.get(kargs['name']),
+            'ratio': FloatAttr.get_f64(kargs['ratio']),
+        }
+        return self.buildOp(Top.Dropout, operands, [output_type], **param)
 
     def create_maxpool_op(self, operands, output_shape, **kargs):
         """

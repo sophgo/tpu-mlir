@@ -476,7 +476,7 @@ def Top_SoftmaxOp:Top_Op<"Softmax",[InOutSameShape]> {
 }
 
 def Top_LeakyReluOp : Top_Op<"LeakyRelu", [InOutSameShape]> {
-  let summary = "LeakyRelu peration";
+  let summary = "LeakyRelu operation";
   let description = [{
     LeakyRelu takes input data (Tensor<T>) and an argument alpha,
     and produces one output data (Tensor<T>)
@@ -490,4 +490,21 @@ def Top_LeakyReluOp : Top_Op<"LeakyRelu", [InOutSameShape]> {
   );
   let results = (outs AnyTenor:$output);
 }
+
+def Top_DropoutOp : Top_Op<"Dropout", [InOutSameShape]> {
+  let summary = "Dropout operation";
+  let description = [{
+    During evaluation or test, DropoutOp is just like an IdentityOp,
+    transferring input to output without any changes.
+    Argument `ratio` is only used during training.
+  }];
+  let arguments = (
+    ins AnyTensor:$input,
+    F64Attr:$ratio,
+    StrAttr:$name
+  );
+  let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
+}
+
 #endif // Top_OPS
