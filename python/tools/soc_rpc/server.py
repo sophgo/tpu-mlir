@@ -18,6 +18,7 @@ import pprint
 import atexit
 import shutil
 import datetime
+import argparse
 
 
 def check_health(md5, buffer):
@@ -174,7 +175,7 @@ def build_dir(md5):
 
 
 def run_command(cmd_fmt: str, *md5):
-    if md5:
+    if all(md5):
         cmd_fmt = cmd_fmt.format(*(files[x] for x in md5))
 
     out = subprocess.run(
@@ -185,10 +186,21 @@ def run_command(cmd_fmt: str, *md5):
     return out
 
 
-server = SimpleXMLRPCServer(("0.0.0.0", 8000), allow_none=True)
-print("Listening on port 8000...")
-server.register_function(receve_file, "send_file")
-server.register_function(build_dir, "build_dir")
-server.register_function(run_command, "run")  # type: ignore
-server.register_function(has_file, "has_file")
-server.serve_forever()
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-p",
+        "--port",
+        type=int,
+        default=8000,
+        dest="port",
+        help="server port number, default:8000",
+    )
+    args = parser.parse_args()
+    server = SimpleXMLRPCServer(("0.0.0.0", args.port), allow_none=True)
+    print(f"Listening on port {args.port}...")
+    server.register_function(receve_file, "send_file")
+    server.register_function(build_dir, "build_dir")
+    server.register_function(run_command, "run")  # type: ignore
+    server.register_function(has_file, "has_file")
+    server.serve_forever()
