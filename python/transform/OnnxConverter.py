@@ -127,6 +127,7 @@ class OnnxConverter(BaseConverter):
             "Slice": lambda node: self.convert_slice_op(node),
             "Transpose": lambda node: self.convert_transpose_op(node),
             "LeakyRelu": lambda node: self.convert_leaky_relu_op(node),
+            "Dropout" : lambda node: self.convert_dropout_op(node),
         }
 
     def __del__(self):
@@ -542,6 +543,17 @@ class OnnxConverter(BaseConverter):
         add_op = self.mlir.create_mul_op([op0, op1], output_shape, **p)
         self.addOperand(onnx_node.name, add_op)
         return
+
+    def convert_dropout_op(self, onnx_node):
+        assert (onnx_node.op_type == "Dropout")
+        opd0 = self.getOperand(onnx_node.inputs[0])
+        p = {
+            'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            'ratio': self.tensors[onnx_node.inputs[1]].item(),
+        }
+        output_shape = self.getShape(onnx_node.name)
+        new_op = self.mlir.create_dropout_op([opd0], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
 
     def convert_relu_op(self, onnx_node):
         assert (onnx_node.op_type == "Relu")
