@@ -8,18 +8,18 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-int64_t top::PermuteOp::getFLOPs() { return 0; }
-
-LogicalResult top::PermuteOp::init(InferenceParameter &p) { return success(); }
-void top::PermuteOp::deinit(InferenceParameter &p) {}
+LogicalResult tpu::PermuteOp::init(InferenceParameter &p) { return success(); }
+void tpu::PermuteOp::deinit(InferenceParameter &p) {}
 
 template <typename T> static int remove_value(std::vector<T> &v, int value) {
   int idx = 0;
@@ -40,7 +40,7 @@ static void refresh(std::vector<int> &order, int idx) {
   }
 }
 
-LogicalResult top::PermuteOp::inference(InferenceParameter &p) {
+LogicalResult tpu::PermuteOp::inference(InferenceParameter &p) {
   int64_t in, ic, ih, iw, on, oc, oh, ow;
   std::vector<int64_t> in_shape = Module::getShape(input());
   std::shared_ptr<std::vector<int64_t>> perm = Module::getI64Array(order());
@@ -103,5 +103,6 @@ LogicalResult top::PermuteOp::inference(InferenceParameter &p) {
       }
     }
   }
+
   return success();
 }

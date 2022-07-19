@@ -30,6 +30,7 @@ TEST_ONNX_IR = [
     "MaxPool",
     "SiLU",
     "Concat",
+    "Transpose",
 ]
 
 
@@ -57,6 +58,7 @@ class ONNX_IR_TESTER(object):
             "MaxPool": self.test_MaxPool,
             "SiLU": self.test_SiLU,
             "Concat": self.test_Concat,
+            "Transpose": self.test_Transpose,
         }
         self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
 
@@ -128,7 +130,10 @@ class ONNX_IR_TESTER(object):
         np.savez(model_npz, **bmodel_outs)
 
         # compare
-        npz_compare([ref_npz, tpu_npz, "--tolerance", "0.6,0.6", "-v"])
+        ref_tpu_tolerance = "0.9,0.9"
+        if quant_mode == "int8":
+            ref_tpu_tolerance = "0.95,0.70" if not isAsym else "0.90,0.54"
+        npz_compare([ref_npz, tpu_npz, "--tolerance", ref_tpu_tolerance, "-v"])
         npz_compare([tpu_npz, model_npz, "--tolerance", "0.99,0.9", "-v"])
 
         msg = quant_mode.upper()
@@ -259,21 +264,17 @@ class ONNX_IR_TESTER(object):
         test_case = "Concat"
         input_shape = {"input1": [1, 4, 32], "input2": [1, 4, 64], "input3": [1, 4, 64]}
         output_shape = [1, 4, 32 + 64 + 64]
-        input_data = {
-            k: np.random.randn(*x).astype(np.float32) for k, x in input_shape.items()
-        }
+        input_data = {k: np.random.randn(*x).astype(np.float32) for k, x in input_shape.items()}
 
         inputs = [
-            helper.make_tensor_value_info(k, TensorProto.FLOAT, x)
-            for k, x in input_shape.items()
+            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
         ]
-        output = helper.make_tensor_value_info(
-            "output", TensorProto.FLOAT, output_shape
-        )
+        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
 
-        concat_def = helper.make_node(
-            "Concat", inputs=list(input_shape.keys()), outputs=["output"], axis=2
-        )
+        concat_def = helper.make_node("Concat",
+                                      inputs=list(input_shape.keys()),
+                                      outputs=["output"],
+                                      axis=2)
 
         graph_def = helper.make_graph([concat_def], test_case, inputs, [output])
         self.convert_and_test(
@@ -281,6 +282,24 @@ class ONNX_IR_TESTER(object):
             graph_def,
             test_case,
         )
+
+    def test_Transpose(self):
+        test_case = 'Transpose'
+        input_shapes = [[1, 16, 32, 32], [4, 3, 85, 20, 20]]
+        transpose_orders = {4: [0, 2, 1, 3], 5: [0, 1, 3, 4, 2]}
+        for input_shape in input_shapes:
+            input_data = np.random.randn(*input_shape).astype(np.float32)
+            input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+            order = transpose_orders[len(input_shape)]
+            output_shape = [input_shape[order[i]] for i in range(len(order))]
+            output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+            transpose_def = helper.make_node(test_case,
+                                             inputs=['input'],
+                                             outputs=['output'],
+                                             perm=order)
+            graph_def = helper.make_graph([transpose_def], test_case, [input], [output])
+            self.convert_and_test({'input': input_data}, graph_def, test_case)
+            print("[Success] {}D data test".format(len(input_shape)))
 
 
 if __name__ == "__main__":
