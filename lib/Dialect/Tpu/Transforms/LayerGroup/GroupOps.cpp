@@ -690,6 +690,7 @@ void GroupOps::adjust_lmem_id(group_lmem_t group_lmem, int64_t nsecs,
     if (linfo.type == LMEM_WEIGHT && no_slice == false) {
       // ajust weight end
       linfo.end_id = MAX_ID;
+      linfo.start_id = 0;
     }
     if (linfo.type == LMEM_OPERATION) {
       // get op pos
