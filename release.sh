@@ -74,10 +74,11 @@ Before getting a start, you need to prepare some configuration.
 
 - a. Get the sohgo-sdk docker image `docker pull sophgo/tpuc_dev:v1.0`.
 
-- b. Clone the "nnmodels" repository to the same directory in which you unpack
-  TPU-MLIR. `git clone ssh://YourName@gerrit-ai.sophgo.vip:29418/nnmodels`.
+- b. (Optional, with step c) Clone the "nnmodels" repository to the same directory
+  in which you unpack TPU-MLIR.
+  `git clone https://YourName@gerrit-ai.sophgo.vip:29418/nnmodels`.
 
-- c. (Optional, If you want to test more cases.) get into the nnmodels folder and
+- c. (Optional, If you want to test more cases.) Get into the nnmodels folder and
   pull LFS files from the server.
   `git lfs install && git lfs pull --include "*.onnx`
 
@@ -115,7 +116,7 @@ cd regression
  ./run.sh
 ```
 
-After run regression test, all the bmodels will be in regression_out.
+After run regression test, all the outputs will be in `bmodels`.
 
 3. Test the performance of Bmodels on BM1684X.
 

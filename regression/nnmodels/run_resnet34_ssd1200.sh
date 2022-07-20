@@ -31,4 +31,39 @@ model_deploy.py \
   --tolerance 0.99,0.99 \
   --model resnet34_ssd1200_1684x_f32.bmodel
 
+
+#########################
+# deploy to int8 bmodel
+#########################
+run_calibration.py resnet34_ssd1200.mlir \
+  --dataset ${REGRESSION_PATH}/image \
+  --input_num 2 \
+  -o resnet34_ssd1200_cali_table
+
+# to symmetric
+model_deploy.py \
+  --mlir resnet34_ssd1200.mlir \
+  --quantize INT8 \
+  --calibration_table resnet34_ssd1200_cali_table \
+  --chip bm1684x \
+  --test_input resnet34_ssd1200_in_f32.npz \
+  --test_reference resnet34_ssd1200_top_outputs.npz \
+  --tolerance 0.98,0.79 \
+  --correctness 0.99,0.99 \
+  --model resnet34_ssd1200_1684x_int8_sym.bmodel
+
+
+# to symmetric
+# model_deploy.py \
+#   --mlir resnet34_ssd1200.mlir \
+#   --quantize INT8 \
+#   --asymmetric \
+#   --calibration_table resnet34_ssd1200_cali_table \
+#   --chip bm1684x \
+#   --test_input resnet34_ssd1200_in_f32.npz \
+#   --test_reference resnet34_ssd1200_top_outputs.npz \
+#   --tolerance 0.98,0.84 \
+#   --correctness 0.99,0.95 \
+#   --model resnet34_ssd1200_1684x_int8_asym.bmodel
+
 popd
