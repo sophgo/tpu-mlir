@@ -335,8 +335,12 @@ protected:
       return;
     }
     RewritePatternSet patterns(ctx_);
+    patterns.add<BackwardConcat>(ctx_);
+    applyPatternsAndFoldGreedily(module, std::move(patterns));
+    patterns.clear();
     patterns.add<BackwardCalibartion<top::ReluOp>,
-                 BackwardCalibartion<top::MaxPoolOp>>(ctx_);
+                 BackwardCalibartion<top::MaxPoolOp>,
+                 BackwardCalibartion<top::ReshapeOp>>(ctx_);
     applyPatternsAndFoldGreedily(module, std::move(patterns));
     patterns.clear();
     // clang-format off
@@ -349,9 +353,6 @@ protected:
       // TODO: support asymmetric mode
       patterns.add<ForwardCalibartion<top::AvgPoolOp>>(ctx_);
     }
-    applyPatternsAndFoldGreedily(module, std::move(patterns));
-    patterns.clear();
-    patterns.add<BackwardConcat>(ctx_);
     applyPatternsAndFoldGreedily(module, std::move(patterns));
   }
 
