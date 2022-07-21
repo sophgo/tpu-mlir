@@ -80,7 +80,7 @@ Before getting a start, you need to prepare some configuration.
 
 - c. (Optional, If you want to test more cases.) Get into the nnmodels folder and
   pull LFS files from the server.
-  `git lfs install && git lfs pull --include "*.onnx`
+  `git lfs install && git lfs pull --include "*.onnx"`
 
 - d. Create a docker container and map the directory of "TPU-MLIR" to it.
   `docker run -v $PWD:/workspace/ -ti sophgo/tpuc_dev:v1.1 /bin/bash`

@@ -242,6 +242,9 @@ typedef void (*cmd_id_divide)(void *p_cmd_src, void *p_cmd_dst0,
                               void *p_cmd_dst1);
 typedef void (*cmd_id_merge)(void *p_cmd_dst, void *p_cmd_src0,
                              void *p_cmd_src1);
+typedef void (*sg_set_profile_dump)(bool enable);
+typedef void (*sg_stas_dump)(void *pid_node);
+typedef void (*sg_flops_dump)(long long flops, void *pid_node);
 
 namespace tpu_mlir {
 namespace backend {
@@ -250,7 +253,7 @@ class BM168x {
 public:
   virtual void init();
   virtual void before_codegen();
-  virtual void after_codegen();
+  virtual void after_codegen(int64_t flops = 0);
   virtual void deinit();
   static BM168x *instance(const llvm::StringRef chip);
   // -------------------------------------------------------------------
@@ -277,6 +280,9 @@ public:
   set_total_id_ptr dl_set_total_id_ptr;
   cmd_id_divide dl_cmd_id_divide;
   cmd_id_merge dl_cmd_id_merge;
+  sg_set_profile_dump dl_sg_set_profile_dump;
+  sg_stas_dump dl_sg_stas_dump;
+  sg_flops_dump dl_sg_flops_dump;
 
   void *get_gmem_addr(uint64_t addr);
   void *get_gmem_addr(const bm_device_mem_t &mem);
