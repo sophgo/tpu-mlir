@@ -294,7 +294,7 @@ Offset<bmodel::SubNet> CodegenPass::CreateSubNet(func::CallOp call) {
   bm168x->before_codegen();
   auto func = Module::getFuncOp(module, call.getCallee());
   func.walk([&](Operation *op) { codegen(op); });
-  bm168x->after_codegen();
+  bm168x->after_codegen(Module::getFLOPs(module));
   int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
   std::vector<Value> inputs;
   std::vector<Value> outputs;

@@ -50,6 +50,7 @@ def mlir_to_model(tpu_mlir: str, model: str, final_mlir: str):
         "--address-assign", "--save-weight", codegen_param, "-o", final_mlir
     ]
     _os_system(cmd)
+    _os_system(["mv compiler_profile_0.txt", model + ".compiler_profile_0.txt"])
 
 
 def f32_blobs_compare(a_npz: str, b_npz: str, tolerance: str, excepts=None, show_detail=True):

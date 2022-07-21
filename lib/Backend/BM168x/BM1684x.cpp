@@ -98,7 +98,7 @@ void BM1684x::init() {
   dl_set_cmd_len_ptr((void *)&gdma_bytes, (void *)&bdc_bytes);
 }
 
-void BM1684x::after_codegen() {
-  BM168x::after_codegen();
+void BM1684x::after_codegen(int64_t flops) {
+  BM168x::after_codegen(flops);
   dl_store_cmd_end();
 }

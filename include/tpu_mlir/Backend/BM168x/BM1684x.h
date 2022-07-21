@@ -35,7 +35,7 @@ public:
 
 public:
   virtual void init() override;
-  virtual void after_codegen() override;
+  virtual void after_codegen(int64_t flops = 0) override;
   void call_global_func(const char *symbolName, void *params, int param_size);
   void call_local_func(const char *symbolName, void *params, int param_size);
   void call_global_func(const char *symbolName, void *params, int param_size,

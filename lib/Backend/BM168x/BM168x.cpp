@@ -269,6 +269,9 @@ void BM168x::load_functions() {
   CAST_FUNCTION(tensor_stride_move_gen_cmd);
   CAST_FUNCTION(tensor_compact_move_gen_cmd);
   CAST_FUNCTION(set_total_id_ptr);
+  CAST_FUNCTION(sg_set_profile_dump);
+  CAST_FUNCTION(sg_stas_dump);
+  CAST_FUNCTION(sg_flops_dump);
 }
 
 void BM168x::init() {
@@ -291,6 +294,7 @@ void BM168x::init() {
                       (void *)&gdma_group_id, (void *)&bdc_group_id,
                       &cmdid_groupnum);
   dl_forbid_atomic_cmodel(); // TODO:(no compare)
+  dl_sg_set_profile_dump(true);
 }
 
 void BM168x::deinit() {
@@ -320,7 +324,11 @@ void BM168x::before_codegen() {
   cmdid_groupnum = 1;
 }
 
-void BM168x::after_codegen() {}
+void BM168x::after_codegen(int64_t flops) {
+  dl_sg_stas_dump(cmdid_node);
+  if (flops)
+    dl_sg_flops_dump(flops, cmdid_node);
+}
 
 BM168x *BM168x::instance(const StringRef chip) {
   BM168x *p_backend;
