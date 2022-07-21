@@ -82,6 +82,8 @@ ENDIF()
 include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${PROJECT_BINARY_DIR}/include)
 
+#-------------------------------------------------------------------------------
+# generate version
 execute_process(
   COMMAND git describe --tags --always
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
@@ -89,10 +91,17 @@ execute_process(
   OUTPUT_VARIABLE GIT_SHORT_HASH)
 
 string(STRIP ${GIT_SHORT_HASH} GIT_SHORT_HASH)
+string(FIND ${GIT_SHORT_HASH} "-" iLength)
+string(SUBSTRING ${GIT_SHORT_HASH} 0 ${iLength} MAIN_VERSION)
+math(EXPR iLength "${iLength} + 1")
+string(SUBSTRING ${GIT_SHORT_HASH} ${iLength} -1 PATCH_VERSION)
+set(GIT_SHORT_HASH "${MAIN_VERSION}.${PATCH_VERSION}")
+
 string(TIMESTAMP BUILD_TIME "%Y%m%d")
 set(MLIR_VERSION "${GIT_SHORT_HASH}-${BUILD_TIME}" CACHE STRING "nntoolchain version" FORCE)
 message(STATUS "nntoolchain version: ${MLIR_VERSION}")
 add_definitions(-DMLIR_VERSION="${MLIR_VERSION}")
+#-------------------------------------------------------------------------------
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Werror -Wno-unused-result")
 add_subdirectory(include)
