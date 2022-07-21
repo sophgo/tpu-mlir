@@ -72,7 +72,7 @@ exploring the "TPU-MLIR" release SDK.
 
 Before getting a start, you need to prepare some configuration.
 
-- a. Get the sohgo-sdk docker image `docker pull sophgo/tpuc_dev:v1.0`.
+- a. Get the sohgo-sdk docker image `docker pull sophgo/tpuc_dev:v1.1`.
 
 - b. (Optional, with step c) Clone the "nnmodels" repository to the same directory
   in which you unpack TPU-MLIR.
@@ -83,7 +83,7 @@ Before getting a start, you need to prepare some configuration.
   `git lfs install && git lfs pull --include "*.onnx`
 
 - d. Create a docker container and map the directory of "TPU-MLIR" to it.
-  `docker run -v $PWD:/workspace/ -ti sophgo/tpuc_dev:v1.0 /bin/bash`
+  `docker run -v $PWD:/workspace/ -ti sophgo/tpuc_dev:v1.1 /bin/bash`
 
 - e. If everything goes well, you can go to the next stage.
 

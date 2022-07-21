@@ -55,18 +55,7 @@
 <div STYLE="page-break-after: always;"></div>
 
 
-## 1 概述
-
-### 1) 公司简介
-
-算能承续了比特大陆在AI领域沉淀多年的技术、专利、产品和客户，以成为全球领先的通用
-算力提供商为愿景，智算赋能数字世界为使命，专注于人工智能芯片、RISC-V指令集高性能
-CPU服务器以及相关产品的研发与销售。旗下算丰全系列人工智能产品包括智算芯片、智算
-模组、智算盒子、智算卡、智算服务器等，丰富的产品形态为各型数据中心提供高效能的计
-算平台。公司具备全球领先的先进制程设计能力，现已成功量产云端、边端人工智能芯片并
-规模化商业落地。
-
-### 2) TPU-MLIR简介
+## 1 TPU-MLIR简介
 
 TPU-MLIR是算能智能AI芯片的TPU编译器工程。该工程提供了一套完整的工具链，其可以将不
 同框架下预训练的神经网络，转化为可以在算能TPU上高效运算的二进制文件`bmodel`。代码
@@ -83,7 +72,7 @@ TPU-MLIR的整体架构如下：
 从[DockerHub](https://hub.docker.com/r/sophgo/tpuc_dev)下载所需的镜像:
 
 ``` shell
-docker pull sophgo/tpuc_dev:v1.0
+docker pull sophgo/tpuc_dev:v1.1
 ```
 
 如果是首次使用docker，可执行下述命令进行安装和配置（仅首次执行）:
@@ -102,7 +91,7 @@ newgrp docker (use before reboot)
 
 ``` shell
 # myname只是举个名字的例子，请指定成自己想要的容器的名字
-docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v1.0
+docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v1.1
 ```
 
 后文假定用户已经处于docker里面的/workspace目录。
