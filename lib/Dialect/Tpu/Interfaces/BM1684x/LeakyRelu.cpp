@@ -46,7 +46,23 @@ typedef struct {
 // =========================================
 
 void tpu::LeakyReluOp::codegen_global_int8_bm1684x() {
-  llvm_unreachable("Codegen to be supported");
+  int64_t n, c, h, w;
+  Module::getNCHW(input(), n, c, h, w);
+  leakyrelu_param_t param = {0};
+  param.input_addr = Module::getAddress(input());
+  param.slope_addr = -1;
+  param.output_addr = Module::getAddress(output());
+  param.input_n = static_cast<int32_t>(n);
+  param.input_c = static_cast<int32_t>(c);
+  param.input_h = static_cast<int32_t>(h);
+  param.input_w = static_cast<int32_t>(w);
+  param.channel_shared = 1;
+  param.slope_val = static_cast<float>(multiplier().getValue());
+  param.rshift_bit = rshift().getValue();
+  param.relu_upper_limit = -1;
+  param.dtype = BM168x::getDataType(input());
+  BM1684x::instance().call_global_func("backend_api_prelu_global", &param,
+                                       sizeof(leakyrelu_param_t));
 }
 
 void tpu::LeakyReluOp::codegen_global_float_bm1684x() {
@@ -81,7 +97,26 @@ int64_t tpu::LeakyReluOp::getBufferSize_bm1684x(
 
 void tpu::LeakyReluOp::codegen_local_int8_bm1684x(int64_t n_step,
                                                   int64_t h_step) {
-  llvm_unreachable("support later");
+  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  auto gi = getGroupInfo(n_step, h_step);
+  int64_t n, c, h, w;
+  Module::getNCHW(input(), n, c, h, w);
+
+  leakyrelu_param_t param = {0};
+  param.input_addr = in_gi.out_addr;
+  param.slope_addr = -1;
+  param.output_addr = gi.out_addr;
+  param.input_n = static_cast<int32_t>(gi.n_slice);
+  param.input_c = static_cast<int32_t>(c);
+  param.input_h = static_cast<int32_t>(gi.h_slice);
+  param.input_w = static_cast<int32_t>(w);
+  param.channel_shared = 1;
+  param.slope_val = static_cast<float>(multiplier().getValue());
+  param.rshift_bit = rshift().getValue();
+  param.relu_upper_limit = -1;
+  param.dtype = BM168x::getDataType(input());
+  BM1684x::instance().call_local_func("backend_api_prelu_local", &param,
+                                      sizeof(leakyrelu_param_t));
 }
 
 void tpu::LeakyReluOp::codegen_local_float_bm1684x(int64_t n_step,

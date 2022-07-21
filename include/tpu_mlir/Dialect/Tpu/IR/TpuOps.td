@@ -435,7 +435,10 @@ def Tpu_LeakyReluOp: Tpu_Op<"LeakyRelu", [
 
   let arguments = (ins
     AnyTenor:$input,
-    F64Attr:$alpha,
+    OptionalAttr<F64Attr>:$alpha,
+    // quantize param
+    OptionalAttr<I64Attr>:$multiplier,
+    OptionalAttr<I64Attr>:$rshift,
     StrAttr:$name,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
