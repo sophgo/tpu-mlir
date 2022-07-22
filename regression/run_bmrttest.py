@@ -35,7 +35,6 @@ def get_bmrtt_log(bmodel, loopnum=100):
     }
     out_msg = {}
 
-    print(f"[run test]: {bmodel}")
     out = subprocess.run(
         ["bmrt_test", "--context_dir", bmodel, "--loopnum", str(loopnum)],
         stdout=subprocess.PIPE,
@@ -103,12 +102,12 @@ def get_profile(path):
             "cmodel_estimate_time": f"{profile_log['runtime']:.3f}",
             "mac_utilization": f"{mac_util(time[0]):.2f}",
             "cmodel_estimate_mac_utilization": (
-                f"{mac_util(profile_log['ComputationAbility']):.2f}"
+                f"{mac_util(profile_log['runtime']):.2f}"
             ),
-            "ddr_utilization": f"{profile_log['USAGE']:.2f}",
-            "cmodel_estimate_ddr_bandwidth": (
+            "ddr_utilization": (
                 f"{profile_log['USAGE'] * profile_log['runtime'] / time[0]:.2f}"
             ),
+            "cmodel_estimate_ddr_bandwidth": f"{profile_log['USAGE']:.2f}",
             "success": bmrt_log["success"],
         }
     )
@@ -119,9 +118,10 @@ def gen_bmodel_test_info(dir):
     fname = f"{strftime('%Y-%m-%d_%H.%M.%S.csv', gmtime())}"
     write_header = True
     with open(fname, "w") as fb:
-        for f in files:
+        for f in sorted(files):
             folder = os.path.join(dir, f)
             if os.path.isdir(folder):
+                print(f"[Run Test]: {os.path.basename(folder)}")
                 info = get_profile(os.path.join(dir, f))
                 if write_header:
                     fb.write(", ".join(info.keys()) + "\n")
