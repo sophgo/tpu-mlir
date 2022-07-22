@@ -13,6 +13,7 @@ rm -rf ${release_archive}*
 cp -rf ${INSTALL_PATH} ${release_archive}
 
 cp -rf ${PROJECT_ROOT}/regression ${release_archive}
+cp -f ${PROJECT_ROOT}/doc/*.pdf ${release_archive}/docs/
 
 # generate regression run.sh
 # ------------------------------------------------------------------------------

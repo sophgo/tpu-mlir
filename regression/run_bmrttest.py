@@ -93,7 +93,7 @@ def parse_profile(folder):
 def get_profile(path):
     bmrt_log = get_bmrtt_log(path)
     profile_log = parse_profile(path)
-    time = [x * 1000 for x in bmrt_log["calculate (s)"]]  # seconds to milliseconds
+    time = [x * 1e-3 for x in bmrt_log["compute_total (us)"]]  # to milliseconds
     mac_util = lambda t: 100 * profile_log["flops"] / (t * 1e-3 * 1e12 * 32)
     return OrderedDict(
         {
@@ -109,6 +109,7 @@ def get_profile(path):
             "cmodel_estimate_ddr_bandwidth": (
                 f"{profile_log['USAGE'] * profile_log['runtime'] / time[0]:.2f}"
             ),
+            "success": bmrt_log["success"],
         }
     )
 
@@ -123,7 +124,7 @@ def gen_bmodel_test_info(dir):
             if os.path.isdir(folder):
                 info = get_profile(os.path.join(dir, f))
                 if write_header:
-                    fb.write(f"{list(info.keys())}"[1:-1] + "\n")
+                    fb.write(", ".join(info.keys()) + "\n")
                     write_header = False
                 fb.write(", ".join(info.values()) + "\n")
 
