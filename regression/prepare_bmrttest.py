@@ -78,6 +78,8 @@ def prepare_bmodel_test(dir):
             Warning(f"get {bmodel} information failed.")
         os.makedirs(name, exist_ok=True)
         os.rename(bmodel, os.path.join(name, "compilation.bmodel"))
+        profile_log = bmodel + ".compiler_profile_0.txt"
+        os.rename(profile_log, os.path.join(name, "compiler_profile_0.txt"))
         indata = np.load(indata)
         with open(name + "/input_ref_data.dat", "wb") as f:
             for i in in_name:
