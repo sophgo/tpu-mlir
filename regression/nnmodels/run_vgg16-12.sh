@@ -24,7 +24,7 @@ model_deploy.py \
   --mlir vgg16-12.mlir \
   --quantize F32 \
   --chip bm1684x \
-  --test_input vgg16_12_in_f32.npz \
+  --test_input vgg16-12_in_f32.npz \
   --test_reference vgg16-12_top_outputs.npz \
   --tolerance 0.99,0.99 \
   --model vgg16-12_1684x_f32.bmodel

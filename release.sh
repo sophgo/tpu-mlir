@@ -99,13 +99,14 @@ Before getting a start, you need to prepare some configuration.
 
 - a. Get the sohgo-sdk docker image `docker pull sophgo/tpuc_dev:v1.1`.
 
-- b. (Optional, with step c) Clone the "nnmodels" repository to the same directory
-  in which you unpack TPU-MLIR.
+- b. (Optional, If you want to test more cases.) Clone the "nnmodels" repository
+  to the same directory in which you unpack TPU-MLIR.
+  [Install Git LFS with `pip install git-lfs`.]
   `git clone https://YourName@gerrit-ai.sophgo.vip:29418/nnmodels`.
 
-- c. (Optional, If you want to test more cases.) Get into the nnmodels folder and
-  pull LFS files from the server.
-  `git lfs install && git lfs pull --include "*.onnx"`
+- c. (Optional, with step c) Get into the nnmodels folder and pull LFS files
+  from the server.
+  `git lfs install && git lfs pull --include "*.onnx" --exclude=""`
 
 - d. Create a docker container and map the directory of "TPU-MLIR" to it.
   `docker run -v $PWD:/workspace/ -ti sophgo/tpuc_dev:v1.1 /bin/bash`
