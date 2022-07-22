@@ -340,13 +340,15 @@ protected:
     patterns.clear();
     patterns.add<BackwardCalibartion<top::ReluOp>,
                  BackwardCalibartion<top::MaxPoolOp>,
-                 BackwardCalibartion<top::ReshapeOp>>(ctx_);
+                 BackwardCalibartion<top::ReshapeOp>,
+                 BackwardCalibartion<top::LeakyReluOp>>(ctx_);
     applyPatternsAndFoldGreedily(module, std::move(patterns));
     patterns.clear();
     // clang-format off
     patterns.add<ForwardCalibartion<top::ReluOp>,
                  ForwardCalibartion<top::MaxPoolOp>,
-                 ForwardCalibartion<top::ReshapeOp>
+                 ForwardCalibartion<top::ReshapeOp>,
+                 ForwardCalibartion<top::LeakyReluOp>
                 >(ctx_);
     // clang-format on
     if (chip_ == Module::Chip::BM1684) {
@@ -429,7 +431,7 @@ protected:
   void quant_for_special(Operation *op) {
     if (chip_ == Module::Chip::BM1684x) {
       if (mode_ == Quant::Type::INT8 && asymmetric_) {
-        if (isa<top::AddOp, top::AvgPoolOp>(op)) {
+        if (isa<top::AddOp, top::AvgPoolOp, top::LeakyReluOp>(op)) {
           quantize_map[op] = Quant::Type::F32;
         }
       }

@@ -19,7 +19,29 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
 Value top::LeakyReluOp::lowering_int8_bm1684x(bool asymmetric) {
-  llvm_unreachable("Not supported now");
+  if (!asymmetric) {
+    auto op = getOperation();
+    OpBuilder builder(op);
+    Value input = op->getOperand(0);
+
+    int multiplier, rshift;
+    get_scale_and_shift(alpha().convertToDouble(), multiplier, rshift, 8);
+
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(builder.getNamedAttr("name", nameAttr()));
+    attrs.push_back(builder.getNamedAttr(
+        "multiplier", builder.getI64IntegerAttr(multiplier)));
+    attrs.push_back(
+        builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
+
+    builder.setInsertionPointAfter(op);
+    auto newType = Quant::getQuantInt8Type(output(), asymmetric);
+    auto newOp = builder.create<tpu::LeakyReluOp>(
+        op->getLoc(), newType, Value(input), ArrayRef<NamedAttribute>{attrs});
+    return newOp;
+  } else {
+    llvm_unreachable("to be supported for LeakyRelu asymmetric quantize lowering");
+  }
   return nullptr;
 }
 
