@@ -431,7 +431,7 @@ protected:
   void quant_for_special(Operation *op) {
     if (chip_ == Module::Chip::BM1684x) {
       if (mode_ == Quant::Type::INT8 && asymmetric_) {
-        if (isa<top::AddOp, top::AvgPoolOp, top::LeakyReluOp>(op)) {
+        if (isa<top::AddOp, top::AvgPoolOp, top::LeakyReluOp, top::MulOp>(op)) {
           quantize_map[op] = Quant::Type::F32;
         }
       }

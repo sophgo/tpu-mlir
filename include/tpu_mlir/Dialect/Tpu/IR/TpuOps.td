@@ -167,10 +167,9 @@ def Tpu_MulOp: Tpu_Op<"Mul", [SupportFuseRelu, InOutSameShape,
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    OptionalAttr<F64ArrayAttr>:$coeff,
     // quant param
-    OptionalAttr<I64ArrayAttr>:$multipliers,
-    OptionalAttr<I64ArrayAttr>:$rshifts,
+    DefaultValuedAttr<I64Attr, "1">:$multiplier,
+    DefaultValuedAttr<I64Attr, "0">:$rshift,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
     StrAttr:$name
   );

@@ -32,6 +32,7 @@ TEST_ONNX_IR = [
     "Concat",
     "Transpose",
     "LeakyRelu",
+    "Mul",
 ]
 
 
@@ -61,6 +62,7 @@ class ONNX_IR_TESTER(object):
             "Concat": self.test_Concat,
             "Transpose": self.test_Transpose,
             "LeakyRelu": self.test_LeakyRelu,
+            "Mul": self.test_Mul,
         }
         self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
 
@@ -339,6 +341,28 @@ class ONNX_IR_TESTER(object):
                                       test_case, [input], [output],
                                       initializer=[weight, bias])
         self.convert_and_test({'input': input_data}, graph_def, test_case)
+
+    def test_Mul(self):
+        test_case = 'Mul'
+        input_shape = {"input1": [1, 3, 27, 27], "input2": [1, 3, 27, 27]}
+        output_shape = [1, 3, 27, 27]
+        input_data = {k: np.random.randn(*x).astype(np.float32) for k, x in input_shape.items()}
+
+        inputs = [
+            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
+        ]
+        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
+
+        mul_def = helper.make_node("Mul",
+                                   inputs=list(input_shape.keys()),
+                                   outputs=["output"])
+
+        graph_def = helper.make_graph([mul_def], test_case, inputs, [output])
+        self.convert_and_test(
+            input_data,
+            graph_def,
+            test_case,
+        )
 
 if __name__ == "__main__":
     os.makedirs("onnx_test", exist_ok=True)
