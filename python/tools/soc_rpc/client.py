@@ -44,7 +44,7 @@ class SOCClient:
             file_des = file_helper(file)
             md5 = file_des.md5
             if not self.proxy.has_file(md5):
-                print(f"sending: {file}")
+                print(f"sending: {os.path.basename(file)}")
                 self.proxy.send_file(*file_des.get_buf())
                 print("    >> finish.")
             return md5
@@ -75,13 +75,3 @@ class SOCClient:
             return self.proxy.run(cmd, md5)
         except Exception as e:
             raise e
-
-    def bmrt_test(self, file):
-        if os.path.isfile(file):
-            out = self.run_file("bmrt_test --bmodel {}", file)
-        else:
-            out = self.run_file("bmrt_test --context_dir {}", file)
-        if out["returncode"] == 0:  # type: ignore
-            return out["stdout"].data.decode()  # type: ignore
-        else:
-            return {k: out[k].data.decode() for k in ("stdout", "stderr")}  # type: ignore
