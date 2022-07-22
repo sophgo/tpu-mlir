@@ -15,8 +15,9 @@ cp -rf ${INSTALL_PATH} ${release_archive}
 cp -rf ${PROJECT_ROOT}/regression ${release_archive}
 
 # generate regression run.sh
+# ------------------------------------------------------------------------------
 regression_sh=${release_archive}/regression/run.sh
-echo "Create run.sh" 1>&2
+echo "Create regression run.sh" 1>&2
 more > "${regression_sh}" <<'//MY_CODE_STREAM'
 #!/bin/bash
 set -ex
@@ -40,8 +41,31 @@ cp -f ../run_bmrttest.py ./run.py
 popd
 //MY_CODE_STREAM
 
+# generate nnmodels run.sh
+# ------------------------------------------------------------------------------
+nnmodels_sh=${release_archive}/regression/nnmodels/run.sh
+echo "Create nnmodels run.sh" 1>&2
+more > "${nnmodels_sh}" <<'//MY_CODE_STREAM'
+#!/bin/bash
+set -ex
+
+if [ ! -d ${NNMODELS_PATH} ]; then
+  echo "[Warning] nnmodles does not exist; Skip nnmodels tests."
+  exit 0
+fi
+
+DIR="$( cd "$(dirname "$0")" ; pwd -P )"
+
+$DIR/run_mobilenet_v2.sh
+$DIR/run_resnet50_v2.sh
+$DIR/run_resnet34_ssd1200.sh
+$DIR/run_yolov5s.sh
+$DIR/run_vgg16-12.sh
+//MY_CODE_STREAM
+
 
 # build a envsetup.sh
+# ------------------------------------------------------------------------------
 __envsetupfile=${release_archive}/envsetup.sh
 rm -f __envsetupfile
 
@@ -61,6 +85,7 @@ export REGRESSION_PATH=${TPUC_ROOT}/regression
 //MY_CODE_STREAM
 
 # generate readme.md
+# ------------------------------------------------------------------------------
 echo "Create readme.md" 1>&2
 more > "${release_archive}/readme.md" <<'//MY_CODE_STREAM'
 # For test
@@ -147,6 +172,8 @@ A "*.csv" file(report) will be generated in this folder.
 
 
 //MY_CODE_STREAM
+# ------------------------------------------------------------------------------
+
 
 tar -cvzf "tpu-mlir_${mlir_version}.tar.gz" ${release_archive}
 rm -rf ${release_archive}
