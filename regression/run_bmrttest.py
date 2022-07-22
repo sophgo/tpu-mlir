@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 from time import gmtime, strftime
 import subprocess
-import os
-import sys
-import re
+import os, sys, re
+from collections import OrderedDict
 
 
-def run_bmrtttest(bmodel, loopnum=100):
-    status_common = (
-        "\[BMRT\]\[bmrt_test:\d+].+The\ network\[.+\]\ stage\[\d+\]\ cmp\ {} \+{{3}}"
-    )
+def get_bmrtt_log(bmodel, loopnum=100):
+    status_common = ".+The\ network\[.+\]\ stage\[\d+\]\ cmp\ {} \+{{3}}"
     failed_regx = re.compile(status_common.format("failed"))
     success_regx = re.compile(status_common.format("success"))
-    time_common = "\[BMRT\]\[bmrt_test:\d+]\ INFO:{}\ +time\(s\):\ +\d+\.\d+"
+    time_common = "INFO:{}\ +time\(s\):\ +\d+\.\d+"
     time_us = re.compile("\w+\ us")
+    shape_rg = "\[( *\d+ *)*\]"
+    input_regx = re.compile("Input\ +\d+\).+shape=" + shape_rg)
+    shape_regx = re.compile(shape_rg)
 
     def get_time(msg):
         return float(msg.split(":")[-1])
@@ -25,7 +25,7 @@ def run_bmrtttest(bmodel, loopnum=100):
     time_regx = {
         "compute": (
             re.compile(
-                "\[BMRT\]\[bmrt_test:\d+\]\ INFO:net\[.+\]\ stage\[\d+\],\ launch\ total\ time\ is\ \d+\ us.+"
+                "INFO:net\[.+\]\ stage\[\d+\],\ launch\ total\ time\ is\ \d+\ us.+"
             ),
             get_times,
         ),
@@ -42,6 +42,10 @@ def run_bmrtttest(bmodel, loopnum=100):
         stderr=subprocess.STDOUT,
     )
     for meg in out.stdout.decode().split("\n"):
+        if input_regx.search(meg):
+            input = re.findall("\d+", shape_regx.search(meg).group())  # type:ignore
+            out_msg.setdefault("shape", []).append(f"<{'x'.join(input)}>")
+            continue
         if failed_regx.search(meg):
             out_msg.setdefault("success", []).append(False)
             continue
@@ -62,10 +66,10 @@ def run_bmrtttest(bmodel, loopnum=100):
     out = {}
     for k, v in out_msg.items():
         if isinstance(v[0], float):
-            __out = (min(v), max(v), sum(v) / len(v))
-            out[k + " min"] = __out[0]
-            out[k + " max"] = __out[1]
-            out[k + " mean"] = __out[2]
+            mean = sum(v) / len(v)
+            out[k] = (mean, max(v) - mean)
+        elif isinstance(v[0], str):  # input shape
+            out[k] = v
         else:
             out[k] = f"{sum(v) / len(v):.2%}"
     out["loopnum"] = loopnum
@@ -73,24 +77,55 @@ def run_bmrtttest(bmodel, loopnum=100):
     return out
 
 
+# from tpu-perf
+def parse_profile(folder):
+    with open(os.path.join(folder, "compiler_profile_0.txt")) as f:
+        lines = f.read()
+    lines = lines[lines.find("API_END") :]
+    data = dict()
+    for pair in re.finditer("(\w+) *: *((\d+\.)?\d+)", lines):
+        v = pair.group(2)
+        data[pair.group(1)] = float(v)
+
+    return data
+
+
+def get_profile(path):
+    bmrt_log = get_bmrtt_log(path)
+    profile_log = parse_profile(path)
+    time = [x * 1000 for x in bmrt_log["calculate (s)"]]  # seconds to milliseconds
+    mac_util = lambda t: 100 * profile_log["flops"] / (t * 1e-3 * 1e12 * 32)
+    return OrderedDict(
+        {
+            "name": bmrt_log["bmodel"],
+            "shape": " ".join(bmrt_log["shape"]),
+            "time": f"{time[0]:.3f} +/-{time[1]:.3f}",
+            "cmodel_estimate_time": f"{profile_log['runtime']:.3f}",
+            "mac_utilization": f"{mac_util(time[0]):.2f}",
+            "cmodel_estimate_mac_utilization": (
+                f"{mac_util(profile_log['ComputationAbility']):.2f}"
+            ),
+            "ddr_utilization": f"{profile_log['USAGE']:.2f}",
+            "cmodel_estimate_ddr_bandwidth": (
+                f"{profile_log['USAGE'] * profile_log['runtime'] / time[0]:.2f}"
+            ),
+        }
+    )
+
+
 def gen_bmodel_test_info(dir):
     files = os.listdir(dir)
-    bmrt_test_info = []
-    keys = set()
-    for f in files:
-        folder = os.path.join(dir, f)
-        if os.path.isdir(folder):
-            info = run_bmrtttest(os.path.join(dir, f))
-            keys.update(info.keys())
-            bmrt_test_info.append(info)
-    keys = sorted(keys)
     fname = f"{strftime('%Y-%m-%d_%H.%M.%S.csv', gmtime())}"
+    write_header = True
     with open(fname, "w") as fb:
-        fb.write(f"{keys}"[1:-1] + "\n")
-        for info in bmrt_test_info:
-            _placeholder = dict.fromkeys(keys)
-            _placeholder.update(info)
-            fb.write(", ".join([str(_placeholder[k]) for k in keys]) + "\n")
+        for f in files:
+            folder = os.path.join(dir, f)
+            if os.path.isdir(folder):
+                info = get_profile(os.path.join(dir, f))
+                if write_header:
+                    fb.write(f"{list(info.keys())}"[1:-1] + "\n")
+                    write_header = False
+                fb.write(", ".join(info.values()) + "\n")
 
 
 if __name__ == "__main__":
