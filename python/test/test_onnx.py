@@ -31,6 +31,7 @@ TEST_ONNX_IR = [
     "SiLU",
     "Concat",
     "Transpose",
+    "LeakyRelu",
 ]
 
 
@@ -59,6 +60,7 @@ class ONNX_IR_TESTER(object):
             "SiLU": self.test_SiLU,
             "Concat": self.test_Concat,
             "Transpose": self.test_Transpose,
+            "LeakyRelu": self.test_LeakyRelu,
         }
         self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
 
@@ -301,6 +303,42 @@ class ONNX_IR_TESTER(object):
             self.convert_and_test({'input': input_data}, graph_def, test_case)
             print("[Success] {}D data test".format(len(input_shape)))
 
+    def test_LeakyRelu(self):
+        test_case = "LeakyRelu"
+        oc = 32
+        input_shape = [1, 16, 100, 100]
+        filter_shape = [oc, 16, 3, 3]
+        output_shape = [1, oc, 100, 100]
+        input_data = np.random.randn(*input_shape).astype(np.float32)
+        weight_data = np.random.randn(*filter_shape).astype(np.float32)
+        bias_data = np.random.randn(oc).astype(np.float32)
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
+        bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape), bias_data)
+
+        conv_def = helper.make_node(
+            "Conv",
+            inputs=['input', 'weight', 'bias'],
+            outputs=['conv_output'],
+            kernel_shape=[3, 3],
+            pads=[1, 1, 1, 1],
+            strides=[1, 1],
+            dilations=[1, 1],
+            group=1,
+        )
+
+        leakyrelu_def = helper.make_node(
+            "LeakyRelu",
+            inputs=['conv_output'],
+            outputs=['output'],
+            alpha=0.67)
+
+        graph_def = helper.make_graph([conv_def, leakyrelu_def],
+                                      test_case, [input], [output],
+                                      initializer=[weight, bias])
+        self.convert_and_test({'input': input_data}, graph_def, test_case)
 
 if __name__ == "__main__":
     os.makedirs("onnx_test", exist_ok=True)
