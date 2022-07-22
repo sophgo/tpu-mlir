@@ -4,10 +4,15 @@ set -ex
 mkdir -p resnet34_ssd1200
 pushd resnet34_ssd1200
 
-# https://github.com/onnx/models/tree/main/vision/object_detection_segmentation/ssd#preprocessing-steps
+if [ -d ${MODEL_ZOO_PATH} ]; then
+  MODEL_PATH=${MODEL_ZOO_PATH}/vision/detection/ssd-resnet34/resnet34-ssd1200.onnx
+else
+  MODEL_PATH=${NNMODELS_PATH}/onnx_models/resnet34-ssd1200.onnx
+fi
+
 model_transform.py \
     --model_name resnet34_ssd1200 \
-    --model_def  ${NNMODELS_PATH}/onnx_models/resnet34-ssd1200.onnx \
+    --model_def  ${MODEL_PATH} \
     --input_shapes [[1,3,1200,1200]] \
     --resize_dims 1200,1200 \
     --mean 123.675,116.28,103.53 \
