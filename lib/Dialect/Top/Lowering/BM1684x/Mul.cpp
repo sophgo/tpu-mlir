@@ -18,8 +18,47 @@ using namespace tpu_mlir::helper;
 using namespace mlir;
 
 Value top::MulOp::lowering_int8_bm1684x(bool asymmetric) {
-  llvm_unreachable("MulOp to be supported");
-  return nullptr;
+  if (asymmetric == false) {
+    auto op = getOperation();
+    OpBuilder builder(op);
+    std::vector<Value> operands;
+    const int nInputs = op->getNumOperands();
+    double scale;
+    int64_t zp_o;
+    double scale_o;
+    Quant::getScaleAndZeroPoint(output(), scale_o, zp_o, asymmetric);
+
+    double scale_i;
+    int64_t zp;
+    for (int i = 0; i < nInputs; i++) {
+      auto input = op->getOperand(i);
+      operands.push_back(input);
+      Quant::getScaleAndZeroPoint(input, scale_i, zp, asymmetric);
+      if (i == 0)
+        scale = scale_i;
+      else
+        scale *= scale_i;
+    }
+
+    scale /= scale_o;
+
+    int multiplier;
+    int rshift;
+    get_scale_and_shift(scale, multiplier, rshift, 8);
+
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(builder.getNamedAttr("name", nameAttr()));
+    attrs.push_back(builder.getNamedAttr("do_relu", do_reluAttr()));
+    attrs.push_back(builder.getNamedAttr("multiplier", builder.getI64IntegerAttr(multiplier)));
+    attrs.push_back(builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
+    auto newType = Quant::getQuantInt8Type(output(), asymmetric);
+    auto newOp = builder.create<tpu::MulOp>(op->getLoc(), newType,
+                                            ArrayRef<Value>{operands},
+                                            ArrayRef<NamedAttribute>{attrs});
+    return newOp.output();
+  } else {
+    llvm_unreachable("MulOp asymmetric not support");
+  }
 }
 
 Value top::MulOp::lowering_f32_bm1684x() {
@@ -35,5 +74,13 @@ Value top::MulOp::lowering_f16_bm1684x() {
 }
 
 Value top::MulOp::lowering_quant_bm1684x() {
-  llvm_unreachable("MulOp not support now");
+  Builder builder(getContext());
+  auto in0_f32 = do_cast(inputs()[0], builder.getF32Type(), false);
+  auto in1_f32 = do_cast(inputs()[1], builder.getF32Type(), false);
+  auto op = getOperation();
+  op->setOperand(0, in0_f32);
+  op->setOperand(1, in1_f32);
+  auto type = output().getType();
+  auto v = lowering_common_float<tpu::MulOp>(op);
+  return do_cast(v, type, true);
 }
