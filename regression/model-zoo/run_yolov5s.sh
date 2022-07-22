@@ -4,13 +4,19 @@ set -ex
 mkdir -p yolov5s
 pushd yolov5s
 
+if [ -d ${MODEL_ZOO_PATH} ]; then
+  MODEL_PATH=${MODEL_ZOO_PATH}/vision/detection/yolov5/yolov5s.onnx
+else
+  MODEL_PATH=${NNMODELS_PATH}/onnx_models/yolov5s_from_model-zoo.onnx
+fi
+
 model_transform.py \
     --model_name yolov5s \
-    --model_def  ${NNMODELS_PATH}/onnx_models/yolov5s.onnx \
+    --model_def ${MODEL_PATH} \
     --mean 0.0,0.0,0.0 \
     --scale 0.0039216,0.0039216,0.0039216 \
     --keep_aspect_ratio \
-    --output_names 224 \
+    --output_names "onnx::Conv_171" \
     --test_input ${REGRESSION_PATH}/image/dog.jpg \
     --test_result yolov5s_top_outputs.npz \
     --mlir yolov5s.mlir

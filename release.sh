@@ -30,28 +30,28 @@ pushd regression_out
 
 # run basic regression
 $DIR/basic/run.sh
-# run nnmodels regression if exist nnmodels
-$DIR/nnmodels/run.sh
+# run model-zoo regression if model-zoo exists.
+$DIR/model-zoo/run.sh
 popd
 
 # for test
-mkdir -p bmodels
+mkdir -m 777 -p bmodels
 pushd bmodels
 ../prepare_bmrttest.py ../regression_out
 cp -f ../run_bmrttest.py ./run.py
 popd
 //MY_CODE_STREAM
 
-# generate nnmodels run.sh
+# generate model-zoo run.sh
 # ------------------------------------------------------------------------------
-nnmodels_sh=${release_archive}/regression/nnmodels/run.sh
-echo "Create nnmodels run.sh" 1>&2
-more > "${nnmodels_sh}" <<'//MY_CODE_STREAM'
+model_zoo_sh=${release_archive}/regression/model-zoo/run.sh
+echo "Create model-zoo run.sh" 1>&2
+more > "${model_zoo_sh}" <<'//MY_CODE_STREAM'
 #!/bin/bash
 set -ex
 
-if [ ! -d ${NNMODELS_PATH} ]; then
-  echo "[Warning] nnmodles does not exist; Skip nnmodels tests."
+if [ ! -d ${MODEL_ZOO_PATH} ]; then
+  echo "[Warning] model-zoo does not exist; Skip model-zoo tests."
   exit 0
 fi
 
@@ -81,7 +81,7 @@ export PATH=${TPUC_ROOT}/python/tools:$PATH
 export PATH=${TPUC_ROOT}/python/utils:$PATH
 export LD_LIBRARY_PATH=$TPUC_ROOT/lib:$LD_LIBRARY_PATH
 export PYTHONPATH=${TPUC_ROOT}/python:$PYTHONPATH
-export NNMODELS_PATH=${TPUC_ROOT}/../nnmodels
+export MODEL_ZOO_PATH=${TPUC_ROOT}/../model-zoo
 export REGRESSION_PATH=${TPUC_ROOT}/regression
 //MY_CODE_STREAM
 
@@ -100,14 +100,15 @@ Before getting a start, you need to prepare some configuration.
 
 - a. Get the sohgo-sdk docker image `docker pull sophgo/tpuc_dev:v1.1`.
 
-- b. (Optional, If you want to test more cases.) Clone the "nnmodels" repository
-  to the same directory in which you unpack TPU-MLIR.
+- b. (Optional, If you want to test more cases.) Clone the "model-zoo" repository
+  to the same directory in which you unpack TPU-MLIR. (If you have already cloned
+  and synced with `model-zoo`, jump to step d.)
   [Install Git LFS with `pip install git-lfs`.]
-  `git clone https://YourName@gerrit-ai.sophgo.vip:29418/nnmodels`.
+  `git clone https://github.com/sophgo/model-zoo`.
 
-- c. (Optional, with step c) Get into the nnmodels folder and pull LFS files
+- c. (Optional, with step c) Get into the "model-zoo" folder and pull LFS files
   from the server.
-  `git lfs install && git lfs pull --include "*.onnx" --exclude=""`
+  `git lfs pull --include "*.onnx" --exclude=""`
 
 - d. Create a docker container and map the directory of "TPU-MLIR" to it.
   `docker run -v $PWD:/workspace/ -ti sophgo/tpuc_dev:v1.1 /bin/bash`
@@ -119,6 +120,8 @@ Before getting a start, you need to prepare some configuration.
 You need to set some system variables to ensure all the functions of TPU-MLIR
 can work well. The commands below will make all the executable files provided by
 TPU-MLIR visible to the system.
+
+Get into the tpu-mlir_v*** directory, then run the command below.
 
 ``` bash
 source ./envsetup.sh

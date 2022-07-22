@@ -1,8 +1,8 @@
 #!/bin/bash
 set -ex
 
-if [ ! -d ${NNMODELS_PATH} ]; then
-  echo "[Warning] nnmodles does not exist; Skip nnmodels tests."
+if [ ! -d ${MODEL_ZOO_PATH} ] && [ ! -d ${NNMODELS_PATH} ]; then
+  echo "[Warning] model-zoo does not exist; Skip model-zoo tests."
   exit 0
 fi
 
