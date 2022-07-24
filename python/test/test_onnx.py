@@ -33,6 +33,7 @@ TEST_ONNX_IR = [
     "Transpose",
     "LeakyRelu",
     "Mul",
+    "Resize",
 ]
 
 
@@ -63,6 +64,7 @@ class ONNX_IR_TESTER(object):
             "Transpose": self.test_Transpose,
             "LeakyRelu": self.test_LeakyRelu,
             "Mul": self.test_Mul,
+            "Resize": self.test_Resize,
         }
         self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
 
@@ -363,6 +365,31 @@ class ONNX_IR_TESTER(object):
             graph_def,
             test_case,
         )
+
+    def test_Resize(self):
+        test_case = "Resize"
+        input_shape = [1, 16, 32, 32]
+        output_shape = [1, 16, 64, 64]
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        roi_data = np.array([], dtype=np.float32)
+        scales_data = np.array([1, 1, 2, 2], dtype=np.float32)
+        roi = helper.make_tensor('roi', TensorProto.FLOAT, [0], roi_data)
+        scales = helper.make_tensor('scales', TensorProto.FLOAT, [4], scales_data)
+        resize_def = helper.make_node(
+            'Resize',
+            inputs=['input', 'roi', 'scales'],
+            outputs=['output'],
+            mode='nearest',
+            nearest_mode = 'floor',
+            coordinate_transformation_mode = 'asymmetric'
+        )
+        graph_def = helper.make_graph([resize_def],
+                                      test_case, [input], [output],
+                                      initializer=[roi, scales])
+        input_data = np.random.randn(*input_shape).astype(np.float32)
+        self.convert_and_test({"input": input_data}, graph_def, test_case)
+
 
 if __name__ == "__main__":
     os.makedirs("onnx_test", exist_ok=True)

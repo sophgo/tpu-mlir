@@ -26,8 +26,9 @@ class Top:
     ReluOp = 'top.Relu'
     SliceOp = 'top.Slice'
     SigmoidOp = 'top.Sigmoid'
-    LeakyRelu = 'top.LeakyRelu'
-    Dropout = 'top.Dropout'
+    LeakyReluOp = 'top.LeakyRelu'
+    DropoutOp = 'top.Dropout'
+    UpsampleOp = 'top.Upsample'
 
 class State:
     TOP_F32 = 'TOP_F32'
@@ -270,7 +271,7 @@ class MLIRImporter(object):
             'name': StringAttr.get(kargs['name']),
             'alpha': FloatAttr.get_f64(kargs['alpha']),
         }
-        return self.buildOp(Top.LeakyRelu, operands, [output_type], **param)
+        return self.buildOp(Top.LeakyReluOp, operands, [output_type], **param)
 
     def create_dropout_op(self, operands, output_shape, **kargs):
         """
@@ -285,7 +286,7 @@ class MLIRImporter(object):
             'name': StringAttr.get(kargs['name']),
             'ratio': FloatAttr.get_f64(kargs['ratio']),
         }
-        return self.buildOp(Top.Dropout, operands, [output_type], **param)
+        return self.buildOp(Top.DropoutOp, operands, [output_type], **param)
 
     def create_maxpool_op(self, operands, output_shape, **kargs):
         """
@@ -358,6 +359,15 @@ class MLIRImporter(object):
             'bias': FloatAttr.get_f64(kargs['bias']),
         }
         return self.buildOp(Top.SigmoidOp, operands, [output_type], **param)
+
+    def create_upsample_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': StringAttr.get(kargs['name']),
+            'scale_h': IntegerAttr.get(self.mlir_type['INT64'], kargs['scale_h']),
+            'scale_w': IntegerAttr.get(self.mlir_type['INT64'], kargs['scale_w']),
+        }
+        return self.buildOp(Top.UpsampleOp, operands, [output_type], **param)
 
     def print_module(self):
         mlir_format = str(self.mlir_module)

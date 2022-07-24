@@ -509,4 +509,19 @@ def Top_DropoutOp : Top_Op<"Dropout", [InOutSameShape]> {
   let hasCanonicalizer = 1;
 }
 
+def Top_UpsampleOp : Top_Op<"Upsample", [SupportFuseRelu]> {
+  let summary = "Upsample operation";
+  let description = [{
+    // TODO
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    I64Attr:$scale_h,
+    I64Attr:$scale_w,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    StrAttr:$name
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 #endif // Top_OPS

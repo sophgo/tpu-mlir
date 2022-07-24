@@ -583,34 +583,15 @@ class OnnxConverter(BaseConverter):
         self.addOperand(onnx_node.name, new_op)
 
     # when resize by nearest, with integer scale_h and integer scale_w
-    def resize_to_conv(self, onnx_node, op, input_shape, output_shape, scale_h, scale_w):
+    def resize_to_upsample(self, onnx_node, op, input_shape, output_shape, scale_h, scale_w):
         operands = [op]
-        ic = input_shape[1]
-        # use conv(depthwise)
-        kh = int(scale_h)
-        kw = int(scale_w)
         p = {
             'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
-            'kernel_shape': [kh, kw],
-            'strides': [1, 1],
-            'pads': [kh - 1, kw - 1, kh - 1, kw - 1],
-            'inserts': [kh - 1, kw - 1],
-            'dilations': [1, 1],
-            'group': ic,
-            'with_bias': False,
-            'do_relu': False,
+            'scale_h': int(scale_h),
+            'scale_w': int(scale_w),
         }
-
-        # conv weight all one
-        weight_shape = [ic, 1, 1, int(scale_h), int(scale_w)]
-        tensor_data = np.full(weight_shape, 1, np.float32)
-        weight_name = "{}_filter".format(onnx_node.name)
-        self.addTensor(weight_name, tensor_data)
-        operands.append(self.getWeightOp(weight_name))
-        operands.append(self.mlir.none_op)
-        new_op = self.mlir.create_conv_op(operands, output_shape, **p)
+        new_op = self.mlir.create_upsample_op(operands, output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
-        return
 
     def convert_resize_op(self, onnx_node):
         assert (onnx_node.op_type == "Resize")
@@ -646,7 +627,7 @@ class OnnxConverter(BaseConverter):
         coord_mode = onnx_node.attrs.get("coordinate_transformation_mode", "half_pixel")
         if mode == b'nearest':
             if scale_h == int(scale_h) and scale_w == int(scale_w):
-                self.resize_to_conv(onnx_node, op, input_shape, output_shape, scale_h, scale_w)
+                self.resize_to_upsample(onnx_node, op, input_shape, output_shape, scale_h, scale_w)
                 return
         raise RuntimeError("[{}] Unsupported mode: {}, coord_mode: {}".format(
             onnx_node.name, mode, coord_mode))
