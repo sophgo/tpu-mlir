@@ -476,4 +476,22 @@ def Tpu_PermuteOp: Tpu_Op<"Permute"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_UpsampleOp: Tpu_Op<"Upsample", [
+    SupportFuseRelu,
+    DeclareOpInterfaceMethods<LocalGenInterface>]> {
+  let summary = "Upsample operation";
+  let description = [{
+
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    I64Attr:$scale_h,
+    I64Attr:$scale_w,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
+    StrAttr:$name
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 #endif // TPU_OPS
