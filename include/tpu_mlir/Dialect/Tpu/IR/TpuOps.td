@@ -482,7 +482,7 @@ def Tpu_PermuteOp: Tpu_Op<"Permute"> {
 
 def Tpu_UpsampleOp: Tpu_Op<"Upsample", [
     SupportFuseRelu,
-    DeclareOpInterfaceMethods<LocalGenInterface>]> {
+    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH"]>]> {
   let summary = "Upsample operation";
   let description = [{
 
