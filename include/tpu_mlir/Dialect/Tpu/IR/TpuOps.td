@@ -125,8 +125,12 @@ def Tpu_AvgPoolOp:Tpu_PoolOp<"AvgPool"> {
     DefaultValuedAttr<I64Attr, "0">:$pad_value,
     DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<I64Attr, "0">:$multiplier,
-    DefaultValuedAttr<I64Attr, "0">:$rshift,
+    /// symmetric quantize param
+    OptionalAttr<I64Attr>:$multiplier,
+    OptionalAttr<I64Attr>:$rshift,
+    /// asymmetric quantize param
+    OptionalAttr<F64Attr>:$scale,
+    OptionalAttr<F64Attr>:$offset,
     OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
     StrAttr:$name
   );

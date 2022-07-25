@@ -93,15 +93,29 @@ LogicalResult tpu::AvgPoolOp::inference(InferenceParameter &p) {
   if (out_type.isInteger(8)) {
     auto i_qtype = Quant::getUniformQuantizedType(input());
     auto o_qtype = Quant::getUniformQuantizedType(output());
-    auto multi = multiplier();
-    auto rs = rshift();
+    auto module = Module::getModuleOp(getOperation());
+
+    if (Module::getAsymmetric(module) == false) {
+      auto multi = multiplier().getValue();
+      auto rs = rshift().getValue();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
-    for (int64_t i = 0; i < num_elem; ++i) {
-      p.outputs[0][i] = applyMultiplierAndRShift(
-          std::round(p.outputs[0][i] * pooling->kh * pooling->kw), multi, rs);
-      p.outputs[0][i] = out_type.isUnsignedInteger(8)
-                            ? Quant::to_uint8(p.outputs[0][i])
-                            : Quant::to_int8(p.outputs[0][i]);
+      for (int64_t i = 0; i < num_elem; ++i) {
+        p.outputs[0][i] = applyMultiplierAndRShift(
+            std::round(p.outputs[0][i] * pooling->kh * pooling->kw), multi, rs);
+        p.outputs[0][i] = out_type.isUnsignedInteger(8)
+                              ? Quant::to_uint8(p.outputs[0][i])
+                              : Quant::to_int8(p.outputs[0][i]);
+      }
+    } else {
+#pragma omp parallel for schedule(static, omp_schedule(num_elem))
+      for (int64_t i = 0; i < num_elem; ++i) {
+        p.outputs[0][i] = p.outputs[0][i] * pooling->kh * pooling->kw *
+                              scale().getValue().convertToDouble() +
+                          offset().getValue().convertToDouble();
+        p.outputs[0][i] = out_type.isUnsignedInteger(8)
+                              ? Quant::to_uint8(p.outputs[0][i])
+                              : Quant::to_int8(p.outputs[0][i]);
+      }
     }
   } else if (out_type.isa<FloatType>()) {
     if (do_relu()) {

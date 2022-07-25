@@ -12,6 +12,7 @@
 #include "tpu_mlir/Backend/BM168x/BM1684x.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
 #include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace mlir;
 using namespace tpu_mlir;
@@ -46,6 +47,10 @@ typedef struct pooling_common_spec {
   int32_t max_pooling_with_mask; //1: with mask 0: no mask
   int32_t multiplier;
   int32_t rshiftbits;
+  /* asymmetric quantize */
+  int32_t merge_requant;
+  float   rq_scale;
+  float   rq_offset;
 } pooling_common_spec_t;
 
 typedef struct {
@@ -98,6 +103,7 @@ void tpu::AvgPoolOp::codegen_global_int8_bm1684x() {
   parseParam(n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value,
              relu, is_global, count_include_pad);
   auto op = getOperation();
+  auto module = Module::getModuleOp(op);
   auto input_spec = BM1684x::get_input_spec(op);
   auto output_spec = BM1684x::get_output_spec(op);
   pooling_common_spec_t spec = {0};
@@ -117,9 +123,16 @@ void tpu::AvgPoolOp::codegen_global_int8_bm1684x() {
   spec.if_relu = relu;
   spec.relu_upper_limit = 0;
   spec.ceil_mode = 0;
-  spec.multiplier = multiplier();
-  spec.rshiftbits = rshift();
   spec.round_mode = ROUND_UP;
+  spec.avg_pooling_quant_mode = Module::getAsymmetric(module) ? 2 : 0;
+  if (spec.avg_pooling_quant_mode == 0) {
+    spec.multiplier = multiplier().getValue();
+    spec.rshiftbits = rshift().getValue();
+  } else if (spec.avg_pooling_quant_mode == 2) {
+    spec.merge_requant = true;
+    spec.rq_scale = scale().getValue().convertToDouble();
+    spec.rq_offset = offset().getValue().convertToDouble();
+  }
   BM1684x::instance().call_global_func("backend_api_pooling_global", &spec,
                                        sizeof(spec), input_spec->data(),
                                        output_spec->data());
@@ -195,7 +208,21 @@ void tpu::MaxPoolOp::codegen_global_float_bm1684x() {
 int64_t tpu::AvgPoolOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
-  return 0;
+  int64_t size = 0;
+  auto module = Module::getModuleOp(getOperation());
+  if (Module::getAsymmetric(module)) {
+    auto kernel = Module::getI64Array(kernel_shape());
+    int64_t dtype_bytes =
+        kernel->at(0) * kernel->at(1) > 256 ? sizeof(int) : sizeof(short);
+    int64_t eu_num = BM1684x::instance().get_eu_num(dtype_bytes);
+    int64_t npu_num = BM1684x::instance().get_npu_num();
+
+    int64_t N, C, H, W;
+    Module::getNCHW(input(), N, C, H, W);
+    size = align_up(out_hslice * W, eu_num) * ceiling_func(C, npu_num) *
+           dtype_bytes;
+  }
+  return size;
 }
 
 int64_t tpu::MaxPoolOp::getBufferSize_bm1684x(
@@ -264,6 +291,7 @@ void tpu::AvgPoolOp::codegen_local_int8_bm1684x(int64_t n_step,
   parseParam(n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value,
              relu, is_global, count_include_pad);
   auto op = getOperation();
+  auto module = Module::getModuleOp(op);
   auto input_spec = BM1684x::get_input_spec(op);
   auto output_spec = BM1684x::get_output_spec(op);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
@@ -285,9 +313,17 @@ void tpu::AvgPoolOp::codegen_local_int8_bm1684x(int64_t n_step,
   common.if_relu = relu;
   common.relu_upper_limit = 0;
   common.ceil_mode = 0;
-  common.multiplier = multiplier();
-  common.rshiftbits = rshift();
   common.round_mode = ROUND_UP;
+  common.avg_pooling_quant_mode = Module::getAsymmetric(module) ? 2 : 0;
+  if (common.avg_pooling_quant_mode == 0) {
+    common.multiplier = multiplier().getValue();
+    common.rshiftbits = rshift().getValue();
+  } else if (common.avg_pooling_quant_mode == 2) {
+    common.merge_requant = true;
+    common.rq_scale = static_cast<float>(scale().getValue().convertToDouble());
+    common.rq_offset =
+        static_cast<float>(offset().getValue().convertToDouble());
+  }
   auto gi = getGroupInfo(n_step, h_step);
   local_sec_info_t sec_info;
   memset(&sec_info, 0, sizeof(sec_info));

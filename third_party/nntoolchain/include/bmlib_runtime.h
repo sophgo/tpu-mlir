@@ -1433,6 +1433,12 @@ DECL_EXPORT bm_status_t okkernel_launch_sync(
         const void   *args,
         unsigned int  size);
 
+DECL_EXPORT bm_status_t tpu_kernel_launch_sync(
+        bm_handle_t   handle,
+        const char   *func_name,
+        const void   *args,
+        unsigned int  size);
+
 DECL_EXPORT bm_status_t okkernel_sync(bm_handle_t handle);
 
 /**

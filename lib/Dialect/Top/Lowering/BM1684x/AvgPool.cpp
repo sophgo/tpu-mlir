@@ -34,14 +34,25 @@ Value top::AvgPoolOp::lowering_int8_bm1684x(bool asymmetric) {
   int64_t in_zp, out_zp;
   Quant::getScaleAndZeroPoint(input(), in_scale, in_zp, asymmetric);
   Quant::getScaleAndZeroPoint(output(), out_scale, out_zp, asymmetric);
-  assert(in_zp == 0 && out_zp == 0);
-  double scale = in_scale / (out_scale * kh * kw);
-  int multiplier, rshift;
-  get_scale_and_shift(scale, multiplier, rshift, 8);
-  attrs.push_back(builder.getNamedAttr("multiplier",
-                                       builder.getI64IntegerAttr(multiplier)));
-  attrs.push_back(
-      builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
+  if (asymmetric == false) {
+    assert(in_zp == 0 && out_zp == 0);
+    double scale = in_scale / (out_scale * kh * kw);
+    int multiplier, rshift;
+    get_scale_and_shift(scale, multiplier, rshift, 8);
+    attrs.push_back(builder.getNamedAttr("multiplier",
+                                        builder.getI64IntegerAttr(multiplier)));
+    attrs.push_back(
+        builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
+  } else {
+    double scale_factor = in_scale / (kh * kw * out_scale);
+    double offset_factor = out_zp - (in_zp + in_zp * in_scale) / out_scale;
+    offset_factor = out_zp - in_scale / out_scale * in_zp;
+    attrs.push_back(
+        builder.getNamedAttr("scale", builder.getF64FloatAttr(scale_factor)));
+    attrs.push_back(
+        builder.getNamedAttr("offset", builder.getF64FloatAttr(offset_factor)));
+  }
+
   builder.setInsertionPointAfter(op);
   auto newType = Quant::getQuantInt8Type(output(), asymmetric);
   auto newOp = builder.create<tpu::AvgPoolOp>(
