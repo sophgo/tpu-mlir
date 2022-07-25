@@ -18,9 +18,7 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-LogicalResult tpu::UpsampleOp::init(InferenceParameter &p) {
-  return success();
-}
+LogicalResult tpu::UpsampleOp::init(InferenceParameter &p) { return success(); }
 void tpu::UpsampleOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::UpsampleOp::inference(InferenceParameter &p) {
@@ -35,7 +33,8 @@ LogicalResult tpu::UpsampleOp::inference(InferenceParameter &p) {
       for (int64_t d2 = 0; d2 < oh; d2++) {
         for (int64_t d3 = 0; d3 < ow; d3++) {
           int64_t idx_o = (((d0 * c + d1) * oh) + d2) * ow + d3;
-          int64_t idx_i = ((((d0 * c + d1) * ih) + d2 / scale_h())) * iw + (d3 / scale_w());
+          int64_t idx_i =
+              ((((d0 * c + d1) * ih) + d2 / scale_h())) * iw + (d3 / scale_w());
           p.outputs[0][idx_o] = p.inputs[0][idx_i];
         }
       }
@@ -45,5 +44,16 @@ LogicalResult tpu::UpsampleOp::inference(InferenceParameter &p) {
   if (do_relu()) {
     function_relu(p.outputs[0], p.outputs[0], num_elem);
   }
+  return success();
+}
+
+LogicalResult tpu::UpsampleOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
+                                         int64_t out_idx, int64_t out_slice) {
+  auto unit = scale_h();
+  if (out_idx % unit || out_slice % unit) {
+    return failure();
+  }
+  in_idx = out_idx / unit;
+  in_slice = out_slice / unit;
   return success();
 }
