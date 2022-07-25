@@ -1,4 +1,4 @@
 ## nntoolchain
 
 2022-07-17:
-build from nntoolchain e89961655e81d3b0814e06550784fc3c46872a0f
+build from nntoolchain b7f59c160434e92b3f68aa8f3b0e51dd5a822ac0
