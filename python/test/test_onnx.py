@@ -17,7 +17,6 @@ from tools.npz_tool import npz_compare
 from tools.model_transform import *
 from utils.mlir_shell import *
 import os
-import gc
 '''
     There are 3 places to add new operator:
       1. TEST_ONNX_IR: list
@@ -34,6 +33,7 @@ TEST_ONNX_IR = [
     "LeakyRelu",
     "Mul",
     "Resize",
+    "Softmax",
 ]
 
 
@@ -65,8 +65,24 @@ class ONNX_IR_TESTER(object):
             "LeakyRelu": self.test_LeakyRelu,
             "Mul": self.test_Mul,
             "Resize": self.test_Resize,
+            "Softmax": self.test_Softmax,
         }
         self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
+
+    def pytorch_transform_onnx(self, model, inputs, test_name):
+        in_names = []
+        if isinstance(inputs, tuple):
+            for i in range(len(inputs)):
+                in_names.append("in_{}".format(i))
+        else:
+            in_names = ["in_0"]
+        torch.onnx.export(model,
+                          inputs,
+                          test_name + ".onnx",
+                          export_params=True,
+                          opset_version=11,
+                          verbose=True,
+                          input_names=in_names)
 
     def onnx_convert(self, input_data: dict, graph_def, model_name: str):
         # onnx --> mlir conversion (origin and optimized mlir models will be generated and saved)
@@ -92,6 +108,7 @@ class ONNX_IR_TESTER(object):
                         top_mlir_outs: dict,
                         quant_mode: str,
                         isAsym: bool = False):
+
         table_name = None
         top_mlir = "{}.mlir".format(model_name)
         tpu_mlir = "{}_{}".format(model_name, quant_mode)
@@ -99,6 +116,7 @@ class ONNX_IR_TESTER(object):
             table_name = "{}_cali_table".format(model_name)
             make_test_calibration_table(top_mlir_outs, table_name)
             tpu_mlir += "_asym" if isAsym else "_sym"
+
         # lowering
         mlir_lowering(top_mlir,
                       tpu_mlir + ".mlir",
@@ -333,11 +351,10 @@ class ONNX_IR_TESTER(object):
             group=1,
         )
 
-        leakyrelu_def = helper.make_node(
-            "LeakyRelu",
-            inputs=['conv_output'],
-            outputs=['output'],
-            alpha=0.67)
+        leakyrelu_def = helper.make_node("LeakyRelu",
+                                         inputs=['conv_output'],
+                                         outputs=['output'],
+                                         alpha=0.67)
 
         graph_def = helper.make_graph([conv_def, leakyrelu_def],
                                       test_case, [input], [output],
@@ -355,9 +372,7 @@ class ONNX_IR_TESTER(object):
         ]
         output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
 
-        mul_def = helper.make_node("Mul",
-                                   inputs=list(input_shape.keys()),
-                                   outputs=["output"])
+        mul_def = helper.make_node("Mul", inputs=list(input_shape.keys()), outputs=["output"])
 
         graph_def = helper.make_graph([mul_def], test_case, inputs, [output])
         self.convert_and_test(
@@ -376,19 +391,28 @@ class ONNX_IR_TESTER(object):
         scales_data = np.array([1, 1, 2, 2], dtype=np.float32)
         roi = helper.make_tensor('roi', TensorProto.FLOAT, [0], roi_data)
         scales = helper.make_tensor('scales', TensorProto.FLOAT, [4], scales_data)
-        resize_def = helper.make_node(
-            'Resize',
-            inputs=['input', 'roi', 'scales'],
-            outputs=['output'],
-            mode='nearest',
-            nearest_mode = 'floor',
-            coordinate_transformation_mode = 'asymmetric'
-        )
+        resize_def = helper.make_node('Resize',
+                                      inputs=['input', 'roi', 'scales'],
+                                      outputs=['output'],
+                                      mode='nearest',
+                                      nearest_mode='floor',
+                                      coordinate_transformation_mode='asymmetric')
         graph_def = helper.make_graph([resize_def],
                                       test_case, [input], [output],
                                       initializer=[roi, scales])
         input_data = np.random.randn(*input_shape).astype(np.float32)
         self.convert_and_test({"input": input_data}, graph_def, test_case)
+
+    def test_Softmax(self):
+        test_case = 'Softmax'
+        input_shape = [1, 1000, 1, 1]
+        axis = 1
+        input_data = np.random.randn(*input_shape).astype(np.float32)
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
+        softmax_def = helper.make_node(test_case, inputs=['input'], outputs=['output'], axis=axis)
+        graph_def = helper.make_graph([softmax_def], test_case, [input], [output])
+        self.convert_and_test({'input': input_data}, graph_def, test_case)
 
 
 if __name__ == "__main__":
