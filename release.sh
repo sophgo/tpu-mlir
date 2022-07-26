@@ -59,9 +59,8 @@ DIR="$( cd "$(dirname "$0")" ; pwd -P )"
 
 $DIR/run_mobilenet_v2.sh
 $DIR/run_resnet50_v2.sh
-$DIR/run_resnet34_ssd1200.sh
-$DIR/run_yolov5s.sh
 $DIR/run_vgg16-12.sh
+$DIR/run_resnet34_ssd1200.sh
 //MY_CODE_STREAM
 
 
@@ -98,13 +97,14 @@ exploring the "TPU-MLIR" release SDK.
 
 Before getting a start, you need to prepare some configuration.
 
-- a. Get the sohgo-sdk docker image `docker pull sophgo/tpuc_dev:v1.1`.
+- a. Get the tpuc_dev docker image
+  `docker pull sophgo/tpuc_dev:v1.1`.
 
 - b. (Optional, If you want to test more cases.) Clone the "model-zoo" repository
   to the same directory in which you unpack TPU-MLIR. (If you have already cloned
   and synced with `model-zoo`, jump to step d.)
   [Install Git LFS with `pip install git-lfs`.]
-  `git clone https://github.com/sophgo/model-zoo`.
+  `git clone --depth=1 https://github.com/sophgo/model-zoo`.
 
 - c. (Optional, with step c) Get into the "model-zoo" folder and pull LFS files
   from the server.
