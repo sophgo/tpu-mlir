@@ -405,7 +405,7 @@ def Tpu_SiLUOp : Tpu_Op<"SiLU",
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_SoftmaxOp: Tpu_Op<"Softmax", [InOutSameShape]> {
+def Tpu_SoftmaxOp: Tpu_Op<"Softmax",[InOutSameShape]> {
   let summary = "softmax operator";
 
   let description = [{

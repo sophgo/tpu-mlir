@@ -53,14 +53,15 @@ typedef struct {
 }
 #endif
 
-void tpu::SoftmaxOp::codegen_global_int8_bm1684x() {
-  llvm_unreachable("Codegen to be supported");
-}
-
+// =========================================
+// GloballGenInterface
+// =========================================
 void tpu::SoftmaxOp::codegen_global_float_bm1684x() {
   softmax_global_param_t param = {0};
   param.input_addr = Module::getAddress(input());
   param.output_addr = Module::getAddress(output());
+  int64_t n, c, h, w;
+  Module::getNCHW(input(), n, c, h, w);
   int outer_num = 1, softmax_num = 1, inner_num = 1;
   auto in_shape = Module::getShape(input());
   int ax = axis();
@@ -75,9 +76,14 @@ void tpu::SoftmaxOp::codegen_global_float_bm1684x() {
   param.c = softmax_num;
   param.h = 1;
   param.w = inner_num;
+
   param.log = false;
   param.dtype = BM168x::getDataType(input());
   param.scale_val = 0;
   BM1684x::instance().call_global_func("backend_api_softmax_global", &param,
                                        sizeof(param));
+}
+
+void tpu::SoftmaxOp::codegen_global_int8_bm1684x() {
+  codegen_global_float_bm1684x();
 }
