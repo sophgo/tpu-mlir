@@ -62,4 +62,26 @@ model_deploy.py \
   --correctness 0.99,0.93 \
   --model yolov5s_1684x_int8_asym.bmodel
 
+#########################
+# detect image by detect_yolov5.py
+#########################
+
+# by onnx
+detect_yolov5.py \
+  --input ../../image/dog.jpg \
+  --model ${REGRESSION_PATH}/model/yolov5s.onnx \
+  --output dog_onnx.jpg
+
+# by int8 symmetric bmodel
+detect_yolov5.py \
+  --input ${REGRESSION_PATH}/image/dog.jpg \
+  --model yolov5s_1684x_int8_sym.bmodel \
+  --output dog_int8_sym.jpg
+
+# by int8 asymmetric bmodel
+detect_yolov5.py \
+  --input ${REGRESSION_PATH}/image/dog.jpg \
+  --model yolov5s_1684x_int8_asym.bmodel \
+  --output dog_int8_sym.jpg
+
 popd
