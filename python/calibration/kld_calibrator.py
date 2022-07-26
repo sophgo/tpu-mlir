@@ -16,9 +16,8 @@ import pymlir
 from ctypes import *
 from tqdm import tqdm
 import datetime
-from data.preprocess import preprocess
+from utils.preprocess import preprocess
 from utils.mlir_parser import *
-import pdb
 from utils.log_setting import setup_logger
 from utils.misc import save_tensor_diff_subplot
 
