@@ -88,7 +88,6 @@ void ModuleInterpreter::allocate_resources() {
       }
     }
 
-    llvm::errs() << "fill InferenceParameter\n";
     // input output buffers for all ops
     func.walk([&](Operation *op) {
       if (auto infer_op = llvm::dyn_cast<InferenceInterface>(op)) {
