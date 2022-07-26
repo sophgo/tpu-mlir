@@ -19,7 +19,7 @@ import onnxruntime
 from utils.mlir_shell import *
 from utils.mlir_parser import *
 from tools.model_runner import mlir_inference, model_inference
-from data.preprocess import preprocess
+from utils.preprocess import preprocess
 import torch
 import torch.nn as nn
 import torchvision.transforms as transforms

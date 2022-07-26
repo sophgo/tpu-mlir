@@ -15,7 +15,7 @@ import pymlir
 import pyruntime
 import onnx
 import onnxruntime
-from data.preprocess import preprocess
+from utils.preprocess import preprocess
 from utils.mlir_parser import *
 
 

@@ -18,7 +18,7 @@ from transform.TFLiteConverter import TFLiteConverter
 from utils.mlir_shell import *
 from utils.mlir_parser import *
 from tools.model_runner import mlir_inference, onnx_inference, tflite_inference
-from data.preprocess import get_preprocess_parser, preprocess
+from utils.preprocess import get_preprocess_parser, preprocess
 import pymlir
 
 
