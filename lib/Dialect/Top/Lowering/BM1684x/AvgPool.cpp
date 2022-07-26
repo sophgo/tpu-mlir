@@ -19,10 +19,12 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
 Value top::AvgPoolOp::lowering_int8_bm1684x(bool asymmetric) {
-  int64_t n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value;
-  bool relu, is_global, count_include_pad;
-  parseParam(n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value,
-             relu, is_global, count_include_pad);
+  bool is_pool3d = kernel_shape().size() == 3;
+  auto kernel = Module::getI64Array(kernel_shape());
+  int64_t kd = is_pool3d ? kernel->at(0) : 1;
+  int64_t kh = is_pool3d ? kernel->at(1) : kernel->at(0);
+  int64_t kw = is_pool3d ? kernel->at(2) : kernel->at(1);
+
   auto op = getOperation();
   auto ctx = getContext();
   OpBuilder builder(ctx);
@@ -34,19 +36,18 @@ Value top::AvgPoolOp::lowering_int8_bm1684x(bool asymmetric) {
   int64_t in_zp, out_zp;
   Quant::getScaleAndZeroPoint(input(), in_scale, in_zp, asymmetric);
   Quant::getScaleAndZeroPoint(output(), out_scale, out_zp, asymmetric);
-  if (asymmetric == false) {
+  if (asymmetric == false && is_pool3d == false) {
     assert(in_zp == 0 && out_zp == 0);
     double scale = in_scale / (out_scale * kh * kw);
     int multiplier, rshift;
     get_scale_and_shift(scale, multiplier, rshift, 8);
-    attrs.push_back(builder.getNamedAttr("multiplier",
-                                        builder.getI64IntegerAttr(multiplier)));
+    attrs.push_back(builder.getNamedAttr(
+        "multiplier", builder.getI64IntegerAttr(multiplier)));
     attrs.push_back(
         builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
   } else {
-    double scale_factor = in_scale / (kh * kw * out_scale);
-    double offset_factor = out_zp - (in_zp + in_zp * in_scale) / out_scale;
-    offset_factor = out_zp - in_scale / out_scale * in_zp;
+    double scale_factor = in_scale / (kd * kh * kw * out_scale);
+    double offset_factor = out_zp - in_scale / out_scale * in_zp;
     attrs.push_back(
         builder.getNamedAttr("scale", builder.getF64FloatAttr(scale_factor)));
     attrs.push_back(
@@ -55,33 +56,53 @@ Value top::AvgPoolOp::lowering_int8_bm1684x(bool asymmetric) {
 
   builder.setInsertionPointAfter(op);
   auto newType = Quant::getQuantInt8Type(output(), asymmetric);
-  auto newOp = builder.create<tpu::AvgPoolOp>(
-      getLoc(), newType, ValueRange{input()}, ArrayRef<NamedAttribute>{attrs});
-  return newOp.output();
+  mlir::Value new_result = nullptr;
+  if (is_pool3d == false) {
+    new_result =
+        builder
+            .create<tpu::AvgPool2DOp>(getLoc(), newType, ValueRange{input()},
+                                      ArrayRef<NamedAttribute>{attrs})
+            .output();
+  } else {
+    new_result =
+        builder
+            .create<tpu::AvgPool3DOp>(getLoc(), newType, ValueRange{input()},
+                                      ArrayRef<NamedAttribute>{attrs})
+            .output();
+  }
+  return new_result;
 }
 
 Value top::AvgPoolOp::lowering_f32_bm1684x() {
-  return lowering_common_float<tpu::AvgPoolOp>(getOperation());
+  return (kernel_shape().size() == 3)
+             ? lowering_common_float<tpu::AvgPool3DOp>(getOperation())
+             : lowering_common_float<tpu::AvgPool2DOp>(getOperation());
 }
 
 Value top::AvgPoolOp::lowering_bf16_bm1684x() {
-  return lowering_common_float<tpu::AvgPoolOp, BFloat16Type>(getOperation());
+  return (kernel_shape().size() == 3)
+             ? lowering_common_float<tpu::AvgPool3DOp, Float16Type>(getOperation())
+             : lowering_common_float<tpu::AvgPool2DOp, Float16Type>(getOperation());
 }
 
 Value top::AvgPoolOp::lowering_f16_bm1684x() {
-  return lowering_common_float<tpu::AvgPoolOp, Float16Type>(getOperation());
+  return (kernel_shape().size() == 3)
+             ? lowering_common_float<tpu::AvgPool3DOp, BFloat16Type>(getOperation())
+             : lowering_common_float<tpu::AvgPool2DOp, BFloat16Type>(getOperation());
 }
 
 Value top::AvgPoolOp::lowering_quant_bm1684x() {
   if (false == Quant::isUniformQuantized(input(), output())) {
     llvm_unreachable("input output should be quantized");
   }
+  bool is_pool3d = kernel_shape().size() == 3;
   // input to f32
   Builder builder(getContext());
   auto in_f32 = do_cast(input(), builder.getF32Type(), false);
   auto op = getOperation();
   op->setOperand(0, in_f32);
   auto type = output().getType();
-  auto v = lowering_common_float<tpu::AvgPoolOp>(getOperation());
+  auto v = is_pool3d ? lowering_common_float<tpu::AvgPool3DOp>(getOperation())
+                     : lowering_common_float<tpu::AvgPool2DOp>(getOperation());
   return do_cast(v, type, true);
 }

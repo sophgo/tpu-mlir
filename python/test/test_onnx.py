@@ -23,9 +23,11 @@ import os
       3. for function of building new operator plz add at the tail of the class
 '''
 TEST_ONNX_IR = [
-    "AveragePool",
+    "AvgPool2D",
+    "AvgPool3D",
     "Conv2d",
-    "MaxPool",
+    "MaxPool2D",
+    "MaxPool3D",
     "SiLU",
     "Concat",
     "Transpose",
@@ -56,8 +58,10 @@ class ONNX_IR_TESTER(object):
         self.test_function = {
             # Todo: add more operators
             "Conv2d": self.test_Conv2d,
-            "AveragePool": self.test_AveragePool,
-            "MaxPool": self.test_MaxPool,
+            "AvgPool2D": self.test_AvgPool2D,
+            "AvgPool3D": self.test_AvgPool3D,
+            "MaxPool2D": self.test_MaxPool2D,
+            "MaxPool3D": self.test_MaxPool3D,
             "SiLU": self.test_SiLU,
             "Concat": self.test_Concat,
             "Transpose": self.test_Transpose,
@@ -194,8 +198,8 @@ class ONNX_IR_TESTER(object):
     ##################################
     # adding operators from here
     ##################################
-    def test_AveragePool(self):
-        test_case = 'AveragePool'
+    def test_AvgPool2D(self):
+        test_case = 'AvgPool2D'
         input_shape = [1, 32, 128, 128]
         output_shape = [1, 32, 64, 64]
         input_data = np.random.randn(*input_shape).astype(np.float32)
@@ -212,8 +216,26 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([pool_def], test_case, [input], [output])
         self.convert_and_test({"input": input_data}, graph_def, test_case)
 
-    def test_MaxPool(self):
-        test_case = 'MaxPool'
+    def test_AvgPool3D(self):
+        test_case = 'AvgPool3D'
+        input_shape = [2, 32, 16, 32, 64]
+        output_shape = [2, 32, 8, 16, 32]
+        input_data = np.random.randn(*input_shape).astype(np.float32)
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+
+        pool_def = onnx.helper.make_node(
+            'AveragePool',
+            inputs=['input'],
+            outputs=['output'],
+            kernel_shape=[2, 2, 2],
+            strides=[2, 2, 2],
+        )
+        graph_def = helper.make_graph([pool_def], test_case, [input], [output])
+        self.convert_and_test({"input": input_data}, graph_def, test_case)
+
+    def test_MaxPool2D(self):
+        test_case = 'MaxPool2D'
         input_shape = [1, 32, 128, 128]
         output_shape = [1, 32, 64, 64]
         input_data = np.random.randn(*input_shape).astype(np.float32)
@@ -226,6 +248,24 @@ class ONNX_IR_TESTER(object):
             outputs=['output'],
             kernel_shape=[2, 2],
             strides=[2, 2],
+        )
+        graph_def = helper.make_graph([pool_def], test_case, [input], [output])
+        self.convert_and_test({"input": input_data}, graph_def, test_case)
+
+    def test_MaxPool3D(self):
+        test_case = 'MaxPool3D'
+        input_shape = [1, 32, 16, 32, 64]
+        output_shape = [1, 32, 8, 16, 63]
+        input_data = np.random.randn(*input_shape).astype(np.float32)
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+
+        pool_def = onnx.helper.make_node(
+            'MaxPool',
+            inputs=['input'],
+            outputs=['output'],
+            kernel_shape=[2, 1, 2],
+            strides=[2, 2, 1],
         )
         graph_def = helper.make_graph([pool_def], test_case, [input], [output])
         self.convert_and_test({"input": input_data}, graph_def, test_case)

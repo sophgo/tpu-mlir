@@ -107,16 +107,12 @@ class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,
 
   let results = (outs AnyTensor:$output);
   let extraClassDeclaration = [{
-    void parseParam(
-      int64_t &n, int64_t &c, int64_t &ih, int64_t &iw, int64_t &oh, int64_t &ow,
-      int64_t &kh, int64_t &kw, int64_t &sh, int64_t &sw, int64_t &pt, int64_t &pb,
-      int64_t &pl, int64_t &pr, int64_t &pad_value, bool &do_relu,
-      bool &is_global, bool &count_include_pad);
+    void parseParam(void *param);
   }];
 }
 
-def Tpu_MaxPoolOp:Tpu_PoolOp<"MaxPool">;
-def Tpu_AvgPoolOp:Tpu_PoolOp<"AvgPool"> {
+def Tpu_MaxPool2DOp:Tpu_PoolOp<"MaxPool">;
+def Tpu_AvgPool2DOp:Tpu_PoolOp<"AvgPool"> {
   let arguments = (ins
     AnyTensor:$input,
     I64ArrayAttr:$kernel_shape,
@@ -129,6 +125,24 @@ def Tpu_AvgPoolOp:Tpu_PoolOp<"AvgPool"> {
     OptionalAttr<I64Attr>:$multiplier,
     OptionalAttr<I64Attr>:$rshift,
     /// asymmetric quantize param
+    OptionalAttr<F64Attr>:$scale,
+    OptionalAttr<F64Attr>:$offset,
+    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
+    StrAttr:$name
+  );
+}
+
+def Tpu_MaxPool3DOp:Tpu_PoolOp<"MaxPool3D">;
+def Tpu_AvgPool3DOp:Tpu_PoolOp<"AvgPool3D"> {
+  let arguments = (ins
+    AnyTensor:$input,
+    I64ArrayAttr:$kernel_shape,
+    I64ArrayAttr:$strides,
+    I64ArrayAttr:$pads,
+    DefaultValuedAttr<I64Attr, "0">:$pad_value,
+    DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    /// quantize param
     OptionalAttr<F64Attr>:$scale,
     OptionalAttr<F64Attr>:$offset,
     OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,

@@ -337,6 +337,31 @@ void pad_tensor(float *p_after_pad, float *src, int n, int c, int h, int w,
   }
 }
 
+void pad_tensor(float *p_after_pad, float *src, int n, int c, int d, int h,
+                int w, int pdf, int pdb, int pht, int phb, int pwl, int pwr,
+                float pad_value) {
+  int nc = n * c;
+  int od = d + pdf + pdb;
+  int oh = h + pht + phb;
+  int ow = w + pwl + pwr;
+  for (int i = 0; i < nc; i++) {
+    for (int m = 0; m < od; m++) {
+      for (int j = 0; j < oh; j++) {
+        for (int k = 0; k < ow; k++) {
+          int d_offset = (i * od * oh + m * oh + j) * ow + k;
+          if (m < pdf || m >= (pdf + d) || j < pht || j >= (pht + h) ||
+              k < pwl || k >= (pwl + w)) {
+            p_after_pad[d_offset] = pad_value;
+          } else {
+            int s_offset = ((i * d + m - pdf) * h + j - pht) * w + k - pwl;
+            p_after_pad[d_offset] = src[s_offset];
+          }
+        }
+      }
+    }
+  }
+}
+
 int omp_schedule(int count) {
   return (count + omp_get_num_threads() - 1) / omp_get_num_threads();
 }

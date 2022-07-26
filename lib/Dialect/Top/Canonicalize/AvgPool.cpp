@@ -10,6 +10,7 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Dnnl/Pool.h"
 
 using namespace mlir;
 using namespace tpu_mlir::top;
@@ -20,15 +21,14 @@ struct AvgPoolToDwConv : public OpRewritePattern<AvgPoolOp> {
 
   LogicalResult matchAndRewrite(AvgPoolOp op,
                                 PatternRewriter &rewriter) const override {
-    int64_t n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr, pad_value;
-    bool relu, is_global, count_include_pad;
-    op.parseParam(n, c, ih, iw, oh, ow, kh, kw, sh, sw, pt, pb, pl, pr,
-                  pad_value, relu, is_global, count_include_pad);
-    if (count_include_pad == false) {
+    tpu_mlir::pool_attr_t param;
+    op.parseParam(&param);
+    if (param.count_include_pad == false || op.kernel_shape().size() == 3) {
       return failure();
     }
-    std::vector<int64_t> filter_shape = {c, 1, kh, kw};
-    std::vector<float> filter(c * kh * kw, 1.0 / (kh * kw));
+    std::vector<int64_t> filter_shape = {param.c, 1, param.kh, param.kw};
+    std::vector<float> filter(param.c * param.kh * param.kw,
+                              1.0 / (param.kh * param.kw));
     auto filter_type =
         RankedTensorType::get(filter_shape, rewriter.getF32Type());
     auto new_filter = WeightOp::create(op, "avarage", filter, filter_type);
@@ -39,16 +39,18 @@ struct AvgPoolToDwConv : public OpRewritePattern<AvgPoolOp> {
     operands.push_back(none);
     std::vector<NamedAttribute> attrs;
     attrs.push_back(rewriter.getNamedAttr("name", op.nameAttr()));
-    attrs.push_back(rewriter.getNamedAttr("kernel_shape",
-                                          rewriter.getI64ArrayAttr({kh, kw})));
-    attrs.push_back(
-        rewriter.getNamedAttr("strides", rewriter.getI64ArrayAttr({sh, sw})));
     attrs.push_back(rewriter.getNamedAttr(
-        "pads", rewriter.getI64ArrayAttr({pt, pl, pb, pr})));
+        "kernel_shape", rewriter.getI64ArrayAttr({param.kh, param.kw})));
+    attrs.push_back(rewriter.getNamedAttr(
+        "strides", rewriter.getI64ArrayAttr({param.sh, param.sw})));
+    attrs.push_back(rewriter.getNamedAttr(
+        "pads",
+        rewriter.getI64ArrayAttr(
+            {param.pad_h, param.pad_w, param.pad_h_after, param.pad_w_after})));
     attrs.push_back(
-        rewriter.getNamedAttr("group", rewriter.getI64IntegerAttr(c)));
+        rewriter.getNamedAttr("group", rewriter.getI64IntegerAttr(param.c)));
     attrs.push_back(
-        rewriter.getNamedAttr("do_relu", rewriter.getBoolAttr(relu)));
+        rewriter.getNamedAttr("do_relu", rewriter.getBoolAttr(param.do_relu)));
     auto newOp = rewriter.create<ConvOp>(op.getLoc(), op.output().getType(),
                                          ArrayRef<Value>{operands},
                                          ArrayRef<NamedAttribute>{attrs});
