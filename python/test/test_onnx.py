@@ -11,8 +11,7 @@ import numpy as np
 import onnx
 from onnx import helper
 from onnx import TensorProto
-from tools.model_runner import mlir_inference, model_inference
-from tools.model_runner import onnx_inference
+from tools.model_runner import mlir_inference, model_inference, onnx_inference
 from tools.npz_tool import npz_compare
 from tools.model_transform import *
 from utils.mlir_shell import *
