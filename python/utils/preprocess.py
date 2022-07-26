@@ -3,7 +3,6 @@ import PIL
 import numpy as np
 import cv2
 import argparse
-from enum import Enum
 from utils.log_setting import setup_logger
 from utils.mlir_parser import *
 
