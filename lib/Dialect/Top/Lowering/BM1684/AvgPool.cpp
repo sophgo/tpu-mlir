@@ -19,9 +19,9 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
 Value top::AvgPoolOp::lowering_int8_bm1684() {
-  return lowering_common_int8<tpu::AvgPoolOp>(getOperation());
+  return lowering_common_int8<tpu::AvgPool2DOp>(getOperation());
 }
 
 Value top::AvgPoolOp::lowering_f32_bm1684() {
-  return lowering_common_float<tpu::AvgPoolOp>(getOperation());
+  return lowering_common_float<tpu::AvgPool2DOp>(getOperation());
 }

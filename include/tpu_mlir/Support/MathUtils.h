@@ -83,4 +83,7 @@ int32_t MultiplyByQuantizedMultiplier(int32_t x, int32_t multiplier, int shift);
 
 void pad_tensor(float *p_after_pad, float *src, int n, int c, int h, int w,
                 int pt, int pb, int pl, int pr, float pad_value);
+void pad_tensor(float *p_after_pad, float *src, int n, int c, int d, int h,
+                int w, int pdf, int pdb, int pht, int phb, int pwl, int pwr,
+                float pad_value);
 } // namespace tpu_mlir

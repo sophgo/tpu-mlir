@@ -19,9 +19,9 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
 Value top::MaxPoolOp::lowering_int8_bm1684() {
-  return lowering_common_int8<tpu::MaxPoolOp>(getOperation());
+  return lowering_common_int8<tpu::MaxPool2DOp>(getOperation());
 }
 
 Value top::MaxPoolOp::lowering_f32_bm1684() {
-  return lowering_common_float<tpu::MaxPoolOp>(getOperation());
+  return lowering_common_float<tpu::MaxPool2DOp>(getOperation());
 }
