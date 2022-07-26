@@ -16,19 +16,21 @@ import pyruntime
 import onnx
 import onnxruntime
 
+
 def model_inference(inputs: dict, model_file: str) -> dict:
     outputs = dict()
     model = pyruntime.Model(model_file)
     net = model.Net(model.networks[0])
     for i in net.inputs:
-        assert(i.name in inputs)
-        assert(i.data.shape == inputs[i.name].shape)
-        assert(i.data.dtype == inputs[i.name].dtype)
+        assert (i.name in inputs)
+        assert (i.data.shape == inputs[i.name].shape)
+        assert (i.data.dtype == inputs[i.name].dtype)
         i.data[:] = inputs[i.name]
     net.forward()
     for i in net.outputs:
         outputs[i.name] = np.array(i.data)
     return outputs
+
 
 def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True) -> dict:
     module = pymlir.module()
@@ -53,7 +55,7 @@ def generate_onnx_with_all(onnx_file: str):
     model = onnx.load(onnx_file)
     no_list = [
         "Cast", "Shape", "Unsqueeze", "Gather", "Split", "Constant", "GRU", "Div", "Sqrt", "Add",
-        "ReduceMean", "Pow", "Sub", "Mul", "LSTM"
+        "ReduceMean", "Pow", "Sub", "Mul", "LSTM", "Dropout"
     ]
 
     # tested commited #c3cea486d https://github.com/microsoft/onnxruntime.git
@@ -100,12 +102,12 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
 
 
 def tflite_inference(
-    inputs: dict,
-    tflite_file: str,
-    dump_all: bool = True,
-    input_is_nchw: bool = True,
-    use_represent_type: bool = True,
-    tf_layout: bool = False,  # if "True" the the layout is nhwc
+        inputs: dict,
+        tflite_file: str,
+        dump_all: bool = True,
+        input_is_nchw: bool = True,
+        use_represent_type: bool = True,
+        tf_layout: bool = False,  # if "True" the the layout is nhwc
 ) -> dict:
     # TFLiteInterpreter is heavy, only import it when needed.
     from transform.TFLiteInterpreter import TFLiteInterpreter
@@ -135,13 +137,11 @@ def tflite_inference(
     if dump_all:
         return {
             k["name"]: out_tensor_process((k, v))
-            for k, v in session.get_all_tensors()
-            if v is not None
+            for k, v in session.get_all_tensors() if v is not None
         }
 
     else:
         return {k["name"]: out_tensor_process((k, v)) for k, v in outputs}
-
 
 
 if __name__ == '__main__':

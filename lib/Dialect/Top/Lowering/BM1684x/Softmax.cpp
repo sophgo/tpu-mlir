@@ -18,35 +18,33 @@ using namespace tpu_mlir::helper;
 using namespace mlir;
 
 Value top::SoftmaxOp::lowering_int8_bm1684x(bool asymmetric) {
-  llvm_unreachable("SoftmaxOp to be supported");
-  return nullptr;
+  return lowering_common_float<tpu::SoftmaxOp>(
+      getOperation()); // skip int8 quant for now
 }
 
 Value top::SoftmaxOp::lowering_f32_bm1684x() {
-  llvm_unreachable("SoftmaxOp to be supported");
-  return nullptr;
+  return lowering_common_float<tpu::SoftmaxOp>(getOperation());
 }
 
 Value top::SoftmaxOp::lowering_bf16_bm1684x() {
-  llvm_unreachable("SoftmaxOp to be supported");
-  return nullptr;
+  llvm_unreachable("to be supported for Softmax bf16 quantize lowering");
 }
 
 Value top::SoftmaxOp::lowering_f16_bm1684x() {
-  llvm_unreachable("SoftmaxOp to be supported");
-  return nullptr;
+  llvm_unreachable("to be supported for Softmax f16 quantize lowering");
 }
 
 Value top::SoftmaxOp::lowering_quant_bm1684x() {
   if (Quant::isUniformQuantized(input(), output()) == false) {
     llvm_unreachable("input output should be quantized");
   }
-  // use f32
-  Builder builder(getContext());
-  auto in_f32 = do_cast(input(), builder.getF32Type(), false);
-  auto op = getOperation();
-  op->setOperand(0, in_f32);
-  auto type = output().getType();
-  auto v =  lowering_common_float<tpu::SoftmaxOp>(op);
-  return do_cast(v, type, true);
+  return lowering_common<tpu::SoftmaxOp>(getOperation(), output().getType());
+  // // use f32
+  // Builder builder(getContext());
+  // auto in_f32 = do_cast(input(), builder.getF32Type(), false);
+  // auto op = getOperation();
+  // op->setOperand(0, in_f32);
+  // auto type = output().getType();
+  // auto v =  lowering_common_float<tpu::SoftmaxOp>(op);
+  // return do_cast(v, type, true);
 }

@@ -500,8 +500,8 @@ def Top_DropoutOp : Top_Op<"Dropout", [InOutSameShape]> {
     transferring input to output without any changes.
     Argument `ratio` is only used during training.
   }];
-  let arguments = (
-    ins AnyTensor:$input,
+  let arguments = (ins
+    AnyTensor:$input,
     F64Attr:$ratio,
     StrAttr:$name
   );

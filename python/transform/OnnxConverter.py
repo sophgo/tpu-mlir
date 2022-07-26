@@ -127,7 +127,8 @@ class OnnxConverter(BaseConverter):
             "Slice": lambda node: self.convert_slice_op(node),
             "Transpose": lambda node: self.convert_transpose_op(node),
             "LeakyRelu": lambda node: self.convert_leaky_relu_op(node),
-            "Dropout" : lambda node: self.convert_dropout_op(node),
+            "Dropout": lambda node: self.convert_skip_op(node),
+            "Softmax": lambda node: self.convert_softmax_op(node),
         }
 
     def __del__(self):
@@ -314,6 +315,10 @@ class OnnxConverter(BaseConverter):
         self.WeightToNpz(self.weight_file)
         print("Save mlir file: {}".format(mlir_file))
 
+    def convert_skip_op(self, onnx_node):
+        op = self.getOperand(onnx_node.inputs[0])
+        self.addOperand(onnx_node.name, op)
+
     def convert_add_op(self, onnx_node):
         assert (len(onnx_node.inputs) == 2)
         if self.isTensor(onnx_node.inputs[0]) or self.isTensor(onnx_node.inputs[1]):
@@ -351,10 +356,7 @@ class OnnxConverter(BaseConverter):
         if axis < 0:
             axis += num_dims
         operands = [self.getOperand(x) for x in onnx_node.inputs]
-        p = {
-            "name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
-            "axis": axis
-        }
+        p = {"name": "{}_{}".format(onnx_node.name, onnx_node.op_type), "axis": axis}
         new_op = self.mlir.create_concat_op(operands, output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
@@ -546,13 +548,13 @@ class OnnxConverter(BaseConverter):
 
     def convert_dropout_op(self, onnx_node):
         assert (onnx_node.op_type == "Dropout")
-        opd0 = self.getOperand(onnx_node.inputs[0])
+        op = self.getOperand(onnx_node.inputs[0])
         p = {
             'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
-            'ratio': self.tensors[onnx_node.inputs[1]].item(),
+            'ratio': onnx_node.attrs.get("ratio", 0.5)
         }
         output_shape = self.getShape(onnx_node.name)
-        new_op = self.mlir.create_dropout_op([opd0], output_shape, **p)
+        new_op = self.mlir.create_dropout_op([op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
     def convert_relu_op(self, onnx_node):
@@ -710,4 +712,21 @@ class OnnxConverter(BaseConverter):
             'order': transpose_perm,
         }
         new_op = self.mlir.create_permute_op([op], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_softmax_op(self, onnx_node):
+        assert (onnx_node.op_type == "Softmax")
+        op = self.getOperand(onnx_node.inputs[0])
+        input_shape = self.getShape(onnx_node.inputs[0])
+        output_shape = self.getShape(onnx_node.name)
+        axis_default = -1
+        for i, shape in enumerate(output_shape):
+            if shape > 1:
+                axis_default = i
+                break
+        axis = onnx_node.attrs.get('axis', axis_default)
+        if axis < 0:
+            axis += len(input_shape)
+        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type), 'axis': axis}
+        new_op = self.mlir.create_softmax_op([op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
