@@ -8,9 +8,11 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "../Lowering.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
@@ -37,6 +39,6 @@ Value top::DropoutOp::lowering_f16_bm1684x() {
 }
 
 Value top::DropoutOp::lowering_quant_bm1684x() {
-  llvm_unreachable("not support now");
+  llvm_unreachable("DropoutOp to be supported");
   return nullptr;
 }
