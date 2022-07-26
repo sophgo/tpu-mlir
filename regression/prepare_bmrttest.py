@@ -10,10 +10,10 @@ def get_bmodel_io_info(bmodel):
     input_rg = "^input: .+"
     output_rg = "^output: .+"
     shape_rg = "\[((\d+),\ *)*\d+\]"
+    name_shape_regx = re.compile(f"(^output|^input): *([\S| ]+), *({shape_rg})")
 
     def name_shape(info):
-        shape = re.search(shape_rg, info.group(0)).group(0)  # type: ignore
-        name = info.group(0).split(",")[0].split(":")[1].strip()
+        _, name, shape, *_ = name_shape_regx.findall(info)[0]
         return name, shape
 
     inputs = []
@@ -25,13 +25,11 @@ def get_bmodel_io_info(bmodel):
             check=True,
         )
         for meg in out.stdout.decode().split("\n"):
-            m = re.search(input_rg + shape_rg, meg)
-            if m:
-                inputs.append(name_shape(m)[0])
+            if re.search(input_rg + shape_rg, meg):
+                inputs.append(name_shape(meg)[0])
                 continue
-            m = re.search(output_rg + shape_rg, meg)
-            if m:
-                outputs.append(name_shape(m)[0])
+            if re.search(output_rg + shape_rg, meg):
+                outputs.append(name_shape(meg)[0])
 
     except subprocess.CalledProcessError:
         print(f"run 'model_tool --info {bmodel}' failed.")
