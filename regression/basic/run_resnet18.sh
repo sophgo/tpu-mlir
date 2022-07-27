@@ -51,23 +51,26 @@ model_deploy.py \
 #########################
 # deploy to int8 bmodel
 #########################
+
+
+# only once
+# CALI_TABLE=${REGRESSION_PATH}/cali_tables/resnet18_cali_table
+# run_calibration.py resnet18.mlir \
+#   --dataset ${REGRESSION_PATH}/dataset/ILSVRC2012/ \
+#   --input_num 100 \
+#   -o $CALI_TABLE
+
+CALI_TABLE=resnet18_cali_table
 run_calibration.py resnet18.mlir \
   --dataset ${REGRESSION_PATH}/image \
   --input_num 2 \
-  -o resnet18_cali_table
-
-#auto tune
-# run_calibration.py resnet18.mlir \
-#   --dataset ${REGRESSION_PATH}/ILSVRC2012 \
-#   --input_num 200 \
-#   --tune_num 30 \
-#   -o resnet18_cali_table --debug_cmd 'info_log'
+  -o $CALI_TABLE
 
 # to symmetric
 model_deploy.py \
   --mlir resnet18.mlir \
   --quantize INT8 \
-  --calibration_table resnet18_cali_table \
+  --calibration_table $CALI_TABLE \
   --chip bm1684x \
   --test_input resnet18_in_f32.npz \
   --test_reference resnet18_top_outputs.npz \
@@ -80,7 +83,7 @@ model_deploy.py \
   --mlir resnet18.mlir \
   --quantize INT8 \
   --asymmetric \
-  --calibration_table resnet18_cali_table \
+  --calibration_table $CALI_TABLE \
   --chip bm1684x \
   --test_input resnet18_in_f32.npz \
   --test_reference resnet18_top_outputs.npz \

@@ -90,7 +90,7 @@ def vis(img, boxes, scores, cls_ids, conf=0.5, class_names=None):
     return img
 
 
-def nms(boxes, scores, nms_thr):
+def nms(boxes, scores, iou_thres):
     """Single class NMS implemented in Numpy."""
     x1 = boxes[:, 0]
     y1 = boxes[:, 1]
@@ -114,25 +114,25 @@ def nms(boxes, scores, nms_thr):
         inter = w * h
         ovr = inter / (areas[i] + areas[order[1:]] - inter)
 
-        inds = np.where(ovr <= nms_thr)[0]
+        inds = np.where(ovr <= iou_thres)[0]
         order = order[inds + 1]
 
     return keep
 
 
-def multiclass_nms_class_aware(boxes, scores, nms_thr, score_thr):
+def multiclass_nms_class_aware(boxes, scores, iou_thres, score_thres):
     """Multiclass NMS implemented in Numpy. Class-aware version."""
     final_dets = []
     num_classes = scores.shape[1]
     for cls_ind in range(num_classes):
         cls_scores = scores[:, cls_ind]
-        valid_score_mask = cls_scores > score_thr
+        valid_score_mask = cls_scores > score_thres
         if valid_score_mask.sum() == 0:
             continue
         else:
             valid_scores = cls_scores[valid_score_mask]
             valid_boxes = boxes[valid_score_mask]
-            keep = nms(valid_boxes, valid_scores, nms_thr)
+            keep = nms(valid_boxes, valid_scores, iou_thres)
             if len(keep) > 0:
                 cls_inds = np.ones((len(keep), 1)) * cls_ind
                 dets = np.concatenate([valid_boxes[keep], valid_scores[keep, None], cls_inds], 1)
@@ -142,31 +142,31 @@ def multiclass_nms_class_aware(boxes, scores, nms_thr, score_thr):
     return np.concatenate(final_dets, 0)
 
 
-def multiclass_nms_class_agnostic(boxes, scores, nms_thr, score_thr):
+def multiclass_nms_class_agnostic(boxes, scores, iou_thres, score_thres):
     """Multiclass NMS implemented in Numpy. Class-agnostic version."""
     cls_inds = scores.argmax(1)
     cls_scores = scores[np.arange(len(cls_inds)), cls_inds]
 
-    valid_score_mask = cls_scores > score_thr
+    valid_score_mask = cls_scores > score_thres
     if valid_score_mask.sum() == 0:
         return None
     valid_scores = cls_scores[valid_score_mask]
     valid_boxes = boxes[valid_score_mask]
     valid_cls_inds = cls_inds[valid_score_mask]
-    keep = nms(valid_boxes, valid_scores, nms_thr)
+    keep = nms(valid_boxes, valid_scores, iou_thres)
     if keep:
         dets = np.concatenate(
             [valid_boxes[keep], valid_scores[keep, None], valid_cls_inds[keep, None]], 1)
     return dets
 
 
-def multiclass_nms(boxes, scores, nms_thr, score_thr, class_agnostic=False):
+def multiclass_nms(boxes, scores, iou_thres, score_thres, class_agnostic=False):
     """Multiclass NMS implemented in Numpy"""
     if class_agnostic:
         nms_method = multiclass_nms_class_agnostic
     else:
         nms_method = multiclass_nms_class_aware
-    return nms_method(boxes, scores, nms_thr, score_thr)
+    return nms_method(boxes, scores, iou_thres, score_thres)
 
 
 def preproc(img, input_size, swap=(2, 0, 1)):
@@ -234,23 +234,12 @@ def postproc(outputs, imsize, top, left, anchors=ANCHORS):
 def parse_args():
     parser = argparse.ArgumentParser(description='Inference Yolo v5 network.')
     parser.add_argument("--model", type=str, required=True, help="Model definition file")
-    parser.add_argument("--net_input_dims",
-                        type=str,
-                        default="640,640",
-                        help="'height,width' dimensions of net input tensors.")
+    parser.add_argument("--net_input_dims", type=str, default="640,640", help="(h,w) of net input")
     parser.add_argument("--input", type=str, required=True, help="Input image for testing")
     parser.add_argument("--output", type=str, required=True, help="Output image after detection")
-    parser.add_argument("--nms_score_thr",
-                        type=float,
-                        default=0.5,
-                        help="Object confidence threshold")
-    parser.add_argument("--nms_threshold", type=float, default=0.6, help="NMS IOU threshold")
-    parser.add_argument(
-        "--score_thr",
-        type=float,
-        default=0.3,
-        help="Score threshould to filter the result.",
-    )
+    parser.add_argument("--conf_thres", type=float, default=0.001, help="Confidence threshold")
+    parser.add_argument("--iou_thres", type=float, default=0.6, help="NMS IOU threshold")
+    parser.add_argument("--score_thres", type=float, default=0.5, help="Score of the result")
     args = parser.parse_args()
     return args
 
@@ -272,22 +261,19 @@ def main():
     else:
         raise RuntimeError("not support modle file:{}".format(args.model))
     scores, boxes_xyxy = postproc(output, input_shape, top, left)
-    dets = multiclass_nms(boxes_xyxy,
-                          scores,
-                          nms_thr=args.nms_threshold,
-                          score_thr=args.nms_score_thr)
+    dets = multiclass_nms(boxes_xyxy, scores, iou_thres=args.iou_thres, score_thres=args.conf_thres)
     if dets is not None:
         final_boxes, final_scores, final_cls_inds = dets[:, :4], dets[:, 4], dets[:, 5]
         final_boxes /= ratio
-        origin_img = vis(origin_img,
-                         final_boxes,
-                         final_scores,
-                         final_cls_inds,
-                         conf=args.score_thr,
-                         class_names=COCO_CLASSES)
-        cv2.imwrite(args.output, origin_img)
+        fix_img = vis(origin_img,
+                      final_boxes,
+                      final_scores,
+                      final_cls_inds,
+                      conf=args.score_thres,
+                      class_names=COCO_CLASSES)
+        cv2.imwrite(args.output, fix_img)
     else:
-        raise RuntimeError("Nothing detect out:{}".format(args.input))
+        raise RuntimeError("model:[{}] nothing detect out:{}".format(args.model, args.input))
 
 
 if __name__ == '__main__':
