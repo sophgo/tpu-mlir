@@ -31,7 +31,7 @@ pushd regression_out
 # run basic regression
 $DIR/basic/run.sh
 # run model-zoo regression if model-zoo exists.
-$DIR/model-zoo/run.sh
+$DIR/scripts/run.sh
 popd
 
 # for test
@@ -44,7 +44,7 @@ popd
 
 # generate model-zoo run.sh
 # ------------------------------------------------------------------------------
-model_zoo_sh=${release_archive}/regression/model-zoo/run.sh
+model_zoo_sh=${release_archive}/regression/scripts/run.sh
 echo "Create model-zoo run.sh" 1>&2
 more > "${model_zoo_sh}" <<'//MY_CODE_STREAM'
 #!/bin/bash

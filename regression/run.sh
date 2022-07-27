@@ -14,6 +14,6 @@ test_onnx.py
 $DIR/basic/run.sh
 
 # run nnmodels regression if exist nnmodels
-$DIR/model-zoo/run.sh
+$DIR/scripts/run.sh
 
 popd

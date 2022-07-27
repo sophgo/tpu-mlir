@@ -356,6 +356,7 @@ class ActivationCalibrator(BaseKldCalibrator):
         return size * 4
 
     def _activations_generator(self):
+        print("inference ..")
         idx = 0
         batched_inputs = self.input_num*['']
         for data in self.data_list:
@@ -510,6 +511,7 @@ class ActivationCalibrator(BaseKldCalibrator):
             f.write("# genetated time: {}\n".format(datetime.datetime.now()))
             f.write("# histogram number: {}\n".format(self.histogram_bin_num))
             f.write("# sample number: {}\n###\n".format(self.num_samples))
+            f.write("# tune number: {}\n###\n".format(self.tune_num))
             f.write("# op_name    threshold    min    max\n")
             for op_name in op_layers:
                 threshold = thresholds[op_name]
@@ -518,7 +520,7 @@ class ActivationCalibrator(BaseKldCalibrator):
                 f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold,
                                                            min_value, max_value))
 
-        th_before_tuned = np.array(thresholds_map_list)
-        th_after_tuned = np.array(tuned_threshold_list)
-        file_prefix = './{}_{}pics_{}_times_tuned_th_statistic'.format(self.args.mlir_file.split('.')[0], self.tunner.args.tune_num, self.tunner.tune_steps)
-        save_tensor_diff_subplot(th_before_tuned, th_after_tuned, layer_name_list, 'before_tuned', 'after_tuned', file_prefix)
+        #th_before_tuned = np.array(thresholds_map_list)
+        #th_after_tuned = np.array(tuned_threshold_list)
+        #file_prefix = './{}_{}pics_{}_times_tuned_th_statistic'.format(self.args.mlir_file.split('.')[0], self.tunner.args.tune_num, self.tunner.tune_steps)
+        #save_tensor_diff_subplot(th_before_tuned, th_after_tuned, layer_name_list, 'before_tuned', 'after_tuned', file_prefix)

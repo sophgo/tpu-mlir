@@ -83,12 +83,12 @@ model_deploy.py \
 
 ### 转化为int8 `bmodel`
 
-需要先做Calibration。准备输入数据，将图片放置到单独文件夹下，此处使用`regression/ILSVRC2012`下的200张图片；然后Calibration。如下：
+需要先做Calibration。准备输入数据，将图片放置到单独文件夹下，此处使用`regression/dataset/ILSVRC2012`下的100张图片；然后Calibration。如下：
 
 ``` shell
 run_calibration.py resnet18.mlir \
     --dataset ILSVRC2012 \
-    --input_num 200 \
+    --input_num 100 \
     -o resnet18_cali_table
 ```
 

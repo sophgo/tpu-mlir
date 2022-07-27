@@ -117,12 +117,12 @@ source tpu-mlir_xxxx/envsetup.sh
 
 ### 步骤 1：准备工作目录
 
-建立`model_resnet18`目录，注意是与tpu-mlir同级目录；并把模型文件和图片文件都放入`model_resnet18`目录中。
+建立`model_resnet18`目录，注意是与tpu-mlir同级目录；并把模型文件和图片文件都放入`model_resnet18`目录中。操作如下：
 
 ``` shell
 mkdir model_resnet18 && cd model_resnet18
 cp $TPUC_ROOT/regression/model/resnet18.onnx .
-cp -rf $TPUC_ROOT/regression/ILSVRC2012 .
+cp -rf $TPUC_ROOT/regression/dataset/ILSVRC2012 .
 cp -rf $TPUC_ROOT/regression/image .
 mkdir workspace && cd workspace
 ```
@@ -207,12 +207,12 @@ model_deploy.py的相关参数说明如下：
 
 转INT8模型前需要跑calibration，得到量化表；输入数据的数量根据情况准备100~1000张左右。
 
-这里用ILSVRC2012数据集的200张图片举例，执行calibration：
+这里用现有的ILSVRC2012数据集的100张图片举例，执行calibration：
 
 ``` shell
 run_calibration.py resnet18.mlir \
   --dataset ../ILSVRC2012 \
-  --input_num 200 \
+  --input_num 100 \
   -o resnet18_cali_table
 ```
 
