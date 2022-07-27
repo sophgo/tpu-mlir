@@ -279,8 +279,7 @@ class SimpleTuner:
                 prev_threshold = cur_threshold
 
         for idx in range(self.args.tune_num):
-            for pre_op in self.module_parsered.get_pre_op_by_op_name(evaled_op):
-                self.clear_input_tensor(idx, pre_op)
+            self.clear_input_tensor(idx, tuned_op)
         assert best_threshold >= self.threshold_table.thresholds_map[tuned_op][0]
         self.threshold_table.thresholds_map[tuned_op][0] = best_threshold
 
