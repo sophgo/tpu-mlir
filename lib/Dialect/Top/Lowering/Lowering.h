@@ -48,7 +48,6 @@ static mlir::Value lowering_common(Operation *from, Type newType) {
 template <typename OpTy>
 static mlir::Value lowering_common_int8(Operation *from,
                                         bool asymmetric = false) {
-  auto resultType = from->getResult(0).getType().cast<RankedTensorType>();
   auto newType = Quant::getQuantInt8Type(from->getResult(0), asymmetric);
   return lowering_common<OpTy>(from, newType);
 }
