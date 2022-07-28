@@ -129,6 +129,7 @@ class OnnxConverter(BaseConverter):
             "LeakyRelu": lambda node: self.convert_leaky_relu_op(node),
             "Dropout": lambda node: self.convert_skip_op(node),
             "Softmax": lambda node: self.convert_softmax_op(node),
+            "Log": lambda node: self.convert_log_op(node),
         }
 
     def __del__(self):
@@ -729,4 +730,13 @@ class OnnxConverter(BaseConverter):
             axis += len(input_shape)
         p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type), 'axis': axis}
         new_op = self.mlir.create_softmax_op([op], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_log_op(self, onnx_node):
+        assert (onnx_node.op_type == "Log")
+        op = self.getOperand(onnx_node.inputs[0])
+        input_shape = self.getShape(onnx_node.inputs[0])
+        output_shape = self.getShape(onnx_node.name)
+        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+        new_op = self.mlir.create_log_op([op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
