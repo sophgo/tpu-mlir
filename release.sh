@@ -13,7 +13,8 @@ rm -rf ${release_archive}*
 cp -rf ${INSTALL_PATH} ${release_archive}
 
 cp -rf ${PROJECT_ROOT}/regression ${release_archive}
-cp -f ${PROJECT_ROOT}/doc/*.pdf ${release_archive}/docs/
+cp -f ${PROJECT_ROOT}/doc/tpu-mlir_quick_start_guide.pdf \
+      ${release_archive}/docs/"TPU-MLIR快速入门指南.pdf"
 
 # generate regression run.sh
 # ------------------------------------------------------------------------------
@@ -98,13 +99,16 @@ exploring the "TPU-MLIR" release SDK.
 
 Before getting a start, you need to prepare some configuration.
 
-- a. Get the tpuc_dev docker image
+- a. Get the tpuc_dev docker image.
+  More about docker usage. please check:
+  [installation-methods](https://docs.docker.com/engine/install/ubuntu/#installation-methods)
+  [Manage Docker as a non-root user](https://docs.docker.com/engine/install/linux-postinstall/)
   `docker pull sophgo/tpuc_dev:v1.1`.
 
 - b. (Optional, If you want to test more cases.) Clone the "model-zoo" repository
-  to the same directory in which you unpack TPU-MLIR. (If you have already cloned
-  and synced with `model-zoo`, jump to step d.)
-  [Install Git LFS with `pip install git-lfs`.]
+  to the same directory in which you unpack TPU-MLIR. If you have already cloned
+  and synced with `model-zoo`, jump to step d.
+  [How to use model-zoo](https://github.com/sophgo/model-zoo)
   `git clone --depth=1 https://github.com/sophgo/model-zoo`.
 
 - c. (Optional, with step c) Get into the "model-zoo" folder and pull LFS files
