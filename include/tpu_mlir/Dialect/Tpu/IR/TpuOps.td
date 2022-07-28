@@ -498,4 +498,19 @@ def Tpu_UpsampleOp: Tpu_Op<"Upsample", [
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_LogOp: Tpu_Op<"Log", [InOutSameShape]> {
+  let summary = "Log operator";
+
+  let description = [{
+    Calculates the natural log of the given input tensor, element-wise.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    StrAttr:$name
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 #endif // TPU_OPS

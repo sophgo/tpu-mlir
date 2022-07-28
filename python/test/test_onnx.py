@@ -34,6 +34,7 @@ TEST_ONNX_IR = [
     "Mul",
     "Resize",
     "Softmax",
+    "Log",
 ]
 
 
@@ -66,6 +67,7 @@ class ONNX_IR_TESTER(object):
             "Mul": self.test_Mul,
             "Resize": self.test_Resize,
             "Softmax": self.test_Softmax,
+            "Log": self.test_Log,
         }
         self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
 
@@ -412,6 +414,16 @@ class ONNX_IR_TESTER(object):
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
         softmax_def = helper.make_node(test_case, inputs=['input'], outputs=['output'], axis=axis)
         graph_def = helper.make_graph([softmax_def], test_case, [input], [output])
+        self.convert_and_test({'input': input_data}, graph_def, test_case)
+
+    def test_Log(self):
+        test_case = 'Log'
+        input_shape = [1, 3, 32, 32]
+        input_data = np.clip(np.random.randn(*input_shape).astype(np.float32) * 10.0, 0.5, 8)
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
+        log_def = helper.make_node(test_case, inputs=['input'], outputs=['output'])
+        graph_def = helper.make_graph([log_def], test_case, [input], [output])
         self.convert_and_test({'input': input_data}, graph_def, test_case)
 
 
