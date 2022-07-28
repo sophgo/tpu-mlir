@@ -75,6 +75,12 @@ detect_yolov5.py \
   --model ${REGRESSION_PATH}/model/yolov5s.onnx \
   --output dog_onnx.jpg
 
+# by f32 bmodel
+detect_yolov5.py \
+  --input ${REGRESSION_PATH}/image/dog.jpg \
+  --model yolov5s_1684x_f32.bmodel \
+  --output dog_f32.jpg
+
 # by int8 symmetric bmodel
 detect_yolov5.py \
   --input ${REGRESSION_PATH}/image/dog.jpg \
