@@ -48,22 +48,22 @@ model_deploy.py \
   --chip bm1684x \
   --test_input yolov5s_in_f32.npz \
   --test_reference yolov5s_top_outputs.npz \
-  --tolerance 0.80,0.25 \
+  --tolerance 0.85,0.43 \
   --correctness 0.99,0.90 \
   --model yolov5s_1684x_int8_sym.bmodel
 
-# to asymmetric
-model_deploy.py \
-  --mlir yolov5s.mlir \
-  --quantize INT8 \
-  --asymmetric \
-  --calibration_table $CALI_TABLE \
-  --chip bm1684x \
-  --test_input yolov5s_in_f32.npz \
-  --test_reference yolov5s_top_outputs.npz \
-  --tolerance 0.83,0.27 \
-  --correctness 0.99,0.93 \
-  --model yolov5s_1684x_int8_asym.bmodel
+# to asymmetric: support later
+# model_deploy.py \
+#   --mlir yolov5s.mlir \
+#   --quantize INT8 \
+#   --asymmetric \
+#   --calibration_table $CALI_TABLE \
+#   --chip bm1684x \
+#   --test_input yolov5s_in_f32.npz \
+#   --test_reference yolov5s_top_outputs.npz \
+#   --tolerance 0.83,0.27 \
+#   --correctness 0.99,0.93 \
+#   --model yolov5s_1684x_int8_asym.bmodel
 
 #########################
 # detect image by detect_yolov5.py
@@ -82,9 +82,9 @@ detect_yolov5.py \
   --output dog_int8_sym.jpg
 
 # by int8 asymmetric bmodel
-detect_yolov5.py \
-  --input ${REGRESSION_PATH}/image/dog.jpg \
-  --model yolov5s_1684x_int8_asym.bmodel \
-  --output dog_int8_asym.jpg
+# detect_yolov5.py \
+#   --input ${REGRESSION_PATH}/image/dog.jpg \
+#   --model yolov5s_1684x_int8_asym.bmodel \
+#   --output dog_int8_asym.jpg
 
 popd

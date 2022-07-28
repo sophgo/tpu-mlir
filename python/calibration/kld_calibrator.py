@@ -510,7 +510,7 @@ class ActivationCalibrator(BaseKldCalibrator):
         with open(self.args.calibration_table, 'w') as f:
             f.write("# genetated time: {}\n".format(datetime.datetime.now()))
             f.write("# histogram number: {}\n".format(self.histogram_bin_num))
-            f.write("# sample number: {}\n###\n".format(self.num_samples))
+            f.write("# sample number: {}\n".format(self.num_samples))
             f.write("# tune number: {}\n###\n".format(self.tune_num))
             f.write("# op_name    threshold    min    max\n")
             for op_name in op_layers:

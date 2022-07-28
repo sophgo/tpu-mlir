@@ -476,6 +476,26 @@ def Tpu_ConcatOp:Tpu_Op<"Concat"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_MulShiftOp: Tpu_Op<"MulShift",[
+    DeclareOpInterfaceMethods<LocalGenInterface>]> {
+
+  let summary = "MulShift operator";
+
+  let description = [{
+      Y = int8(X * multiplier >> rshift)
+  }];
+
+  let arguments = (
+    ins AnyTensor:$input,
+    I64Attr:$multiplier,
+    I64Attr:$rshift,
+    StrAttr:$name,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Tpu_PermuteOp: Tpu_Op<"Permute"> {
 
   let summary = "Permute operator";

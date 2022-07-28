@@ -224,11 +224,20 @@ struct BackwardConcat : public OpRewritePattern<top::ConcatOp> {
 
   LogicalResult matchAndRewrite(top::ConcatOp op,
                                 PatternRewriter &rewriter) const override {
-
-    if (!llvm::all_of(op.inputs(), [](Value in) {
-          return Quant::isCalibratedType(in) && in.getDefiningOp()->hasOneUse();
-        }))
-      return failure();
+    // TODO: need to be more clever
+    for (auto in : op.inputs()) {
+      if (!Quant::isCalibratedType(in)) {
+        return failure();
+      }
+      if (in.hasOneUse()) {
+        continue;
+      }
+      for (auto user : in.getUsers()) {
+        if (!isa<top::MaxPoolOp>(user) && user != op.getOperation()) {
+          return failure();
+        }
+      }
+    }
 
     auto out = op.output();
     if (!Quant::isCalibratedType(out)) {
