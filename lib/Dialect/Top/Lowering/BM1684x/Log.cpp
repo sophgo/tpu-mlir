@@ -24,7 +24,6 @@ Value top::LogOp::lowering_int8_bm1684x(bool asymmetric) {
   auto op = getOperation();
   OpBuilder builder(ctx);
   auto stype = Module::getStorageType(output());
-  auto table_type = RankedTensorType::get({256}, stype);
   Value table = create_lookup_table(input(), output(), active_log, asymmetric);
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
