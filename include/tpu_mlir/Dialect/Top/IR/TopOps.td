@@ -524,4 +524,19 @@ def Top_UpsampleOp : Top_Op<"Upsample", [SupportFuseRelu]> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_LogOp: Top_Op<"Log", [InOutSameShape]> {
+  let summary = "Log operator";
+
+  let description = [{
+    Calculates the natural log of the given input tensor, element-wise.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    StrAttr:$name
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 #endif // Top_OPS

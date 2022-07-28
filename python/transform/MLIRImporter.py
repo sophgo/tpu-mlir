@@ -30,6 +30,7 @@ class Top:
     DropoutOp = 'top.Dropout'
     UpsampleOp = 'top.Upsample'
     SoftmaxOp = 'top.Softmax'
+    LogOp = 'top.Log'
 
 
 class State:
@@ -378,6 +379,13 @@ class MLIRImporter(object):
             'axis': IntegerAttr.get(self.mlir_type['INT64'], kargs['axis']),
         }
         return self.buildOp(Top.SoftmaxOp, operands, [output_type], **param)
+
+    def create_log_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': StringAttr.get(kargs['name']),
+        }
+        return self.buildOp(Top.LogOp, operands, [output_type], **param)
 
     def print_module(self):
         mlir_format = str(self.mlir_module)
