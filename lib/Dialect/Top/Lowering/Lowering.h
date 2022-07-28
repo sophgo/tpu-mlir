@@ -72,8 +72,14 @@ static mlir::Value lowering_common_float(Operation *from) {
   return lowering_common<OpTy>(from, newType);
 }
 
+// from int8 cast to f32
 Value do_cast(Value v, Type to, bool tensorType);
+
+// from f32 quant to int8
 Value do_quantize(Value v, bool asymmetric);
+
+// from int8 to int8, convert one (scale zp) to another (scale zp)
+Value do_transfer(Value in, Value out, bool asymmetric);
 
 typedef double (*activate_f)(double);
 

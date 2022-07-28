@@ -243,7 +243,7 @@ model_deploy.py \
   --model yolov5s_1684x_int8_sym.bmodel
 ```
 
-### 步骤5：效果对比
+### 步骤 5：效果对比
 
 在本发布包中有用python写好的yolov5用例，源码路径`$TPUC_ROOT/python/samples/detect_yolov5.py`，用于对图片进行目标检测。阅读该代码可以了解模型是如何使用的。以下用该程序分别来查看onnx/f32/int8的执行结果。
 

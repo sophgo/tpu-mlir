@@ -71,6 +71,56 @@ Value do_cast(Value v, Type to, bool tensorType) {
   return castOp.output();
 }
 
+static double same_value(double x) { return x; }
+
+Value do_transfer(Value in, Value out, bool asymmetric) {
+  double in_scale, out_scale;
+  int64_t in_zp, out_zp;
+  Quant::getScaleAndZeroPoint(in, in_scale, in_zp, asymmetric);
+  Quant::getScaleAndZeroPoint(out, out_scale, out_zp, asymmetric);
+  if (in_scale == out_scale && in_zp == out_zp) {
+    return in;
+  }
+  auto in_shape = Module::getShape(in);
+  auto out_type = Quant::getQuantInt8Type(out, asymmetric);
+  auto ele_type = out_type.cast<RankedTensorType>().getElementType();
+  auto new_type = RankedTensorType::get(in_shape, ele_type);
+
+  auto op = out.getDefiningOp();
+  OpBuilder builder(op);
+  auto in_name = Module::getName(in.getDefiningOp());
+  auto out_name = Module::getName(op);
+  auto new_name = in_name + "_to_" + out_name;
+  int multiplier, rshift;
+  get_scale_and_shift(in_scale / out_scale, multiplier, rshift, 8);
+  if (in_zp == 0 && out_zp == 0) {
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(
+        builder.getNamedAttr("name", builder.getStringAttr(new_name)));
+    attrs.push_back(builder.getNamedAttr(
+        "multiplier", builder.getI64IntegerAttr(multiplier)));
+    attrs.push_back(
+        builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
+    auto in_type = in.getType().cast<RankedTensorType>();
+    auto in_shape = in_type.getShape();
+    builder.setInsertionPointAfterValue(in);
+    auto mrOp =
+        builder.create<tpu::MulShiftOp>(op->getLoc(), new_type, ValueRange{in},
+                                        ArrayRef<NamedAttribute>{attrs});
+    return mrOp.output();
+  } else {
+    auto table = create_lookup_table(in, out, same_value, asymmetric);
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(
+        builder.getNamedAttr("name", builder.getStringAttr(new_name)));
+    builder.setInsertionPointAfterValue(table);
+    auto newOp = builder.create<tpu::LutOp>(op->getLoc(), new_type,
+                                            ValueRange{in, table},
+                                            ArrayRef<NamedAttribute>{attrs});
+    return newOp.output();
+  }
+}
+
 Value create_lookup_table(Value in, Value out, activate_f func,
                           bool asymmetric) {
   assert(func != nullptr);
