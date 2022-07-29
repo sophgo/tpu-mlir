@@ -27,13 +27,21 @@ void top::MulOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::MulOp::inference(InferenceParameter &p) {
   int64_t num_elem = Module::getNumElements(output());
+  bool op_const = inputs().size() == 1;
+  if (!op_const) { // tensor op tensor
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
-  for (int64_t i = 0; i < num_elem; i++) {
-    p.outputs[0][i] = 1;
-    for (auto in : p.inputs) {
-      if (in != nullptr) {
-        p.outputs[0][i] *= in[i];
+    for (int64_t i = 0; i < num_elem; i++) {
+      p.outputs[0][i] = 1;
+      for (auto in : p.inputs) {
+        if (in != nullptr) {
+          p.outputs[0][i] *= in[i];
+        }
       }
+    }
+  } else { // tensor op const
+#pragma omp parallel for schedule(static, omp_schedule(num_elem))
+    for (int64_t i = 0; i < num_elem; i++) {
+      p.outputs[0][i] = p.inputs[0][i] * static_cast<float>(coeffAttr().getValueAsDouble());
     }
   }
   if (do_relu()) {
