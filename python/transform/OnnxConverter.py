@@ -130,6 +130,7 @@ class OnnxConverter(BaseConverter):
             "Dropout": lambda node: self.convert_skip_op(node),
             "Softmax": lambda node: self.convert_softmax_op(node),
             "Log": lambda node: self.convert_log_op(node),
+            "Pad": lambda node: self.convert_pad_op(node),
         }
 
     def __del__(self):
@@ -739,4 +740,27 @@ class OnnxConverter(BaseConverter):
         output_shape = self.getShape(onnx_node.name)
         p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
         new_op = self.mlir.create_log_op([op], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_pad_op(self, onnx_node):
+        assert (onnx_node.op_type == "Pad")
+        op = self.getOperand(onnx_node.inputs[0])
+        input_shape = self.getShape(onnx_node.inputs[0])
+        output_shape = self.getShape(onnx_node.name)
+        mode = onnx_node.attrs.get("mode", "constant")
+        pads = list(self.getTensor(onnx_node.inputs[1]))
+        if pads == None:
+            raise RuntimeError("No paddings value")
+        if len(pads) != 2 * len(input_shape):
+            raise RuntimeError(
+                "pads number is two times as same as input shape ({} v.s 2 * {})".format(
+                    len(pads), len(input_shape)))
+        p = {
+            'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            # 'mode': mode,
+            'paddings': pads,
+            # 'value': 0,
+        }
+
+        new_op = self.mlir.create_pad_op([op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
