@@ -56,6 +56,16 @@
 <div STYLE="page-break-after: always;"></div>
 
 
+## Release Note
+
+| **版本**  | **发布日期** | **说明**                       |
+| -------- | ----------- | ----------------------------- |
+| v0.1.0   | 2022.07.29  | 初版发布，支持resnet/mobilenet/vgg/ssd/yolov5s，并用yolov5s作为用例 |
+
+
+<div STYLE="page-break-after: always;"></div>
+
+
 ## 1 TPU-MLIR简介
 
 TPU-MLIR是算能智能AI芯片的TPU编译器工程。该工程提供了一套完整的工具链，其可以将不
@@ -217,6 +227,8 @@ model_deploy.py的相关参数说明如下：
 
 转INT8模型前需要跑calibration，得到量化表；输入数据的数量根据情况准备100~1000张左右。
 
+然后用量化表，生成对称或非对称bmodel。如果对称符合需求，一般不建议用非对称，因为非对称的性能会略差与对称模型。
+
 这里用现有的100张来自COCO2017的图片举例，执行calibration：
 
 ``` shell
@@ -238,14 +250,30 @@ model_deploy.py \
   --chip bm1684x \
   --test_input yolov5s_in_f32.npz \
   --test_reference yolov5s_top_outputs.npz \
-  --tolerance 0.88,0.50 \
+  --tolerance 0.85,0.45 \
   --correctness 0.99,0.90 \
   --model yolov5s_1684x_int8_sym.bmodel
 ```
 
+转成INT8非对称量化模型，执行如下命令：
+
+``` shell
+model_deploy.py \
+  --mlir yolov5s.mlir \
+  --quantize INT8 \
+  --asymmetric \
+  --calibration_table yolov5s_cali_table \
+  --chip bm1684x \
+  --test_input yolov5s_in_f32.npz \
+  --test_reference yolov5s_top_outputs.npz \
+  --tolerance 0.90,0.55 \
+  --correctness 0.99,0.93 \
+  --model yolov5s_1684x_int8_asym.bmodel
+```
+
 ### 步骤 5：效果对比
 
-在本发布包中有用python写好的yolov5用例，源码路径`$TPUC_ROOT/python/samples/detect_yolov5.py`，用于对图片进行目标检测。阅读该代码可以了解模型是如何使用的。以下用该程序分别来查看onnx/f32/int8的执行结果。
+在本发布包中有用python写好的yolov5用例，源码路径`$TPUC_ROOT/python/samples/detect_yolov5.py`，用于对图片进行目标检测。阅读该代码可以了解模型是如何使用的：先预处理得到模型的输入，然后推理得到输出，最后做后处理。以下用该代码分别来验证onnx/f32/int8的执行结果。
 
 onnx模型的执行方式如下，得到`dog_onnx.jpg`：
 
@@ -269,7 +297,7 @@ detect_yolov5.py \
 
 
 
-int8 bmodel的执行方式如下，得到dog_int8_sym.jpg：
+int8 **对称**bmodel的执行方式如下，得到dog_int8_sym.jpg：
 
 ``` shell
 detect_yolov5.py \
@@ -277,6 +305,19 @@ detect_yolov5.py \
   --model yolov5s_1684x_int8_sym.bmodel \
   --output dog_int8_sym.jpg
 ```
+
+
+
+int8 **非对称**bmodel的执行方式如下，得到dog_int8_asym.jpg：
+
+``` shell
+detect_yolov5.py \
+  --input ../image/dog.jpg \
+  --model yolov5s_1684x_int8_asym.bmodel \
+  --output dog_int8_asym.jpg
+```
+
+
 
 四张图片对比如下：
 

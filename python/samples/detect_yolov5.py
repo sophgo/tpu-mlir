@@ -239,7 +239,7 @@ def parse_args():
     parser.add_argument("--output", type=str, required=True, help="Output image after detection")
     parser.add_argument("--conf_thres", type=float, default=0.001, help="Confidence threshold")
     parser.add_argument("--iou_thres", type=float, default=0.6, help="NMS IOU threshold")
-    parser.add_argument("--score_thres", type=float, default=0.5, help="Score of the result")
+    parser.add_argument("--score_thres", type=float, default=0.48, help="Score of the result")
     args = parser.parse_args()
     return args
 

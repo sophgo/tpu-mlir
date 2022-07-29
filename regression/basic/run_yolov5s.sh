@@ -48,7 +48,7 @@ model_deploy.py \
   --chip bm1684x \
   --test_input yolov5s_in_f32.npz \
   --test_reference yolov5s_top_outputs.npz \
-  --tolerance 0.85,0.43 \
+  --tolerance 0.85,0.45 \
   --correctness 0.99,0.90 \
   --model yolov5s_1684x_int8_sym.bmodel
 

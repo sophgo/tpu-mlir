@@ -291,7 +291,7 @@ class SimpleTuner:
         return True
 
     def run(self):
-        #pdb.set_trace()
+        print("tune ..")
         for evaled_op in self.module.all_tensor_names:
             if self.module_parsered.get_op_type_by_op_name(evaled_op) == 'top.Input':
                 continue
