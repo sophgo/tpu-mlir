@@ -116,6 +116,8 @@ Value top::ConvOp::lowering_int8_bm1684x(bool asymmetric) {
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
+  attrs.push_back(
+      builder.getNamedAttr("quant_mode", builder.getI64IntegerAttr(2)));
   attrs.push_back(builder.getNamedAttr(
       "rshift", builder.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v})));
   attrs.push_back(builder.getNamedAttr(
@@ -258,6 +260,8 @@ Value top::ConvOp::lowering_quant_bm1684x() {
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
+  attrs.push_back(
+      builder.getNamedAttr("quant_mode", builder.getI64IntegerAttr(0)));
   attrs.push_back(
       builder.getNamedAttr("multiplier", builder.getI64ArrayAttr(multiplier)));
   attrs.push_back(
