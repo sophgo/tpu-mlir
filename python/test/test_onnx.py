@@ -36,6 +36,7 @@ TEST_ONNX_IR = [
     "Resize",
     "Softmax",
     "Log",
+    "Pad",
 ]
 
 
@@ -71,6 +72,7 @@ class ONNX_IR_TESTER(object):
             "Resize": self.test_Resize,
             "Softmax": self.test_Softmax,
             "Log": self.test_Log,
+            "Pad": self.test_Pad,
         }
         self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
 
@@ -463,6 +465,31 @@ class ONNX_IR_TESTER(object):
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
         log_def = helper.make_node(test_case, inputs=['input'], outputs=['output'])
         graph_def = helper.make_graph([log_def], test_case, [input], [output])
+        self.convert_and_test({'input': input_data}, graph_def, test_case)
+
+    def test_Pad(self):
+        test_case = 'Pad'
+        input_shape = [3, 8, 32, 32]
+        output_shape = [3, 8, 44, 46]
+        pads = np.array([0, 0, 5, 6, 0, 0, 7, 8]).astype(np.int64)
+        input_data = np.random.randn(*input_shape).astype(np.float32)
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        data_def = onnx.helper.make_node(
+            'Constant',
+            inputs=[],
+            outputs=['pads'],
+            value=onnx.helper.make_tensor(
+                name='const_tensor',
+                data_type=onnx.TensorProto.INT64,
+                dims=pads.shape,
+                vals=pads.flatten(),
+            ),
+        )
+        pad_def = helper.make_node(test_case, ['input', 'pads'],
+                                   outputs=['output'],
+                                   mode='constant')
+        graph_def = helper.make_graph([data_def, pad_def], test_case, [input], [output])
         self.convert_and_test({'input': input_data}, graph_def, test_case)
 
 

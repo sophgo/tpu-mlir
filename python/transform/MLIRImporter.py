@@ -31,6 +31,7 @@ class Top:
     UpsampleOp = 'top.Upsample'
     SoftmaxOp = 'top.Softmax'
     LogOp = 'top.Log'
+    PadOp = 'top.Pad'
 
 
 class State:
@@ -386,6 +387,16 @@ class MLIRImporter(object):
             'name': StringAttr.get(kargs['name']),
         }
         return self.buildOp(Top.LogOp, operands, [output_type], **param)
+
+    def create_pad_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': StringAttr.get(kargs['name']),
+            # 'mode': StringAttr.get(kargs['mode']),
+            'paddings': self.ArrayAttr(kargs['paddings']),
+            # 'value': FloatAttr.get_f64(kargs['value'])
+        }
+        return self.buildOp(Top.PadOp, operands, [output_type], **param)
 
     def print_module(self):
         mlir_format = str(self.mlir_module)

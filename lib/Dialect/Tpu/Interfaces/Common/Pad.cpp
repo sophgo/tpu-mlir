@@ -8,20 +8,20 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-int64_t top::PadOp::getFLOPs() { return 0; }
+LogicalResult tpu::PadOp::init(InferenceParameter &p) { return success(); }
+void tpu::PadOp::deinit(InferenceParameter &p) {}
 
-LogicalResult top::PadOp::init(InferenceParameter &p) { return success(); }
-void top::PadOp::deinit(InferenceParameter &p) {}
-
-LogicalResult top::PadOp::inference(InferenceParameter &p) {
+LogicalResult tpu::PadOp::inference(InferenceParameter &p) {
   auto in_shape = Module::getShape(input());
   int64_t in = in_shape[0];
   int64_t ic = in_shape[1];
@@ -36,7 +36,7 @@ LogicalResult top::PadOp::inference(InferenceParameter &p) {
   int64_t oc = pads[1] + pads[5] + ic;
   int64_t oh = pads[2] + pads[6] + ih;
   int64_t ow = pads[3] + pads[7] + iw;
-  // when pads < 0 means cutoff
+
   int32_t start_in = pads[0] < 0 ? -pads[0] : 0;
   int32_t start_ic = pads[1] < 0 ? -pads[1] : 0;
   int32_t start_ih = pads[2] < 0 ? -pads[2] : 0;
