@@ -547,4 +547,21 @@ def Tpu_LogOp: Tpu_Op<"Log", [InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_PadOp:Tpu_Op<"Pad"> {
+  let summary = "Pad operation";
+  let description = [{
+    This operation pads a tensor according to the paddings you specify.
+    paddings is an integer tensor with shape [n, 2], where n is the rank of tensor.
+    For each dimension D of input, paddings[D, 0] indicates how many values to add
+    before the contents of tensor in that dimension, and paddings[D, 1] indicates
+    how many values to add after the contents of tensor in that dimension.
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    I64ArrayAttr:$paddings,
+    StrAttr:$name
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 #endif // TPU_OPS

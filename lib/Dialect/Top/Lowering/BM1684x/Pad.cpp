@@ -8,6 +8,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "../Lowering.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Helper/Module.h"
@@ -17,23 +18,19 @@ using namespace tpu_mlir::helper;
 using namespace mlir;
 
 Value top::PadOp::lowering_int8_bm1684x(bool asymmetric) {
-  llvm_unreachable("PadOp to be supported");
-  return nullptr;
+  return lowering_common_int8<tpu::PadOp>(getOperation(), asymmetric);
 }
 
 Value top::PadOp::lowering_f32_bm1684x() {
-  llvm_unreachable("PadOp to be supported");
-  return nullptr;
+  return lowering_common_float<tpu::PadOp>(getOperation());
 }
 
 Value top::PadOp::lowering_bf16_bm1684x() {
-  llvm_unreachable("PadOp to be supported");
-  return nullptr;
+  return lowering_common_float<tpu::PadOp, BFloat16Type>(getOperation());
 }
 
 Value top::PadOp::lowering_f16_bm1684x() {
-  llvm_unreachable("PadOp to be supported");
-  return nullptr;
+  return lowering_common_float<tpu::PadOp, Float16Type>(getOperation());
 }
 
 Value top::PadOp::lowering_quant_bm1684x() {
