@@ -16,55 +16,6 @@ cp -rf ${PROJECT_ROOT}/regression ${release_archive}
 cp -f ${PROJECT_ROOT}/doc/tpu-mlir_quick_start_guide.pdf \
       ${release_archive}/docs/"TPU-MLIR快速入门指南.pdf"
 
-# generate regression run.sh
-# ------------------------------------------------------------------------------
-regression_sh=${release_archive}/regression/run.sh
-echo "Create regression run.sh" 1>&2
-more > "${regression_sh}" <<'//MY_CODE_STREAM'
-#!/bin/bash
-set -ex
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-
-rm -rf regression_out
-mkdir regression_out
-pushd regression_out
-
-# run basic regression
-$DIR/basic/run.sh
-# run model-zoo regression if model-zoo exists.
-$DIR/scripts/run.sh
-popd
-
-# for test
-mkdir -m 777 -p bmodels
-pushd bmodels
-../prepare_bmrttest.py ../regression_out
-cp -f ../run_bmrttest.py ./run.py
-popd
-//MY_CODE_STREAM
-
-# generate model-zoo run.sh
-# ------------------------------------------------------------------------------
-model_zoo_sh=${release_archive}/regression/scripts/run.sh
-echo "Create model-zoo run.sh" 1>&2
-more > "${model_zoo_sh}" <<'//MY_CODE_STREAM'
-#!/bin/bash
-set -ex
-
-if [ ! -d ${MODEL_ZOO_PATH} ]; then
-  echo "[Warning] model-zoo does not exist; Skip model-zoo tests."
-  exit 0
-fi
-
-DIR="$( cd "$(dirname "$0")" ; pwd -P )"
-
-$DIR/run_mobilenet_v2.sh
-$DIR/run_resnet50_v2.sh
-$DIR/run_vgg16-12.sh
-$DIR/run_resnet34_ssd1200.sh
-//MY_CODE_STREAM
-
-
 # build a envsetup.sh
 # ------------------------------------------------------------------------------
 __envsetupfile=${release_archive}/envsetup.sh
@@ -148,7 +99,13 @@ TPU-MLIR, which include:
 
 ``` bash
 cd regression
- ./run.sh
+./run_all.sh
+# for test
+mkdir -m 777 -p bmodels
+pushd bmodels
+../prepare_bmrttest.py ../regression_out
+cp -f ../run_bmrttest.py ./run.py
+popd
 ```
 
 After run regression test, all the outputs will be in `bmodels`.

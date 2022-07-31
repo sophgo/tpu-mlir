@@ -519,7 +519,7 @@ class ActivationCalibrator(BaseKldCalibrator):
                 min_value, max_value, _ = activations_statistics[op_name]
                 f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold,
                                                            min_value, max_value))
-
+        os.remove(cali_table)
         #th_before_tuned = np.array(thresholds_map_list)
         #th_after_tuned = np.array(tuned_threshold_list)
         #file_prefix = './{}_{}pics_{}_times_tuned_th_statistic'.format(self.args.mlir_file.split('.')[0], self.tunner.args.tune_num, self.tunner.tune_steps)

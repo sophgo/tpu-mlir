@@ -3,23 +3,25 @@ set -ex
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-# run onnx operation test
-test_onnx.py
-
-# run models
-model_list_basic=(
+model_list_all=(
   "yolov5s"
   "resnet18"
   "resnet50_v2"
   "mobilenet_v2"
   "squeezenet1.0"
+  "vgg16"
+  "resnet34_ssd1200"
 )
 
-for net in ${model_list_basic[@]}
+# run onnx operation test
+test_onnx.py
+
+# run models
+for net in ${model_list_all[@]}
 do
   echo "======= test $net ====="
   $DIR/run_model.sh $net
   echo "test $net success"
 done
 
-echo "test basic models success"
+echo "test all models success"
