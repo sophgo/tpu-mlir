@@ -15,6 +15,7 @@ import pymlir
 import pyruntime
 import onnx
 import onnxruntime
+import os
 
 
 def model_inference(inputs: dict, model_file: str) -> dict:
@@ -98,6 +99,7 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
     else:
         output_num = len(outs) - len(output_keys)
         outs = outs[output_num:]
+        os.remove(onnx_file)
         return dict(zip(output_keys, map(np.ndarray.flatten, outs)))
 
 

@@ -82,7 +82,10 @@ class DeployTool:
             show_fake_cmd(self.in_f32_npz, self.mlir_file, self.ref_npz)
             top_outputs = mlir_inference(self.inputs, self.mlir_file)
             np.savez(self.ref_npz, **top_outputs)
-        self.tpu_npz = self.module_name + "_{}_{}_tpu_outputs.npz".format(self.chip, self.quantize)
+        postfix = ""
+        if self.quantize == "int8":
+            postfix = "_asym" if self.asymmetric else "_sym"
+        self.tpu_npz = self.module_name + "_{}_{}{}_tpu_outputs.npz".format(self.chip, self.quantize, postfix)
 
     def validate_tpu_mlir(self):
         show_fake_cmd(self.in_f32_npz, self.tpu_mlir, self.tpu_npz)
