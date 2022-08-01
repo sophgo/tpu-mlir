@@ -4,13 +4,15 @@ set -ex
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 model_list_all=(
-  "yolov5s"
+# classification
   "resnet18"
   "resnet50_v2"
   "mobilenet_v2"
   "squeezenet1.0"
   "vgg16"
+# object detection
   "resnet34_ssd1200"
+  "yolov5s"
 )
 
 # run onnx operation test
