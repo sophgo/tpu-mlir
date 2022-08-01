@@ -8,11 +8,12 @@ test_onnx.py
 
 # run models
 model_list_basic=(
-  "yolov5s"
-  "resnet18"
-  "resnet50_v2"
+# classification
   "mobilenet_v2"
+  "resnet50_v2"
   "squeezenet1.0"
+# object detection
+  "yolov5s"
 )
 
 for net in ${model_list_basic[@]}
