@@ -24,18 +24,15 @@ using namespace tpu_mlir::backend;
 // =========================================
 
 void tpu::LogOp::codegen_global_int8_bm1684x() {
-  auto input_shape = Module::getShape(input());
-  active_param_t p = {0};
-  p.input_addr = Module::getAddress(input());
-  p.output_addr = Module::getAddress(output());
-  p.shape_dim = input_shape.size();
-  for (int i = 0; i < p.shape_dim; i++) {
-    p.shape[i] = input_shape[i];
-  }
-  p.active_type = ACTIVE_LN;
-  p.dtype = BM168x::getDataType(output());
-  BM1684x::instance().call_global_func("backend_api_active_global", &p,
-                                       sizeof(p));
+  active_global_spec_t spec;
+  memset(&spec, 0, sizeof(spec));
+  spec.common.active_type = ACTIVE_LN;
+  auto op = getOperation();
+  auto input_spec = BM1684x::get_input_spec(op);
+  auto output_spec = BM1684x::get_output_spec(op);
+  BM1684x::instance().call_global_func("backend_api_active_global", &spec,
+                                       sizeof(spec), input_spec->data(),
+                                       output_spec->data());
 }
 
 void tpu::LogOp::codegen_global_float_bm1684x() {
