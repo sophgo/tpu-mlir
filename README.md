@@ -14,6 +14,8 @@ CPU服务器以及相关产品的研发与销售。旗下算丰全系列人工�
 
 更多关于**TPU-MLIR**的信息可以参考[TPU-MLIR设计文档](./design/design.md)。
 
+目前该工程支持BM1684x，后面会陆续支持BM1684、CV183x、CV182x、Mars等等芯片。
+
 # 编译工程
 
 * 从[dockerhub](https://hub.docker.com/r/sophgo/sophgo_dev)下载所需的镜像。
@@ -37,97 +39,211 @@ source ./envsetup.sh
 # 代码验证
 
 ``` shell
+# 本工程包含yolov5s.onnx模型，可以直接用来验证
 pushd regression
-./run.sh
+./run_model.sh yolov5s
 popd
 ```
 
 # 使用方法
 
-工具链相关串通流程可以参考：[regression](./regression/basic/run_basic.sh)
+以`yolov5s.onnx`为例，介绍如何编译迁移一个onnx模型至BM1684x TPU平台运行。
 
-## 将外部框架的模型转化为`mlir`(top)模型
+该模型来在yolov5的官网: <https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx>
+
+## 准备模型和数据
+
+建立`model_yolov5s`目录，注意是与本工程同级目录；并把模型文件和图片文件都放入`model_yolov5s`目录中。
+
+操作如下：
+
+``` shell
+mkdir model_yolov5s && cd model_yolov5s
+cp ${REGRESSION_PATH}/model/yolov5s.onnx .
+cp -rf ${REGRESSION_PATH}/dataset/COCO2017 .
+cp -rf ${REGRESSION_PATH}/image .
+mkdir workspace && cd workspace
+```
+## 将模型转化MLIR
+
+如果模型是图片输入，在转模型之前我们需要了解模型的预处理。如果模型用预处理后的npz文件做输入，则不需要考虑预处理。
+预处理过程用公式表达如下（x代表输入)：
+$$
+y = （x - mean） \times scale
+$$
+
+官网yolov5的图片是rgb，每个值会乘以`1/255`，转换成mean和scale对应为`0.0,0.0,0.0`和`0.0039216,0.0039216,0.0039216`。
+
+模型转换命令如下：
 
 ``` shell
 model_transform.py \
-    --model_name resnet18 \
-    --model_def  resnet18.onnx \
-    --input_shapes [[1,3,224,224]] \
-    --resize_dims 256,256 \
-    --mean 123.675,116.28,103.53 \
-    --scale 0.0171,0.0175,0.0174 \
+    --model_name yolov5s \
+    --model_def ../yolov5s.onnx \
+    --input_shapes [[1,3,640,640]] \
+    --mean 0.0,0.0,0.0 \
+    --scale 0.0039216,0.0039216,0.0039216 \
+    --keep_aspect_ratio \
     --pixel_format rgb \
-    --test_input cat.jpg \
-    --test_result resnet18_top_outputs.npz \
-    --mlir resnet18.mlir
+    --output_names 350,498,646 \
+    --test_input ../image/dog.jpg \
+    --test_result yolov5s_top_outputs.npz \
+    --mlir yolov5s.mlir
 ```
 
-该过程会生成top层mlir文件。如果传入了`test_input`参数，则会生成`resnet18_in_fp32.npz`文件，作为后续操作的测试输入；`test_result`生成每一层layer结果文件，作为后续操作的参考对比结果。
+`model_transform.py`支持的参数如下:
 
-## 部署
+| **参数名**           | 必选？    | **说明**             |
+| ------------------- | -------- | ------------------- |
+| model_name          | 是       | 指定模型名称           |
+| model_def           | 是       | 指定输入文件用于验证，可以是图片或npy或npz；可以不指定，则不会正确性验证 |
+| input_shapes        |          | 指定输入的shape，例如[[1,3,640,640]]；二维数组，可以支持多输入情况 |
+| resize_dims         |          | 原始图片需要resize之后的尺寸；如果不指定，则resize成模型的输入尺寸 |
+| keep_aspect_ratio   |          | 在Resize时是否保持长宽比，默认为false；设置时会对不足部分补0 |
+| mean                |          | 图像每个通道的均值，默认为0.0,0.0,0.0                    |
+| scale               |          | 图片每个通道的比值，默认为1.0,1.0,1.0                    |
+| pixel_format        |          | 图片类型，可以是rgb、bgr、gray、rgbd四种情况              |
+| output_names        |          | 指定输出的名称，如果不指定，则用模型的输出；指定后用该指定名称做输出 |
+| test_input          |          | 指定输入文件用于验证，可以是图片或npy或npz；可以不指定，则不会正确性验证 |
+| test_result         |          | 指定验证后的输出文件                                         |
+| excepts             |          | 指定需要排除验证的网络层的名称，多个用,隔开                      |
+| mlir                | 是       | 指定输出的mlir文件路径                                       |
 
-将`mlir`模型转化为`bmodel`流程
+转成mlir文件后，会生成一个`${model_name}_in_f32.npz`文件，该文件是模型的输入文件。它是通过对图片输入进行预处理后得到的数据。
 
-### 转化为 fp32 `bmodel`
+
+## MLIR转F32模型
+
+将mlir文件转换成f32的bmodel，操作方法如下：
 
 ``` shell
 model_deploy.py \
-  --mlir resnet18.mlir \
+  --mlir yolov5s.mlir \
   --quantize F32 \
   --chip bm1684x \
-  --test_input resnet18_in_f32.npz \
-  --test_reference resnet18_top_outputs.npz \
+  --test_input yolov5s_in_f32.npz \
+  --test_reference yolov5s_top_outputs.npz \
   --tolerance 0.99,0.99 \
-  --model resnet18_1684x_f32.bmodel
+  --model yolov5s_1684x_f32.bmodel
 ```
 
-### 转化为int8 `bmodel`
+model_deploy.py的相关参数说明如下：
 
-需要先做Calibration。准备输入数据，将图片放置到单独文件夹下，此处使用`regression/dataset/ILSVRC2012`下的100张图片；然后Calibration。如下：
+| **参数名**           | 必选？ | **说明**                       |
+| ------------------- | ----- | ----------------------------- |
+| mlir                | 是    | 指定mlir文件                                              |
+| quantize            | 是    | 指定默认量化类型，支持F32/BF16/F16/INT8                     |
+| chip                | 是    | 指定模型将要用到的平台，支持bm1684x（目前只支持这一种，后续会支持多款TPU平台） |
+| calibration_table   |       | 指定量化表路径，当存在INT8量化的时候需要量化表                 |
+| tolerance           |       | 表示 MLIR 量化后的结果与 MLIR fp32推理结果相似度的误差容忍度 |
+| correctnetss        |       | 表示仿真器运行的结果与MLIR量化后的结果相似度的误差容忍度，默认0.99,0.99 |
+| excepts             |       | 指定需要排除验证的网络层的名称，多个用,隔开 |
+| model               | 是    | 指定输出的model文件路径                                  |
+
+
+## MLIR转INT8模型
+
+转INT8模型前需要跑calibration，得到量化表；输入数据的数量根据情况准备100~1000张左右。
+
+然后用量化表，生成对称或非对称bmodel。如果对称符合需求，一般不建议用非对称，因为非对称的性能会略差与对称模型。
+
+这里用现有的100张来自COCO2017的图片举例，执行calibration：
 
 ``` shell
-run_calibration.py resnet18.mlir \
-    --dataset ILSVRC2012 \
-    --input_num 100 \
-    -o resnet18_cali_table
+run_calibration.py yolov5s.mlir \
+  --dataset ../COCO2017 \
+  --input_num 100 \
+  -o yolov5s_cali_table
 ```
 
-使用上述的量化表，将模型转化为int8 `bmodel`。
 
-### 对称量化
+转成INT8对称量化模型，执行如下命令：
 
 ``` shell
 model_deploy.py \
-  --mlir resnet18.mlir \
+  --mlir yolov5s.mlir \
   --quantize INT8 \
-  --calibration_table resnet18_cali_table \
+  --calibration_table yolov5s_cali_table \
   --chip bm1684x \
-  --test_input resnet18_in_f32.npz \
-  --test_reference resnet18_top_outputs.npz \
-  --tolerance 0.95,0.72 \
-  --correctness 0.99,0.85 \
-  --model resnet18_1684x_int8_sym.bmodel
+  --test_input yolov5s_in_f32.npz \
+  --test_reference yolov5s_top_outputs.npz \
+  --tolerance 0.85,0.45 \
+  --correctness 0.99,0.90 \
+  --model yolov5s_1684x_int8_sym.bmodel
 ```
 
-### 非对称量化
+转成INT8非对称量化模型，执行如下命令：
 
 ``` shell
 model_deploy.py \
-  --mlir resnet18.mlir \
+  --mlir yolov5s.mlir \
   --quantize INT8 \
   --asymmetric \
-  --calibration_table resnet18_cali_table \
+  --calibration_table yolov5s_cali_table \
   --chip bm1684x \
-  --test_input resnet18_in_f32.npz \
-  --test_reference resnet18_top_outputs.npz \
-  --tolerance 0.97,0.75 \
-  --correctness 0.99,0.85 \
-  --model resnet18_1684x_int8_asym.bmodel
+  --test_input yolov5s_in_f32.npz \
+  --test_reference yolov5s_top_outputs.npz \
+  --tolerance 0.90,0.55 \
+  --correctness 0.99,0.93 \
+  --model yolov5s_1684x_int8_asym.bmodel
 ```
 
-## 辅助工具
+## 效果对比
 
-### 模型推理工具`model_runner.py`
+本工程有用python写好的yolov5用例，源码路径`python/samples/detect_yolov5.py`，用于对图片进行目标检测。阅读该代码可以了解模型是如何使用的：先预处理得到模型的输入，然后推理得到输出，最后做后处理。以下用该代码分别来验证onnx/f32/int8的执行结果。
+
+onnx模型的执行方式如下，得到`dog_onnx.jpg`：
+
+``` shell
+detect_yolov5.py \
+  --input ../image/dog.jpg \
+  --model ../yolov5s.onnx \
+  --output dog_onnx.jpg
+```
+
+
+
+f32 bmodel的执行方式如下，得到`dog_f32.jpg`：
+
+``` shell
+detect_yolov5.py \
+  --input ../image/dog.jpg \
+  --model yolov5s_1684x_f32.bmodel \
+  --output dog_f32.jpg
+```
+
+
+
+int8 **对称**bmodel的执行方式如下，得到dog_int8_sym.jpg：
+
+``` shell
+detect_yolov5.py \
+  --input ../image/dog.jpg \
+  --model yolov5s_1684x_int8_sym.bmodel \
+  --output dog_int8_sym.jpg
+```
+
+
+
+int8 **非对称**bmodel的执行方式如下，得到dog_int8_asym.jpg：
+
+``` shell
+detect_yolov5.py \
+  --input ../image/dog.jpg \
+  --model yolov5s_1684x_int8_asym.bmodel \
+  --output dog_int8_asym.jpg
+```
+
+
+
+四张图片对比如下：
+
+![](./doc/assets/yolov5s.png)
+
+
+# 辅助工具
+
+## 模型推理工具`model_runner.py`
 
 支持 bmodel/mlir/onnx/tflite
 
@@ -138,7 +254,7 @@ model_runner.py \
   --output resnet18_output.npz
 ```
 
-### `bmodel`模型工具
+## `bmodel`模型工具
 
 可以通过`model_tool`工具来查看和编辑`bmodel`文件, 用法参考以下列表:
 
