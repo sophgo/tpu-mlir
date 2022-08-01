@@ -39,6 +39,7 @@ TEST_ONNX_IR = [
     "Log",
     #"Pad",
     "Div",
+    "Clip",
 ]
 
 
@@ -77,6 +78,7 @@ class ONNX_IR_TESTER(object):
             "Log": self.test_Log,
             "Pad": self.test_Pad,
             "Div": self.test_Div,
+            "Clip": self.test_Clip,
         }
         self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
 
@@ -541,6 +543,17 @@ class ONNX_IR_TESTER(object):
             test_case,
         )
 
+    def test_Clip(self):
+        test_case = 'Clip'
+        input_shape = [1, 3, 32, 32]
+        input_data = np.random.randn(*input_shape).astype(np.float32)
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        min = helper.make_tensor('min', TensorProto.FLOAT, [], 0.0*np.ones(1))
+        max = helper.make_tensor('max', TensorProto.FLOAT, [], 6.0*np.ones(1))
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
+        node_def = helper.make_node(test_case, inputs=['input', 'min', 'max'], outputs=['output'])
+        graph_def = helper.make_graph([node_def], test_case, [input], [output], [min, max])
+        self.convert_and_test({'input': input_data}, graph_def, test_case)
 
 if __name__ == "__main__":
     os.makedirs("onnx_test", exist_ok=True)

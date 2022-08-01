@@ -30,6 +30,11 @@ struct TopFuseRelu : public OpRewritePattern<ReluOp> {
       return failure();
     }
 
+    bool has_upper_limit = op->hasAttr("upper_limit") &&
+                           op.upper_limitAttr().getValueAsDouble() > 0.f;
+    if (has_upper_limit) {
+      formerOp->setAttr("upper_limit", op.upper_limitAttr());
+    }
     formerOp->setAttr("do_relu", rewriter.getBoolAttr(true));
     formerOp->setAttr("name", op.nameAttr());
     // remove the relu Op

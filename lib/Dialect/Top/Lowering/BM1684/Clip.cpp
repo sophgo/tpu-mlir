@@ -8,23 +8,22 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "../Lowering.h"
+#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/Helper/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
+using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
-using namespace mlir;
 
-LogicalResult tpu::ReluOp::init(InferenceParameter &p) { return success(); }
-void tpu::ReluOp::deinit(InferenceParameter &p) {}
+Value top::ClipOp::lowering_int8_bm1684() {
+  llvm_unreachable("ClipOp to be supported");
+  // return lowering_common_int8<tpu::ClipOp>(getOperation());;
+}
 
-LogicalResult tpu::ReluOp::inference(InferenceParameter &p) {
-  float relu_upper_limit = upper_limit() != ::mlir::None ?
-                           upper_limitAttr().getValueAsDouble() : 0.f;
-  function_relu(p.inputs[0], p.outputs[0], Module::getNumElements(output()),
-                relu_upper_limit, Module::getStorageType(output()));
-  return success();
+Value top::ClipOp::lowering_f32_bm1684() {
+  llvm_unreachable("ClipOp to be supported");
+  return nullptr;
 }

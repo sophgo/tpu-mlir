@@ -17,15 +17,19 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-int64_t top::ReluOp::getFLOPs() { return Module::getNumElements(output()); }
+int64_t top::ClipOp::getFLOPs() { return 0; }
 
-LogicalResult top::ReluOp::init(InferenceParameter &p) { return success(); }
-void top::ReluOp::deinit(InferenceParameter &p) {}
+LogicalResult top::ClipOp::init(InferenceParameter &p) { return success(); }
+void top::ClipOp::deinit(InferenceParameter &p) {}
 
-LogicalResult top::ReluOp::inference(InferenceParameter &p) {
-  float relu_upper_limit = upper_limit() != ::mlir::None ?
-                           upper_limitAttr().getValueAsDouble() : 0.f;
-  function_relu(p.inputs[0], p.outputs[0], Module::getNumElements(input()),
-                relu_upper_limit);
+LogicalResult top::ClipOp::inference(InferenceParameter &p) {
+  auto num_element = Module::getNumElements(output());
+  auto min_v = static_cast<float>(minAttr().getValueAsDouble());
+  auto max_v = static_cast<float>(maxAttr().getValueAsDouble());
+#pragma omp parallel for schedule(static, omp_schedule(num_element))
+  for (int i = 0; i < num_element; ++i) {
+    auto val = p.inputs[0][i];
+    p.outputs[0][i] = std::min(max_v, std::max(min_v, val));
+  }
   return success();
 }

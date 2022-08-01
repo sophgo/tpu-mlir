@@ -219,6 +219,7 @@ def Top_ConvOp: Top_Op<"Conv", [SupportFuseRelu]> {
     OptionalAttr<I64ArrayAttr>:$dilations,
     OptionalAttr<I64ArrayAttr>:$inserts,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    OptionalAttr<F64Attr>:$upper_limit,
     StrAttr:$name
   );
 
@@ -227,7 +228,8 @@ def Top_ConvOp: Top_Op<"Conv", [SupportFuseRelu]> {
     void parseParam(int64_t &n, int64_t &ic, int64_t &ih, int64_t &iw, int64_t &oc,
                     int64_t &oh, int64_t &ow, int64_t &g, int64_t &kh, int64_t &kw, int64_t &ins_h,
                     int64_t &ins_w, int64_t &sh, int64_t &sw, int64_t &pt, int64_t &pb, int64_t &pl,
-                    int64_t &pr, int64_t &dh, int64_t &dw, bool &is_dw, bool &with_bias, bool &do_relu);
+                    int64_t &pr, int64_t &dh, int64_t &dw, bool &is_dw, bool &with_bias, bool &do_relu,
+                    float &relu_upper_limit);
   }];
 }
 
@@ -404,11 +406,12 @@ def Top_ReluOp: Top_Op<"Relu",[InOutSameShape]> {
   let summary = "Relu operator";
 
   let description = [{
-     ReLU with a scalar maximum value.
+     ReLU with a scalar maximum value. if upper_limit is zero, do not use upper limit.
   }];
 
   let arguments = (
     ins AnyTensor:$input,
+    OptionalAttr<F64Attr>:$upper_limit,
     StrAttr:$name
   );
 
@@ -570,6 +573,23 @@ def Top_DivOp: Top_Op<"Div", [InOutSameShape]> {
 
   let results = (outs AnyTensor:$output);
   // let hasCanonicalizer = 1;
+}
+
+def Top_ClipOp: Top_Op<"Clip", [InOutSameShape]> {
+  let summary = "Clip operator";
+
+  let description = [{
+    The operator limits the given input to a certain range.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$inputs,
+    F64Attr:$min,
+    F64Attr:$max,
+    StrAttr:$name
+  );
+
+  let results = (outs AnyTensor:$output);
 }
 
 #endif // Top_OPS

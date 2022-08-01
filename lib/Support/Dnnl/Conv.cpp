@@ -50,7 +50,7 @@ void Conv::pad_init(float *input, int n, int ic, int ih, int iw, int &pt,
 void Conv::setup(float *input, float *weight, float *bias, float *output, int n,
                  int ic, int ih, int iw, int oc, int oh, int ow, int kh, int kw,
                  int sh, int sw, int dh, int dw, int pt, int pb, int pl, int pr,
-                 int g, bool do_relu, int izp) {
+                 int g, bool do_relu, float relu_upper_limit, int izp) {
   // printf("Conv para:%d,%d,%d,%d,%d,%d,%d,%d\n", idt, wdt, bdt, odt,
   // per_channel, izp, ozp, do_relu);
   pad_init(input, n, ic, ih, iw, pt, pb, pl, pr, izp);
@@ -89,9 +89,14 @@ void Conv::setup(float *input, float *weight, float *bias, float *output, int n,
 
   if (do_relu) {
     const float ops_scale = 1.f;
-    const float ops_alpha = 0.f; // relu negative slope
+    float ops_alpha = 0.f;
     const float ops_beta = 0.f;
-    ops.append_eltwise(ops_scale, algorithm::eltwise_relu, ops_alpha, ops_beta);
+    if (relu_upper_limit > 0.f) {
+      ops_alpha = relu_upper_limit;
+      ops.append_eltwise(ops_scale, algorithm::eltwise_bounded_relu, ops_alpha, ops_beta);
+    } else {
+      ops.append_eltwise(ops_scale, algorithm::eltwise_relu, ops_alpha, ops_beta);
+    }
     conv_attr.set_post_ops(ops);
   }
 

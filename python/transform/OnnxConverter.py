@@ -132,6 +132,7 @@ class OnnxConverter(BaseConverter):
             "Log": lambda node: self.convert_log_op(node),
             "Pad": lambda node: self.convert_pad_op(node),
             "Div": lambda node: self.convert_div_op(node),
+            "Clip": lambda node: self.convert_clip_op(node),
         }
 
     def __del__(self):
@@ -591,7 +592,10 @@ class OnnxConverter(BaseConverter):
         assert (onnx_node.op_type == "Relu")
         op = self.getOperand(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
-        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+        p = {
+            'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            'upper_limit': 0.0
+        }
         new_op = self.mlir.create_relu_op([op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
@@ -801,4 +805,31 @@ class OnnxConverter(BaseConverter):
         div_op = self.mlir.create_div_op([op0, op1], output_shape, **p)
         self.addOperand(onnx_node.name, div_op)
 
-
+    def convert_clip_op(self, onnx_node):
+        assert (onnx_node.op_type == "Clip")
+        input = self.getOperand(onnx_node.inputs[0])
+        operand = [input]
+        if len(onnx_node.inputs) >= 2:
+            # TODO: min is '',
+            min = self.getTensor(onnx_node.inputs[1]).tolist()
+            if len(onnx_node.inputs) == 3:
+                max = self.getTensor(onnx_node.inputs[2]).tolist()
+            else :
+                max = np.inf
+        else :
+            min = -np.inf
+        input_shape = self.getShape(onnx_node.inputs[0])
+        if min == 0.0 and max > min:
+            p = {
+                'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
+                'upper_limit': max if max != np.inf else 0.0,
+            }
+            new_op = self.mlir.create_relu_op(operand, input_shape, **p)
+        else :
+            p = {
+                'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
+                'min': min,
+                'max': max,
+            }
+            new_op = self.mlir.create_clip_op(operand, input_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
