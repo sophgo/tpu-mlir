@@ -18,46 +18,89 @@ using namespace tpu_mlir::helper;
 using namespace mlir;
 
 Value top::MulOp::lowering_int8_bm1684x(bool asymmetric) {
-  if (asymmetric == false) {
-    auto op = getOperation();
-    OpBuilder builder(op);
-    std::vector<Value> operands;
-    const int nInputs = op->getNumOperands();
-    double scale;
-    int64_t zp_o;
-    double scale_o;
-    Quant::getScaleAndZeroPoint(output(), scale_o, zp_o, asymmetric);
+  auto op = getOperation();
+  const int nInputs = op->getNumOperands();
+  if (nInputs >= 2) {
+    if (asymmetric == false) {
+      OpBuilder builder(op);
+      std::vector<Value> operands;
+      double scale;
+      int64_t zp_o;
+      double scale_o;
+      Quant::getScaleAndZeroPoint(output(), scale_o, zp_o, asymmetric);
 
-    double scale_i;
-    int64_t zp;
-    for (int i = 0; i < nInputs; i++) {
-      auto input = op->getOperand(i);
-      operands.push_back(input);
-      Quant::getScaleAndZeroPoint(input, scale_i, zp, asymmetric);
-      if (i == 0)
-        scale = scale_i;
-      else
-        scale *= scale_i;
+      double scale_i;
+      int64_t zp;
+      for (int i = 0; i < nInputs; i++) {
+        auto input = op->getOperand(i);
+        operands.push_back(input);
+        Quant::getScaleAndZeroPoint(input, scale_i, zp, asymmetric);
+        if (i == 0)
+          scale = scale_i;
+        else
+          scale *= scale_i;
+      }
+
+      scale /= scale_o;
+
+      int multiplier;
+      int rshift;
+      get_scale_and_shift(scale, multiplier, rshift, 8);
+
+      std::vector<NamedAttribute> attrs;
+      attrs.push_back(builder.getNamedAttr("name", nameAttr()));
+      attrs.push_back(builder.getNamedAttr("do_relu", do_reluAttr()));
+      attrs.push_back(builder.getNamedAttr("multiplier", builder.getI64IntegerAttr(multiplier)));
+      attrs.push_back(builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
+      auto newType = Quant::getQuantInt8Type(output(), asymmetric);
+      auto newOp = builder.create<tpu::MulOp>(op->getLoc(), newType,
+                                              ArrayRef<Value>{operands},
+                                              ArrayRef<NamedAttribute>{attrs});
+      return newOp.output();
+    } else {
+      llvm_unreachable("MulOp asymmetric use FP32");
     }
+  } else if (nInputs == 1) { // const binary
+    if (!asymmetric) {
+      OpBuilder builder(op);
+      std::vector<Value> operands;
+      operands.push_back(op->getOperand(0));
+      double scale_i, scale_o;
+      int64_t zp_i, zp_o;
+      double thBottom, thTop;
 
-    scale /= scale_o;
+      Quant::getScaleAndZeroPoint(op->getOperand(0), scale_i, zp_i, asymmetric);
+      Quant::getScaleAndZeroPoint(output(), scale_o, zp_o, asymmetric);
 
-    int multiplier;
-    int rshift;
-    get_scale_and_shift(scale, multiplier, rshift, 8);
+      auto scale = scale_i / scale_o * coeff().convertToDouble();
 
-    std::vector<NamedAttribute> attrs;
-    attrs.push_back(builder.getNamedAttr("name", nameAttr()));
-    attrs.push_back(builder.getNamedAttr("do_relu", do_reluAttr()));
-    attrs.push_back(builder.getNamedAttr("multiplier", builder.getI64IntegerAttr(multiplier)));
-    attrs.push_back(builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
-    auto newType = Quant::getQuantInt8Type(output(), asymmetric);
-    auto newOp = builder.create<tpu::MulOp>(op->getLoc(), newType,
-                                            ArrayRef<Value>{operands},
-                                            ArrayRef<NamedAttribute>{attrs});
-    return newOp.output();
+      int multiplier, rshift;
+      get_scale_and_shift(scale, multiplier, rshift, 8);
+
+      //thBottom = scale_i * 127.0;
+      //thTop = scale_i * 127.0;
+
+      //int rightShiftTmp = calRightShiftNumUseCblas(coeff().convertToDouble(), thBottom, thTop, 8);
+      //double scale = std::pow(2.0, float(rightShiftTmp)) * thBottom / thTop;
+
+      //int coeff_int8;
+      //quantizeToInt8(&coeff, &coeff_int8, 1, scale);
+
+      std::vector<NamedAttribute> attrs;
+      attrs.push_back(builder.getNamedAttr("name", nameAttr()));
+      attrs.push_back(builder.getNamedAttr("do_relu", do_reluAttr()));
+      attrs.push_back(builder.getNamedAttr("multiplier", builder.getI64IntegerAttr(multiplier)));
+      attrs.push_back(builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
+      auto newType = Quant::getQuantInt8Type(output(), asymmetric);
+      auto newOp = builder.create<tpu::MulOp>(op->getLoc(), newType,
+                                              ArrayRef<Value>{operands},
+                                              ArrayRef<NamedAttribute>{attrs});
+      return newOp.output();
+    } else {
+      llvm_unreachable("MulOp asymmetric use FP32");
+    }
   } else {
-    llvm_unreachable("MulOp asymmetric not support");
+    llvm_unreachable("Mul have 0 inputs!");
   }
 }
 
