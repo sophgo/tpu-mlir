@@ -34,6 +34,7 @@ class Top:
     LogOp = 'top.Log'
     PadOp = 'top.Pad'
     DivOp = 'top.Div'
+    ClipOp = 'top.Clip'
 
 
 class State:
@@ -346,8 +347,11 @@ class MLIRImporter(object):
 
     def create_relu_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
-        relu_name = StringAttr.get(kargs['name'])
-        return self.buildOp(Top.ReluOp, operands, [output_type], name=relu_name)
+        param = {
+            'name': StringAttr.get(kargs['name']),
+            'upper_limit': FloatAttr.get_f64(kargs['upper_limit']),
+        }
+        return self.buildOp(Top.ReluOp, operands, [output_type], **param)
 
     def create_return_op(self, Operands):
         return_op = Operation.create("func.return", operands=Operands, results=[])
@@ -417,6 +421,15 @@ class MLIRImporter(object):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {'name': StringAttr.get(kargs['name']), 'do_relu': BoolAttr.get(False)}
         return self.buildOp(Top.DivOp, operands, [output_type], **param)
+
+    def create_clip_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': StringAttr.get(kargs['name']),
+            'min': FloatAttr.get_f64(kargs['min']),
+            'max': FloatAttr.get_f64(kargs['max']),
+        }
+        return self.buildOp(Top.ClipOp, operands, [output_type], **param)
 
     def print_module(self):
         mlir_format = str(self.mlir_module)

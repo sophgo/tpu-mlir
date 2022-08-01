@@ -22,7 +22,7 @@ public:
   void setup(float *input, float *weight, float *bias, float *output, int n,
              int ic, int ih, int iw, int oc, int oh, int ow, int kh, int kw,
              int sh, int sw, int dh, int dw, int pt, int pb, int pl, int pr,
-             int g, bool do_relu, int izp = 0);
+             int g, bool do_relu, float relu_upper_limit, int izp = 0);
 
   void run();
 

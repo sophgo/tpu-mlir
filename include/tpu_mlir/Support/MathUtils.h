@@ -30,7 +30,7 @@ template <typename T> static inline T align_up(T x, T a) {
 // =======================
 int omp_schedule(int count);
 
-void function_relu(float *src, float *dst, int64_t size,
+void function_relu(float *src, float *dst, int64_t size, float upper_limit = 0.f,
                    mlir::Type elem_type = nullptr);
 
 // =======================

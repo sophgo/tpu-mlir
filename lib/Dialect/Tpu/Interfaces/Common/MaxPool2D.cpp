@@ -80,7 +80,7 @@ LogicalResult tpu::MaxPool2DOp::inference(InferenceParameter &p) {
   pooling->run();
   if (do_relu()) {
     function_relu(p.outputs[0], p.outputs[0], Module::getNumElements(output()),
-                  Module::getStorageType(output()));
+                  0.f, Module::getStorageType(output()));
   }
   return success();
 }

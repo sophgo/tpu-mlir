@@ -22,10 +22,12 @@ void top::ConvOp::parseParam(int64_t &n, int64_t &ic, int64_t &ih, int64_t &iw,
                              int64_t &ins_w, int64_t &sh, int64_t &sw,
                              int64_t &pt, int64_t &pb, int64_t &pl, int64_t &pr,
                              int64_t &dh, int64_t &dw, bool &is_dw,
-                             bool &with_bias, bool &do_relu) {
+                             bool &with_bias, bool &do_relu, float &relu_upper_limit) {
   auto i_s = input().getType().cast<RankedTensorType>().getShape();
   auto o_s = output().getType().cast<RankedTensorType>().getShape();
   do_relu = this->do_relu();
+  relu_upper_limit = this->upper_limit() == ::llvm::None ?
+                     0.0 : this->upper_limitAttr().getValueAsDouble();
   with_bias = !bias().getType().isa<NoneType>();
   n = i_s[0];
   ic = i_s[1];
@@ -60,8 +62,9 @@ int64_t top::ConvOp::getFLOPs() {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
   bool is_dw, with_bias, has_relu;
+  float relu_upper_limit;
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-             pl, pr, dh, dw, is_dw, with_bias, has_relu);
+             pl, pr, dh, dw, is_dw, with_bias, has_relu, relu_upper_limit);
   auto extra = with_bias ? 1 : 0 + has_relu ? 1 : 0;
   return Module::getNumElements(output()) * (kw * kw * ic / g * 2 + extra);
 }
@@ -71,11 +74,12 @@ LogicalResult top::ConvOp::init(InferenceParameter &p) {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
   bool is_dw, with_bias, relu;
+  float relu_upper_limit;
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-             pl, pr, dh, dw, is_dw, with_bias, relu);
+             pl, pr, dh, dw, is_dw, with_bias, relu, relu_upper_limit);
   conv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], n, ic, ih,
               iw, oc, oh, ow, kh, kw, sh, sw, dh, dw, pt, pb, pl, pr, g,
-              do_relu());
+              do_relu(), relu_upper_limit);
   p.handle = (void *)conv;
   return success();
 }
