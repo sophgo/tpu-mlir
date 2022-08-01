@@ -92,8 +92,12 @@ class MLIRImporter(object):
         self.declare_func(input_types, output_types)
 
     def __del__(self):
-        self.loc.__exit__(None, None, None)
-        self.ctx.__exit__(None, None, None)
+        if self.loc != None:
+            self.loc.__exit__(None, None, None)
+            self.loc = None
+        if self.ctx != None:
+            self.ctx.__exit__(None, None, None)
+            self.ctx = None
 
     def ArrayAttr(self, data: list, data_type: str = 'INT64'):
         assert (data_type in self.mlir_type)

@@ -136,6 +136,7 @@ class OnnxConverter(BaseConverter):
     def __del__(self):
         if self.mlir != None:
             del self.mlir
+            self.mlir = None
 
     def select_unuse(self, names):
         for name in names:

@@ -28,19 +28,3 @@ def quantize(d1, threshold):
   d1[d1 > 127.0] = 127.0
   d1[d1 < -128.0] = -128.0
   return d1
-
-def npz_predict(args_list):
-  args = predict_args(args_list)
-  npzfile = np.load(args.ref_file)
-  ordered_names, operations, quant_types, thresholds = load_op_info(args.op_info)
-  predict = {}
-  for name in ordered_names:
-    if name in npzfile:
-      data = npzfile[name]
-      threshold = thresholds[name]
-      if data.dtype != np.float32 or threshold == 0.0:
-        continue
-      predict[name] = dequantize(quantize(data, threshold), threshold)
-  np.savez("predict.npz", **predict)
-  args_compare = ["predict.npz", args.ref_file, "--tolerance", "0.95,0.95,0.85", "-v"]
-  npz_compare(args_compare)
