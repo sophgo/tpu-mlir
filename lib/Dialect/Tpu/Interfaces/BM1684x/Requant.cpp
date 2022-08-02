@@ -62,7 +62,7 @@ void tpu::RequantOp::codegen_global_int8_bm1684x() {
     param.shift_value = rshift().getValue();
     param.offset_value = qtype.getZeroPoint();
   }
-  param.mode = 2;
+  param.mode = quant_mode().getValue();
   BM1684x::instance().call_global_func("backend_api_requant_int_global", &param,
                                        sizeof(param));
 }

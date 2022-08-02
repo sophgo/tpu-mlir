@@ -70,6 +70,7 @@ def Tpu_ConvOp: Tpu_Op<"Conv",[
     DefaultValuedAttr<I64Attr, "0">:$use_3ic_optimize,
     OptionalAttr<I64ArrayAttr>:$multiplier,
     OptionalAttr<I64ArrayAttr>:$rshift,
+    OptionalAttr<I64Attr>:$quant_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
     StrAttr:$name
   );
@@ -81,6 +82,8 @@ def Tpu_ConvOp: Tpu_Op<"Conv",[
                     int64_t &ins_w, int64_t &sh, int64_t &sw, int64_t &pt, int64_t &pb, int64_t &pl,
                     int64_t &pr, int64_t &dh, int64_t &dw, bool &is_dw, bool &with_bias, bool &do_relu);
   }];
+
+  let hasCanonicalizer = 1;
 }
 
 class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,
@@ -368,6 +371,7 @@ def Tpu_RequantOp:Tpu_Op<"Requant",
     AnyTensor:$quant,
     OptionalAttr<I64Attr>:$multiplier,
     OptionalAttr<I64Attr>:$rshift,
+    OptionalAttr<I64Attr>:$quant_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
     StrAttr:$name
   );

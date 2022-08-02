@@ -60,11 +60,6 @@ void quantizeToInt8(const float *pSrc, int8_t *pDst, int len, float scale);
 // to compitable with tflite
 void QuantizeMultiplier(double double_multiplier, int64_t *quantized_multiplier,
                         int64_t *shift);
-static inline int64_t applyMultiplierAndRShift(int64_t v, int64_t multiplier,
-                                               int64_t rshift) {
-  int64_t half_overflow = rshift > 0 ? (int64_t)1 << (rshift - 1) : 0;
-  return (v * multiplier + half_overflow) >> rshift;
-}
 // define round mode
 typedef enum {
   ROUNDING_HALF_TO_EVEN = 0,
@@ -80,7 +75,10 @@ template <typename T>
 T RightShiftRound(T src, int shift_num, RoundingMode round_mode);
 // to compilable with tflite
 int32_t MultiplyByQuantizedMultiplier(int32_t x, int32_t multiplier, int shift);
-
+static inline int64_t applyMultiplierAndRShift(int64_t v, int64_t multiplier,
+                                               int64_t rshift) {
+  return RightShiftRound(v * multiplier, (int)rshift, ROUNDING_HALF_UP);
+}
 void pad_tensor(float *p_after_pad, float *src, int n, int c, int h, int w,
                 int pt, int pb, int pl, int pr, float pad_value);
 void pad_tensor(float *p_after_pad, float *src, int n, int c, int d, int h,
