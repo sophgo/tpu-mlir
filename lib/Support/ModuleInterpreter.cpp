@@ -124,12 +124,9 @@ void ModuleInterpreter::fake_quant_weight() {
   for (auto func : module.getOps<FuncOp>()) {
     func.walk([&](Operation *op) {
       if (isa<top::ConvOp>(op) || isa<top::MatMulOp>(op)) {
-        auto op_name = op->getAttrOfType<StringAttr>("name").str();
-        if (op->getOperands().size() == 3) {
-          auto weight = op->getOperands()[2];
-          auto weight_name =
-              weight.getDefiningOp()->getAttrOfType<StringAttr>("name").str();
-          not_quant_weight_names.push_back(weight_name);
+        auto bias_op = op->getOperands()[2].getDefiningOp();
+        if (auto weight_op = dyn_cast<top::WeightOp>(bias_op)) {
+          not_quant_weight_names.push_back(weight_op.name().str());
         }
       }
     });

@@ -16,7 +16,10 @@ model_list_all=(
 )
 
 # run onnx operation test
+mkdir -p regression_out
+pushd regression_out
 test_onnx.py
+popd
 
 # run models
 for net in ${model_list_all[@]}
