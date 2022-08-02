@@ -10,6 +10,7 @@
 # ==============================================================================
 
 import os
+import gc
 import time
 import numpy as np
 import pymlir
@@ -19,7 +20,10 @@ import datetime
 from utils.preprocess import preprocess
 from utils.mlir_parser import *
 from utils.log_setting import setup_logger
-from utils.misc import save_tensor_diff_subplot
+from utils.misc import *
+#import graphviz as gz
+from math import *
+from scipy import spatial
 
 class BaseKldCalibrator:
     def __init__(self, math_lib_path='calibration_math.so'):
@@ -103,41 +107,39 @@ def import_quant_bias(value, threshold):
     value /= scale
     return value
 
-def gen_debug_cmd(cmd_str):
-    debug_cmd = {}
-    if cmd_str != '':
-        for cmd in cmd_str.split(';'):
-            tmp = cmd.split('=')
-            if len(tmp) == 1:
-                debug_cmd[tmp[0]] = None
-            elif len(tmp) >= 2:
-                debug_cmd[tmp[0]] = '='.join(tmp[1:])
-            else:
-                print(tmp, ', error format')
-    return debug_cmd
+def cosine_sim(x, y):
+    x[np.isnan(x)] = 0.0
+    y[np.isnan(y)] = 0.0
+    cosine_similarity = 1 - spatial.distance.cosine(x.flatten().astype(np.float32),y.flatten().astype(np.float32))
+    return cosine_similarity
 
 class SimpleTuner:
     def __init__(self, args, images, ppa_list):
         self.args = args
         self.start_time = time.time()
         self.args.tune_num = min(len(images), args.tune_num)
-        self.tuned_op = []
+        self.tuned_op_list = []
         self.images = images[:self.args.tune_num]
         self.ppa_list = ppa_list
-        self.threshold_table = CalibrationTable(args.calibration_table+"_tuned_input")
+        self.debug_cmd = parse_debug_cmd(args.debug_cmd)
+        if 'input_calibration_table' in self.debug_cmd:
+            self.threshold_table = CalibrationTable(self.debug_cmd['input_calibration_table']+".1")
+        else:
+            self.threshold_table = CalibrationTable(args.calibration_table+".1")
         self.module = pymlir.module()
         self.module.load(args.mlir_file)
         self.module_parsered = MlirParser(args.mlir_file)
-        self.debug_cmd = gen_debug_cmd(args.debug_cmd)
         log_level="DEBUG" if 'debug_log' in self.debug_cmd else "INFO"
         self.logger = setup_logger('auto_tune', log_level = log_level)
-        self.tune_steps = 20
+        self.tune_steps = 10
         if 'tune_steps'in self.debug_cmd:
             self.tune_steps = int(self.debug_cmd['tune_steps'])
         self.module_dq = pymlir.module()
         self.module_dq.load(args.mlir_file)
         self.module_dq.fake_quant_weight()
         self.load_net_input()
+        self.dot = None
+        #self.dot = gz.Digraph()
 
     def print_dbg(self, *para):
         tmp = [str(item) for item in para]
@@ -164,80 +166,137 @@ class SimpleTuner:
     def get_input_tensor(self, i, op_name):
         if op_name in self.dq_activations[i]:
             return self.dq_activations[i][op_name][0]
+        print('error, idx:{} op_name:{} not in dq_activations'.format(i, op_name))
+        return None
 
-    def clear_input_tensor(self, i, op_name):
+    def clear_input_tensor(self, i, op_name, node_label):
+        if i == 0:
+            node_label[0] += '\nclear_input_tensor {}\'s input'.format(op_name)
         input_ops = self.module_parsered.get_pre_op_by_op_name(op_name)
         for input_op in input_ops:
             if input_op in self.dq_activations[i]:
                 if self.dq_activations[i][input_op][1] == 1:
                     self.dq_activations[i].pop(input_op)
+                    if i == 0:
+                        node_label[0] += '\npop its input:{}'.format(input_op)
                 else:
                     self.dq_activations[i][input_op][1] -= 1
+                    tmp = self.dq_activations[i][input_op][1]
+                    if i == 0:
+                        node_label[0] += '\ndec {}\'s refcount:{} > {}'.format(input_op, tmp+1, tmp)
 
-    def gen_input_tensor(self, i, op_name):
-        self.print_dbg('gen {}th pic, {}\'s input_tensor'.format(i, op_name))
-        if op_name in self.dq_activations[i]:
-            self.print_dbg('exist, return')
-            return
 
-        input_ops = self.module_parsered.get_pre_op_by_op_name(op_name)
-        if len(input_ops) == 0:
-            self.print_dbg('no input_ops')
-        threshold = None
+    def clear_ref_tensor(self, i, evaled_op, node_label):
+        if i == 0:
+            node_label[0] += '\nclear_ref_tensor {}\'s input'.format(evaled_op)
+        if self.ref_activations[i][evaled_op][1] == 0: #清除残留的网络输出
+            self.ref_activations[i].pop(evaled_op)
+        input_ops = self.module_parsered.get_pre_op_by_op_name(evaled_op)
+        for input_op in input_ops:
+            if input_op in self.ref_activations[i]:
+                if self.ref_activations[i][input_op][1] == 1:
+                    self.ref_activations[i].pop(input_op)
+                    if i == 0:
+                        node_label[0] += '\npop its input:{}'.format(input_op)
+                else:
+                    self.ref_activations[i][input_op][1] -= 1
+                    tmp = self.ref_activations[i][input_op][1]
+                    if i == 0:
+                        node_label[0] += '\ndec {}\'s refcount:{} > {}'.format(input_op, tmp+1, tmp)
+
+    def gen_input_tensor(self, i, input_tensor_of_evaled_op,  node_label):
+        if i == 0:
+            tmp = 'gen_input_tensor:{}'.format(input_tensor_of_evaled_op)
+        if input_tensor_of_evaled_op in self.dq_activations[i]:
+            if i == 0:
+                tmp += '\nit exsit'
+                node_label[0] += '\n{}'.format(tmp)
+            return True
+
+        input_ops = self.module_parsered.get_pre_op_by_op_name(input_tensor_of_evaled_op)
         for input_op in input_ops:
             data = self.get_input_tensor(i, input_op)
+            if data is None:
+                return False
             threshold = self.threshold_table.thresholds_map[input_op][0]
-            data = import_quant_bias(data, threshold)
-            self.print_dbg('input is {}, tuned_th:{}'.format(input_op, threshold))
-            self.module_dq.set_tensor(input_op, data)
-
+            data_q = import_quant_bias(data, threshold)
+            cos_sim = cosine_sim(data, data_q)
+            self.module_dq.set_tensor(input_op, data_q)
+            if i == 0:
+                tmp += '\nits input:{} import_quant_bias, th:{}, cos:{:.4f}'.format(input_op, threshold, cos_sim)
         if len(input_ops) > 0:
-            value = self.module_dq.invoke_at(op_name)
-            count = self.module_parsered.get_user_count_by_op_name(op_name)
-            self.dq_activations[i][op_name] = [value, count]
-            self.print_dbg('module_dq.invoke_at({}), ret shape:'.format(op_name), value.shape, ' refcount:', count)
+            value = self.module_dq.invoke_at(input_tensor_of_evaled_op)
+            target_fp32_activations = self.get_ref_tensor(i, input_tensor_of_evaled_op)
+            cos_sim = cosine_sim(target_fp32_activations, value)
+            if input_tensor_of_evaled_op in self.layer_cos_sim:
+                self.layer_cos_sim[input_tensor_of_evaled_op] += cos_sim
+            else:
+                self.layer_cos_sim[input_tensor_of_evaled_op] = cos_sim
+            count = self.module_parsered.get_user_count_by_op_name(input_tensor_of_evaled_op)
+            self.dq_activations[i][input_tensor_of_evaled_op] = [value, count]
+            if i == 0:
+                tmp += '\nrun it, refcount:{}, cos:{}\n'.format(count, cos_sim)
+        if i == 0:
+            node_label[0] += '\n{}'.format(tmp)
+        return True
 
-    def gen_ref_tensor(self, i, op_name):
+    def get_ref_tensor(self, i, evaled_op):
+        if evaled_op in self.ref_activations[i]:
+            return self.ref_activations[i][evaled_op][0]
+        print('error, idx:{} evaled_op:{} not in ref_activations'.format(i, evaled_op))
+        return None
+
+    def gen_ref_tensor(self, i, op_name, node_label):
+        if i == 0:
+            tmp = 'gen_ref_tensor:{}'.format(op_name)
         if op_name in self.ref_activations[i]:
+            if i == 0:
+                tmp += '\nit exsit'
+                node_label[0] += '\n{}'.format(tmp)
             return
-
-        self.print_dbg('gen {}th pic, {}\'s ref_tensor'.format(i, op_name))
         input_ops = self.module_parsered.get_pre_op_by_op_name(op_name)
-        if len(input_ops) == 0:
-            self.print_dbg('no input_ops')
         for input_op in input_ops:
             data = self.ref_activations[i][input_op][0]
-            if self.ref_activations[i][input_op][1] == 1:
-                self.ref_activations[i].pop(input_op)
-                self.print_dbg('pop its input:{}'.format(input_op))
-            else:
-                self.ref_activations[i][input_op][1] -= 1
-                tmp = self.ref_activations[i][input_op][1]
-                self.print_dbg('dec {}\'s refcount:{} > {}'.format(input_op, tmp+1, tmp))
+            refcount = self.ref_activations[i][input_op][1]
+            if i == 0:
+                tmp += '\nits input:{}, refcount:{}'.format(input_op, refcount)
             self.module.set_tensor(input_op, data)
         if len(input_ops) > 0:
             value = self.module.invoke_at(op_name)
             count = self.module_parsered.get_user_count_by_op_name(op_name)
-            self.print_dbg('have {} users as refcount'.format(count))
             self.ref_activations[i][op_name] = [value, count]
-            self.print_dbg('module.invoke_at({}), ret shape:'.format(op_name), value.shape)
+            if i == 0:
+                tmp += '\ninvoke_at:{}, refcount:{}'.format(op_name, count)
+                #self.print_dbg('have {} users as refcount'.format(count))
+        if i == 0:
+            node_label[0] += '\n{}'.format(tmp)
 
     def calc_distance(self, evaled_op, threshold):
         distance = 0
+        total_cosine_similarity = 0
         for idx in range(self.args.tune_num):
             for input in self.module_parsered.get_pre_op_by_op_name(evaled_op):
-                value = self.get_input_tensor(idx, input)
+                if idx == 0:
+                    self.print_dbg('{}\'s input:{} import_quant_bias, th:{}'.format(evaled_op, input, threshold))
+                if 'not_use_fp32_tensor_as_ref' in self.debug_cmd:
+                    value = self.get_input_tensor(idx, input)
+                else:
+                    value = self.get_ref_tensor(idx, input)
+                if value is None:
+                    print('error, calc_distance get tensor fail')
+                    return None, None
                 value = import_quant_bias(value, threshold)
                 self.module_dq.set_tensor(input, value)
             target_activations = self.module_dq.invoke_at(evaled_op)
-            target_fp32_activations = self.ref_activations[idx][evaled_op][0]
+            target_fp32_activations = self.get_ref_tensor(idx, evaled_op)
+            total_cosine_similarity += cosine_sim(target_activations, target_fp32_activations)
             diff = target_fp32_activations.flatten() - target_activations.flatten()
             norm_2 = np.linalg.norm(diff)
             norm_1 = np.linalg.norm(target_fp32_activations.flatten(), ord=1)
             distance += norm_2 / norm_1
-        return distance
+        return distance/self.args.tune_num, total_cosine_similarity/self.args.tune_num
 
-    def find_better_threshold(self, evaled_op, tuned_op):
+    def find_better_threshold(self, evaled_op, tuned_op, node_label):
         prev_distance = -1
         threshold = self.threshold_table.thresholds_map[tuned_op][0]
         abs_max = max(map(abs,self.threshold_table.thresholds_map[tuned_op][1:]))
@@ -247,22 +306,29 @@ class SimpleTuner:
             self.print_dbg('waring, threshold > abs_max, do not tune the threshold')
         cur_threshold = threshold
         best_threshold = threshold
+        best_cos_sim = 0
+        init_cos_sim = 0
 
+        pre_ops = self.module_parsered.get_pre_op_by_op_name(evaled_op)
         for idx in range(self.args.tune_num):
-            self.gen_ref_tensor(idx, evaled_op)
-            for pre_op in self.module_parsered.get_pre_op_by_op_name(evaled_op):
-                self.gen_input_tensor(idx, pre_op)
+            if 'not_use_fp32_tensor_as_ref' in self.debug_cmd:
+                for pre_op in pre_ops:
+                    if not self.gen_input_tensor(idx, pre_op, node_label):
+                        return False
 
         step = (abs_max - cur_threshold)/self.tune_steps
         if step > 0:
             for i in range(self.tune_steps):
                 cur_threshold += step
-                cur_distance = self.calc_distance(evaled_op, cur_threshold)
+                cur_distance, cur_cos_sim = self.calc_distance(evaled_op, cur_threshold)
+                if cur_distance is None and cur_cos_sim is None:
+                    return False
                 if prev_distance == -1:
                     self.print_dbg("### tuning i:{}, tuned_op_idx:{}, tuned_op:{}, threshold:"
                                 "{:5f}, distance: {}".format(i, op_no, tuned_op, cur_threshold, cur_distance))
                     prev_distance = cur_distance
                     prev_threshold = cur_threshold
+                    init_cos_sim = cur_cos_sim
                     continue
                 elif cur_distance < prev_distance:
                     self.print_dbg("### tuning i:{}, tuned_op_idx:{}, tuned_op:{}, find a better threshold:"
@@ -275,47 +341,107 @@ class SimpleTuner:
                                 "{:5f} -> {:5f}, distance: {} -> {}".format(i,
                                 op_no, tuned_op, prev_threshold, cur_threshold,
                                 prev_distance, cur_distance))
+                if cur_cos_sim > best_cos_sim:
+                    best_cos_sim = cur_cos_sim
                 prev_distance = cur_distance
                 prev_threshold = cur_threshold
 
         for idx in range(self.args.tune_num):
-            self.clear_input_tensor(idx, tuned_op)
+            if 'not_use_fp32_tensor_as_ref' in self.debug_cmd:
+                self.clear_input_tensor(idx, tuned_op, node_label)
+
         assert best_threshold >= self.threshold_table.thresholds_map[tuned_op][0]
         self.threshold_table.thresholds_map[tuned_op][0] = best_threshold
+        if step > 0:
+            if threshold < best_threshold:
+                node_label[0] += '\ntune, find:{} th:{:.4f}->{:.4f}, abs_max:{:.4f}, cos_sim:{:.3f}->{:.3f}'.format(tuned_op, threshold, best_threshold, abs_max, init_cos_sim, best_cos_sim)
+            else:
+                node_label[0] += '\ntune:{} no better th, init th:{}, cos_sim:{:.3f}->{:.3f}'.format(tuned_op, threshold, init_cos_sim, best_cos_sim)
+        else:
+            node_label[0] += '\nnot tune {}, init th:{}'.format(tuned_op, threshold)
+        return True
 
     def isAllInputTuned(self, evaled_op):
         pre_ops = self.module_parsered.get_pre_op_by_op_name(evaled_op)
         for tuned_op in pre_ops:
-            if tuned_op not in self.tuned_op:
+            if tuned_op not in self.tuned_op_list:
                 return False
         return True
 
     def run(self):
-        print("tune ..")
-        for evaled_op in self.module.all_tensor_names:
-            if self.module_parsered.get_op_type_by_op_name(evaled_op) == 'top.Input':
+        #pdb.set_trace()
+        self.layer_cos_sim = {}
+
+        all_tensors = self.module.all_tensor_names
+        pbar = tqdm(all_tensors, total=len(all_tensors), position=0, leave=True)
+        for i, evaled_op in enumerate(all_tensors):
+            pbar.set_description("tune op: {}".format(evaled_op))
+            pbar.update(1)
+            type = self.module_parsered.get_op_type_by_op_name(evaled_op)
+            node_label = ['idx:{}  name:{}  type:{}\n'.format(i, evaled_op, type.split('.')[-1])]
+            if type == 'top.Input':
+                if self.dot is not None:
+                    self.dot.node(evaled_op, node_label[0], shape='box')
                 continue
 
             pre_ops = self.module_parsered.get_pre_op_by_op_name(evaled_op)
+            if self.dot is not None:
+                for pre_op in pre_ops:
+                    self.dot.edge(pre_op, evaled_op, label=pre_op)
+
+            for idx in range(self.args.tune_num):
+                self.gen_ref_tensor(idx, evaled_op, node_label)
+
             #若op的多个输入都已调节过，那任挑其中1个来调节，暂定第1个
             if self.isAllInputTuned(evaled_op):
-                self.find_better_threshold(evaled_op, pre_ops[0])
-                self.tuned_op.append(pre_ops[0])
+                ret = self.find_better_threshold(evaled_op, pre_ops[0], node_label)
+                if not ret:
+                    break
+                self.tuned_op_list.append(pre_ops[0])
+                if self.dot is not None:
+                    self.dot.node(evaled_op, node_label[0], shape='box')
+                for idx in range(self.args.tune_num):
+                    self.clear_ref_tensor(idx, evaled_op, node_label)
                 continue
+            faild = False
             for tuned_op in pre_ops:
                 #op的多个输入，调节那些没有调节过的；
-                if tuned_op not in self.tuned_op:
-                    self.find_better_threshold(evaled_op, tuned_op)
-                    self.tuned_op.append(tuned_op)
-            self.print_dbg(evaled_op, 'dq keys:', list(self.dq_activations[0].keys()))
-            for i in self.dq_activations[0]:
-                self.print_dbg('key', i, ' count:', self.dq_activations[0][i][1])
-            self.print_dbg(evaled_op, 'ref keys:', list(self.ref_activations[0].keys()))
-            for i in self.ref_activations[0]:
-                self.print_dbg('key', i, ' count:', self.ref_activations[0][i][1])
+                if tuned_op not in self.tuned_op_list:
+                    ret = self.find_better_threshold(evaled_op, tuned_op, node_label)
+                    if not ret:
+                        faild = True
+                        break
+                    self.tuned_op_list.append(tuned_op)
+            if faild:
+                break
 
-        print('auto tune end, run time:{}'.format(time.time() - self.start_time))
-        tuned_th_dict = {i:self.threshold_table.thresholds_map[i][0] for i in self.threshold_table.thresholds_map}
+            for idx in range(self.args.tune_num):
+                self.clear_ref_tensor(idx, evaled_op, node_label)
+
+            self.print_dbg('>>>>buffered_tensors info:')
+            self.print_dbg('dq_activations keys:', list(self.dq_activations[0].keys()))
+            for op_name in self.dq_activations[0]:
+                self.print_dbg('op:', op_name, ' refcount:', self.dq_activations[0][op_name][1])
+            self.print_dbg('ref_activations keys:', list(self.ref_activations[0].keys()))
+            for op_name in self.ref_activations[0]:
+                self.print_dbg('op:', op_name, ' refcount:', self.ref_activations[0][op_name][1])
+            if self.dot is not None:
+                self.dot.node(evaled_op, node_label[0], shape='box')
+        pbar.close()
+
+        if  self.dot is not None and 'print_debug_info' in self.debug_cmd:
+            index_list = []
+            cos_tensor = []
+            for i, layer in enumerate(self.layer_cos_sim):
+                index_list.append('{}_{}'.format(i,layer))
+                cos_tensor.append(self.layer_cos_sim[layer]/self.args.tune_num)
+            index_list = np.array(index_list)
+            cos_tensor = np.array(cos_tensor)
+            save_tensor_subplot(cos_tensor, index_list, 'layer_cos_sim', 'layer_cos_sim')
+            print('auto tune end, run time:{}'.format(time.time() - self.start_time))
+            tuned_th_dict = {i:self.threshold_table.thresholds_map[i][0] for i in self.threshold_table.thresholds_map}
+            self.dot.render(filename='auto_tune_result', directory='./',view=False)
+            os.system('dot -Tsvg ./auto_tune_result -o ./auto_tune_result.svg')
         return tuned_th_dict
 
 
@@ -325,7 +451,6 @@ class ActivationCalibrator(BaseKldCalibrator):
         self.module = pymlir.module()
         self.module.load(args.mlir_file)
         self.fp32_mlir = args.mlir_file
-        self.tune_num = args.tune_num
         self.args = args
 
         self.ppa_list = []
@@ -347,7 +472,8 @@ class ActivationCalibrator(BaseKldCalibrator):
         self.tensor_max = {}
         self.tensor_min = {}
         self.histogram_bin_num = args.histogram_bin_num
-        self.buffered_activations = dict()
+        self.activations_statistics = dict()
+        self.debug_cmd = parse_debug_cmd(args.debug_cmd)
 
     def _activations_size(self, tensors):
         size = 0
@@ -355,11 +481,18 @@ class ActivationCalibrator(BaseKldCalibrator):
             size += v.size
         return size * 4
 
-    def _activations_generator(self):
-        print("inference ..")
+    def _activations_generator_and_find_minmax(self):
         idx = 0
+        if os.path.exists('./tmpdata/'):
+            os.system('rm -rf ./tmpdata/;mkdir -p ./tmpdata/')
+        else:
+            os.system('mkdir -p ./tmpdata/')
         batched_inputs = self.input_num*['']
-        for data in self.data_list:
+        show_mem_info('mem info before _activations_generator_and_find_minmax')
+        pbar = tqdm(self.data_list, total=self.num_samples, position=0, leave=True)
+        for data_idx, data in enumerate(self.data_list):
+            pbar.set_description("inference and find Min Max *{}".format(data.split("/")[-1]))
+            pbar.update(1)
             if data.lower().endswith('.npz'):
                 x = np.load(data)
                 for k, v in x.items():
@@ -389,58 +522,52 @@ class ActivationCalibrator(BaseKldCalibrator):
                     self.module.set_tensor(name, x)
                 self.module.invoke()
             activations = self.module.get_all_tensor()
-            self.buffered_activations[data] = activations
-
-    def _clean_resource(self):
-        del self.buffered_activations
-        self.buffered_activations = None
-        del self.module
-        self.module = None
-
-    def find_min_max_abs(self):
-        activations_statistics = dict()
-
-        pbar = tqdm(self.data_list, total=self.num_samples, position=0, leave=True)
-        for file, activations in self.buffered_activations.items():
-            file_name = file.split("/")[-1]
-            pbar.set_description("Find Min Max *{}".format(file_name))
-            pbar.update(1)
-
-            for op_name, activation in activations.items():
-                if op_name not in activations_statistics:
-                    minimum, maximum = np.min(activation), np.max(activation)
-                else:
-                    minimum, maximum, _ = activations_statistics[op_name]
-                min_value = min(np.min(activation), minimum)
-                max_value = max(np.max(activation), maximum)
-                abs_value = max(abs(min_value), abs(max_value))
-                activations_statistics[op_name] = (min_value, max_value, abs_value)
+            self.find_min_max_abs_per_input(activations)
+            for name in activations:
+                activations[name] = activations[name].astype(np.float32)
+            np.savez('./tmpdata/{}_activations.npz'.format(data_idx), **activations)
+            del activations
+            gc.collect()
+        pbar.close()
+        show_mem_info('mem info after _activations_generator_and_find_minmax')
 
         # check max is zero
-        for k, v in activations_statistics.items():
+        for k, v in self.activations_statistics.items():
             _, _, _abs = v
             if _abs == 0:
                 # if network outputs are all zero, change it to 1e-5 for them.
-                activations_statistics[k] = (-1e-5, 1e-5, 1e-5)
+                self.activations_statistics[k] = (-1e-5, 1e-5, 1e-5)
                 print("WARNING: layer {} is all zeros. Please check the "
                       "input data correctness.".format(k))
-        pbar.close()
-        return activations_statistics
 
-    def calc_thresholds(self, activations_statistics):
+    def _clean_resource(self):
+        del self.module
+        self.module = None
+
+    def find_min_max_abs_per_input(self, activations):
+        for op_name, activation in activations.items():
+            if op_name not in self.activations_statistics:
+                minimum, maximum = np.min(activation), np.max(activation)
+            else:
+                minimum, maximum, _ = self.activations_statistics[op_name]
+            min_value = min(np.min(activation), minimum)
+            max_value = max(np.max(activation), maximum)
+            abs_value = max(abs(min_value), abs(max_value))
+            self.activations_statistics[op_name] = (min_value, max_value, abs_value)
+
+    def calc_thresholds(self):
         print("calculate histogram..")
-
         histogram_data_map = {}
         histogram_width_map = {}
 
+        show_mem_info('mem info before calc_thresholds')
         pbar = tqdm(self.data_list, total=self.num_samples, position=0, leave=True)
-        for file, activations in self.buffered_activations.items():
-            file_name = file.split("/")[-1]
-            pbar.set_description("histogram: {}".format(file_name))
+        for data_idx, data in enumerate(self.data_list):
+            activations = np.load('./tmpdata/{}_activations.npz'.format(data_idx))
+            pbar.set_description("calc_thresholds: {}".format(data.split("/")[-1]))
             pbar.update(1)
-
             for op_name, activation in activations.items():
-                _, _, abs_value = activations_statistics[op_name]
+                _, _, abs_value = self.activations_statistics[op_name]
                 hist, width = self.histogram(activation, abs_value, self.histogram_bin_num)
                 if op_name not in histogram_data_map:
                     histogram_data_map[op_name] = hist
@@ -448,14 +575,17 @@ class ActivationCalibrator(BaseKldCalibrator):
                 else:
                     histogram_data_map[op_name] += hist
             del activations
+            gc.collect()
         pbar.close()
+        show_mem_info('mem info after calc_thresholds')
 
         thresholds_map = self.find_threshold(histogram_data_map, histogram_width_map)
         thresholds_map['abs_max'] = {}
-        for k, v in activations_statistics.items():
+        for k, v in self.activations_statistics.items():
             _, _, abs_val = v
             thresholds_map['abs_max'][k] = abs_val
 
+        show_mem_info('mem info after find_threshold')
         return thresholds_map
 
     def find_threshold(self, histogram_data_map, histogram_width_map):
@@ -471,34 +601,45 @@ class ActivationCalibrator(BaseKldCalibrator):
         return thresholds
 
     def run(self):
-        # step 1: find min max
-        op_layers = self.module.all_tensor_names
-        self._activations_generator()
-        activations_statistics = self.find_min_max_abs()
-
-        # step 2: calculate threshold with histogram bins
-        thresholds_map = self.calc_thresholds(activations_statistics)
-        self._clean_resource()
-
-        # step 3: dump threshold table of default histogram bins
-        cali_table = self.args.calibration_table
-        if self.tune_num > 0:
-            cali_table += "_tuned_input"
-        thresholds_map_list = []
         layer_name_list = []
-        with open(cali_table, 'w') as f:
-            f.write("# genetated time: {}\n".format(datetime.datetime.now()))
-            f.write("# histogram number: {}\n".format(self.histogram_bin_num))
-            f.write("# sample number: {}\n###\n".format(self.num_samples))
-            f.write("# op_name    threshold    min    max\n")
-            for i, op_name in enumerate(op_layers):
-                threshold = thresholds_map[op_name]
-                thresholds_map_list.append(threshold)
-                layer_name_list.append('{}_{}'.format(i, op_name))
-                min_value, max_value, _ = activations_statistics[op_name]
-                f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold, min_value,
-                                                        max_value))
-        if self.tune_num <= 0:
+        thresholds_map_list = []
+        op_layers = self.module.all_tensor_names
+        if 'input_calibration_table' in self.debug_cmd:
+            assert self.args.tune_num > 0
+            input_calibration_table = self.debug_cmd['input_calibration_table']
+            if input_calibration_table != '' and os.path.exists(input_calibration_table):
+                os.system('cp -f {name} {name}.1'.format(name = input_calibration_table))
+                threshold_table = CalibrationTable(input_calibration_table)
+                for op_name in op_layers:
+                    thresholds_map_list.append(threshold_table.thresholds_map[op_name][0])
+            else:
+                print('input_calibration_table error')
+                exit(1)
+        else:
+            # step 1: find min max
+            self._activations_generator_and_find_minmax()
+
+            # step 2: calculate threshold with histogram bins
+            thresholds_map = self.calc_thresholds()
+            self._clean_resource()
+
+            # step 3: dump threshold table of default histogram bins
+            cali_table = self.args.calibration_table
+            if self.args.tune_num > 0:
+                cali_table += ".1"
+            with open(cali_table, 'w') as f:
+                f.write("# genetated time: {}\n".format(datetime.datetime.now()))
+                f.write("# histogram number: {}\n".format(self.histogram_bin_num))
+                f.write("# sample number: {}\n###\n".format(self.num_samples))
+                f.write("# op_name    threshold    min    max\n")
+                for i, op_name in enumerate(op_layers):
+                    threshold = thresholds_map[op_name]
+                    thresholds_map_list.append(threshold)
+                    min_value, max_value, _ = self.activations_statistics[op_name]
+                    f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold, min_value,
+                                                            max_value))
+
+        if self.args.tune_num <= 0:
             return
 
         # setp 4: tune to get better threshold of each layers.
@@ -511,16 +652,21 @@ class ActivationCalibrator(BaseKldCalibrator):
             f.write("# genetated time: {}\n".format(datetime.datetime.now()))
             f.write("# histogram number: {}\n".format(self.histogram_bin_num))
             f.write("# sample number: {}\n".format(self.num_samples))
-            f.write("# tune number: {}\n###\n".format(self.tune_num))
+            f.write("# tune number: {}\n###\n".format(self.args.tune_num))
             f.write("# op_name    threshold    min    max\n")
-            for op_name in op_layers:
+            for i, op_name in enumerate(op_layers):
                 threshold = thresholds[op_name]
+                layer_name_list.append('{}_{}'.format(i, op_name))
                 tuned_threshold_list.append(threshold)
-                min_value, max_value, _ = activations_statistics[op_name]
+                if 'input_calibration_table' in self.debug_cmd:
+                    min_value = threshold_table.thresholds_map[op_name][1]
+                    max_value = threshold_table.thresholds_map[op_name][2]
+                else:
+                    min_value, max_value, _ = self.activations_statistics[op_name]
                 f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold,
                                                            min_value, max_value))
-        os.remove(cali_table)
-        #th_before_tuned = np.array(thresholds_map_list)
-        #th_after_tuned = np.array(tuned_threshold_list)
-        #file_prefix = './{}_{}pics_{}_times_tuned_th_statistic'.format(self.args.mlir_file.split('.')[0], self.tunner.args.tune_num, self.tunner.tune_steps)
-        #save_tensor_diff_subplot(th_before_tuned, th_after_tuned, layer_name_list, 'before_tuned', 'after_tuned', file_prefix)
+        if 'print_debug_info' in self.debug_cmd:
+            th_before_tuned = np.array(thresholds_map_list)
+            th_after_tuned = np.array(tuned_threshold_list)
+            file_prefix = './{}_{}pics_{}_times_tuned_th_statistic'.format(self.args.mlir_file.split('.')[0], self.tunner.args.tune_num, self.tunner.tune_steps)
+            save_tensor_diff_subplot(th_before_tuned, th_after_tuned, layer_name_list, 'before_tuned', 'after_tuned', file_prefix)

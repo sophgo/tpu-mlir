@@ -39,7 +39,7 @@ if __name__ == '__main__':
                         help='num of images for tune')
     parser.add_argument('--histogram_bin_num',
                         type=int,
-                        default=65536,
+                        default=2048,
                         help='Specify histogram bin numer for kld calculate')
     parser.add_argument('-o', '--calibration_table', type=str, help='output threshold table')
     parser.add_argument('--debug_cmd', type=str, default='', help='debug cmd')
