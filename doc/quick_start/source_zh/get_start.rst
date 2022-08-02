@@ -11,7 +11,7 @@
 
 .. code-block:: console
 
-   $ docker pull sophgo/tpuc_dev:v1.1
+   $ docker pull sophgo/tpuc_dev:v1.2
 
 
 如果是首次使用Docker，可执行下述命令进行安装和配置（仅首次执行）:
@@ -33,7 +33,7 @@
 
 .. code-block:: console
 
-  $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v1.1
+  $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v1.2
   # myname只是举个名字的例子，请指定成自己想要的容器的名字
 
 后文假定用户已经处于docker里面的/workspace目录。
