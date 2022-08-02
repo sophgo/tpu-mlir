@@ -181,8 +181,28 @@ def Tpu_MulOp: Tpu_Op<"Mul", [SupportFuseRelu, InOutSameShape,
   let summary = "mul operator";
 
   let description = [{
-    Elementwise mul of input1 and input2. Axis of size 1 will be broadcast,
-    as necessary.
+    Elementwise mul of input1 and input2. Input1 and input2 are tensors.
+  }];
+
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    // quant param
+    DefaultValuedAttr<I64Attr, "1">:$multiplier,
+    DefaultValuedAttr<I64Attr, "0">:$rshift,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
+    StrAttr:$name
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_MulConstOp: Tpu_Op<"MulConst", [SupportFuseRelu, InOutSameShape,
+  DeclareOpInterfaceMethods<LocalGenInterface>]> {
+  let summary = "mul const operator";
+
+  let description = [{
+    Elementwise mul of input1 and input2. Input2 is constant.
   }];
 
   let arguments = (ins
