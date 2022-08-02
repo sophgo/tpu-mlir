@@ -33,7 +33,7 @@ TEST_ONNX_IR = [
     "Transpose",
     "LeakyRelu",
     "Mul",
-    "Mul_const",
+    "MulConst",
     "Resize",
     "Softmax",
     "Log",
@@ -70,7 +70,7 @@ class ONNX_IR_TESTER(object):
             "Transpose": self.test_Transpose,
             "LeakyRelu": self.test_LeakyRelu,
             "Mul": self.test_Mul,
-            "Mul_const": self.test_Mul_const,
+            "MulConst": self.test_MulConst,
             "Resize": self.test_Resize,
             "Softmax": self.test_Softmax,
             "Log": self.test_Log,
@@ -426,8 +426,8 @@ class ONNX_IR_TESTER(object):
             test_case,
         )
 
-    def test_Mul_const(self):
-        test_case = 'Mul_const'
+    def test_MulConst(self):
+        test_case = 'MulConst'
         input_shape = [1, 3, 27, 27]
         output_shape = [1, 3, 27, 27]
         input_data = np.random.randn(*input_shape).astype(np.float32)
