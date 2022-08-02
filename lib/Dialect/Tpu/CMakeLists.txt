@@ -3,6 +3,7 @@ file(GLOB _sources
           Interfaces/BM1684/*.cpp
           Interfaces/BM1684x/*.cpp
           Interfaces/Common/*.cpp
+          Canonicalize/*.cpp
           Transforms/*.cpp
           Transforms/LayerGroup/*.cpp)
 
