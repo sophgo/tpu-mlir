@@ -439,9 +439,9 @@ class SimpleTuner:
             cos_tensor = np.array(cos_tensor)
             save_tensor_subplot(cos_tensor, index_list, 'layer_cos_sim', 'layer_cos_sim')
             print('auto tune end, run time:{}'.format(time.time() - self.start_time))
-            tuned_th_dict = {i:self.threshold_table.thresholds_map[i][0] for i in self.threshold_table.thresholds_map}
             self.dot.render(filename='auto_tune_result', directory='./',view=False)
             os.system('dot -Tsvg ./auto_tune_result -o ./auto_tune_result.svg')
+        tuned_th_dict = {i:self.threshold_table.thresholds_map[i][0] for i in self.threshold_table.thresholds_map}
         return tuned_th_dict
 
 
@@ -665,6 +665,7 @@ class ActivationCalibrator(BaseKldCalibrator):
                     min_value, max_value, _ = self.activations_statistics[op_name]
                 f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold,
                                                            min_value, max_value))
+        os.remove(cali_table)
         if 'print_debug_info' in self.debug_cmd:
             th_before_tuned = np.array(thresholds_map_list)
             th_after_tuned = np.array(tuned_threshold_list)

@@ -4,7 +4,10 @@ set -ex
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 # run onnx operation test
+mkdir -p regression_out
+pushd regression_out
 test_onnx.py
+popd
 
 # run models
 model_list_basic=(
