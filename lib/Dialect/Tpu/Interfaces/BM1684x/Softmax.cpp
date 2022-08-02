@@ -80,8 +80,11 @@ void tpu::SoftmaxOp::codegen_global_float_bm1684x() {
   param.log = false;
   param.dtype = BM168x::getDataType(input());
   param.scale_val = 0;
+  auto op = getOperation();
+  auto input_spec = BM1684x::get_input_spec(op);
+  auto output_spec = BM1684x::get_output_spec(op);
   BM1684x::instance().call_global_func("backend_api_softmax_global", &param,
-                                       sizeof(param));
+                                       sizeof(param), input_spec->data(), output_spec->data());
 }
 
 void tpu::SoftmaxOp::codegen_global_int8_bm1684x() {

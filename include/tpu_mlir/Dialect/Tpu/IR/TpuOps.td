@@ -388,7 +388,7 @@ def Tpu_RequantOp:Tpu_Op<"Requant",
   }];
   let arguments = (ins
     AnyTensor:$input,
-    AnyTensor:$quant,
+    AnyTensorOrNone:$quant,
     OptionalAttr<I64Attr>:$multiplier,
     OptionalAttr<I64Attr>:$rshift,
     OptionalAttr<I64Attr>:$quant_mode,

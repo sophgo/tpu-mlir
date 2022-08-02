@@ -8,10 +8,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684x.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 using namespace mlir;
@@ -24,18 +24,15 @@ using namespace tpu_mlir::backend;
 // =========================================
 
 void tpu::SiLUOp::codegen_global_int8_bm1684x() {
-  auto input_shape = Module::getShape(input());
-  active_param_t p = {0};
-  p.input_addr = Module::getAddress(input());
-  p.output_addr = Module::getAddress(output());
-  p.shape_dim = input_shape.size();
-  for (int i = 0; i < p.shape_dim; i++) {
-    p.shape[i] = input_shape[i];
-  }
-  p.active_type = ACTIVE_SILU;
-  p.dtype = BM168x::getDataType(output());
-  BM1684x::instance().call_global_func("backend_api_active_global", &p,
-                                       sizeof(p));
+  active_global_spec_t spec;
+  memset(&spec, 0, sizeof(spec));
+  spec.common.active_type = ACTIVE_SILU;
+  auto op = getOperation();
+  auto input_spec = BM1684x::get_input_spec(op);
+  auto output_spec = BM1684x::get_output_spec(op);
+  BM1684x::instance().call_global_func("backend_api_active_global", &spec,
+                                       sizeof(spec), input_spec->data(),
+                                       output_spec->data());
 }
 
 void tpu::SiLUOp::codegen_global_float_bm1684x() {
@@ -62,23 +59,34 @@ int64_t tpu::SiLUOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
 }
 
 void tpu::SiLUOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
-  auto gi = getGroupInfo(n_step, h_step);
   int64_t n, c, h, w;
   Module::getNCHW(input(), n, c, h, w);
-  active_param_t p = {0};
-  p.input_addr = in_gi.out_addr;
-  p.output_addr = gi.out_addr;
-  p.buffer_local_addr = gi.buffer_addr;
-  p.shape[0] = gi.n_slice;
-  p.shape[1] = c;
-  p.shape[2] = gi.h_slice;
-  p.shape[3] = w;
-  p.shape_dim = 4;
-  p.dtype = BM168x::getDataType(output());
-  p.active_type = ACTIVE_SILU;
-  BM1684x::instance().call_local_func("backend_api_active_local", &p,
-                                      sizeof(p));
+  auto gi = getGroupInfo(n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  auto op = getOperation();
+  auto input_spec = BM1684x::get_input_spec(op);
+  auto output_spec = BM1684x::get_output_spec(op);
+
+  active_local_spec_t spec;
+  memset(&spec, 0, sizeof(spec));
+  spec.common.active_type = ACTIVE_SILU;
+  spec.buffer_addr = gi.buffer_addr;
+
+  local_sec_info_t sec_info;
+  memset(&sec_info, 0, sizeof(sec_info));
+  sec_info.n_slice = in_gi.n_slice;
+  sec_info.d_slice = 1;
+  sec_info.h_slice = in_gi.h_slice;
+  sec_info.h_idx = in_gi.h_idx;
+  sec_info.is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == h);
+  sec_info.w_slice = w;
+  sec_info.out_n_slice = gi.n_slice;
+  sec_info.out_h_idx = gi.h_idx;
+  sec_info.out_h_slice = gi.h_slice;
+  sec_info.out_w_slice = w;
+  BM1684x::instance().call_local_func("backend_api_active_local", &spec,
+                                      sizeof(spec), &sec_info,
+                                      input_spec->data(), output_spec->data());
 }
 
 void tpu::SiLUOp::codegen_local_float_bm1684x(int64_t n_step, int64_t h_step) {
