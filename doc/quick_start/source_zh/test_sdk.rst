@@ -43,8 +43,8 @@
 
    $ tar zxf tpu-mlir_xxxx.tar.gz
    $ cd tpu-mlir_xxxx
-   $ docker pull sophgo/tpuc_dev:v1.1
-   $ docker run --rm --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v1.1
+   $ docker pull sophgo/tpuc_dev:v1.2
+   $ docker run --rm --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v1.2
 
 运行命令后会处于Docker的容器中。
 
