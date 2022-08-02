@@ -492,7 +492,7 @@ protected:
     if (chip_ == Module::Chip::BM1684x) {
       if (mode_ == Quant::Type::INT8 && asymmetric_) {
         if (isa<top::AddOp, top::AvgPoolOp, top::LeakyReluOp, top::MulOp,
-                top::SoftmaxOp>(op)) {
+                top::MulConstOp, top::SoftmaxOp>(op)) {
           quantize_map[op] = Quant::Type::F32;
         }
       }
