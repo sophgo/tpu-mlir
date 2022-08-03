@@ -44,3 +44,13 @@ LogicalResult tpu::ConcatOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+LogicalResult tpu::ConcatOp::LocalGenSupport() {
+  auto shape = Module::getShape(output());
+  int num_dims = shape.size();
+  auto ax = axis();
+  if (ax == 1 && (num_dims == 3 || num_dims == 4)) {
+    return success();
+  }
+  return failure();
+}

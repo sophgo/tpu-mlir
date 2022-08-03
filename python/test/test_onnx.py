@@ -37,7 +37,7 @@ TEST_ONNX_IR = [
     "Resize",
     "Softmax",
     "Log",
-    "Pad",
+    #"Pad",
     "Div",
 ]
 
