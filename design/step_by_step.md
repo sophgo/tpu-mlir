@@ -15,20 +15,20 @@ you can refer to script: [step_by_step](../regression/basic/run_step_by_step.sh)
 Refer to [README.md](../README.md).
 
 ```bash
-docker pull sophgo/tpuc_dev:v1.2
+docker pull sophgo/tpuc_dev:latest
 
 cd sophgo-mlir
 
 # w/o dataset
 docker run --name mymlir \
     -v $PWD:/workspace \
-    -it sophgo/tpuc_dev:v1.2
+    -it sophgo/tpuc_dev:latest
 
 # w/ dataset mount as /dataset, for model eval
 docker run --name mymlir \
     -v $PWD:/workspace \
     -v /data/dataset:/dataset \
-    -it sophgo/tpuc_dev:v1.2
+    -it sophgo/tpuc_dev:latest
 
 # to build
 source ./envsetup.sh

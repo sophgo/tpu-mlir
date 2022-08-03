@@ -23,20 +23,17 @@ project = u'TPU-MLIR'
 copyright = u'2022, SOPHGO'
 author = u'SOPHGO'
 
-import os, subprocess
-command_line = "git branch | sed -n '/\* /s///p'"
-branch_str = u""
+import os, subprocess, re
+command_line = "git describe --tags --always"
+tag_str = u""
 try:
-    branch_str = subprocess.check_output(command_line, shell = True).decode()
+    tag_str = subprocess.check_output(command_line, shell = True).decode()
 except subprocess.TimeoutExpired as time_e:
     print(time_e)
 except subprocess.CalledProcessError as call_e:
     print(call_e.output.decode(encoding="utf-8"))
 
-# The short X.Y version
-version = os.getenv('BUILD_RELEASE_VERSION', branch_str)
-# The full version, including alpha/beta/rc tags
-release = os.getenv('BUILD_RELEASE_VERSION', branch_str)
+release =  ".".join(re.findall("(\d+)\.(\d+)\-(\d+)", tag_str)[0])
 
 
 # -- General configuration ---------------------------------------------------

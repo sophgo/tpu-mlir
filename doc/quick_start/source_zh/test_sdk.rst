@@ -5,9 +5,9 @@
 配置系统环境
 ~~~~~~~~~~~~
 
-使用 :ref:`env_setup` 中的方法设置好Docker环境。由于本章中会使用到
-``git-lfs`` ，如果首次使用 ``git-lfs`` 可执行下述命令进行安装和配置（仅首次执
-行，同时该配置是在用户自己系统中，并非Docker container中）:
+如果是首次使用Docker，那么请使用 :ref:`首次使用Docker <docker configuration>` 中的方法安装
+并配置Docker。同时，本章中会使用到 ``git-lfs`` ，如果首次使用 ``git-lfs`` 可执行下述命
+令进行安装和配置（仅首次执行，同时该配置是在用户自己系统中，并非Docker container中）:
 
 .. code-block:: console
    :linenos:
@@ -25,7 +25,19 @@
    :linenos:
 
    $ git clone --depth=1 https://github.com/sophgo/model-zoo
+   $ cd model-zoo
    $ git lfs pull --include "*.onnx" --exclude=""
+   $ cd ../
+
+如果已经克隆过 ``model-zoo`` 可以执行以下命令同步模型到最新状态：
+
+.. code-block:: console
+   :linenos:
+
+   $ cd model-zoo
+   $ git pull
+   $ git lfs pull --include "*.onnx" --exclude=""
+   $ cd ../
 
 此过程会从 ``GitHub`` 上下载大量数据。由于具体网络环境的差异，此过程可能耗时较长。
 
@@ -36,15 +48,15 @@
 解压SDK并创建Docker容器
 +++++++++++++++++++++++
 
-在 ``tpu-mlir_xxxx.tar.gz`` 目录下，执行以下命令：
+在 ``tpu-mlir_xxxx.tar.gz`` 目录下（注意，``tpu-mlir_xxxx.tar.gz`` 和
+``model-zoo`` 需要在同一级目录），执行以下命令：
 
 .. code-block:: console
    :linenos:
 
    $ tar zxf tpu-mlir_xxxx.tar.gz
-   $ cd tpu-mlir_xxxx
-   $ docker pull sophgo/tpuc_dev:v1.2
-   $ docker run --rm --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v1.2
+   $ docker pull sophgo/tpuc_dev:latest
+   $ docker run --rm --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:latest
 
 运行命令后会处于Docker的容器中。
 
@@ -83,9 +95,10 @@ SDK的测试内容位于 ``tpu-mlir`` 的 ``regression`` 目录下，regression�
    │   ├── squeezenet1.0.cfg
    │   ├── vgg16.cfg
    │   └── yolov5s.cfg
-   ├── image
+   ├── dataset
    │   ├── COCO2017
    │   └── ILSVRC2012
+   │   ...
    ├── model
    │   ├── resnet50_int8.tflite
    │   └── yolov5s.onnx
@@ -96,7 +109,7 @@ SDK的测试内容位于 ``tpu-mlir`` 的 ``regression`` 目录下，regression�
    预存的一些量化参数表，用于编译INT8模型。
 :config:
    模型的配置文件，用于记录模型位置、预处理参数以及编译相关的信息。
-:image:
+:dataset:
    提供了部分COCO2017和ILSVRC2012的图片，用于统计相关模型的数据分布，生成量化表。
 :model:
    提供了两个经典模型resnet50_int8.tflite和yolov5s.onnx。
@@ -113,12 +126,12 @@ SDK的测试内容位于 ``tpu-mlir`` 的 ``regression`` 目录下，regression�
 
 该过程耗时较久（预计在1~2小时），请耐心等待。该过程会测试以下模型：
 
+* mobilenet_v2
 * resnet18
 * resnet50_v2
-* mobilenet_v2
+* resnet34_ssd1200
 * squeezenet
 * vgg16
-* resnet34_ssd1200
 * yolov5s
 
 命令正常结束后，会看到新生成的regression_out文件夹（测试输出内容都在该文件夹中）。
