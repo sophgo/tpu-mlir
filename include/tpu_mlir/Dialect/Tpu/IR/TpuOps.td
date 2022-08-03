@@ -219,23 +219,6 @@ def Tpu_MulConstOp: Tpu_Op<"MulConst", [SupportFuseRelu, InOutSameShape,
   let results = (outs AnyTensor:$output);
 }
 
-// def Tpu_ConcatOp: Tpu_Op<"Concat", [SupportFuseRelu,
-//   DeclareOpInterfaceMethods<LocalGenInterface>]> {
-//   let summary = "concat operator";
-
-//   let description = [{
-//   }];
-
-//   let arguments = (ins
-//     Variadic<AnyTensor>:$inputs,
-//     DefaultValuedAttr<I32Attr, "1">:$axis,
-//     OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
-//     StrAttr:$name
-//   );
-
-//   let results = (outs AnyTensor:$output);
-// }
-
 def Tpu_Depth2SpaceOp: Tpu_Op<"Depth2Space"> {
 
   let summary = "Depth2Space operator";
@@ -487,7 +470,8 @@ def Tpu_LeakyReluOp: Tpu_Op<"LeakyRelu", [
   let results = (outs AnyTenor:$output);
 }
 
-def Tpu_ConcatOp:Tpu_Op<"Concat"> {
+def Tpu_ConcatOp:Tpu_Op<"Concat",[
+    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
   let summary = "Concatate operation";
   let description = [{
   Concatenates the given sequence of seq tensors in the given dimension.

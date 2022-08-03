@@ -162,7 +162,7 @@ std::string Module::genWeightFileName(ModuleOp module) {
 
 int64_t Module::getAddress(Value v) {
   auto attr = v.getType().cast<RankedTensorType>().getEncoding();
-  assert(attr.isa<IntegerAttr>());
+  assert(attr && attr.isa<IntegerAttr>());
   return attr.cast<IntegerAttr>().getInt();
 }
 
