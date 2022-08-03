@@ -38,6 +38,7 @@ TEST_ONNX_IR = [
     "Softmax",
     "Log",
     "Pad",
+    "Div",
 ]
 
 
@@ -75,6 +76,7 @@ class ONNX_IR_TESTER(object):
             "Softmax": self.test_Softmax,
             "Log": self.test_Log,
             "Pad": self.test_Pad,
+            "Div": self.test_Div,
         }
         self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
 
@@ -133,6 +135,7 @@ class ONNX_IR_TESTER(object):
                       chip="bm1684x",
                       cali_table=table_name,
                       asymmetric=isAsym)
+
         # transform
         bmodel = tpu_mlir + ".bmodel"
         tpu_final = tpu_mlir + "_final.mlir"
@@ -177,7 +180,6 @@ class ONNX_IR_TESTER(object):
 
     def convert_and_test(self, input_data: dict, graph_def, model_name: str):
         onnx_outs, top_mlir_outs, input_npz = self.onnx_convert(input_data, graph_def, model_name)
-
         # test onnx and mlir outputs
         counter = 0
         for name in onnx_outs:
@@ -517,6 +519,27 @@ class ONNX_IR_TESTER(object):
                                    mode='constant')
         graph_def = helper.make_graph([data_def, pad_def], test_case, [input], [output])
         self.convert_and_test({'input': input_data}, graph_def, test_case)
+
+    def test_Div(self):
+        test_case = 'Div'
+        input_shape = {"input1": [1, 3, 27, 27], "input2": [1, 3, 27, 27]}
+        output_shape = [1, 3, 27, 27]
+        input_data = {k: np.random.randn(*x).astype(np.float32) for k, x in input_shape.items()}
+        input_data["input2"] = np.clip(input_data["input2"], 0.01, 10)
+
+        inputs = [
+            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
+        ]
+        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
+
+        div_def = helper.make_node("Div", inputs=list(input_shape.keys()), outputs=["output"])
+
+        graph_def = helper.make_graph([div_def], test_case, inputs, [output])
+        self.convert_and_test(
+            input_data,
+            graph_def,
+            test_case,
+        )
 
 
 if __name__ == "__main__":
