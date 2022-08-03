@@ -553,30 +553,27 @@ class OnnxConverter(BaseConverter):
     def convert_mul_op(self, onnx_node):
         assert (onnx_node.op_type == "Mul")
         assert (len(onnx_node.inputs) == 2)
-        if self.isTensor(onnx_node.inputs[0]) or self.isTensor(onnx_node.inputs[1]):
-            if self.isTensor(onnx_node.inputs[0]):
-                coeff = onnx_node.attrs.get("coeff", (self.getTensor(onnx_node.inputs[0]).flatten())[0])
-                op0 = self.getOperand(onnx_node.inputs[1])
-            elif self.isTensor(onnx_node.inputs[1]):
-                coeff = onnx_node.attrs.get("coeff", (self.getTensor(onnx_node.inputs[1]).flatten())[0])
-                op0 = self.getOperand(onnx_node.inputs[0])
-            p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
-                 'do_relu': False,
-                 'coeff': coeff
-                }
+        if self.isTensor(onnx_node.inputs[0]) and not self.isTensor(onnx_node.inputs[1]):
+            onnx_node.inputs[0], onnx_node.inputs[1] = onnx_node.inputs[1], onnx_node.inputs[0]
+            self.convert_mul_op(onnx_node)
+            return
+        name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
+        if (not self.isTensor(onnx_node.inputs[0])) and self.isTensor(onnx_node.inputs[1]):
+            op0 = self.getOperand(onnx_node.inputs[0])
+            input1 = self.getTensor(onnx_node.inputs[1])
+            p = {'name': name, 'const_val': input1.flatten()[0]}
             output_shape = self.getShape(onnx_node.name)
             mul_const_op = self.mlir.create_mul_const_op([op0], output_shape, **p)
             self.addOperand(onnx_node.name, mul_const_op)
+            return
         else:
             op0 = self.getOperand(onnx_node.inputs[0])
             op1 = self.getOperand(onnx_node.inputs[1])
-            p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
-                 'do_relu': False,
-                }
+            p = {'name': name}
             output_shape = self.getShape(onnx_node.name)
             mul_op = self.mlir.create_mul_op([op0, op1], output_shape, **p)
             self.addOperand(onnx_node.name, mul_op)
-        return
+            return
 
     def convert_dropout_op(self, onnx_node):
         assert (onnx_node.op_type == "Dropout")

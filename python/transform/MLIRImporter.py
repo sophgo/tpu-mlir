@@ -197,17 +197,16 @@ class MLIRImporter(object):
         if len(operands) < 2:
             raise RuntimeError("input operand must great than 2")
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
-        param = {'name': StringAttr.get(kargs['name']),
-                 'do_relu': BoolAttr.get(False)}
+        param = {'name': StringAttr.get(kargs['name']), 'do_relu': BoolAttr.get(False)}
         return self.buildOp(Top.MulOp, operands, [output_type], **param)
 
     def create_mul_const_op(self, operands, output_shape, **kargs):
-        if len(operands) != 1:
-            raise RuntimeError("input operand must equal 1")
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
-        param = {'name': StringAttr.get(kargs['name']),
-                 'do_relu': BoolAttr.get(False),
-                 'coeff': FloatAttr.get_f64(kargs['coeff'])}
+        param = {
+            'name': StringAttr.get(kargs['name']),
+            'const_val': FloatAttr.get_f64(kargs['const_val']),
+            'do_relu': BoolAttr.get(False)
+        }
         return self.buildOp(Top.MulConstOp, operands, [output_type], **param)
 
     def create_avgpool_op(self, operands, output_shape, **kargs):
