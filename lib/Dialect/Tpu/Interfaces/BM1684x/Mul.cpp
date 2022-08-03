@@ -22,6 +22,7 @@ using namespace tpu_mlir::backend;
 extern "C" {
 #endif
 
+// use for eltbinary or bcbinary
 typedef struct binary_common_spec {
     int32_t binary_type;
     int32_t if_relu;
@@ -53,7 +54,6 @@ typedef struct binary_local_param {
 
 // int8
 void tpu::MulOp::codegen_global_int8_bm1684x() {
-  int input_num = inputs().size();
   int64_t n, c, h, w;
   Module::getNCHW(output(), n, c, h, w);
   auto op = getOperation();
@@ -67,8 +67,10 @@ void tpu::MulOp::codegen_global_int8_bm1684x() {
   spec.scale_B = 1;
   spec.rshift_A = (int)rshift();
   spec.rshift_B = 0;
-  BM1684x::instance().call_global_func("backend_api_eltbinary_global", &spec,
-                                       sizeof(spec), input_spec->data(), output_spec->data());
+  BM1684x::instance().call_global_func("backend_api_eltbinary_global",
+                                        &spec, sizeof(spec),
+                                        input_spec->data(),
+                                        output_spec->data());
 }
 
 // f32
@@ -85,15 +87,17 @@ void tpu::MulOp::codegen_global_float_bm1684x() {
   spec.scale_B = 1;
   spec.rshift_A = 0;
   spec.rshift_B = 0;
-  BM1684x::instance().call_global_func("backend_api_eltbinary_global", &spec,
-                                       sizeof(spec), input_spec->data(), output_spec->data());
+  BM1684x::instance().call_global_func("backend_api_eltbinary_global",
+                                        &spec, sizeof(spec),
+                                        input_spec->data(),
+                                        output_spec->data());
 }
 
 // =========================================
 // LocalGenInterface
 // =========================================
 
-bool is_sign(DATA_TYPE_T dtype) {
+static bool is_sign(DATA_TYPE_T dtype) {
   return !(dtype == DTYPE_UINT8 || dtype == DTYPE_UINT16 || dtype == DTYPE_UINT32);
 }
 
@@ -122,10 +126,10 @@ void tpu::MulOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
   int64_t n, c, h, w;
   Module::getNCHW(inputs()[0], n, c, h, w);
   auto op = getOperation();
-  auto input_spec = BM1684x::get_input_spec(op);
-  auto output_spec = BM1684x::get_output_spec(op);
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(inputs()[0], n_step, h_step);
+  auto input_spec = BM1684x::get_input_spec(op);
+  auto output_spec = BM1684x::get_output_spec(op);
   binary_local_param_t param;
   memset(&param, 0, sizeof(binary_local_param_t));
   param.spec.common.binary_type = BM_BINARY_MUL;
@@ -153,9 +157,9 @@ void tpu::MulOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
   sec_info.out_w_slice = w;
 
   BM1684x::instance().call_local_func("backend_api_eltbinary_local", &param,
-                                      sizeof(param), &sec_info,
-                                      input_spec->data(),
-                                      output_spec->data());
+                                       sizeof(param), &sec_info,
+                                       input_spec->data(),
+                                       output_spec->data());
 }
 
 void tpu::MulOp::codegen_local_float_bm1684x(int64_t n_step, int64_t h_step) {
@@ -192,8 +196,7 @@ void tpu::MulOp::codegen_local_float_bm1684x(int64_t n_step, int64_t h_step) {
   sec_info.out_h_slice = gi.h_slice;
   sec_info.out_w_slice = w;
 
-  BM1684x::instance().call_local_func("backend_api_eltbinary_local", &param,
-                                      sizeof(param), &sec_info,
-                                      input_spec->data(),
-                                      output_spec->data());
+  BM1684x::instance().call_local_func("backend_api_eltbinary_local",
+                                       &param, sizeof(param), &sec_info,
+                                       input_spec->data(), output_spec->data());
 }

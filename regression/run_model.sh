@@ -16,6 +16,8 @@ if [ ! -f $cfg_file ]; then
   exit 1
 fi
 
+do_asymmetric=1
+
 source ${cfg_file}
 
 mkdir -p regression_out/${model_name}
@@ -139,6 +141,8 @@ model_deploy.py \
   --model ${model_name}_bm1684x_int8_sym.bmodel
 
 # to asymmetric
+if [ x$do_asymmetric == x1 ]; then
+
 tolerance_asym_opt=
 if [ x${int8_asym_tolerance} != x ]; then
   tolerance_asym_opt="--tolerance ${int8_asym_tolerance}"
@@ -154,7 +158,7 @@ model_deploy.py \
   ${tolerance_asym_opt} \
   --correctness 0.99,0.90 \
   --model ${model_name}_bm1684x_int8_asym.bmodel
-
+fi
 
 #########################
 # app
@@ -179,11 +183,13 @@ ${app} \
   --model ${model_name}_bm1684x_int8_sym.bmodel \
   --output output_int8_sym.jpg
 
+if [ x$do_asymmetric == x1 ]; then
 # by int8 asymmetric bmodel
 ${app} \
   --input ${test_input} \
   --model ${model_name}_bm1684x_int8_asym.bmodel \
   --output output_int8_asym.jpg
+fi
 
 fi
 

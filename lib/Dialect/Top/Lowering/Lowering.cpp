@@ -109,15 +109,33 @@ Value do_transfer(Value in, Value out, bool asymmetric) {
                                         ArrayRef<NamedAttribute>{attrs});
     return mrOp.output();
   } else {
-    auto table = create_lookup_table(in, out, same_value, asymmetric);
     std::vector<NamedAttribute> attrs;
     attrs.push_back(
         builder.getNamedAttr("name", builder.getStringAttr(new_name)));
-    builder.setInsertionPointAfterValue(table);
-    auto newOp = builder.create<tpu::LutOp>(op->getLoc(), new_type,
-                                            ValueRange{in, table},
-                                            ArrayRef<NamedAttribute>{attrs});
-    return newOp.output();
+    attrs.push_back(builder.getNamedAttr(
+        "multiplier", builder.getI64IntegerAttr(multiplier)));
+    attrs.push_back(
+        builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
+    attrs.push_back(
+        builder.getNamedAttr("quant_mode", builder.getI64IntegerAttr(2)));
+    auto in_type = in.getType().cast<RankedTensorType>();
+    auto in_shape = in_type.getShape();
+    auto none = Module::getNoneOp(op);
+    builder.setInsertionPointAfterValue(in);
+    auto rqOp = builder.create<tpu::RequantOp>(op->getLoc(), new_type,
+                                               ValueRange{in, none},
+                                               ArrayRef<NamedAttribute>{attrs});
+    return rqOp.output();
+
+    //    auto table = create_lookup_table(in, out, same_value, asymmetric);
+    //    std::vector<NamedAttribute> attrs;
+    //    attrs.push_back(
+    //        builder.getNamedAttr("name", builder.getStringAttr(new_name)));
+    //    builder.setInsertionPointAfterValue(table);
+    //    auto newOp = builder.create<tpu::LutOp>(op->getLoc(), new_type,
+    //                                            ValueRange{in, table},
+    //                                            ArrayRef<NamedAttribute>{attrs});
+    //    return newOp.output();
   }
 }
 
@@ -492,7 +510,7 @@ protected:
     if (chip_ == Module::Chip::BM1684x) {
       if (mode_ == Quant::Type::INT8 && asymmetric_) {
         if (isa<top::AddOp, top::AvgPoolOp, top::LeakyReluOp, top::MulOp,
-                top::SoftmaxOp>(op)) {
+                top::MulConstOp, top::SoftmaxOp>(op)) {
           quantize_map[op] = Quant::Type::F32;
         }
       }

@@ -202,15 +202,30 @@ class OnnxConverter(BaseConverter):
         for o in unuse_output:
             self.model.graph.output.remove(o)
 
+    def get_inputs(self, model: onnx.ModelProto):
+        initializer_names = [x.name for x in model.graph.initializer]
+        return [ipt for ipt in model.graph.input if ipt.name not in initializer_names]
+
+    def get_input_names(self, model: onnx.ModelProto):
+        input_names = [ipt.name for ipt in self.get_inputs(model)]
+        return input_names
+
+    def get_shape_from_value_info_proto(self, v: onnx.ValueInfoProto):
+        return [dim.dim_value for dim in v.type.tensor_type.shape.dim]
+
+    def get_input_shapes(self, model: onnx.ModelProto):
+        inputs = self.get_inputs(model)
+        return [self.get_shape_from_value_info_proto(i) for i in inputs]
+
     def load_onnx_model(self, onnx_file, input_shapes: list, output_names: list):
         if isinstance(onnx_file, str):
             self.model = onnx.load(onnx_file)
         else:
             self.model = onnx_file
-        self.input_names = onnxsim.get_input_names(self.model)
+        self.input_names = self.get_input_names(self.model)
         self.num_input = len(self.input_names)
         self.model_shape_infer(input_shapes)
-        self.input_shapes = [onnxsim.get_shape(self.model, x) for x in self.input_names]
+        self.input_shapes = self.get_input_shapes(self.model)
         model_simplified, is_ok = onnxsim.simplify(self.model)
         if is_ok:
             self.model = model_simplified
@@ -241,7 +256,7 @@ class OnnxConverter(BaseConverter):
             f.write(str(strip_model))
 
     def model_shape_infer(self, input_shapes):
-        inputs = onnxsim.get_inputs(self.model)
+        inputs = self.get_inputs(self.model)
         no_shape = True
 
         def check_shape(l, r):
@@ -539,14 +554,28 @@ class OnnxConverter(BaseConverter):
         assert (onnx_node.op_type == "Mul")
         assert (len(onnx_node.inputs) == 2)
         if self.isTensor(onnx_node.inputs[0]) or self.isTensor(onnx_node.inputs[1]):
-            # TODO: support tensor
-            raise RuntimeError("not support Tensor")
-        op0 = self.getOperand(onnx_node.inputs[0])
-        op1 = self.getOperand(onnx_node.inputs[1])
-        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
-        output_shape = self.getShape(onnx_node.name)
-        add_op = self.mlir.create_mul_op([op0, op1], output_shape, **p)
-        self.addOperand(onnx_node.name, add_op)
+            if self.isTensor(onnx_node.inputs[0]):
+                coeff = onnx_node.attrs.get("coeff", (self.getTensor(onnx_node.inputs[0]).flatten())[0])
+                op0 = self.getOperand(onnx_node.inputs[1])
+            elif self.isTensor(onnx_node.inputs[1]):
+                coeff = onnx_node.attrs.get("coeff", (self.getTensor(onnx_node.inputs[1]).flatten())[0])
+                op0 = self.getOperand(onnx_node.inputs[0])
+            p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
+                 'do_relu': False,
+                 'coeff': coeff
+                }
+            output_shape = self.getShape(onnx_node.name)
+            mul_const_op = self.mlir.create_mul_const_op([op0], output_shape, **p)
+            self.addOperand(onnx_node.name, mul_const_op)
+        else:
+            op0 = self.getOperand(onnx_node.inputs[0])
+            op1 = self.getOperand(onnx_node.inputs[1])
+            p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
+                 'do_relu': False,
+                }
+            output_shape = self.getShape(onnx_node.name)
+            mul_op = self.mlir.create_mul_op([op0, op1], output_shape, **p)
+            self.addOperand(onnx_node.name, mul_op)
         return
 
     def convert_dropout_op(self, onnx_node):

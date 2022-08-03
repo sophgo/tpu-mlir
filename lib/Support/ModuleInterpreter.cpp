@@ -119,7 +119,24 @@ void ModuleInterpreter::allocate_resources() {
 }
 
 void ModuleInterpreter::fake_quant_weight() {
+  llvm::errs() << "start fake_quant_weight" << "\n";
+  std::vector<std::string> not_quant_weight_names;
+  for (auto func : module.getOps<FuncOp>()) {
+    func.walk([&](Operation *op) {
+      if (isa<top::ConvOp>(op) || isa<top::MatMulOp>(op)) {
+        auto bias_op = op->getOperands()[2].getDefiningOp();
+        if (auto weight_op = dyn_cast<top::WeightOp>(bias_op)) {
+          not_quant_weight_names.push_back(weight_op.name().str());
+        }
+      }
+    });
+  }
+
   for (auto &name : all_weight_names) {
+    if (std::count(not_quant_weight_names.begin(), not_quant_weight_names.end(), name)) {
+      continue;
+    }
+
     auto mem = *mem_map.at(name);
     auto max_value = std::max(std::abs(*std::max_element(mem.begin(), mem.end())), std::abs(*std::min_element(mem.begin(), mem.end())));
     for (auto &data : mem) {
@@ -127,6 +144,7 @@ void ModuleInterpreter::fake_quant_weight() {
     }
   }
 }
+
 
 void ModuleInterpreter::invoke(bool express_type) {
   for (auto func : module.getOps<FuncOp>()) {

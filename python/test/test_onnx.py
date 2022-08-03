@@ -33,6 +33,7 @@ TEST_ONNX_IR = [
     "Transpose",
     "LeakyRelu",
     "Mul",
+    "MulConst",
     "Resize",
     "Softmax",
     "Log",
@@ -69,6 +70,7 @@ class ONNX_IR_TESTER(object):
             "Transpose": self.test_Transpose,
             "LeakyRelu": self.test_LeakyRelu,
             "Mul": self.test_Mul,
+            "MulConst": self.test_MulConst,
             "Resize": self.test_Resize,
             "Softmax": self.test_Softmax,
             "Log": self.test_Log,
@@ -423,6 +425,30 @@ class ONNX_IR_TESTER(object):
             graph_def,
             test_case,
         )
+
+    def test_MulConst(self):
+        test_case = 'MulConst'
+        input_shape = [1, 3, 27, 27]
+        output_shape = [1, 3, 27, 27]
+        input_data = np.random.randn(*input_shape).astype(np.float32)
+
+        input = helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape)
+
+        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
+
+        mul_const = helper.make_tensor(name = 'const_mul',
+                                       data_type = TensorProto.FLOAT,
+                                       dims = [],
+                                       vals = [2.0])
+        initializer = list()
+        initializer.append(mul_const)
+
+        const_mul_def = helper.make_node("Mul",
+                                          inputs=["input", "const_mul"],
+                                          outputs = ["output"]);
+
+        graph_def = helper.make_graph([const_mul_def], test_case, [input], [output], initializer = initializer);
+        self.convert_and_test({"input": input_data}, graph_def, test_case)
 
     def test_Resize(self):
         test_case = "Resize"

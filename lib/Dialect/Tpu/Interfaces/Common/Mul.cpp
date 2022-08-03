@@ -19,9 +19,7 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-LogicalResult tpu::MulOp::init(InferenceParameter &p) {
-  return success();
-}
+LogicalResult tpu::MulOp::init(InferenceParameter &p) { return success(); }
 
 void tpu::MulOp::deinit(InferenceParameter &p) {}
 
@@ -36,7 +34,7 @@ LogicalResult tpu::MulOp::inference(InferenceParameter &p) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int64_t j = 0; j < num_elem; j++) {
       for (int i = 0; i < nInputs; i++) {
-          p.outputs[0][j] *= p.inputs[i][j];
+        p.outputs[0][j] *= p.inputs[i][j];
       }
       if (do_relu()) {
         p.outputs[0][j] = std::max(0.0f, p.outputs[0][j]);
@@ -48,11 +46,6 @@ LogicalResult tpu::MulOp::inference(InferenceParameter &p) {
       f32_to_f16(p.outputs[0], p.outputs[0], num_elem);
     }
   } else if (asym == false) {
-    auto o_dtype = Quant::getUniformQuantizedType(output());
-    auto zp = o_dtype.getZeroPoint();
-    auto scale = o_dtype.getScale();
-    auto chip = Module::getChip(module);
-    auto op = getOperation();
     memset(p.outputs[0], 0, num_elem * sizeof(float));
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int i = 0; i < num_elem; i++) {
@@ -63,7 +56,7 @@ LogicalResult tpu::MulOp::inference(InferenceParameter &p) {
                                                       : Quant::to_int8(sum);
     }
   } else {
-    llvm_unreachable("MulOp asymmetric not support");
+    llvm_unreachable("MulOp asymmetric use FP32");
   }
   return success();
 }

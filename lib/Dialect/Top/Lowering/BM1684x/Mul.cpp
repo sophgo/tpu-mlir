@@ -18,11 +18,11 @@ using namespace tpu_mlir::helper;
 using namespace mlir;
 
 Value top::MulOp::lowering_int8_bm1684x(bool asymmetric) {
+  auto op = getOperation();
+  const int nInputs = op->getNumOperands();
   if (asymmetric == false) {
-    auto op = getOperation();
     OpBuilder builder(op);
     std::vector<Value> operands;
-    const int nInputs = op->getNumOperands();
     double scale;
     int64_t zp_o;
     double scale_o;
@@ -57,7 +57,7 @@ Value top::MulOp::lowering_int8_bm1684x(bool asymmetric) {
                                             ArrayRef<NamedAttribute>{attrs});
     return newOp.output();
   } else {
-    llvm_unreachable("MulOp asymmetric not support");
+    llvm_unreachable("MulOp asymmetric use FP32");
   }
 }
 

@@ -303,8 +303,8 @@ T RightShiftRound(T src, int shift_num, RoundingMode round_mode) {
 // to compilable with tflite
 // tensorflow/lite/kernels/internal/common.h:MultiplyByQuantizedMultiplier()
 int32_t MultiplyByQuantizedMultiplier(int32_t x, int32_t multiplier,
-                                      int shift) {
-  shift = -(shift - 31);
+                                      int rshift) {
+  int shift = -(rshift - 31);
   int64_t value = shift > 0 ? x << shift : x;
   value = RightShiftRound(value * multiplier, 31, ROUNDING_HALF_UP);
   if (value > (1ll << 31) - 1)

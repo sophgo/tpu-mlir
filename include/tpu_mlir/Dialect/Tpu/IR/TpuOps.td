@@ -70,6 +70,7 @@ def Tpu_ConvOp: Tpu_Op<"Conv",[
     DefaultValuedAttr<I64Attr, "0">:$use_3ic_optimize,
     OptionalAttr<I64ArrayAttr>:$multiplier,
     OptionalAttr<I64ArrayAttr>:$rshift,
+    OptionalAttr<I64Attr>:$quant_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
     StrAttr:$name
   );
@@ -81,6 +82,8 @@ def Tpu_ConvOp: Tpu_Op<"Conv",[
                     int64_t &ins_w, int64_t &sh, int64_t &sw, int64_t &pt, int64_t &pb, int64_t &pl,
                     int64_t &pr, int64_t &dh, int64_t &dw, bool &is_dw, bool &with_bias, bool &do_relu);
   }];
+
+  let hasCanonicalizer = 1;
 }
 
 class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,
@@ -178,13 +181,34 @@ def Tpu_MulOp: Tpu_Op<"Mul", [SupportFuseRelu, InOutSameShape,
   let summary = "mul operator";
 
   let description = [{
-    Elementwise mul of input1 and input2. Axis of size 1 will be broadcast,
-    as necessary.
+    Elementwise mul of input1 and input2. Input1 and input2 are tensors.
   }];
 
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    // quant param
+    DefaultValuedAttr<I64Attr, "1">:$multiplier,
+    DefaultValuedAttr<I64Attr, "0">:$rshift,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
+    StrAttr:$name
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_MulConstOp: Tpu_Op<"MulConst", [SupportFuseRelu, InOutSameShape,
+  DeclareOpInterfaceMethods<LocalGenInterface>]> {
+  let summary = "mul const operator";
+
+  let description = [{
+    Elementwise mul of input1 and input2. Input2 is constant.
+  }];
+
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "1">:$coeff,
     // quant param
     DefaultValuedAttr<I64Attr, "1">:$multiplier,
     DefaultValuedAttr<I64Attr, "0">:$rshift,
@@ -364,9 +388,10 @@ def Tpu_RequantOp:Tpu_Op<"Requant",
   }];
   let arguments = (ins
     AnyTensor:$input,
-    AnyTensor:$quant,
+    AnyTensorOrNone:$quant,
     OptionalAttr<I64Attr>:$multiplier,
     OptionalAttr<I64Attr>:$rshift,
+    OptionalAttr<I64Attr>:$quant_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
     StrAttr:$name
   );
