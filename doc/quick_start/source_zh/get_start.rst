@@ -11,11 +11,13 @@
 
 .. code-block:: console
 
-   $ docker pull sophgo/tpuc_dev:v1.2
+   $ docker pull sophgo/tpuc_dev:latest
 
 
 如果是首次使用Docker，可执行下述命令进行安装和配置（仅首次执行）:
 
+
+.. _docker configuration:
 
 .. code-block:: console
    :linenos:
@@ -25,7 +27,7 @@
    $ sudo systemctl enable docker
    $ sudo groupadd docker
    $ sudo usermod -aG docker $USER
-   $ newgrp docker (use before reboot)
+   $ newgrp docker
 
 
 确保安装包在当前目录，然后在当前目录创建容器如下：
@@ -33,7 +35,7 @@
 
 .. code-block:: console
 
-  $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:v1.2
+  $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:latest
   # myname只是举个名字的例子，请指定成自己想要的容器的名字
 
 后文假定用户已经处于docker里面的/workspace目录。
@@ -85,7 +87,7 @@
 ~~~~~~~~~~
 
 如果模型是图片输入，在转模型之前我们需要了解模型的预处理。如果模型用预处理后的npz文件做输入，则不需要考虑预处理。
-预处理过程用公式表达如下（x代表输入)：
+预处理过程用公式表达如下（ :math:`x` 代表输入)：
 
 .. math::
 
@@ -189,7 +191,7 @@ MLIR转F32模型
 
 
 .. list-table:: model_deploy 参数功能
-   :widths: 10 10 50
+   :widths: 18 10 50
    :header-rows: 1
 
    * - 参数名
@@ -200,7 +202,7 @@ MLIR转F32模型
      - 指定mlir文件
    * - quantize
      - 是
-     - 指定默认量化类型，支持F32/BF16/F16/INT8
+     - 指定默认量化类型，支持F32/F16/BF16/INT8
    * - chip
      - 是
      - 指定模型将要用到的平台，支持bm1684x（目前只支持这一种，后续会支持多款TPU
@@ -211,9 +213,15 @@ MLIR转F32模型
    * - tolerance
      -
      - 表示 MLIR 量化后的结果与 MLIR fp32推理结果相似度的误差容忍度
-   * - correctnetss
+   * - correctness
      -
      - 表示仿真器运行的结果与MLIR量化后的结果相似度的误差容忍度，默认0.99,0.99
+   * - test_input
+     -
+     - 指定输入文件用于验证，可以是图片或npy或npz；可以不指定，则不会正确性验证
+   * - test_reference
+     -
+     - 用于验证模型正确性的参考数据（使用npz格式）。其为各算子的计算结果
    * - excepts
      -
      - 指定需要排除验证的网络层的名称，多个用,隔开
@@ -234,7 +242,7 @@ MLIR转INT8模型
 转INT8模型前需要跑calibration，得到量化表；输入数据的数量根据情况准备100~1000张左右。
 
 然后用量化表，生成对称或非对称bmodel。如果对称符合需求，一般不建议用非对称，因为
-非对称的性能会略差与对称模型。
+非对称的性能会略差于对称模型。
 
 这里用现有的100张来自COCO2017的图片举例，执行calibration：
 
@@ -300,7 +308,7 @@ MLIR转INT8模型
 在本发布包中有用python写好的yolov5用例，源码路径
 ``$TPUC_ROOT/python/samples/detect_yolov5.py`` ，用于对图片进行目标检测。阅读该
 代码可以了解模型是如何使用的：先预处理得到模型的输入，然后推理得到输出，最后做后处理。
-以下用该代码分别来验证onnx/f32/int8的执行结果。
+用以下代码分别来验证onnx/f32/int8的执行结果。
 
 
 onnx模型的执行方式如下，得到 ``dog_onnx.jpg`` ：
@@ -324,7 +332,7 @@ f32 bmodel的执行方式如下，得到 ``dog_f32.jpg`` ：
 
 
 
-int8 **对称** bmodel的执行方式如下，得到 ``dog_int8_sym.jpg`` ：
+int8对称bmodel的执行方式如下，得到 ``dog_int8_sym.jpg`` ：
 
 .. code-block:: console
 
@@ -334,7 +342,7 @@ int8 **对称** bmodel的执行方式如下，得到 ``dog_int8_sym.jpg`` ：
        --output dog_int8_sym.jpg
 
 
-int8 **非对称** bmodel的执行方式如下，得到 ``dog_int8_asym.jpg`` ：
+int8非对称bmodel的执行方式如下，得到 ``dog_int8_asym.jpg`` ：
 
 .. code-block:: console
 
