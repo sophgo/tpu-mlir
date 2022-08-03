@@ -206,9 +206,9 @@ def Tpu_MulConstOp: Tpu_Op<"MulConst", [SupportFuseRelu, InOutSameShape,
   }];
 
   let arguments = (ins
-    Variadic<AnyTensor>:$inputs,
+    AnyTensor:$input,
+    F64Attr:$const_val,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<F64Attr, "1">:$coeff,
     // quant param
     DefaultValuedAttr<I64Attr, "1">:$multiplier,
     DefaultValuedAttr<I64Attr, "0">:$rshift,

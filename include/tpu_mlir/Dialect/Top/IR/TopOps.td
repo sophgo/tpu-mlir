@@ -327,16 +327,13 @@ def Top_MulConstOp: Top_Op<"MulConst", [SupportFuseRelu, InOutSameShape]> {
   let summary = "Mul Const operator";
 
   let description = [{
-    Elementwise mul of input1 and input2. input2 is a constant.
+    Y = X * const_val
   }];
 
   let arguments = (ins
-    Variadic<AnyTensor>:$inputs,
+    AnyTensor:$input,
+    F64Attr: $const_val,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<F64Attr, "1">:$coeff,
-    // quant param
-    DefaultValuedAttr<I64Attr, "1">:$multiplier,
-    DefaultValuedAttr<I64Attr, "0">:$rshift,
     StrAttr:$name
   );
 

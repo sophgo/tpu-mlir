@@ -25,14 +25,13 @@ void tpu::MulConstOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::MulConstOp::inference(InferenceParameter &p) {
   auto module = Module::getModuleOp(getOperation());
-  int nInputs = inputs().size();
   auto num_elem = Module::getNumElements(output());
   auto out_type = Module::getStorageType(output());
   auto asym = Module::getAsymmetric(module);
   if (out_type.isa<FloatType>()) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int64_t i = 0; i < num_elem; i++) {
-      p.outputs[0][i] = p.inputs[0][i] * static_cast<float>(coeffAttr().getValueAsDouble());
+      p.outputs[0][i] = p.inputs[0][i] * const_val().convertToDouble();
     }
     if (out_type.isBF16()) {
       f32_to_bf16(p.outputs[0], p.outputs[0], num_elem);
