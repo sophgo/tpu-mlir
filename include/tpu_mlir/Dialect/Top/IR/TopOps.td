@@ -552,4 +552,26 @@ def Top_LogOp: Top_Op<"Log", [InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_DivOp: Top_Op<"Div", [InOutSameShape]> {
+  let summary = "Div operator";
+
+  let description = [{
+    Performs element-wise binary division.
+  }];
+
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    // quant param
+    DefaultValuedAttr<I64Attr, "1">:$multiplier,
+    DefaultValuedAttr<I64Attr, "0">:$rshift,
+    StrAttr:$name
+  );
+
+  let results = (outs AnyTensor:$output);
+  // let hasCanonicalizer = 1;
+}
+
 #endif // Top_OPS
+
+
