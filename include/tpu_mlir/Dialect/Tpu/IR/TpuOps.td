@@ -589,4 +589,25 @@ def Tpu_PadOp:Tpu_Op<"Pad"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_DivOp: Tpu_Op<"Div", [InOutSameShape]> {
+  let summary = "div operator";
+
+  let description = [{
+    Performs element-wise binary division.
+  }];
+
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    // quant param
+    DefaultValuedAttr<I64Attr, "1">:$multiplier,
+    DefaultValuedAttr<I64Attr, "0">:$rshift,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
+    StrAttr:$name
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+
 #endif // TPU_OPS
