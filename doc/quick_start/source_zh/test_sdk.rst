@@ -130,7 +130,7 @@ SDK的测试内容位于 ``tpu-mlir`` 的 ``regression`` 目录下，regression�
 * resnet18
 * resnet50_v2
 * resnet34_ssd1200
-* squeezenet
+* squeezenet1.0
 * vgg16
 * yolov5s
 
