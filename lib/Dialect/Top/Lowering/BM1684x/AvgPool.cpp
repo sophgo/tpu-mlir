@@ -56,21 +56,17 @@ Value top::AvgPoolOp::lowering_int8_bm1684x(bool asymmetric) {
 
   builder.setInsertionPointAfter(op);
   auto newType = Quant::getQuantInt8Type(output(), asymmetric);
-  mlir::Value new_result = nullptr;
   if (is_pool3d == false) {
-    new_result =
-        builder
-            .create<tpu::AvgPool2DOp>(getLoc(), newType, ValueRange{input()},
-                                      ArrayRef<NamedAttribute>{attrs})
-            .output();
+    auto newOp =
+        builder.create<tpu::AvgPool2DOp>(getLoc(), newType, ValueRange{input()},
+                                         ArrayRef<NamedAttribute>{attrs});
+    return newOp.output();
   } else {
-    new_result =
-        builder
-            .create<tpu::AvgPool3DOp>(getLoc(), newType, ValueRange{input()},
-                                      ArrayRef<NamedAttribute>{attrs})
-            .output();
+    auto newOp =
+        builder.create<tpu::AvgPool3DOp>(getLoc(), newType, ValueRange{input()},
+                                         ArrayRef<NamedAttribute>{attrs});
+    return newOp.output();
   }
-  return new_result;
 }
 
 Value top::AvgPoolOp::lowering_f32_bm1684x() {
@@ -81,14 +77,18 @@ Value top::AvgPoolOp::lowering_f32_bm1684x() {
 
 Value top::AvgPoolOp::lowering_bf16_bm1684x() {
   return (kernel_shape().size() == 3)
-             ? lowering_common_float<tpu::AvgPool3DOp, Float16Type>(getOperation())
-             : lowering_common_float<tpu::AvgPool2DOp, Float16Type>(getOperation());
+             ? lowering_common_float<tpu::AvgPool3DOp, Float16Type>(
+                   getOperation())
+             : lowering_common_float<tpu::AvgPool2DOp, Float16Type>(
+                   getOperation());
 }
 
 Value top::AvgPoolOp::lowering_f16_bm1684x() {
   return (kernel_shape().size() == 3)
-             ? lowering_common_float<tpu::AvgPool3DOp, BFloat16Type>(getOperation())
-             : lowering_common_float<tpu::AvgPool2DOp, BFloat16Type>(getOperation());
+             ? lowering_common_float<tpu::AvgPool3DOp, BFloat16Type>(
+                   getOperation())
+             : lowering_common_float<tpu::AvgPool2DOp, BFloat16Type>(
+                   getOperation());
 }
 
 Value top::AvgPoolOp::lowering_quant_bm1684x() {
