@@ -48,7 +48,14 @@ LogicalResult tpu::MulConstOp::inference(InferenceParameter &p) {
                                                       : Quant::to_int8(sum);
     }
   } else {
-    llvm_unreachable("MulConstOp asymmetric use FP32");
+#pragma omp parallel for schedule(static, omp_schedule(num_elem))
+    for (int i = 0; i < num_elem; i++) {
+      // inputs has been requant
+      double sum = p.inputs[0][i];
+      if (do_relu() && sum < 0) sum = 0;
+      p.outputs[0][i] = out_type.isUnsignedInteger(8) ? Quant::to_uint8(sum)
+                                                      : Quant::to_int8(sum);
+    }
   }
   return success();
 }
