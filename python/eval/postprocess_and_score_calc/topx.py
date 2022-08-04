@@ -1,6 +1,15 @@
 import os
 from .base_class import *
 import numpy as np
+import argparse
+from utils.log_setting import setup_logger
+logger = setup_logger('root', log_level="INFO")
+
+class score_Parser():
+    def __init__(self):
+        parser = argparse.ArgumentParser(description='Eval topx networks.')
+        parser.add_argument("--debug", type=int, default=-1)
+        self.parser = parser
 
 class topx(base_class):
     def init(self, args):
@@ -21,22 +30,25 @@ class topx(base_class):
         self.have_label_file = len(self.all_labels_dict) > 0 or len(self.all_labels_list) > 0
 
 
-    def update(self, idx, outputs, imgs_path = None, labels = None):
+    def preproc(self, img_paths):
+        pass
+
+    def update(self, idx, outputs, img_paths = None, labels = None):
         if not self.have_label_file and labels is None:
             print('error, label info not exist')
             exit(1)
 
         self.idx = idx + 1
         softmax_probs = outputs.reshape((self.args.batch_size,-1))
-        if imgs_path is not None:
-            imgs_path = imgs_path.split(',')
-            assert len(imgs_path) == self.args.batch_size
+        if img_paths is not None:
+            img_paths = img_paths.split(',')
+            assert len(img_paths) == self.args.batch_size
         for i in range(self.args.batch_size):
             if len(self.all_labels_list) > 0:
                 label = self.all_labels_list[idx-self.args.batch_size+1+i]
             elif len(self.all_labels_dict) > 0:
                 for key in self.all_labels_dict:
-                    if imgs_path[i].endswith(key):
+                    if img_paths[i].endswith(key):
                         label = self.all_labels_dict[key]
             elif labels is not None:
                 label = labels[i]
@@ -55,4 +67,4 @@ class topx(base_class):
         return top1, top5
 
     def print_info(self):
-        print('idx:{0}, top1:{1:.3f}, top5:{2:.3f}'.format(self.idx, self.c1/self.idx, self.c5/self.idx))
+        logger.info('idx:{0}, top1:{1:.3f}, top5:{2:.3f}'.format(self.idx, self.c1/self.idx, self.c5/self.idx))

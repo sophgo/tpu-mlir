@@ -308,8 +308,10 @@ class OnnxConverter(BaseConverter):
                     'mean': self.preprocess_args['mean'],
                     'scale': self.preprocess_args['scale'],
                     'pixel_format': self.preprocess_args["pixel_format"],
+                    'pad_type': self.preprocess_args["pad_type"],
                     'resize_dims': self.preprocess_args['resize_dims'],
-                    'keep_aspect_ratio': self.preprocess_args['keep_aspect_ratio']
+                    'keep_aspect_ratio': self.preprocess_args['keep_aspect_ratio'],
+                    'pad_value': self.preprocess_args["pad_value"]
                 }
                 input_op = self.mlir.create_input_op(_name, idx, **preprocess_hint)
             self.addOperand(_name, input_op)
