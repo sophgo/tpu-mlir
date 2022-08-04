@@ -45,7 +45,7 @@
 
 本章以 ``yolov5s.onnx`` 为例，介绍如何编译迁移一个onnx模型至BM1684x TPU平台运行。
 
-该模型来在yolov5的官网: https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
+该模型来自yolov5的官网: https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
 
 本章需要如下文件(其中xxxx对应实际的版本信息)：
 
@@ -133,38 +133,38 @@
      - 是
      - 指定输入文件用于验证，可以是图片或npy或npz；可以不指定，则不会正确性验证
    * - input_shapes
-     -
+     - 否
      - 指定输入的shape，例如[[1,3,640,640]]；二维数组，可以支持多输入情况
    * - resize_dims
-     -
+     - 否
      - 原始图片需要resize之后的尺寸；如果不指定，则resize成模型的输入尺寸
    * - keep_aspect_ratio
-     -
+     - 否
      - 在Resize时是否保持长宽比，默认为false；设置时会对不足部分补0
    * - mean
-     -
+     - 否
      - 图像每个通道的均值，默认为0.0,0.0,0.0
    * - scale
-     -
+     - 否
      - 图片每个通道的比值，默认为1.0,1.0,1.0
    * - pixel_format
-     -
+     - 否
      - 图片类型，可以是rgb、bgr、gray、rgbd四种情况
    * - output_names
-     -
+     - 否
      - 指定输出的名称，如果不指定，则用模型的输出；指定后用该指定名称做输出
    * - test_input
-     -
+     - 否
      - 指定输入文件用于验证，可以是图片或npy或npz；可以不指定，则不会正确性验证
    * - test_result
-     -
+     - 否
      - 指定验证后的输出文件
    * - excepts
-     -
+     - 否
      - 指定需要排除验证的网络层的名称，多个用,隔开
    * - mlir
      - 是
-     - 指定输出的mlir文件路径
+     - 指定输出的mlir文件名称和路径
 
 
 转成mlir文件后，会生成一个 ``${model_name}_in_f32.npz`` 文件，该文件是模型的输入文件。
@@ -208,26 +208,26 @@ MLIR转F32模型
      - 指定模型将要用到的平台，支持bm1684x（目前只支持这一种，后续会支持多款TPU
        平台）
    * - calibration_table
-     -
+     - 否
      - 指定量化表路径，当存在INT8量化的时候需要量化表
    * - tolerance
-     -
+     - 否
      - 表示 MLIR 量化后的结果与 MLIR fp32推理结果相似度的误差容忍度
    * - correctness
-     -
+     - 否
      - 表示仿真器运行的结果与MLIR量化后的结果相似度的误差容忍度，默认0.99,0.99
    * - test_input
-     -
+     - 否
      - 指定输入文件用于验证，可以是图片或npy或npz；可以不指定，则不会正确性验证
    * - test_reference
-     -
+     - 否
      - 用于验证模型正确性的参考数据（使用npz格式）。其为各算子的计算结果
    * - excepts
-     -
+     - 否
      - 指定需要排除验证的网络层的名称，多个用,隔开
    * - model
      - 是
-     - 指定输出的model文件路径
+     - 指定输出的model文件名称和路径
 
 
 编译完成后，会生成名为 ``${model_name}_1684x_f32.bmodel`` 的文件。

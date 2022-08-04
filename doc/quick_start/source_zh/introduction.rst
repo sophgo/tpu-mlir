@@ -12,7 +12,7 @@ TPU-MLIR的整体架构如下：
    :height: 9.5cm
    :align: center
 
-   TPU-MLIR的整体架
+   TPU-MLIR的整体架构
 
 
 目前直接支持的框架有tflite和onnx。其他框架的模型需要转换成onnx模型。如何将其他深
