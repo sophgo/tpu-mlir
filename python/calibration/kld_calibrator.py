@@ -315,9 +315,12 @@ class SimpleTuner:
                 for pre_op in pre_ops:
                     if not self.gen_input_tensor(idx, pre_op, node_label):
                         return False
-
+        min_tuned_diff = 0.01
+        if 'min_tuned_diff' in self.debug_cmd:
+            min_tuned_diff = self.debug_cmd['min_tuned_diff']
+        diff = abs(abs_max - cur_threshold)
         step = (abs_max - cur_threshold)/self.tune_steps
-        if step > 0:
+        if step > 0 and diff > min_tuned_diff:
             for i in range(self.tune_steps):
                 cur_threshold += step
                 cur_distance, cur_cos_sim = self.calc_distance(evaled_op, cur_threshold)
@@ -584,6 +587,8 @@ class ActivationCalibrator(BaseKldCalibrator):
         for k, v in self.activations_statistics.items():
             _, _, abs_val = v
             thresholds_map['abs_max'][k] = abs_val
+            if thresholds_map[k] > abs_val:
+                thresholds_map[k] = abs_val
 
         show_mem_info('mem info after find_threshold')
         return thresholds_map

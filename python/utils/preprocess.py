@@ -18,24 +18,33 @@ class ImageResizeTool:
         return cv2.resize(image, (w, h)) # w,h
 
     @staticmethod
-    def letterbox_resize(image, h, w):
+    def letterbox_resize(image, h, w, pad_value = 0, pad_type = 'center'):
         ih = image.shape[0]
         iw = image.shape[1]
         scale = min(float(w) / iw, float(h) / ih)
         rescale_w = int(iw * scale)
         rescale_h = int(ih * scale)
         resized_img = cv2.resize(image, (rescale_w, rescale_h))
-        paste_w = (w - rescale_w) // 2
-        paste_h = (h - rescale_h) // 2
+        if pad_type == 'center':
+            paste_w = (w - rescale_w) // 2
+            paste_h = (h - rescale_h) // 2
         if image.ndim == 3 and image.shape[2] == 3:
-            new_image = np.full((h, w, 3), 0, dtype=image.dtype)
-            new_image[paste_h:paste_h + rescale_h,
-                      paste_w: paste_w + rescale_w, :] = resized_img
+            new_image = np.full((h, w, 3), pad_value, dtype=image.dtype)
+            if pad_type == 'center':
+                new_image[paste_h:paste_h + rescale_h,
+                          paste_w: paste_w + rescale_w, :] = resized_img
+            else:
+                new_image[: rescale_h,
+                        : rescale_w, :] = resized_img
             return new_image
         elif image.ndim == 2:
-            new_image = np.full((h, w), 0, dtype=image.dtype)
-            new_image[paste_h:paste_h + rescale_h,
-                      paste_w: paste_w + rescale_w] = resized_img
+            new_image = np.full((h, w),pad_value, dtype=image.dtype)
+            if pad_type == 'center':
+                new_image[paste_h:paste_h + rescale_h,
+                        paste_w: paste_w + rescale_w] = resized_img
+            else:
+                new_image[:rescale_h,
+                        : rescale_w] = resized_img
             return new_image
         raise RuntimeError("invalid image shape:{}".format(image.shape))
 
@@ -49,6 +58,8 @@ def add_preprocess_parser(parser):
     parser.add_argument("--scale", default='1,1,1', help="Per Channel image scale values")
     parser.add_argument("--pixel_format", choices=['rgb','bgr','gray','rgba'], default='bgr',
                         help='fixel format of output data that sent into model')
+    parser.add_argument("--pad_value", type=int, default=0, help="pad value when resize ")
+    parser.add_argument("--pad_type", type=str, default='center', help="type of pad when resize ")
     return parser
 
 def get_preprocess_parser(existed_parser=None):
@@ -66,7 +77,7 @@ class preprocess(object):
         pass
 
     def config(self, net_input_dims=None, resize_dims=None, keep_aspect_ratio=False,
-               mean='0,0,0', scale='1,1,1', pixel_format='bgr', **ignored):
+               mean='0,0,0', scale='1,1,1', pixel_format='bgr', pad_type='center', pad_value=0, **ignored):
         if net_input_dims:
             self.net_input_dims = [int(s) for s in net_input_dims.split(',')]
             if not resize_dims:
@@ -82,6 +93,8 @@ class preprocess(object):
 
         self.crop_method = 'center'
         self.keep_aspect_ratio = keep_aspect_ratio
+        self.pad_value = pad_value
+        self.pad_type = pad_type
         self.pixel_format = pixel_format
 
         self.input_name = 'input'
@@ -106,13 +119,15 @@ class preprocess(object):
         format_str = "  config Preprocess args : \n" + \
                "\tresize_dims           : {}\n" + \
                "\tkeep_aspect_ratio     : {}\n" + \
+               "\tpad_value             : {}\n" + \
+               "\tpad_type              : {}\n" + \
                "\t--------------------------\n" + \
                "\tmean                  : {}\n" + \
                "\tscale                 : {}\n" + \
                "\t--------------------------\n" + \
                "\tpixel_format          : {}\n"
         resize_dims_str = resize_dims if resize_dims is not None else 'same to net input dims'
-        info_str += format_str.format(resize_dims_str, self.keep_aspect_ratio,
+        info_str += format_str.format(resize_dims_str, self.keep_aspect_ratio, self.pad_value, self.pad_type,
                 list(self.mean.flatten()), list(self.scale.flatten()), self.pixel_format)
         logger.info(info_str)
 
@@ -135,6 +150,8 @@ class preprocess(object):
         attrs =Operation.dictattr(input_op, 'preprocess')
         self.pixel_format = Operation.str(attrs['pixel_format'])
         self.keep_aspect_ratio = Operation.bool(attrs['keep_aspect_ratio'])
+        self.pad_value = Operation.int(attrs['pad_value'])
+        self.pad_type = Operation.str(attrs['pad_type'])
         self.resize_dims = Operation.int_array(attrs['resize_dims'])
         if len(self.resize_dims) == 0:
             self.resize_dims = self.net_input_dims
@@ -147,13 +164,15 @@ class preprocess(object):
         format_str = "\n  load_config Preprocess args : \n" + \
                "\tresize_dims           : {}\n" + \
                "\tkeep_aspect_ratio     : {}\n" + \
+               "\tpad_value             : {}\n" + \
+               "\tpad_type              : {}\n" + \
                "\tinput_dims            : {}\n" + \
                "\t--------------------------\n" + \
                "\tmean                  : {}\n" + \
                "\tscale                 : {}\n" + \
                "\t--------------------------\n" + \
                "\tpixel_format          : {}\n"
-        logger.info(format_str.format(self.resize_dims, self.keep_aspect_ratio,
+        logger.info(format_str.format(self.resize_dims, self.keep_aspect_ratio, self.pad_value, self.pad_type,
                 self.net_input_dims,
                 list(self.mean.flatten()), list(self.scale.flatten()),
                 self.pixel_format))
@@ -162,6 +181,8 @@ class preprocess(object):
         return {
             'resize_dims': self.resize_dims,
             'keep_aspect_ratio': self.keep_aspect_ratio,
+            'pad_value': self.pad_value,
+            'pad_type': self.pad_type,
             'mean': list(self.mean.flatten()),
             'scale': list(self.scale.flatten()),
             'pixel_format': self.pixel_format
@@ -201,9 +222,10 @@ class preprocess(object):
                 image = PIL.Image.open(image_path).convert('RGBA')
                 image = np.array(image)
 
+        ratio = min(self.net_input_dims[0] / image.shape[0], self.net_input_dims[1] / image.shape[1])
         if self.keep_aspect_ratio:
             image = ImageResizeTool.letterbox_resize(
-                image, self.resize_dims[0], self.resize_dims[1])
+                image, self.resize_dims[0], self.resize_dims[1], self.pad_value, self.pad_type)
         else:
             image = ImageResizeTool.stretch_resize(
                 image, self.resize_dims[0], self.resize_dims[1])
@@ -214,15 +236,21 @@ class preprocess(object):
         else:
             # opencv read image data format is hwc, tranpose to chw
             image = np.transpose(image, (2, 0, 1))
-        return image
+        return image, ratio
+
+    def get_config(self, attr_type):
+        if attr_type == 'ratio':
+            return self.ratio_list
 
     def run(self, input):
         # load and resize image, the output image is chw format.
         x_list = []
+        self.ratio_list = []
         for path in input.split(','):
-            x = self.__load_image_and_resize(path)
+            x,ratio = self.__load_image_and_resize(path)
             x = np.expand_dims(x, axis=0)
             x_list.append(x)
+            self.ratio_list.append(ratio)
         x = np.concatenate(x_list, axis = 0)
 
         # take center crop if needed

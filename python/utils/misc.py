@@ -83,3 +83,19 @@ def show_mem_info(info):
     info_str = 'total mem is {}, used mem is {}'.format(mem_info[1], mem_info[2])
     info_str = '{}:{}'.format(info, info_str)
     print(info_str)
+
+
+def is_image_file(filename):
+    support_list={'.jpg','.bmp','.png','.jpeg'}
+    for type in support_list:
+        if filename.lower().endswith(type):
+            return True
+    return False
+
+def get_image_list(image_dir, count = 0):
+    image_path_list = []
+    for image_name in os.listdir(image_dir):
+        if is_image_file(image_name):
+            image_path_list.append(os.path.join(image_dir, image_name))
+    end = count if count > 0 else len(image_path_list)
+    return image_path_list[0:end]

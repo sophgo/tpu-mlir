@@ -47,6 +47,10 @@ class Operation:
         return mlir.ir.BoolAttr(value).value
 
     @staticmethod
+    def int(value):
+        return mlir.ir.IntegerAttr(value).value
+
+    @staticmethod
     def int_array(value):
         return [mlir.ir.IntegerAttr(x).value for x in mlir.ir.ArrayAttr(value)]
 

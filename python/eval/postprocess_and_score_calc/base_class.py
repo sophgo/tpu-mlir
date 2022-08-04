@@ -5,7 +5,11 @@ class base_class(metaclass=abc.ABCMeta):
         self.init(args)
 
     @abc.abstractmethod
-    def update(self, idx, outputs, imgs_path = None, labels = None):
+    def preproc(self, img_paths):
+        pass
+
+    @abc.abstractmethod
+    def update(self, idx, outputs, img_paths = None, labels = None, ratios = None):
         pass
 
     @abc.abstractmethod

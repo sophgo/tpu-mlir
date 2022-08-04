@@ -143,6 +143,8 @@ class MLIRImporter(object):
         scale = kargs.get('scale', [1.0, 1.0, 1.0])
         pixel_format = kargs.get('pixel_format', 'bgr')
         keep_aspect_ratio = kargs.get('keep_aspect_ratio', False)
+        pad_value = kargs.get('pad_value', 0)
+        pad_type = kargs.get('pad_type', 'center')
         resize_dims = kargs.get('resize_dims', shape[-2:])
 
         preprocess_param = {
@@ -152,10 +154,14 @@ class MLIRImporter(object):
             ArrayAttr.get([FloatAttr.get_f64(x) for x in scale]),
             'keep_aspect_ratio':
             BoolAttr.get(keep_aspect_ratio),
+            'pad_value':
+            IntegerAttr.get(self.mlir_type['INT64'], pad_value),
             'resize_dims':
             ArrayAttr.get([IntegerAttr.get(self.mlir_type['INT64'], x) for x in resize_dims]),
             'pixel_format':
-            StringAttr.get(pixel_format)
+            StringAttr.get(pixel_format),
+            'pad_type':
+            StringAttr.get(pad_type)
         }
 
         param = {
