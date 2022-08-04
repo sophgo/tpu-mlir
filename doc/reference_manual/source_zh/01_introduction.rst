@@ -1,7 +1,7 @@
 TPU-MLIR简介
 ============
 
-TPU-MLIR是算能智能AI芯片的TPU编译器工程。该工程提供了一套完整的工具链，其可以将
+TPU-MLIR是AI芯片的TPU编译器工程。该工程提供了一套完整的工具链，其可以将
 不同框架下预训练的神经网络，转化为可以在算能TPU上高效运算的二进制文件 ``bmodel``
 。
 代码已经开源到github: https://github.com/sophgo/tpu-mlir 。
@@ -24,4 +24,4 @@ https://github.com/onnx/tutorials。
 转换成mlir文件，二是通过 ``model_deploy.py`` 将mlir文件转换成bmodel。如果要转INT8模
 型，则需要调用 ``run_calibration.py`` 生成量化表传给 ``model_deploy.py`` 。
 
-本文主要就是介绍这个模型转换的过程。
+本文详细描述实现细节，用于指导开发。
