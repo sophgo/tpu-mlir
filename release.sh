@@ -24,6 +24,15 @@ cp -f ${PROJECT_ROOT}/doc/quick_start/build/tpu-mlir_quick_start_guide_zh.pdf \
    ${release_archive}/docs/"TPU-MLIR快速入门指南.pdf"
 # ------------------------------------------------------------------------------
 
+# generate tpu-mlir_developer_manual
+# ------------------------------------------------------------------------------
+pushd ${PROJECT_ROOT}/doc/developer_manual
+make clean
+make pdf
+popd
+cp -f ${PROJECT_ROOT}/doc/developer_manual/build/tpu-mlir_developer_manual_zh.pdf \
+   ${release_archive}/docs/"TPU-MLIR开发参考手册.pdf"
+# ------------------------------------------------------------------------------
 
 # build a envsetup.sh
 # ------------------------------------------------------------------------------
