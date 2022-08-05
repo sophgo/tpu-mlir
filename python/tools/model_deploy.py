@@ -50,11 +50,17 @@ class DeployTool:
         self.module_name = eval(self.module.attrs['module.name'])
         self.state = eval(self.module.attrs['module.state'])
         self.in_f32_npz = self.module_name + "_in_f32.npz"
+        self.prefix = "{}_{}_{}".format(self.module_name, self.chip, self.quantize)
+        if self.quantize == "int8":
+            if self.asymmetric:
+                self.prefix += "_asym"
+            else:
+                self.prefix += "_sym"
         self._prepare_input_npz()
 
     def lowering(self):
-        self.tpu_mlir = "{}_{}_tpu_{}.mlir".format(self.module_name, self.chip, self.quantize)
-        self.final_mlir = "{}_{}_{}_final.mlir".format(self.module_name, self.chip, self.quantize)
+        self.tpu_mlir = "{}_tpu.mlir".format(self.prefix)
+        self.final_mlir = "{}_final.mlir".format(self.prefix)
         mlir_lowering(self.mlir_file, self.tpu_mlir, self.quantize, self.chip, self.cali_table,
                       self.asymmetric, self.quantize_table)
         if self.do_validate:
@@ -82,10 +88,7 @@ class DeployTool:
             show_fake_cmd(self.in_f32_npz, self.mlir_file, self.ref_npz)
             top_outputs = mlir_inference(self.inputs, self.mlir_file)
             np.savez(self.ref_npz, **top_outputs)
-        postfix = ""
-        if self.quantize == "int8":
-            postfix = "_asym" if self.asymmetric else "_sym"
-        self.tpu_npz = self.module_name + "_{}_{}{}_tpu_outputs.npz".format(self.chip, self.quantize, postfix)
+        self.tpu_npz = "{}_tpu_outputs.npz".format(self.prefix)
 
     def validate_tpu_mlir(self):
         show_fake_cmd(self.in_f32_npz, self.tpu_mlir, self.tpu_npz)
@@ -100,11 +103,7 @@ class DeployTool:
             tool.validate_model()
 
     def validate_model(self):
-        postfix = ""
-        if self.quantize == "int8":
-            postfix = "_asym" if self.asymmetric else "_sym"
-        self.model_npz = self.module_name + "_{}_{}{}_model_outputs.npz".format(
-            self.chip, self.quantize, postfix)
+        self.model_npz = "{}_model_outputs.npz".format(self.prefix)
         show_fake_cmd(self.in_f32_npz, self.model, self.model_npz)
         model_outputs = model_inference(self.inputs, self.model)
         np.savez(self.model_npz, **model_outputs)
