@@ -39,6 +39,7 @@ TEST_ONNX_IR = [
     "Log",
     #"Pad",
     "Div",
+    #"Squeeze",
     "Clip",
     "Sigmoid",
 ]
@@ -79,6 +80,7 @@ class ONNX_IR_TESTER(object):
             "Log": self.test_Log,
             "Pad": self.test_Pad,
             "Div": self.test_Div,
+            "Squeeze": self.test_Squeeze,
             "Clip": self.test_Clip,
             "Sigmoid": self.test_Sigmoid,
         }
@@ -544,6 +546,19 @@ class ONNX_IR_TESTER(object):
             graph_def,
             test_case,
         )
+
+    def test_Squeeze(self):
+        test_case = 'Squeeze'
+        axis = [1,3]
+        input_shape = [3, 1, 32, 1]
+        output_shape = [input_shape[i] for i in range(len(input_shape)) if i not in axis]
+        input_data = np.random.randn(*input_shape).astype(np.float32)
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        axes = helper.make_tensor('axes', TensorProto.INT64, [len(axis)], axis*np.ones(1).astype(int))
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        node_def = helper.make_node(test_case, inputs=['input', 'axes'], outputs=['output'])
+        graph_def = helper.make_graph([node_def], test_case, [input], [output], [axes])
+        self.convert_and_test({'input': input_data}, graph_def, test_case)
 
     def test_Clip(self):
         test_case = 'Clip'

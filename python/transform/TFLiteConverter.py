@@ -551,7 +551,8 @@ class TFLiteConverter(BaseConverter):
         symbol_table = symbolTable(self.__create_weight_op)
         for idx, input in enumerate(subgraph.inputs):
             input_shape = self.input_shapes[idx]
-            image = (len(input_shape) == 4 and input_shape[1] <=4) or \
+            channel_axis = -1 if self.preprocess_args['channel_format'] == 'nhwc' else 1
+            image = (len(input_shape) == 4 and input_shape[channel_axis] <=4) or \
                     (len(input_shape) == 3) # gray
             if not self.preprocess_args or not image:
                 input_op = self.mlir.create_input_op(input.name, idx, **{})
@@ -560,6 +561,7 @@ class TFLiteConverter(BaseConverter):
                     'mean': self.preprocess_args['mean'],
                     'scale':  self.preprocess_args['scale'],
                     'pixel_format': self.preprocess_args["pixel_format"],
+                    'channel_format': self.preprocess_args["channel_format"],
                     'pad_type': self.preprocess_args["pad_type"],
                     'resize_dims': self.preprocess_args['resize_dims'],
                     'keep_aspect_ratio': self.preprocess_args['keep_aspect_ratio'],

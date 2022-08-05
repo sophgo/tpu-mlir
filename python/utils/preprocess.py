@@ -58,6 +58,8 @@ def add_preprocess_parser(parser):
     parser.add_argument("--scale", default='1,1,1', help="Per Channel image scale values")
     parser.add_argument("--pixel_format", choices=['rgb','bgr','gray','rgba'], default='bgr',
                         help='fixel format of output data that sent into model')
+    parser.add_argument("--channel_format", choices=['nhwc','nchw'], default='nchw',
+                        help='channel first or channel last')
     parser.add_argument("--pad_value", type=int, default=0, help="pad value when resize ")
     parser.add_argument("--pad_type", type=str, default='center', help="type of pad when resize ")
     return parser
@@ -77,7 +79,8 @@ class preprocess(object):
         pass
 
     def config(self, net_input_dims=None, resize_dims=None, keep_aspect_ratio=False,
-               mean='0,0,0', scale='1,1,1', pixel_format='bgr', pad_type='center', pad_value=0, **ignored):
+               mean='0,0,0', scale='1,1,1', pixel_format='bgr', pad_type='center', pad_value=0,
+               channel_format='nchw', **ignored):
         if net_input_dims:
             self.net_input_dims = [int(s) for s in net_input_dims.split(',')]
             if not resize_dims:
@@ -96,6 +99,7 @@ class preprocess(object):
         self.pad_value = pad_value
         self.pad_type = pad_type
         self.pixel_format = pixel_format
+        self.channel_format = channel_format
 
         self.input_name = 'input'
         self.channel_num = 3
@@ -125,10 +129,11 @@ class preprocess(object):
                "\tmean                  : {}\n" + \
                "\tscale                 : {}\n" + \
                "\t--------------------------\n" + \
-               "\tpixel_format          : {}\n"
+               "\tpixel_format          : {}\n" + \
+               "\tchannel_format        : {}\n"
         resize_dims_str = resize_dims if resize_dims is not None else 'same to net input dims'
         info_str += format_str.format(resize_dims_str, self.keep_aspect_ratio, self.pad_value, self.pad_type,
-                list(self.mean.flatten()), list(self.scale.flatten()), self.pixel_format)
+                list(self.mean.flatten()), list(self.scale.flatten()), self.pixel_format, self.channel_format)
         logger.info(info_str)
 
     def load_config(self, input_op):
@@ -149,6 +154,10 @@ class preprocess(object):
 
         attrs =Operation.dictattr(input_op, 'preprocess')
         self.pixel_format = Operation.str(attrs['pixel_format'])
+        self.channel_format = Operation.str(attrs['channel_format'])
+        if self.channel_format == 'nhwc':
+            self.net_input_dims = shape[1:-1]
+            self.channel_num = shape[-1]
         self.keep_aspect_ratio = Operation.bool(attrs['keep_aspect_ratio'])
         self.pad_value = Operation.int(attrs['pad_value'])
         self.pad_type = Operation.str(attrs['pad_type'])
@@ -160,6 +169,9 @@ class preprocess(object):
         self.scale = np.array(Operation.fp_array(attrs['scale'])).astype(np.float32)
         self.scale = self.scale[np.newaxis, :,np.newaxis, np.newaxis]
         self.crop_method = 'center'
+        if self.channel_format == 'nhwc':
+            self.mean = self.mean.transpose(0, 2, 3, 1)
+            self.scale = self.scale.transpose(0, 2, 3, 1)
 
         format_str = "\n  load_config Preprocess args : \n" + \
                "\tresize_dims           : {}\n" + \
@@ -171,11 +183,13 @@ class preprocess(object):
                "\tmean                  : {}\n" + \
                "\tscale                 : {}\n" + \
                "\t--------------------------\n" + \
-               "\tpixel_format          : {}\n"
+               "\tpixel_format          : {}\n" + \
+               "\tchannel_format        : {}\n"
         logger.info(format_str.format(self.resize_dims, self.keep_aspect_ratio, self.pad_value, self.pad_type,
                 self.net_input_dims,
                 list(self.mean.flatten()), list(self.scale.flatten()),
-                self.pixel_format))
+                self.pixel_format,
+                self.channel_format))
 
     def to_dict(self):
         return {
@@ -185,7 +199,8 @@ class preprocess(object):
             'pad_type': self.pad_type,
             'mean': list(self.mean.flatten()),
             'scale': list(self.scale.flatten()),
-            'pixel_format': self.pixel_format
+            'pixel_format': self.pixel_format,
+            'channel_format': self.channel_format
         }
 
 
@@ -221,7 +236,6 @@ class preprocess(object):
             if image.shape[-1] != 4:
                 image = PIL.Image.open(image_path).convert('RGBA')
                 image = np.array(image)
-
         ratio = min(self.net_input_dims[0] / image.shape[0], self.net_input_dims[1] / image.shape[1])
         if self.keep_aspect_ratio:
             image = ImageResizeTool.letterbox_resize(
@@ -230,12 +244,17 @@ class preprocess(object):
             image = ImageResizeTool.stretch_resize(
                 image, self.resize_dims[0], self.resize_dims[1])
 
-        if self.channel_num == 1:
-            # if grapscale image, expand dim to (1, h, w)
-            image = np.expand_dims(image, axis=0)
-        else:
-            # opencv read image data format is hwc, tranpose to chw
-            image = np.transpose(image, (2, 0, 1))
+        if self.channel_format == 'nchw':
+            if self.channel_num == 1:
+                # if grapscale image, expand dim to (1, h, w)
+                image = np.expand_dims(image, axis=0)
+            else:
+                # opencv read image data format is hwc, tranpose to chw
+                image = np.transpose(image, (2, 0, 1))
+        else :
+            if self.channel_num == 1:
+                # if grapscale image, expand dim to (h, w, 1)
+                image = np.expand_dims(image, axis=image.ndim)
         return image, ratio
 
     def get_config(self, attr_type):
@@ -262,12 +281,19 @@ class preprocess(object):
 
         x = x.astype(np.float32)
         if self.pixel_format == 'gray':
-            self.mean = self.mean[:,:1,:,:]
-            self.scale = self.scale[:,:1,:,:]
+            if self.channel_format == 'nchw':
+                self.mean = self.mean[:,:1,:,:]
+                self.scale = self.scale[:,:1,:,:]
+            else :
+                self.mean = self.mean[:,:,:,:1]
+                self.scale = self.scale[:,:,:,:1]
             x = (x  - self.mean)* self.scale
         else:
             if self.pixel_format == 'rgb':
-                x = x[:, [2, 1, 0], :, :]
+                if self.channel_format == 'nchw':
+                    x = x[:, [2, 1, 0], :, :]
+                else :
+                    x = x[:, :, :, [2, 1, 0]]
             x = (x  - self.mean)* self.scale
 
         if len(input.split(',')) == 1:

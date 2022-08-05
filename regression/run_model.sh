@@ -69,6 +69,11 @@ if [ x${pixel_format} != x ]; then
   pixel_format_opt="--pixel_format=${pixel_format}"
 fi
 
+channel_format_opt=
+if [ x${channel_format} != x ]; then
+  channel_format_opt="--channel_format=${channel_format}"
+fi
+
 test_input_opt=
 test_result_opt=
 test_innpz_opt=
@@ -91,6 +96,7 @@ model_transform.py \
   ${mean_opt} \
   ${scale_opt} \
   ${pixel_format_opt} \
+  ${channel_format_opt} \
   ${test_input_opt} \
   ${test_result_opt} \
   --mlir ${model_name}.mlir
