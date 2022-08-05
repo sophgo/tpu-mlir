@@ -131,6 +131,9 @@ class OnnxConverter(BaseConverter):
             "Softmax": lambda node: self.convert_softmax_op(node),
             "Log": lambda node: self.convert_log_op(node),
             "Pad": lambda node: self.convert_pad_op(node),
+            "Div": lambda node: self.convert_div_op(node),
+            "Squeeze": lambda node: self.convert_squeeze_op(node),
+            "Clip": lambda node: self.convert_clip_op(node),
         }
 
     def __del__(self):
@@ -234,9 +237,10 @@ class OnnxConverter(BaseConverter):
         # add all weight
         for tensor in self.model.graph.initializer:
             name = tensor.name
-            # all weight convert to f32
+            # all weight convert to f32.
             # TODO: support other type
-            data = numpy_helper.to_array(tensor).astype(np.float32)
+            # remove astype(np.float32)
+            data = numpy_helper.to_array(tensor)
             self.addTensor(name, data)
         # add all shape info
         for info in self.model.graph.value_info:
@@ -297,7 +301,10 @@ class OnnxConverter(BaseConverter):
         # add input op
         for idx, _name in enumerate(self.input_names):
             input_shape = self.getShape(_name)
-            image = (len(input_shape) == 4 and input_shape[1] <=4) or \
+            channel_axis = 1
+            if self.preprocess_args and self.preprocess_args['channel_format'] == 'nhwc':
+                channel_axis = -1
+            image = (len(input_shape) == 4 and input_shape[channel_axis] <=4) or \
                     (len(input_shape) == 3) # gray
             if not self.preprocess_args or not image:
                 input_op = self.mlir.create_input_op(_name, idx, **{})
@@ -306,8 +313,11 @@ class OnnxConverter(BaseConverter):
                     'mean': self.preprocess_args['mean'],
                     'scale': self.preprocess_args['scale'],
                     'pixel_format': self.preprocess_args["pixel_format"],
+                    'channel_format': self.preprocess_args["channel_format"],
+                    'pad_type': self.preprocess_args["pad_type"],
                     'resize_dims': self.preprocess_args['resize_dims'],
-                    'keep_aspect_ratio': self.preprocess_args['keep_aspect_ratio']
+                    'keep_aspect_ratio': self.preprocess_args['keep_aspect_ratio'],
+                    'pad_value': self.preprocess_args["pad_value"]
                 }
                 input_op = self.mlir.create_input_op(_name, idx, **preprocess_hint)
             self.addOperand(_name, input_op)
@@ -553,30 +563,27 @@ class OnnxConverter(BaseConverter):
     def convert_mul_op(self, onnx_node):
         assert (onnx_node.op_type == "Mul")
         assert (len(onnx_node.inputs) == 2)
-        if self.isTensor(onnx_node.inputs[0]) or self.isTensor(onnx_node.inputs[1]):
-            if self.isTensor(onnx_node.inputs[0]):
-                coeff = onnx_node.attrs.get("coeff", (self.getTensor(onnx_node.inputs[0]).flatten())[0])
-                op0 = self.getOperand(onnx_node.inputs[1])
-            elif self.isTensor(onnx_node.inputs[1]):
-                coeff = onnx_node.attrs.get("coeff", (self.getTensor(onnx_node.inputs[1]).flatten())[0])
-                op0 = self.getOperand(onnx_node.inputs[0])
-            p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
-                 'do_relu': False,
-                 'coeff': coeff
-                }
+        if self.isTensor(onnx_node.inputs[0]) and not self.isTensor(onnx_node.inputs[1]):
+            onnx_node.inputs[0], onnx_node.inputs[1] = onnx_node.inputs[1], onnx_node.inputs[0]
+            self.convert_mul_op(onnx_node)
+            return
+        name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
+        if (not self.isTensor(onnx_node.inputs[0])) and self.isTensor(onnx_node.inputs[1]):
+            op0 = self.getOperand(onnx_node.inputs[0])
+            input1 = self.getTensor(onnx_node.inputs[1])
+            p = {'name': name, 'const_val': input1.flatten()[0]}
             output_shape = self.getShape(onnx_node.name)
             mul_const_op = self.mlir.create_mul_const_op([op0], output_shape, **p)
             self.addOperand(onnx_node.name, mul_const_op)
+            return
         else:
             op0 = self.getOperand(onnx_node.inputs[0])
             op1 = self.getOperand(onnx_node.inputs[1])
-            p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
-                 'do_relu': False,
-                }
+            p = {'name': name}
             output_shape = self.getShape(onnx_node.name)
             mul_op = self.mlir.create_mul_op([op0, op1], output_shape, **p)
             self.addOperand(onnx_node.name, mul_op)
-        return
+            return
 
     def convert_dropout_op(self, onnx_node):
         assert (onnx_node.op_type == "Dropout")
@@ -593,7 +600,10 @@ class OnnxConverter(BaseConverter):
         assert (onnx_node.op_type == "Relu")
         op = self.getOperand(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
-        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+        p = {
+            'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            'upper_limit': 0.0
+        }
         new_op = self.mlir.create_relu_op([op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
@@ -766,7 +776,6 @@ class OnnxConverter(BaseConverter):
     def convert_log_op(self, onnx_node):
         assert (onnx_node.op_type == "Log")
         op = self.getOperand(onnx_node.inputs[0])
-        input_shape = self.getShape(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
         p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
         new_op = self.mlir.create_log_op([op], output_shape, **p)
@@ -777,7 +786,6 @@ class OnnxConverter(BaseConverter):
         op = self.getOperand(onnx_node.inputs[0])
         input_shape = self.getShape(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
-        mode = onnx_node.attrs.get("mode", "constant")
         pads = list(self.getTensor(onnx_node.inputs[1]))
         if pads == None:
             raise RuntimeError("No paddings value")
@@ -787,10 +795,70 @@ class OnnxConverter(BaseConverter):
                     len(pads), len(input_shape)))
         p = {
             'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
-            # 'mode': mode,
             'paddings': pads,
-            # 'value': 0,
         }
 
         new_op = self.mlir.create_pad_op([op], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_div_op(self, onnx_node):
+        assert (len(onnx_node.inputs) == 2)
+        # if self.isTensor(onnx_node.inputs[0]) or self.isTensor(onnx_node.inputs[1]):
+        #     # TODO: support tensor
+        #     raise RuntimeError("not support Tensor")
+        op0 = self.getOperand(onnx_node.inputs[0])
+        op1 = self.getOperand(onnx_node.inputs[1])
+        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+        output_shape = self.getShape(onnx_node.name)
+        div_op = self.mlir.create_div_op([op0, op1], output_shape, **p)
+        self.addOperand(onnx_node.name, div_op)
+
+    def convert_squeeze_op(self, onnx_node):
+        assert (onnx_node.op_type == "Squeeze")
+        input = self.getOperand(onnx_node.inputs[0])
+        operand = [input]
+        if len(onnx_node.inputs) == 2:
+            axes = self.getTensor(onnx_node.inputs[1])
+        else :
+            axes = onnx_node.attrs.get('axes')
+        input_shape = self.getShape(onnx_node.inputs[0])
+        output_shape = self.getShape(onnx_node.name)
+        dims = len(input_shape)
+        for i in range(len(axes)):
+            assert axes[i] < dims and axes[i] >= -dims
+            axes[i] = axes[i] if axes[i] >= 0 else axes[i] + dims
+        p = {
+            'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            'axes': axes,
+        }
+        new_op = self.mlir.create_squeeze_op(operand, output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_clip_op(self, onnx_node):
+        assert (onnx_node.op_type == "Clip")
+        input = self.getOperand(onnx_node.inputs[0])
+        operand = [input]
+        if len(onnx_node.inputs) >= 2:
+            # TODO: min is '',
+            min = self.getTensor(onnx_node.inputs[1]).tolist()
+            if len(onnx_node.inputs) == 3:
+                max = self.getTensor(onnx_node.inputs[2]).tolist()
+            else :
+                max = np.inf
+        else :
+            min = -np.inf
+        input_shape = self.getShape(onnx_node.inputs[0])
+        if min == 0.0 and max > min:
+            p = {
+                'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
+                'upper_limit': max if max != np.inf else 0.0,
+            }
+            new_op = self.mlir.create_relu_op(operand, input_shape, **p)
+        else :
+            p = {
+                'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
+                'min': min,
+                'max': max,
+            }
+            new_op = self.mlir.create_clip_op(operand, input_shape, **p)
         self.addOperand(onnx_node.name, new_op)

@@ -22,7 +22,9 @@ LogicalResult tpu::ReluOp::init(InferenceParameter &p) { return success(); }
 void tpu::ReluOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ReluOp::inference(InferenceParameter &p) {
+  float relu_upper_limit = upper_limit() != ::mlir::None ?
+                           upper_limitAttr().getValueAsDouble() : 0.f;
   function_relu(p.inputs[0], p.outputs[0], Module::getNumElements(output()),
-       Module::getStorageType(output()));
+                relu_upper_limit, Module::getStorageType(output()));
   return success();
 }

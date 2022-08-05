@@ -50,9 +50,7 @@ LogicalResult tpu::RequantOp::inference(InferenceParameter &p) {
         for (int hw = 0; hw < h * w; hw++) {
           int64_t idx = (in * c + ic) * h * w + hw;
           int32_t tmp = (int32_t)p.inputs[0][idx] - zp_x;
-          auto v = MultiplyByQuantizedMultiplier(tmp, (int32_t)multi,
-                                                 (int32_t)r_shift) +
-                   zp_y;
+          auto v = applyMultiplierAndRShift(tmp, (int32_t)multi, (int32_t)r_shift) + zp_y;
           p.outputs[0][idx] = o_sType.isUnsignedInteger(8) ? Quant::to_uint8(v)
                                                            : Quant::to_int8(v);
         }

@@ -191,20 +191,20 @@ typedef enum {
 } active_type_t;
 
 typedef struct active_common_spec {
-    int active_type;
+  int active_type;
 } active_common_spec_t;
 
 typedef struct active_global_spec {
-    active_common_spec_t common;
+  active_common_spec_t common;
 } active_global_spec_t;
 
 typedef struct active_local_spec {
-    active_common_spec_t common;
-    uint32_t buffer_addr;
+  active_common_spec_t common;
+  uint32_t buffer_addr;
 } active_local_spec_t;
 
 typedef struct active_local_param {
-    active_local_spec_t spec;
+  active_local_spec_t spec;
 } active_local_param_t;
 
 typedef struct {

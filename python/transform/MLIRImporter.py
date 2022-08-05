@@ -33,6 +33,9 @@ class Top:
     SoftmaxOp = 'top.Softmax'
     LogOp = 'top.Log'
     PadOp = 'top.Pad'
+    DivOp = 'top.Div'
+    SqueezeOp = 'top.Squeeze'
+    ClipOp = 'top.Clip'
 
 
 class State:
@@ -140,7 +143,10 @@ class MLIRImporter(object):
         mean = kargs.get('mean', [0.0, 0.0, 0.0])
         scale = kargs.get('scale', [1.0, 1.0, 1.0])
         pixel_format = kargs.get('pixel_format', 'bgr')
+        channel_format = kargs.get('channel_format', 'nchw')
         keep_aspect_ratio = kargs.get('keep_aspect_ratio', False)
+        pad_value = kargs.get('pad_value', 0)
+        pad_type = kargs.get('pad_type', 'center')
         resize_dims = kargs.get('resize_dims', shape[-2:])
 
         preprocess_param = {
@@ -150,10 +156,16 @@ class MLIRImporter(object):
             ArrayAttr.get([FloatAttr.get_f64(x) for x in scale]),
             'keep_aspect_ratio':
             BoolAttr.get(keep_aspect_ratio),
+            'pad_value':
+            IntegerAttr.get(self.mlir_type['INT64'], pad_value),
             'resize_dims':
             ArrayAttr.get([IntegerAttr.get(self.mlir_type['INT64'], x) for x in resize_dims]),
             'pixel_format':
-            StringAttr.get(pixel_format)
+            StringAttr.get(pixel_format),
+            'channel_format':
+            StringAttr.get(channel_format),
+            'pad_type':
+            StringAttr.get(pad_type)
         }
 
         param = {
@@ -197,17 +209,16 @@ class MLIRImporter(object):
         if len(operands) < 2:
             raise RuntimeError("input operand must great than 2")
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
-        param = {'name': StringAttr.get(kargs['name']),
-                 'do_relu': BoolAttr.get(False)}
+        param = {'name': StringAttr.get(kargs['name']), 'do_relu': BoolAttr.get(False)}
         return self.buildOp(Top.MulOp, operands, [output_type], **param)
 
     def create_mul_const_op(self, operands, output_shape, **kargs):
-        if len(operands) != 1:
-            raise RuntimeError("input operand must equal 1")
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
-        param = {'name': StringAttr.get(kargs['name']),
-                 'do_relu': BoolAttr.get(False),
-                 'coeff': FloatAttr.get_f64(kargs['coeff'])}
+        param = {
+            'name': StringAttr.get(kargs['name']),
+            'const_val': FloatAttr.get_f64(kargs['const_val']),
+            'do_relu': BoolAttr.get(False)
+        }
         return self.buildOp(Top.MulConstOp, operands, [output_type], **param)
 
     def create_avgpool_op(self, operands, output_shape, **kargs):
@@ -346,8 +357,11 @@ class MLIRImporter(object):
 
     def create_relu_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
-        relu_name = StringAttr.get(kargs['name'])
-        return self.buildOp(Top.ReluOp, operands, [output_type], name=relu_name)
+        param = {
+            'name': StringAttr.get(kargs['name']),
+            'upper_limit': FloatAttr.get_f64(kargs['upper_limit']),
+        }
+        return self.buildOp(Top.ReluOp, operands, [output_type], **param)
 
     def create_return_op(self, Operands):
         return_op = Operation.create("func.return", operands=Operands, results=[])
@@ -407,11 +421,33 @@ class MLIRImporter(object):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {
             'name': StringAttr.get(kargs['name']),
-            # 'mode': StringAttr.get(kargs['mode']),
             'paddings': self.ArrayAttr(kargs['paddings']),
-            # 'value': FloatAttr.get_f64(kargs['value'])
         }
         return self.buildOp(Top.PadOp, operands, [output_type], **param)
+
+    def create_div_op(self, operands, output_shape, **kargs):
+        if len(operands) != 2:
+            raise RuntimeError("input operand must be 2")
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {'name': StringAttr.get(kargs['name']), 'do_relu': BoolAttr.get(False)}
+        return self.buildOp(Top.DivOp, operands, [output_type], **param)
+
+    def create_squeeze_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': StringAttr.get(kargs['name']),
+            'axes': self.ArrayAttr(kargs['axes']),
+        }
+        return self.buildOp(Top.SqueezeOp, operands, [output_type], **param)
+
+    def create_clip_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': StringAttr.get(kargs['name']),
+            'min': FloatAttr.get_f64(kargs['min']),
+            'max': FloatAttr.get_f64(kargs['max']),
+        }
+        return self.buildOp(Top.ClipOp, operands, [output_type], **param)
 
     def print_module(self):
         mlir_format = str(self.mlir_module)

@@ -19,44 +19,37 @@ using namespace mlir;
 
 Value top::MulConstOp::lowering_int8_bm1684x(bool asymmetric) {
   auto op = getOperation();
-  const int nInputs = op->getNumOperands();
+  OpBuilder builder(op);
+  double scale_i, scale_o;
+  int64_t zp_i, zp_o;
+  Quant::getScaleAndZeroPoint(input(), scale_i, zp_i, asymmetric);
+  Quant::getScaleAndZeroPoint(output(), scale_o, zp_o, asymmetric);
+  auto scale = scale_i / scale_o * const_val().convertToDouble();
+  int multiplier, rshift;
+  get_scale_and_shift(scale, multiplier, rshift, 8);
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  attrs.push_back(builder.getNamedAttr("multiplier",
+                                       builder.getI64IntegerAttr(multiplier)));
+  attrs.push_back(
+      builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
+  auto newType = Quant::getQuantInt8Type(output(), asymmetric);
+  builder.setInsertionPointAfter(op);
   if (!asymmetric) {
-    OpBuilder builder(op);
-    std::vector<Value> operands;
-    operands.push_back(op->getOperand(0));
-    double scale_i, scale_o;
-    int64_t zp_i, zp_o;
-    double thBottom, thTop;
-
-    Quant::getScaleAndZeroPoint(op->getOperand(0), scale_i, zp_i, asymmetric);
-    Quant::getScaleAndZeroPoint(output(), scale_o, zp_o, asymmetric);
-
-    auto scale = scale_i / scale_o * coeff().convertToDouble();
-
-    int multiplier, rshift;
-    get_scale_and_shift(scale, multiplier, rshift, 8);
-
-    //thBottom = scale_i * 127.0;
-    //thTop = scale_i * 127.0;
-
-    //int rightShiftTmp = calRightShiftNumUseCblas(coeff().convertToDouble(), thBottom, thTop, 8);
-    //double scale = std::pow(2.0, float(rightShiftTmp)) * thBottom / thTop;
-
-    //int coeff_int8;
-    //quantizeToInt8(&coeff, &coeff_int8, 1, scale);
-
-    std::vector<NamedAttribute> attrs;
-    attrs.push_back(builder.getNamedAttr("name", nameAttr()));
-    attrs.push_back(builder.getNamedAttr("do_relu", do_reluAttr()));
-    attrs.push_back(builder.getNamedAttr("multiplier", builder.getI64IntegerAttr(multiplier)));
-    attrs.push_back(builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
-    auto newType = Quant::getQuantInt8Type(output(), asymmetric);
-    auto newOp = builder.create<tpu::MulConstOp>(op->getLoc(), newType,
-                                                 ArrayRef<Value>{operands},
-                                                 ArrayRef<NamedAttribute>{attrs});
+    auto newOp = builder.create<tpu::MulConstOp>(
+        op->getLoc(), newType, ValueRange{input()},
+        ArrayRef<NamedAttribute>{attrs});
     return newOp.output();
   } else {
-    llvm_unreachable("MulConstOp asymmetric use FP32");
+    attrs.push_back(
+        builder.getNamedAttr("quant_mode", builder.getI64IntegerAttr(2)));
+    auto none = Module::getNoneOp(op);
+    auto newOp = builder.create<tpu::RequantOp>(
+        op->getLoc(), newType, ValueRange{input(), none},
+        ArrayRef<NamedAttribute>{attrs});
+    return newOp.output();
   }
 }
 
@@ -74,7 +67,7 @@ Value top::MulConstOp::lowering_f16_bm1684x() {
 
 Value top::MulConstOp::lowering_quant_bm1684x() {
   Builder builder(getContext());
-  auto in0_f32 = do_cast(inputs()[0], builder.getF32Type(), false);
+  auto in0_f32 = do_cast(input(), builder.getF32Type(), false);
   auto op = getOperation();
   op->setOperand(0, in0_f32);
   auto type = output().getType();

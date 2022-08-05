@@ -72,7 +72,7 @@ LogicalResult tpu::ConvOp::init(InferenceParameter &p) {
              pl, pr, dh, dw, is_dw, with_bias, relu);
   conv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], n, ic, ih,
               iw, oc, oh, ow, kh, kw, sh, sw, dh, dw, pt, pb, pl, pr, g,
-              do_relu(), izp);
+              do_relu(), 0.f, izp);
   p.handle = (void *)conv;
   return success();
 }

@@ -28,7 +28,7 @@ LogicalResult top::MulConstOp::inference(InferenceParameter &p) {
   int64_t num_elem = Module::getNumElements(output());
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
   for (int64_t i = 0; i < num_elem; i++) {
-    p.outputs[0][i] = p.inputs[0][i] * static_cast<float>(coeffAttr().getValueAsDouble());
+    p.outputs[0][i] = p.inputs[0][i] * const_val().convertToDouble();
   }
   if (do_relu()) {
     function_relu(p.outputs[0], p.outputs[0], num_elem);

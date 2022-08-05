@@ -23,6 +23,11 @@ LogicalResult top::SigmoidOp::init(InferenceParameter &p) { return success(); }
 void top::SigmoidOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::SigmoidOp::inference(InferenceParameter &p) {
-  llvm_unreachable("SigmoidOp to be supported");
+  auto num_element = Module::getNumElements(input());
+#pragma omp parallel for schedule(static, omp_schedule(num_element))
+  for (int i = 0; i < num_element; ++i) {
+    auto val = p.inputs[0][i];
+    p.outputs[0][i] = 1 / (1 + std::exp(-val));
+  }
   return success();
 }
