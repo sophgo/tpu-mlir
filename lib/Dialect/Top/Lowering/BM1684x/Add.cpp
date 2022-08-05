@@ -44,6 +44,7 @@ Value top::AddOp::lowering_int8_bm1684x(bool asymmetric) {
       rshift_v[i] = shifti;
     }
 
+    builder.setInsertionPointAfter(op);
     std::vector<NamedAttribute> attrs;
     attrs.push_back(builder.getNamedAttr("name", nameAttr()));
     attrs.push_back(builder.getNamedAttr("do_relu", do_reluAttr()));
