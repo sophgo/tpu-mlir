@@ -13,6 +13,7 @@ model_list_all=(
 # object detection
   "resnet34_ssd1200"
   "yolov5s"
+  "yolov3"
 )
 
 # run onnx operation test

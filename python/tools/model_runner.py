@@ -56,7 +56,7 @@ def generate_onnx_with_all(onnx_file: str):
     model = onnx.load(onnx_file)
     no_list = [
         "Cast", "Shape", "Unsqueeze", "Gather", "Split", "Constant", "GRU", "Div", "Sqrt", "Add",
-        "ReduceMean", "Pow", "Sub", "Mul", "LSTM", "Dropout"
+        "ReduceMean", "Pow", "Sub", "Mul", "LSTM", "Dropout", "Loop"
     ]
 
     # tested commited #c3cea486d https://github.com/microsoft/onnxruntime.git

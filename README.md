@@ -29,7 +29,9 @@ docker run --privileged --name myname1234 -v $PWD:/workspace -it sophgo/tpuc_dev
 
 * 编译代码
 
-克隆本工程，并在工程目录下运行以下命令：
+代码只能在docker中编译，假定代码在docker中的目录为`/workspace/tpu-mlir`。
+
+在工程目录下运行以下命令：
 
 ``` shell
 cd tpu-mlir
@@ -94,21 +96,21 @@ model_transform.py \
 
 `model_transform.py`支持的参数如下:
 
-| **参数名**           | 必选？    | **说明**             |
-| ------------------- | -------- | ------------------- |
-| model_name          | 是       | 指定模型名称           |
-| model_def           | 是       | 指定输入文件用于验证，可以是图片或npy或npz；可以不指定，则不会正确性验证 |
-| input_shapes        |          | 指定输入的shape，例如[[1,3,640,640]]；二维数组，可以支持多输入情况 |
-| resize_dims         |          | 原始图片需要resize之后的尺寸；如果不指定，则resize成模型的输入尺寸 |
-| keep_aspect_ratio   |          | 在Resize时是否保持长宽比，默认为false；设置时会对不足部分补0 |
-| mean                |          | 图像每个通道的均值，默认为0.0,0.0,0.0                    |
-| scale               |          | 图片每个通道的比值，默认为1.0,1.0,1.0                    |
-| pixel_format        |          | 图片类型，可以是rgb、bgr、gray、rgbd四种情况              |
-| output_names        |          | 指定输出的名称，如果不指定，则用模型的输出；指定后用该指定名称做输出 |
-| test_input          |          | 指定输入文件用于验证，可以是图片或npy或npz；可以不指定，则不会正确性验证 |
-| test_result         |          | 指定验证后的输出文件                                         |
-| excepts             |          | 指定需要排除验证的网络层的名称，多个用,隔开                      |
-| mlir                | 是       | 指定输出的mlir文件路径                                       |
+| **参数名**           | 必选？ | **说明**            |
+| ------------------- | ----- | ------------------- |
+| model_name          | 是    | 指定模型名称          |
+| model_def           | 是    | 指定输入文件用于验证，可以是图片或npy或npz；可以不指定，则不会正确性验证 |
+| input_shapes        |       | 指定输入的shape，例如[[1,3,640,640]]；二维数组，可以支持多输入情况 |
+| resize_dims         |       | 原始图片需要resize之后的尺寸；如果不指定，则resize成模型的输入尺寸 |
+| keep_aspect_ratio   |       | 在Resize时是否保持长宽比，默认为false；设置时会对不足部分补0 |
+| mean                |       | 图像每个通道的均值，默认为0.0,0.0,0.0                    |
+| scale               |       | 图片每个通道的比值，默认为1.0,1.0,1.0                    |
+| pixel_format        |       | 图片类型，可以是rgb、bgr、gray、rgbd四种情况              |
+| output_names        |       | 指定输出的名称，如果不指定，则用模型的输出；指定后用该指定名称做输出 |
+| test_input          |       | 指定输入文件用于验证，可以是图片或npy或npz；可以不指定，则不会正确性验证 |
+| test_result         |       | 指定验证后的输出文件                                         |
+| excepts             |       | 指定需要排除验证的网络层的名称，多个用,隔开                      |
+| mlir                | 是     | 指定输出的mlir文件路径                                       |
 
 转成mlir文件后，会生成一个`${model_name}_in_f32.npz`文件，该文件是模型的输入文件。它是通过对图片输入进行预处理后得到的数据。
 
