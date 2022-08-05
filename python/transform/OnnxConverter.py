@@ -18,6 +18,7 @@ import onnxsim.onnx_simplifier as onnxsim
 import onnx
 import onnxruntime
 import numpy as np
+from utils.pad_setting import get_TF_SAME_Padding, set_auto_pad
 
 onnx_attr_translator = {
     "axis": lambda x: int(x),
@@ -226,6 +227,8 @@ class OnnxConverter(BaseConverter):
         else:
             self.model = onnx_file
         self.input_names = self.get_input_names(self.model)
+        if "image_shape" in self.input_names:
+            input_shapes.append([input_shapes[0][0], len(input_shapes[0]) - 2])
         self.num_input = len(self.input_names)
         self.model_shape_infer(input_shapes)
         self.input_shapes = self.get_input_shapes(self.model)
@@ -395,8 +398,14 @@ class OnnxConverter(BaseConverter):
         dim = len(kernel_shape)
         dilations = onnx_node.attrs.get("dilations", dim * [1])
         group = onnx_node.attrs.get("group", 1)
-        pads = onnx_node.attrs.get("pads", dim * 2 * [0])
         strides = onnx_node.attrs.get("strides", dim * [1])
+        auto_pad = onnx_node.attrs.get("auto_pad", None)
+        input_shape = self.getShape(onnx_node.inputs[0])
+        if auto_pad:
+            pads = set_auto_pad(auto_pad, input_shape, kernel_shape, strides)
+        else:
+            pads = onnx_node.attrs.get("pads", dim * 2 * [0])
+
         operands = list()
         operands.append(op)
         filter_op = self.getWeightOp(onnx_node.inputs[1])
@@ -526,8 +535,13 @@ class OnnxConverter(BaseConverter):
         kernel_shape = onnx_node.attrs['kernel_shape']
         count_include_pad = onnx_node.attrs.get('count_include_pad', False)
         dim = len(kernel_shape)
-        pads = onnx_node.attrs.get("pads", dim * 2 * [0])
+        input_shape = self.getShape(onnx_node.inputs[0])
         strides = onnx_node.attrs.get("strides", kernel_shape)
+        auto_pad = onnx_node.attrs.get("auto_pad", None)
+        if auto_pad:
+            pads = set_auto_pad(auto_pad, input_shape, kernel_shape, strides)
+        else:
+            pads = onnx_node.attrs.get("pads", dim * 2 * [0])
         p = {
             'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
             'kernel_shape': kernel_shape,
@@ -546,8 +560,13 @@ class OnnxConverter(BaseConverter):
         kernel_shape = onnx_node.attrs['kernel_shape']
         count_include_pad = onnx_node.attrs.get('count_include_pad', False)
         dim = len(kernel_shape)
-        pads = onnx_node.attrs.get("pads", dim * 2 * [0])
         strides = onnx_node.attrs.get("strides", kernel_shape)
+        input_shape = self.getShape(onnx_node.inputs[0])
+        auto_pad = onnx_node.attrs.get("auto_pad", None)
+        if auto_pad:
+            pads = set_auto_pad(auto_pad, input_shape, kernel_shape, strides)
+        else:
+            pads = onnx_node.attrs.get("pads", dim * 2 * [0])
         p = {
             'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
             'kernel_shape': kernel_shape,
