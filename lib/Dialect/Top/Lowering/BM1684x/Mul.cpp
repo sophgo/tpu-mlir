@@ -46,6 +46,7 @@ Value top::MulOp::lowering_int8_bm1684x(bool asymmetric) {
     int rshift;
     get_scale_and_shift(scale, multiplier, rshift, 8);
 
+    builder.setInsertionPointAfter(op);
     std::vector<NamedAttribute> attrs;
     attrs.push_back(builder.getNamedAttr("name", nameAttr()));
     attrs.push_back(builder.getNamedAttr("do_relu", do_reluAttr()));
