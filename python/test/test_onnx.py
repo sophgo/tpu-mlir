@@ -40,6 +40,7 @@ TEST_ONNX_IR = [
     #"Pad",
     "Div",
     "Clip",
+    "Sigmoid",
 ]
 
 
@@ -79,6 +80,7 @@ class ONNX_IR_TESTER(object):
             "Pad": self.test_Pad,
             "Div": self.test_Div,
             "Clip": self.test_Clip,
+            "Sigmoid": self.test_Sigmoid,
         }
         self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
 
@@ -555,6 +557,22 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([node_def], test_case, [input], [output], [min, max])
         self.convert_and_test({'input': input_data}, graph_def, test_case)
 
+    def test_Sigmoid(self):
+        test_case = 'Sigmoid'
+        input_shape = [1, 16, 64, 64]
+        output_shape = [1, 16, 64, 64]
+        input_data = np.random.randn(*input_shape).astype(np.float32)
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+
+        sigmoid_def = helper.make_node(
+            test_case,
+            inputs=['input'],
+            outputs=['output'],
+        )
+        graph_def = helper.make_graph([sigmoid_def], test_case, [input], [output])
+        self.convert_and_test({'input': input_data}, graph_def, test_case)
 if __name__ == "__main__":
     os.makedirs("onnx_test", exist_ok=True)
     os.chdir("onnx_test")

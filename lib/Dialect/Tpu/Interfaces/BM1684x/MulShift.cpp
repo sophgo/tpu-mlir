@@ -74,6 +74,7 @@ int64_t tpu::MulShiftOp::getBufferSize_bm1684x(
       out_sType.isUnsignedInteger(8)) {
     return 2 * in_lmem_bytes;
   }
+  return 0;
 }
 
 void tpu::MulShiftOp::codegen_local_int8_bm1684x(int64_t n_step,

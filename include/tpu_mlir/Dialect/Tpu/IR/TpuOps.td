@@ -601,5 +601,20 @@ def Tpu_DivOp: Tpu_Op<"Div", [InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_SigmoidOp : Tpu_Op<"Sigmoid",
+    [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
+  let summary = " Sigmoid operator";
+  let description = [{
+     y = 1 / (1 + exp(-x))
+     Y = scale * y + bias
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    DefaultValuedAttr<F64Attr, "1">:$scale,
+    DefaultValuedAttr<F64Attr, "0">:$bias,
+    StrAttr:$name
+  );
 
+  let results = (outs AnyTensor:$output);
+}
 #endif // TPU_OPS
