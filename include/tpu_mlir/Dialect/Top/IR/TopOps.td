@@ -575,6 +575,22 @@ def Top_DivOp: Top_Op<"Div", [InOutSameShape]> {
   // let hasCanonicalizer = 1;
 }
 
+def Top_SqueezeOp: Top_Op<"Squeeze"> {
+  let summary = "Squeeze operator";
+
+  let description = [{
+    The operator squeeze the input shapes by given axis.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$inputs,
+    I64ArrayAttr:$axes,
+    StrAttr:$name
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_ClipOp: Top_Op<"Clip", [InOutSameShape]> {
   let summary = "Clip operator";
 

@@ -34,6 +34,7 @@ class Top:
     LogOp = 'top.Log'
     PadOp = 'top.Pad'
     DivOp = 'top.Div'
+    SqueezeOp = 'top.Squeeze'
     ClipOp = 'top.Clip'
 
 
@@ -142,6 +143,7 @@ class MLIRImporter(object):
         mean = kargs.get('mean', [0.0, 0.0, 0.0])
         scale = kargs.get('scale', [1.0, 1.0, 1.0])
         pixel_format = kargs.get('pixel_format', 'bgr')
+        channel_format = kargs.get('channel_format', 'nchw')
         keep_aspect_ratio = kargs.get('keep_aspect_ratio', False)
         pad_value = kargs.get('pad_value', 0)
         pad_type = kargs.get('pad_type', 'center')
@@ -160,6 +162,8 @@ class MLIRImporter(object):
             ArrayAttr.get([IntegerAttr.get(self.mlir_type['INT64'], x) for x in resize_dims]),
             'pixel_format':
             StringAttr.get(pixel_format),
+            'channel_format':
+            StringAttr.get(channel_format),
             'pad_type':
             StringAttr.get(pad_type)
         }
@@ -427,6 +431,14 @@ class MLIRImporter(object):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {'name': StringAttr.get(kargs['name']), 'do_relu': BoolAttr.get(False)}
         return self.buildOp(Top.DivOp, operands, [output_type], **param)
+
+    def create_squeeze_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': StringAttr.get(kargs['name']),
+            'axes': self.ArrayAttr(kargs['axes']),
+        }
+        return self.buildOp(Top.SqueezeOp, operands, [output_type], **param)
 
     def create_clip_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))

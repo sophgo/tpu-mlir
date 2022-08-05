@@ -132,6 +132,7 @@ class OnnxConverter(BaseConverter):
             "Log": lambda node: self.convert_log_op(node),
             "Pad": lambda node: self.convert_pad_op(node),
             "Div": lambda node: self.convert_div_op(node),
+            "Squeeze": lambda node: self.convert_squeeze_op(node),
             "Clip": lambda node: self.convert_clip_op(node),
         }
 
@@ -236,9 +237,10 @@ class OnnxConverter(BaseConverter):
         # add all weight
         for tensor in self.model.graph.initializer:
             name = tensor.name
-            # all weight convert to f32
+            # all weight convert to f32.
             # TODO: support other type
-            data = numpy_helper.to_array(tensor).astype(np.float32)
+            # remove astype(np.float32)
+            data = numpy_helper.to_array(tensor)
             self.addTensor(name, data)
         # add all shape info
         for info in self.model.graph.value_info:
@@ -299,7 +301,10 @@ class OnnxConverter(BaseConverter):
         # add input op
         for idx, _name in enumerate(self.input_names):
             input_shape = self.getShape(_name)
-            image = (len(input_shape) == 4 and input_shape[1] <=4) or \
+            channel_axis = 1
+            if self.preprocess_args and self.preprocess_args['channel_format'] == 'nhwc':
+                channel_axis = -1
+            image = (len(input_shape) == 4 and input_shape[channel_axis] <=4) or \
                     (len(input_shape) == 3) # gray
             if not self.preprocess_args or not image:
                 input_op = self.mlir.create_input_op(_name, idx, **{})
@@ -308,6 +313,7 @@ class OnnxConverter(BaseConverter):
                     'mean': self.preprocess_args['mean'],
                     'scale': self.preprocess_args['scale'],
                     'pixel_format': self.preprocess_args["pixel_format"],
+                    'channel_format': self.preprocess_args["channel_format"],
                     'pad_type': self.preprocess_args["pad_type"],
                     'resize_dims': self.preprocess_args['resize_dims'],
                     'keep_aspect_ratio': self.preprocess_args['keep_aspect_ratio'],
@@ -806,6 +812,27 @@ class OnnxConverter(BaseConverter):
         output_shape = self.getShape(onnx_node.name)
         div_op = self.mlir.create_div_op([op0, op1], output_shape, **p)
         self.addOperand(onnx_node.name, div_op)
+
+    def convert_squeeze_op(self, onnx_node):
+        assert (onnx_node.op_type == "Squeeze")
+        input = self.getOperand(onnx_node.inputs[0])
+        operand = [input]
+        if len(onnx_node.inputs) == 2:
+            axes = self.getTensor(onnx_node.inputs[1])
+        else :
+            axes = onnx_node.attrs.get('axes')
+        input_shape = self.getShape(onnx_node.inputs[0])
+        output_shape = self.getShape(onnx_node.name)
+        dims = len(input_shape)
+        for i in range(len(axes)):
+            assert axes[i] < dims and axes[i] >= -dims
+            axes[i] = axes[i] if axes[i] >= 0 else axes[i] + dims
+        p = {
+            'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            'axes': axes,
+        }
+        new_op = self.mlir.create_squeeze_op(operand, output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
 
     def convert_clip_op(self, onnx_node):
         assert (onnx_node.op_type == "Clip")
