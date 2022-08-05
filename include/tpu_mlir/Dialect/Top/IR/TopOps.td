@@ -440,8 +440,8 @@ def Top_SigmoidOp : Top_Op<"Sigmoid", [InOutSameShape]> {
   let description = [{
      Y = scale * Sigmoid(x) + bias
   }];
-  let arguments = (
-    ins AnyTensor:$input,
+  let arguments = (ins
+    AnyTensor:$input,
     DefaultValuedAttr<F64Attr, "1">:$scale,
     DefaultValuedAttr<F64Attr, "0">:$bias,
     StrAttr:$name
