@@ -12,13 +12,15 @@ CPU服务器以及相关产品的研发与销售。旗下算丰全系列人工�
 算平台。公司具备全球领先的先进制程设计能力，现已成功量产云端、边端人工智能芯片并
 规模化商业落地。
 
-更多关于**TPU-MLIR**的信息可以参考[TPU-MLIR设计文档](./design/design.md)。
+更多关于**TPU-MLIR**的信息可以参考[TPU-MLIR整体架构](./design/flow.md)。
 
 目前该工程支持BM1684x，后面会陆续支持BM1684、CV183x、CV182x、Mars等等芯片。
 
 # 编译工程
 
-* 从[dockerhub](https://hub.docker.com/r/sophgo/sophgo_dev)下载所需的镜像。
+克隆本工程代码后，需要在docker中编译。
+
+* 从[dockerhub](https://hub.docker.com/r/sophgo/tpuc_dev)下载所需的镜像。
 
 ``` shell
 docker pull sophgo/tpuc_dev:latest
@@ -27,9 +29,9 @@ docker pull sophgo/tpuc_dev:latest
 docker run --privileged --name myname1234 -v $PWD:/workspace -it sophgo/tpuc_dev:latest
 ```
 
-* 编译代码
+容器建立后，代码在docker中的目录为`/workspace/tpu-mlir`。
 
-代码只能在docker中编译，假定代码在docker中的目录为`/workspace/tpu-mlir`。
+* 编译代码
 
 在工程目录下运行以下命令：
 
@@ -48,11 +50,26 @@ pushd regression
 popd
 ```
 
+**以下可选：**
+
+如果要验证更多网络，需要克隆其他模型，参考<https://github.com/sophgo/model-zoo>
+
+克隆后模型路径对应为`/workspace/model-zoo`，然后如下命令验证：
+
+``` shell
+# 执行时间很长，该步骤也可以跳过
+pushd regression
+./run_all.sh
+popd
+```
+
 # 使用方法
 
 以`yolov5s.onnx`为例，介绍如何编译迁移一个onnx模型至BM1684x TPU平台运行。
 
-该模型来在yolov5的官网: <https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx>
+该模型来在yolov5的官网: <https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx>。
+
+在本工程已经放在`model/yolov5s.onnx`。
 
 ## 准备模型和数据
 
