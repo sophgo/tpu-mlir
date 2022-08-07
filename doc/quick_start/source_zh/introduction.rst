@@ -22,6 +22,5 @@ https://github.com/onnx/tutorials。
 
 转模型需要在指定的docker执行，主要分两步，一是通过 ``model_transform.py`` 将原始模型
 转换成mlir文件，二是通过 ``model_deploy.py`` 将mlir文件转换成bmodel。如果要转INT8模
-型，则需要调用 ``run_calibration.py`` 生成量化表传给 ``model_deploy.py`` 。
-
-本文主要就是介绍这个模型转换的过程。
+型，则需要调用 ``run_calibration.py`` 生成量化表传给 ``model_deploy.py`` 。本文主要就是
+介绍这个模型转换的过程。
