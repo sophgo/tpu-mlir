@@ -27,4 +27,11 @@ TPU-MLIR开发参考手册
    02_environment
    03_user_interface
    04_over_design
-   05_quantization
+   05_frontend
+   06_quantization
+   07_calibration
+   08_lowering
+   09_subnet
+   10_layergroup
+   11_memassign
+   12_codegen
