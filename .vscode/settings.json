@@ -84,6 +84,5 @@
     "python.formatting.provider": "yapf",
     "python.formatting.yapfArgs": [
         "--style={based_on_style:pep8, indent_width:4, column_limit:100}"
-    ],
-    "restructuredtext.preview.name": "docutils"
+    ]
 }
