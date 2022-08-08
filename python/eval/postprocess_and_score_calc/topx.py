@@ -39,7 +39,7 @@ class topx(base_class):
             exit(1)
 
         self.idx = idx + 1
-        softmax_probs = outputs.reshape((self.args.batch_size,-1))
+        softmax_probs = outputs[0].reshape((self.args.batch_size,-1))
         if img_paths is not None:
             img_paths = img_paths.split(',')
             assert len(img_paths) == self.args.batch_size
