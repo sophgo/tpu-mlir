@@ -94,5 +94,5 @@ https://github.com/sophgo/model-zoo
 
    # 执行时间很长，该步骤也可以跳过
    $ pushd regression
-   $ ./run_model.sh yolov5s
+   $ ./run_all.sh
    $ popd
