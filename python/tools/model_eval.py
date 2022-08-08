@@ -46,11 +46,11 @@ if __name__ == '__main__':
     val_loader = torch.utils.data.DataLoader(
         MyImageFolder(args.dataset),
         batch_size=1, shuffle=False, num_workers=1, pin_memory=True, sampler=None)
-
+    count = args.count if args.count > 0 else len(val_loader)
     for i, item in enumerate(val_loader):
         path, target = item
         engine.run(i, path[0], int(target[0]))
-        if (i + 1) >= args.count:
+        if (i + 1) >= count:
           break
   elif args.dataset_type == 'coco':
     image_list = get_image_list(args.dataset, args.count)
