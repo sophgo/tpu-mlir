@@ -81,7 +81,6 @@ BackwardH
 --------------
 
 .. figure:: ../assets/lg_step.png
-   :height: 9.5cm
    :align: center
 
    Group流程
