@@ -93,7 +93,7 @@ def get_profile(path):
     bmrt_log = get_bmrtt_log(path)
     profile_log = parse_profile(path)
     time = [x * 1e-3 for x in bmrt_log["compute_total (us)"]]  # to milliseconds
-    mac_util = lambda t: 100 * profile_log["flops"] / (t * 1e-3 * 1e12 * 32)
+    mac_util = lambda t: profile_log["flops"] / (t * 1e-3 * 1e12 * 32)
     gops = profile_log["flops"] * 1e-9
     return OrderedDict(
         {
@@ -102,14 +102,14 @@ def get_profile(path):
             "gops": f"{gops:.2f}",
             "time": f"{time[0]:.3f} ±{time[1]:.3f}",
             # "cmodel_estimate_time": f"{profile_log['runtime']:.3f}",
-            "mac_utilization": f"{mac_util(time[0]):.2f}",
+            "mac_utilization": f"{mac_util(time[0]):.2%}",
             # "cmodel_estimate_mac_utilization": (
-            #     f"{mac_util(profile_log['runtime']):.2f}"
+            #     f"{mac_util(profile_log['runtime']):.2%}"
             # ),
             "ddr_utilization": (
-                f"{profile_log['USAGE'] * profile_log['runtime'] / time[0]:.2f}"
+                f"{profile_log['USAGE'] * profile_log['runtime'] / time[0]:.2f}%"
             ),
-            # "cmodel_estimate_ddr_bandwidth": f"{profile_log['USAGE']:.2f}",
+            # "cmodel_estimate_ddr_bandwidth": f"{profile_log['USAGE']:.2f}%",
             # "success": bmrt_log["success"],
         }
     )

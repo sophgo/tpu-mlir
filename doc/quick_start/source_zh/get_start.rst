@@ -295,7 +295,7 @@ MLIR转INT8模型
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
        --tolerance 0.90,0.55 \
-       --correctness 0.99,0.93 \
+       --correctness 0.99,0.92 \
        --model yolov5s_1684x_int8_asym.bmodel
 
 
@@ -354,9 +354,80 @@ int8非对称bmodel的执行方式如下，得到 ``dog_int8_asym.jpg`` ：
 
 四张图片对比如下：
 
-
+.. _yolov5s:
 .. figure:: ../assets/yolov5s.png
    :height: 13cm
    :align: center
 
    TPU-MLIR对YOLOv5s编译效果对比
+
+由于运行环境不同，最终的效果和精度与 :numref:`yolov5s` 会有些差异。
+
+模型性能测试
+------------
+
+以下操作需要在Docker外执行，
+
+安装 ``libsophon`` 环境
+~~~~~~~~~~~~~~~~~~~~~~~
+
+请参考 ``libsophon`` 使用手册安装 ``libsophon`` 。
+
+
+检查 ``BModel`` 的性能
+~~~~~~~~~~~~~~~~~~~~~~
+
+安装好 ``libsophon`` 后，可以使用 ``bmrt_test`` 来测试编译出的 ``bmodel`` 的正确
+性及性能。可以根据 ``bmrt_test`` 输出的性能结果，来估算模型最大的fps，来选择合适的模型。
+
+.. code-block:: console
+
+   # 下面测试上面编译出的bmodel
+   # --bmodel参数后面接bmodel文件，
+
+   $ bmrt_test --bmodel yolov5s_1684x_f32.bmodel
+   $ bmrt_test --bmodel yolov5s_1684x_int8_asym.bmodel
+   $ bmrt_test --bmodel yolov5s_1684x_int8_sym.bmodel
+
+
+以最后一个命令输出为例（此处对日志做了部分截断处理）：
+
+.. code-block:: console
+   :linenos:
+
+   [BMRT][load_bmodel:983] INFO:pre net num: 0, load net num: 1
+   [BMRT][show_net_info:1358] INFO: ########################
+   [BMRT][show_net_info:1359] INFO: NetName: yolov5s, Index=0
+   [BMRT][show_net_info:1361] INFO: ---- stage 0 ----
+   [BMRT][show_net_info:1369] INFO:   Input 0) 'images' shape=[ 1 3 640 640 ] dtype=FLOAT32
+   [BMRT][show_net_info:1378] INFO:   Output 0) '350_Transpose_f32' shape=[ 1 3 80 80 85 ] ...
+   [BMRT][show_net_info:1378] INFO:   Output 1) '498_Transpose_f32' shape=[ 1 3 40 40 85 ] ...
+   [BMRT][show_net_info:1378] INFO:   Output 2) '646_Transpose_f32' shape=[ 1 3 20 20 85 ] ...
+   [BMRT][show_net_info:1381] INFO: ########################
+   [BMRT][bmrt_test:770] INFO:==> running network #0, name: yolov5s, loop: 0
+   [BMRT][bmrt_test:834] INFO:reading input #0, bytesize=4915200
+   [BMRT][print_array:702] INFO:  --> input_data: < 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 ...
+   [BMRT][bmrt_test:982] INFO:reading output #0, bytesize=6528000
+   [BMRT][print_array:702] INFO:  --> output ref_data: < 0 0 0 0 0 0 0 0 0 0 0 0 0 0...
+   [BMRT][bmrt_test:982] INFO:reading output #1, bytesize=1632000
+   [BMRT][print_array:702] INFO:  --> output ref_data: < 0 0 0 0 0 0 0 0 0 0 0 0 0 0...
+   [BMRT][bmrt_test:982] INFO:reading output #2, bytesize=408000
+   [BMRT][print_array:702] INFO:  --> output ref_data: < 0 0 0 0 0 0 0 0 0 0 0 0 0 0...
+   [BMRT][bmrt_test:1014] INFO:net[yolov5s] stage[0], launch total time is 4122 us (npu 4009 us, cpu 113 us)
+   [BMRT][bmrt_test:1017] INFO:+++ The network[yolov5s] stage[0] output_data +++
+   [BMRT][print_array:702] INFO:output data #0 shape: [1 3 80 80 85 ] < 0.301003    ...
+   [BMRT][print_array:702] INFO:output data #1 shape: [1 3 40 40 85 ] < 0 0.228689  ...
+   [BMRT][print_array:702] INFO:output data #2 shape: [1 3 20 20 85 ] < 1.00135     ...
+   [BMRT][bmrt_test:1058] INFO:load input time(s): 0.008914
+   [BMRT][bmrt_test:1059] INFO:calculate  time(s): 0.004132
+   [BMRT][bmrt_test:1060] INFO:get output time(s): 0.012603
+   [BMRT][bmrt_test:1061] INFO:compare    time(s): 0.006514
+
+
+从上面输出可以看到以下信息：
+
+1. 05-08行是bmodel的网络输入输出信息
+2. 19行是在TPU上运行的时间，其中TPU用时4009us，CPU用时113us。这里CPU用时主要是指在HOST端调用等待时间
+3. 24行是加载数据到NPU的DDR的时间
+4. 25行相当于12行的总时间
+5. 26行是输出数据取回时间
