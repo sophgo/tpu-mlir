@@ -1,5 +1,5 @@
-测试SDK发布包
-=============
+使用TPU-PERF测试SDK发布包
+=========================
 
 
 配置系统环境
@@ -26,7 +26,7 @@
 
    $ git clone --depth=1 https://github.com/sophgo/model-zoo
    $ cd model-zoo
-   $ git lfs pull --include "*.onnx" --exclude=""
+   $ git lfs pull --include "*.onnx,*.jpg,*.JPEG" --exclude=""
    $ cd ../
 
 如果已经克隆过 ``model-zoo`` 可以执行以下命令同步模型到最新状态：
@@ -36,10 +36,24 @@
 
    $ cd model-zoo
    $ git pull
-   $ git lfs pull --include "*.onnx" --exclude=""
+   $ git lfs pull --include "*.onnx,*.jpg,*.JPEG" --exclude=""
    $ cd ../
 
 此过程会从 ``GitHub`` 上下载大量数据。由于具体网络环境的差异，此过程可能耗时较长。
+
+获取 ``tpu-perf`` 工具
+~~~~~~~~~~~~~~~~~~~~~~
+
+从 https://github.com/sophgo/tpu-perf/releases 地址下载最新的 ``tpu-perf``
+wheel安装包。例如：tpu_perf-x.x.x-py3-none-any.whl 。并将 ``tpu-perf`` 包放置到
+与 ``model-zoo`` 同一级目录下。此时的目录结构应该为如下形式：
+
+
+::
+
+   ├── tpu_perf-x.x.x-py3-none-any.whl
+   ├── tpu-mlir_xxxx.tar.gz
+   └── model-zoo
 
 
 测试流程
@@ -61,8 +75,8 @@
 运行命令后会处于Docker的容器中。
 
 
-设置环境变量
-++++++++++++
+设置环境变量并安装 ``tpu-perf``
++++++++++++++++++++++++++++++++
 
 使用以下命令完成设置运行测试所需的环境变量：
 
@@ -72,93 +86,71 @@
    $ cd tpu-mlir_xxxx
    $ source envsetup.sh
 
-该过程结束后不会有任何提示。
+该过程结束后不会有任何提示。之后使用以下命令安装 ``tpu-perf``：
+
+.. code-block:: console
+
+   $ pip3 install ../tpu_perf-*-py3-none-any.whl
+
 
 .. _test_main:
 
 运行测试
 ++++++++
 
-SDK的测试内容位于 ``tpu-mlir`` 的 ``regression`` 目录下，regression目录中与本测试相关
-的文件目录结构如下：
+编译模型
+````````
 
-::
-
-   regression
-   ├── cali_tables
-   ├── config
-   │   ├── mobilenet_v2.cfg
-   │   ├── resnet18.cfg
-   │   ├── resnet34_ssd1200.cfg
-   │   ├── resnet50_v2.cfg
-   │   │      ...
-   │   ├── squeezenet1.0.cfg
-   │   ├── vgg16.cfg
-   │   └── yolov5s.cfg
-   ├── dataset
-   │   ├── COCO2017
-   │   └── ILSVRC2012
-   │   ...
-   ├── model
-   │   ├── resnet50_int8.tflite
-   │   └── yolov5s.onnx
-   └── run_all.sh
-
-
-:cali_tables:
-   预存的一些量化参数表，用于编译INT8模型。
-:config:
-   模型的配置文件，用于记录模型位置、预处理参数以及编译相关的信息。
-:dataset:
-   提供了部分COCO2017和ILSVRC2012的图片，用于统计相关模型的数据分布，生成量化表。
-:model:
-   提供了两个经典模型resnet50_int8.tflite和yolov5s.onnx。
-:run_all.sh:
-   执行SDK全部测试的脚本文件。
+``model-zoo`` 的相关 ``confg.yaml`` 配置了SDK的测试内容。例如：resnet18的
+配置文件为 ``model-zoo/vision/classification/resnet18-v2/config.yaml`` 。
 
 执行以下命令，运行全部测试样例：
 
 .. code-block:: console
    :linenos:
 
-   $ cd regression
-   $ ./run_all.sh
+   $ cd ../model-zoo
+   $ python3 -m tpu_perf.build --mlir --full
 
-该过程耗时较久（预计在1~2小时），请耐心等待。该过程会测试以下模型：
+该过程耗时较久（预计在1~2小时），请耐心等待。此时会编译以下模型：
 
-* mobilenet_v2
-* resnet18
-* resnet50_v2
-* resnet34_ssd1200
-* squeezenet1.0
-* vgg16
-* yolov5s
+::
 
-命令正常结束后，会看到新生成的regression_out文件夹（测试输出内容都在该文件夹中）。
-执行以下命令将regression_out中的文件整理到单独的目录下（此处为 ``bmodels`` ）：
+   * mobilenet_v2
+   * resnet18
+   * resnet50_v2
+   * squeezenet1.0
+   * vgg16
+   * yolov5s
+
+
+命令正常结束后，会看到新生成的 ``output`` 文件夹（测试输出内容都在该文件夹中）。
+修改 ``output`` 文件夹的属性，以保证其可以被Docker外系统访问。
+
 
 .. code-block:: console
    :linenos:
 
-   $ mkdir -m 777 -p bmodels
-   $ pushd bmodels
-   $ ../prepare_bmrttest.py ../regression_out
-   $ cp -f ../run_bmrttest.py ./run.py
-   $ popd
+   $ chmod -R a+rw output
 
-运行完成后，会看到在 ``bmodels`` 文件夹中存放着相关模型的编译结果（bmodel，
-以及用于验证模型正确性的参考输入、输出数据）。
 
-测试模型的正确性和性能
-++++++++++++++++++++++
+测试模型性能
+````````````
 
-由于 ``TPU-MLIR SDK`` 中没有1684X设备运行的环境，所以需要在Docker外测试模型
-的性能。此处假设您的系统中已经部署了1684X设备并安装了相关驱动。进入
-:ref:`test_main` 中生成的 ``bmodels`` 文件夹，运行以下命令：
+运行测试需要在 Docker 外面的环境（此处假设您已经安装并配置好了1684X设备和
+驱动）中进行，可以退出 Docker 环境：
+
+.. code :: console
+
+   $ exit
+
+在Docker外环境下运行以下命令，测试生成的 ``bmodel`` 性能。
 
 .. code-block:: console
+   :linenos:
 
-   $ ./run.py
+   $ pip3 install ../tpu_perf-*-py3-none-any.whl
+   $ python3 -m tpu_perf.run --mlir --full
 
-命令结束后，会产生一个后缀名为 ``csv`` 的文件。该文件中记录了相关模型的运行时间
-、计算资源利用率和带宽利用率。
+运行结束后，性能数据在 ``output/stats.csv`` 中可以获得。该文件中记录了相关模型的
+运行时间、计算资源利用率和带宽利用率。
