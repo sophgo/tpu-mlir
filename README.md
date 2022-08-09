@@ -117,17 +117,17 @@ model_transform.py \
 | ------------------- | ----- | ------------------- |
 | model_name          | 是    | 指定模型名称          |
 | model_def           | 是    | 指定输入文件用于验证，可以是图片或npy或npz；可以不指定，则不会正确性验证 |
-| input_shapes        |       | 指定输入的shape，例如[[1,3,640,640]]；二维数组，可以支持多输入情况 |
-| resize_dims         |       | 原始图片需要resize之后的尺寸；如果不指定，则resize成模型的输入尺寸 |
-| keep_aspect_ratio   |       | 在Resize时是否保持长宽比，默认为false；设置时会对不足部分补0 |
-| mean                |       | 图像每个通道的均值，默认为0.0,0.0,0.0                    |
-| scale               |       | 图片每个通道的比值，默认为1.0,1.0,1.0                    |
-| pixel_format        |       | 图片类型，可以是rgb、bgr、gray、rgbd四种情况              |
-| output_names        |       | 指定输出的名称，如果不指定，则用模型的输出；指定后用该指定名称做输出 |
-| test_input          |       | 指定输入文件用于验证，可以是图片或npy或npz；可以不指定，则不会正确性验证 |
-| test_result         |       | 指定验证后的输出文件                                         |
-| excepts             |       | 指定需要排除验证的网络层的名称，多个用,隔开                      |
-| mlir                | 是     | 指定输出的mlir文件路径                                       |
+| input_shapes        | 否    | 指定输入的shape，例如[[1,3,640,640]]；二维数组，可以支持多输入情况 |
+| resize_dims         | 否    | 原始图片需要resize之后的尺寸；如果不指定，则resize成模型的输入尺寸 |
+| keep_aspect_ratio   | 否    | 在Resize时是否保持长宽比，默认为false；设置时会对不足部分补0 |
+| mean                | 否    | 图像每个通道的均值，默认为0.0,0.0,0.0                    |
+| scale               | 否    | 图片每个通道的比值，默认为1.0,1.0,1.0                    |
+| pixel_format        | 否    | 图片类型，可以是rgb、bgr、gray、rgbd四种情况              |
+| output_names        | 否    | 指定输出的名称，如果不指定，则用模型的输出；指定后用该指定名称做输出 |
+| test_input          | 否    | 指定输入文件用于验证，可以是图片或npy或npz；可以不指定，则不会正确性验证 |
+| test_result         | 否    | 指定验证后的输出文件                                         |
+| excepts             | 否    | 指定需要排除验证的网络层的名称，多个用,隔开                      |
+| mlir                | 是    | 指定输出的mlir文件路径                                       |
 
 转成mlir文件后，会生成一个`${model_name}_in_f32.npz`文件，该文件是模型的输入文件。它是通过对图片输入进行预处理后得到的数据。
 
@@ -143,7 +143,6 @@ model_deploy.py \
   --chip bm1684x \
   --test_input yolov5s_in_f32.npz \
   --test_reference yolov5s_top_outputs.npz \
-  --tolerance 0.99,0.99 \
   --model yolov5s_1684x_f32.bmodel
 ```
 
@@ -153,11 +152,11 @@ model_deploy.py的相关参数说明如下：
 | ------------------- | ----- | ----------------------------- |
 | mlir                | 是    | 指定mlir文件                                              |
 | quantize            | 是    | 指定默认量化类型，支持F32/BF16/F16/INT8                     |
-| chip                | 是    | 指定模型将要用到的平台，支持bm1684x（目前只支持这一种，后续会支持多款TPU平台） |
-| calibration_table   |       | 指定量化表路径，当存在INT8量化的时候需要量化表                 |
-| tolerance           |       | 表示 MLIR 量化后的结果与 MLIR fp32推理结果相似度的误差容忍度 |
-| correctnetss        |       | 表示仿真器运行的结果与MLIR量化后的结果相似度的误差容忍度，默认0.99,0.99 |
-| excepts             |       | 指定需要排除验证的网络层的名称，多个用,隔开 |
+| chip                | 是    | 指定模型将要用到的平台，支持bm1684x（后续会支持多款TPU平台）     |
+| calibration_table   | 否    | 指定量化表路径，当存在INT8量化的时候需要量化表                 |
+| tolerance           | 否    | 表示 MLIR 量化后的结果与 MLIR fp32推理结果相似度的误差容忍度 |
+| correctnetss        | 否    | 表示仿真器运行的结果与MLIR量化后的结果相似度的误差容忍度，默认0.99,0.99 |
+| excepts             | 否    | 指定需要排除验证的网络层的名称，多个用,隔开 |
 | model               | 是    | 指定输出的model文件路径                                  |
 
 
@@ -188,7 +187,6 @@ model_deploy.py \
   --test_input yolov5s_in_f32.npz \
   --test_reference yolov5s_top_outputs.npz \
   --tolerance 0.85,0.45 \
-  --correctness 0.99,0.90 \
   --model yolov5s_1684x_int8_sym.bmodel
 ```
 
@@ -204,7 +202,6 @@ model_deploy.py \
   --test_input yolov5s_in_f32.npz \
   --test_reference yolov5s_top_outputs.npz \
   --tolerance 0.90,0.55 \
-  --correctness 0.99,0.93 \
   --model yolov5s_1684x_int8_asym.bmodel
 ```
 

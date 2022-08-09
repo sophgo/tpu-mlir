@@ -4,7 +4,7 @@ LayerGroup
 基本概念
 --------------
 
-TPU芯片分为片外内存（或称Global Memory）和片内内存（或称Local Memory）。
+TPU芯片分为片外内存（或称Global Memory，简称GMEM）和片内内存（或称Local Memory，简称LMEM）。
 
 通常片外内存非常大（比如4GB），片内内存非常小（比如16MB）。神经网络模型的数据量和计算量
 
@@ -76,6 +76,36 @@ BackwardH
 - w4的原始周期应该是[T5,T5]，但是被修正成[T2,T5]，因为在T2做卷积运算时w4可以被同时加载
 - 当N或者H被切分时，Weight不需要重新被加载，它的结束点会被修正为正无穷
 
+LMEM分配
+--------------
+
+当n或h存在切分的情况下，weight常驻LMEM，每一个切分都可以继续使用weight。
+
+这时候会先分配weight，如图所示(:ref:`lg_nh_alloc`)
+
+.. _lg_nh_alloc:
+.. figure:: ../assets/lg_nh_alloc.png
+   :height: 9.5cm
+   :align: center
+
+   有切分情况的分配
+
+当n和h都没有切分的情况下，weight和activation处理过程一样，不使用时就释放。
+
+这时候的分配过程，如图所示(:ref:`lg_alloc`)
+
+.. _lg_alloc:
+.. figure:: ../assets/lg_alloc.png
+   :height: 9.5cm
+   :align: center
+
+   无切分情况的分配
+
+那么Lmem分配问题就可以转换成这些方块如何摆放问题（注意方块只能左右移动，不能上下移动）。
+
+另外lmem分配时优先不要跨bank。
+
+目前策略是按照op顺序依次分配，优先分配timestep长的，次分配lmem大的。
 
 划分最优Group
 --------------
@@ -85,9 +115,12 @@ BackwardH
 
    Group流程
 
-目前从尾部开始向头部方向划分group，优先切N，当N切到最小单位时还不能满足要求，则切h；
-h不能切的过多，因为Conv、Pool等等算子会有重复数据部分，h切的过多导致重复部分过多；
-目前的策略为当backward后的layer的输入，如果h_slice重复的部分>h/2，则认为失败。
+目前从尾部开始向头部方向划分group，优先切N，当N切到最小单位时还不能满足要求，则切h。
+
+当网络很深的时候，因为Conv、Pool等等算子会有重复计算部分，h切的过多导致重复部分过多；
+
+为了避免过多重复，当backward后的layer的输入，如果h_slice重复的部分>h/2，则认为失败。
 
 举例：比如input的h = 100，经过切分后变成2个input，h[0, 80)和h[20, 100)，则重复部分为60，
 则认为失败；2个input对应h[0, 60)和h[20, 100)，重复部分为40，认为成功。
+
