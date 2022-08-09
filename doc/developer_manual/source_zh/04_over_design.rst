@@ -34,7 +34,7 @@ Canonicalize
 Calibration
    按照calibration table，给每个OP插入min和max，用于后续量化；对应对称量化则插入threshold
 Lowering
-   将OP根据类型转换到tpu层，支持的类型有F32/F16/BF16/INT8对称/INT8非对称。
+   将OP根据类型下沉到tpu层，支持的类型有F32/F16/BF16/INT8对称/INT8非对称。
 
 
 .. _tpu pass:

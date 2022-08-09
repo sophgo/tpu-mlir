@@ -127,7 +127,7 @@ if __name__ == '__main__':
                         help="for INT8 quantization")
     parser.add_argument("--excepts", default='-', help="excepts")
     parser.add_argument("--tolerance", default='0.8,0.5', help="tolerance")
-    parser.add_argument("--correctness", default='0.99,0.99', help="correctness")
+    parser.add_argument("--correctness", default='0.99,0.90', help="correctness")
     parser.add_argument("--chip",
                         required=True,
                         type=str,
