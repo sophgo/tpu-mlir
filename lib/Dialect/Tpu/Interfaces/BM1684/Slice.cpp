@@ -8,20 +8,17 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "../Lowering.h"
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Helper/Module.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
+using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
-using namespace mlir;
+using namespace tpu_mlir::backend;
 
-Value top::SliceOp::lowering_int8_bm1684() {
-  return lowering_common_int8<tpu::SliceOp>(getOperation());
-}
-
-Value top::SliceOp::lowering_f32_bm1684() {
-  return lowering_common_float<tpu::SliceOp>(getOperation());
+void tpu::SliceOp::codegen_global_int8_bm1684() {
+  llvm_unreachable("Codegen to be supported");
 }

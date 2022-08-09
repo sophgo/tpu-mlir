@@ -42,6 +42,7 @@ TEST_ONNX_IR = [
     #"Squeeze",
     "Clip",
     "Sigmoid",
+    "Slice",
 ]
 
 
@@ -83,6 +84,7 @@ class ONNX_IR_TESTER(object):
             "Squeeze": self.test_Squeeze,
             "Clip": self.test_Clip,
             "Sigmoid": self.test_Sigmoid,
+            "Slice": self.test_Slice,
         }
         self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
 
@@ -588,6 +590,32 @@ class ONNX_IR_TESTER(object):
         )
         graph_def = helper.make_graph([sigmoid_def], test_case, [input], [output])
         self.convert_and_test({'input': input_data}, graph_def, test_case)
+
+    def test_Slice(self):
+        test_case = 'Slice'
+        input_shape = [5, 116, 64, 64]
+        output_shape = [3, 16, 16, 8]
+        input_data = np.random.randn(*input_shape).astype(np.float32)
+        starts_data = np.array([2,10, 10, 12], dtype=np.int64)
+        ends_data = np.array([5,42, 42, 36], dtype=np.int64)
+        axes_data = np.array([0,1, 2, 3], dtype=np.int64)
+        steps_data = np.array([1, 2, 2, 3], dtype=np.int64)
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        starts = helper.make_tensor('starts', TensorProto.INT64, [4], starts_data)
+        ends = helper.make_tensor('ends', TensorProto.INT64, [4], ends_data)
+        axes = helper.make_tensor('axes', TensorProto.INT64, [4], axes_data)
+        steps = helper.make_tensor('steps', TensorProto.INT64, [4], steps_data)
+        slice_def = helper.make_node(
+            test_case,
+            inputs=['input', 'starts', 'ends','axes', 'steps'],
+            outputs=['output'],
+        )
+
+        graph_def = helper.make_graph([slice_def], test_case, [input], [output], initializer=[starts, ends, axes, steps])
+        self.convert_and_test({'input': input_data}, graph_def, test_case)
+
 if __name__ == "__main__":
     os.makedirs("onnx_test", exist_ok=True)
     os.chdir("onnx_test")
