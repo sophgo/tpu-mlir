@@ -1,0 +1,117 @@
+//===----------------------------------------------------------------------===//
+//
+// Copyright (c) 2020-2030 by Sophgo Technologies Inc. All rights reserved.
+//
+// Licensed under the Apache License v2.0.
+// See http://www.apache.org/licenses/LICENSE-2.0 for license information.
+// SPDX-License-Identifier: Apache-2.0
+//
+//===----------------------------------------------------------------------===//
+
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Support/Dnnl/Dnnl.h"
+#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Float16.h"
+
+using namespace tpu_mlir;
+using namespace tpu_mlir::helper;
+using namespace mlir;
+
+void tpu::DeconvOp::parseParam(void *param) {
+  deconv_attr_t *p = (deconv_attr_t *)param;
+  memset(p, 0, sizeof(deconv_attr_t));
+  p->id = 1;
+  p->od = 1;
+  p->kd = 1;
+  p->sd = 1;
+  p->dd = 1;
+  auto ishape = input().getType().dyn_cast<RankedTensorType>().getShape();
+  auto oshape = output().getType().dyn_cast<RankedTensorType>().getShape();
+  Module::getNCHW(ishape, p->n, p->ic, p->ih, p->iw);
+  Module::getNCHW(oshape, p->n, p->oc, p->oh, p->ow);
+
+  auto kernel = Module::getI64Array(kernel_shape());
+  p->kh = kernel->at(0);
+  p->kw = kernel->at(1);
+  auto stride = Module::getI64Array(strides());
+  p->sh = stride->at(0);
+  p->sw = stride->at(1);
+  auto pad = Module::getI64Array(pads());
+  p->pad_h = pad->at(0);
+  p->pad_w = pad->at(1);
+  p->pad_h_after = pad->at(2);
+  p->pad_w_after = pad->at(3);
+  auto dilation = Module::getI64Array(dilations(), 2, 1);
+  p->dh = dilation->at(0);
+  p->dw = dilation->at(1);
+  auto ins = Module::getI64Array(inserts(), 2, 0);
+  p->ins_h = ins->at(0);
+  p->ins_w = ins->at(1);
+  p->g = group();
+  p->do_relu = do_relu();
+  p->with_bias = with_bias();
+  p->is_dw = (p->oc == p->ic && p->oc == p->g && p->g > 1);
+  return;
+}
+
+LogicalResult tpu::DeconvOp::init(InferenceParameter &p) {
+  auto deconv = new Deconv();
+  deconv_attr_t attrs;
+  parseParam(&attrs);
+  int izp = 0;
+  if (Quant::isUniformQuantized(input())) {
+    izp = Quant::getUniformQuantizedType(input()).getZeroPoint();
+  }
+  deconv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], attrs, izp);
+  p.handle = (void *)deconv;
+  return success();
+}
+
+void tpu::DeconvOp::deinit(InferenceParameter &p) {
+  if (p.handle != nullptr) {
+    auto deconv = (Deconv *)p.handle;
+    delete deconv;
+    p.handle = nullptr;
+  }
+}
+
+LogicalResult tpu::DeconvOp::inference(InferenceParameter &p) {
+  if (p.handle == nullptr) {
+    return failure();
+  }
+  auto deconv = (Deconv *)p.handle;
+  deconv->run();
+  // requant
+  auto out_type = Module::getStorageType(output());
+  auto num_elem = Module::getNumElements(output());
+  if (out_type.isa<FloatType>()) {
+    if (out_type.isBF16()) {
+      f32_to_bf16(p.outputs[0], p.outputs[0], num_elem);
+    } else if (out_type.isF16()) {
+      f32_to_f16(p.outputs[0], p.outputs[0], num_elem);
+    }
+  }
+
+  return success();
+}
+
+LogicalResult tpu::DeconvOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
+                                     int64_t out_idx, int64_t out_slice) {
+  deconv_attr_t attrs;
+  parseParam(&attrs);
+  int kh_ext = (attrs.kh - 1) * attrs.dh + 1;
+  int pad_h = kh_ext - attrs.pad_h - 1;
+  in_idx = out_idx - attrs.pad_h;
+  in_idx = in_idx <= 0 ? in_idx : std::ceil((float)in_idx / attrs.sh);
+  if (in_idx <= 0) {
+    pad_h = -in_idx;
+    in_slice = std::ceil((out_slice - pad_h + kh_ext - 1) / (float)(attrs.sh)) + pad_h;
+  } else {
+    pad_h = in_idx * attrs.sh + pad_h - out_idx;
+    in_slice = std::ceil((out_slice - pad_h + kh_ext - 1) / (float)attrs.sh);
+  }
+  LocalGenInterface::fixSlice(in_idx, in_slice, attrs.ih);
+  return success();
+}

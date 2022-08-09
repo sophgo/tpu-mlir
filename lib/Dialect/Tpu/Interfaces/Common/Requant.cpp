@@ -22,15 +22,15 @@ LogicalResult tpu::RequantOp::init(InferenceParameter &p) { return success(); }
 void tpu::RequantOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::RequantOp::inference(InferenceParameter &p) {
-  auto i_sType = Module::getStorageType(output());
+  auto i_sType = Module::getStorageType(input());
   auto o_sType = Module::getStorageType(output());
-  auto i_qtype = Quant::getUniformQuantizedType(input());
   auto o_qtype = Quant::getUniformQuantizedType(output());
   if (i_sType.isInteger(8)) {
     int64_t n, c, h, w;
     Module::getNCHW(output(), n, c, h, w);
     std::shared_ptr<std::vector<int32_t>> quant_v;
     std::vector<int64_t> quant_shape = {1, c, 1, 3};
+    auto i_qtype = Quant::getUniformQuantizedType(input());
     bool per_axis = false;
     if (quant().getType().isa<RankedTensorType>()) {
       auto quantOp = quant().getDefiningOp<top::WeightOp>();
@@ -65,16 +65,16 @@ LogicalResult tpu::RequantOp::inference(InferenceParameter &p) {
   for (int i = 2; i < shape.size(); ++i) {
     inner *= shape[i];
   }
-  auto multi = multiplier().getValue();
-  auto rshift_val = rshift().getValue();
-  auto zero_point = o_qtype.getZeroPoint();
   if (mode == 0) {
 #pragma omp parallel for schedule(static, omp_schedule(shape[1]))
     for (int c = 0; c < shape[1]; ++c) {
+      auto multi = multiplier().getValue();
+      auto rshift_val = rshift().getValue();
+      auto zero_point = o_qtype.getZeroPoint();
       if (quant().getType().isa<NoneType>()) {
-        rshift_val = -p.inputs[1][c * 3 + 1];
         multi = p.inputs[1][c * 3];
-        zero_point = p.inputs[1][c * 3 - 2];
+        rshift_val = -p.inputs[1][c * 3 + 1];
+        zero_point = p.inputs[1][c * 3 + 2];
       }
       for (int n = 0; n < shape[0]; ++n) {
         for (int i = 0; i < inner; ++i) {
@@ -89,10 +89,13 @@ LogicalResult tpu::RequantOp::inference(InferenceParameter &p) {
   } else if (mode == 1) {
 #pragma omp parallel for schedule(static, omp_schedule(shape[1]))
     for (int c = 0; c < shape[1]; ++c) {
+      auto multi = multiplier().getValue();
+      auto rshift_val = rshift().getValue();
+      auto zero_point = o_qtype.getZeroPoint();
       if (quant().getType().isa<NoneType>()) {
-        rshift_val = -p.inputs[1][c * 3 + 1];
         multi = p.inputs[1][c * 3];
-        zero_point = p.inputs[1][c * 3 - 2];
+        rshift_val = -p.inputs[1][c * 3 + 1];
+        zero_point = p.inputs[1][c * 3 + 2];
       }
       assert(rshift_val > 0);
       for (int n = 0; n < shape[0]; ++n) {
@@ -108,10 +111,13 @@ LogicalResult tpu::RequantOp::inference(InferenceParameter &p) {
   } else if (mode == 2) {
 #pragma omp parallel for schedule(static, omp_schedule(shape[1]))
     for (int c = 0; c < shape[1]; ++c) {
-      if (quant().getType().isa<NoneType>()) {
-        rshift_val = -p.inputs[1][c * 3 + 1];
+      auto multi = multiplier().getValue();
+      auto rshift_val = rshift().getValue();
+      auto zero_point = o_qtype.getZeroPoint();
+      if (quant().getType().isa<RankedTensorType>()) {
         multi = p.inputs[1][c * 3];
-        zero_point = p.inputs[1][c * 3 - 2];
+        rshift_val = -p.inputs[1][c * 3 + 1];
+        zero_point = p.inputs[1][c * 3 + 2];
       }
       for (int n = 0; n < shape[0]; ++n) {
         for (int i = 0; i < inner; ++i) {

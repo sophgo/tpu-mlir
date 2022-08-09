@@ -36,6 +36,7 @@ class Top:
     DivOp = 'top.Div'
     SqueezeOp = 'top.Squeeze'
     ClipOp = 'top.Clip'
+    DeconvOp = 'top.Deconv'
 
 
 class State:
@@ -448,6 +449,28 @@ class MLIRImporter(object):
             'max': FloatAttr.get_f64(kargs['max']),
         }
         return self.buildOp(Top.ClipOp, operands, [output_type], **param)
+
+    def create_conv_transpose_op(self, operands, output_shape, **kargs):
+        """
+            operands: List[pybind.op]
+            output_tensorshape: List[int] output tensor type
+            attrs: Dict, about op attrs
+        """
+        # get_value_type
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+
+        param = {
+            'name': StringAttr.get(kargs['name']),
+            'kernel_shape': self.ArrayAttr(kargs['kernel_shape']),
+            'strides': self.ArrayAttr(kargs['strides']),
+            # 'dilations': self.ArrayAttr(kargs['dilations']),
+            'pads': self.ArrayAttr(kargs['pads']),
+            'group': IntegerAttr.get(self.mlir_type['INT64'], kargs['group']),
+            'do_relu': BoolAttr.get(kargs['do_relu']),
+        }
+        if 'inserts' in kargs:
+            param['inserts'] = self.ArrayAttr(kargs['inserts'])
+        return self.buildOp(Top.DeconvOp, operands, [output_type], **param)
 
     def print_module(self):
         mlir_format = str(self.mlir_module)

@@ -42,7 +42,8 @@ TEST_ONNX_IR = [
     #"Squeeze",
     "Clip",
     "Sigmoid",
-    "Slice",
+    # "Slice",
+    "ConvTranspose2D",
 ]
 
 
@@ -85,6 +86,7 @@ class ONNX_IR_TESTER(object):
             "Clip": self.test_Clip,
             "Sigmoid": self.test_Sigmoid,
             "Slice": self.test_Slice,
+            "ConvTranspose2D": self.test_ConvTranspose,
         }
         self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
 
@@ -548,6 +550,43 @@ class ONNX_IR_TESTER(object):
             graph_def,
             test_case,
         )
+
+    def test_ConvTranspose(self):
+        test_case = 'ConvTranspose'
+        oc, ic = 16, 8
+        ih, iw = 16, 16
+        kernel_shape = [3, 3]
+        pads = [1, 1, 1, 1]
+        strides = [2, 2]
+        dilations = [1, 1]
+        oh = (ih - 1) * strides[0] + (kernel_shape[0] - 1) * dilations[0] + 1 - pads[0] - pads[2]
+        ow = (iw - 1) * strides[1] + (kernel_shape[1] - 1) * dilations[1] + 1 - pads[1] - pads[3]
+        input_shape = [1, ic, ih, iw]
+        output_shape = [1, oc, oh, ow]
+        filter_shape = [ic, oc, kernel_shape[0], kernel_shape[1]]
+
+        input_data = np.random.randn(*input_shape).astype(np.float32)
+        weight_data = np.random.randn(*filter_shape).astype(np.float32)
+        bias_data = np.random.randn(oc).astype(np.float32)
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
+        bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape), bias_data)
+        convtranspose_def = helper.make_node(test_case,
+                                             inputs=['input', 'weight', 'bias'],
+                                             outputs=['output'],
+                                             kernel_shape=kernel_shape,
+                                             pads=pads,
+                                             strides=strides,
+                                             dilations=dilations,
+                                             group=1)
+        graph_def = helper.make_graph([convtranspose_def],
+                                      test_case,
+                                      [input],
+                                      [output],
+                                      initializer=[weight, bias])
+        self.convert_and_test({'input': input_data}, graph_def, test_case)
 
     def test_Squeeze(self):
         test_case = 'Squeeze'

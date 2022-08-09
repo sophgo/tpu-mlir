@@ -49,10 +49,10 @@ def GlobalGenInterface : OpInterface<"GlobalGenInterface"> {
           if (chip == Module::Chip::BM1684) {
             $_op.codegen_global_int8_bm1684();
           } else if (chip == Module::Chip::BM1684x) {
-            if (type.isInteger(8)) {
-              $_op.codegen_global_int8_bm1684x();
-            } else {
+            if (type.isF32() || type.isF16() || type.isBF16()) {
               $_op.codegen_global_float_bm1684x();
+            } else {
+              $_op.codegen_global_int8_bm1684x();
             }
           }
         }]

@@ -480,7 +480,7 @@ void tpu::ConvOp::codegen_global_int8_bm1684x() {
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
              pl, pr, dh, dw, is_dw, with_bias, do_relu);
   auto op = getOperation();
-  auto in_qtype = Quant::getUniformQuantizedType(output());
+  auto in_qtype = Quant::getUniformQuantizedType(input());
   auto input_spec = BM1684x::get_input_spec(op);
   auto output_spec = BM1684x::get_output_spec(op);
   conv_global_spec_t spec;

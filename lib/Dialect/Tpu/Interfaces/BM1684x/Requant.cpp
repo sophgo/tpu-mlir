@@ -55,12 +55,12 @@ void tpu::RequantOp::codegen_global_int8_bm1684x() {
   param.w = (int)w;
 
   if (quant().getType().isa<RankedTensorType>()) {
-    param.is_perchannel = true;
     param.requant_addr = Module::getAddress(quant());
+    param.is_perchannel = true;
     param.reshaped_coeff = false;
   } else {
-    auto oqtype = Quant::getUniformQuantizedType(output());
     auto iqtype = Quant::getUniformQuantizedType(input());
+    auto oqtype = Quant::getUniformQuantizedType(output());
     param.mul_value = multiplier().getValue();
     param.shift_value = -rshift().getValue();
     param.offset_value = oqtype.getZeroPoint();
@@ -120,15 +120,18 @@ void tpu::RequantOp::codegen_local_int8_bm1684x(int64_t n_step,
     param.reshaped_coeff = false;
   } else {
     auto oqtype = Quant::getUniformQuantizedType(output());
-    auto iqtype = Quant::getUniformQuantizedType(input());
     param.mul_value = multiplier().getValue();
     param.shift_value = -rshift().getValue();
     param.offset_value = oqtype.getZeroPoint();
+  }
+
+  if (Quant::isUniformQuantized(input())) {
+    auto iqtype = Quant::getUniformQuantizedType(input());
     param.zx_value = iqtype.getZeroPoint();
   }
   param.input_dtype = BM168x::getDataType(input());
   param.output_dtype = BM168x::getDataType(output());
-  param.mode = 2;
+  param.mode = quant_mode().getValue();
   BM1684x::instance().call_local_func("backend_api_requant_int_local", &param,
                                       sizeof(param));
 }
