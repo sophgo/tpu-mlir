@@ -40,7 +40,7 @@ public:
     auto module = getOperation();
     auto state = Module::getState(module);
     if (state != Module::State::TPU_DIVIDED) {
-      llvm_unreachable("module should be reordered");
+      llvm_unreachable("module should be divided");
     }
     Module::removeUnusedOp(module);
     int64_t start_addr = 0;
@@ -102,10 +102,10 @@ protected:
     if (Module::isOpInGroup(op)) {
       return true;
     }
-    if (auto castOp = dyn_cast<tpu::ReshapeOp>(op)) {
+    if (auto reshapeOp = dyn_cast<tpu::ReshapeOp>(op)) {
       if (chip == Module::Chip::BM1684x) {
-        auto addr = Module::getAddress(castOp.input());
-        Module::setAddress(castOp.output(), addr);
+        auto addr = Module::getAddress(reshapeOp.input());
+        Module::setAddress(reshapeOp.output(), addr);
         return true;
       }
     }

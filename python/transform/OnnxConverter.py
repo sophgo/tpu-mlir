@@ -135,6 +135,7 @@ class OnnxConverter(BaseConverter):
             "Div": lambda node: self.convert_div_op(node),
             "Squeeze": lambda node: self.convert_squeeze_op(node),
             "Clip": lambda node: self.convert_clip_op(node),
+            "ConvTranspose": lambda node: self.convert_conv_transpose_op(node),
         }
 
     def __del__(self):
@@ -881,3 +882,62 @@ class OnnxConverter(BaseConverter):
             }
             new_op = self.mlir.create_clip_op(operand, input_shape, **p)
         self.addOperand(onnx_node.name, new_op)
+
+    def convert_conv_transpose_op(self, onnx_node):
+        assert(onnx_node.op_type == "ConvTranspose")
+        input_shape = self.getShape(onnx_node.inputs[0])
+        kernel_shape = onnx_node.attrs['kernel_shape']
+        output_shape = self.getShape(onnx_node.name)
+        dim = len(kernel_shape)
+        dilations = onnx_node.attrs.get('dilations', dim * [1])
+        group = onnx_node.attrs.get('group', 1)
+        strides = onnx_node.attrs.get('strides', dim * [1])
+        pads = onnx_node.attrs.get('pads', dim * 2 * [0])
+        output_padding = onnx_node.attrs.get('output_padding', dim * 2 * [0])
+        auto_pad = onnx_node.attrs.get('auto_pad', None)
+
+        operands = list()
+        input_opd = self.getOperand(onnx_node.inputs[0])
+        filter_opd = self.getWeightOp(onnx_node.inputs[1])
+        if len(onnx_node.inputs) > 2:
+            bias_opd = self.getWeightOp(onnx_node.inputs[2])
+        else:
+            bias_opd = self.mlir.none_op
+        operands.append(input_opd)
+        operands.append(filter_opd)
+        operands.append(bias_opd)
+
+        # handle ConvTranspose1d case
+        is_shape_3 = len(input_shape) == 3
+        if is_shape_3:
+            assert(dim == 1)
+            strides = [1, strides[0]]
+            pads = [0, 0, pads[0], pads[1]]
+            kernel_shape = [1, kernel_shape[0]]
+            output_padding = [0, 0, output_padding[0], output_padding[1]]
+
+            input_shape = [input_shape[0], input_shape[1], 1, input_shape[2]]
+            p = {'name': '{}_to4dim'.format(onnx_node.name)}
+            reshape0_op = self.mlir.create_reshape_op([input_opd], input_shape, **p)
+            operands[0] = reshape0_op
+
+        p = {
+            'name': '{}_{}'.format(onnx_node.name + '_reshape', onnx_node.op_type),
+            'kernel_shape': kernel_shape,
+            'strides': strides,
+            'dilations': dilations,
+            'pads': pads,
+            'group': group,
+            'do_relu': False,
+            'ins': [],
+        }
+
+        new_op = self.mlir.create_conv_transpose_op(operands, output_shape, **p)
+
+        if is_shape_3:
+            output_shape = [output_shape[0], output_shape[1], output_shape[3]]
+            p = {'name': '{}_backto3dim'.format(onnx_node.name)}
+            reshape1_op = self.mlir.create_reshape_op([new_op], output_shape, **p)
+            self.addOperand(onnx_node.name, reshape1_op)
+        else:
+            self.addOperand(onnx_node.name, new_op)

@@ -9,11 +9,11 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
-#include "mlir/IR/PatternMatch.h"
 #include "float.h"
-#include <map>
+#include "mlir/IR/PatternMatch.h"
 #include "omp.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
+#include <map>
 
 namespace tpu_mlir {
 
@@ -354,6 +354,39 @@ void pad_tensor(float *p_after_pad, float *src, int n, int c, int d, int h,
             p_after_pad[d_offset] = pad_value;
           } else {
             int s_offset = ((i * d + m - pdf) * h + j - pht) * w + k - pwl;
+            p_after_pad[d_offset] = src[s_offset];
+          }
+        }
+      }
+    }
+  }
+}
+
+void pad_tensor_for_deconv(float *p_after_pad, float *src, int n, int c, int d,
+                           int h, int w, int kd, int kh, int kw, int dd, int dh,
+                           int dw, int sd, int sh, int sw, int pdf, int pdb,
+                           int pht, int phb, int pwl, int pwr,
+                           float pad_value) {
+  int nc = n * c;
+  int od = (d - 1) * sd + 1 + dd * (kd - 1);
+  int oh = (h - 1) * sh + 1 + dh * (kh - 1);
+  int ow = (w - 1) * sw + 1 + dw * (kw - 1);
+  int pst[3] = {(kd - 1) * dd - pdf, (kh - 1) * dh - pht, (kw - 1) * dw - pwl};
+  int ped[3] = {(kd - 1) * dd - pdb, (kh - 1) * dh - phb, (kw - 1) * dw - pwr};
+  for (int i = 0; i < nc; i++) {
+    for (int m = 0; m < od; m++) {
+      for (int j = 0; j < oh; j++) {
+        for (int k = 0; k < ow; k++) {
+          int d_offset = (i * od * oh + m * oh + j) * ow + k;
+          if (m < pst[0] || m >= (od - ped[0]) || j < pst[1] ||
+              j >= (oh - ped[1]) || k < pst[2] || k >= (ow - ped[2]) ||
+              (m - pst[0]) % sd != 0 || (j - pst[1]) % sh != 0 ||
+              (k - pst[2]) % sw != 0) {
+            p_after_pad[d_offset] = pad_value;
+          } else {
+            int s_offset =
+                ((i * d + (m - pst[0]) / sd) * h + (j - pst[1]) / sh) * w +
+                (k - pst[2]) / sw;
             p_after_pad[d_offset] = src[s_offset];
           }
         }

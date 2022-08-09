@@ -469,12 +469,19 @@ protected:
       if (op->getDialect()->getNamespace() == "tpu" &&
           false == isa<tpu::CastOp>(op)) {
         auto oType = op->getResult(0).getType();
+        for (auto nextOp : op->getUsers()) {
+          if (isa<tpu::RequantOp>(nextOp)) {
+            auto rqOp = dyn_cast<tpu::RequantOp>(nextOp);
+            oType = rqOp->getResult(0).getType();
+          }
+        }
         // here consider output type should be the same with input type
         // if any op not follow this rule, should deal spically
         for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
           auto opd = op->getOperand(idx);
           auto in_op = opd.getDefiningOp();
-          if (isa<top::WeightOp, top::NoneOp>(in_op)) {
+          if (isa<top::WeightOp, top::NoneOp>(in_op) ||
+              Module::getStorageType(opd.getType()).isInteger(32)) {
             continue;
           }
           if (need_cast(opd.getType(), oType)) {

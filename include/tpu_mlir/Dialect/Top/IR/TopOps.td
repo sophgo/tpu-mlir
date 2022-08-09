@@ -528,7 +528,7 @@ def Top_DropoutOp : Top_Op<"Dropout", [InOutSameShape]> {
 def Top_UpsampleOp : Top_Op<"Upsample", [SupportFuseRelu]> {
   let summary = "Upsample operation";
   let description = [{
-    // TODO
+    Perform nearest upsample on input.
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -606,6 +606,33 @@ def Top_ClipOp: Top_Op<"Clip", [InOutSameShape]> {
   );
 
   let results = (outs AnyTensor:$output);
+}
+
+def Top_DeconvOp: Top_Op<"Deconv", [SupportFuseRelu]> {
+  let summary = "Deconvolution operator";
+
+  let description = [{
+    Perform Deconvolution operation.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$filter,
+    AnyTensorOrNone:$bias,
+    I64ArrayAttr:$kernel_shape,
+    I64ArrayAttr:$strides,
+    I64ArrayAttr:$pads,
+    DefaultValuedAttr<I64Attr, "1">:$group,
+    OptionalAttr<I64ArrayAttr>:$dilations,
+    OptionalAttr<I64ArrayAttr>:$inserts,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    StrAttr:$name
+  );
+
+  let results = (outs AnyTensor:$output);
+  let extraClassDeclaration = [{
+    void parseParam(void *param);
+  }];
 }
 
 #endif // Top_OPS

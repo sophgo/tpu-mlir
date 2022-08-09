@@ -59,10 +59,10 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
           if (chip == Module::Chip::BM1684) {
             $_op.codegen_local_int8_bm1684(n_step, h_step);
           } else if (chip == Module::Chip::BM1684x) {
-            if (type.isInteger(8)) {
-              $_op.codegen_local_int8_bm1684x(n_step, h_step);
-            } else {
+            if (type.isF32() || type.isBF16() || type.isF16()) {
               $_op.codegen_local_float_bm1684x(n_step, h_step);
+            } else {
+              $_op.codegen_local_int8_bm1684x(n_step, h_step);
             }
           }
         }]

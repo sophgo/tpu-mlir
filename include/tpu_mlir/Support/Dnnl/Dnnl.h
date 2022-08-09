@@ -13,6 +13,7 @@
 #include "tpu_mlir/Support/Dnnl/Conv.h"
 #include "tpu_mlir/Support/Dnnl/MatMul.h"
 #include "tpu_mlir/Support/Dnnl/Pool.h"
+#include "tpu_mlir/Support/Dnnl/Deconv.h"
 
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Builders.h"

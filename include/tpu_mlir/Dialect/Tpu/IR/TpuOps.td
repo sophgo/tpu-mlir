@@ -536,7 +536,7 @@ def Tpu_UpsampleOp: Tpu_Op<"Upsample", [
     DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH"]>]> {
   let summary = "Upsample operation";
   let description = [{
-
+    Perform nearest upsample on input.
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -632,4 +632,42 @@ def Tpu_SliceOp: Tpu_Op<"Slice"> {
   );
   let results = (outs AnyTensor:$output);
 }
+
+def Tpu_DeconvOp: Tpu_Op<"Deconv",[
+    SupportFuseRelu,
+    DeclareOpInterfaceMethods<WeightReorderInterface>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH"]>]> {
+  let summary = "deconvolution operator";
+
+  let description = [{
+    "Perform deconvolution operation."
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$filter,
+    AnyTensorOrNone:$bias,
+    I64ArrayAttr:$kernel_shape,
+    I64ArrayAttr:$strides,
+    I64ArrayAttr:$pads,
+    DefaultValuedAttr<I64Attr, "1">:$group,
+    OptionalAttr<I64ArrayAttr>:$dilations,
+    OptionalAttr<I64ArrayAttr>:$inserts,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    //new param
+    BoolAttr:$with_bias,
+    OptionalAttr<I64ArrayAttr>:$multiplier,
+    OptionalAttr<I64ArrayAttr>:$rshift,
+    OptionalAttr<I64Attr>:$quant_mode,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
+    StrAttr:$name
+  );
+
+  let results = (outs AnyTensor:$output);
+
+  let extraClassDeclaration = [{
+    void parseParam(void *param);
+  }];
+}
+
 #endif // TPU_OPS
