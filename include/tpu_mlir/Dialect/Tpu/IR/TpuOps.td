@@ -617,4 +617,19 @@ def Tpu_SigmoidOp : Tpu_Op<"Sigmoid",
 
   let results = (outs AnyTensor:$output);
 }
+
+def Tpu_SliceOp: Tpu_Op<"Slice"> {
+  let summary = "Slice operator";
+  let description = [{
+    Slice Operation on input.
+  }];
+
+  let arguments = (
+    ins AnyTensor:$input,
+    I64ArrayAttr:$offset,
+    I64ArrayAttr:$steps,
+    StrAttr:$name
+  );
+  let results = (outs AnyTensor:$output);
+}
 #endif // TPU_OPS
