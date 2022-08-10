@@ -14,6 +14,7 @@ model_list_all=(
   "resnet34_ssd1200"
   "yolov5s"
   "yolov3_tiny"
+  "ssd-12"
 )
 
 # run onnx operation test
