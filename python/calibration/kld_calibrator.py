@@ -12,6 +12,7 @@
 import os
 import gc
 import time
+import copy
 import numpy as np
 import pymlir
 from ctypes import *
@@ -298,8 +299,8 @@ class SimpleTuner:
 
     def find_better_threshold(self, evaled_op, tuned_op, node_label):
         prev_distance = -1
-        threshold = self.threshold_table.thresholds_map[tuned_op][0]
-        abs_max = max(map(abs,self.threshold_table.thresholds_map[tuned_op][1:]))
+        threshold = self.initial_threshold[tuned_op][0]
+        abs_max = max(map(abs,self.initial_threshold[tuned_op][1:]))
         op_no = self.module.all_tensor_names.index(tuned_op)
         self.print_dbg('>>>tuned_op_idx:', op_no,', tuned_op:',tuned_op, ', threshold:', threshold, 'abs_max:', abs_max,', evaled_op:', evaled_op)
         if threshold > abs_max:
@@ -321,8 +322,8 @@ class SimpleTuner:
         diff = abs(abs_max - cur_threshold)
         step = (abs_max - cur_threshold)/self.tune_steps
         if step > 0 and diff > min_tuned_diff:
-            for i in range(self.tune_steps):
-                cur_threshold += step
+            for i in range(self.tune_steps+1):
+                cur_threshold = threshold + step*i
                 cur_distance, cur_cos_sim = self.calc_distance(evaled_op, cur_threshold)
                 if cur_distance is None and cur_cos_sim is None:
                     return False
@@ -352,9 +353,6 @@ class SimpleTuner:
         for idx in range(self.args.tune_num):
             if 'not_use_fp32_tensor_as_ref' in self.debug_cmd:
                 self.clear_input_tensor(idx, tuned_op, node_label)
-
-        assert best_threshold >= self.threshold_table.thresholds_map[tuned_op][0]
-        self.threshold_table.thresholds_map[tuned_op][0] = best_threshold
         if step > 0:
             if threshold < best_threshold:
                 node_label[0] += '\ntune, find:{} th:{:.4f}->{:.4f}, abs_max:{:.4f}, cos_sim:{:.3f}->{:.3f}'.format(tuned_op, threshold, best_threshold, abs_max, init_cos_sim, best_cos_sim)
@@ -362,6 +360,11 @@ class SimpleTuner:
                 node_label[0] += '\ntune:{} no better th, init th:{}, cos_sim:{:.3f}->{:.3f}'.format(tuned_op, threshold, init_cos_sim, best_cos_sim)
         else:
             node_label[0] += '\nnot tune {}, init th:{}'.format(tuned_op, threshold)
+
+        #若当前tune的best_threshold大于先前该th tune后的最佳门限,则保存，否则保留上次tune更大的结果
+        if best_threshold > self.threshold_table.thresholds_map[tuned_op][0]:
+            node_label[0] += '\nupdate {} th: {}>{}'.format(tuned_op, self.threshold_table.thresholds_map[tuned_op][0], best_threshold)
+            self.threshold_table.thresholds_map[tuned_op][0] = best_threshold
         return True
 
     def isAllInputTuned(self, evaled_op):
@@ -376,6 +379,7 @@ class SimpleTuner:
         self.layer_cos_sim = {}
 
         all_tensors = self.module.all_tensor_names
+        self.initial_threshold = copy.deepcopy(self.threshold_table.thresholds_map)
         pbar = tqdm(all_tensors, total=len(all_tensors), position=0, leave=True)
         for i, evaled_op in enumerate(all_tensors):
             pbar.set_description("tune op: {}".format(evaled_op))
