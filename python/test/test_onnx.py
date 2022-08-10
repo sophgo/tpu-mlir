@@ -44,6 +44,7 @@ TEST_ONNX_IR = [
     "Sigmoid",
     "Slice",
     "ConvTranspose2D",
+    "Split",
 ]
 
 
@@ -87,6 +88,7 @@ class ONNX_IR_TESTER(object):
             "Sigmoid": self.test_Sigmoid,
             "Slice": self.test_Slice,
             "ConvTranspose2D": self.test_ConvTranspose,
+            "Split": self.test_Split,
         }
         self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
 
@@ -653,6 +655,28 @@ class ONNX_IR_TESTER(object):
         )
 
         graph_def = helper.make_graph([slice_def], test_case, [input], [output], initializer=[starts, ends, axes, steps])
+        self.convert_and_test({'input': input_data}, graph_def, test_case)
+
+    def test_Split(self):
+        test_case = 'Split'
+        input_shape = [6, 116, 64, 64]
+        output1_shape = [3, 116, 64, 64]
+        output2_shape = [3, 116, 64, 64]
+        input_data = np.random.randn(*input_shape).astype(np.float32)
+        split_data = np.array([3,3], dtype=np.int64)
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        split = helper.make_tensor('split', TensorProto.INT64, [2], split_data)
+        output_1 = helper.make_tensor_value_info('output_1', TensorProto.FLOAT, output1_shape)
+        output_2 = helper.make_tensor_value_info('output_2', TensorProto.FLOAT, output2_shape)
+        split_def = helper.make_node(
+            test_case,
+            inputs=['input', 'split'],
+            outputs=['output_1', 'output_2'],
+            axis=0,
+        )
+
+        graph_def = helper.make_graph([split_def], test_case, [input], [output_1, output_2], initializer=[split])
         self.convert_and_test({'input': input_data}, graph_def, test_case)
 
 if __name__ == "__main__":
