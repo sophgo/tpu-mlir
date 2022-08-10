@@ -35,7 +35,7 @@ if __name__ == '__main__':
                         type=int,
                         default=0,
                         help='num of images for calibration')
-    parser.add_argument('--tune_num', type=int, default=10,
+    parser.add_argument('--tune_num', type=int, default=5,
                         help='num of images for tune')
     parser.add_argument('--histogram_bin_num',
                         type=int,

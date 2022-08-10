@@ -132,7 +132,7 @@ class SimpleTuner:
         self.module_parsered = MlirParser(args.mlir_file)
         log_level="DEBUG" if 'debug_log' in self.debug_cmd else "INFO"
         self.logger = setup_logger('auto_tune', log_level = log_level)
-        self.tune_steps = 10
+        self.tune_steps = 20
         if 'tune_steps'in self.debug_cmd:
             self.tune_steps = int(self.debug_cmd['tune_steps'])
         self.module_dq = pymlir.module()
