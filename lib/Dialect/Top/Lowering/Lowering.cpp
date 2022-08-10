@@ -426,7 +426,7 @@ protected:
                  ForwardCalibartion<top::MaxPoolOp>,
                  ForwardCalibartion<top::SliceOp>,
                  ForwardCalibartion<top::ReshapeOp>,
-                 ForwardCalibration<top::PermuteOp>,
+                 ForwardCalibartion<top::PermuteOp>,
                  ForwardCalibartion<top::UpsampleOp>,
                  ForwardCalibartion<top::LeakyReluOp>
                 >(ctx_);
