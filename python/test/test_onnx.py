@@ -42,7 +42,7 @@ TEST_ONNX_IR = [
     #"Squeeze",
     "Clip",
     "Sigmoid",
-    # "Slice",
+    "Slice",
     "ConvTranspose2D",
 ]
 
