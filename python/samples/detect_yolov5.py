@@ -80,7 +80,7 @@ def vis(img, boxes, scores, cls_ids, conf=0.5, class_names=None):
         font = cv2.FONT_HERSHEY_SIMPLEX
 
         txt_size = cv2.getTextSize(text, font, 0.4, 1)[0]
-        cv2.rectangle(img, (x0, y0), (x1, y1), color, 2)
+        cv2.rectangle(img, (x0, y0), (x1, y1), color, 1)
 
         txt_bk_color = (_COLORS[cls_id] * 255 * 0.7).astype(np.uint8).tolist()
         cv2.rectangle(img, (x0, y0 + 1), (x0 + txt_size[0] + 1, y0 + int(1.5 * txt_size[1])),
@@ -239,7 +239,7 @@ def parse_args():
     parser.add_argument("--output", type=str, required=True, help="Output image after detection")
     parser.add_argument("--conf_thres", type=float, default=0.001, help="Confidence threshold")
     parser.add_argument("--iou_thres", type=float, default=0.6, help="NMS IOU threshold")
-    parser.add_argument("--score_thres", type=float, default=0.48, help="Score of the result")
+    parser.add_argument("--score_thres", type=float, default=0.5, help="Score of the result")
     args = parser.parse_args()
     return args
 
@@ -261,7 +261,7 @@ def main():
     else:
         raise RuntimeError("not support modle file:{}".format(args.model))
     scores, boxes_xyxy = postproc(output, input_shape, top, left)
-    dets = multiclass_nms(boxes_xyxy, scores, iou_thres=args.iou_thres, score_thres=args.conf_thres)
+    dets = multiclass_nms(boxes_xyxy, scores, iou_thres=args.iou_thres, score_thres=args.conf_thres, class_agnostic=True)
     if dets is not None:
         final_boxes, final_scores, final_cls_inds = dets[:, :4], dets[:, 4], dets[:, 5]
         final_boxes /= ratio
