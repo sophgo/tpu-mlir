@@ -424,7 +424,9 @@ protected:
     // clang-format off
     patterns.add<ForwardCalibartion<top::ReluOp>,
                  ForwardCalibartion<top::MaxPoolOp>,
+                 ForwardCalibartion<top::SliceOp>,
                  ForwardCalibartion<top::ReshapeOp>,
+                 ForwardCalibration<top::PermuteOp>,
                  ForwardCalibartion<top::UpsampleOp>,
                  ForwardCalibartion<top::LeakyReluOp>
                 >(ctx_);
