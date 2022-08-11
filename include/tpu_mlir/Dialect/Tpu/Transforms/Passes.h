@@ -24,6 +24,7 @@ std::unique_ptr<OperationPass<ModuleOp>> createSubnetDividePass();
 std::unique_ptr<OperationPass<ModuleOp>> createAddressAssignPass();
 std::unique_ptr<OperationPass<ModuleOp>> createCodegenPass();
 std::unique_ptr<OperationPass<FuncOp>> createLayerGroupPass();
+std::unique_ptr<OperationPass<FuncOp>> createStripIOCast();
 
 #define GEN_PASS_REGISTRATION
 #define GEN_PASS_CLASSES

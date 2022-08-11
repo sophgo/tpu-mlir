@@ -43,12 +43,29 @@ def mlir_lowering(top_mlir: str,
     _os_system(cmd)
 
 
-def mlir_to_model(tpu_mlir: str, model: str, final_mlir: str):
-    codegen_param = "--codegen=\"model_file={}\"".format(model)
+def mlir_to_model(tpu_mlir: str,
+                  model: str,
+                  final_mlir: str,
+                  quant_input: bool = False,
+                  quant_output: bool = False):
+    codegen_param = '--codegen="model_file={}"'.format(model)
+    strip_io_cast_param = '--strip-io-cast="quant_input={} quant_output={}"'.format(
+        quant_input, quant_output
+    )
     cmd = [
-        "tpuc-opt", tpu_mlir, "--weight-reorder", "--subnet-divide", "--layer-group",
-        "--address-assign", "--save-weight", codegen_param, "-o", final_mlir
+        "tpuc-opt",
+        tpu_mlir,
+        strip_io_cast_param,
+        "--weight-reorder",
+        "--subnet-divide",
+        "--layer-group",
+        "--address-assign",
+        "--save-weight",
+        codegen_param,
+        "-o",
+        final_mlir,
     ]
+
     _os_system(cmd)
     _os_system(["mv compiler_profile_0.txt", model + ".compiler_profile_0.txt"])
 
