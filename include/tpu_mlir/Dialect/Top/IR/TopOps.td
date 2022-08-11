@@ -117,6 +117,7 @@ def Top_BatchNormOp: Top_Op<"BatchNorm", [SupportFuseRelu, InOutSameShape]> {
     AnyTensor:$variance,
     DefaultValuedAttr<F64Attr, "1e-05">:$epsilon,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    OptionalAttr<F64Attr>:$upper_limit,
     StrAttr:$name
   );
   let results = (outs AnyTensor:$output);
@@ -249,6 +250,7 @@ class Top_PoolOp <string mnemonic> : Top_Op<mnemonic,[SupportFuseRelu]> {
     DefaultValuedAttr<I64Attr, "0">:$pad_value,
     DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    OptionalAttr<F64Attr>:$upper_limit,
     StrAttr:$name
   );
 
@@ -273,6 +275,7 @@ def Top_AddOp: Top_Op<"Add", [SupportFuseRelu, InOutSameShape]> {
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    OptionalAttr<F64Attr>:$upper_limit,
     OptionalAttr<F64ArrayAttr>:$coeff,
     StrAttr:$name
   );
@@ -315,6 +318,7 @@ def Top_MulOp: Top_Op<"Mul", [SupportFuseRelu, InOutSameShape]> {
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    OptionalAttr<F64Attr>:$upper_limit,
     // quant param
     DefaultValuedAttr<I64Attr, "1">:$multiplier,
     DefaultValuedAttr<I64Attr, "0">:$rshift,
@@ -336,6 +340,7 @@ def Top_MulConstOp: Top_Op<"MulConst", [SupportFuseRelu, InOutSameShape]> {
     AnyTensor:$input,
     F64Attr: $const_val,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    OptionalAttr<F64Attr>:$upper_limit,
     StrAttr:$name
   );
 
@@ -357,13 +362,15 @@ def Top_MatMulOp: Top_Op<"MatMul", [SupportFuseRelu]> {
     AnyTensor:$right,
     AnyTensorOrNone:$bias,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    OptionalAttr<F64Attr>:$upper_limit,
     StrAttr:$name
   );
 
   let results = (outs AnyTensor:$output);
   let extraClassDeclaration = [{
     void parseParam(
-      int64_t &batch, int64_t &M, int64_t &K, int64_t &N, bool &with_bias, bool &do_relu);
+      int64_t &batch, int64_t &M, int64_t &K, int64_t &N, bool &with_bias, bool &do_relu,
+      float &relu_upper_limit);
   }];
 }
 
@@ -565,6 +572,7 @@ def Top_DivOp: Top_Op<"Div", [InOutSameShape]> {
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    OptionalAttr<F64Attr>:$upper_limit,
     // quant param
     DefaultValuedAttr<I64Attr, "1">:$multiplier,
     DefaultValuedAttr<I64Attr, "0">:$rshift,

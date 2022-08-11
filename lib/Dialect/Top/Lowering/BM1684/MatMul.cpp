@@ -29,7 +29,8 @@ Value top::MatMulOp::lowering_int8_bm1684() {
   std::vector<NamedAttribute> attrs;
   int64_t batch, M, K, N;
   bool with_bias, relu;
-  parseParam(batch, M, K, N, with_bias, relu);
+  float relu_upper_limit;
+  parseParam(batch, M, K, N, with_bias, relu, relu_upper_limit);
   assert(batch == 1); // only for fullyconnected now
   auto th_output = Quant::getThreshold(output());
   auto th_input = Quant::getThreshold(input());
