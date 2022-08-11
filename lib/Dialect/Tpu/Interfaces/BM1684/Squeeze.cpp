@@ -8,20 +8,17 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "../Lowering.h"
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
+using namespace tpu_mlir::backend;
 
-Value top::SqueezeOp::lowering_int8_bm1684() {
-  return lowering_common_int8<tpu::SqueezeOp>(getOperation());
-}
-
-Value top::SqueezeOp::lowering_f32_bm1684() {
-  return lowering_common_float<tpu::SqueezeOp>(getOperation());
+void tpu::SqueezeOp::codegen_global_int8_bm1684() {
+  // do nothing
 }

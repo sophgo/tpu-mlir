@@ -10,6 +10,7 @@
 
 #include <string.h>
 #include "tpu_mlir/Support/Dnnl/Conv.h"
+#include "tpu_mlir/Support/Dnnl/DnnlUtils.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 using namespace dnnl;
@@ -84,21 +85,9 @@ void Conv::setup(float *input, float *weight, float *bias, float *output, int n,
         prop_kind::forward_inference, algorithm::convolution_direct, src_md,
         filter_md, dst_md, strides, dilation, padding_l, padding_r);
 
-  post_ops ops;
+  // post_ops ops;
   primitive_attr conv_attr;
-
-  if (do_relu) {
-    const float ops_scale = 1.f;
-    float ops_alpha = 0.f;
-    const float ops_beta = 0.f;
-    if (relu_upper_limit > 0.f) {
-      ops_alpha = relu_upper_limit;
-      ops.append_eltwise(ops_scale, algorithm::eltwise_bounded_relu, ops_alpha, ops_beta);
-    } else {
-      ops.append_eltwise(ops_scale, algorithm::eltwise_relu, ops_alpha, ops_beta);
-    }
-    conv_attr.set_post_ops(ops);
-  }
+  post_relu(conv_attr, do_relu, relu_upper_limit);
 
   conv_prim_desc =
       convolution_forward::primitive_desc(conv_desc, conv_attr, eng);

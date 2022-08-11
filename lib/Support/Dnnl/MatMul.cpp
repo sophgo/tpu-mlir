@@ -9,6 +9,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/Dnnl/MatMul.h"
+#include "tpu_mlir/Support/Dnnl/DnnlUtils.h"
 
 using namespace dnnl;
 using tag = memory::format_tag;
@@ -22,7 +23,7 @@ MatMul::MatMul() {
 
 void MatMul::setup(float *left, float *right, float *bias, float *output,
                    int64_t batch, int64_t M, int64_t K, int64_t N,
-                   bool do_relu) {
+                   bool do_relu, float relu_upper_limit) {
   // printf("MatMul ldt:%ld, rdt:%ld, bdt:%ld, odt:%ld, rshift:%ld\n", ldt, rdt,
   // bdt, odt, rshift);
   memory::dims src_dims = {batch, M, K};
@@ -42,16 +43,9 @@ void MatMul::setup(float *left, float *right, float *bias, float *output,
   matmul::primitive_desc matmul_pd;
   primitive_attr matmul_attr;
 
-  if (do_relu) {
-    const float ops_scale = 1.f;
-    const float ops_alpha = 0.f; // relu negative slope
-    const float ops_beta = 0.f;
-    ops.append_eltwise(ops_scale, algorithm::eltwise_relu, ops_alpha, ops_beta);
-    matmul_attr.set_post_ops(ops);
-    matmul_pd = matmul::primitive_desc(matmul_d, matmul_attr, eng);
-  } else {
-    matmul_pd = matmul::primitive_desc(matmul_d, eng);
-  }
+  post_relu(matmul_attr, do_relu, relu_upper_limit);
+
+  matmul_pd = matmul::primitive_desc(matmul_d, matmul_attr, eng);
 
   auto src_float_memory = memory(
       {{src_dims}, memory::data_type::f32, memory::format_tag::abc}, eng, left);
