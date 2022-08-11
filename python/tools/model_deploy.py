@@ -42,6 +42,8 @@ class DeployTool:
         self.quantize = args.quantize.lower()
         self.asymmetric = args.asymmetric
         self.cali_table = args.calibration_table
+        self.quant_input = args.quant_input
+        self.quant_output = args.quant_output
         self.quantize_table = args.quantize_table
         self.model = args.model
         self.test_input = args.test_input
@@ -98,7 +100,13 @@ class DeployTool:
         f32_blobs_compare(self.tpu_npz, self.ref_npz, self.tolerance, self.excepts)
 
     def build_model(self):
-        mlir_to_model(self.tpu_mlir, self.model, self.final_mlir)
+        mlir_to_model(
+            self.tpu_mlir,
+            self.model,
+            self.final_mlir,
+            self.quant_input,
+            self.quant_output,
+        )
         if self.do_validate:
             tool.validate_model()
 
@@ -142,6 +150,12 @@ if __name__ == '__main__':
                         default="",
                         help="reference npz file; if none, will run inner")
     parser.add_argument("--model", required=True, help='output model')
+    parser.add_argument("--quant_input",
+                        action="store_true",
+                        help="strip input type cast in bmodel, need outside type conversion")
+    parser.add_argument("--quant_output",
+                        action="store_true",
+                        help="strip output type cast in bmodel, need outside type conversion")
     args = parser.parse_args()
     tool = DeployTool(args)
     # lowering to tpu

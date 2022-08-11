@@ -144,6 +144,8 @@ model_deploy.py \
   ${test_reference_opt} \
   ${tolerance_sym_opt} \
   --correctness 0.99,0.90 \
+  --quant_input \
+  --quant_output \
   --model ${model_name}_bm1684x_int8_sym.bmodel
 
 # to asymmetric

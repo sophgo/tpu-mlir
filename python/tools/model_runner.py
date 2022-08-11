@@ -23,13 +23,30 @@ def model_inference(inputs: dict, model_file: str) -> dict:
     model = pyruntime.Model(model_file)
     net = model.Net(model.networks[0])
     for i in net.inputs:
-        assert (i.name in inputs)
-        assert (i.data.shape == inputs[i.name].shape)
-        assert (i.data.dtype == inputs[i.name].dtype)
-        i.data[:] = inputs[i.name]
+        assert i.name in inputs
+        assert i.data.shape == inputs[i.name].shape
+        if i.data.dtype == inputs[i.name].dtype:
+            i.data[:] = inputs[i.name]
+        elif i.data.dtype == np.int8 and inputs[i.name].dtype == np.float32:
+            data = np.round(inputs[i.name] * i.qscale)
+            i.data[:] = np.clip(data, -128, 127).astype(np.int8)
+        elif i.data.dtype == np.uint8 and inputs[i.name].dtype == np.float32:
+            data = np.round(inputs[i.name] * i.qscale)
+            i.data[:] = np.clip(data, 0, 255).astype(np.uint8)
+        else:
+            raise ValueError(
+                f"unknown type conversion: form {inputs[i.name].dtype} to {i.data.dtype}"
+            )
     net.forward()
     for i in net.outputs:
-        outputs[i.name] = np.array(i.data)
+        if i.data.dtype == np.float32 or i.qscale == 0:
+            outputs[i.name] = np.array(i.data)
+        elif i.data.dtype == np.int8 and i.qscale != 0:
+            outputs[i.name] = np.array(
+                i.data.astype(np.float32) * i.qscale, dtype=np.float32
+            )
+        else:
+            raise ValueError(f"unsupported type: {i.data.dtype}")
     return outputs
 
 
