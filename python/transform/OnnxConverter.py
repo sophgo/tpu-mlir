@@ -136,6 +136,7 @@ class OnnxConverter(BaseConverter):
             "Squeeze": lambda node: self.convert_squeeze_op(node),
             "Clip": lambda node: self.convert_clip_op(node),
             "ConvTranspose": lambda node: self.convert_conv_transpose_op(node),
+            'Split' :  lambda node: self.convert_split_op(node),
         }
 
     def __del__(self):
@@ -941,3 +942,32 @@ class OnnxConverter(BaseConverter):
             self.addOperand(onnx_node.name, reshape1_op)
         else:
             self.addOperand(onnx_node.name, new_op)
+
+    def convert_split_op(self, onnx_node):
+        assert (onnx_node.op_type == "Split")
+        input_shape = self.getShape(onnx_node.inputs[0])
+        num_output = len(onnx_node.outputs)
+        num_dims = len(input_shape)
+        axis = onnx_node.attrs['axis']
+        if axis < 0:
+            axis += num_dims
+        slice = input_shape[axis] // num_output
+        split = onnx_node.attrs.get('split', [slice] * num_output)
+        op = self.getOperand(onnx_node.inputs[0])
+
+        offset = 0
+        #replace the split with slice
+        for i, name in zip(split, onnx_node.outputs):
+            output_shape = list(input_shape)
+            output_shape[axis] = i
+            slice_offset = [0] * num_dims
+            slice_offset[axis] = offset
+            slice_step = [1] * num_dims
+            p = {
+                'name': "{}_{}".format(name, onnx_node.op_type),
+                'offset': list(slice_offset),
+                'steps': list(slice_step)
+            }
+            new_op = self.mlir.create_slice_op([op], output_shape, **p)
+            self.addOperand(name, new_op)
+            offset = offset + i
