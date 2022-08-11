@@ -217,6 +217,26 @@ typedef struct {
   int active_type;
 } active_param_t;
 
+typedef struct {
+  uint64_t input_addr;
+  uint64_t output_addr;
+  uint64_t requant_addr;
+  uint32_t buffer_local_addr;
+  int n;
+  int c;
+  int h;
+  int w;
+  bool is_perchannel;
+  int mul_value;
+  int shift_value;
+  int offset_value;
+  int input_dtype;
+  int output_dtype;
+  int mode;
+  int reshaped_coeff;
+  int zx_value;
+} requant_int_param_t;
+
 #ifdef __cplusplus
 }
 #endif
