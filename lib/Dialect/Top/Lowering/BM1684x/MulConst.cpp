@@ -37,20 +37,10 @@ Value top::MulConstOp::lowering_int8_bm1684x(bool asymmetric) {
       builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
   auto newType = Quant::getQuantInt8Type(output(), asymmetric);
   builder.setInsertionPointAfter(op);
-  if (!asymmetric) {
-    auto newOp = builder.create<tpu::MulConstOp>(
-        op->getLoc(), newType, ValueRange{input()},
-        ArrayRef<NamedAttribute>{attrs});
-    return newOp.output();
-  } else {
-    attrs.push_back(
-        builder.getNamedAttr("quant_mode", builder.getI64IntegerAttr(2)));
-    auto none = Module::getNoneOp(op);
-    auto newOp = builder.create<tpu::RequantOp>(
-        op->getLoc(), newType, ValueRange{input(), none},
-        ArrayRef<NamedAttribute>{attrs});
-    return newOp.output();
-  }
+  auto newOp = builder.create<tpu::MulShiftOp>(op->getLoc(), newType,
+                                               ValueRange{input()},
+                                               ArrayRef<NamedAttribute>{attrs});
+  return newOp.output();
 }
 
 Value top::MulConstOp::lowering_f32_bm1684x() {

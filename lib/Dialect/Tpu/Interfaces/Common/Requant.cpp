@@ -22,112 +22,23 @@ LogicalResult tpu::RequantOp::init(InferenceParameter &p) { return success(); }
 void tpu::RequantOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::RequantOp::inference(InferenceParameter &p) {
-  auto i_sType = Module::getStorageType(input());
   auto o_sType = Module::getStorageType(output());
   auto o_qtype = Quant::getUniformQuantizedType(output());
-  if (i_sType.isInteger(8)) {
-    int64_t n, c, h, w;
-    Module::getNCHW(output(), n, c, h, w);
-    std::shared_ptr<std::vector<int32_t>> quant_v;
-    std::vector<int64_t> quant_shape = {1, c, 1, 3};
+  int64_t num_elem = Module::getNumElements(input());
+  int64_t zp_x = 0;
+  if (Quant::isUniformQuantized(input())) {
     auto i_qtype = Quant::getUniformQuantizedType(input());
-    bool per_axis = false;
-    if (quant().getType().isa<RankedTensorType>()) {
-      auto quantOp = quant().getDefiningOp<top::WeightOp>();
-      quant_v = quantOp.read<int32_t>();
-      per_axis = true;
-    }
-    int64_t rshift_val = rshift().getValue();
-    int64_t mul_val = multiplier().getValue();
-    int64_t zp_x = i_qtype.getZeroPoint();
-#pragma omp parallel for schedule(static, omp_schedule(c))
-    for (int ic = 0; ic < c; ic++) {
-      int64_t multi = per_axis ? quant_v->at(ic * 3 + 1) : mul_val;
-      int64_t r_shift = per_axis ? quant_v->at(ic * 3) : rshift_val;
-      int64_t zp_y =
-          per_axis ? quant_v->at(ic * 3 + 2) : o_qtype.getZeroPoint();
-      for (int in = 0; in < n; in++) {
-        for (int hw = 0; hw < h * w; hw++) {
-          int64_t idx = (in * c + ic) * h * w + hw;
-          int32_t tmp = (int32_t)p.inputs[0][idx] - zp_x;
-          auto v = applyMultiplierAndRShift(tmp, (int32_t)multi, (int32_t)r_shift) + zp_y;
-          p.outputs[0][idx] = o_sType.isUnsignedInteger(8) ? Quant::to_uint8(v)
-                                                           : Quant::to_int8(v);
-        }
-      }
-    }
-    return success();
+    zp_x = i_qtype.getZeroPoint();
   }
-
-  auto shape = Module::getShape(output());
-  auto mode = quant_mode().getValue();
-  int64_t inner = 1;
-  for (int i = 2; i < shape.size(); ++i) {
-    inner *= shape[i];
-  }
-  if (mode == 0) {
-#pragma omp parallel for schedule(static, omp_schedule(shape[1]))
-    for (int c = 0; c < shape[1]; ++c) {
-      auto multi = multiplier().getValue();
-      auto rshift_val = rshift().getValue();
-      auto zero_point = o_qtype.getZeroPoint();
-      if (quant().getType().isa<NoneType>()) {
-        multi = p.inputs[1][c * 3];
-        rshift_val = -p.inputs[1][c * 3 + 1];
-        zero_point = p.inputs[1][c * 3 + 2];
-      }
-      for (int n = 0; n < shape[0]; ++n) {
-        for (int i = 0; i < inner; ++i) {
-          int offset = (n * shape[1] + c) * inner + i;
-          p.outputs[0][offset] =
-              zero_point + MultiplyByQuantizedMultiplier(
-                               (int32_t)p.inputs[0][offset], (int32_t)multi,
-                               (int32_t)rshift_val);
-        }
-      }
-    }
-  } else if (mode == 1) {
-#pragma omp parallel for schedule(static, omp_schedule(shape[1]))
-    for (int c = 0; c < shape[1]; ++c) {
-      auto multi = multiplier().getValue();
-      auto rshift_val = rshift().getValue();
-      auto zero_point = o_qtype.getZeroPoint();
-      if (quant().getType().isa<NoneType>()) {
-        multi = p.inputs[1][c * 3];
-        rshift_val = -p.inputs[1][c * 3 + 1];
-        zero_point = p.inputs[1][c * 3 + 2];
-      }
-      assert(rshift_val > 0);
-      for (int n = 0; n < shape[0]; ++n) {
-        for (int i = 0; i < inner; ++i) {
-          int offset = (n * shape[1] + c) * inner + i;
-          p.outputs[0][offset] =
-              zero_point + MultiplyByQuantizedMultiplier(
-                               (int32_t)p.inputs[0][offset], (int32_t)multi,
-                               (int32_t)rshift_val);
-        }
-      }
-    }
-  } else if (mode == 2) {
-#pragma omp parallel for schedule(static, omp_schedule(shape[1]))
-    for (int c = 0; c < shape[1]; ++c) {
-      auto multi = multiplier().getValue();
-      auto rshift_val = rshift().getValue();
-      auto zero_point = o_qtype.getZeroPoint();
-      if (quant().getType().isa<RankedTensorType>()) {
-        multi = p.inputs[1][c * 3];
-        rshift_val = -p.inputs[1][c * 3 + 1];
-        zero_point = p.inputs[1][c * 3 + 2];
-      }
-      for (int n = 0; n < shape[0]; ++n) {
-        for (int i = 0; i < inner; ++i) {
-          int offset = (n * shape[1] + c) * inner + i;
-          p.outputs[0][offset] =
-              zero_point +
-              applyMultiplierAndRShift(p.inputs[0][offset], multi, rshift_val);
-        }
-      }
-    }
+  int64_t rshift_val = rshift();
+  int64_t mul_val = multiplier();
+  int64_t zp_y = o_qtype.getZeroPoint();
+#pragma omp parallel for schedule(static, omp_schedule(num_elem))
+  for (int64_t idx = 0; idx < num_elem; idx++) {
+    int32_t tmp = (int32_t)p.inputs[0][idx] - zp_x;
+    auto v = applyMultiplierAndRShift(tmp, mul_val, rshift_val) + zp_y;
+    p.outputs[0][idx] =
+        o_sType.isUnsignedInteger(8) ? Quant::to_uint8(v) : Quant::to_int8(v);
   }
   return success();
 }
