@@ -355,7 +355,7 @@ int8非对称bmodel的执行方式如下，得到 ``dog_int8_asym.jpg`` ：
 四张图片对比如下：
 
 .. _yolov5s:
-.. figure:: ../assets/yolov5s.png
+.. figure:: ../assets/yolov5s.jpg
    :height: 13cm
    :align: center
 

@@ -149,7 +149,8 @@ wheel安装包。例如：tpu_perf-x.x.x-py3-none-any.whl 。并将 ``tpu-perf``
 .. code-block:: console
    :linenos:
 
-   $ pip3 install ../tpu_perf-*-py3-none-any.whl
+   $ pip3 install ./tpu_perf-*-py3-none-any.whl
+   $ cd model-zoo
    $ python3 -m tpu_perf.run --mlir --full
 
 运行结束后，性能数据在 ``output/stats.csv`` 中可以获得。该文件中记录了相关模型的
