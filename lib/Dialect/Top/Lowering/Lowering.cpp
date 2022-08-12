@@ -116,26 +116,11 @@ Value do_transfer(Value in, Value out, bool asymmetric) {
         "multiplier", builder.getI64IntegerAttr(multiplier)));
     attrs.push_back(
         builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
-    attrs.push_back(
-        builder.getNamedAttr("quant_mode", builder.getI64IntegerAttr(2)));
-    auto in_type = in.getType().cast<RankedTensorType>();
-    auto in_shape = in_type.getShape();
-    auto none = Module::getNoneOp(op);
     builder.setInsertionPointAfterValue(in);
-    auto rqOp = builder.create<tpu::RequantOp>(op->getLoc(), new_type,
-                                               ValueRange{in, none},
-                                               ArrayRef<NamedAttribute>{attrs});
+    auto rqOp =
+        builder.create<tpu::RequantOp>(op->getLoc(), new_type, ValueRange{in},
+                                       ArrayRef<NamedAttribute>{attrs});
     return rqOp.output();
-
-    //    auto table = create_lookup_table(in, out, same_value, asymmetric);
-    //    std::vector<NamedAttribute> attrs;
-    //    attrs.push_back(
-    //        builder.getNamedAttr("name", builder.getStringAttr(new_name)));
-    //    builder.setInsertionPointAfterValue(table);
-    //    auto newOp = builder.create<tpu::LutOp>(op->getLoc(), new_type,
-    //                                            ValueRange{in, table},
-    //                                            ArrayRef<NamedAttribute>{attrs});
-    //    return newOp.output();
   }
 }
 
@@ -469,12 +454,12 @@ protected:
   void cast_process() {
     mainFunc_.walk([&](Operation *op) {
       if (op->getDialect()->getNamespace() == "tpu" &&
-          false == isa<tpu::CastOp>(op)) {
+          false == isa<tpu::CastOp, tpu::RequantOp, tpu::RequantAxisOp>(op)) {
         auto oType = op->getResult(0).getType();
-        for (auto nextOp : op->getUsers()) {
-          if (isa<tpu::RequantOp>(nextOp)) {
-            auto rqOp = dyn_cast<tpu::RequantOp>(nextOp);
-            oType = rqOp->getResult(0).getType();
+        if (op->hasOneUse()) {
+          auto nextOp = *(op->getUsers().begin());
+          if (isa<tpu::RequantOp, tpu::RequantAxisOp>(nextOp)) {
+            oType = nextOp->getResult(0).getType();
           }
         }
         // here consider output type should be the same with input type

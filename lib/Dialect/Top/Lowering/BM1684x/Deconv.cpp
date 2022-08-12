@@ -115,15 +115,15 @@ Value top::DeconvOp::lowering_int8_bm1684x(bool asymmetric) {
       builder.getNamedAttr("name", builder.getStringAttr(deconv_name)));
   attrs.push_back(
       builder.getNamedAttr("with_bias", builder.getBoolAttr(param.with_bias)));
-  auto deconvType =
-      RankedTensorType::get({param.n, param.oc, param.oh, param.ow}, builder.getI32Type());
-  auto deconvOp = builder.create<tpu::DeconvOp>(op->getLoc(), deconvType,
-                                             ArrayRef<Value>{operands},
-                                             ArrayRef<NamedAttribute>{attrs});
+  auto deconvType = RankedTensorType::get(
+      {param.n, param.oc, param.oh, param.ow}, builder.getI32Type());
+  auto deconvOp = builder.create<tpu::DeconvOp>(
+      op->getLoc(), deconvType, ArrayRef<Value>{operands},
+      ArrayRef<NamedAttribute>{attrs});
 
   auto rqType = Quant::getQuantInt8Type(output(), asymmetric);
 
-  auto quant_int32 = std::make_shared<std::vector<int32_t>>(param.oc*3, 0);
+  auto quant_int32 = std::make_shared<std::vector<int32_t>>(param.oc * 3, 0);
   int int32_multiplier, rshift;
   for (int c = 0; c < param.oc; c++) { // per-channel量化
     float *p_filter = filter_f32->data() + c * inner_dim;
@@ -135,8 +135,10 @@ Value top::DeconvOp::lowering_int8_bm1684x(bool asymmetric) {
     quant_int32->data()[3 * c + 1] = -rshift;
     quant_int32->data()[3 * c + 2] = out_zp;
   }
-  auto new_quant_type = RankedTensorType::get({1, param.oc, 1, 3}, builder.getI32Type());
-  auto new_quant = WeightOp::create(deconvOp, "quant_int32", *quant_int32, new_quant_type);
+  auto new_quant_type =
+      RankedTensorType::get({1, param.oc, 1, 3}, builder.getI32Type());
+  auto new_quant =
+      WeightOp::create(deconvOp, "quant_int32", *quant_int32, new_quant_type);
 
   attrs.clear();
   operands.clear();
@@ -144,18 +146,10 @@ Value top::DeconvOp::lowering_int8_bm1684x(bool asymmetric) {
   operands.push_back(new_quant);
   builder.setInsertionPointAfter(deconvOp);
   std::string rq_name = Module::getName(op).str();
-  attrs.push_back(
-      builder.getNamedAttr("name", builder.getStringAttr(rq_name)));
-  attrs.push_back(
-      builder.getNamedAttr("quant_mode", builder.getI64IntegerAttr(2)));
-  attrs.push_back(
-      builder.getNamedAttr("multiplier", builder.getI64IntegerAttr(1)));
-  attrs.push_back(
-      builder.getNamedAttr("rshift", builder.getI64IntegerAttr(0)));
-
-  auto rqOp = builder.create<tpu::RequantOp>(deconvOp->getLoc(), rqType,
-                                             ArrayRef<Value>{operands},
-                                             ArrayRef<NamedAttribute>{attrs});
+  attrs.push_back(builder.getNamedAttr("name", builder.getStringAttr(rq_name)));
+  auto rqOp = builder.create<tpu::RequantAxisOp>(
+      deconvOp->getLoc(), rqType, ArrayRef<Value>{operands},
+      ArrayRef<NamedAttribute>{attrs});
   return rqOp.output();
 }
 
