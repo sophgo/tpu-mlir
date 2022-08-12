@@ -215,7 +215,7 @@ MLIR转F32模型
      - 表示 MLIR 量化后的结果与 MLIR fp32推理结果相似度的误差容忍度
    * - correctness
      - 否
-     - 表示仿真器运行的结果与MLIR量化后的结果相似度的误差容忍度，默认0.99,0.99
+     - 表示仿真器运行的结果与MLIR量化后的结果相似度的误差容忍度，默认0.99,0.90
    * - test_input
      - 否
      - 指定输入文件用于验证，可以是图片或npy或npz；可以不指定，则不会正确性验证
@@ -273,7 +273,6 @@ MLIR转INT8模型
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
        --tolerance 0.85,0.45 \
-       --correctness 0.99,0.90 \
        --model yolov5s_1684x_int8_sym.bmodel
 
 编译完成后，会生成名为 ``${model_name}_1684x_int8_sym.bmodel`` 的文件。
@@ -295,7 +294,6 @@ MLIR转INT8模型
        --test_input yolov5s_in_f32.npz \
        --test_reference yolov5s_top_outputs.npz \
        --tolerance 0.90,0.55 \
-       --correctness 0.99,0.92 \
        --model yolov5s_1684x_int8_asym.bmodel
 
 

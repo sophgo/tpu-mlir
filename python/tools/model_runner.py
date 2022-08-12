@@ -18,6 +18,11 @@ import onnxruntime
 import os
 
 
+def round_away(x):
+    a = np.floor(np.abs(x) + 0.5)
+    return np.sign(x) * a
+
+
 def model_inference(inputs: dict, model_file: str) -> dict:
     outputs = dict()
     model = pyruntime.Model(model_file)
@@ -28,25 +33,21 @@ def model_inference(inputs: dict, model_file: str) -> dict:
         if i.data.dtype == inputs[i.name].dtype:
             i.data[:] = inputs[i.name]
         elif i.data.dtype == np.int8 and inputs[i.name].dtype == np.float32:
-            data = np.round(inputs[i.name] * i.qscale)
+            data = round_away(inputs[i.name] * i.qscale)
             i.data[:] = np.clip(data, -128, 127).astype(np.int8)
         elif i.data.dtype == np.uint8 and inputs[i.name].dtype == np.float32:
-            data = np.round(inputs[i.name] * i.qscale)
+            data = round_away(inputs[i.name] * i.qscale)
             i.data[:] = np.clip(data, 0, 255).astype(np.uint8)
         else:
-            raise ValueError(
-                f"unknown type conversion: form {inputs[i.name].dtype} to {i.data.dtype}"
-            )
+            raise ValueError("unknown type: form {inputs[i.name].dtype} to {i.data.dtype}")
     net.forward()
     for i in net.outputs:
         if i.data.dtype == np.float32 or i.qscale == 0:
             outputs[i.name] = np.array(i.data)
         elif i.data.dtype == np.int8 and i.qscale != 0:
-            outputs[i.name] = np.array(
-                i.data.astype(np.float32) * i.qscale, dtype=np.float32
-            )
+            outputs[i.name] = np.array(i.data.astype(np.float32) * i.qscale, dtype=np.float32)
         else:
-            raise ValueError(f"unsupported type: {i.data.dtype}")
+            raise ValueError("unsupported type: {i.data.dtype}")
     return outputs
 
 

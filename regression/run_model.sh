@@ -143,7 +143,6 @@ model_deploy.py \
   ${test_innpz_opt} \
   ${test_reference_opt} \
   ${tolerance_sym_opt} \
-  --correctness 0.99,0.90 \
   --quant_input \
   --quant_output \
   --model ${model_name}_bm1684x_int8_sym.bmodel
@@ -164,7 +163,6 @@ model_deploy.py \
   ${test_innpz_opt} \
   ${test_reference_opt} \
   ${tolerance_asym_opt} \
-  --correctness 0.99,0.90 \
   --model ${model_name}_bm1684x_int8_asym.bmodel
 fi
 

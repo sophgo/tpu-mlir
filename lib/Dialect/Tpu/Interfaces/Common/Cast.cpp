@@ -36,7 +36,8 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
     auto qtype = Quant::getUniformQuantizedType(output());
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (size_t i = 0; i < num_elem; i++) {
-      float v = p.inputs[0][i] / qtype.getScale() + qtype.getZeroPoint();
+      float v =
+          std::round(p.inputs[0][i] / qtype.getScale()) + qtype.getZeroPoint();
       if (out_type.isUnsignedInteger(8)) {
         p.outputs[0][i] = Quant::to_uint8(v);
       } else {
