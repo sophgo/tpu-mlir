@@ -23,7 +23,7 @@ using namespace tpu_mlir::backend;
 // GlobalGenInterface
 // =========================================
 
-void tpu::RequantOp::codegen_global_int8_bm1684x() {
+void tpu::RequantAxisOp::codegen_global_int8_bm1684x() {
   requant_int_param_t param = {0};
   int64_t n, c, h, w;
   Module::getNCHW(input(), n, c, h, w);
@@ -34,12 +34,9 @@ void tpu::RequantOp::codegen_global_int8_bm1684x() {
   param.h = (int)h;
   param.w = (int)w;
 
-  auto iqtype = Quant::getUniformQuantizedType(input());
-  auto oqtype = Quant::getUniformQuantizedType(output());
-  param.mul_value = multiplier();
-  param.shift_value = -rshift();
-  param.offset_value = oqtype.getZeroPoint();
-  param.zx_value = iqtype.getZeroPoint();
+  param.requant_addr = Module::getAddress(quant());
+  param.is_perchannel = true;
+  param.reshaped_coeff = false;
   param.mode = 2;
   param.input_dtype = BM168x::getDataType(input());
   param.output_dtype = BM168x::getDataType(output());
@@ -47,7 +44,7 @@ void tpu::RequantOp::codegen_global_int8_bm1684x() {
                                        sizeof(param));
 }
 
-void tpu::RequantOp::codegen_global_float_bm1684x() {
+void tpu::RequantAxisOp::codegen_global_float_bm1684x() {
   codegen_global_int8_bm1684x();
 }
 
@@ -55,19 +52,14 @@ void tpu::RequantOp::codegen_global_float_bm1684x() {
 // LocalGenInterface
 // =========================================
 
-int64_t tpu::RequantOp::getBufferSize_bm1684x(
+int64_t tpu::RequantAxisOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
-  auto input_dtype = BM1684x::getDataType(input());
-  if (input_dtype == DTYPE_INT8 || input_dtype == DTYPE_UINT8) {
-    // store INT16:(X - Zx)
-    return in_lmem_bytes * 2;
-  }
   return 0;
 }
 
-void tpu::RequantOp::codegen_local_int8_bm1684x(int64_t n_step,
-                                                int64_t h_step) {
+void tpu::RequantAxisOp::codegen_local_int8_bm1684x(int64_t n_step,
+                                                    int64_t h_step) {
   requant_int_param_t param = {0};
   int64_t n, c, h, w;
   Module::getNCHW(input(), n, c, h, w);
@@ -81,10 +73,10 @@ void tpu::RequantOp::codegen_local_int8_bm1684x(int64_t n_step,
   param.h = gi.h_slice;
   param.w = w;
 
-  auto oqtype = Quant::getUniformQuantizedType(output());
-  param.mul_value = multiplier();
-  param.shift_value = -rshift();
-  param.offset_value = oqtype.getZeroPoint();
+  auto requant_gi = LocalGenInterface::getGroupInfo(quant(), n_step, h_step);
+  param.requant_addr = (uint32_t)requant_gi.out_addr;
+  param.is_perchannel = true;
+  param.reshaped_coeff = false;
 
   if (Quant::isUniformQuantized(input())) {
     auto iqtype = Quant::getUniformQuantizedType(input());
@@ -97,7 +89,7 @@ void tpu::RequantOp::codegen_local_int8_bm1684x(int64_t n_step,
                                       sizeof(param));
 }
 
-void tpu::RequantOp::codegen_local_float_bm1684x(int64_t n_step,
-                                                 int64_t h_step) {
+void tpu::RequantAxisOp::codegen_local_float_bm1684x(int64_t n_step,
+                                                     int64_t h_step) {
   llvm_unreachable("support later");
 }

@@ -377,14 +377,27 @@ def Tpu_RequantOp:Tpu_Op<"Requant",
   [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
   let summary = "requant operation";
   let description = [{
-    Requant int32 or f32 data to int8 or uint8 data
+    Requant 32/16/8 bit data to int8 or uint8 data
   }];
   let arguments = (ins
     AnyTensor:$input,
-    AnyTensorOrNone:$quant,
-    OptionalAttr<I64Attr>:$multiplier,
-    OptionalAttr<I64Attr>:$rshift,
-    OptionalAttr<I64Attr>:$quant_mode,
+    I64Attr:$multiplier,
+    I64Attr:$rshift,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
+    StrAttr:$name
+  );
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_RequantAxisOp:Tpu_Op<"RequantAxis",
+  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
+  let summary = "requant operation";
+  let description = [{
+    Requant 32/16/8 bit data to int8 or uint8 data, PerAxis(or PerChannel)
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$quant,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
     StrAttr:$name
   );
@@ -501,7 +514,7 @@ def Tpu_MulShiftOp: Tpu_Op<"MulShift",[
   let summary = "MulShift operator";
 
   let description = [{
-      Y = int8(X * multiplier >> rshift)
+      Y = int8(X-zx) * multiplier >> rshift + zy)
   }];
 
   let arguments = (
