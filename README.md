@@ -1,4 +1,4 @@
-![](./design/assets/sophgo_chip.png)
+![](./doc/assets/sophgo_chip.png)
 
 # TPU-MLIR
 
@@ -12,7 +12,7 @@ CPU服务器以及相关产品的研发与销售。旗下算丰全系列人工�
 算平台。公司具备全球领先的先进制程设计能力，现已成功量产云端、边端人工智能芯片并
 规模化商业落地。
 
-更多关于**TPU-MLIR**的信息可以参考[TPU-MLIR整体架构](./design/flow.md)。
+本项目的技术细节可以参考：[TPU-MLIR开发参考手册](https://sophgo.github.io/devoloper_manual/)。
 
 目前该工程支持BM1684x，后面会陆续支持BM1684、CV183x、CV182x、Mars等等芯片。
 
