@@ -23,9 +23,9 @@ void tpu::ConvOp::weight_reorder_int8_bm1684() {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
   bool is_dw, with_bias, relu;
-  float relu_upper_limit;
+  double relu_limit;
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-             pl, pr, dh, dw, is_dw, with_bias, relu, relu_upper_limit);
+             pl, pr, dh, dw, is_dw, with_bias, relu, relu_limit);
   auto filterOp = cast<top::WeightOp>(filter().getDefiningOp());
   auto filter_int8 = filterOp.read<int8_t>();
   int new_size = oc * (align_up(ic, 4l)) * kh * kw;
@@ -53,9 +53,9 @@ void tpu::ConvOp::codegen_global_int8_bm1684() {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
   bool is_dw, with_bias, relu;
-  float relu_upper_limit;
+  double relu_limit;
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-             pl, pr, dh, dw, is_dw, with_bias, relu, relu_upper_limit);
+             pl, pr, dh, dw, is_dw, with_bias, relu, relu_limit);
   if (is_dw) {
     BM1684::instance().dl_nodechip_depthwise_fix8b_forward_parallel(
         Module::getAddress(input()), Module::getAddress(output()),

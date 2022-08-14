@@ -27,7 +27,7 @@ typedef struct fc_global_spec {
   int32_t R_transpose;
   int32_t have_bias;
   int32_t if_relu;
-  float relu_upper_limit;
+  float relu_limit;
   /* quantize param */
   int32_t rshift;
   int32_t is_asymmetric;
@@ -47,8 +47,8 @@ typedef struct fc_global_spec {
 void tpu::MatMulOp::codegen_global_int8_bm1684x() {
   int64_t batch, M, K, N;
   bool with_bias, relu;
-  float relu_upper_limit;
-  parseParam(batch, M, K, N, with_bias, relu, relu_upper_limit);
+  double relu_limit;
+  parseParam(batch, M, K, N, with_bias, relu, relu_limit);
   assert(batch == 1);
   auto op = getOperation();
   auto input_spec = BM1684x::get_input_spec(op);
@@ -57,7 +57,7 @@ void tpu::MatMulOp::codegen_global_int8_bm1684x() {
   memset(&spec, 0, sizeof(spec));
   spec.R_transpose = 0;
   spec.if_relu = relu;
-  spec.relu_upper_limit = relu_upper_limit;
+  spec.relu_limit = relu_limit;
   spec.rshift = 0;
   spec.is_asymmetric = 1;
   spec.rzp_is_const = 1;
@@ -78,8 +78,8 @@ void tpu::MatMulOp::codegen_global_float_bm1684x() {
 
   int64_t batch, M, K, N;
   bool with_bias, relu;
-  float relu_upper_limit;
-  parseParam(batch, M, K, N, with_bias, relu, relu_upper_limit);
+  double relu_limit;
+  parseParam(batch, M, K, N, with_bias, relu, relu_limit);
   assert(batch == 1);
   auto op = getOperation();
   auto input_spec = BM1684x::get_input_spec(op);
@@ -88,7 +88,7 @@ void tpu::MatMulOp::codegen_global_float_bm1684x() {
   memset(&spec, 0, sizeof(spec));
   spec.R_transpose = 0;
   spec.if_relu = relu;
-  spec.relu_upper_limit = relu_upper_limit;
+  spec.relu_limit = relu_limit;
   spec.have_bias = with_bias;
   BM1684x::instance().call_global_func("backend_api_fc_global", &spec,
                                       sizeof(spec), input_spec->data(),

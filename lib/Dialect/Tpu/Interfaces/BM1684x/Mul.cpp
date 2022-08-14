@@ -26,7 +26,7 @@ extern "C" {
 typedef struct binary_common_spec {
     int32_t binary_type;
     int32_t if_relu;
-    float relu_upper_limit;
+    float relu_limit;
     int32_t scale_A;
     int32_t scale_B;
     int32_t rshift_A;
@@ -82,7 +82,7 @@ void tpu::MulOp::codegen_global_float_bm1684x() {
   memset(&spec, 0, sizeof(binary_common_spec_t));
   spec.binary_type = BM_BINARY_MUL;
   spec.if_relu = (int)do_relu();
-  spec.relu_upper_limit = 0;
+  spec.relu_limit = relu_limit().convertToDouble();
   spec.scale_A = 1;
   spec.scale_B = 1;
   spec.rshift_A = 0;
@@ -134,7 +134,6 @@ void tpu::MulOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
   memset(&param, 0, sizeof(binary_local_param_t));
   param.spec.common.binary_type = BM_BINARY_MUL;
   param.spec.common.if_relu = (int)do_relu();
-  param.spec.common.relu_upper_limit = 0;
   param.spec.common.scale_A = (int)multiplier();
   param.spec.common.scale_B = 1;
   param.spec.common.rshift_A = (int)rshift();
@@ -174,7 +173,7 @@ void tpu::MulOp::codegen_local_float_bm1684x(int64_t n_step, int64_t h_step) {
   memset(&param, 0, sizeof(binary_local_param_t));
   param.spec.common.binary_type = BM_BINARY_MUL;
   param.spec.common.if_relu = do_relu();
-  param.spec.common.relu_upper_limit = 0;
+  param.spec.common.relu_limit = relu_limit().convertToDouble();
   param.spec.common.scale_A = 1;
   param.spec.common.scale_B = 1;
   param.spec.common.rshift_A = 0;

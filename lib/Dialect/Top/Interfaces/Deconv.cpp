@@ -28,6 +28,7 @@ void top::DeconvOp::parseParam(void *param) {
   auto pad = Module::getI64Array(pads());
   auto ins = Module::getI64Array(inserts(), kernel_shape().size(), 0);
   p->do_relu = do_relu();
+  p->relu_limit = relu_limit().convertToDouble();
   p->with_bias = !bias().getType().isa<NoneType>();
   p->g = group();
   if (is_deconv3d) {

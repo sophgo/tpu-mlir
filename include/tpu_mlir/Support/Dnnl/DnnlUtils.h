@@ -14,5 +14,5 @@
 using namespace dnnl;
 namespace tpu_mlir {
 
-int post_relu(primitive_attr &attr, bool &do_relu, float &relu_upper_limit);
+void post_relu(primitive_attr &attr, bool &do_relu, double &relu_limit);
 } // namespace tpu_mlir

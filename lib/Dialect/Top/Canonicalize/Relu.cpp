@@ -29,13 +29,9 @@ struct TopFuseRelu : public OpRewritePattern<ReluOp> {
     if (false == formerOp->hasTrait<SupportFuseRelu>()) {
       return failure();
     }
-
-    bool has_upper_limit = op->hasAttr("upper_limit") &&
-                           op.upper_limitAttr().getValueAsDouble() > 0.f;
-    if (has_upper_limit) {
-      formerOp->setAttr("upper_limit", op.upper_limitAttr());
-    }
+    auto relu_limit = op.relu_limit().convertToDouble();
     formerOp->setAttr("do_relu", rewriter.getBoolAttr(true));
+    formerOp->setAttr("relu_limit", rewriter.getF64FloatAttr(relu_limit));
     formerOp->setAttr("name", op.nameAttr());
     // remove the relu Op
     rewriter.replaceOp(op, {op.input()});

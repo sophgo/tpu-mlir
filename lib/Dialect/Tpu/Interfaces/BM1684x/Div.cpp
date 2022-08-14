@@ -25,7 +25,7 @@ extern "C" {
 typedef struct binary_common_spec {
     int32_t binary_type;
     int32_t if_relu;
-    float relu_upper_limit;
+    float relu_limit;
     int32_t scale_A;
     int32_t scale_B;
     int32_t rshift_A;
@@ -49,7 +49,9 @@ void tpu::DivOp::codegen_global_int8_bm1684x() {
   memset(&spec, 0, sizeof(binary_common_spec_t));
   spec.binary_type = BM_BINARY_DIV;
   spec.if_relu = (int)do_relu();
-  spec.relu_upper_limit = 0;
+  if (!Quant::isUniformQuantized(output())) {
+    spec.relu_limit = relu_limit().convertToDouble();
+  }
   spec.scale_A = 1;
   spec.scale_B = 1;
   spec.rshift_A = 0;

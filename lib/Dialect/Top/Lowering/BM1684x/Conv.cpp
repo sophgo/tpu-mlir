@@ -27,9 +27,9 @@ Value top::ConvOp::lowering_int8_bm1684x(bool asymmetric) {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
   bool is_dw, with_bias, relu;
-  float relu_upper_limit;
+  double relu_limit;
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-             pl, pr, dh, dw, is_dw, with_bias, relu, relu_upper_limit);
+             pl, pr, dh, dw, is_dw, with_bias, relu, relu_limit);
   // in/out scale/zp
   double in_scale, out_scale;
   int64_t in_zp, out_zp;
@@ -217,9 +217,9 @@ Value top::ConvOp::lowering_quant_bm1684x() {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
   bool is_dw, with_bias, relu;
-  float relu_upper_limit;
+  double relu_limit;
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-             pl, pr, dh, dw, is_dw, with_bias, relu, relu_upper_limit);
+             pl, pr, dh, dw, is_dw, with_bias, relu, relu_limit);
   auto input_qtype = Quant::getUniformQuantizedType(input());
   auto output_qtype = Quant::getUniformQuantizedType(output());
   auto filter_type = filter().getType().cast<RankedTensorType>();

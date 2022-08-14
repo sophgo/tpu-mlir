@@ -35,7 +35,7 @@ typedef struct {
     int inversed;
     int binary_type;
     int if_relu;
-    float relu_upper_limit;
+    float relu_limit;
     int scale_A;
     int rshift_A;
 } constbinary_global_param_t;
@@ -52,7 +52,7 @@ typedef struct {
     int inversed;
     int binary_type;
     int if_relu;
-    float relu_upper_limit;
+    float relu_limit;
     int scale_A;
     int rshift_A;
 } constbinary_local_param_t;
@@ -83,7 +83,7 @@ void tpu::MulConstOp::codegen_global_int8_bm1684x() {
   param.B_const_val = 1; //static_cast<float>(coeffAttr().getValueAsDouble());
   param.binary_type = BM_BINARY_MUL;
   param.if_relu = do_relu();
-  param.relu_upper_limit = 0;
+  param.relu_limit = 0;
   param.scale_A = multiplier();
   param.rshift_A = rshift();
   BM1684x::instance().call_global_func("backend_api_constbinary_global",
@@ -112,7 +112,7 @@ void tpu::MulConstOp::codegen_global_float_bm1684x() {
   param.inversed = 0;
   param.binary_type = BM_BINARY_MUL;
   param.if_relu = do_relu();
-  param.relu_upper_limit = 0;
+  param.relu_limit = 0;
   BM1684x::instance().call_global_func("backend_api_constbinary_global",
                                           &param, sizeof(param));
 }
@@ -158,7 +158,6 @@ void tpu::MulConstOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step)
   param.inversed = 0;
   param.binary_type = BM_BINARY_MUL;
   param.if_relu = do_relu();
-  param.relu_upper_limit = 0;
   param.scale_A = multiplier();
   param.rshift_A = rshift();
   BM1684x::instance().call_local_func("backend_api_constbinary_local",
@@ -188,7 +187,7 @@ void tpu::MulConstOp::codegen_local_float_bm1684x(int64_t n_step, int64_t h_step
   param.inversed = 0;
   param.binary_type = BM_BINARY_MUL;
   param.if_relu = do_relu();
-  param.relu_upper_limit = 0;
+  param.relu_limit = relu_limit().convertToDouble();
   BM1684x::instance().call_local_func("backend_api_constbinary_local",
                                        &param, sizeof(param));
 }

@@ -101,7 +101,8 @@ LogicalResult tpu::AvgPool3DOp::inference(InferenceParameter &p) {
     }
   } else if (out_type.isa<FloatType>()) {
     if (do_relu()) {
-      function_relu(p.outputs[0], p.outputs[0], num_elem);
+      auto limit = relu_limit().convertToDouble();
+      function_relu(p.outputs[0], p.outputs[0], num_elem, limit);
     }
     if (out_type.isBF16()) {
       f32_to_bf16(p.outputs[0], p.outputs[0], num_elem);

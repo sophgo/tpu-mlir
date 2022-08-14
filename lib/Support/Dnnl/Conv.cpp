@@ -51,7 +51,7 @@ void Conv::pad_init(float *input, int n, int ic, int ih, int iw, int &pt,
 void Conv::setup(float *input, float *weight, float *bias, float *output, int n,
                  int ic, int ih, int iw, int oc, int oh, int ow, int kh, int kw,
                  int sh, int sw, int dh, int dw, int pt, int pb, int pl, int pr,
-                 int g, bool do_relu, float relu_upper_limit, int izp) {
+                 int g, bool do_relu, double relu_limit, int izp) {
   // printf("Conv para:%d,%d,%d,%d,%d,%d,%d,%d\n", idt, wdt, bdt, odt,
   // per_channel, izp, ozp, do_relu);
   pad_init(input, n, ic, ih, iw, pt, pb, pl, pr, izp);
@@ -87,7 +87,7 @@ void Conv::setup(float *input, float *weight, float *bias, float *output, int n,
 
   // post_ops ops;
   primitive_attr conv_attr;
-  post_relu(conv_attr, do_relu, relu_upper_limit);
+  post_relu(conv_attr, do_relu, relu_limit);
 
   conv_prim_desc =
       convolution_forward::primitive_desc(conv_desc, conv_attr, eng);

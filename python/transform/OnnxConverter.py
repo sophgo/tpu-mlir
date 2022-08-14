@@ -114,29 +114,30 @@ class OnnxConverter(BaseConverter):
             "BatchNormalization": lambda node: self.convert_batchnorm_op(node),
             "Concat": lambda node: self.convert_concat_op(node),
             "Conv": lambda node: self.convert_conv_op(node),
+            "Clip": lambda node: self.convert_clip_op(node),
+            "ConvTranspose": lambda node: self.convert_conv_transpose_op(node),
             "DepthToSpace": lambda node: self.convert_depth2space_op(node),
+            "Div": lambda node: self.convert_div_op(node),
+            "Dropout": lambda node: self.convert_skip_op(node),
             "Flatten": lambda node: self.convert_flatten_op(node),
             "Gemm": lambda node: self.convert_gemm_op(node),
             "GlobalAveragePool": lambda node: self.convert_global_avgpool_op(node),
             "GlobalMaxPool": lambda node: self.convert_global_maxpool_op(node),
+            "LeakyRelu": lambda node: self.convert_leaky_relu_op(node),
+            "Log": lambda node: self.convert_log_op(node),
             "MaxPool": lambda node: self.convert_maxpool_op(node),
             "Mul": lambda node: self.convert_mul_op(node),
+            "Pad": lambda node: self.convert_pad_op(node),
             "Relu": lambda node: self.convert_relu_op(node),
             "Reshape": lambda node: self.convert_reshape_op(node),
             "Resize": lambda node: self.convert_resize_op(node),
             "Sigmoid": lambda node: self.convert_sigmoid_op(node),
             "Slice": lambda node: self.convert_slice_op(node),
-            "Transpose": lambda node: self.convert_transpose_op(node),
-            "LeakyRelu": lambda node: self.convert_leaky_relu_op(node),
-            "Dropout": lambda node: self.convert_skip_op(node),
             "Softmax": lambda node: self.convert_softmax_op(node),
-            "Log": lambda node: self.convert_log_op(node),
-            "Pad": lambda node: self.convert_pad_op(node),
-            "Div": lambda node: self.convert_div_op(node),
             "Squeeze": lambda node: self.convert_squeeze_op(node),
-            "Clip": lambda node: self.convert_clip_op(node),
-            "ConvTranspose": lambda node: self.convert_conv_transpose_op(node),
-            'Split' :  lambda node: self.convert_split_op(node),
+            "Split" :  lambda node: self.convert_split_op(node),
+            "Transpose": lambda node: self.convert_transpose_op(node),
+            "Unsqueeze": lambda node: self.convert_unsqueeze_op(node),
         }
 
     def __del__(self):
@@ -623,7 +624,6 @@ class OnnxConverter(BaseConverter):
         output_shape = self.getShape(onnx_node.name)
         p = {
             'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
-            'upper_limit': 0.0
         }
         new_op = self.mlir.create_relu_op([op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
@@ -836,52 +836,38 @@ class OnnxConverter(BaseConverter):
 
     def convert_squeeze_op(self, onnx_node):
         assert (onnx_node.op_type == "Squeeze")
-        input = self.getOperand(onnx_node.inputs[0])
-        operand = [input]
-        if len(onnx_node.inputs) == 2:
-            axes = self.getTensor(onnx_node.inputs[1])
-        else :
-            axes = onnx_node.attrs.get('axes')
-        input_shape = self.getShape(onnx_node.inputs[0])
+        op = self.getOperand(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
-        dims = len(input_shape)
-        for i in range(len(axes)):
-            assert axes[i] < dims and axes[i] >= -dims
-            axes[i] = axes[i] if axes[i] >= 0 else axes[i] + dims
-        p = {
-            'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
-            'axes': axes,
-        }
-        new_op = self.mlir.create_squeeze_op(operand, output_shape, **p)
+        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+        new_op = self.mlir.create_reshape_op([op], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_unsqueeze_op(self, onnx_node):
+        assert (onnx_node.op_type == "Unsqueeze")
+        op = self.getOperand(onnx_node.inputs[0])
+        output_shape = self.getShape(onnx_node.name)
+        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+        new_op = self.mlir.create_reshape_op([op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
     def convert_clip_op(self, onnx_node):
         assert (onnx_node.op_type == "Clip")
         input = self.getOperand(onnx_node.inputs[0])
-        operand = [input]
-        if len(onnx_node.inputs) >= 2:
-            # TODO: min is '',
-            min = self.getTensor(onnx_node.inputs[1]).tolist()
-            if len(onnx_node.inputs) == 3:
-                max = self.getTensor(onnx_node.inputs[2]).tolist()
-            else :
-                max = np.inf
-        else :
-            min = -np.inf
+        if len(onnx_node.inputs) == 3:
+            min = self.getTensor(onnx_node.inputs[1])
+            max = self.getTensor(onnx_node.inputs[2])
+        else:
+            min = onnx_node.attrs.get('min', -np.inf)
+            max = onnx_node.attrs.get('max', np.inf)
         input_shape = self.getShape(onnx_node.inputs[0])
         if min == 0.0 and max > min:
             p = {
                 'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
-                'upper_limit': max if max != np.inf else 0.0,
+                'relu_limit': max if max != np.inf else 0.0,
             }
-            new_op = self.mlir.create_relu_op(operand, input_shape, **p)
+            new_op = self.mlir.create_relu_op([input], input_shape, **p)
         else :
-            p = {
-                'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
-                'min': min,
-                'max': max,
-            }
-            new_op = self.mlir.create_clip_op(operand, input_shape, **p)
+            raise RuntimeError("To be supported")
         self.addOperand(onnx_node.name, new_op)
 
     def convert_conv_transpose_op(self, onnx_node):

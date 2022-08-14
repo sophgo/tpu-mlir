@@ -22,9 +22,11 @@ LogicalResult tpu::ReluOp::init(InferenceParameter &p) { return success(); }
 void tpu::ReluOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ReluOp::inference(InferenceParameter &p) {
-  float relu_upper_limit = upper_limit() != ::mlir::None ?
-                           upper_limitAttr().getValueAsDouble() : 0.f;
+  auto limit = relu_limit().convertToDouble();
+  if (Quant::isUniformQuantized(output())) {
+    limit = 0;
+  }
   function_relu(p.inputs[0], p.outputs[0], Module::getNumElements(output()),
-                relu_upper_limit, Module::getStorageType(output()));
+                limit, Module::getStorageType(output()));
   return success();
 }

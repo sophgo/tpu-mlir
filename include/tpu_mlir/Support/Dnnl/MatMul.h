@@ -18,7 +18,7 @@ public:
 
   void setup(float *left, float *right, float *bias, float *output,
              int64_t batch, int64_t M, int64_t K, int64_t N, bool do_relu,
-             float relu_upper_limit);
+             double relu_limit);
 
   void run();
 

@@ -40,7 +40,7 @@ typedef struct pooling_common_spec {
   int32_t avg_pooling_mode;
   /* for float */
   int32_t if_relu;
-  float relu_upper_limit;
+  float relu_limit;
   /* for fix8b */
   int32_t ceil_mode;
   int32_t round_mode;
@@ -77,7 +77,7 @@ static void SpecAssign(const pool_attr_t &attrs, pooling_common_spec_t &spec) {
   spec.is_global_pooling = attrs.is_global;
   spec.avg_pooling_mode = attrs.count_include_pad ? 0 : 1;
   spec.if_relu = attrs.do_relu;
-  spec.relu_upper_limit = -1.;
+  spec.relu_limit = attrs.relu_limit;
   spec.ceil_mode = 0;
   spec.round_mode = ROUND_UP;
   /// TODO: may be need support pad value for pooling2D and pooling 3D

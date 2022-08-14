@@ -26,9 +26,9 @@ Value top::ConvOp::lowering_int8_bm1684() {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
   bool is_dw, with_bias, relu;
-  float relu_upper_limit;
+  double relu_limit;
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-             pl, pr, dh, dw, is_dw, with_bias, relu, relu_upper_limit);
+             pl, pr, dh, dw, is_dw, with_bias, relu, relu_limit);
   auto filterOp = cast<top::WeightOp>(filter().getDefiningOp());
   auto filter_f32 = filterOp.read<float>();
   auto th_input = Quant::getThreshold(input());

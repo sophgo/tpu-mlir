@@ -33,7 +33,7 @@ typedef struct {
   int32_t channel_shared;
   float slope_val;
   int32_t rshift_bit;
-  float relu_upper_limit;
+  float relu_limit;
   DATA_TYPE_T dtype;
 } leakyrelu_param_t;
 
@@ -59,7 +59,7 @@ void tpu::LeakyReluOp::codegen_global_int8_bm1684x() {
   param.channel_shared = 1;
   param.slope_val = static_cast<float>(multiplier().getValue());
   param.rshift_bit = rshift().getValue();
-  param.relu_upper_limit = -1;
+  param.relu_limit = -1;
   param.dtype = BM168x::getDataType(input());
   BM1684x::instance().call_global_func("backend_api_prelu_global", &param,
                                        sizeof(leakyrelu_param_t));
@@ -79,7 +79,7 @@ void tpu::LeakyReluOp::codegen_global_float_bm1684x() {
   param.channel_shared = 1;
   param.slope_val = static_cast<float>(alphaAttr().getValueAsDouble());
   param.rshift_bit = 0;
-  param.relu_upper_limit = -1;
+  param.relu_limit = -1;
   param.dtype = BM168x::getDataType(input());
   BM1684x::instance().call_global_func("backend_api_prelu_global", &param,
                                        sizeof(leakyrelu_param_t));
@@ -113,7 +113,7 @@ void tpu::LeakyReluOp::codegen_local_int8_bm1684x(int64_t n_step,
   param.channel_shared = 1;
   param.slope_val = static_cast<float>(multiplier().getValue());
   param.rshift_bit = rshift().getValue();
-  param.relu_upper_limit = -1;
+  param.relu_limit = -1;
   param.dtype = BM168x::getDataType(input());
   BM1684x::instance().call_local_func("backend_api_prelu_local", &param,
                                       sizeof(leakyrelu_param_t));
@@ -137,7 +137,7 @@ void tpu::LeakyReluOp::codegen_local_float_bm1684x(int64_t n_step,
   param.channel_shared = 1;
   param.slope_val = static_cast<float>(alphaAttr().getValueAsDouble());
   param.rshift_bit = 0;
-  param.relu_upper_limit = -1;
+  param.relu_limit = -1;
   param.dtype = BM168x::getDataType(input());
   BM1684x::instance().call_local_func("backend_api_prelu_local", &param,
                                       sizeof(leakyrelu_param_t));

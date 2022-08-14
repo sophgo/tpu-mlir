@@ -22,18 +22,18 @@ using namespace tpu_mlir::backend;
 extern "C" {
 #endif
 typedef struct {
-    unsigned long long input_addr;
-    unsigned long long slope_addr;
-    unsigned long long output_addr;
-    int input_n;
-    int input_c;
-    int input_h;
-    int input_w;
-    int channel_shared;
-    float slope_val;
-    int rshift_bit;
-    float relu_upper_limit;
-    DATA_TYPE_T dtype;
+  unsigned long long input_addr;
+  unsigned long long slope_addr;
+  unsigned long long output_addr;
+  int input_n;
+  int input_c;
+  int input_h;
+  int input_w;
+  int channel_shared;
+  float slope_val;
+  int rshift_bit;
+  float relu_limit;
+  DATA_TYPE_T dtype;
 } prelu_param_t;
 
 #ifdef __cplusplus
@@ -62,8 +62,7 @@ void tpu::ReluOp::codegen_global_float_bm1684x() {
   p.channel_shared = true;
   p.slope_val = 0.f;
   p.rshift_bit = 0;
-  p.relu_upper_limit = upper_limit() != ::mlir::None ?
-                       upper_limitAttr().getValueAsDouble() : 0.f;
+  p.relu_limit = relu_limit().convertToDouble();
   p.dtype = BM168x::getDataType(output());
   BM1684x::instance().call_global_func("backend_api_prelu_global", &p,
                                        sizeof(prelu_param_t));
@@ -99,13 +98,14 @@ void tpu::ReluOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
   p.channel_shared = true;
   p.slope_val = 0.f;
   p.rshift_bit = 0;
-  p.relu_upper_limit = upper_limit() != ::mlir::None ?
-                       upper_limitAttr().getValueAsDouble() : 0.f;
+  if (!Quant::isUniformQuantized(output())) {
+    p.relu_limit = relu_limit().convertToDouble();
+  }
   p.dtype = BM168x::getDataType(output());
   BM1684x::instance().call_local_func("backend_api_prelu_local", &p,
-                                       sizeof(prelu_param_t));
+                                      sizeof(prelu_param_t));
 }
 
 void tpu::ReluOp::codegen_local_float_bm1684x(int64_t n_step, int64_t h_step) {
-  llvm_unreachable("support later");
+  codegen_local_int8_bm1684x(n_step, h_step);
 }
