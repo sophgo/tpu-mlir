@@ -23,7 +23,7 @@ MatMul::MatMul() {
 
 void MatMul::setup(float *left, float *right, float *bias, float *output,
                    int64_t batch, int64_t M, int64_t K, int64_t N,
-                   bool do_relu, float relu_upper_limit) {
+                   bool do_relu, double relu_limit) {
   // printf("MatMul ldt:%ld, rdt:%ld, bdt:%ld, odt:%ld, rshift:%ld\n", ldt, rdt,
   // bdt, odt, rshift);
   memory::dims src_dims = {batch, M, K};
@@ -43,7 +43,7 @@ void MatMul::setup(float *left, float *right, float *bias, float *output,
   matmul::primitive_desc matmul_pd;
   primitive_attr matmul_attr;
 
-  post_relu(matmul_attr, do_relu, relu_upper_limit);
+  post_relu(matmul_attr, do_relu, relu_limit);
 
   matmul_pd = matmul::primitive_desc(matmul_d, matmul_attr, eng);
 

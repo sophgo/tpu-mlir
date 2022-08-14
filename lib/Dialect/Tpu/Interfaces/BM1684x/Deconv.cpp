@@ -264,7 +264,7 @@ void tpu::DeconvOp::codegen_global_int8_bm1684x() {
 
   param.output_dtype = BM1684x::getDataType(output());
   param.if_relu = attrs.do_relu;
-  param.upper_limit = 0;
+  param.upper_limit = attrs.relu_limit;
 
   auto in_qtype = Quant::getUniformQuantizedType(input());
   param.is_asym = true;
@@ -318,7 +318,7 @@ void tpu::DeconvOp::codegen_global_float_bm1684x() {
 
   param.output_dtype = BM1684x::getDataType(output());
   param.if_relu = attrs.do_relu;
-  param.upper_limit = 0;
+  param.upper_limit = attrs.relu_limit;
   BM1684x::instance().call_global_func("backend_api_deconv_global", &param,
                                        sizeof(param));
 }
@@ -392,7 +392,7 @@ void tpu::DeconvOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
 
   param.output_dtype = BM1684x::getDataType(output());
   param.if_relu = attrs.do_relu;
-  param.upper_limit = 0;
+  param.upper_limit = attrs.relu_limit;
 
   auto in_qtype = Quant::getUniformQuantizedType(input());
   param.is_asym = true;
@@ -449,7 +449,7 @@ void tpu::DeconvOp::codegen_local_float_bm1684x(int64_t n_step,
 
   param.output_dtype = BM1684x::getDataType(output());
   param.if_relu = attrs.do_relu;
-  param.upper_limit = 0;
+  param.upper_limit = attrs.relu_limit;
   BM1684x::instance().call_local_func("backend_api_deconv_local", &param,
                                       sizeof(param));
 }

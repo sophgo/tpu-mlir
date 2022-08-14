@@ -97,12 +97,14 @@ class MLIRImporter(object):
         self.declare_func(input_types, output_types)
 
     def __del__(self):
-        if self.loc != None:
+        try:
             self.loc.__exit__(None, None, None)
-            self.loc = None
-        if self.ctx != None:
+        except:
+            pass
+        try:
             self.ctx.__exit__(None, None, None)
-            self.ctx = None
+        except:
+            pass
 
     def ArrayAttr(self, data: list, data_type: str = 'INT64'):
         assert (data_type in self.mlir_type)
@@ -360,8 +362,9 @@ class MLIRImporter(object):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {
             'name': StringAttr.get(kargs['name']),
-            'upper_limit': FloatAttr.get_f64(kargs['upper_limit']),
         }
+        if 'relu_limit' in kargs:
+            param['relu_limit'] = FloatAttr.get_f64(kargs['relu_limit'])
         return self.buildOp(Top.ReluOp, operands, [output_type], **param)
 
     def create_return_op(self, Operands):

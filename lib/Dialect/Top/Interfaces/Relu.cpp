@@ -23,9 +23,8 @@ LogicalResult top::ReluOp::init(InferenceParameter &p) { return success(); }
 void top::ReluOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::ReluOp::inference(InferenceParameter &p) {
-  float relu_upper_limit = upper_limit() != ::mlir::None ?
-                           upper_limitAttr().getValueAsDouble() : 0.f;
+  float limit = relu_limit().convertToDouble();
   function_relu(p.inputs[0], p.outputs[0], Module::getNumElements(input()),
-                relu_upper_limit);
+                limit);
   return success();
 }

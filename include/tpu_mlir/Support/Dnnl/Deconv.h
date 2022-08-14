@@ -48,6 +48,7 @@ typedef struct {
   int64_t g;
   bool with_bias;
   bool do_relu;
+  double relu_limit;
   bool is_dw;
   bool pad_insert_is_const;
 } deconv_attr_t;

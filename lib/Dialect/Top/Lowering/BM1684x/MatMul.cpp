@@ -28,8 +28,8 @@ Value top::MatMulOp::lowering_int8_bm1684x(bool asymmetric) {
   std::vector<NamedAttribute> attrs;
   int64_t batch, M, K, N;
   bool relu, with_bias;
-  float relu_upper_limit;
-  parseParam(batch, M, K, N, with_bias, relu, relu_upper_limit);
+  double relu_limit;
+  parseParam(batch, M, K, N, with_bias, relu, relu_limit);
   assert(batch == 1); // only for fullyconnected now
   auto filterOp = cast<top::WeightOp>(right().getDefiningOp());
   auto filter_f32 = filterOp.read<float>();
@@ -164,8 +164,8 @@ Value top::MatMulOp::lowering_quant_bm1684x() {
   }
   int64_t batch, M, K, N;
   bool relu, with_bias;
-  float relu_upper_limit;
-  parseParam(batch, M, K, N, with_bias, relu, relu_upper_limit);
+  double relu_limit;
+  parseParam(batch, M, K, N, with_bias, relu, relu_limit);
   assert(batch == 1);
   auto input_qtype = Quant::getUniformQuantizedType(input());
   auto right_qtype = Quant::getUniformQuantizedType(right());

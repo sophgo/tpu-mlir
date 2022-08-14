@@ -39,7 +39,7 @@ typedef struct pooling3d_spec {
   int32_t avg_rd_mode;
   /* for float */
   int32_t if_relu;
-  float relu_upper_limit;
+  float relu_limit;
   int32_t in_dtype;
   int32_t out_dtype;
   /* for fix8b */
@@ -94,7 +94,7 @@ void tpu::AvgPool3DOp::codegen_global_int8_bm1684x() {
   spec.avg_pooling_mode = attrs.count_include_pad ? 0 : 1;
   spec.avg_rd_mode = ROUND_UP;
   spec.if_relu = attrs.do_relu;
-  spec.relu_upper_limit = -1.;
+  spec.relu_limit = attrs.relu_limit;
   spec.avg_pooling_quant_mode = 2;
   spec.merge_requant = true;
   if (scale().hasValue())
@@ -142,7 +142,7 @@ void tpu::MaxPool3DOp::codegen_global_int8_bm1684x() {
   spec.avg_pooling_mode = attrs.count_include_pad ? 0 : 1;
   spec.avg_rd_mode = ROUND_UP;
   spec.if_relu = attrs.do_relu;
-  spec.relu_upper_limit = -1.;
+  spec.relu_limit =attrs.relu_limit;
   BM1684x::instance().call_global_func("backend_api_pool3d_global", &spec,
                                        sizeof(pooling3d_spec_t));
 }
@@ -259,7 +259,7 @@ void tpu::AvgPool3DOp::codegen_local_int8_bm1684x(int64_t n_step,
   spec.avg_pooling_mode = attrs.count_include_pad ? 0 : 1;
   spec.avg_rd_mode = ROUND_UP;
   spec.if_relu = attrs.do_relu;
-  spec.relu_upper_limit = -1.;
+  spec.relu_limit = attrs.relu_limit;
   spec.avg_pooling_quant_mode = 2;
   spec.merge_requant = true;
   if (scale().hasValue())
@@ -313,7 +313,7 @@ void tpu::MaxPool3DOp::codegen_local_int8_bm1684x(int64_t n_step,
   spec.avg_pooling_mode = attrs.count_include_pad ? 0 : 1;
   spec.avg_rd_mode = ROUND_UP;
   spec.if_relu = attrs.do_relu;
-  spec.relu_upper_limit = -1.;
+  spec.relu_limit = attrs.relu_limit;
 
   BM1684x::instance().call_local_func("backend_api_pool3d_local", &spec,
                                       sizeof(pooling3d_spec_t));

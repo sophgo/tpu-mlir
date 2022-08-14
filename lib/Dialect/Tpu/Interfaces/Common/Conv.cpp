@@ -25,12 +25,14 @@ void tpu::ConvOp::parseParam(int64_t &n, int64_t &ic, int64_t &ih, int64_t &iw,
                              int64_t &ins_w, int64_t &sh, int64_t &sw,
                              int64_t &pt, int64_t &pb, int64_t &pl, int64_t &pr,
                              int64_t &dh, int64_t &dw, bool &is_dw,
-                             bool &has_bias, bool &do_relu, float &relu_upper_limit) {
+                             bool &has_bias, bool &do_relu, double &limit) {
   auto i_s = input().getType().cast<RankedTensorType>().getShape();
   auto o_s = output().getType().cast<RankedTensorType>().getShape();
   do_relu = this->do_relu();
-  relu_upper_limit = this->upper_limit() == ::llvm::None ?
-                     0.0 : this->upper_limitAttr().getValueAsDouble();
+  limit = relu_limit().convertToDouble();
+  if (Quant::isUniformQuantized(output())) {
+    limit = 0;
+  }
   has_bias = with_bias();
   n = i_s[0];
   ic = i_s[1];
@@ -67,15 +69,16 @@ LogicalResult tpu::ConvOp::init(InferenceParameter &p) {
       pl, pr, dh, dw;
   bool is_dw, with_bias, relu;
   int izp = 0;
-  float relu_upper_limit;
+  double relu_limit;
   if (Quant::isUniformQuantized(input())) {
     izp = Quant::getUniformQuantizedType(input()).getZeroPoint();
   }
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-             pl, pr, dh, dw, is_dw, with_bias, relu, relu_upper_limit);
+             pl, pr, dh, dw, is_dw, with_bias, relu, relu_limit);
+
   conv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], n, ic, ih,
-              iw, oc, oh, ow, kh, kw, sh, sw, dh, dw, pt, pb, pl, pr, g,
-              do_relu(), relu_upper_limit, izp);
+              iw, oc, oh, ow, kh, kw, sh, sw, dh, dw, pt, pb, pl, pr, g, relu,
+              relu_limit, izp);
   p.handle = (void *)conv;
   return success();
 }
@@ -137,9 +140,9 @@ LogicalResult tpu::ConvOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
   bool is_dw, with_bias, do_relu;
-  float relu_upper_limit;
+  double relu_limit;
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-             pl, pr, dh, dw, is_dw, with_bias, do_relu, relu_upper_limit);
+             pl, pr, dh, dw, is_dw, with_bias, do_relu, relu_limit);
   int kh_with_dh = (kh - 1) * dh + 1;
   in_slice = (out_slice - 1) * sh + (kh_with_dh >= sh ? kh_with_dh : sh);
   in_idx = out_idx * sh - pt;

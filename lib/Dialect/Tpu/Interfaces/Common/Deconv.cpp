@@ -51,6 +51,10 @@ void tpu::DeconvOp::parseParam(void *param) {
   p->ins_w = ins->at(1);
   p->g = group();
   p->do_relu = do_relu();
+  p->relu_limit = relu_limit().convertToDouble();
+  if (Quant::isUniformQuantized(output())) {
+    p->relu_limit = 0;
+  }
   p->with_bias = with_bias();
   p->is_dw = (p->oc == p->ic && p->oc == p->g && p->g > 1);
   return;

@@ -38,7 +38,8 @@ LogicalResult top::DivOp::inference(InferenceParameter &p) {
     }
   }
   if (do_relu()) {
-    function_relu(p.outputs[0], p.outputs[0], num_elem);
+    auto limit = relu_limit().convertToDouble();
+    function_relu(p.outputs[0], p.outputs[0], num_elem, limit);
   }
   return success();
 }

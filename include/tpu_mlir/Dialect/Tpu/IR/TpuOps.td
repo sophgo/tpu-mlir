@@ -64,7 +64,7 @@ def Tpu_ConvOp: Tpu_Op<"Conv",[
     OptionalAttr<I64ArrayAttr>:$dilations,
     OptionalAttr<I64ArrayAttr>:$inserts,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    OptionalAttr<F64Attr>:$upper_limit,
+    DefaultValuedAttr<F64Attr, "0.0">:$relu_limit,
     //new param
     BoolAttr:$with_bias,
     DefaultValuedAttr<BoolAttr, "false">:$coeff_merged,
@@ -82,7 +82,7 @@ def Tpu_ConvOp: Tpu_Op<"Conv",[
                     int64_t &oh, int64_t &ow, int64_t &g, int64_t &kh, int64_t &kw, int64_t &ins_h,
                     int64_t &ins_w, int64_t &sh, int64_t &sw, int64_t &pt, int64_t &pb, int64_t &pl,
                     int64_t &pr, int64_t &dh, int64_t &dw, bool &is_dw, bool &with_bias, bool &do_relu,
-                    float &relu_upper_limit);
+                    double &relu_limit);
   }];
 
   let hasCanonicalizer = 1;
@@ -106,7 +106,7 @@ class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,
     DefaultValuedAttr<I64Attr, "0">:$pad_value,
     DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    OptionalAttr<F64Attr>:$upper_limit,
+    DefaultValuedAttr<F64Attr, "0.0">:$relu_limit,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
     StrAttr:$name
   );
@@ -127,7 +127,7 @@ def Tpu_AvgPool2DOp:Tpu_PoolOp<"AvgPool"> {
     DefaultValuedAttr<I64Attr, "0">:$pad_value,
     DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    OptionalAttr<F64Attr>:$upper_limit,
+    DefaultValuedAttr<F64Attr, "0.0">:$relu_limit,
     /// symmetric quantize param
     OptionalAttr<I64Attr>:$multiplier,
     OptionalAttr<I64Attr>:$rshift,
@@ -149,7 +149,7 @@ def Tpu_AvgPool3DOp:Tpu_PoolOp<"AvgPool3D"> {
     DefaultValuedAttr<I64Attr, "0">:$pad_value,
     DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    OptionalAttr<F64Attr>:$upper_limit,
+    DefaultValuedAttr<F64Attr, "0.0">:$relu_limit,
     /// quantize param
     OptionalAttr<F64Attr>:$scale,
     OptionalAttr<F64Attr>:$offset,
@@ -170,7 +170,7 @@ def Tpu_AddOp: Tpu_Op<"Add", [SupportFuseRelu, InOutSameShape,
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    OptionalAttr<F64Attr>:$upper_limit,
+    DefaultValuedAttr<F64Attr, "0.0">:$relu_limit,
     OptionalAttr<F64ArrayAttr>:$coeff,
     // quant param
     OptionalAttr<I64ArrayAttr>:$multipliers,
@@ -193,6 +193,7 @@ def Tpu_MulOp: Tpu_Op<"Mul", [SupportFuseRelu, InOutSameShape,
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "0.0">:$relu_limit,
     // quant param
     DefaultValuedAttr<I64Attr, "1">:$multiplier,
     DefaultValuedAttr<I64Attr, "0">:$rshift,
@@ -215,7 +216,7 @@ def Tpu_MulConstOp: Tpu_Op<"MulConst", [SupportFuseRelu, InOutSameShape,
     AnyTensor:$input,
     F64Attr:$const_val,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    OptionalAttr<F64Attr>:$upper_limit,
+    DefaultValuedAttr<F64Attr, "0.0">:$relu_limit,
     // quant param
     DefaultValuedAttr<I64Attr, "1">:$multiplier,
     DefaultValuedAttr<I64Attr, "0">:$rshift,
@@ -283,7 +284,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
     AnyTensor:$right,
     AnyTensorOrNone:$bias,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    OptionalAttr<F64Attr>:$upper_limit,
+    DefaultValuedAttr<F64Attr, "0.0">:$relu_limit,
     DefaultValuedAttr<I64Attr, "1">:$multiplier,
     DefaultValuedAttr<I64Attr, "0">:$rshift,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
@@ -294,7 +295,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
   let extraClassDeclaration = [{
     void parseParam(
       int64_t &batch, int64_t &M, int64_t &K, int64_t &N, bool &with_bias, bool &do_relu,
-      float &relu_upper_limit);
+      double &relu_limit);
   }];
 }
 
@@ -309,7 +310,7 @@ def Tpu_ReluOp: Tpu_Op<"Relu",
   let arguments = (
     ins AnyTensor:$input,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
-    OptionalAttr<F64Attr>:$upper_limit,
+    DefaultValuedAttr<F64Attr, "0.0">:$relu_limit,
     StrAttr:$name
   );
 
@@ -462,6 +463,7 @@ def Tpu_SoftmaxOp: Tpu_Op<"Softmax",[InOutSameShape]> {
     AnyTensor:$input,
     I64Attr:$axis,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "0.0">:$relu_limit,
     // quant param
     OptionalAttr<I64Attr>:$multiplier,
     OptionalAttr<I64Attr>:$rshift,
@@ -484,6 +486,7 @@ def Tpu_LeakyReluOp: Tpu_Op<"LeakyRelu", [
   let arguments = (ins
     AnyTenor:$input,
     OptionalAttr<F64Attr>:$alpha,
+    
     // quantize param
     OptionalAttr<I64Attr>:$multiplier,
     OptionalAttr<I64Attr>:$rshift,
@@ -558,6 +561,7 @@ def Tpu_UpsampleOp: Tpu_Op<"Upsample", [
     I64Attr:$scale_h,
     I64Attr:$scale_w,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "0.0">:$relu_limit,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
     StrAttr:$name
   );
@@ -606,6 +610,7 @@ def Tpu_DivOp: Tpu_Op<"Div", [InOutSameShape]> {
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "0.0">:$relu_limit,
     // quant param
     DefaultValuedAttr<I64Attr, "1">:$multiplier,
     DefaultValuedAttr<I64Attr, "0">:$rshift,
@@ -669,6 +674,7 @@ def Tpu_DeconvOp: Tpu_Op<"Deconv",[
     OptionalAttr<I64ArrayAttr>:$dilations,
     OptionalAttr<I64ArrayAttr>:$inserts,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "0.0">:$relu_limit,
     //new param
     BoolAttr:$with_bias,
     OptionalAttr<I64ArrayAttr>:$multiplier,

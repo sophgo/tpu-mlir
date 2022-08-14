@@ -20,7 +20,8 @@ using namespace mlir;
 int64_t top::AvgPoolOp::getFLOPs() {
   pool_attr_t attr;
   parseParam(&attr);
-  return Module::getNumElements(output()) * (attr.kd * attr.kh * attr.kw + attr.do_relu ? 1 : 0);
+  return Module::getNumElements(output()) *
+         (attr.kd * attr.kh * attr.kw + attr.do_relu ? 1 : 0);
 }
 
 void top::AvgPoolOp::parseParam(void *param) {
@@ -101,7 +102,9 @@ LogicalResult top::AvgPoolOp::inference(InferenceParameter &p) {
   auto pooling = (Pooling *)p.handle;
   pooling->run();
   if (do_relu()) {
-    function_relu(p.outputs[0], p.outputs[0], Module::getNumElements(output()));
+    auto limit = relu_limit().convertToDouble();
+    function_relu(p.outputs[0], p.outputs[0], Module::getNumElements(output()),
+                  limit);
   }
   return success();
 }

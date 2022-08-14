@@ -141,9 +141,9 @@ void tpu::ConvOp::weight_reorder_int8_bm1684x() {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
   bool is_dw, with_bias, relu;
-  float relu_upper_limit;
+  double relu_limit;
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-             pl, pr, dh, dw, is_dw, with_bias, relu, relu_upper_limit);
+             pl, pr, dh, dw, is_dw, with_bias, relu, relu_limit);
 
   // filter
   auto filterOp = filter().getDefiningOp<top::WeightOp>();
@@ -255,9 +255,9 @@ void tpu::ConvOp::weight_reorder_bf16_bm1684x() {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
   bool is_dw, with_bias, relu;
-  float relu_upper_limit;
+  double relu_limit;
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-             pl, pr, dh, dw, is_dw, with_bias, relu, relu_upper_limit);
+             pl, pr, dh, dw, is_dw, with_bias, relu, relu_limit);
   auto filterOp = filter().getDefiningOp<top::WeightOp>();
   if (is_dw || g > 1) {
     llvm_unreachable("depthwise should support !!");
@@ -281,9 +281,9 @@ void tpu::ConvOp::weight_reorder_f32_bm1684x() {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
   bool is_dw, with_bias, relu;
-  float relu_upper_limit;
+  double relu_limit;
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-             pl, pr, dh, dw, is_dw, with_bias, relu, relu_upper_limit);
+             pl, pr, dh, dw, is_dw, with_bias, relu, relu_limit);
   auto op = getOperation();
   auto out_type = Module::getStorageType(output());
   // filter reorder
@@ -480,9 +480,9 @@ void tpu::ConvOp::codegen_global_int8_bm1684x() {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
   bool is_dw, with_bias, do_relu;
-  float relu_upper_limit;
+  double relu_limit;
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-             pl, pr, dh, dw, is_dw, with_bias, do_relu, relu_upper_limit);
+             pl, pr, dh, dw, is_dw, with_bias, do_relu, relu_limit);
   auto op = getOperation();
   auto in_qtype = Quant::getUniformQuantizedType(input());
   auto input_spec = BM1684x::get_input_spec(op);
@@ -499,7 +499,7 @@ void tpu::ConvOp::codegen_global_int8_bm1684x() {
     common.if_relu = out_etype.isUnsignedInteger(8);
   }
 
-  common.upper_limit = relu_upper_limit;
+  common.upper_limit = relu_limit;
   common.kh = kh;
   common.kw = kw;
   common.dh = dh;
@@ -530,9 +530,9 @@ void tpu::ConvOp::codegen_global_float_bm1684x() {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
   bool is_dw, with_bias, do_relu;
-  float relu_upper_limit;
+  double relu_limit;
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-             pl, pr, dh, dw, is_dw, with_bias, do_relu, relu_upper_limit);
+             pl, pr, dh, dw, is_dw, with_bias, do_relu, relu_limit);
   auto op = getOperation();
   auto input_spec = BM1684x::get_input_spec(op);
   auto output_spec = BM1684x::get_output_spec(op);
@@ -542,7 +542,7 @@ void tpu::ConvOp::codegen_global_float_bm1684x() {
   common.input_c = ic;
   common.output_c = oc;
   common.if_relu = do_relu;
-  common.upper_limit = relu_upper_limit;
+  common.upper_limit = relu_limit;
   common.kh = kh;
   common.kw = kw;
   common.dh = dh;
@@ -614,9 +614,9 @@ void tpu::ConvOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
   bool is_dw, with_bias, do_relu;
-  float relu_upper_limit;
+  double relu_limit;
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-             pl, pr, dh, dw, is_dw, with_bias, do_relu, relu_upper_limit);
+             pl, pr, dh, dw, is_dw, with_bias, do_relu, relu_limit);
   auto op = getOperation();
   auto input_spec = BM1684x::get_input_spec(op);
   auto output_spec = BM1684x::get_output_spec(op);
@@ -636,7 +636,7 @@ void tpu::ConvOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
     auto out_etype = Module::getStorageType(output());
     common.if_relu = out_etype.isUnsignedInteger(8);
   }
-  common.upper_limit = relu_upper_limit;
+  common.upper_limit = relu_limit;
   common.kh = kh;
   common.kw = kw;
   common.dh = dh;
@@ -684,9 +684,9 @@ void tpu::ConvOp::codegen_local_float_bm1684x(int64_t n_step, int64_t h_step) {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
   bool is_dw, with_bias, do_relu;
-  float relu_upper_limit;
+  double relu_limit;
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-             pl, pr, dh, dw, is_dw, with_bias, do_relu, relu_upper_limit);
+             pl, pr, dh, dw, is_dw, with_bias, do_relu, relu_limit);
   auto op = getOperation();
   auto input_spec = BM1684x::get_input_spec(op);
   auto output_spec = BM1684x::get_output_spec(op);
@@ -699,7 +699,7 @@ void tpu::ConvOp::codegen_local_float_bm1684x(int64_t n_step, int64_t h_step) {
   common.input_c = ic;
   common.output_c = oc;
   common.if_relu = do_relu;
-  common.upper_limit = relu_upper_limit;
+  common.upper_limit = relu_limit;
   common.kh = kh;
   common.kw = kw;
   common.dh = dh;

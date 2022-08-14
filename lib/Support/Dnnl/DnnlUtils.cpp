@@ -13,21 +13,20 @@
 using namespace dnnl;
 namespace tpu_mlir {
 
-int post_relu(primitive_attr &attr, bool &do_relu, float &relu_upper_limit)
+void post_relu(primitive_attr &attr, bool &do_relu, double &relu_limit)
 {
   post_ops ops;
   if (do_relu) {
     const float ops_scale = 1.f;
     float ops_alpha = 0.f;
     const float ops_beta = 0.f;
-    if (relu_upper_limit > 0.f) {
-      ops_alpha = relu_upper_limit;
+    if (relu_limit > 0.f) {
+      ops_alpha = relu_limit;
       ops.append_eltwise(ops_scale, algorithm::eltwise_bounded_relu, ops_alpha, ops_beta);
     } else {
       ops.append_eltwise(ops_scale, algorithm::eltwise_relu, ops_alpha, ops_beta);
     }
     attr.set_post_ops(ops);
   }
-  return 0;
 }
 } // namespace tpu_mlir
