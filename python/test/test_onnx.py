@@ -45,6 +45,7 @@ TEST_ONNX_IR = [
     "Slice",
     "ConvTranspose2D",
     "Split",
+    "ReduceMean",
 ]
 
 
@@ -89,6 +90,7 @@ class ONNX_IR_TESTER(object):
             "Slice": self.test_Slice,
             "ConvTranspose2D": self.test_ConvTranspose,
             "Split": self.test_Split,
+            "ReduceMean": self.test_ReduceMean,
         }
         self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
 
@@ -677,6 +679,26 @@ class ONNX_IR_TESTER(object):
         )
 
         graph_def = helper.make_graph([split_def], test_case, [input], [output_1, output_2], initializer=[split])
+        self.convert_and_test({'input': input_data}, graph_def, test_case)
+
+    def test_ReduceMean(self):
+        test_case = 'ReduceMean'
+        input_shape = [1, 1024, 7, 7]
+        output_shape = [1, 1024]
+        input_data = np.random.randn(*input_shape).astype(np.float32)
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+
+        reducemean_def = helper.make_node(
+            test_case,
+            inputs=['input'],
+            outputs=['output'],
+            axes=[2,3],
+            keepdims=0,
+        )
+
+        graph_def = helper.make_graph([reducemean_def], test_case, [input], [output])
         self.convert_and_test({'input': input_data}, graph_def, test_case)
 
 if __name__ == "__main__":

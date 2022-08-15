@@ -109,6 +109,7 @@ class OnnxConverter(BaseConverter):
         self.preprocess_args = preprocess_args
 
         self.onnxop_factory = {
+            #pls add the Op according to the Op's alphabetical order as below
             "Add": lambda node: self.convert_add_op(node),
             "AveragePool": lambda node: self.convert_avgpool_op(node),
             "BatchNormalization": lambda node: self.convert_batchnorm_op(node),
@@ -128,6 +129,7 @@ class OnnxConverter(BaseConverter):
             "MaxPool": lambda node: self.convert_maxpool_op(node),
             "Mul": lambda node: self.convert_mul_op(node),
             "Pad": lambda node: self.convert_pad_op(node),
+            "ReduceMean": lambda node: self.convert_reduce_op(node), #
             "Relu": lambda node: self.convert_relu_op(node),
             "Reshape": lambda node: self.convert_reshape_op(node),
             "Resize": lambda node: self.convert_resize_op(node),
@@ -957,3 +959,59 @@ class OnnxConverter(BaseConverter):
             new_op = self.mlir.create_slice_op([op], output_shape, **p)
             self.addOperand(name, new_op)
             offset = offset + i
+
+    def convert_reduce_op(self, onnx_node):
+        assert (onnx_node.op_type == "ReduceMean"
+                or onnx_node.op_type == "ReduceMax"
+                or onnx_node.op_type == "ReduceMin"
+                or onnx_node.op_type == "ReduceProd"
+                or onnx_node.op_type == "ReduceSum"
+                or onnx_node.op_type == "ReduceSumSquare"
+                or onnx_node.op_type == "ReduceL1"
+                or onnx_node.op_type == "ReduceL2"
+                or onnx_node.op_type == "ReduceLogSum"
+                or onnx_node.op_type == "ReduceLogSumExp")
+
+        input_shape = self.getShape(onnx_node.inputs[0])
+        output_shape = self.getShape(onnx_node.name)
+        num_dims = len(input_shape)
+        axes = onnx_node.attrs['axes']
+        keepdims = onnx_node.attrs['keepdims']
+        for i in range(len(axes)):
+            axes[i] = axes[i] if axes[i] >= 0 else axes[i] + num_dims
+        op = self.getOperand(onnx_node.inputs[0])
+        #if reducemean the h & w, replace it with avgpool
+        if (onnx_node.op_type == "ReduceMean"
+            and num_dims == 4
+            and keepdims == 0
+            and len(output_shape) == 2
+            and axes[0] == 2
+            and axes[1] == 3):
+            onnx_node.op_type = "GlobalAveragePool"
+            num_dims = len(input_shape) - 2
+            p = {
+                'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
+                'kernel_shape': input_shape[2:],
+                'strides': num_dims * [1],
+                'pads': num_dims * 2 * [0],
+                'count_include_pad': True,
+                'do_relu': False,
+            }
+            new_op = self.mlir.create_avgpool_op([op], output_shape, **p)
+            self.addOperand(onnx_node.name, new_op)
+        else:
+            raise RuntimeError("Unsupported now.")
+        '''
+        type = 0
+        #handle the all reduce type here
+        if onnx_node.op_type == "ReduceMean":
+            type = 0;
+        p = {
+            "name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            "axes": axes,
+            "keepdims" : keepdims,
+            "type" : type
+        }
+        new_op = self.mlir.create_reduce_op([op], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+        '''
