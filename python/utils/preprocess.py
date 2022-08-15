@@ -169,9 +169,6 @@ class preprocess(object):
         self.scale = np.array(Operation.fp_array(attrs['scale'])).astype(np.float32)
         self.scale = self.scale[np.newaxis, :,np.newaxis, np.newaxis]
         self.crop_method = 'center'
-        if self.channel_format == 'nhwc':
-            self.mean = self.mean.transpose(0, 2, 3, 1)
-            self.scale = self.scale.transpose(0, 2, 3, 1)
 
         format_str = "\n  load_config Preprocess args : \n" + \
                "\tresize_dims           : {}\n" + \
@@ -244,17 +241,12 @@ class preprocess(object):
             image = ImageResizeTool.stretch_resize(
                 image, self.resize_dims[0], self.resize_dims[1])
 
-        if self.channel_format == 'nchw':
-            if self.channel_num == 1:
-                # if grapscale image, expand dim to (1, h, w)
-                image = np.expand_dims(image, axis=0)
-            else:
-                # opencv read image data format is hwc, tranpose to chw
-                image = np.transpose(image, (2, 0, 1))
-        else :
-            if self.channel_num == 1:
-                # if grapscale image, expand dim to (h, w, 1)
-                image = np.expand_dims(image, axis=image.ndim)
+        if self.channel_num == 1:
+            # if grapscale image, expand dim to (1, h, w)
+            image = np.expand_dims(image, axis=0)
+        else:
+            # opencv read image data format is hwc, tranpose to chw
+            image = np.transpose(image, (2, 0, 1))
         return image, ratio
 
     def get_config(self, attr_type):
@@ -271,7 +263,6 @@ class preprocess(object):
             x_list.append(x)
             self.ratio_list.append(ratio)
         x = np.concatenate(x_list, axis = 0)
-
         # take center crop if needed
         if self.resize_dims != self.net_input_dims:
             if self.crop_method == "right":
@@ -281,20 +272,14 @@ class preprocess(object):
 
         x = x.astype(np.float32)
         if self.pixel_format == 'gray':
-            if self.channel_format == 'nchw':
-                self.mean = self.mean[:,:1,:,:]
-                self.scale = self.scale[:,:1,:,:]
-            else :
-                self.mean = self.mean[:,:,:,:1]
-                self.scale = self.scale[:,:,:,:1]
-            x = (x  - self.mean)* self.scale
-        else:
-            if self.pixel_format == 'rgb':
-                if self.channel_format == 'nchw':
-                    x = x[:, [2, 1, 0], :, :]
-                else :
-                    x = x[:, :, :, [2, 1, 0]]
-            x = (x  - self.mean)* self.scale
+            self.mean = self.mean[:,:1,:,:]
+            self.scale = self.scale[:,:1,:,:]
+        elif self.pixel_format == 'rgb':
+            x = x[:, [2, 1, 0], :, :]
+        x = (x  - self.mean)* self.scale
+
+        if self.channel_format == 'nhwc':
+            x = np.transpose(x, (0, 2, 3, 1))
 
         if len(input.split(',')) == 1:
             x = np.repeat(x, self.batch_size, axis=0)

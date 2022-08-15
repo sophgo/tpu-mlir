@@ -10,6 +10,7 @@ model_list_all=(
   "mobilenet_v2"
   "squeezenet1.0"
   "vgg16"
+  "efficientnet"
 # object detection
   "resnet34_ssd1200"
   "yolov5s"
