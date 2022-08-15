@@ -15,6 +15,7 @@ model_list_all=(
   "yolov5s"
   "yolov3_tiny"
   "ssd-12"
+  "shufflenet_v12"
 )
 
 # run onnx operation test
