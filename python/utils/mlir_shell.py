@@ -12,11 +12,12 @@ def _os_system(cmd: list):
     cmd_str = ""
     for s in cmd:
         cmd_str += s + " "
+    print("[Running]: {}".format(cmd_str))
     ret = os.system(cmd_str)
     if ret == 0:
-        print("[Success]cmd: {}".format(cmd_str))
+        print("[Success]: {}".format(cmd_str))
     else:
-        raise RuntimeError("[!Error]cmd: {}".format(cmd_str))
+        raise RuntimeError("[!Error]: {}".format(cmd_str))
 
 def mlir_opt_for_top(mlirfile, opt_mlirfile):
     cmd = ([

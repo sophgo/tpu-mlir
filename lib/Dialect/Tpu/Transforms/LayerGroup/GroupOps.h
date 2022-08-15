@@ -47,15 +47,16 @@ struct lmem_info_t {
   bool eu_align;
   // slice info
   slice_info_t slice_info;
-  bool is_input;  // input tensor
-  bool is_output; // output tensor
+  bool is_input;      // input tensor
+  bool is_output;     // output tensor
+  bool op_slice_done; // this op's all inputs have been sliced
   // init
   explicit lmem_info_t(lmem_type_t type, int64_t id, int64_t start_id,
                        int64_t end_id, Value v = nullptr,
                        Operation *op = nullptr, bool eu_align = true)
       : addr(-1), size(0), id(id), start_id(start_id), end_id(end_id),
         type(type), value(v), op(op), eu_align(eu_align), is_input(false),
-        is_output(false) {}
+        is_output(false), op_slice_done(false) {}
 };
 
 typedef std::shared_ptr<std::vector<lmem_info_t>> group_lmem_t;
@@ -79,19 +80,20 @@ protected:
   bool isLgSupport(int64_t op_idx);
   bool check_group(int64_t start_idx, int64_t end_idx);
   bool check_hsecs(lmem_info_t &lmem_info);
-  void slice_all_outputs(group_lmem_t group_lmem, int64_t nsecs, int64_t hsecs);
-  bool backward_entry(group_lmem_t group_lmem);
-  bool backward_from_tensor(group_lmem_t group_lmem, lmem_info_t *linfo);
+  void slice_all_outputs(group_lmem_t &group_lmem, int64_t nsecs,
+                         int64_t hsecs);
+  bool backward_entry(group_lmem_t &group_lmem);
+  bool backward_from_tensor(group_lmem_t &group_lmem, lmem_info_t *linfo);
   void get_max_slice_nh(const lmem_info_t &linfo, int64_t &max_n,
                         int64_t &max_h);
-  lmem_info_t *find_max_unalloc_lmem(group_lmem_t group_lmem,
+  lmem_info_t *find_max_unalloc_lmem(group_lmem_t &group_lmem,
                                      int64_t op_id = -1,
                                      lmem_type_t type = LMEM_ANY);
-  void rebuild_alloc_lmem(group_lmem_t group_lmem, int64_t op_id);
-  void set_lmem_size(group_lmem_t group_lmem);
-  void assign_timestep(group_lmem_t group_lmem);
-  void adjust_lmem_id(group_lmem_t group_lmem, int64_t nsecs, int64_t hsecs);
-  bool assign_lmem_addr(group_lmem_t group_lmem, int64_t nsecs, int64_t hsecs);
+  void rebuild_alloc_lmem(group_lmem_t &group_lmem, int64_t op_id);
+  void set_lmem_size(group_lmem_t &group_lmem);
+  void assign_timestep(group_lmem_t &group_lmem);
+  void adjust_lmem_id(group_lmem_t &group_lmem, int64_t nsecs, int64_t hsecs);
+  bool assign_lmem_addr(group_lmem_t &group_lmem, int64_t nsecs, int64_t hsecs);
   int64_t alloc_lmem(int64_t size);
   bool is_eu_align(mlir::Value opd, Operation *op);
   bool need_bcast(mlir::Value opd);
@@ -100,16 +102,16 @@ protected:
   }
   bool is_same_slice(const std::vector<slice_pair_t> &a,
                      const std::vector<slice_pair_t> &b);
-  lmem_info_t *find_lmem_info(group_lmem_t group_lmem, mlir::Value v);
-  lmem_info_t *find_lmem_info(group_lmem_t group_lmem, mlir::Operation *op);
+  lmem_info_t *find_lmem_info(group_lmem_t &group_lmem, mlir::Value v);
+  lmem_info_t *find_lmem_info(group_lmem_t &group_lmem, mlir::Operation *op);
   void CreateLoadOp(lmem_info_t &linfo,
                     const std::vector<mlir::Operation *> &ops);
   tpu::StoreOp CreateStoreOp(lmem_info_t &linfo);
-  void UpdateOpLgParam(group_lmem_t group_lmem, lmem_info_t &linfo);
+  void UpdateOpLgParam(group_lmem_t &group_lmem, lmem_info_t &linfo);
   tpu::LayerGroup getLgParam(lmem_info_t &linfo, int64_t timestep,
                              int64_t buffer_addr = 0, int64_t buffer_size = 0);
-  bool need_none(group_lmem_t group_lmem);
-  void buildGroupOp(group_lmem_t group_lmem);
+  bool need_none(group_lmem_t &group_lmem);
+  void buildGroupOp(group_lmem_t &group_lmem);
 
 protected:
   std::vector<group_lmem_t> all_lmems;

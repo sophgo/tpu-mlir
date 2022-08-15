@@ -16,7 +16,7 @@ using namespace mlir;
 using namespace tpu_mlir::tpu;
 using namespace tpu_mlir::backend;
 
-lmem_info_t *GroupOps::find_lmem_info(group_lmem_t group_lmem, mlir::Value v) {
+lmem_info_t *GroupOps::find_lmem_info(group_lmem_t &group_lmem, mlir::Value v) {
   if (group_lmem == nullptr || v == nullptr) {
     return nullptr;
   }
@@ -28,7 +28,7 @@ lmem_info_t *GroupOps::find_lmem_info(group_lmem_t group_lmem, mlir::Value v) {
   return nullptr;
 }
 
-lmem_info_t *GroupOps::find_lmem_info(group_lmem_t group_lmem,
+lmem_info_t *GroupOps::find_lmem_info(group_lmem_t &group_lmem,
                                       mlir::Operation *op) {
   if (group_lmem == nullptr || op == nullptr) {
     return nullptr;
@@ -260,7 +260,7 @@ void GroupOps::buildMlir() {
   }
 }
 
-bool GroupOps::need_none(group_lmem_t group_lmem) {
+bool GroupOps::need_none(group_lmem_t &group_lmem) {
   for (auto &linfo : *group_lmem) {
     if (linfo.type == LMEM_OPERATION) {
       for (auto opd : linfo.op->getOperands()) {
@@ -273,7 +273,7 @@ bool GroupOps::need_none(group_lmem_t group_lmem) {
   return false;
 }
 
-void GroupOps::buildGroupOp(group_lmem_t group_lmem) {
+void GroupOps::buildGroupOp(group_lmem_t &group_lmem) {
   auto builder = OpBuilder(ctx);
   llvm::SmallVector<Value, 8> operands;
   llvm::SmallVector<Value, 8> outputs;
@@ -335,7 +335,7 @@ void GroupOps::buildGroupOp(group_lmem_t group_lmem) {
   builder.create<tpu::YieldOp>(func.getLoc(), stores);
 }
 
-void GroupOps::UpdateOpLgParam(group_lmem_t group_lmem, lmem_info_t &linfo) {
+void GroupOps::UpdateOpLgParam(group_lmem_t &group_lmem, lmem_info_t &linfo) {
   assert(linfo.type == LMEM_OPERATION);
   auto op = linfo.op;
   auto output = find_lmem_info(group_lmem, linfo.value);
@@ -474,7 +474,7 @@ group_lmem_t GroupOps::CreateGroup(int64_t start_idx, int64_t end_idx,
   return nullptr;
 }
 
-void GroupOps::slice_all_outputs(group_lmem_t group_lmem, int64_t nsecs,
+void GroupOps::slice_all_outputs(group_lmem_t &group_lmem, int64_t nsecs,
                                  int64_t hsecs) {
   for (auto &linfo : *group_lmem) {
     if (linfo.is_output == false) {
@@ -527,7 +527,7 @@ bool GroupOps::is_same_slice(const std::vector<slice_pair_t> &a,
   return true;
 }
 
-bool GroupOps::backward_from_tensor(group_lmem_t group_lmem,
+bool GroupOps::backward_from_tensor(group_lmem_t &group_lmem,
                                     lmem_info_t *linfo) {
   assert(linfo != nullptr);
   assert(linfo->type == LMEM_TENSOR);
@@ -539,16 +539,21 @@ bool GroupOps::backward_from_tensor(group_lmem_t group_lmem,
   assert(!si.h.empty());
   // make sure all users ready
   for (auto user : linfo->value.getUsers()) {
-    auto uinfo = find_lmem_info(group_lmem, user->getResult(0));
+    auto uinfo = find_lmem_info(group_lmem, user);
     if (uinfo == nullptr) {
       continue;
     }
-    if (uinfo->slice_info.n.size() == 0) {
+    if (uinfo->op_slice_done == false) {
       return true;
     }
   }
   auto op = linfo->value.getDefiningOp();
   auto lg_op = cast<LocalGenInterface>(op);
+  auto op_info = find_lmem_info(group_lmem, op);
+  assert(op_info != nullptr);
+  if (op_info->op_slice_done) {
+    return true;
+  }
   std::vector<slice_pair_t> slice_n;
   std::vector<slice_pair_t> slice_h;
   for (auto &s : si.n) {
@@ -567,6 +572,7 @@ bool GroupOps::backward_from_tensor(group_lmem_t group_lmem,
     }
     slice_h.emplace_back(slice_pair_t(h_idx, h_slice));
   }
+  llvm::SmallVector<lmem_info_t *, 8> back_info;
   for (auto opd : op->getOperands()) {
     auto in_info = find_lmem_info(group_lmem, opd);
     if (in_info == nullptr || in_info->type != LMEM_TENSOR) {
@@ -586,6 +592,10 @@ bool GroupOps::backward_from_tensor(group_lmem_t group_lmem,
       no_more_try_secs = true;
       return false;
     }
+    back_info.push_back(in_info);
+  }
+  op_info->op_slice_done = true;
+  for (auto in_info : back_info) {
     auto ret = backward_from_tensor(group_lmem, in_info);
     if (ret == false) {
       return false;
@@ -594,7 +604,7 @@ bool GroupOps::backward_from_tensor(group_lmem_t group_lmem,
   return true;
 }
 
-bool GroupOps::backward_entry(group_lmem_t group_lmem) {
+bool GroupOps::backward_entry(group_lmem_t &group_lmem) {
   for (auto &linfo : *group_lmem) {
     if (linfo.is_output == false) {
       continue;
@@ -624,7 +634,7 @@ void GroupOps::get_max_slice_nh(const lmem_info_t &lmem_info, int64_t &max_n,
   }
 }
 
-void GroupOps::set_lmem_size(group_lmem_t group_lmem) {
+void GroupOps::set_lmem_size(group_lmem_t &group_lmem) {
   // set size
   int64_t n, c, h, w, slice_n, slice_h;
   for (auto &linfo : *group_lmem) {
@@ -654,7 +664,7 @@ void GroupOps::set_lmem_size(group_lmem_t group_lmem) {
   }
 }
 
-void GroupOps::assign_timestep(group_lmem_t group_lmem) {
+void GroupOps::assign_timestep(group_lmem_t &group_lmem) {
   int64_t timestep = 0;
   lmem_type_t last_type = LMEM_ANY;
   for (auto &linfo : *group_lmem) {
@@ -681,7 +691,7 @@ void GroupOps::assign_timestep(group_lmem_t group_lmem) {
   }
 }
 
-void GroupOps::adjust_lmem_id(group_lmem_t group_lmem, int64_t nsecs,
+void GroupOps::adjust_lmem_id(group_lmem_t &group_lmem, int64_t nsecs,
                               int64_t hsecs) {
   bool no_slice = (nsecs == 1 && hsecs == 1);
   std::vector<int64_t> ops_v;
@@ -745,7 +755,7 @@ group_lmem_t GroupOps::CreateGroupBySecs(int64_t start_idx, int64_t end_idx,
   return std::move(group_lmem);
 }
 
-lmem_info_t *GroupOps::find_max_unalloc_lmem(group_lmem_t group_lmem,
+lmem_info_t *GroupOps::find_max_unalloc_lmem(group_lmem_t &group_lmem,
                                              int64_t op_id, lmem_type_t type) {
   int64_t size = 0;
   int64_t term = -1;
@@ -774,7 +784,7 @@ lmem_info_t *GroupOps::find_max_unalloc_lmem(group_lmem_t group_lmem,
   return p_li;
 }
 
-bool GroupOps::assign_lmem_addr(group_lmem_t group_lmem, int64_t nsecs,
+bool GroupOps::assign_lmem_addr(group_lmem_t &group_lmem, int64_t nsecs,
                                 int64_t hsecs) {
   int64_t start_addr = 0, end_addr = bm168x->get_lmem_bytes();
   allocated_lmems.clear();
@@ -850,7 +860,7 @@ int64_t GroupOps::alloc_lmem(int64_t size) {
   return -1;
 }
 
-void GroupOps::rebuild_alloc_lmem(group_lmem_t group_lmem, int64_t op_id) {
+void GroupOps::rebuild_alloc_lmem(group_lmem_t &group_lmem, int64_t op_id) {
   allocated_lmems.clear();
   for (auto &linfo : *group_lmem) {
     if (linfo.start_id <= op_id && linfo.end_id >= op_id) {
