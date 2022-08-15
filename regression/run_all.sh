@@ -11,6 +11,7 @@ model_list_all=(
   "squeezenet1.0"
   "vgg16"
   "efficientnet"
+  "densenet121-12"
 # object detection
   "resnet34_ssd1200"
   "yolov5s"

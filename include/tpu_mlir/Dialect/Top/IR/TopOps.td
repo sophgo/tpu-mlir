@@ -646,6 +646,28 @@ def Top_DeconvOp: Top_Op<"Deconv", [SupportFuseRelu]> {
   }];
 }
 
+def Top_ScaleOp: Top_Op<"Scale", [SupportFuseRelu, InOutSameShape]> {
+  let summary = "Scale operator";
+
+  let description = [{
+    Y = X * S + B,
+    where the shape of X/Y is [n, c, h, w] and the shape of S/B is [1, c, 1, 1].
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$scale,
+    AnyTensor:$bias,
+
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    OptionalAttr<F64Attr>:$relu_limit,
+    StrAttr:$name
+  );
+
+  let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
+}
+
 #endif // Top_OPS
 
 

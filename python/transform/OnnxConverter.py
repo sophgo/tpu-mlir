@@ -356,10 +356,30 @@ class OnnxConverter(BaseConverter):
         self.addOperand(onnx_node.name, op)
 
     def convert_add_op(self, onnx_node):
+        assert (onnx_node.op_type == "Add")
         assert (len(onnx_node.inputs) == 2)
-        if self.isTensor(onnx_node.inputs[0]) or self.isTensor(onnx_node.inputs[1]):
-            # TODO: support tensor
-            raise RuntimeError("not support Tensor")
+        if self.isTensor(onnx_node.inputs[0]) and not self.isTensor(onnx_node.inputs[1]):
+            onnx_node.inputs[0], onnx_node.inputs[1] = onnx_node.inputs[1], onnx_node.inputs[0]
+            self.convert_mul_op(onnx_node)
+            return
+        name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
+        if not self.isTensor(onnx_node.inputs[0]) and self.isTensor(onnx_node.inputs[1]):
+            opd1_num_elem = np.prod(self.getShape(onnx_node.inputs[1]))
+            output_shape = self.getShape(onnx_node.name)
+            channel = output_shape[1]
+            if opd1_num_elem == channel:
+                op0 = self.getOperand(onnx_node.inputs[0])
+                offset = self.getTensor(onnx_node.inputs[1])
+                weight_data = np.ones_like(offset)
+                self.addTensor(name+'_scale', weight_data)
+                weight_op = self.getWeightOp(name+'_scale')
+                offset_op = self.getWeightOp(onnx_node.inputs[1])
+                p = {'name': name}
+                scale_op = self.mlir.create_scale_op([op0, weight_op, offset_op], output_shape, **p)
+                self.addOperand(onnx_node.name, scale_op)
+                return
+            else:
+                raise RuntimeError("To support adding with weight")
         op0 = self.getOperand(onnx_node.inputs[0])
         op1 = self.getOperand(onnx_node.inputs[1])
         p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
@@ -594,12 +614,25 @@ class OnnxConverter(BaseConverter):
         name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
         if (not self.isTensor(onnx_node.inputs[0])) and self.isTensor(onnx_node.inputs[1]):
             op0 = self.getOperand(onnx_node.inputs[0])
-            input1 = self.getTensor(onnx_node.inputs[1])
-            p = {'name': name, 'const_val': input1.flatten()[0]}
+            weight = self.getTensor(onnx_node.inputs[1])
             output_shape = self.getShape(onnx_node.name)
-            mul_const_op = self.mlir.create_mul_const_op([op0], output_shape, **p)
-            self.addOperand(onnx_node.name, mul_const_op)
-            return
+            weight_num_elem = np.prod(self.getShape(onnx_node.inputs[1]))
+            first_val = weight.flatten()[0]
+            channel = output_shape[1]
+            if weight_num_elem == 1 or np.all(weight == first_val):
+                p = {'name': name, 'const_val': weight.flatten()[0]}
+                mul_const_op = self.mlir.create_mul_const_op([op0], output_shape, **p)
+                self.addOperand(onnx_node.name, mul_const_op)
+                return
+            elif weight_num_elem == channel:
+                offset_data = np.zeros_like(weight)
+                self.addTensor(name+'_bias', offset_data)
+                weight_op = self.getWeightOp(onnx_node.inputs[1])
+                offset_op = self.getWeightOp(name+'_bias')
+                p = {'name': name}
+                scale_op = self.mlir.create_scale_op([op0, weight_op, offset_op], output_shape, **p)
+                self.addOperand(onnx_node.name, scale_op)
+                return
         else:
             op0 = self.getOperand(onnx_node.inputs[0])
             op1 = self.getOperand(onnx_node.inputs[1])

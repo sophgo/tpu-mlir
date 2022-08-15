@@ -37,6 +37,7 @@ class Top:
     SqueezeOp = 'top.Squeeze'
     ClipOp = 'top.Clip'
     DeconvOp = 'top.Deconv'
+    ScaleOp = 'top.Scale'
 
 
 class State:
@@ -474,6 +475,13 @@ class MLIRImporter(object):
         if 'inserts' in kargs:
             param['inserts'] = self.ArrayAttr(kargs['inserts'])
         return self.buildOp(Top.DeconvOp, operands, [output_type], **param)
+
+    def create_scale_op(self, operands, output_shape, **kargs):
+        if len(operands) < 3:
+            raise RuntimeError("input operand must equal to 3")
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {'name': StringAttr.get(kargs['name']), 'do_relu': BoolAttr.get(False)}
+        return self.buildOp(Top.ScaleOp, operands, [output_type], **param)
 
     def print_module(self):
         mlir_format = str(self.mlir_module)

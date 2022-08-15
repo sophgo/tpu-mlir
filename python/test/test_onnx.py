@@ -46,6 +46,7 @@ TEST_ONNX_IR = [
     "ConvTranspose2D",
     "Split",
     "ReduceMean",
+    "Scale",
 ]
 
 
@@ -91,6 +92,7 @@ class ONNX_IR_TESTER(object):
             "ConvTranspose2D": self.test_ConvTranspose,
             "Split": self.test_Split,
             "ReduceMean": self.test_ReduceMean,
+            "Scale": self.test_Scale,
         }
         self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
 
@@ -464,6 +466,32 @@ class ONNX_IR_TESTER(object):
                                           outputs = ["output"]);
 
         graph_def = helper.make_graph([const_mul_def], test_case, [input], [output], initializer = initializer);
+        self.convert_and_test({"input": input_data}, graph_def, test_case)
+
+    def test_Scale(self):
+        test_case = 'Scale'
+        input_shape = [1, 32, 100, 100]
+        output_shape = [1, 32, 100, 100]
+        weight_shape = [1, 32, 1, 1]
+        offset_shape = [1, 32, 1, 1]
+        input_data = np.random.randn(*input_shape).astype(np.float32)
+        weight_data = np.random.randn(*weight_shape).astype(np.float32)
+        offset_data = np.random.randn(*offset_shape).astype(np.float32)
+
+        input = helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
+        weight = helper.make_tensor('weight', TensorProto.FLOAT, weight_shape, weight_data)
+        offset = helper.make_tensor('offset', TensorProto.FLOAT, offset_shape, offset_data)
+
+        mul_weight_def = helper.make_node("Mul",
+                                          inputs=["input", "weight"],
+                                          outputs = ["mul_output"])
+        add_offset_def = helper.make_node("Add",
+                                          inputs=["mul_output", "offset"],
+                                          outputs = ["output"])
+
+        graph_def = helper.make_graph([mul_weight_def, add_offset_def], test_case, [input], [output], initializer = [weight, offset]);
+
         self.convert_and_test({"input": input_data}, graph_def, test_case)
 
     def test_Resize(self):

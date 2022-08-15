@@ -486,7 +486,7 @@ def Tpu_LeakyReluOp: Tpu_Op<"LeakyRelu", [
   let arguments = (ins
     AnyTenor:$input,
     OptionalAttr<F64Attr>:$alpha,
-    
+
     // quantize param
     OptionalAttr<I64Attr>:$multiplier,
     OptionalAttr<I64Attr>:$rshift,
@@ -706,4 +706,29 @@ def Tpu_SqueezeOp: Tpu_Op<"Squeeze"> {
 
   let results = (outs AnyTensor:$output);
 }
+
+def Tpu_ScaleOp: Tpu_Op<"Scale", [SupportFuseRelu, InOutSameShape,
+  DeclareOpInterfaceMethods<LocalGenInterface>]> {
+  let summary = "Scale operator";
+
+  let description = [{
+    Y = X * S + B,
+    where the shape of X/Y is [n, c, h, w] and the shape of S/B is [1, c, 1, 1].
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$scale,
+    AnyTensor:$bias,
+    AnyTensorOrNone:$lshift,
+
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    OptionalAttr<F64Attr>:$relu_limit,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
+    StrAttr:$name
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 #endif // TPU_OPS
