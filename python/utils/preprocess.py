@@ -2,6 +2,7 @@ import os
 import PIL
 import numpy as np
 import cv2
+import ast
 import argparse
 from utils.log_setting import setup_logger
 from utils.mlir_parser import *
@@ -49,6 +50,8 @@ class ImageResizeTool:
         raise RuntimeError("invalid image shape:{}".format(image.shape))
 
 def add_preprocess_parser(parser):
+    parser.add_argument("--net_input_dims", type=str,
+                         help="model's input heigh/width dimension")
     parser.add_argument("--resize_dims", type=str,
                         help="Image was resize to fixed 'h,w', default is same as net input dims")
     parser.add_argument("--keep_aspect_ratio", action='store_true', default=False,
@@ -81,8 +84,11 @@ class preprocess(object):
     def config(self, net_input_dims=None, resize_dims=None, keep_aspect_ratio=False,
                mean='0,0,0', scale='1,1,1', pixel_format='bgr', pad_type='center', pad_value=0,
                channel_format='nchw', **ignored):
+        self.batch_size = 1
         if net_input_dims:
-            self.net_input_dims = [int(s) for s in net_input_dims.split(',')]
+            input_shapes = ast.literal_eval(net_input_dims)
+            self.net_input_dims = input_shapes[0][-2:]
+            self.batch_size = input_shapes[0][0]
             if not resize_dims:
                 self.resize_dims = self.net_input_dims
         if resize_dims:
@@ -109,9 +115,14 @@ class preprocess(object):
             self.channel_num = 4
 
         self.mean = np.array([float(s) for s in mean.split(',')], dtype=np.float32)
+        self.mean = self.mean[np.newaxis, :,np.newaxis, np.newaxis]
         assert(self.mean.size >= self.channel_num)
         self.scale = np.array([float(s) for s in scale.split(',')], dtype=np.float32)
+        self.scale = self.scale[np.newaxis, :,np.newaxis, np.newaxis]
         assert(self.scale.size >= self.channel_num)
+        if self.channel_format == 'nhwc':
+            self.mean = self.mean.transpose(0, 2, 3, 1)
+            self.scale = self.scale.transpose(0, 2, 3, 1)
 
 
         info_str = \
@@ -169,6 +180,9 @@ class preprocess(object):
         self.scale = np.array(Operation.fp_array(attrs['scale'])).astype(np.float32)
         self.scale = self.scale[np.newaxis, :,np.newaxis, np.newaxis]
         self.crop_method = 'center'
+        if self.channel_format == 'nhwc':
+            self.mean = self.mean.transpose(0, 2, 3, 1)
+            self.scale = self.scale.transpose(0, 2, 3, 1)
 
         format_str = "\n  load_config Preprocess args : \n" + \
                "\tresize_dims           : {}\n" + \

@@ -29,9 +29,8 @@ class topx(base_class):
                         self.all_labels_list.append(int(line[0]))
         self.have_label_file = len(self.all_labels_dict) > 0 or len(self.all_labels_list) > 0
 
-
     def preproc(self, img_paths):
-        pass
+        return None
 
     def update(self, idx, outputs, img_paths = None, labels = None):
         if not self.have_label_file and labels is None:
