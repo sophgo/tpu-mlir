@@ -14,9 +14,10 @@ import argparse
 import pymlir
 import pyruntime
 import onnx
+import ast
 import onnxruntime
 import onnxsim.onnx_simplifier as onnxsim
-from utils.preprocess import preprocess
+from utils.preprocess import get_preprocess_parser, preprocess
 from utils.mlir_parser import *
 from utils.misc import *
 
@@ -85,6 +86,9 @@ class mlir_inference(object):
 
 class onnx_inference(object):
     def __init__(self, args):
+        self.img_proc = preprocess()
+        self.img_proc.config(**vars(args))
+        args.batch_size = ast.literal_eval(args.net_input_dims)[0][0]
         self.batched_labels = []
         self.batched_imgs = ''
         self.net = onnxruntime.InferenceSession(args.model_file)
@@ -105,12 +109,19 @@ class onnx_inference(object):
 
     def model_invoke(self):
         img = self.score.preproc(self.batched_imgs)
+        if img is None:
+            img= self.img_proc.run(self.batched_imgs)
         input_name = self.net.get_inputs()[0].name
         outs = self.net.run(None, {input_name:img})
         output = outs[0] if type(outs) == list and len(outs) == 1 else outs
-        self.score.update(self.idx, output, self.batched_imgs)
+        if len(self.batched_labels) > 0:
+            self.score.update(self.idx, output, self.batched_imgs, labels = self.batched_labels)
+        else:
+            self.score.update(self.idx, output, self.batched_imgs)
         self.batched_imgs = ''
         self.batched_labels.clear()
+        if (self.idx + 1) % 5 == 0:
+            self.score.print_info()
 
     def get_result(self):
         if self.batched_imgs != '':
@@ -140,10 +151,12 @@ class model_inference(object):
         new_parser = argparse.ArgumentParser(
             parents=[parser, score_Parser().parser],
             conflict_handler='resolve')
-        args = new_parser.parse_args()
         if args.model_file.endswith('.mlir'):
+            args = new_parser.parse_args()
             engine = mlir_inference(args)
         elif args.model_file.endswith('.onnx'):
+            parser = get_preprocess_parser(existed_parser=new_parser)
+            args = parser.parse_args()
             engine = onnx_inference(args)
         else:
             print('model_file:{}, ext_name error'.format(args.model_file))

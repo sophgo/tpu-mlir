@@ -115,13 +115,6 @@ tpuc-opt ${model_name}.mlir \
     --save-weight \
     -o ${model_name}_bm1684x_tpu_int8_sym.mlir
 
-# lowering to asymmetric int8
-tpuc-opt ${model_name}.mlir \
-    --import-calibration-table="file=${CALI_TABLE} asymmetric=true" \
-    --lowering="mode=INT8 asymmetric=true chip=bm1684x" \
-    --save-weight \
-    -o ${model_name}_bm1684x_tpu_int8_asym.mlir
-
 model_runner.py \
     --model ${model_name}_bm1684x_tpu_int8_sym.mlir \
     --input ${model_name}_in_f32.npz \
@@ -131,7 +124,14 @@ model_runner.py \
 npz_tool.py compare \
     ${model_name}_bm1684x_tpu_int8_sym_outputs.npz \
     ${model_name}_top_outputs.npz \
-    --tolerance 0.90,0.50 -v
+    --tolerance ${int8_sym_tolerance} -v
+
+# lowering to asymmetric int8
+tpuc-opt ${model_name}.mlir \
+    --import-calibration-table="file=${CALI_TABLE} asymmetric=true" \
+    --lowering="mode=INT8 asymmetric=true chip=bm1684x" \
+    --save-weight \
+    -o ${model_name}_bm1684x_tpu_int8_asym.mlir
 
 model_runner.py \
     --model ${model_name}_bm1684x_tpu_int8_asym.mlir \
@@ -141,6 +141,6 @@ model_runner.py \
 npz_tool.py compare \
     ${model_name}_bm1684x_tpu_int8_asym_outputs.npz \
     ${model_name}_top_outputs.npz \
-    --tolerance 0.90,0.50 -v
+    --tolerance ${int8_asym_tolerance} -v
 
 popd
