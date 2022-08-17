@@ -39,7 +39,10 @@ Value top::AddOp::lowering_int8_bm1684x(bool asymmetric) {
       Quant::getScaleAndZeroPoint(input, scale, zeropoint, asymmetric);
       int scalei, shifti;
       auto scale_f = scale / o_scale;
-      get_scale_and_shift(coeff_v->at(i) * scale_f, scalei, shifti, 8);
+      // get_scale_and_shift(coeff_v->at(i) * scale_f, scalei, shifti, 8);
+      // "get_scale_and_shift_positive" use positive right_shift, left_shift
+      // will be converted to the multiplier.
+      get_scale_and_shift_positive(coeff_v->at(i) * scale_f, scalei, shifti, 8);
       multiplier_v[i] = scalei;
       rshift_v[i] = shifti;
     }
