@@ -18,8 +18,8 @@ using namespace mlir;
 namespace tpu_mlir {
 namespace tpu {
 
-struct StripInputCastPattern : public OpRewritePattern<tpu::CastOp> {
-  StripInputCastPattern(MLIRContext *context)
+struct StripInputQuantPattern : public OpRewritePattern<tpu::CastOp> {
+  StripInputQuantPattern(MLIRContext *context)
       : OpRewritePattern<tpu::CastOp>(context) {}
   LogicalResult matchAndRewrite(tpu::CastOp op,
                                 PatternRewriter &rewriter) const override {
@@ -34,8 +34,8 @@ struct StripInputCastPattern : public OpRewritePattern<tpu::CastOp> {
   };
 };
 
-struct StripOutputCastPattern : public OpRewritePattern<tpu::CastOp> {
-  StripOutputCastPattern(MLIRContext *context)
+struct StripOutputQuantPattern : public OpRewritePattern<tpu::CastOp> {
+  StripOutputQuantPattern(MLIRContext *context)
       : OpRewritePattern<tpu::CastOp>(context) {}
   LogicalResult matchAndRewrite(tpu::CastOp op,
                                 PatternRewriter &rewriter) const override {
@@ -49,9 +49,9 @@ struct StripOutputCastPattern : public OpRewritePattern<tpu::CastOp> {
   };
 };
 
-class StripIOCastPass : public StripIOCastBase<StripIOCastPass> {
+class StripIOQuantPass : public StripIOQuantBase<StripIOQuantPass> {
 public:
-  StripIOCastPass() {}
+  StripIOQuantPass() {}
   void runOnOperation() override {
     auto func = getOperation();
     if (func.getName() != "main") {
@@ -60,16 +60,16 @@ public:
     auto ctx = func.getContext();
     RewritePatternSet patterns(ctx);
     if (quant_input)
-      patterns.add<StripInputCastPattern>(ctx);
+      patterns.add<StripInputQuantPattern>(ctx);
     if (quant_output)
-      patterns.add<StripOutputCastPattern>(ctx);
+      patterns.add<StripOutputQuantPattern>(ctx);
     applyPatternsAndFoldGreedily(func, std::move(patterns));
     Module::updateModuleTypes(Module::getModuleOp(func));
   }
 };
 
-std::unique_ptr<OperationPass<FuncOp>> createStripIOCast() {
-  return std::make_unique<StripIOCastPass>();
+std::unique_ptr<OperationPass<FuncOp>> createStripIOQuant() {
+  return std::make_unique<StripIOQuantPass>();
 }
 } // namespace tpu
 } // namespace tpu_mlir

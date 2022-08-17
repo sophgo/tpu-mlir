@@ -47,15 +47,15 @@ def Codegen : Pass<"codegen", "ModuleOp"> {
   ];
 }
 
-def StripIOCast : Pass<"strip-io-cast", "FuncOp"> {
+def StripIOQuant : Pass<"strip-io-quant", "FuncOp"> {
   let summary = "remove input & output fp32<->int8 converiton in int8model";
-  let constructor = "createStripIOCast()";
+  let constructor = "createStripIOQuant()";
   let dependentDialects = ["TpuDialect"];
   let options = [
     Option<"quant_input", "quant_input", "bool", /*default=*/"false",
-           "strip input type cast.">,
+           "strip input quant.">,
     Option<"quant_output", "quant_output", "bool", /*default=*/"false",
-           "strip output type cast.">,
+           "strip output quant.">,
   ];
 }
 

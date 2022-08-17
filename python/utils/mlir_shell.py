@@ -50,13 +50,13 @@ def mlir_to_model(tpu_mlir: str,
                   quant_input: bool = False,
                   quant_output: bool = False):
     codegen_param = '--codegen="model_file={}"'.format(model)
-    strip_io_cast_param = '--strip-io-cast="quant_input={} quant_output={}"'.format(
+    strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={}"'.format(
         quant_input, quant_output
     )
     cmd = [
         "tpuc-opt",
         tpu_mlir,
-        strip_io_cast_param,
+        strip_io_quant_param,
         "--weight-reorder",
         "--subnet-divide",
         "--layer-group",
