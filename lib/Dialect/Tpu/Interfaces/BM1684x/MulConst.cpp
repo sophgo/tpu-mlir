@@ -115,6 +115,7 @@ void tpu::MulConstOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   constbinary_local_spec_t param = {0};
+
   param.common.binary_type = BM_BINARY_MUL;
   param.common.if_relu = do_relu();
   param.common.relu_upper_limit = relu_limit().convertToDouble();

@@ -529,19 +529,17 @@ float bf16_uint16_to_float_simple(uint16_t x) {
 }
 
 void f32_to_f16(float *p_src, float *p_dst, int num) {
-  uint16_t tmp;
 #pragma omp parallel for schedule(static, omp_schedule(num))
   for (int i = 0; i < num; i++) {
-    tmp = fp16_alt_from_fp32_value(p_src[i]);
+    uint16_t tmp = fp16_alt_from_fp32_value(p_src[i]);
     p_dst[i] = fp16_alt_to_fp32_value(tmp);
   }
 }
 
 void f32_to_bf16(float *p_src, float *p_dst, int num) {
-  uint16_t tmp;
 #pragma omp parallel for schedule(static, omp_schedule(num))
   for (int i = 0; i < num; i++) {
-    tmp = float_to_bf16_uint16_simple(p_src[i]);
+    uint16_t tmp = float_to_bf16_uint16_simple(p_src[i]);
     p_dst[i] = bf16_uint16_to_float_simple(tmp);
   }
 }

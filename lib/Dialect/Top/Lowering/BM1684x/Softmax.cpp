@@ -40,11 +40,13 @@ Value top::SoftmaxOp::lowering_f32_bm1684x() {
 }
 
 Value top::SoftmaxOp::lowering_bf16_bm1684x() {
-  llvm_unreachable("to be supported for Softmax bf16 quantize lowering");
+  //return lowering_common_float<tpu::SoftmaxOp, BFloat16Type>(getOperation());
+  return lowering_f32_bm1684x();
 }
 
 Value top::SoftmaxOp::lowering_f16_bm1684x() {
-  llvm_unreachable("to be supported for Softmax f16 quantize lowering");
+  //return lowering_common_float<tpu::SoftmaxOp, Float16Type>(getOperation());
+  return lowering_f32_bm1684x();
 }
 
 Value top::SoftmaxOp::lowering_quant_bm1684x() {

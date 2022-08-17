@@ -24,6 +24,7 @@ import os
 '''
 TEST_ONNX_IR = [
     "AvgPool1D",
+    "Add",
     "AvgPool2D",
     "AvgPool3D",
     "Conv1d",
@@ -74,6 +75,7 @@ class ONNX_IR_TESTER(object):
         self.test_function = {
             # Todo: add more operators
             "Conv1d": self.test_Conv1d,
+            "Add": self.test_Add,
             "Conv2d": self.test_Conv2d,
             "Conv3d": self.test_Conv3d,
             "AvgPool1D": self.test_AvgPool1D,
@@ -104,6 +106,7 @@ class ONNX_IR_TESTER(object):
             "LayerGroup": self.test_LayerGroup,
         }
         self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
+        #self.quant_modes = ["f16", "bf16"]  # add later
 
     def pytorch_transform_onnx(self, model, inputs, test_name):
         in_names = []
@@ -791,6 +794,26 @@ class ONNX_IR_TESTER(object):
 
         self.convert_and_test({model.graph.node[0].input[0]: input_data},
                               model.graph, "layer_group")
+
+    def test_Add(self):
+        test_case = 'Add'
+        input_shape = {"input1": [1, 3, 27, 27], "input2": [1, 3, 27, 27]}
+        output_shape = [1, 3, 27, 27]
+        input_data = {k: np.random.randn(*x).astype(np.float32) for k, x in input_shape.items()}
+
+        inputs = [
+            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
+        ]
+        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
+
+        add_def = helper.make_node(test_case, inputs=list(input_shape.keys()), outputs=["output"])
+
+        graph_def = helper.make_graph([add_def], test_case, inputs, [output])
+        self.convert_and_test(
+            input_data,
+            graph_def,
+            test_case,
+        )
 
 if __name__ == "__main__":
     os.makedirs("onnx_test", exist_ok=True)

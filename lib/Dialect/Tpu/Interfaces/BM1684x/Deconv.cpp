@@ -98,7 +98,7 @@ void tpu::DeconvOp::weight_reorder_bf16_bm1684x() {
 
   // filter op
   auto filterOp = filter().getDefiningOp<top::WeightOp>();
-  auto filter_i16 = filterOp.read<int16_t>();
+  auto filter_i16 = filterOp.read<uint16_t>();
   auto filter_type = Module::getStorageType(filter());
   std::vector<int64_t> filter_shape = {attrs.oc, attrs.ic / attrs.g, attrs.kh,
                                        attrs.kw};

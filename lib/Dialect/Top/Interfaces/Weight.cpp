@@ -107,6 +107,12 @@ std::shared_ptr<std::vector<uint8_t>> WeightOp::read_as_byte() {
     auto data_u8 = std::make_shared<std::vector<uint8_t>>(bytes);
     memcpy(data_u8->data(), data_i32->data(), bytes);
     return std::move(data_u8);
+  } else if (dtype.isa<::mlir::Float16Type, ::mlir::BFloat16Type>()){
+    auto data_u16 = read<uint16_t>();
+    auto bytes = data_u16->size() * sizeof(uint16_t);
+    auto data_u8 = std::make_shared<std::vector<uint8_t>>(bytes);
+    memcpy(data_u8->data(), data_u16->data(), bytes);
+    return std::move(data_u8);
   }
   dump();
   llvm_unreachable("weight data not support read now");

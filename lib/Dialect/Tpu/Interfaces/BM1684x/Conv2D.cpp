@@ -11,6 +11,7 @@
 #include "ConvUtils.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Conv.h"
+#include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Helper/Module.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
 #include "tpu_mlir/Support/MathUtils.h"
@@ -164,20 +165,52 @@ void tpu::Conv2DOp::weight_reorder_bf16_bm1684x() {
   conv_attr_t attr = {0};
   parseParam(&attr);
   auto filterOp = filter().getDefiningOp<top::WeightOp>();
-  if (attr.is_dw || attr.groups > 1) {
-    llvm_unreachable("depthwise should support !!");
-  }
   auto filter_u16 = filterOp.read<uint16_t>();
-  std::vector<int64_t> filter_shape = {attr.oc, attr.ic, attr.kh, attr.kw};
-  filter_reorder(filter_u16, filter_shape);
-  reshape_coeff_for_broadcast_channel(filter_u16, filter_shape);
+  auto biasOp = bias().getDefiningOp<top::WeightOp>();
+  auto filter_type = Module::getStorageType(filter());
+  std::vector<int64_t> filter_shape;
   auto op = getOperation();
   OpBuilder builder(getContext());
-  auto filter_type = Module::getStorageType(filter());
-  auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
-  auto newFilterOp =
-      top::WeightOp::create(op, "_reordered", *filter_u16, new_filter_type);
-  op->setOperand(1, newFilterOp);
+  if (attr.is_dw || attr.groups > 1) {
+    filter_shape = {1, attr.ic, attr.kh, attr.kw};
+    auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
+    filter().setType(new_filter_type);
+
+    auto data_fp32 = biasOp.read<float>();
+    auto count = data_fp32->size();
+    auto data_u16 = std::make_shared<std::vector<uint16_t>>(count);
+
+    bool isF16 = filter_type.isF16();
+    for (uint32_t i = 0; i < count; i++) {
+      data_u16->at(i) = isF16 ?
+                        fp16_alt_from_fp32_value(data_fp32->at(i)) :
+                        float_to_bf16_uint16_simple(data_fp32->at(i));
+    }
+    int64_t bias_shape[4] = {1, attr.oc, 1, 1};
+    auto new_bias_type = RankedTensorType::get(bias_shape, filter_type);
+    bias().setType(new_bias_type);
+
+    auto newBiasOp =
+        top::WeightOp::create(op, "reordered", *data_u16, new_bias_type);
+    op->setOperand(2, newBiasOp);
+  } else {
+    filter_shape = {attr.oc, attr.ic, attr.kh, attr.kw};
+    filter_reorder(filter_u16, filter_shape);
+    reshape_coeff_for_broadcast_channel(filter_u16, filter_shape);
+
+    auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
+    auto newFilterOp =
+        top::WeightOp::create(op, "reordered", *filter_u16, new_filter_type);
+    op->setOperand(1, newFilterOp);
+
+    // bias op
+    if (attr.has_bias) {
+      auto bias_type = Module::getStorageType(bias());
+      int64_t bias_shape[4] = {1, attr.oc, 1, 1};
+      auto new_bias_type = RankedTensorType::get(bias_shape, bias_type);
+      bias().setType(new_bias_type);
+    }
+  }
 }
 
 void tpu::Conv2DOp::weight_reorder_f16_bm1684x() {

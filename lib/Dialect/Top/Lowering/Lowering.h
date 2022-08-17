@@ -56,10 +56,10 @@ template <typename OpTy, typename ElemTy = Float32Type>
 static mlir::Value lowering_common_float(Operation *from) {
   auto output = from->getResult(0);
   auto sType = Module::getStorageType(output);
-  auto shape = Module::getShape(output);
-  auto ctx = from->getContext();
   Type newType = output.getType();
   if (sType.isa<ElemTy>() == false) {
+    auto shape = Module::getShape(output);
+    auto ctx = from->getContext();
     if (Quant::isCalibratedType(output)) {
       auto caliType = Quant::getCalibratedType(output);
       auto newCaliType = quant::CalibratedQuantizedType::get(

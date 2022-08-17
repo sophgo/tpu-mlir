@@ -42,11 +42,11 @@ Value top::SiLUOp::lowering_f32_bm1684x() {
 }
 
 Value top::SiLUOp::lowering_bf16_bm1684x() {
-  return lowering_common_float<tpu::SiLUOp, BFloat16Type>(getOperation());
+  return lowering_common_float<tpu::SiLUOp, Float32Type>(getOperation());
 }
 
 Value top::SiLUOp::lowering_f16_bm1684x() {
-  return lowering_common_float<tpu::SiLUOp, Float16Type>(getOperation());
+  return lowering_common_float<tpu::SiLUOp, Float32Type>(getOperation());
 }
 
 Value top::SiLUOp::lowering_quant_bm1684x() {
