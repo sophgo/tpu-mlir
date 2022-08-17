@@ -120,9 +120,6 @@ class preprocess(object):
         self.scale = np.array([float(s) for s in scale.split(',')], dtype=np.float32)
         self.scale = self.scale[np.newaxis, :,np.newaxis, np.newaxis]
         assert(self.scale.size >= self.channel_num)
-        if self.channel_format == 'nhwc':
-            self.mean = self.mean.transpose(0, 2, 3, 1)
-            self.scale = self.scale.transpose(0, 2, 3, 1)
 
 
         info_str = \
@@ -180,9 +177,6 @@ class preprocess(object):
         self.scale = np.array(Operation.fp_array(attrs['scale'])).astype(np.float32)
         self.scale = self.scale[np.newaxis, :,np.newaxis, np.newaxis]
         self.crop_method = 'center'
-        if self.channel_format == 'nhwc':
-            self.mean = self.mean.transpose(0, 2, 3, 1)
-            self.scale = self.scale.transpose(0, 2, 3, 1)
 
         format_str = "\n  load_config Preprocess args : \n" + \
                "\tresize_dims           : {}\n" + \
