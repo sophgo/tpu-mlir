@@ -5,7 +5,9 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 model_list_all=(
 # classification
+  "resnet18_v1"
   "resnet18"
+  "resnet50_v1"
   "resnet50_v2"
   "mobilenet_v2"
   "squeezenet1.0"
