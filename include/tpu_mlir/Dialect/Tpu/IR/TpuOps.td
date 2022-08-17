@@ -384,6 +384,7 @@ def Tpu_RequantOp:Tpu_Op<"Requant",
     AnyTensor:$input,
     I64Attr:$multiplier,
     I64Attr:$rshift,
+    DefaultValuedAttr<I64Attr, "2">:$quant_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
     StrAttr:$name
   );
@@ -399,6 +400,42 @@ def Tpu_RequantAxisOp:Tpu_Op<"RequantAxis",
   let arguments = (ins
     AnyTensor:$input,
     AnyTensor:$quant,
+    DefaultValuedAttr<I64Attr, "2">:$quant_mode,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
+    StrAttr:$name
+  );
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_DequantOp:Tpu_Op<"Dequant",
+  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
+  let summary = "dequant operation";
+  let description = [{
+    Dequant 32/16/8 bit data to int8 or uint8 data
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    I64Attr:$multiplier,
+    I64Attr:$shift,
+    OptionalAttr<I64Attr>:$lshift,
+    DefaultValuedAttr<I64Attr, "0">:$quant_mode,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
+    StrAttr:$name
+  );
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_DequantAxisOp:Tpu_Op<"DequantAxis",
+  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
+  let summary = "dequant operation";
+  let description = [{
+    Dequant 32/16/8 bit data to int8 or uint8 data, PerAxis(or PerChannel)
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$quant,
+    OptionalAttr<I64Attr>:$lshift,
+    DefaultValuedAttr<I64Attr, "0">:$quant_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
     StrAttr:$name
   );
