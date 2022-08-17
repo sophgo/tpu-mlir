@@ -10,7 +10,7 @@
 
 import numpy as np
 from enum import Enum
-import regdef_1684x
+from . import regdef_1684x
 
 # global data and type
 # ------------------------------------------------------------
@@ -88,12 +88,12 @@ class MemRef:
         return f"{self.addr_str} {self.shape_str}"
 
 
-def attribute_builder(des_attr, reg_field):
+def attribute_builder(attr, reg_field):
     for key, value in reg_field.items():  # type: ignore
         if isinstance(value, str):
-            yield key, des_attr[value]
+            yield key, attr[value]
         else:
-            yield key, [des_attr[x] for x in value]
+            yield key, [attr[x] for x in value]
 
 
 # ------------------------------------------------------------
@@ -137,6 +137,26 @@ def decode_reg(buffer, des_reg):
     return dict(zip(des_reg["fields"], value))
 
 
+class NamedDict(dict):
+    def __init__(self, dic):
+        self.__dict__.update(dic)
+
+    def __getitem__(self, key):
+        if key in self.__dict__:
+            return self.__dict__[key]
+        else:
+            raise KeyError(f"invalid key: {key}")
+
+    def __setitem__(self, key, value):
+        if key in self.__dict__:
+            self.__dict__[key] = value
+        else:
+            raise KeyError(f"invalid key: {key}")
+
+    def __repr__(self):
+        return str(self.__dict__)
+
+
 # ------------------------------------------------------------
 # BDC definition
 # ------------------------------------------------------------
@@ -154,7 +174,7 @@ class bdc_base:
         "operands",
         "attribute",
         "cmd",
-        "des_attr",
+        "attr",
         "cmd_id",
         "cmd_id_dep",
     )
@@ -163,9 +183,9 @@ class bdc_base:
     def decode(cls, cmd_reg):
         cls = cls()
         cls.cmd = cmd_reg[: cls.len]
-        cls.des_attr = decode_reg(cls.cmd, cls.des_reg)
-        cls.cmd_id = cls.des_attr["des_cmd_id"]
-        cls.cmd_id_dep = cls.des_attr["des_cmd_id_dep"]
+        cls.attr = NamedDict(decode_reg(cls.cmd, cls.des_reg))
+        cls.cmd_id = cls.attr["des_cmd_id"]
+        cls.cmd_id_dep = cls.attr["des_cmd_id_dep"]
         cls.set_elt()
         return cls
 
@@ -191,27 +211,27 @@ class bdc_base:
 
     def __memref(self, reg_field):
         for addr, shape, dtype in zip(*(reg_field[i::3] for i in range(3))):  # type: ignore
-            addr = self.des_attr[addr]
-            shape = [self.des_attr[x] for x in shape]
+            addr = self.attr[addr]
+            shape = [self.attr[x] for x in shape]
             if isinstance(dtype, str):
-                dtype = get_dtype(self.des_attr[dtype])
+                dtype = get_dtype(self.attr[dtype])
             elif isinstance(dtype, tuple):
                 _type, _sign = dtype
-                dtype = get_dtype(self.des_attr[_type], self.des_attr[_sign])
+                dtype = get_dtype(self.attr[_type], self.attr[_sign])
             yield MemRef(addr, shape, None, dtype, True)
 
     def memref(self, reg_field):
         return list(self.__memref(reg_field))
 
     def set_attibute(self, reg_field):
-        return dict(attribute_builder(self.des_attr, reg_field))
+        return dict(attribute_builder(self.attr, reg_field))
 
     def __repr__(self):
         if self.operands == []:
             return self.description
         res_str, res_shape_t = zip(*((x.addr_str, x.shape_str) for x in self.results))
         opd_str, opd_shape_t = zip(*((x.addr_str, x.shape_str) for x in self.operands))
-        op_name = self.eu_type[self.des_attr["des_tsk_eu_typ"]]
+        op_name = self.eu_type[self.attr["des_tsk_eu_typ"]]
         return (
             f"{', '.join(res_str)} = {op_name}.{self.cmd_id}"
             + f" ({', '.join(opd_str)}, {{{self.cmd_id_dep}}}) "
@@ -413,7 +433,14 @@ class sar_op(ar_op):
         )
         self.results = self.memref(results)
         self.operands = self.memref(operands)
-        self.attribute = None
+        self.attribute = {}
+        if self.attr.des_tsk_eu_typ == 18:
+            lshift = self.attr.des_opd2_addr // 256
+            rshift = np.uint8(self.attr.des_opd2_addr % 256).view(np.int8)
+            self.attribute = {"lshift": lshift, "rshift": rshift}
+        else:
+            shift = np.uint8(self.attr.des_opd2_addr).view(np.int8)
+            self.attribute = {"shift": shift}
 
 
 # @registry_bdc("SEG")
@@ -585,7 +612,7 @@ class dma_base:
         "operands",
         "attribute",
         "cmd",
-        "des_attr",
+        "attr",
         "cmd_id",
         "cmd_id_dep",
     )
@@ -596,7 +623,7 @@ class dma_base:
         cmd = cmd_reg[: cls.len]
         cls.cmd = cmd
         attr = decode_reg(cmd, cls.des_reg)
-        cls.des_attr = attr
+        cls.attr = attr
         cls.cmd_id = attr["cmd_id"]
         cls.cmd_id_dep = attr["cmd_id_dep"]
         cls.set_elt()
@@ -623,10 +650,10 @@ class dma_base:
     def __memref(self, reg_field):
         for addr, shape, stride, dtype in zip(*(reg_field[i::4] for i in range(4))):  # type: ignore
             h8, l32 = addr
-            addr = self.des_attr[h8] * 2**32 + self.des_attr[l32]
-            shape = [self.des_attr[x] for x in shape]
-            stride = [self.des_attr[x] for x in stride]
-            dtype = get_dtype(self.des_attr[dtype])
+            addr = self.attr[h8] * 2**32 + self.attr[l32]
+            shape = [self.attr[x] for x in shape]
+            stride = [self.attr[x] for x in stride]
+            dtype = get_dtype(self.attr[dtype])
             yield MemRef(addr, shape, stride, dtype, False)
 
     def memref(self, reg_field):

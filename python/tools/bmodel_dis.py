@@ -11,8 +11,8 @@
 import sys
 from collections import namedtuple
 import numpy as np
-import opdef_1684x
-import bmodel_fbs
+from utils.bmodel_dis import opdef_1684x
+from utils.bmodel_dis import bmodel_fbs
 import itertools
 
 # Example:
