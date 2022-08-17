@@ -8,10 +8,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684x.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
 
 using namespace mlir;
 using namespace tpu_mlir;
@@ -52,6 +52,25 @@ typedef struct {
   int input_dtype;
 } dequant_fp_param_t;
 
+typedef struct cast_common_spec {
+    int src_dtype;
+    int dst_dtype;
+    int round_mode;
+} cast_common_spec_t;
+
+typedef struct cast_global_spec {
+    cast_common_spec_t common;
+} cast_global_spec_t;
+
+typedef struct cast_local_spec {
+    cast_common_spec_t common;
+    uint32_t buffer_addr;
+} cast_local_spec_t;
+
+typedef struct cast_local_param {
+    cast_local_spec_t spec;
+} cast_local_param_t;
+
 #ifdef __cplusplus
 }
 #endif
@@ -66,38 +85,53 @@ void tpu::CastOp::codegen_global_bm1684x() {
   bool qOutput = Quant::isUniformQuantized(output());
   int64_t n, c, h, w;
   Module::getNCHW(input(), n, c, h, w);
-  if (!qInput && qOutput) {
-    auto qtype = Quant::getUniformQuantizedType(output());
-    requant_fp_param_t param = {0};
-    param.input_addr = Module::getAddress(input());
-    param.output_addr = Module::getAddress(output());
-    param.n = (int)n;
-    param.c = (int)c;
-    param.h = (int)h;
-    param.w = (int)w;
-    param.is_perchannel = false;
-    param.scale_value = 1.0 / qtype.getScale();
-    param.offset_value = qtype.getZeroPoint();
-    param.input_dtype = BM168x::getDataType(input());
-    param.output_dtype = BM168x::getDataType(output());
-    param.mode = 0;
-    BM1684x::instance().call_global_func("backend_api_requant_float_global",
-                                         &param, sizeof(param));
+  if (!qInput && !qOutput) {
+    cast_global_spec_t spec = {0};
+    spec.common.src_dtype = BM168x::getDataType(input());
+    spec.common.dst_dtype = BM168x::getDataType(output());
+    spec.common.round_mode = ROUND_INF;
+
+    auto op = getOperation();
+    auto input_spec = BM1684x::get_input_spec(op);
+    auto output_spec = BM1684x::get_output_spec(op);
+    BM1684x::instance().call_global_func("backend_api_cast_global",
+                                        &spec, sizeof(spec),
+                                        input_spec->data(), output_spec->data());
+
   } else {
-    auto qtype = Quant::getUniformQuantizedType(input());
-    dequant_fp_param_t param = {0};
-    param.input_addr = Module::getAddress(input());
-    param.output_addr = Module::getAddress(output());
-    param.n = (int)n;
-    param.c = (int)c;
-    param.h = (int)h;
-    param.w = (int)w;
-    param.is_perchannel = false;
-    param.scale_value = qtype.getScale();
-    param.offset_value = qtype.getZeroPoint();
-    param.input_dtype = BM168x::getDataType(input());
-    BM1684x::instance().call_global_func("backend_api_dequant_float_global",
-                                         &param, sizeof(param));
+    if (!qInput && qOutput) {
+      auto qtype = Quant::getUniformQuantizedType(output());
+      requant_fp_param_t param = {0};
+      param.input_addr = Module::getAddress(input());
+      param.output_addr = Module::getAddress(output());
+      param.n = (int)n;
+      param.c = (int)c;
+      param.h = (int)h;
+      param.w = (int)w;
+      param.is_perchannel = false;
+      param.scale_value = 1.0 / qtype.getScale();
+      param.offset_value = qtype.getZeroPoint();
+      param.input_dtype = BM168x::getDataType(input());
+      param.output_dtype = BM168x::getDataType(output());
+      param.mode = 0;
+      BM1684x::instance().call_global_func("backend_api_requant_float_global",
+                                           &param, sizeof(param));
+    } else {
+      auto qtype = Quant::getUniformQuantizedType(input());
+      dequant_fp_param_t param = {0};
+      param.input_addr = Module::getAddress(input());
+      param.output_addr = Module::getAddress(output());
+      param.n = (int)n;
+      param.c = (int)c;
+      param.h = (int)h;
+      param.w = (int)w;
+      param.is_perchannel = false;
+      param.scale_value = qtype.getScale();
+      param.offset_value = qtype.getZeroPoint();
+      param.input_dtype = BM168x::getDataType(input());
+      BM1684x::instance().call_global_func("backend_api_dequant_float_global",
+                                           &param, sizeof(param));
+    }
   }
 }
 
@@ -126,42 +160,69 @@ void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   int64_t n, c, h, w;
   Module::getNCHW(output(), n, c, h, w);
-  if (!qInput && qOutput) {
-    auto qtype = Quant::getUniformQuantizedType(output());
-    uint32_t buffer_addr =
-        input().hasOneUse() ? in_gi.out_addr : gi.buffer_addr;
-    requant_fp_param_t param = {0};
-    param.input_addr = in_gi.out_addr;
-    param.output_addr = gi.out_addr;
-    param.requant_addr = 0;
-    param.buffer_local_addr = buffer_addr;
-    param.n = gi.n_slice;
-    param.c = c;
-    param.h = gi.h_slice;
-    param.w = w;
-    param.is_perchannel = false;
-    param.scale_value = 1 / qtype.getScale();
-    param.offset_value = qtype.getZeroPoint();
-    param.input_dtype = BM168x::getDataType(input());
-    param.output_dtype = BM168x::getDataType(output());
-    param.mode = 0;
-    BM1684x::instance().call_local_func("backend_api_requant_float_local",
-                                        &param, sizeof(param));
+  if (!qInput && !qOutput) {
+    cast_local_spec_t spec = {0};
+    spec.common.src_dtype = BM168x::getDataType(input());
+    spec.common.dst_dtype = BM168x::getDataType(output());
+    spec.common.round_mode = ROUND_INF;
+
+    local_sec_info_t sec_info = {0};
+    sec_info.group_type =
+    sec_info.n_slice = in_gi.n_slice;
+    sec_info.d_slice = 1;
+    sec_info.h_slice = in_gi.h_slice;
+    sec_info.h_idx = in_gi.h_idx;
+    sec_info.is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == h);
+    sec_info.w_slice = w;
+    sec_info.out_n_slice = gi.n_slice;
+    sec_info.out_h_idx = gi.h_idx;
+    sec_info.out_h_slice = gi.h_slice;
+    sec_info.out_w_slice = w;
+
+    auto op = getOperation();
+    auto input_spec = BM1684x::get_input_spec(op);
+    auto output_spec = BM1684x::get_output_spec(op);
+    BM1684x::instance().call_local_func("backend_api_cast_local",
+                                        &spec, sizeof(spec), &sec_info,
+                                      input_spec->data(), output_spec->data());
   } else {
-    auto qtype = Quant::getUniformQuantizedType(input());
-    dequant_fp_param_t param = {0};
-    param.input_addr = in_gi.out_addr;
-    param.output_addr = gi.out_addr;
-    param.dequant_addr = 0;
-    param.n = gi.n_slice;
-    param.c = c;
-    param.h = gi.h_slice;
-    param.w = w;
-    param.is_perchannel = false;
-    param.scale_value = qtype.getScale();
-    param.offset_value = qtype.getZeroPoint();
-    param.input_dtype = BM168x::getDataType(input());
-    BM1684x::instance().call_local_func("backend_api_dequant_float_local",
-                                        &param, sizeof(param));
+    if (!qInput && qOutput) {
+      auto qtype = Quant::getUniformQuantizedType(output());
+      uint32_t buffer_addr =
+          input().hasOneUse() ? in_gi.out_addr : gi.buffer_addr;
+      requant_fp_param_t param = {0};
+      param.input_addr = in_gi.out_addr;
+      param.output_addr = gi.out_addr;
+      param.requant_addr = 0;
+      param.buffer_local_addr = buffer_addr;
+      param.n = gi.n_slice;
+      param.c = c;
+      param.h = gi.h_slice;
+      param.w = w;
+      param.is_perchannel = false;
+      param.scale_value = 1 / qtype.getScale();
+      param.offset_value = qtype.getZeroPoint();
+      param.input_dtype = BM168x::getDataType(input());
+      param.output_dtype = BM168x::getDataType(output());
+      param.mode = ROUND_INF;
+      BM1684x::instance().call_local_func("backend_api_requant_float_local",
+                                          &param, sizeof(param));
+    } else {
+      auto qtype = Quant::getUniformQuantizedType(input());
+      dequant_fp_param_t param = {0};
+      param.input_addr = in_gi.out_addr;
+      param.output_addr = gi.out_addr;
+      param.dequant_addr = 0;
+      param.n = gi.n_slice;
+      param.c = c;
+      param.h = gi.h_slice;
+      param.w = w;
+      param.is_perchannel = false;
+      param.scale_value = qtype.getScale();
+      param.offset_value = qtype.getZeroPoint();
+      param.input_dtype = BM168x::getDataType(input());
+      BM1684x::instance().call_local_func("backend_api_dequant_float_local",
+                                          &param, sizeof(param));
+    }
   }
 }

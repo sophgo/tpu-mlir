@@ -42,11 +42,11 @@ Value top::LogOp::lowering_f32_bm1684x() {
 }
 
 Value top::LogOp::lowering_bf16_bm1684x() {
-  return lowering_common_float<tpu::LogOp, BFloat16Type>(getOperation());
+  return lowering_common_float<tpu::LogOp, Float32Type>(getOperation());
 }
 
 Value top::LogOp::lowering_f16_bm1684x() {
-  return lowering_common_float<tpu::LogOp, Float16Type>(getOperation());
+  return lowering_common_float<tpu::LogOp, Float32Type>(getOperation());
 }
 
 Value top::LogOp::lowering_quant_bm1684x() {

@@ -41,11 +41,11 @@ Value top::SigmoidOp::lowering_f32_bm1684x() {
 }
 
 Value top::SigmoidOp::lowering_bf16_bm1684x() {
-  return lowering_common_float<tpu::SigmoidOp, BFloat16Type>(getOperation());
+  return lowering_common_float<tpu::SigmoidOp, Float32Type>(getOperation());
 }
 
 Value top::SigmoidOp::lowering_f16_bm1684x() {
-  return lowering_common_float<tpu::SigmoidOp, Float16Type>(getOperation());
+  return lowering_common_float<tpu::SigmoidOp, Float32Type>(getOperation());
 }
 
 Value top::SigmoidOp::lowering_quant_bm1684x() {

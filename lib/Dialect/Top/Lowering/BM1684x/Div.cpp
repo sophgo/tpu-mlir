@@ -27,12 +27,12 @@ Value top::DivOp::lowering_f32_bm1684x() {
 }
 
 Value top::DivOp::lowering_bf16_bm1684x() {
-  return lowering_common_float<tpu::DivOp, BFloat16Type>(
+  return lowering_common_float<tpu::DivOp, Float32Type>(
       getOperation());
 }
 
 Value top::DivOp::lowering_f16_bm1684x() {
-  return lowering_common_float<tpu::DivOp, Float16Type>(getOperation());
+  return lowering_common_float<tpu::DivOp, Float32Type>(getOperation());
 }
 
 Value top::DivOp::lowering_quant_bm1684x() {

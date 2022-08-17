@@ -340,6 +340,7 @@ Value top::ConvOp::lowering_quant_bm1684x() {
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
+
   int32_t input_zeroPoint = input_qtype.getZeroPoint();
   bool with_bias = true;
   if (input_zeroPoint != 0) {
