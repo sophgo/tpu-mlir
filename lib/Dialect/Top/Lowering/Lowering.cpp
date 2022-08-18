@@ -373,6 +373,7 @@ public:
     chip_ = StringRef(chip).upper();
     Module::setChip(module, chip_);
     mode_ = StringRef(mode).upper();
+    Module::setMode(module, mode_);
     ctx_ = module.getContext();
     mainFunc_ = Module::getMainFuncOp(module);
 

@@ -120,9 +120,16 @@ struct Module {
   static inline llvm::StringRef getChip(ModuleOp module) {
     return module->getAttrOfType<StringAttr>(Attr::CHIP).getValue();
   }
+  static inline llvm::StringRef getMode(ModuleOp module) {
+    return module->getAttrOfType<StringAttr>(Attr::MODE).getValue();
+  }
   static inline void setChip(ModuleOp module, StringRef chip) {
     module->setAttr(Attr::CHIP,
                     StringAttr::get(module.getContext(), chip.upper()));
+  }
+  static inline void setMode(ModuleOp module, StringRef mode) {
+    module->setAttr(Attr::MODE,
+                    StringAttr::get(module.getContext(), mode.upper()));
   }
   static inline StringRef getWeightFile(ModuleOp module) {
     return module->getAttrOfType<StringAttr>(Attr::WEIGHT_FILE).getValue();

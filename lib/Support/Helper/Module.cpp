@@ -8,13 +8,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "float.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/PatternMatch.h"
-#include "float.h"
+#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
 #include <map>
 using namespace llvm;
 using namespace mlir;
@@ -156,7 +156,15 @@ std::string Module::genWeightFileName(ModuleOp module) {
   auto chip = getChip(module);
   std::string weight_file_name = name.lower() + std::string("_") +
                                  state.lower() + std::string("_") +
-                                 chip.lower() + "_weight.npz";
+                                 chip.lower();
+  if (std::string(chip) != "ALL") {
+    auto mode = getMode(module);
+    std::string sym = "";
+    sym = getAsymmetric(module) ? "_asym" : "_sym";
+    weight_file_name += std::string("_") + mode.lower() + sym;
+  }
+  weight_file_name += "_weight.npz";
+
   return weight_file_name;
 }
 
