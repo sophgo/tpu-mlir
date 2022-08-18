@@ -12,21 +12,18 @@
 import abc
 import numpy as np
 import argparse
-from transform.OnnxConverter import OnnxConverter
+
 from transform.BaseConverter import BaseConverter
-from transform.TFLiteConverter import TFLiteConverter
 from utils.mlir_shell import *
 from utils.mlir_parser import *
-from tools.model_runner import mlir_inference, onnx_inference, tflite_inference
 from utils.preprocess import get_preprocess_parser, preprocess
 import pymlir
-
 
 def show_fake_cmd(in_npz: str, model: str, out_npz: str):
     print("[CMD]: model_runner.py --input {} --model {} --output {}".format(in_npz, model, out_npz))
 
 
-class ModelTransformTool(object):
+class ModelTransformer(object):
 
     def __init__(self, model_name):
         self.model_name = model_name
@@ -76,6 +73,7 @@ class ModelTransformTool(object):
 
             # inference of mlir model
             show_fake_cmd(in_f32_npz, self.mlir_file, test_result)
+            from tools.model_runner import mlir_inference
             f32_outputs = mlir_inference(inputs, self.mlir_file)
             np.savez(test_result, **f32_outputs)
 
@@ -88,9 +86,7 @@ class ModelTransformTool(object):
     def origin_inference(self, inputs: dict) -> dict:
         pass
 
-
-class OnnxModelTransformTool(ModelTransformTool):
-
+class OnnxTransformer(ModelTransformer):
     def __init__(self,
                  model_name,
                  model_def,
@@ -99,25 +95,46 @@ class OnnxModelTransformTool(ModelTransformTool):
                  preprocessor=None):
         super().__init__(model_name)
         self.model_def = model_def
-        self.input_shapes = input_shapes
+        from transform.OnnxConverter import OnnxConverter
         self.converter = OnnxConverter(self.model_name, self.model_def, input_shapes, output_names,
                                        preprocessor)
 
     def origin_inference(self, inputs: dict):
+        from tools.model_runner import onnx_inference
         return onnx_inference(inputs, self.converter.onnx_file)
 
+class CaffeTransformer(ModelTransformer):
 
-class TFLiteModelTransformTool(ModelTransformTool):
+    def __init__(self,
+                 model_name,
+                 model_def,
+                 model_data,
+                 input_shapes: list = [],
+                 output_names=[],
+                 preprocessor=None):
+        super().__init__(model_name)
+        self.model_def = model_def
+        self.model_data = model_data
+        from transform.CaffeConverter import CaffeConverter
+        self.converter = CaffeConverter(self.model_name, self.model_def, model_data,
+                                        input_shapes, output_names, preprocessor)
+
+    def origin_inference(self, inputs: dict):
+        from tools.model_runner import caffe_inference
+        return caffe_inference(inputs, self.model_def, self.model_data)
+
+class TFLiteTransformer(ModelTransformer):
 
     def __init__(self, model_name, model_def, input_shapes: list = [], preprocessor=None):
         super().__init__(model_name)
         self.model_def = model_def
-        self.input_shapes = input_shapes
         self.do_mlir_infer = False
-        self.converter = TFLiteConverter(self.model_name, self.model_def, self.input_shapes,
+        from transform.TFLiteConverter import TFLiteConverter
+        self.converter = TFLiteConverter(self.model_name, self.model_def, input_shapes,
                                          preprocessor)
 
     def origin_inference(self, inputs: dict):
+        from tools.model_runner import tflite_inference
         return tflite_inference(inputs, self.converter.tflite_file)
 
 
@@ -150,10 +167,13 @@ def get_model_transform(args):
         raise RuntimeError("your mlir file should endswith .mlir, not:{}".format(args.mlir))
     tool = None
     if args.model_def.endswith('.onnx'):
-        tool = OnnxModelTransformTool(args.model_name, args.model_def, args.input_shapes,
+        tool = OnnxTransformer(args.model_name, args.model_def, args.input_shapes,
+                                      args.output_names, preprocessor.to_dict())
+    elif args.model_def.endswith('.prototxt') and args.model_data.endswith('.caffemodel'):
+        tool = CaffeTransformer(args.model_name, args.model_def, args.model_data, args.input_shapes,
                                       args.output_names, preprocessor.to_dict())
     elif args.model_def.endswith('.tflite'):
-        tool = TFLiteModelTransformTool(args.model_name, args.model_def, args.input_shapes,
+        tool = TFLiteTransformer(args.model_name, args.model_def, args.input_shapes,
                                         preprocessor.to_dict())
     else:
         # TODO: support more AI model types

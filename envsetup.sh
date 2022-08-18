@@ -26,6 +26,7 @@ export LD_LIBRARY_PATH=$INSTALL_PATH/lib:$LD_LIBRARY_PATH
 
 export PYTHONPATH=$INSTALL_PATH/python:$PYTHONPATH
 export PYTHONPATH=$PROJECT_ROOT/third_party/llvm/python_packages/mlir_core:$PYTHONPATH
+export PYTHONPATH=$PROJECT_ROOT/third_party/caffe/python:$PYTHONPATH
 export PYTHONPATH=$PROJECT_ROOT/python:$PYTHONPATH
 
 export OMP_NUM_THREADS=4

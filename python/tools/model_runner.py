@@ -11,19 +11,14 @@
 
 import numpy as np
 import argparse
-import pymlir
-import pyruntime
-import onnx
-import onnxruntime
 import os
-
 
 def round_away(x):
     a = np.floor(np.abs(x) + 0.5)
     return np.sign(x) * a
 
-
 def model_inference(inputs: dict, model_file: str) -> dict:
+    import pyruntime
     outputs = dict()
     model = pyruntime.Model(model_file)
     net = model.Net(model.networks[0])
@@ -52,6 +47,7 @@ def model_inference(inputs: dict, model_file: str) -> dict:
 
 
 def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True) -> dict:
+    import pymlir
     module = pymlir.module()
     module.load(mlir_file)
     for name in module.input_names:
@@ -67,32 +63,32 @@ def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True) -> dict:
     return outputs
 
 
-def generate_onnx_with_all(onnx_file: str):
-    # for dump all activations
-    # plz refre https://github.com/microsoft/onnxruntime/issues/1455
-    output_keys = []
-    model = onnx.load(onnx_file)
-    no_list = [
-        "Cast", "Shape", "Unsqueeze", "Gather", "Split", "Constant", "GRU", "Div", "Sqrt", "Add",
-        "ReduceMean", "Pow", "Sub", "Mul", "LSTM", "Dropout", "Loop", "TopK"
-    ]
-
-    # tested commited #c3cea486d https://github.com/microsoft/onnxruntime.git
-    for x in model.graph.node:
-        if x.op_type in no_list:
-            continue
-        _intermediate_tensor_name = list(x.output)
-        intermediate_tensor_name = ",".join(_intermediate_tensor_name)
-        intermediate_layer_value_info = onnx.helper.ValueInfoProto()
-        intermediate_layer_value_info.name = intermediate_tensor_name
-        model.graph.output.append(intermediate_layer_value_info)
-        output_keys.append(intermediate_layer_value_info.name + '_' + x.op_type)
-    dump_all_tensors_onnx = onnx_file.replace('.onnx', '_all.onnx', 1)
-    onnx.save(model, dump_all_tensors_onnx)
-    return output_keys, dump_all_tensors_onnx
-
-
 def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
+    import onnx
+    import onnxruntime
+    def generate_onnx_with_all(onnx_file: str):
+        # for dump all activations
+        # plz refre https://github.com/microsoft/onnxruntime/issues/1455
+        output_keys = []
+        model = onnx.load(onnx_file)
+        no_list = [
+            "Cast", "Shape", "Unsqueeze", "Gather", "Split", "Constant", "GRU", "Div", "Sqrt", "Add",
+            "ReduceMean", "Pow", "Sub", "Mul", "LSTM", "Dropout", "Loop", "TopK"
+        ]
+
+        # tested commited #c3cea486d https://github.com/microsoft/onnxruntime.git
+        for x in model.graph.node:
+            if x.op_type in no_list:
+                continue
+            _intermediate_tensor_name = list(x.output)
+            intermediate_tensor_name = ",".join(_intermediate_tensor_name)
+            intermediate_layer_value_info = onnx.helper.ValueInfoProto()
+            intermediate_layer_value_info.name = intermediate_tensor_name
+            model.graph.output.append(intermediate_layer_value_info)
+            output_keys.append(intermediate_layer_value_info.name + '_' + x.op_type)
+        dump_all_tensors_onnx = onnx_file.replace('.onnx', '_all.onnx', 1)
+        onnx.save(model, dump_all_tensors_onnx)
+        return output_keys, dump_all_tensors_onnx
     output_keys = []
     if dump_all:
         output_keys, onnx_file = generate_onnx_with_all(onnx_file)
@@ -120,6 +116,29 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
         os.remove(onnx_file)
         return dict(zip(output_keys, map(np.ndarray.flatten, outs)))
 
+def caffe_inference(inputs: dict, prototxt: str, caffemodel: str, dump_all: bool = True) -> dict:
+    import caffe
+    net = caffe.Net(prototxt, caffemodel, caffe.TEST)
+    for in_ in  net.inputs:
+        if in_ not in inputs:
+            raise RuntimeError("inputs have no name [{}]".format(in_))
+        input = inputs[in_]
+        net.blobs[in_].reshape(*input.shape)
+    top_map = {}
+    out = net.forward_all(**inputs)
+    if dump_all:
+        for name, layer in net.layer_dict.items():
+            if layer.type == "Split":
+                continue
+            if layer.type == "Slice":
+                continue
+            top_map[net.top_names[name][0]] = name
+        blobs_dict = dict(inputs)
+        for top, name in top_map.items():
+            blobs_dict[name] = net.blobs[top].data.copy()
+        return blobs_dict
+    else:
+        return out
 
 def tflite_inference(
         inputs: dict,
@@ -167,7 +186,8 @@ def tflite_inference(
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True, help="input npz file")
-    parser.add_argument("--model", type=str, required=True, help="mlir file.")
+    parser.add_argument("--model", type=str, required=True, help="mlir/onnx/tflie/bmodel/prototxt file.")
+    parser.add_argument("--weight", type=str, default="", help="caffemodel for caffe")
     parser.add_argument("--output", default='_output.npz', help="output npz file")
     parser.add_argument("--dump_all_tensors",
                         action='store_true',
@@ -175,12 +195,14 @@ if __name__ == '__main__':
     args = parser.parse_args()
     data = np.load(args.input)
     output = dict()
-    if args.model.endswith('.onnx'):
-        output = onnx_inference(data, args.model, args.dump_all_tensors)
-    elif args.model.endswith('.mlir'):
+    if args.model.endswith('.mlir'):
         output = mlir_inference(data, args.model, args.dump_all_tensors)
+    elif args.model.endswith('.onnx'):
+        output = onnx_inference(data, args.model, args.dump_all_tensors)
     elif args.model.endswith(".tflite"):
         output = tflite_inference(data, args.model, args.dump_all_tensors)
+    elif args.model.endswith(".prototxt") and args.weight.endswith(".caffemodel"):
+        output = caffe_inference(data, args.model, args.weight, args.dump_all_tensors)
     elif args.model.endswith(".bmodel"):
         output = model_inference(data, args.model)
     else:

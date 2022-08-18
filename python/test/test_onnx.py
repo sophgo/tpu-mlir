@@ -116,7 +116,7 @@ class ONNX_IR_TESTER(object):
         fp32_mlir = "{}.mlir".format(model_name)
         model_def = helper.make_model(graph_def, producer_name=model_name)
         onnx.checker.check_model(model_def)
-        tool = OnnxModelTransformTool(model_name, model_def)
+        tool = OnnxTransformer(model_name, model_def)
         tool.model_transform(fp32_mlir)
 
         onnx_model = "{}_opt.onnx".format(model_name)
