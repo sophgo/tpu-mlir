@@ -43,14 +43,9 @@ typedef struct {
 // GlobalGenInterface
 // =========================================
 
-void tpu::ReluOp::codegen_global_int8_bm1684x() {
-  llvm_unreachable("Codegen to be supported");
-}
-
-void tpu::ReluOp::codegen_global_float_bm1684x() {
+void tpu::ReluOp::codegen_global_bm1684x() {
   int64_t n, c, h, w;
   Module::getNCHW(output(), n, c, h, w);
-
   prelu_param_t p = {0};
   p.input_addr = Module::getAddress(input());
   p.slope_addr = 0;
@@ -80,7 +75,7 @@ int64_t tpu::ReluOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
   return 0;
 }
 
-void tpu::ReluOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
+void tpu::ReluOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   auto out_gi = LocalGenInterface::getGroupInfo(output(), n_step, h_step);
   auto gi = getGroupInfo(n_step, h_step);
@@ -104,8 +99,4 @@ void tpu::ReluOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
   p.dtype = BM168x::getDataType(output());
   BM1684x::instance().call_local_func("backend_api_prelu_local", &p,
                                       sizeof(prelu_param_t));
-}
-
-void tpu::ReluOp::codegen_local_float_bm1684x(int64_t n_step, int64_t h_step) {
-  codegen_local_int8_bm1684x(n_step, h_step);
 }

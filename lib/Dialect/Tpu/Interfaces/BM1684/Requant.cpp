@@ -18,7 +18,7 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace tpu_mlir::backend;
 
-void tpu::RequantOp::codegen_global_int8_bm1684() {
+void tpu::RequantOp::codegen_global_bm1684() {
   llvm_unreachable("not support now");
 }
 
@@ -28,6 +28,6 @@ int64_t tpu::RequantOp::getBufferSize_bm1684(
   return 0;
 }
 
-void tpu::RequantOp::codegen_local_int8_bm1684(int64_t n_step, int64_t h_step) {
+void tpu::RequantOp::codegen_local_bm1684(int64_t n_step, int64_t h_step) {
   llvm_unreachable("support later");
 }

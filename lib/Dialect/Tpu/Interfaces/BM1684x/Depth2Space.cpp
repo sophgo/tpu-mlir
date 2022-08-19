@@ -39,7 +39,7 @@ typedef struct {
 }
 #endif
 
-void tpu::Depth2SpaceOp::codegen_global_int8_bm1684x() {
+void tpu::Depth2SpaceOp::codegen_global_bm1684x() {
   depth2space_param_t param = {0};
   param.input_global_mem_addr = Module::getAddress(input());
   param.output_global_mem_addr = Module::getAddress(output());
@@ -57,8 +57,4 @@ void tpu::Depth2SpaceOp::codegen_global_int8_bm1684x() {
   param.is_crd_mode = is_CRD();
   BM1684x::instance().call_global_func("backend_api_depth2space_global", &param,
                                        sizeof(param));
-}
-
-void tpu::Depth2SpaceOp::codegen_global_float_bm1684x() {
-  codegen_global_int8_bm1684x();
 }

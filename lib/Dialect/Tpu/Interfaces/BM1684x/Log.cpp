@@ -23,7 +23,7 @@ using namespace tpu_mlir::backend;
 // GlobalGenInterface
 // =========================================
 
-void tpu::LogOp::codegen_global_int8_bm1684x() {
+void tpu::LogOp::codegen_global_bm1684x() {
   active_global_spec_t spec;
   memset(&spec, 0, sizeof(spec));
   spec.common.active_type = ACTIVE_LN;
@@ -33,8 +33,4 @@ void tpu::LogOp::codegen_global_int8_bm1684x() {
   BM1684x::instance().call_global_func("backend_api_active_global", &spec,
                                        sizeof(spec), input_spec->data(),
                                        output_spec->data());
-}
-
-void tpu::LogOp::codegen_global_float_bm1684x() {
-  codegen_global_int8_bm1684x();
 }

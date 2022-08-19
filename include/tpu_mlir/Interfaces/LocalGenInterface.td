@@ -31,41 +31,14 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
       InterfaceMethod<
         /*desc=*/[{}],
         /*retType=*/"void",
-        /*methodName=*/"codegen_local_int8_bm1684",
+        /*methodName=*/"codegen_local_bm1684",
         /*args=*/(ins "int64_t":$n_step, "int64_t":$h_step)
       >,
       InterfaceMethod<
         /*desc=*/[{}],
         /*retType=*/"void",
-        /*methodName=*/"codegen_local_int8_bm1684x",
+        /*methodName=*/"codegen_local_bm1684x",
         /*args=*/(ins "int64_t":$n_step, "int64_t":$h_step)
-      >,
-      InterfaceMethod<
-        /*desc=*/[{}],
-        /*retType=*/"void",
-        /*methodName=*/"codegen_local_float_bm1684x",
-        /*args=*/(ins "int64_t":$n_step, "int64_t":$h_step)
-      >,
-      InterfaceMethod<
-        /*desc=*/[{}],
-        /*retType=*/"void",
-        /*methodName=*/"codegen_local",
-        /*args=*/(ins "int64_t":$n_step, "int64_t":$h_step),
-        [{}],
-        [{
-          auto module = Module::getModuleOp($_op);
-          auto chip = Module::getChip(module);
-          auto type = Module::getStorageType($_op.getResult());
-          if (chip == Module::Chip::BM1684) {
-            $_op.codegen_local_int8_bm1684(n_step, h_step);
-          } else if (chip == Module::Chip::BM1684x) {
-            if (type.isF32() || type.isBF16() || type.isF16()) {
-              $_op.codegen_local_float_bm1684x(n_step, h_step);
-            } else {
-              $_op.codegen_local_int8_bm1684x(n_step, h_step);
-            }
-          }
-        }]
       >,
       InterfaceMethod<
         /*desc=*/[{}],

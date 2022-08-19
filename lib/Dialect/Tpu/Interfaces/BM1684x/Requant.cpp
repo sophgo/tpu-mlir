@@ -23,7 +23,7 @@ using namespace tpu_mlir::backend;
 // GlobalGenInterface
 // =========================================
 
-void tpu::RequantOp::codegen_global_int8_bm1684x() {
+void tpu::RequantOp::codegen_global_bm1684x() {
   requant_int_param_t param = {0};
   int64_t n, c, h, w;
   Module::getNCHW(input(), n, c, h, w);
@@ -47,10 +47,6 @@ void tpu::RequantOp::codegen_global_int8_bm1684x() {
                                        sizeof(param));
 }
 
-void tpu::RequantOp::codegen_global_float_bm1684x() {
-  codegen_global_int8_bm1684x();
-}
-
 // =========================================
 // LocalGenInterface
 // =========================================
@@ -66,8 +62,7 @@ int64_t tpu::RequantOp::getBufferSize_bm1684x(
   return 0;
 }
 
-void tpu::RequantOp::codegen_local_int8_bm1684x(int64_t n_step,
-                                                int64_t h_step) {
+void tpu::RequantOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   requant_int_param_t param = {0};
   int64_t n, c, h, w;
   Module::getNCHW(input(), n, c, h, w);
@@ -95,9 +90,4 @@ void tpu::RequantOp::codegen_local_int8_bm1684x(int64_t n_step,
   param.mode = 2;
   BM1684x::instance().call_local_func("backend_api_requant_int_local", &param,
                                       sizeof(param));
-}
-
-void tpu::RequantOp::codegen_local_float_bm1684x(int64_t n_step,
-                                                 int64_t h_step) {
-  llvm_unreachable("support later");
 }

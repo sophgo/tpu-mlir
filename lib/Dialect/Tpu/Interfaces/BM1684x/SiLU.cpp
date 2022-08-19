@@ -23,7 +23,7 @@ using namespace tpu_mlir::backend;
 // GlobalGenInterface
 // =========================================
 
-void tpu::SiLUOp::codegen_global_int8_bm1684x() {
+void tpu::SiLUOp::codegen_global_bm1684x() {
   active_global_spec_t spec;
   memset(&spec, 0, sizeof(spec));
   spec.common.active_type = ACTIVE_SILU;
@@ -33,10 +33,6 @@ void tpu::SiLUOp::codegen_global_int8_bm1684x() {
   BM1684x::instance().call_global_func("backend_api_active_global", &spec,
                                        sizeof(spec), input_spec->data(),
                                        output_spec->data());
-}
-
-void tpu::SiLUOp::codegen_global_float_bm1684x() {
-  codegen_global_int8_bm1684x();
 }
 
 // =========================================
@@ -58,7 +54,7 @@ int64_t tpu::SiLUOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
   return buffer_size;
 }
 
-void tpu::SiLUOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
+void tpu::SiLUOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   int64_t n, c, h, w;
   Module::getNCHW(input(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
@@ -87,8 +83,4 @@ void tpu::SiLUOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
   BM1684x::instance().call_local_func("backend_api_active_local", &spec,
                                       sizeof(spec), &sec_info,
                                       input_spec->data(), output_spec->data());
-}
-
-void tpu::SiLUOp::codegen_local_float_bm1684x(int64_t n_step, int64_t h_step) {
-  codegen_local_int8_bm1684x(n_step, h_step);
 }

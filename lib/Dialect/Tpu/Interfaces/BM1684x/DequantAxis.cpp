@@ -23,7 +23,7 @@ using namespace tpu_mlir::backend;
 // GlobalGenInterface
 // =========================================
 
-void tpu::DequantAxisOp::codegen_global_int8_bm1684x() {
+void tpu::DequantAxisOp::codegen_global_bm1684x() {
   dequant_int_param_t param = {0};
   int64_t n, c, h, w;
   Module::getNCHW(input(), n, c, h, w);
@@ -44,10 +44,6 @@ void tpu::DequantAxisOp::codegen_global_int8_bm1684x() {
                                        sizeof(param));
 }
 
-void tpu::DequantAxisOp::codegen_global_float_bm1684x() {
-  codegen_global_int8_bm1684x();
-}
-
 // =========================================
 // LocalGenInterface
 // =========================================
@@ -58,10 +54,10 @@ int64_t tpu::DequantAxisOp::getBufferSize_bm1684x(
   if (quant_mode() == 1) {
     return in_lmem_bytes;
   }
+  return 0;
 }
 
-void tpu::DequantAxisOp::codegen_local_int8_bm1684x(int64_t n_step,
-                                                    int64_t h_step) {
+void tpu::DequantAxisOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   dequant_int_param_t param = {0};
   int64_t n, c, h, w;
   Module::getNCHW(input(), n, c, h, w);
@@ -85,9 +81,4 @@ void tpu::DequantAxisOp::codegen_local_int8_bm1684x(int64_t n_step,
   param.mode = quant_mode();
   BM1684x::instance().call_local_func("backend_api_dequant_int_local", &param,
                                       sizeof(param));
-}
-
-void tpu::DequantAxisOp::codegen_local_float_bm1684x(int64_t n_step,
-                                                     int64_t h_step) {
-  llvm_unreachable("support later");
 }

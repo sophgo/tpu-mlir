@@ -21,41 +21,14 @@ def GlobalGenInterface : OpInterface<"GlobalGenInterface"> {
       InterfaceMethod<
         /*desc=*/[{}],
         /*retType=*/"void",
-        /*methodName=*/"codegen_global_int8_bm1684",
+        /*methodName=*/"codegen_global_bm1684",
         /*args=*/(ins)
       >,
       InterfaceMethod<
         /*desc=*/[{}],
         /*retType=*/"void",
-        /*methodName=*/"codegen_global_int8_bm1684x",
+        /*methodName=*/"codegen_global_bm1684x",
         /*args=*/(ins)
-      >,
-      InterfaceMethod<
-        /*desc=*/[{}],
-        /*retType=*/"void",
-        /*methodName=*/"codegen_global_float_bm1684x",
-        /*args=*/(ins)
-      >,
-      InterfaceMethod<
-        /*desc=*/[{}],
-        /*retType=*/"void",
-        /*methodName=*/"codegen_global",
-        /*args=*/(ins),
-        [{}],
-        [{
-          auto module = Module::getModuleOp($_op);
-          auto chip = Module::getChip(module);
-          auto type = Module::getStorageType($_op.getResult());
-          if (chip == Module::Chip::BM1684) {
-            $_op.codegen_global_int8_bm1684();
-          } else if (chip == Module::Chip::BM1684x) {
-            if (type.isF32() || type.isF16() || type.isBF16()) {
-              $_op.codegen_global_float_bm1684x();
-            } else {
-              $_op.codegen_global_int8_bm1684x();
-            }
-          }
-        }]
       >,
   ];
 }

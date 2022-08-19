@@ -22,7 +22,7 @@ using namespace tpu_mlir::backend;
 // =========================================
 // GlobalGenInterface
 // =========================================
-void tpu::PermuteOp::codegen_global_int8_bm1684() {
+void tpu::PermuteOp::codegen_global_bm1684() {
   //do nothing
 }
 

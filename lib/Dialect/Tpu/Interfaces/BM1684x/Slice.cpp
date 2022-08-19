@@ -45,11 +45,8 @@ typedef struct strideslice_local_param {
 #ifdef __cplusplus
 }
 #endif
-void tpu::SliceOp::codegen_global_int8_bm1684x() {
-  codegen_global_float_bm1684x();
-}
 
-void tpu::SliceOp::codegen_global_float_bm1684x() {
+void tpu::SliceOp::codegen_global_bm1684x() {
   auto op = getOperation();
   auto input_spec  = BM1684x::get_input_spec(op);
   auto output_spec = BM1684x::get_output_spec(op);

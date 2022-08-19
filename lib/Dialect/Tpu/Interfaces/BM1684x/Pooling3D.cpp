@@ -57,7 +57,7 @@ typedef struct pooling3d_spec {
 // GlobalGenInterface
 // =========================================
 
-void tpu::AvgPool3DOp::codegen_global_int8_bm1684x() {
+void tpu::AvgPool3DOp::codegen_global_bm1684x() {
   pool_attr_t attrs;
   parseParam(&attrs);
 
@@ -105,7 +105,7 @@ void tpu::AvgPool3DOp::codegen_global_int8_bm1684x() {
                                        sizeof(pooling3d_spec_t));
 }
 
-void tpu::MaxPool3DOp::codegen_global_int8_bm1684x() {
+void tpu::MaxPool3DOp::codegen_global_bm1684x() {
   pool_attr_t attrs;
   parseParam(&attrs);
 
@@ -142,17 +142,9 @@ void tpu::MaxPool3DOp::codegen_global_int8_bm1684x() {
   spec.avg_pooling_mode = attrs.count_include_pad ? 0 : 1;
   spec.avg_rd_mode = ROUND_UP;
   spec.if_relu = attrs.do_relu;
-  spec.relu_limit =attrs.relu_limit;
+  spec.relu_limit = attrs.relu_limit;
   BM1684x::instance().call_global_func("backend_api_pool3d_global", &spec,
                                        sizeof(pooling3d_spec_t));
-}
-
-// f32
-void tpu::AvgPool3DOp::codegen_global_float_bm1684x() {
-  codegen_global_int8_bm1684x();
-}
-void tpu::MaxPool3DOp::codegen_global_float_bm1684x() {
-  codegen_global_int8_bm1684x();
 }
 
 // =========================================
@@ -217,8 +209,7 @@ int64_t tpu::MaxPool3DOp::getBufferSize_bm1684x(
   return buffer_size;
 }
 
-void tpu::AvgPool3DOp::codegen_local_int8_bm1684x(int64_t n_step,
-                                                  int64_t h_step) {
+void tpu::AvgPool3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   pool_attr_t attrs;
   parseParam(&attrs);
   auto op = getOperation();
@@ -271,8 +262,7 @@ void tpu::AvgPool3DOp::codegen_local_int8_bm1684x(int64_t n_step,
                                       sizeof(pooling3d_spec_t));
 }
 
-void tpu::MaxPool3DOp::codegen_local_int8_bm1684x(int64_t n_step,
-                                                  int64_t h_step) {
+void tpu::MaxPool3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   pool_attr_t attrs;
   parseParam(&attrs);
   auto op = getOperation();
@@ -317,13 +307,4 @@ void tpu::MaxPool3DOp::codegen_local_int8_bm1684x(int64_t n_step,
 
   BM1684x::instance().call_local_func("backend_api_pool3d_local", &spec,
                                       sizeof(pooling3d_spec_t));
-}
-
-void tpu::AvgPool3DOp::codegen_local_float_bm1684x(int64_t n_step,
-                                                   int64_t h_step) {
-  codegen_local_int8_bm1684x(n_step, h_step);
-}
-void tpu::MaxPool3DOp::codegen_local_float_bm1684x(int64_t n_step,
-                                                   int64_t h_step) {
-  codegen_local_int8_bm1684x(n_step, h_step);
 }

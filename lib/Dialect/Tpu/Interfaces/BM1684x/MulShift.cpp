@@ -41,10 +41,10 @@ typedef struct {
 }
 #endif
 
-void tpu::MulShiftOp::codegen_global_int8_bm1684x() {
+void tpu::MulShiftOp::codegen_global_bm1684x() {
   int64_t n, c, h, w;
   Module::getNCHW(input(), n, c, h, w);
-  if (Quant::isUniformQuantized(input(), output())) {
+  if (Quant::isUniformQuantized(input())) {
     auto in_qtype = Quant::getUniformQuantizedType(input());
     auto out_qtype = Quant::getUniformQuantizedType(output());
     auto in_zp = in_qtype.getZeroPoint();
@@ -86,16 +86,12 @@ void tpu::MulShiftOp::codegen_global_int8_bm1684x() {
                                        sizeof(param));
 }
 
-void tpu::MulShiftOp::codegen_global_float_bm1684x() {
-  llvm_unreachable("not support now");
-}
-
 int64_t tpu::MulShiftOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
   auto in_sType = Module::getStorageType(input());
   auto out_sType = Module::getStorageType(output());
-  if (Quant::isUniformQuantized(input(), output())) {
+  if (Quant::isUniformQuantized(input())) {
     auto in_qType = Quant::getUniformQuantizedType(input());
     auto out_qType = Quant::getUniformQuantizedType(output());
     if (in_qType.getZeroPoint() != 0 || out_qType.getZeroPoint() != 0) {
@@ -109,13 +105,13 @@ int64_t tpu::MulShiftOp::getBufferSize_bm1684x(
   return 0;
 }
 
-void tpu::MulShiftOp::codegen_local_int8_bm1684x(int64_t n_step,
+void tpu::MulShiftOp::codegen_local_bm1684x(int64_t n_step,
                                                  int64_t h_step) {
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   int64_t n, c, h, w;
   Module::getNCHW(input(), n, c, h, w);
-  if (Quant::isUniformQuantized(input(), output())) {
+  if (Quant::isUniformQuantized(input())) {
     auto in_qtype = Quant::getUniformQuantizedType(input());
     auto out_qtype = Quant::getUniformQuantizedType(output());
     auto in_zp = in_qtype.getZeroPoint();
@@ -157,9 +153,4 @@ void tpu::MulShiftOp::codegen_local_int8_bm1684x(int64_t n_step,
   param.round_mode = ROUND_UP;
   BM1684x::instance().call_local_func("backend_api_mulshift_local", &param,
                                       sizeof(param));
-}
-
-void tpu::MulShiftOp::codegen_local_float_bm1684x(int64_t n_step,
-                                                  int64_t h_step) {
-  llvm_unreachable("not support now");
 }

@@ -101,7 +101,7 @@ public:
     model_gen->Finish();
     std::string filename = this->model_file;
     if (filename.empty()) {
-      filename = Module::getName(module).str() + "_int8_bm1684.bmodel";
+      llvm_unreachable("output filename is empty");
     }
     model_gen->Save(filename);
     bm168x->deinit();
@@ -217,7 +217,8 @@ CodegenPass::CreateCoeffMem(std::vector<top::WeightOp> &coeffs,
   return cmb.Finish();
 }
 
-std::shared_ptr<std::vector<Offset<bmodel::CmdGroup>>> CodegenPass::CreateCmdGroupVector() {
+std::shared_ptr<std::vector<Offset<bmodel::CmdGroup>>>
+CodegenPass::CreateCmdGroupVector() {
   auto cmd_group_v = std::make_shared<std::vector<Offset<bmodel::CmdGroup>>>();
   auto gdma_ptr = (uint8_t *)bm168x->gdma_buffer.data();
   auto bdc_ptr = (uint8_t *)bm168x->bdc_buffer.data();
@@ -272,7 +273,13 @@ void CodegenPass::codegen_for_group(tpu::GroupOp gOp) {
             bm168x->divide_sync_id();
             timestep = ginfo.timestep;
           }
-          lgOp.codegen_local(nstep, hstep);
+          if (chip == Module::Chip::BM1684) {
+            lgOp.codegen_local_bm1684(nstep, hstep);
+          } else if (chip == Module::Chip::BM1684x) {
+            lgOp.codegen_local_bm1684x(nstep, hstep);
+          } else {
+            llvm_unreachable("chip not support");
+          }
         }
       });
     }
@@ -286,7 +293,13 @@ void CodegenPass::codegen(Operation *op) {
   } else if (Module::isOpInGroup(op)) {
     return;
   } else if (auto castOp = dyn_cast<GlobalGenInterface>(op)) {
-    castOp.codegen_global();
+    if (chip == Module::Chip::BM1684) {
+      castOp.codegen_global_bm1684();
+    } else if (chip == Module::Chip::BM1684x) {
+      castOp.codegen_global_bm1684x();
+    } else {
+      llvm_unreachable("chip not support");
+    }
   }
 }
 
@@ -318,7 +331,7 @@ Offset<bmodel::SubNet> CodegenPass::CreateSubNet(func::CallOp call) {
   auto &builder = model_gen->Builder();
   auto next_ids = builder.CreateVector(next_id_v);
   auto cmd_group_v = CreateCmdGroupVector();
-  for(auto &c : *cmd_group_v) {
+  for (auto &c : *cmd_group_v) {
     cmd_group_all->push_back(c);
   }
   auto cmd_group = model_gen->Builder().CreateVector(*cmd_group_v);

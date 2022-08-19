@@ -18,11 +18,7 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace tpu_mlir::backend;
 
-void tpu::StoreOp::codegen_global_int8_bm1684x() {
-  llvm_unreachable("not support now");
-}
-
-void tpu::StoreOp::codegen_global_float_bm1684x() {
+void tpu::StoreOp::codegen_global_bm1684x() {
   llvm_unreachable("not support now");
 }
 
@@ -32,7 +28,7 @@ int64_t tpu::StoreOp::getBufferSize_bm1684x(
   return 0;
 }
 
-void tpu::StoreOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
+void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   CMD_ID_NODE *pid_node = (CMD_ID_NODE *)BM1684x::instance().gdma_node;
   auto gi = getGroupInfo(n_step, h_step);
   auto data_type = BM168x::getDataType(output());
@@ -50,8 +46,4 @@ void tpu::StoreOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
       gi.out_addr, 0, g_addr + g_offset, gi.n_slice, C, gi.h_slice, W,
       s_stride.N, s_stride.C, s_stride.H, s_stride.W, g_stride.N, g_stride.C,
       g_stride.H, g_stride.W, gdma_format, GDMA_VALUE_DIR_L2S, 0, pid_node);
-}
-
-void tpu::StoreOp::codegen_local_float_bm1684x(int64_t n_step, int64_t h_step) {
-  codegen_local_int8_bm1684x(n_step, h_step);
 }

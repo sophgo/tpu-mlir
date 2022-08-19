@@ -61,7 +61,7 @@ typedef struct {
 // =========================================
 
 // int8
-void tpu::CastOp::codegen_global_int8_bm1684x() {
+void tpu::CastOp::codegen_global_bm1684x() {
   bool qInput = Quant::isUniformQuantized(input());
   bool qOutput = Quant::isUniformQuantized(output());
   int64_t n, c, h, w;
@@ -101,12 +101,6 @@ void tpu::CastOp::codegen_global_int8_bm1684x() {
   }
 }
 
-// f32
-void tpu::CastOp::codegen_global_float_bm1684x() {
-  // same with int8
-  codegen_global_int8_bm1684x();
-}
-
 // =========================================
 // LocalGenInterface
 // =========================================
@@ -125,7 +119,7 @@ int64_t tpu::CastOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
   return in_lmem_bytes;
 }
 
-void tpu::CastOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
+void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   bool qInput = Quant::isUniformQuantized(input());
   bool qOutput = Quant::isUniformQuantized(output());
   auto gi = getGroupInfo(n_step, h_step);
@@ -170,8 +164,4 @@ void tpu::CastOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
     BM1684x::instance().call_local_func("backend_api_dequant_float_local",
                                         &param, sizeof(param));
   }
-}
-
-void tpu::CastOp::codegen_local_float_bm1684x(int64_t n_step, int64_t h_step) {
-  codegen_local_int8_bm1684x(n_step, h_step);
 }
