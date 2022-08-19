@@ -113,22 +113,22 @@ static void reshape_coeff_for_3ic(std::shared_ptr<std::vector<T>> &weight,
 
   int64_t new_ic, new_kernel;
   switch (use_3ic_optimize) {
-    case 1:   // merge kh to ic
-      new_ic = ic * kh;
-      new_kernel = kw;
-      break;
-    case 2:   // merge kw to ic
-      new_ic = ic * kw;
-      new_kernel = kh;
-      break;
-    case 3:   // merge kh and kw to ic
-      new_ic = ic * kh * kw;
-      new_kernel = 1;
-      break;
-    default:  // not merge
-      new_ic = ic;
-      new_kernel = kh * kw;
-      break;
+  case 1: // merge kh to ic
+    new_ic = ic * kh;
+    new_kernel = kw;
+    break;
+  case 2: // merge kw to ic
+    new_ic = ic * kw;
+    new_kernel = kh;
+    break;
+  case 3: // merge kh and kw to ic
+    new_ic = ic * kh * kw;
+    new_kernel = 1;
+    break;
+  default: // not merge
+    new_ic = ic;
+    new_kernel = kh * kw;
+    break;
   }
 
   shape = {oc, new_ic, 1, new_kernel};
@@ -153,7 +153,8 @@ void tpu::ConvOp::weight_reorder_int8_bm1684x() {
   int use_3ic_optimize = 0;
   if (ic * kh * kw <= IC_PARALLEL && kh > 1 && kw > 1) {
     use_3ic_optimize = 3; // merge kh and kw to ic
-  } else if (ic * kw <= IC_PARALLEL && kw > 1 && (kh < kw || ic * kh > IC_PARALLEL)) {
+  } else if (ic * kw <= IC_PARALLEL && kw > 1 &&
+             (kh < kw || ic * kh > IC_PARALLEL)) {
     use_3ic_optimize = 2; // merge kw to ic
   } else if (ic * kh <= IC_PARALLEL && kh > 1) {
     use_3ic_optimize = 1; // merge kh to ic
@@ -275,7 +276,9 @@ void tpu::ConvOp::weight_reorder_bf16_bm1684x() {
   op->setOperand(1, newFilterOp);
 }
 
-void tpu::ConvOp::weight_reorder_f16_bm1684x() { weight_reorder_bf16_bm1684x();}
+void tpu::ConvOp::weight_reorder_f16_bm1684x() {
+  weight_reorder_bf16_bm1684x();
+}
 
 void tpu::ConvOp::weight_reorder_f32_bm1684x() {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
@@ -476,7 +479,7 @@ typedef struct conv_local_param {
 }
 #endif
 
-void tpu::ConvOp::codegen_global_int8_bm1684x() {
+void tpu::ConvOp::codegen_global_bm1684x() {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
   bool is_dw, with_bias, do_relu;
@@ -484,21 +487,14 @@ void tpu::ConvOp::codegen_global_int8_bm1684x() {
   parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
              pl, pr, dh, dw, is_dw, with_bias, do_relu, relu_limit);
   auto op = getOperation();
-  auto in_qtype = Quant::getUniformQuantizedType(input());
   auto input_spec = BM1684x::get_input_spec(op);
   auto output_spec = BM1684x::get_output_spec(op);
   conv_global_spec_t spec;
   memset(&spec, 0, sizeof(spec));
-  spec.merge_coeff = 2;
   auto &common = spec.common;
   common.input_c = ic;
   common.output_c = oc;
   common.if_relu = do_relu;
-  if (spec.merge_coeff == 2) {
-    auto out_etype = Module::getStorageType(output());
-    common.if_relu = out_etype.isUnsignedInteger(8);
-  }
-
   common.upper_limit = relu_limit;
   common.kh = kh;
   common.kw = kw;
@@ -512,54 +508,21 @@ void tpu::ConvOp::codegen_global_int8_bm1684x() {
   common.pad_w_l = pl;
   common.pad_w_r = pr;
   common.round_mode = ROUND_UP;
-  common.is_asym = true;
   common.has_bias = with_bias;
   common.bias_sign = true;
   common.ipad_is_const = true;
-  common.ipad_value = in_qtype.getZeroPoint();
   common.kzp_is_const = true;
-  common.kzp_value = 0;
-  common.use_3ic_optimize = use_3ic_optimize();
-  BM1684x::instance().call_global_func("backend_api_conv_global", &spec,
-                                       sizeof(spec), input_spec->data(),
-                                       output_spec->data());
-}
-
-// f32
-void tpu::ConvOp::codegen_global_float_bm1684x() {
-  int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-      pl, pr, dh, dw;
-  bool is_dw, with_bias, do_relu;
-  double relu_limit;
-  parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-             pl, pr, dh, dw, is_dw, with_bias, do_relu, relu_limit);
-  auto op = getOperation();
-  auto input_spec = BM1684x::get_input_spec(op);
-  auto output_spec = BM1684x::get_output_spec(op);
-  conv_global_spec_t spec;
-  memset(&spec, 0, sizeof(spec));
-  auto &common = spec.common;
-  common.input_c = ic;
-  common.output_c = oc;
-  common.if_relu = do_relu;
-  common.upper_limit = relu_limit;
-  common.kh = kh;
-  common.kw = kw;
-  common.dh = dh;
-  common.dw = dw;
-  common.stride_h = sh;
-  common.stride_w = sw;
-  common.groups = g;
-  common.pad_h_t = pt;
-  common.pad_h_b = pb;
-  common.pad_w_l = pl;
-  common.pad_w_r = pr;
-  common.round_mode = ROUND_UP;
-  common.has_bias = with_bias;
-  common.kzp_is_const = 1;
-  common.bias_sign = true;
-  common.ipad_is_const = true;
-  common.ipad_value = 0;
+  if (Quant::isUniformQuantized(input())) {
+    auto in_qtype = Quant::getUniformQuantizedType(input());
+    spec.merge_coeff = 2;
+    if (spec.merge_coeff == 2) {
+      auto out_etype = Module::getStorageType(output());
+      common.if_relu = out_etype.isUnsignedInteger(8);
+    }
+    common.is_asym = true;
+    common.ipad_value = in_qtype.getZeroPoint();
+    common.use_3ic_optimize = use_3ic_optimize();
+  }
   BM1684x::instance().call_global_func("backend_api_conv_global", &spec,
                                        sizeof(spec), input_spec->data(),
                                        output_spec->data());
@@ -610,7 +573,7 @@ int64_t tpu::ConvOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
   return sz;
 }
 
-void tpu::ConvOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
+void tpu::ConvOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
   bool is_dw, with_bias, do_relu;
@@ -622,20 +585,13 @@ void tpu::ConvOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
   auto output_spec = BM1684x::get_output_spec(op);
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
-  auto in_qtype = Quant::getUniformQuantizedType(input());
   conv_local_param_t p;
   memset(&p, 0, sizeof(p));
   p.spec.buffer_local_addr = gi.buffer_addr;
-  p.spec.merge_coeff = 2;
-  p.spec.with_requant = 1;
   auto &common = p.spec.common;
   common.input_c = ic;
   common.output_c = oc;
   common.if_relu = do_relu;
-  if (p.spec.merge_coeff == 2) {
-    auto out_etype = Module::getStorageType(output());
-    common.if_relu = out_etype.isUnsignedInteger(8);
-  }
   common.upper_limit = relu_limit;
   common.kh = kh;
   common.kw = kw;
@@ -649,14 +605,10 @@ void tpu::ConvOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
   common.pad_w_l = pl;
   common.pad_w_r = pr;
   common.round_mode = ROUND_UP;
-  common.is_asym = true;
   common.has_bias = with_bias;
   common.bias_sign = true;
   common.ipad_is_const = true;
-  common.ipad_value = in_qtype.getZeroPoint();
   common.kzp_is_const = true;
-  common.kzp_value = 0;
-  common.use_3ic_optimize = use_3ic_optimize();
   local_sec_info_t sec_info;
   memset(&sec_info, 0, sizeof(sec_info));
   sec_info.n_slice = in_gi.n_slice;
@@ -675,65 +627,18 @@ void tpu::ConvOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
   sec_info.out_h_idx = gi.h_idx;
   sec_info.out_h_slice = gi.h_slice;
   sec_info.out_w_slice = ow;
-  BM1684x::instance().call_local_func("backend_api_conv_local", &p, sizeof(p),
-                                      &sec_info, input_spec->data(),
-                                      output_spec->data());
-}
-
-void tpu::ConvOp::codegen_local_float_bm1684x(int64_t n_step, int64_t h_step) {
-  int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-      pl, pr, dh, dw;
-  bool is_dw, with_bias, do_relu;
-  double relu_limit;
-  parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-             pl, pr, dh, dw, is_dw, with_bias, do_relu, relu_limit);
-  auto op = getOperation();
-  auto input_spec = BM1684x::get_input_spec(op);
-  auto output_spec = BM1684x::get_output_spec(op);
-  auto gi = getGroupInfo(n_step, h_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
-  conv_local_param_t p;
-  memset(&p, 0, sizeof(p));
-  p.spec.buffer_local_addr = gi.buffer_addr;
-  auto &common = p.spec.common;
-  common.input_c = ic;
-  common.output_c = oc;
-  common.if_relu = do_relu;
-  common.upper_limit = relu_limit;
-  common.kh = kh;
-  common.kw = kw;
-  common.dh = dh;
-  common.dw = dw;
-  common.stride_h = sh;
-  common.stride_w = sw;
-  common.groups = g;
-  common.pad_h_t = (in_gi.h_idx == 0 ? pt : 0);
-  common.pad_h_b = (in_gi.h_idx + in_gi.h_slice == ih ? pb : 0);
-  common.pad_w_l = pl;
-  common.pad_w_r = pr;
-  common.round_mode = ROUND_UP;
-  common.has_bias = with_bias;
-  common.bias_sign = true;
-  common.ipad_is_const = true;
-  common.ipad_value = 0;
-  local_sec_info_t sec_info;
-  memset(&sec_info, 0, sizeof(sec_info));
-  sec_info.n_slice = in_gi.n_slice;
-  sec_info.h_slice = in_gi.h_slice;
-  sec_info.h_idx = in_gi.h_idx;
-  sec_info.is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == ih);
-  // to be compatible with nntoolchain
-  if (sec_info.is_h_split) {
-    sec_info.h_idx = h_step == 0 ? -pt : in_gi.h_idx;
-    sec_info.h_slice = sec_info.h_idx < 0 ? sec_info.h_slice - sec_info.h_idx
-                                          : sec_info.h_slice;
-    sec_info.h_slice = sec_info.h_slice + common.pad_h_b;
+  if (Quant::isUniformQuantized(input())) {
+    auto in_qtype = Quant::getUniformQuantizedType(input());
+    p.spec.merge_coeff = 2;
+    p.spec.with_requant = 1;
+    if (p.spec.merge_coeff == 2) {
+      auto out_etype = Module::getStorageType(output());
+      common.if_relu = out_etype.isUnsignedInteger(8);
+    }
+    common.is_asym = true;
+    common.ipad_value = in_qtype.getZeroPoint();
+    common.use_3ic_optimize = use_3ic_optimize();
   }
-  sec_info.w_slice = iw;
-  sec_info.out_n_slice = gi.n_slice;
-  sec_info.out_h_idx = gi.h_idx;
-  sec_info.out_h_slice = gi.h_slice;
-  sec_info.out_w_slice = ow;
   BM1684x::instance().call_local_func("backend_api_conv_local", &p, sizeof(p),
                                       &sec_info, input_spec->data(),
                                       output_spec->data());

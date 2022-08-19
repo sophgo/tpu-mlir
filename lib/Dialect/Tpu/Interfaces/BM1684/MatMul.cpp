@@ -32,7 +32,7 @@ typedef struct {
   int if_bias_float;
 } FcQParams;
 
-void tpu::MatMulOp::codegen_global_int8_bm1684() {
+void tpu::MatMulOp::codegen_global_bm1684() {
   int64_t batch, M, K, N;
   bool with_bias, relu;
   double relu_limit;

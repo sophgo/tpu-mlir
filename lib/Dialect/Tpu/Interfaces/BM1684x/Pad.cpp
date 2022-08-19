@@ -44,7 +44,7 @@ typedef struct {
 // =========================================
 // GlobalGenInterface
 // =========================================
-void tpu::PadOp::codegen_global_int8_bm1684x() {
+void tpu::PadOp::codegen_global_bm1684x() {
   pad_param_t param = {0};
   param.is_local = false;
   param.input_addr = Module::getAddress(input());
@@ -66,8 +66,4 @@ void tpu::PadOp::codegen_global_int8_bm1684x() {
 
   BM1684x::instance().call_global_func("backend_api_pad", &param,
                                        sizeof(param));
-}
-
-void tpu::PadOp::codegen_global_float_bm1684x() {
-  codegen_global_int8_bm1684x();
 }

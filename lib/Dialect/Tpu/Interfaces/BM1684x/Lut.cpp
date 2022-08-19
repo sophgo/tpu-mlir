@@ -44,7 +44,7 @@ typedef struct {
 // GlobalGenInterface
 // =========================================
 
-void tpu::LutOp::codegen_global_int8_bm1684x() {
+void tpu::LutOp::codegen_global_bm1684x() {
   lut_param_t p = {0};
   p.input_addr = Module::getAddress(input());
   p.table_addr = Module::getAddress(table());
@@ -64,10 +64,6 @@ void tpu::LutOp::codegen_global_int8_bm1684x() {
   BM1684x::instance().call_global_func("backend_api_lut", &p, sizeof(p));
 }
 
-void tpu::LutOp::codegen_global_float_bm1684x() {
-  llvm_unreachable("Codegen to be supported");
-}
-
 // =========================================
 // LocalGenInterface
 // =========================================
@@ -80,7 +76,7 @@ int64_t tpu::LutOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
   return 0;
 }
 
-void tpu::LutOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
+void tpu::LutOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   auto table_gi = LocalGenInterface::getGroupInfo(table(), n_step, h_step);
   auto gi = getGroupInfo(n_step, h_step);
@@ -101,8 +97,4 @@ void tpu::LutOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
   p.shape[2] = gi.h_slice;
   p.shape[3] = w;
   BM1684x::instance().call_local_func("backend_api_lut", &p, sizeof(p));
-}
-
-void tpu::LutOp::codegen_local_float_bm1684x(int64_t n_step, int64_t h_step) {
-  llvm_unreachable("support later");
 }

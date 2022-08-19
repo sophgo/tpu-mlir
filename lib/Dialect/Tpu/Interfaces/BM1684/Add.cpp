@@ -18,7 +18,7 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace tpu_mlir::backend;
 
-void tpu::AddOp::codegen_global_int8_bm1684() {
+void tpu::AddOp::codegen_global_bm1684() {
   int input_num = inputs().size();
   assert(input_num == 2);
   int64_t n, c, h, w;
@@ -59,7 +59,7 @@ int64_t tpu::AddOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
   return out_lmem_bytes;
 }
 
-void tpu::AddOp::codegen_local_int8_bm1684(int64_t n_step, int64_t h_step) {
+void tpu::AddOp::codegen_local_bm1684(int64_t n_step, int64_t h_step) {
   auto out_ginfo = LocalGenInterface::getGroupInfo(output());
   int64_t n, c, h, w;
   Module::getNCHW(output(), n, c, h, w);

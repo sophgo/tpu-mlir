@@ -44,7 +44,7 @@ typedef struct fc_global_spec {
 }
 #endif
 
-void tpu::MatMulOp::codegen_global_int8_bm1684x() {
+void tpu::MatMulOp::codegen_global_bm1684x() {
   int64_t batch, M, K, N;
   bool with_bias, relu;
   double relu_limit;
@@ -55,42 +55,21 @@ void tpu::MatMulOp::codegen_global_int8_bm1684x() {
   auto output_spec = BM1684x::get_output_spec(op);
   fc_global_spec_t spec;
   memset(&spec, 0, sizeof(spec));
-  spec.R_transpose = 0;
-  spec.if_relu = relu;
-  spec.relu_limit = relu_limit;
-  spec.rshift = 0;
-  spec.is_asymmetric = 1;
-  spec.rzp_is_const = 1;
-  spec.rzp_const_val = 0;
-  spec.requant_mode = 2;
-  spec.mul_val = multiplier();
-  spec.shift_val = -rshift();
-  auto output_type = Quant::getUniformQuantizedType(output());
-  spec.offset_val = output_type.getZeroPoint();
-  spec.have_bias = with_bias;
-  BM1684x::instance().call_global_func("backend_api_fc_global", &spec,
-                                      sizeof(spec), input_spec->data(),
-                                      output_spec->data());
-}
-
-// f32
-void tpu::MatMulOp::codegen_global_float_bm1684x() {
-
-  int64_t batch, M, K, N;
-  bool with_bias, relu;
-  double relu_limit;
-  parseParam(batch, M, K, N, with_bias, relu, relu_limit);
-  assert(batch == 1);
-  auto op = getOperation();
-  auto input_spec = BM1684x::get_input_spec(op);
-  auto output_spec = BM1684x::get_output_spec(op);
-  fc_global_spec_t spec;
-  memset(&spec, 0, sizeof(spec));
-  spec.R_transpose = 0;
   spec.if_relu = relu;
   spec.relu_limit = relu_limit;
   spec.have_bias = with_bias;
+  if (Quant::isUniformQuantized(input())) {
+    spec.rshift = 0;
+    spec.is_asymmetric = 1;
+    spec.rzp_is_const = 1;
+    spec.rzp_const_val = 0;
+    spec.requant_mode = 2;
+    spec.mul_val = multiplier();
+    spec.shift_val = -rshift();
+    auto output_type = Quant::getUniformQuantizedType(output());
+    spec.offset_val = output_type.getZeroPoint();
+  }
   BM1684x::instance().call_global_func("backend_api_fc_global", &spec,
-                                      sizeof(spec), input_spec->data(),
-                                      output_spec->data());
+                                       sizeof(spec), input_spec->data(),
+                                       output_spec->data());
 }

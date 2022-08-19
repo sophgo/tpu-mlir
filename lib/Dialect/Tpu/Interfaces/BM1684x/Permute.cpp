@@ -43,7 +43,7 @@ typedef struct transpose_param {
 // =========================================
 // GlobalGenInterface
 // =========================================
-void tpu::PermuteOp::codegen_global_int8_bm1684x() {
+void tpu::PermuteOp::codegen_global_bm1684x() {
   auto op = getOperation();
   auto input_spec = BM1684x::get_input_spec(op);
   auto output_spec = BM1684x::get_output_spec(op);
@@ -60,9 +60,5 @@ void tpu::PermuteOp::codegen_global_int8_bm1684x() {
   param.buffer_size_ptr = 0;
   BM1684x::instance().call_global_func("backend_api_transpose", &param,
                                        sizeof(param), input_spec->data(), output_spec->data());
-}
-
-void tpu::PermuteOp::codegen_global_float_bm1684x() {
-  codegen_global_int8_bm1684x();
 }
 

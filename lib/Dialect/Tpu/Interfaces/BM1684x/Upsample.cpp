@@ -41,8 +41,7 @@ typedef struct {
 // =========================================
 // GlobalGenInterface
 // =========================================
-// int8
-void tpu::UpsampleOp::codegen_global_int8_bm1684x() {
+void tpu::UpsampleOp::codegen_global_bm1684x() {
   assert(scale_h() == scale_w());
   auto op = getOperation();
   int64_t n, c, h, w;
@@ -62,11 +61,6 @@ void tpu::UpsampleOp::codegen_global_int8_bm1684x() {
                                        sizeof(spec));
 }
 
-// f32
-void tpu::UpsampleOp::codegen_global_float_bm1684x() {
-  codegen_global_int8_bm1684x();
-}
-
 // =========================================
 // LocalGenInterface
 // =========================================
@@ -77,8 +71,7 @@ int64_t tpu::UpsampleOp::getBufferSize_bm1684x(
   return 0;
 }
 
-void tpu::UpsampleOp::codegen_local_int8_bm1684x(int64_t n_step,
-                                                 int64_t h_step) {
+void tpu::UpsampleOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   assert(scale_h() == scale_w());
   auto op = getOperation();
   int64_t n, c, h, w;
@@ -97,9 +90,4 @@ void tpu::UpsampleOp::codegen_local_int8_bm1684x(int64_t n_step,
   spec.input_w = w;
   BM1684x::instance().call_local_func("backend_api_upsample_local", &spec,
                                       sizeof(spec));
-}
-
-void tpu::UpsampleOp::codegen_local_float_bm1684x(int64_t n_step,
-                                                  int64_t h_step) {
-  codegen_local_int8_bm1684x(n_step, h_step);
 }

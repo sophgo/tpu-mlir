@@ -23,7 +23,7 @@ using namespace tpu_mlir::backend;
 // =========================================
 
 // int8
-void tpu::MulConstOp::codegen_global_int8_bm1684() {
+void tpu::MulConstOp::codegen_global_bm1684() {
   llvm_unreachable("Codegen to be supported");
 }
 
@@ -39,7 +39,7 @@ int64_t tpu::MulConstOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
   return 0;
 }
 
-void tpu::MulConstOp::codegen_local_int8_bm1684(int64_t n_step, int64_t h_step) {
+void tpu::MulConstOp::codegen_local_bm1684(int64_t n_step, int64_t h_step) {
   llvm_unreachable("Codegen to be supported");
 }
 

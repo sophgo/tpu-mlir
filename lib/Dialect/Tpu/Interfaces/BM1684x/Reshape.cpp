@@ -18,10 +18,6 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace tpu_mlir::backend;
 
-void tpu::ReshapeOp::codegen_global_int8_bm1684x() {
-  // do nothing
-}
-
-void tpu::ReshapeOp::codegen_global_float_bm1684x() {
+void tpu::ReshapeOp::codegen_global_bm1684x() {
   // do nothing
 }

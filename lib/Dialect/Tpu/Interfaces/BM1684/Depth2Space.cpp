@@ -18,7 +18,7 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace tpu_mlir::backend;
 
-void tpu::Depth2SpaceOp::codegen_global_int8_bm1684() {
+void tpu::Depth2SpaceOp::codegen_global_bm1684() {
   // do nothing
 }
 

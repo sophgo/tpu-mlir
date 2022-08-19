@@ -49,7 +49,7 @@ void tpu::ConvOp::weight_reorder_int8_bm1684() {
   setOperand(1, new_filter);
 }
 
-void tpu::ConvOp::codegen_global_int8_bm1684() {
+void tpu::ConvOp::codegen_global_bm1684() {
   int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
       pl, pr, dh, dw;
   bool is_dw, with_bias, relu;
@@ -87,6 +87,6 @@ int64_t tpu::ConvOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
   return 0;
 }
 
-void tpu::ConvOp::codegen_local_int8_bm1684(int64_t n_step, int64_t h_step) {
+void tpu::ConvOp::codegen_local_bm1684(int64_t n_step, int64_t h_step) {
   llvm_unreachable("support later");
 }

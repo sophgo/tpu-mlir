@@ -19,7 +19,7 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace tpu_mlir::backend;
 
-void tpu::AvgPool2DOp::codegen_global_int8_bm1684() {
+void tpu::AvgPool2DOp::codegen_global_bm1684() {
   pool_attr_t attrs;
   parseParam(&attrs);
   BM1684::instance().dl_nodechip_pooling_fix8b_forward_parallel_with_data_split(
@@ -30,7 +30,7 @@ void tpu::AvgPool2DOp::codegen_global_int8_bm1684() {
       (CMD_ID_NODE *)BM1684::instance().cmdid_node);
 }
 
-void tpu::MaxPool2DOp::codegen_global_int8_bm1684() {
+void tpu::MaxPool2DOp::codegen_global_bm1684() {
   pool_attr_t attrs;
   parseParam(&attrs);
   BM1684::instance().dl_nodechip_pooling_fix8b_forward_parallel_with_data_split(
@@ -53,10 +53,10 @@ int64_t tpu::MaxPool2DOp::getBufferSize_bm1684(
   return 0;
 }
 
-void tpu::AvgPool2DOp::codegen_local_int8_bm1684(int64_t n_step, int64_t h_step) {
+void tpu::AvgPool2DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step) {
   llvm_unreachable("support later");
 }
 
-void tpu::MaxPool2DOp::codegen_local_int8_bm1684(int64_t n_step, int64_t h_step) {
+void tpu::MaxPool2DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step) {
   llvm_unreachable("support later");
 }

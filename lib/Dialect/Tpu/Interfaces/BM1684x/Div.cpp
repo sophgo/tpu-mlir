@@ -41,7 +41,7 @@ typedef struct binary_common_spec {
 // =========================================
 
 // int8
-void tpu::DivOp::codegen_global_int8_bm1684x() {
+void tpu::DivOp::codegen_global_bm1684x() {
   auto op = getOperation();
   auto input_spec = BM1684x::get_input_spec(op);
   auto output_spec = BM1684x::get_output_spec(op);
@@ -58,9 +58,4 @@ void tpu::DivOp::codegen_global_int8_bm1684x() {
   spec.rshift_B = 0;
   BM1684x::instance().call_global_func("backend_api_eltbinary_global", &spec,
                                        sizeof(spec), input_spec->data(), output_spec->data());
-}
-
-// f32
-void tpu::DivOp::codegen_global_float_bm1684x() {
-  DivOp::codegen_global_int8_bm1684x();
 }

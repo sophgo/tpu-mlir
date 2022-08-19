@@ -45,13 +45,13 @@ typedef struct pooling_common_spec {
   int32_t ceil_mode;
   int32_t round_mode;
   int32_t avg_pooling_quant_mode;
-  int32_t max_pooling_with_mask; //1: with mask 0: no mask
+  int32_t max_pooling_with_mask; // 1: with mask 0: no mask
   int32_t multiplier;
   int32_t rshiftbits;
   /* asymmetric quantize */
   int32_t merge_requant;
-  float   rq_scale;
-  float   rq_offset;
+  float rq_scale;
+  float rq_offset;
 } pooling_common_spec_t;
 
 typedef struct {
@@ -87,8 +87,7 @@ static void SpecAssign(const pool_attr_t &attrs, pooling_common_spec_t &spec) {
 // =========================================
 // GlobalGenInterface
 // =========================================
-// int8
-void tpu::MaxPool2DOp::codegen_global_int8_bm1684x() {
+void tpu::MaxPool2DOp::codegen_global_bm1684x() {
   auto op = getOperation();
   auto input_spec = BM1684x::get_input_spec(op);
   auto output_spec = BM1684x::get_output_spec(op);
@@ -102,7 +101,7 @@ void tpu::MaxPool2DOp::codegen_global_int8_bm1684x() {
                                        output_spec->data());
 }
 
-void tpu::AvgPool2DOp::codegen_global_int8_bm1684x() {
+void tpu::AvgPool2DOp::codegen_global_bm1684x() {
   auto op = getOperation();
   auto module = Module::getModuleOp(op);
   auto input_spec = BM1684x::get_input_spec(op);
@@ -112,47 +111,24 @@ void tpu::AvgPool2DOp::codegen_global_int8_bm1684x() {
   pooling_common_spec_t spec = {0};
   SpecAssign(attrs, spec);
   spec.is_avg_pooling = true;
-  spec.avg_pooling_quant_mode = Module::getAsymmetric(module) ? 2 : 0;
-  if (spec.avg_pooling_quant_mode == 0) {
-    spec.multiplier = multiplier().getValue();
-    spec.rshiftbits = rshift().getValue();
-  } else if (spec.avg_pooling_quant_mode == 2) {
-    spec.merge_requant = true;
-    spec.rq_scale = scale().getValue().convertToDouble();
-    spec.rq_offset = offset().getValue().convertToDouble();
+  if (Quant::isUniformQuantized(input())) {
+    spec.avg_pooling_quant_mode = Module::getAsymmetric(module) ? 2 : 0;
+    if (spec.avg_pooling_quant_mode == 0) {
+      spec.multiplier = multiplier().getValue();
+      spec.rshiftbits = rshift().getValue();
+    } else if (spec.avg_pooling_quant_mode == 2) {
+      spec.merge_requant = true;
+      spec.rq_scale = scale().getValue().convertToDouble();
+      spec.rq_offset = offset().getValue().convertToDouble();
+    }
+    BM1684x::instance().call_global_func("backend_api_pooling_global", &spec,
+                                         sizeof(spec), input_spec->data(),
+                                         output_spec->data());
+  } else {
+    BM1684x::instance().call_global_func("backend_api_pooling_global", &spec,
+                                         sizeof(spec), input_spec->data(),
+                                         output_spec->data());
   }
-  BM1684x::instance().call_global_func("backend_api_pooling_global", &spec,
-                                       sizeof(spec), input_spec->data(),
-                                       output_spec->data());
-}
-
-// f32
-void tpu::AvgPool2DOp::codegen_global_float_bm1684x() {
-  pool_attr_t attrs;
-  parseParam(&attrs);
-  auto op = getOperation();
-  auto input_spec = BM1684x::get_input_spec(op);
-  auto output_spec = BM1684x::get_output_spec(op);
-  pooling_common_spec_t spec = {0};
-  SpecAssign(attrs, spec);
-  spec.is_avg_pooling = true;
-  BM1684x::instance().call_global_func("backend_api_pooling_global", &spec,
-                                       sizeof(spec), input_spec->data(),
-                                       output_spec->data());
-}
-
-void tpu::MaxPool2DOp::codegen_global_float_bm1684x() {
-  pool_attr_t attrs;
-  parseParam(&attrs);
-  auto op = getOperation();
-  auto input_spec = BM1684x::get_input_spec(op);
-  auto output_spec = BM1684x::get_output_spec(op);
-  pooling_common_spec_t spec = {0};
-  SpecAssign(attrs, spec);
-  spec.is_avg_pooling = false;
-  BM1684x::instance().call_global_func("backend_api_pooling_global", &spec,
-                                       sizeof(spec), input_spec->data(),
-                                       output_spec->data());
 }
 
 // =========================================
@@ -185,8 +161,7 @@ int64_t tpu::MaxPool2DOp::getBufferSize_bm1684x(
   return 0;
 }
 
-void tpu::MaxPool2DOp::codegen_local_int8_bm1684x(int64_t n_step,
-                                                  int64_t h_step) {
+void tpu::MaxPool2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   auto op = getOperation();
   auto input_spec = BM1684x::get_input_spec(op);
   auto output_spec = BM1684x::get_output_spec(op);
@@ -226,8 +201,7 @@ void tpu::MaxPool2DOp::codegen_local_int8_bm1684x(int64_t n_step,
                                       input_spec->data(), output_spec->data());
 }
 
-void tpu::AvgPool2DOp::codegen_local_int8_bm1684x(int64_t n_step,
-                                                  int64_t h_step) {
+void tpu::AvgPool2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   auto op = getOperation();
   auto module = Module::getModuleOp(op);
   auto input_spec = BM1684x::get_input_spec(op);
@@ -278,14 +252,4 @@ void tpu::AvgPool2DOp::codegen_local_int8_bm1684x(int64_t n_step,
   BM1684x::instance().call_local_func("backend_api_pooling_local", &spec,
                                       sizeof(spec), &sec_info,
                                       input_spec->data(), output_spec->data());
-}
-
-void tpu::MaxPool2DOp::codegen_local_float_bm1684x(int64_t n_step,
-                                                   int64_t h_step) {
-  codegen_local_int8_bm1684x(n_step, h_step);
-}
-
-void tpu::AvgPool2DOp::codegen_local_float_bm1684x(int64_t n_step,
-                                                   int64_t h_step) {
-  codegen_local_int8_bm1684x(n_step, h_step);
 }

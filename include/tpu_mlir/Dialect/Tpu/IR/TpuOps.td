@@ -523,7 +523,6 @@ def Tpu_LeakyReluOp: Tpu_Op<"LeakyRelu", [
   let arguments = (ins
     AnyTenor:$input,
     OptionalAttr<F64Attr>:$alpha,
-
     // quantize param
     OptionalAttr<I64Attr>:$multiplier,
     OptionalAttr<I64Attr>:$rshift,
@@ -760,7 +759,7 @@ def Tpu_ScaleOp: Tpu_Op<"Scale", [SupportFuseRelu, InOutSameShape,
     AnyTensorOrNone:$lshift,
 
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    OptionalAttr<F64Attr>:$relu_limit,
+    DefaultValuedAttr<F64Attr, "0.0">:$relu_limit,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
     StrAttr:$name
   );

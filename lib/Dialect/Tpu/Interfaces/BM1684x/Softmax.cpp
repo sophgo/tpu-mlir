@@ -56,7 +56,7 @@ typedef struct {
 // =========================================
 // GloballGenInterface
 // =========================================
-void tpu::SoftmaxOp::codegen_global_float_bm1684x() {
+void tpu::SoftmaxOp::codegen_global_bm1684x() {
   softmax_global_param_t param = {0};
   param.input_addr = Module::getAddress(input());
   param.output_addr = Module::getAddress(output());
@@ -85,8 +85,4 @@ void tpu::SoftmaxOp::codegen_global_float_bm1684x() {
   auto output_spec = BM1684x::get_output_spec(op);
   BM1684x::instance().call_global_func("backend_api_softmax_global", &param,
                                        sizeof(param), input_spec->data(), output_spec->data());
-}
-
-void tpu::SoftmaxOp::codegen_global_int8_bm1684x() {
-  codegen_global_float_bm1684x();
 }

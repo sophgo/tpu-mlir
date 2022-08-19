@@ -56,7 +56,8 @@ void tpu::DeconvOp::weight_reorder_int8_bm1684x() {
   // assume that ic = input_channel / groups, oc = output_channel / groups
   // for original model, deconv kernel is {groups * ic, oc, kh, kw},
   // but kernel is arranged to {groups * oc, ic, kh, kw} when adding_layer
-  // here we arrange kernel to {groups * oc, ceil(ic, IC_PARALLEL), kh * kw * IC_PARALLEL}
+  // here we arrange kernel to {groups * oc, ceil(ic, IC_PARALLEL), kh * kw *
+  // IC_PARALLEL}
   deconv_attr_t attrs;
   parseParam(&attrs);
 
@@ -64,7 +65,8 @@ void tpu::DeconvOp::weight_reorder_int8_bm1684x() {
   auto filterOp = filter().getDefiningOp<top::WeightOp>();
   auto filter_i8 = filterOp.read<int8_t>();
   auto filter_type = Module::getStorageType(filter());
-  std::vector<int64_t> filter_shape = {attrs.oc, attrs.ic / attrs.g, attrs.kh, attrs.kw};
+  std::vector<int64_t> filter_shape = {attrs.oc, attrs.ic / attrs.g, attrs.kh,
+                                       attrs.kw};
   int64_t IC_PARALLEL = 64;
   if (attrs.is_dw) {
     filter_shape = {1, attrs.oc, attrs.kh, attrs.kw};
@@ -75,7 +77,8 @@ void tpu::DeconvOp::weight_reorder_int8_bm1684x() {
     auto op = getOperation();
     OpBuilder builder(getContext());
     auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
-    auto newFilterOp = top::WeightOp::create(op, "_reordered", *filter_i8, new_filter_type);
+    auto newFilterOp =
+        top::WeightOp::create(op, "_reordered", *filter_i8, new_filter_type);
     op->setOperand(1, newFilterOp);
   }
 
@@ -97,7 +100,8 @@ void tpu::DeconvOp::weight_reorder_bf16_bm1684x() {
   auto filterOp = filter().getDefiningOp<top::WeightOp>();
   auto filter_i16 = filterOp.read<int16_t>();
   auto filter_type = Module::getStorageType(filter());
-  std::vector<int64_t> filter_shape = {attrs.oc, attrs.ic / attrs.g, attrs.kh, attrs.kw};
+  std::vector<int64_t> filter_shape = {attrs.oc, attrs.ic / attrs.g, attrs.kh,
+                                       attrs.kw};
   int64_t IC_PARALLEL = 32;
   if (attrs.is_dw) {
     filter_shape = {1, attrs.oc, attrs.kh, attrs.kw};
@@ -108,7 +112,8 @@ void tpu::DeconvOp::weight_reorder_bf16_bm1684x() {
     auto op = getOperation();
     OpBuilder builder(getContext());
     auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
-    auto newFilterOp = top::WeightOp::create(op, "_reordered", *filter_i16, new_filter_type);
+    auto newFilterOp =
+        top::WeightOp::create(op, "_reordered", *filter_i16, new_filter_type);
     op->setOperand(1, newFilterOp);
   }
 
@@ -133,7 +138,8 @@ void tpu::DeconvOp::weight_reorder_f32_bm1684x() {
   // filter op
   auto filterOp = filter().getDefiningOp<top::WeightOp>();
   auto filter_type = Module::getStorageType(filter());
-  std::vector<int64_t> filter_shape = {1, attrs.oc, attrs.ic / attrs.g, attrs.kh * attrs.kw};
+  std::vector<int64_t> filter_shape = {1, attrs.oc, attrs.ic / attrs.g,
+                                       attrs.kh * attrs.kw};
   auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
   filter().setType(new_filter_type);
 
@@ -228,10 +234,9 @@ typedef struct {
 }
 #endif
 
-void tpu::DeconvOp::codegen_global_int8_bm1684x() {
+void tpu::DeconvOp::codegen_global_bm1684x() {
   deconv_attr_t attrs;
   parseParam(&attrs);
-
   deconv_global_param_t param = {0};
   param.input_global_addr = Module::getAddress(input());
   param.weight_global_addr = Module::getAddress(filter());
@@ -261,64 +266,22 @@ void tpu::DeconvOp::codegen_global_int8_bm1684x() {
   if (bias().getType().isa<RankedTensorType>()) {
     param.bias_dtype = BM1684x::getDataType(bias());
   }
-
   param.output_dtype = BM1684x::getDataType(output());
   param.if_relu = attrs.do_relu;
   param.upper_limit = attrs.relu_limit;
-
-  auto in_qtype = Quant::getUniformQuantizedType(input());
-  param.is_asym = true;
-  param.rshift = 0;
-  param.kzp_global_addr = 0;
-  param.pad_insert_global_addr = 0;
-  param.kzp_is_const = true;
-  param.pad_insert_is_const = true;
-  param.kzp_val = 0;
-  param.pad_val = in_qtype.getZeroPoint();
-  param.insert_val = in_qtype.getZeroPoint();
-  param.kzp_dtype = param.input_dtype;
-  BM1684x::instance().call_global_func("backend_api_deconv_global", &param,
-                                       sizeof(param));
-}
-
-// f32
-void tpu::DeconvOp::codegen_global_float_bm1684x() {
-  deconv_attr_t attrs;
-  parseParam(&attrs);
-
-  deconv_global_param_t param = {0};
-  param.input_global_addr = Module::getAddress(input());
-  param.weight_global_addr = Module::getAddress(filter());
-  param.bias_global_addr = Module::getAddress(bias());
-  param.output_global_addr = Module::getAddress(output());
-  param.input_shape[0] = attrs.n;
-  param.input_shape[1] = attrs.ic;
-  param.input_shape[2] = attrs.ih;
-  param.input_shape[3] = attrs.iw;
-  param.groups = attrs.g;
-  param.output_c = attrs.oc;
-  param.kernel[0] = attrs.kh;
-  param.kernel[1] = attrs.kw;
-  param.stride[0] = attrs.sh;
-  param.stride[1] = attrs.sw;
-  param.dilation[0] = attrs.dh;
-  param.dilation[1] = attrs.dw;
-  param.pad[0] = attrs.pad_h;
-  param.pad[1] = attrs.pad_h_after;
-  param.pad[2] = attrs.pad_w;
-  param.pad[3] = attrs.pad_w_after;
-  param.output_pad[0] = attrs.output_pad_h;
-  param.output_pad[1] = attrs.output_pad_w;
-  param.has_bias = attrs.with_bias;
-  param.input_dtype = BM1684x::getDataType(input());
-  param.weight_dtype = BM1684x::getDataType(filter());
-  if (bias().getType().isa<RankedTensorType>()) {
-    param.bias_dtype = BM1684x::getDataType(bias());
+  if (Quant::isUniformQuantized(input())) {
+    auto in_qtype = Quant::getUniformQuantizedType(input());
+    param.is_asym = true;
+    param.rshift = 0;
+    param.kzp_global_addr = 0;
+    param.pad_insert_global_addr = 0;
+    param.kzp_is_const = true;
+    param.pad_insert_is_const = true;
+    param.kzp_val = 0;
+    param.pad_val = in_qtype.getZeroPoint();
+    param.insert_val = in_qtype.getZeroPoint();
+    param.kzp_dtype = param.input_dtype;
   }
-
-  param.output_dtype = BM1684x::getDataType(output());
-  param.if_relu = attrs.do_relu;
-  param.upper_limit = attrs.relu_limit;
   BM1684x::instance().call_global_func("backend_api_deconv_global", &param,
                                        sizeof(param));
 }
@@ -346,21 +309,21 @@ int64_t tpu::DeconvOp::getBufferSize_bm1684x(
   // quant : used for groups > 1, input must start from npu 0,
   if (attrs.g > 1 && !attrs.is_dw && type_len == 1) {
     sz += ic_per_npu *
-          (align_up(in_hslice * attrs.iw, eu_num) + attrs.pad_insert_is_const ? 0
-                                                                           : 2);
+          (align_up(in_hslice * attrs.iw, eu_num) + attrs.pad_insert_is_const
+               ? 0
+               : 2);
   }
 
   return sz;
 }
 
-void tpu::DeconvOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
+void tpu::DeconvOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   deconv_attr_t attrs;
   parseParam(&attrs);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   auto filter_gi = LocalGenInterface::getGroupInfo(filter(), n_step, h_step);
   auto bias_gi = LocalGenInterface::getGroupInfo(bias(), n_step, h_step);
   auto gi = getGroupInfo(n_step, h_step);
-
   deconv_local_param_t param = {0};
   param.input_local_addr = (uint32_t)in_gi.out_addr;
   param.weight_local_addr = (uint32_t)filter_gi.out_addr;
@@ -393,63 +356,19 @@ void tpu::DeconvOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
   param.output_dtype = BM1684x::getDataType(output());
   param.if_relu = attrs.do_relu;
   param.upper_limit = attrs.relu_limit;
-
-  auto in_qtype = Quant::getUniformQuantizedType(input());
-  param.is_asym = true;
-  param.rshift = 0;
-  param.kzp_local_addr = 0;
-  param.pad_insert_local_addr = 0;
-  param.kzp_is_const = true;
-  param.pad_insert_is_const = true;
-  param.kzp_val = 0;
-  param.pad_val = in_qtype.getZeroPoint();
-  param.insert_val = in_qtype.getZeroPoint();
-  param.kzp_dtype = param.weight_dtype;
-  BM1684x::instance().call_local_func("backend_api_deconv_local", &param,
-                                      sizeof(param));
-}
-
-void tpu::DeconvOp::codegen_local_float_bm1684x(int64_t n_step,
-                                                int64_t h_step) {
-  deconv_attr_t attrs;
-  parseParam(&attrs);
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
-  auto filter_gi = LocalGenInterface::getGroupInfo(filter(), n_step, h_step);
-  auto bias_gi = LocalGenInterface::getGroupInfo(bias(), n_step, h_step);
-  auto gi = getGroupInfo(n_step, h_step);
-
-  deconv_local_param_t param = {0};
-  param.input_local_addr = (uint32_t)in_gi.out_addr;
-  param.weight_local_addr = (uint32_t)filter_gi.out_addr;
-  param.bias_local_addr = (uint32_t)bias_gi.out_addr;
-  param.output_local_addr = (uint32_t)gi.out_addr;
-  param.buffer_local_addr = gi.buffer_addr;
-  param.input_shape[0] = in_gi.n_slice;
-  param.input_shape[1] = attrs.ic;
-  param.input_shape[2] = in_gi.h_slice;
-  param.input_shape[3] = attrs.iw;
-  param.groups = attrs.g;
-  param.output_c = attrs.oc;
-  param.kernel[0] = attrs.kh;
-  param.kernel[1] = attrs.kw;
-  param.stride[0] = attrs.sh;
-  param.stride[1] = attrs.sw;
-  param.dilation[0] = attrs.dh;
-  param.dilation[1] = attrs.dw;
-  param.pad[0] = attrs.pad_h;
-  param.pad[1] = attrs.pad_h_after;
-  param.pad[2] = attrs.pad_w;
-  param.pad[3] = attrs.pad_w_after;
-  param.has_bias = attrs.with_bias;
-  param.input_dtype = BM1684x::getDataType(input());
-  param.weight_dtype = BM1684x::getDataType(filter());
-  if (bias().getType().isa<RankedTensorType>()) {
-    param.bias_dtype = BM1684x::getDataType(bias());
+  if (Quant::isUniformQuantized(input())) {
+    auto in_qtype = Quant::getUniformQuantizedType(input());
+    param.is_asym = true;
+    param.rshift = 0;
+    param.kzp_local_addr = 0;
+    param.pad_insert_local_addr = 0;
+    param.kzp_is_const = true;
+    param.pad_insert_is_const = true;
+    param.kzp_val = 0;
+    param.pad_val = in_qtype.getZeroPoint();
+    param.insert_val = in_qtype.getZeroPoint();
+    param.kzp_dtype = param.weight_dtype;
   }
-
-  param.output_dtype = BM1684x::getDataType(output());
-  param.if_relu = attrs.do_relu;
-  param.upper_limit = attrs.relu_limit;
   BM1684x::instance().call_local_func("backend_api_deconv_local", &param,
                                       sizeof(param));
 }

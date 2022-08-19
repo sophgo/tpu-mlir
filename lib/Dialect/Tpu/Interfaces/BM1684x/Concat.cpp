@@ -53,12 +53,7 @@ typedef struct {
 // GlobalGenInterface
 // =========================================
 
-void tpu::ConcatOp::codegen_global_int8_bm1684x() {
-  codegen_global_float_bm1684x();
-}
-
-void tpu::ConcatOp::codegen_global_float_bm1684x() {
-
+void tpu::ConcatOp::codegen_global_bm1684x() {
   concat_global_param_t param = {0};
   param.concat_axis = axis();
   param.bottom_num = inputs().size();
@@ -98,7 +93,7 @@ int64_t tpu::ConcatOp::getBufferSize_bm1684x(
   return 0;
 }
 
-void tpu::ConcatOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
+void tpu::ConcatOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   llvm::SmallVector<uint32_t, 16> input_addrs;
   int num_inputs = inputs().size();
   llvm::SmallVector<int, 16> is_st_concat_way(num_inputs, 0);
@@ -135,9 +130,4 @@ void tpu::ConcatOp::codegen_local_int8_bm1684x(int64_t n_step, int64_t h_step) {
   for (auto s : input_shapes) {
     delete[] s;
   }
-}
-
-void tpu::ConcatOp::codegen_local_float_bm1684x(int64_t n_step,
-                                                int64_t h_step) {
-  codegen_local_int8_bm1684x(n_step, h_step);
 }

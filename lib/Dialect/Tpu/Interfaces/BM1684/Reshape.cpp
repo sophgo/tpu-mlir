@@ -19,7 +19,7 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace tpu_mlir::backend;
 
-void tpu::ReshapeOp::codegen_global_int8_bm1684() {
+void tpu::ReshapeOp::codegen_global_bm1684() {
   auto in_addr = Module::getAddress(input());
   auto out_addr = Module::getAddress(output());
   if (in_addr == out_addr) {
