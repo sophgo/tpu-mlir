@@ -17,24 +17,23 @@
 // -------------
 // pure C++ code
 // -------------
+#include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/Quant/QuantOps.h"
+#include "mlir/IR/Dialect.h"
+#include "mlir/IR/MLIRContext.h"
+#include "mlir/Parser/Parser.h"
+#include "mlir/Pass/PassManager.h"
+#include "mlir/Support/FileUtilities.h"
+#include "mlir/Transforms/Passes.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/ModuleInterpreter.h"
-#include "mlir/IR/MLIRContext.h"
-#include "mlir/IR/Dialect.h"
-#include "mlir/Pass/PassManager.h"
-#include "mlir/Parser/Parser.h"
-#include "mlir/Support/FileUtilities.h"
-#include "mlir/Transforms/Passes.h"
-#include "mlir/Dialect/Func/IR/FuncOps.h"
-#include "mlir/Dialect/Quant/QuantOps.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/ToolOutputFile.h"
-#include "llvm/Support/SourceMgr.h"
 
 using namespace mlir;
 using namespace tpu_mlir;
@@ -68,15 +67,15 @@ static py::array getPythonArray(std::vector<Dtype> *vec,
                       ));
 }
 
-static py::dict getTensorDict(tensor_map_t &tensorMap, shape_map_t &shapeMap) {
+static py::dict getTensorDict(tensor_map_t &tensorMap, shape_map_t &shapeMap,
+                              std::vector<std::string> &ordered_names) {
   py::dict py_ret;
-  for (auto it = tensorMap.begin(); it != tensorMap.end(); it++) {
-    auto op = it->first;
-    auto data = it->second.get();
-    py::str py_s(op);
+  for (auto &name : ordered_names) {
+    py::str py_s(name);
 
-    assert(shapeMap.end() != shapeMap.find(op));
-    py_ret[py_s] = getPythonArray(it->second.get(), shapeMap[op]);
+    assert(shapeMap.end() != shapeMap.find(name));
+    py_ret[py_s] =
+        getPythonArray(tensorMap.find(name)->second.get(), shapeMap[name]);
   }
 
   return py_ret;
@@ -126,13 +125,15 @@ public:
   py::dict getAllTensor() {
     tensor_map_t tensorMap_;
     shape_map_t shapeMap_;
+    std::vector<std::string> ordered_names;
     auto &all_tensor_names = interpreter_->all_tensor_names;
     for (auto &tensor_name : all_tensor_names) {
+      ordered_names.emplace_back(tensor_name);
       tensorMap_[tensor_name] = interpreter_->getTensor(tensor_name);
       shapeMap_[tensor_name] = interpreter_->getTensorShape(tensor_name);
     }
 
-    return getTensorDict(tensorMap_, shapeMap_);
+    return getTensorDict(tensorMap_, shapeMap_, ordered_names);
   }
 
   void set_tensor(
