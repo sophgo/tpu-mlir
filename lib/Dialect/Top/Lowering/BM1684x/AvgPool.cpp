@@ -11,19 +11,20 @@
 #include "../Lowering.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
 Value top::AvgPoolOp::lowering_int8_bm1684x(bool asymmetric) {
-  bool is_pool3d = kernel_shape().size() == 3;
+  const size_t kernel_size = kernel_shape().size();
   auto kernel = Module::getI64Array(kernel_shape());
-  int64_t kd = is_pool3d ? kernel->at(0) : 1;
-  int64_t kh = is_pool3d ? kernel->at(1) : kernel->at(0);
-  int64_t kw = is_pool3d ? kernel->at(2) : kernel->at(1);
+  int64_t kd = kernel_size == 3 ? kernel->at(0) : 1;
+  int64_t kh = kernel_size == 3 ? kernel->at(1) : kernel->at(0);
+  int64_t kw =
+      kernel_size == 3 ? kernel->at(2) : (kernel_size == 2 ? kernel->at(1) : 1);
 
   auto op = getOperation();
   auto ctx = getContext();
@@ -36,7 +37,7 @@ Value top::AvgPoolOp::lowering_int8_bm1684x(bool asymmetric) {
   int64_t in_zp, out_zp;
   Quant::getScaleAndZeroPoint(input(), in_scale, in_zp, asymmetric);
   Quant::getScaleAndZeroPoint(output(), out_scale, out_zp, asymmetric);
-  if (asymmetric == false && is_pool3d == false) {
+  if (asymmetric == false && kernel_size != 3) {
     assert(in_zp == 0 && out_zp == 0);
     double scale = in_scale / (out_scale * kh * kw);
     int multiplier, rshift;
@@ -56,7 +57,12 @@ Value top::AvgPoolOp::lowering_int8_bm1684x(bool asymmetric) {
 
   builder.setInsertionPointAfter(op);
   auto newType = Quant::getQuantInt8Type(output(), asymmetric);
-  if (is_pool3d == false) {
+  if (kernel_size == 1) {
+    auto newOp =
+        builder.create<tpu::AvgPool1DOp>(getLoc(), newType, ValueRange{input()},
+                                         ArrayRef<NamedAttribute>{attrs});
+    return newOp.output();
+  } else if (kernel_size == 2) {
     auto newOp =
         builder.create<tpu::AvgPool2DOp>(getLoc(), newType, ValueRange{input()},
                                          ArrayRef<NamedAttribute>{attrs});
@@ -70,25 +76,45 @@ Value top::AvgPoolOp::lowering_int8_bm1684x(bool asymmetric) {
 }
 
 Value top::AvgPoolOp::lowering_f32_bm1684x() {
-  return (kernel_shape().size() == 3)
-             ? lowering_common_float<tpu::AvgPool3DOp>(getOperation())
-             : lowering_common_float<tpu::AvgPool2DOp>(getOperation());
+  Value newValue;
+  if (kernel_shape().size() == 3) {
+    newValue = lowering_common_float<tpu::AvgPool3DOp>(getOperation());
+  } else if (kernel_shape().size() == 2) {
+    newValue = lowering_common_float<tpu::AvgPool2DOp>(getOperation());
+  } else {
+    newValue = lowering_common_float<tpu::AvgPool1DOp>(getOperation());
+  }
+  return newValue;
 }
 
 Value top::AvgPoolOp::lowering_bf16_bm1684x() {
-  return (kernel_shape().size() == 3)
-             ? lowering_common_float<tpu::AvgPool3DOp, Float16Type>(
-                   getOperation())
-             : lowering_common_float<tpu::AvgPool2DOp, Float16Type>(
-                   getOperation());
+  Value newValue;
+  if (kernel_shape().size() == 3) {
+    newValue =
+        lowering_common_float<tpu::AvgPool3DOp, BFloat16Type>(getOperation());
+  } else if (kernel_shape().size() == 2) {
+    newValue =
+        lowering_common_float<tpu::AvgPool2DOp, BFloat16Type>(getOperation());
+  } else {
+    newValue =
+        lowering_common_float<tpu::AvgPool1DOp, BFloat16Type>(getOperation());
+  }
+  return newValue;
 }
 
 Value top::AvgPoolOp::lowering_f16_bm1684x() {
-  return (kernel_shape().size() == 3)
-             ? lowering_common_float<tpu::AvgPool3DOp, BFloat16Type>(
-                   getOperation())
-             : lowering_common_float<tpu::AvgPool2DOp, BFloat16Type>(
-                   getOperation());
+  Value newValue;
+  if (kernel_shape().size() == 3) {
+    newValue =
+        lowering_common_float<tpu::AvgPool3DOp, Float16Type>(getOperation());
+  } else if (kernel_shape().size() == 2) {
+    newValue =
+        lowering_common_float<tpu::AvgPool2DOp, Float16Type>(getOperation());
+  } else {
+    newValue =
+        lowering_common_float<tpu::AvgPool1DOp, Float16Type>(getOperation());
+  }
+  return newValue;
 }
 
 Value top::AvgPoolOp::lowering_quant_bm1684x() {
@@ -102,7 +128,13 @@ Value top::AvgPoolOp::lowering_quant_bm1684x() {
   auto op = getOperation();
   op->setOperand(0, in_f32);
   auto type = output().getType();
-  auto v = is_pool3d ? lowering_common_float<tpu::AvgPool3DOp>(getOperation())
-                     : lowering_common_float<tpu::AvgPool2DOp>(getOperation());
-  return do_cast(v, type, true);
+  Value newValue;
+  if (kernel_shape().size() == 3) {
+    newValue = lowering_common_float<tpu::AvgPool3DOp>(getOperation());
+  } else if (kernel_shape().size() == 2) {
+    newValue = lowering_common_float<tpu::AvgPool2DOp>(getOperation());
+  } else {
+    newValue = lowering_common_float<tpu::AvgPool1DOp>(getOperation());
+  }
+  return do_cast(newValue, type, true);
 }

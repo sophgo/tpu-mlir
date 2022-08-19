@@ -26,7 +26,7 @@ void top::MaxPoolOp::parseParam(void *param) {
   auto kernel = Module::getI64Array(kernel_shape());
   auto stride = Module::getI64Array(strides());
   auto pad = Module::getI64Array(pads());
-  if (is_pool3d) {
+  if (kernel_shape().size() == 3) {
     p->n = ishape[0];
     p->c = ishape[1];
     p->id = ishape[2];
@@ -47,7 +47,7 @@ void top::MaxPoolOp::parseParam(void *param) {
     p->pad_d_after = pad->at(3);
     p->pad_h_after = pad->at(4);
     p->pad_w_after = pad->at(5);
-  } else {
+  } else if (kernel_shape().size() == 2) {
     p->id = 1;
     p->od = 1;
     p->kd = 1;
@@ -62,6 +62,19 @@ void top::MaxPoolOp::parseParam(void *param) {
     p->pad_w = pad->at(1);
     p->pad_h_after = pad->at(2);
     p->pad_w_after = pad->at(3);
+  } else if (kernel_shape().size() == 1) {
+    p->id = 1;
+    p->od = 1;
+    p->kd = 1;
+    p->kw = 1;
+    p->sd = 1;
+    p->sw = 1;
+    Module::getNCHW(ishape, p->n, p->c, p->ih, p->iw);
+    Module::getNCHW(oshape, p->n, p->c, p->oh, p->ow);
+    p->kh = kernel->at(0);
+    p->sh = stride->at(0);
+    p->pad_h = pad->at(0);
+    p->pad_h_after = pad->at(1);
   }
   p->pad_value = pad_value();
   p->do_relu = do_relu();
