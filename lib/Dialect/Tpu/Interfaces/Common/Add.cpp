@@ -44,6 +44,19 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
     } else if (out_type.isF16()) {
       f32_to_f16(p.outputs[0], p.outputs[0], num_elem);
     }
+  } else if (out_type.isInteger(32)) {
+    // auto in0 = reinterpret_cast<int32_t*>(p.inputs[0]);
+    // auto in1 = reinterpret_cast<int32_t*>(p.inputs[1]);
+    // auto out = reinterpret_cast<int32_t*>(p.outputs[0]);
+#pragma omp parallel for schedule(static, omp_schedule(num_elem))
+    for (int64_t j = 0; j < num_elem; j++) {
+      for (int i = 0; i < nInputs; i++) {
+        p.outputs[0][j] += p.inputs[i][j];
+      }
+      if (do_relu()) {
+        p.outputs[0][j] = std::max(0.0f, p.outputs[0][j]);
+      }
+    }
   } else if (asym == false) {
     auto o_qtype = Quant::getUniformQuantizedType(output());
     auto zp = o_qtype.getZeroPoint();

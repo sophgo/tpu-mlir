@@ -81,6 +81,14 @@ Value do_quantize(Value v, bool asymmetric);
 // from int8 to int8, convert one (scale zp) to another (scale zp)
 Value do_transfer(Value in, Value out, bool asymmetric);
 
+// from int8 to int32
+Value do_dequant(Value input, Type to_type,
+                 int64_t multiplier, int64_t shift, int64_t mode, int64_t lshift);
+
+// from int8 to int32
+Value do_requant(Value input, std::string name, Type to_type, bool tensorType,
+                 int64_t multiplier, int64_t shift, int64_t mode);
+
 typedef double (*activate_f)(double);
 
 Value create_lookup_table(Value in, Value out, activate_f func,
