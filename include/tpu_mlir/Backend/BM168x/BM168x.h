@@ -237,6 +237,25 @@ typedef struct {
   int zx_value;
 } requant_int_param_t;
 
+typedef struct {
+    uint64_t input_addr;
+    uint64_t output_addr;
+    uint64_t dequant_addr;
+    uint64_t buffer_local_addr;
+    int n;
+    int c;
+    int h;
+    int w;
+    bool is_perchannel;
+    int scale_val;
+    int shift_val;
+    int offset_val;
+    int mode;
+    int lshift;
+    DATA_TYPE_T input_dtype;
+    DATA_TYPE_T output_dtype;
+} dequant_int_param_t;
+
 #ifdef __cplusplus
 }
 #endif
