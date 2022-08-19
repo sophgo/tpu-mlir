@@ -106,7 +106,7 @@ class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,
     DefaultValuedAttr<I64Attr, "0">:$pad_value,
     DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<F64Attr, "0.0">:$relu_limit,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
     StrAttr:$name
   );
@@ -117,8 +117,8 @@ class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,
   }];
 }
 
-def Tpu_MaxPool2DOp:Tpu_PoolOp<"MaxPool">;
-def Tpu_AvgPool2DOp:Tpu_PoolOp<"AvgPool"> {
+def Tpu_MaxPool1DOp:Tpu_PoolOp<"MaxPool1D">;
+def Tpu_AvgPool1DOp:Tpu_PoolOp<"AvgPool1D"> {
   let arguments = (ins
     AnyTensor:$input,
     I64ArrayAttr:$kernel_shape,
@@ -127,7 +127,29 @@ def Tpu_AvgPool2DOp:Tpu_PoolOp<"AvgPool"> {
     DefaultValuedAttr<I64Attr, "0">:$pad_value,
     DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<F64Attr, "0.0">:$relu_limit,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    /// symmetric quantize param
+    OptionalAttr<I64Attr>:$multiplier,
+    OptionalAttr<I64Attr>:$rshift,
+    /// asymmetric quantize param
+    OptionalAttr<F64Attr>:$scale,
+    OptionalAttr<F64Attr>:$offset,
+    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
+    StrAttr:$name
+  );
+}
+
+def Tpu_MaxPool2DOp:Tpu_PoolOp<"MaxPool2D">;
+def Tpu_AvgPool2DOp:Tpu_PoolOp<"AvgPool2D"> {
+  let arguments = (ins
+    AnyTensor:$input,
+    I64ArrayAttr:$kernel_shape,
+    I64ArrayAttr:$strides,
+    I64ArrayAttr:$pads,
+    DefaultValuedAttr<I64Attr, "0">:$pad_value,
+    DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     /// symmetric quantize param
     OptionalAttr<I64Attr>:$multiplier,
     OptionalAttr<I64Attr>:$rshift,
@@ -149,7 +171,7 @@ def Tpu_AvgPool3DOp:Tpu_PoolOp<"AvgPool3D"> {
     DefaultValuedAttr<I64Attr, "0">:$pad_value,
     DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<F64Attr, "0.0">:$relu_limit,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     /// quantize param
     OptionalAttr<F64Attr>:$scale,
     OptionalAttr<F64Attr>:$offset,

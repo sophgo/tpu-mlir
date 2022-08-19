@@ -125,7 +125,7 @@ void tpu::MulConstOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
     param.common.scale_A = multiplier();
     param.common.rshift_A = rshift();
   } else {
-    param.common.B_const_val = const_val().convertToFloat();
+    param.common.B_const_val = const_val().convertToDouble();
     param.common.B_dtype = DTYPE_FP32; // assume coeff is fp32
     param.common.inversed = 0;
   }
