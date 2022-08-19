@@ -257,7 +257,7 @@ void QuantizeMultiplier(double double_multiplier, int64_t *quantized_multiplier,
   }
   // Sophgo expects right shift to be positive, and embed (1 << 31) into right
   // shift bits.
-  *shift = (-*shift) + 31;
+  // *shift = (-*shift) + 31;
   *quantized_multiplier = static_cast<int32_t>(q_fixed);
 }
 
@@ -303,8 +303,8 @@ T RightShiftRound(T src, int shift_num, RoundingMode round_mode) {
 // to compilable with tflite
 // tensorflow/lite/kernels/internal/common.h:MultiplyByQuantizedMultiplier()
 int32_t MultiplyByQuantizedMultiplier(int32_t x, int32_t multiplier,
-                                      int rshift) {
-  int shift = -(rshift - 31);
+                                      int shift) {
+  // int shift = -(rshift - 31);
   int64_t value = shift > 0 ? x << shift : x;
   value = RightShiftRound(value * multiplier, 31, ROUNDING_HALF_UP);
   if (value > (1ll << 31) - 1)

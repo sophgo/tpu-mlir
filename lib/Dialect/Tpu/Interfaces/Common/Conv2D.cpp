@@ -100,6 +100,7 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
     auto rshift_v = Module::getI64Array(rshift().getValue());
     auto multiplier_v = Module::getI64Array(multiplier(), rshift_v->size(), 1);
     bool per_axis = rshift_v->size() == c;
+    auto mode = quant_mode().hasValue() ? quant_mode().getValue() : 2;
 #pragma omp parallel for schedule(static, omp_schedule(c))
     for (int ic = 0; ic < c; ic++) {
       int64_t shift = per_axis ? rshift_v->at(ic) : rshift_v->at(0);
@@ -107,10 +108,15 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
       for (int in = 0; in < n; in++) {
         for (int hw = 0; hw < h * w; hw++) {
           int offset = (in * c + ic) * h * w + hw;
-          auto v =
-              MultiplyByQuantizedMultiplier((int32_t)p.outputs[0][offset],
-                                            (int32_t)multi, (int32_t)shift) +
-              o_qtype.getZeroPoint();
+          int64_t v = 0;
+          if (mode == 0) {
+            v = MultiplyByQuantizedMultiplier((int32_t)p.outputs[0][offset],
+                                              (int32_t)multi, (int32_t)shift) +
+                o_qtype.getZeroPoint();
+          } else {
+            v = applyMultiplierAndRShift(p.outputs[0][offset], multi, shift) +
+                o_qtype.getZeroPoint();
+          }
           p.outputs[0][offset] = sType.isUnsignedInteger(8) ? Quant::to_uint8(v)
                                                             : Quant::to_int8(v);
         }

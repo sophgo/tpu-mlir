@@ -187,6 +187,64 @@ Value do_quantize(Value v, bool asymmetric) {
   return castOp.output();
 }
 
+Value do_dequant(Value input, Type to_type, int64_t multiplier, int64_t shift,
+                 int64_t mode, int64_t lshift) {
+  auto from_stype = Module::getStorageType(input);
+  auto to_stype = Module::getStorageType(to_type);
+  auto ctx = input.getContext();
+  OpBuilder builder(ctx);
+  std::string suffix = "_dequant";
+  std::string new_name = Module::getName(input.getDefiningOp()).str() + suffix;
+  auto newType = to_type;
+  newType = RankedTensorType::get(Module::getShape(input), to_stype);
+
+  builder.setInsertionPointAfterValue(input);
+  std::vector<NamedAttribute> attrs;
+  attrs.push_back(
+      builder.getNamedAttr("name", builder.getStringAttr(new_name)));
+  attrs.push_back(builder.getNamedAttr("multiplier",
+                                       builder.getI64IntegerAttr(multiplier)));
+  attrs.push_back(
+      builder.getNamedAttr("shift", builder.getI64IntegerAttr(shift)));
+  if (mode == 1)
+    attrs.push_back(
+        builder.getNamedAttr("lshift", builder.getI64IntegerAttr(lshift)));
+  attrs.push_back(
+      builder.getNamedAttr("quant_mode", builder.getI64IntegerAttr(mode)));
+
+  auto newOp =
+      builder.create<tpu::DequantOp>(input.getLoc(), newType, ValueRange{input},
+                                     ArrayRef<NamedAttribute>{attrs});
+  return newOp.output();
+}
+
+Value do_requant(Value input, std::string name, Type to_type, bool tensorType,
+                 int64_t multiplier, int64_t shift, int64_t mode) {
+  auto from_stype = Module::getStorageType(input);
+  auto to_stype = Module::getStorageType(to_type);
+  auto ctx = input.getContext();
+  OpBuilder builder(ctx);
+  auto newType = to_type;
+  if (tensorType == false) {
+    newType = RankedTensorType::get(Module::getShape(input), to_stype);
+  }
+
+  builder.setInsertionPointAfterValue(input);
+  std::vector<NamedAttribute> attrs;
+  attrs.push_back(builder.getNamedAttr("name", builder.getStringAttr(name)));
+  attrs.push_back(builder.getNamedAttr("multiplier",
+                                       builder.getI64IntegerAttr(multiplier)));
+  attrs.push_back(
+      builder.getNamedAttr("rshift", builder.getI64IntegerAttr(shift)));
+  attrs.push_back(
+      builder.getNamedAttr("quant_mode", builder.getI64IntegerAttr(mode)));
+
+  auto newOp =
+      builder.create<tpu::RequantOp>(input.getLoc(), newType, ValueRange{input},
+                                     ArrayRef<NamedAttribute>{attrs});
+  return newOp.output();
+}
+
 template <typename TyOp>
 struct ForwardCalibartion : public OpRewritePattern<TyOp> {
   using OpRewritePattern<TyOp>::OpRewritePattern;
@@ -440,7 +498,8 @@ protected:
   void cast_process() {
     mainFunc_.walk([&](Operation *op) {
       if (op->getDialect()->getNamespace() == "tpu" &&
-          false == isa<tpu::CastOp, tpu::RequantOp, tpu::RequantAxisOp>(op)) {
+          false == isa<tpu::CastOp, tpu::RequantOp, tpu::DequantOp,
+                       tpu::RequantAxisOp, tpu::DequantAxisOp>(op)) {
         auto oType = op->getResult(0).getType();
         if (op->hasOneUse()) {
           auto nextOp = *(op->getUsers().begin());
@@ -454,7 +513,7 @@ protected:
           auto opd = op->getOperand(idx);
           auto in_op = opd.getDefiningOp();
           if (isa<top::WeightOp, top::NoneOp>(in_op) ||
-              Module::getStorageType(opd.getType()).isInteger(32)) {
+              Module::getStorageType(opd).isInteger(32)) {
             continue;
           }
           if (need_cast(opd.getType(), oType)) {
