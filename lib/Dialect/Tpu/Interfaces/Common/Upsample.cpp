@@ -43,9 +43,6 @@ LogicalResult tpu::UpsampleOp::inference(InferenceParameter &p) {
 
   if (do_relu()) {
     auto limit = relu_limit().convertToDouble();
-    if (Quant::isUniformQuantized(output())) {
-      limit = 0;
-    }
     function_relu(p.outputs[0], p.outputs[0], num_elem, limit);
   }
   return success();

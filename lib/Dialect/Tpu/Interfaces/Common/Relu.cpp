@@ -23,9 +23,6 @@ void tpu::ReluOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ReluOp::inference(InferenceParameter &p) {
   auto limit = relu_limit().convertToDouble();
-  if (Quant::isUniformQuantized(output())) {
-    limit = 0;
-  }
   function_relu(p.inputs[0], p.outputs[0], Module::getNumElements(output()),
                 limit, Module::getStorageType(output()));
   return success();

@@ -80,9 +80,6 @@ LogicalResult tpu::MaxPool2DOp::inference(InferenceParameter &p) {
   pooling->run();
   if (do_relu()) {
     auto limit = relu_limit().convertToDouble();
-    if (Quant::isUniformQuantized(output())) {
-      limit = 0;
-    }
     function_relu(p.outputs[0], p.outputs[0], Module::getNumElements(output()),
                   limit, Module::getStorageType(output()));
   }

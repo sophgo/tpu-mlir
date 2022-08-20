@@ -28,9 +28,6 @@ void tpu::MatMulOp::parseParam(int64_t &batch, int64_t &M, int64_t &K,
   with_bias = !bias().getType().isa<mlir::NoneType>();
   relu = do_relu();
   limit = relu_limit().convertToDouble();
-  if (Quant::isUniformQuantized(output())) {
-    limit = 0;
-  }
   auto r_dims = r_s.size();
   auto i_dims = i_s.size();
   N = r_s[r_dims - 1];

@@ -660,7 +660,7 @@ def Top_ScaleOp: Top_Op<"Scale", [SupportFuseRelu, InOutSameShape]> {
     AnyTensor:$bias,
 
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    OptionalAttr<F64Attr>:$relu_limit,
+    DefaultValuedAttr<F64Attr, "0.0">:$relu_limit,
     StrAttr:$name
   );
 

@@ -23,7 +23,7 @@ LogicalResult top::ReluOp::init(InferenceParameter &p) { return success(); }
 void top::ReluOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::ReluOp::inference(InferenceParameter &p) {
-  float limit = relu_limit().convertToDouble();
+  auto limit = relu_limit().convertToDouble();
   function_relu(p.inputs[0], p.outputs[0], Module::getNumElements(input()),
                 limit);
   return success();
