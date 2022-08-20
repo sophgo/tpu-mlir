@@ -125,9 +125,7 @@ struct TopScaleMergeToConv : public OpRewritePattern<ScaleOp> {
     conv_op->setOperand(2, conv_bias);
 
     // update attrs
-    double relu_limit = op.relu_limit().hasValue()
-                            ? op.relu_limit().getValue().convertToDouble()
-                            : 0;
+    double relu_limit = op.relu_limit().convertToDouble();
     formerOp->setAttr("do_relu", rewriter.getBoolAttr(op.do_relu()));
     formerOp->setAttr("relu_limit", rewriter.getF64FloatAttr(relu_limit));
     formerOp->setAttr("name", op.nameAttr());
@@ -199,9 +197,7 @@ struct TopScaleMergeToBatchNorm : public OpRewritePattern<ScaleOp> {
     bn_op->setOperand(2, bn_variance);
 
     // update attrs
-    double relu_limit = op.relu_limit().hasValue()
-                            ? op.relu_limit().getValue().convertToDouble()
-                            : 0;
+    double relu_limit = op.relu_limit().convertToDouble();
     formerOp->setAttr("do_relu", rewriter.getBoolAttr(op.do_relu()));
     formerOp->setAttr("relu_limit", rewriter.getF64FloatAttr(relu_limit));
     formerOp->setAttr("name", op.nameAttr());
@@ -242,9 +238,7 @@ struct TopScaleToDwConv : public OpRewritePattern<ScaleOp> {
     attrs.set("pads", rewriter.getI64ArrayAttr({0, 0, 0, 0}));
     attrs.set("group", rewriter.getI64IntegerAttr(channel));
     attrs.set("do_relu", rewriter.getBoolAttr(op.do_relu()));
-    double relu_limit = op.relu_limit().hasValue()
-                            ? op.relu_limit().getValue().convertToDouble()
-                            : 0;
+    auto relu_limit = op.relu_limit().convertToDouble();
     attrs.set("relu_limit", rewriter.getF64FloatAttr(relu_limit));
 
     auto filter_type =

@@ -30,6 +30,12 @@ struct TopFuseRelu : public OpRewritePattern<ReluOp> {
       return failure();
     }
     auto relu_limit = op.relu_limit().convertToDouble();
+    if (formerOp->hasAttr("relu_limit")) {
+      auto old_limit = formerOp->getAttr("relu_limit").cast<FloatAttr>().getValueAsDouble();
+      if (old_limit > 0 && relu_limit > old_limit) {
+          relu_limit = old_limit;
+      }
+    }
     formerOp->setAttr("do_relu", rewriter.getBoolAttr(true));
     formerOp->setAttr("relu_limit", rewriter.getF64FloatAttr(relu_limit));
     formerOp->setAttr("name", op.nameAttr());

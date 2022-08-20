@@ -10,7 +10,7 @@
 
 #include "Lowering.h"
 #include <map>
-
+using namespace tpu_mlir::trait;
 namespace tpu_mlir {
 namespace top {
 
@@ -323,6 +323,11 @@ struct LoweringPattern : public RewritePattern {
     if (iter != quantize_map.end()) {
       real_mode = iter->second;
     }
+    if (real_mode == Quant::Type::INT8) {
+      if (op->hasTrait<SupportFuseRelu>() || isa<top::ReluOp>(op)) {
+        op->setAttr("relu_limit", rewriter.getF64FloatAttr(0.0));
+      }
+    }
     auto module = Module::getModuleOp(op);
     auto chip = Module::getChip(module);
     Value newValue;
@@ -380,7 +385,6 @@ public:
     if (Module::State::TOP_QUANTIZED == state_) {
       Module::setAsymmetric(module, true);
       asymmetric_ = true;
-      // type_process();
     } else {
       Module::setAsymmetric(module, isAsymmetric);
       asymmetric_ = isAsymmetric;
@@ -425,31 +429,12 @@ protected:
   }
 
   void lowering_process() {
+    // adjust special type
     mainFunc_.walk([&](Operation *op) { quant_for_special(op); });
+    // lowering
     RewritePatternSet patterns(ctx_);
     patterns.add<LoweringPattern>(ctx_, mode_, quantize_map);
     applyPatternsAndFoldGreedily(module, std::move(patterns));
-  }
-
-  void type_process() {
-    // i8:f32 scale:-128 => u8:f32 scale
-    mainFunc_.walk([&](LoweringInterface op) {
-      for (auto result : op->getResults()) {
-        if (Quant::isUniformQuantized(result) == false) {
-          continue;
-        }
-        auto qtype = Quant::getUniformQuantizedType(result);
-        if (qtype.getZeroPoint() != -128) {
-          continue;
-        }
-        auto new_qtype = quant::UniformQuantizedType::get(
-            0, IntegerType::get(ctx_, 8), qtype.getExpressedType(),
-            qtype.getScale(), 0, 0, 255);
-        auto new_type =
-            RankedTensorType::get(Module::getShape(result), new_qtype);
-        result.setType(new_type);
-      }
-    });
   }
 
   void cast_process() {

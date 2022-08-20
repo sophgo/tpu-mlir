@@ -105,9 +105,7 @@ Value top::ScaleOp::lowering_int8_bm1684x(bool asymmetric) {
   std::vector<NamedAttribute> attrs;
   attrs.push_back(builder.getNamedAttr("name", nameAttr()));
   attrs.push_back(builder.getNamedAttr("do_relu", do_reluAttr()));
-  if (relu_limit().hasValue()) {
-    attrs.push_back(builder.getNamedAttr("relu_limit", relu_limitAttr()));
-  }
+  attrs.push_back(builder.getNamedAttr("relu_limit", relu_limitAttr()));
   auto newType = Quant::getQuantInt8Type(output(), asymmetric);
   auto newOp = builder.create<tpu::ScaleOp>(op->getLoc(), newType,
                                           ArrayRef<Value>{operands},

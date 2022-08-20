@@ -93,9 +93,7 @@ void tpu::ReluOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   p.channel_shared = true;
   p.slope_val = 0.f;
   p.rshift_bit = 0;
-  if (!Quant::isUniformQuantized(output())) {
-    p.relu_limit = relu_limit().convertToDouble();
-  }
+  p.relu_limit = relu_limit().convertToDouble();
   p.dtype = BM168x::getDataType(output());
   BM1684x::instance().call_local_func("backend_api_prelu_local", &p,
                                       sizeof(prelu_param_t));

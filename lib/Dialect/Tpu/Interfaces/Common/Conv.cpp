@@ -30,9 +30,6 @@ void tpu::ConvOp::parseParam(int64_t &n, int64_t &ic, int64_t &ih, int64_t &iw,
   auto o_s = output().getType().cast<RankedTensorType>().getShape();
   do_relu = this->do_relu();
   limit = relu_limit().convertToDouble();
-  if (Quant::isUniformQuantized(output())) {
-    limit = 0;
-  }
   has_bias = with_bias();
   n = i_s[0];
   ic = i_s[1];
