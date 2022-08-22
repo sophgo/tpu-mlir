@@ -44,8 +44,8 @@ class Tpu_Op<string mnemonic, list<Trait> traits = []> :
        DeclareOpInterfaceMethods<GlobalGenInterface>,
        DeclareOpInterfaceMethods<InferenceInterface>])> ;
 
-def Tpu_ConvOp: Tpu_Op<"Conv",[
-    SupportFuseRelu,
+class Tpu_ConvOp<string mnemonic> : Tpu_Op<mnemonic,
+    [SupportFuseRelu,
     DeclareOpInterfaceMethods<WeightReorderInterface>,
     DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH"]>]> {
   let summary = "convolution operator";
@@ -53,6 +53,14 @@ def Tpu_ConvOp: Tpu_Op<"Conv",[
   let description = [{
   }];
 
+  let results = (outs AnyTensor:$output);
+  let extraClassDeclaration = [{
+    void parseParam(void *param);
+  }];
+}
+
+// def Tpu_Conv1DOp : Tpu_ConvOp<"Conv1D">;
+def Tpu_Conv2DOp : Tpu_ConvOp<"Conv2D"> {
   let arguments = (ins
     AnyTensor:$input,
     AnyTensor:$filter,
@@ -76,17 +84,9 @@ def Tpu_ConvOp: Tpu_Op<"Conv",[
     StrAttr:$name
   );
 
-  let results = (outs AnyTensor:$output);
-  let extraClassDeclaration = [{
-    void parseParam(int64_t &n, int64_t &ic, int64_t &ih, int64_t &iw, int64_t &oc,
-                    int64_t &oh, int64_t &ow, int64_t &g, int64_t &kh, int64_t &kw, int64_t &ins_h,
-                    int64_t &ins_w, int64_t &sh, int64_t &sw, int64_t &pt, int64_t &pb, int64_t &pl,
-                    int64_t &pr, int64_t &dh, int64_t &dw, bool &is_dw, bool &with_bias, bool &do_relu,
-                    double &relu_limit);
-  }];
-
   let hasCanonicalizer = 1;
 }
+// def Tpu_Conv3DOp : Tpu_ConvOp<"Conv3D">;
 
 class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,
   [SupportFuseRelu,

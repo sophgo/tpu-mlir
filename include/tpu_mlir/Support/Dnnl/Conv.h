@@ -12,17 +12,39 @@
 #include "oneapi/dnnl/dnnl.hpp"
 using namespace dnnl;
 namespace tpu_mlir {
+
+typedef struct {
+  int64_t n;
+  int64_t ic;
+  int64_t id;
+  int64_t ih;
+  int64_t iw;
+  int64_t oc;
+  int64_t od;
+  int64_t oh;
+  int64_t ow;
+  int64_t kd, dd, sd, ins_d;
+  int64_t kh, dh, sh, ins_h;
+  int64_t kw, dw, sw, ins_w;
+  int64_t pdf, pdb;
+  int64_t pht, phb;
+  int64_t pwl, pwr;
+  int64_t groups;
+  int64_t pad_value;
+  bool has_bias;
+  bool is_dw;
+  bool do_relu;
+  double relu_limit;
+} conv_attr_t;
+
 class Conv {
 public:
   Conv();
   ~Conv();
 
-  void pad_init(float *input, int n, int ic, int ih, int iw, int &pt, int &pb,
-                int &pl, int &pr, int izp);
-  void setup(float *input, float *weight, float *bias, float *output, int n,
-             int ic, int ih, int iw, int oc, int oh, int ow, int kh, int kw,
-             int sh, int sw, int dh, int dw, int pt, int pb, int pl, int pr,
-             int g, bool do_relu, double relu_limit, int izp = 0);
+  void pad_init(float *input, conv_attr_t &attr);
+  void setup(float *input, float *weight, float *bias, float *output,
+             conv_attr_t attr);
 
   void run();
 
@@ -39,11 +61,6 @@ private:
   float *p_input;
   float *origin_input;
   std::shared_ptr<std::vector<float>> input_after_pad;
-  int _n, _c, _h, _w;
-  int _pt;
-  int _pb;
-  int _pl;
-  int _pr;
-  int _izp;
+  conv_attr_t _attr;
 };
 } // namespace tpu_mlir

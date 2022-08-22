@@ -8,62 +8,58 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include <string.h>
 #include "tpu_mlir/Support/Dnnl/Conv.h"
 #include "tpu_mlir/Support/Dnnl/DnnlUtils.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include <string.h>
 
 using namespace dnnl;
 using namespace tpu_mlir;
 Conv::Conv() {
   eng = dnnl::engine(engine::kind::cpu, 0);
   eng_stream = dnnl::stream(eng);
-  _pt = _pb = _pr = _pl = 0;
-  _izp = 0;
+  memset(&_attr, 0, sizeof(conv_attr_t));
 }
 
 Conv::~Conv() {}
 
-void Conv::pad_init(float *input, int n, int ic, int ih, int iw, int &pt,
-                    int &pb, int &pl, int &pr, int izp) {
+void Conv::pad_init(float *input, conv_attr_t &attr) {
   origin_input = input;
-  _pt = pt;
-  _pb = pb;
-  _pr = pr;
-  _pl = pl;
-  _izp = izp;
-  _n = n;
-  _c = ic;
-  _h = ih;
-  _w = iw;
-  if (izp && (_pt > 0 || _pb > 0 || _pr > 0 || _pl > 0)) {
-    int input_paded_size = n * ic * (ih + pt + pb) * (iw + pr + pl);
-    input_after_pad = std::make_shared<std::vector<float>>(input_paded_size);
-    src_shape = {n, ic, ih + pt + pb, iw + pr + pl};
-    pt = pb = pr = pl = 0;
+  memcpy(&_attr, &attr, sizeof(conv_attr_t));
+  if (attr.pad_value != 0 && (attr.pdf > 0 || attr.pdb > 0 || attr.pht > 0 ||
+                              attr.phb > 0 || attr.pwl > 0 || attr.pwr > 0)) {
+    src_shape = {attr.n, attr.ic, attr.id + attr.pdf + attr.pdb,
+                 attr.ih + attr.pht + attr.phb, attr.iw + attr.pwl + attr.pwr};
+    int input_padded_size = src_shape[0] * src_shape[1] * src_shape[2] *
+                            src_shape[3] * src_shape[4];
+    input_after_pad = std::make_shared<std::vector<float>>(input_padded_size);
+    attr.pdf = attr.pdb = attr.pht = attr.phb = attr.pwl = attr.pwr = 0;
     p_input = input_after_pad->data();
   } else {
-    src_shape = {n, ic, ih, iw};
+    src_shape = {attr.n, attr.ic, attr.id, attr.ih, attr.iw};
     p_input = input;
   }
 }
 
-void Conv::setup(float *input, float *weight, float *bias, float *output, int n,
-                 int ic, int ih, int iw, int oc, int oh, int ow, int kh, int kw,
-                 int sh, int sw, int dh, int dw, int pt, int pb, int pl, int pr,
-                 int g, bool do_relu, double relu_limit, int izp) {
-  // printf("Conv para:%d,%d,%d,%d,%d,%d,%d,%d\n", idt, wdt, bdt, odt,
-  // per_channel, izp, ozp, do_relu);
-  pad_init(input, n, ic, ih, iw, pt, pb, pl, pr, izp);
-  dst_shape = {n, oc, oh, ow};
-  memory::dims filter_shape = (g != 1) ? memory::dims{g, oc / g, ic / g, kh, kw}
-                                       : memory::dims{oc, ic, kh, kw};
-  memory::dims bias_shape = {oc};
-  memory::dims strides = {sh, sw};
+void Conv::setup(float *input, float *weight, float *bias, float *output,
+                 conv_attr_t attr) {
+  pad_init(input, attr);
+  dst_shape = {attr.n, attr.oc, attr.od, attr.oh, attr.ow};
+  memory::dims filter_shape =
+      (attr.groups != 1)
+          ? memory::dims{attr.groups,
+                         attr.oc / attr.groups,
+                         attr.ic / attr.groups,
+                         attr.kd,
+                         attr.kh,
+                         attr.kw}
+          : memory::dims{attr.oc, attr.ic, attr.kd, attr.kh, attr.kw};
+  memory::dims bias_shape = {attr.oc};
+  memory::dims strides = {attr.sd, attr.sh, attr.sw};
 
-  memory::dims padding_l = {pt, pl};
-  memory::dims padding_r = {pb, pr};
-  memory::dims dilation = {dh - 1, dw - 1};
+  memory::dims padding_l = {attr.pdf, attr.pht, attr.pwl};
+  memory::dims padding_r = {attr.pdb, attr.phb, attr.pwr};
+  memory::dims dilation = {attr.dd - 1, attr.dh - 1, attr.dw - 1};
 
   net.clear();
   net_args.clear();
@@ -87,14 +83,14 @@ void Conv::setup(float *input, float *weight, float *bias, float *output, int n,
 
   // post_ops ops;
   primitive_attr conv_attr;
-  post_relu(conv_attr, do_relu, relu_limit);
+  post_relu(conv_attr, attr.do_relu, attr.relu_limit);
 
   conv_prim_desc =
       convolution_forward::primitive_desc(conv_desc, conv_attr, eng);
 
   // set mkldnn memory
-  auto filter_tag =
-      (g != 1) ? memory::format_tag::goihw : memory::format_tag::oihw;
+  auto filter_tag = (attr.groups != 1) ? memory::format_tag::goidhw
+                                       : memory::format_tag::oidhw;
   auto filter_memory =
       memory({{filter_shape}, memory::data_type::f32, filter_tag}, eng, weight);
   prim_filter_memory = filter_memory;
@@ -119,7 +115,7 @@ void Conv::setup(float *input, float *weight, float *bias, float *output, int n,
   }
 
   auto src_memory =
-      memory({{src_shape}, memory::data_type::f32, memory::format_tag::nchw},
+      memory({{src_shape}, memory::data_type::f32, memory::format_tag::ncdhw},
              eng, p_input);
   auto prim_src_memory = src_memory;
   if (conv_prim_desc.src_desc() != src_memory.get_desc()) {
@@ -143,7 +139,7 @@ void Conv::setup(float *input, float *weight, float *bias, float *output, int n,
   }
   // reorder or copy the output
   auto dst_memory =
-      memory({{dst_shape}, memory::data_type::f32, memory::format_tag::nchw},
+      memory({{dst_shape}, memory::data_type::f32, memory::format_tag::ncdhw},
              eng, output);
   if (prim_dst_memory != dst_memory) {
     net.push_back(reorder(prim_dst_memory, dst_memory));
@@ -154,9 +150,11 @@ void Conv::setup(float *input, float *weight, float *bias, float *output, int n,
 
 void Conv::run() {
   if (input_after_pad) {
-    pad_tensor(input_after_pad->data(), origin_input, _n, _c, _h, _w, _pt, _pb,
-               _pl, _pr, _izp);
+    pad_tensor(input_after_pad->data(), origin_input, _attr.n, _attr.ic,
+               _attr.id, _attr.ih, _attr.iw, _attr.pdf, _attr.pdb, _attr.pht,
+               _attr.phb, _attr.pwl, _attr.pwr, _attr.pad_value);
   }
+
   for (size_t i = 0; i < net.size(); ++i)
     net.at(i).execute(eng_stream, net_args.at(i));
   eng_stream.wait();
