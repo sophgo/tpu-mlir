@@ -8,11 +8,12 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "tpu_mlir/Support/Dnnl/Conv.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Float16.h"
 
 using namespace mlir;
 using namespace tpu_mlir;
@@ -24,12 +25,8 @@ Value top::ConvOp::lowering_int8_bm1684x(bool asymmetric) {
   builder.setInsertionPointAfter(op);
   std::vector<Value> operands;
   operands.push_back(input());
-  int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-      pl, pr, dh, dw;
-  bool is_dw, with_bias, relu;
-  double relu_limit;
-  parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-             pl, pr, dh, dw, is_dw, with_bias, relu, relu_limit);
+  conv_attr_t attr = {0};
+  parseParam(&attr);
   // in/out scale/zp
   double in_scale, out_scale;
   int64_t in_zp, out_zp;
@@ -40,26 +37,26 @@ Value top::ConvOp::lowering_int8_bm1684x(bool asymmetric) {
   auto filter_f32 = filterOp.read<float>();
   float fmax, fmin;
   findMinMax(filter_f32->data(), filter_f32->size(), &fmin, &fmax);
-  bool fsign = (fmin < 0 || with_bias == true);
+  bool fsign = (fmin < 0 || attr.has_bias == true);
   float fqmax = fsign ? 127 : 255;
 
   std::shared_ptr<std::vector<int32_t>> bias_int32;
   std::shared_ptr<std::vector<float>> bias_fp32;
   auto filter_i8 = std::make_shared<std::vector<int8_t>>(filter_f32->size());
   auto filter_u8 = std::make_shared<std::vector<uint8_t>>(filter_f32->size());
-  if (with_bias) {
+  if (attr.has_bias) {
     auto biasOp = cast<top::WeightOp>(bias().getDefiningOp());
     bias_fp32 = biasOp.read<float>();
     bias_int32 = std::make_shared<std::vector<int32_t>>(bias_fp32->size());
   } else if (in_zp) {
-    bias_int32 = std::make_shared<std::vector<int32_t>>(oc, 0);
+    bias_int32 = std::make_shared<std::vector<int32_t>>(attr.oc, 0);
   }
 
   std::vector<int64_t> rshift_v;
   std::vector<int64_t> multiplier_v;
   int int32_multiplier, shift;
-  int inner_dim = filter_f32->size() / oc;
-  for (int c = 0; c < oc; c++) { // per-channel量化
+  int inner_dim = filter_f32->size() / attr.oc;
+  for (int c = 0; c < attr.oc; c++) { // per-channel量化
     float *p_filter = filter_f32->data() + c * inner_dim;
     float w_max = findMaxabs(p_filter, inner_dim);
     double scale_w = std::max(w_max / fqmax, 1e-5f);
@@ -86,14 +83,14 @@ Value top::ConvOp::lowering_int8_bm1684x(bool asymmetric) {
       }
     }
 
-    if (with_bias) {
+    if (attr.has_bias) {
       bias_int32->data()[c] =
           std::round(bias_fp32->data()[c] / (scale_w * in_scale) - bias_w_xz);
     } else if (in_zp) {
       bias_int32->data()[c] = std::round(-bias_w_xz);
     }
   }
-  with_bias = (bias_int32 != nullptr);
+  attr.has_bias = (bias_int32 != nullptr);
 
   auto filter_type = filter().getType().cast<RankedTensorType>();
   auto new_type = RankedTensorType::get(filter_type.getShape(),
@@ -105,8 +102,9 @@ Value top::ConvOp::lowering_int8_bm1684x(bool asymmetric) {
     auto new_filter = WeightOp::create(op, "filter_u8", *filter_u8, new_type);
     operands.push_back(new_filter);
   }
-  if (with_bias) {
-    auto new_type = RankedTensorType::get({1, oc, 1, 1}, builder.getI32Type());
+  if (attr.has_bias) {
+    auto new_type =
+        RankedTensorType::get({1, attr.oc, 1, 1}, builder.getI32Type());
     auto new_bias = WeightOp::create(op, "bias_int32", *bias_int32, new_type);
     operands.push_back(new_bias);
   } else {
@@ -124,11 +122,11 @@ Value top::ConvOp::lowering_int8_bm1684x(bool asymmetric) {
   attrs.push_back(builder.getNamedAttr(
       "multiplier", builder.getI64ArrayAttr(ArrayRef<int64_t>{multiplier_v})));
   attrs.push_back(
-      builder.getNamedAttr("with_bias", builder.getBoolAttr(with_bias)));
+      builder.getNamedAttr("with_bias", builder.getBoolAttr(attr.has_bias)));
   auto newType = Quant::getQuantInt8Type(output(), asymmetric);
-  auto newOp = builder.create<tpu::ConvOp>(op->getLoc(), newType,
-                                           ArrayRef<Value>{operands},
-                                           ArrayRef<NamedAttribute>{attrs});
+  auto newOp = builder.create<tpu::Conv2DOp>(op->getLoc(), newType,
+                                             ArrayRef<Value>{operands},
+                                             ArrayRef<NamedAttribute>{attrs});
   return newOp.output();
 }
 
@@ -150,9 +148,9 @@ Value top::ConvOp::lowering_f32_bm1684x() {
   attrs.push_back(
       builder.getNamedAttr("with_bias", builder.getBoolAttr(with_bias)));
 
-  auto newOp = builder.create<tpu::ConvOp>(op->getLoc(), output().getType(),
-                                           ArrayRef<Value>{operands},
-                                           ArrayRef<NamedAttribute>{attrs});
+  auto newOp = builder.create<tpu::Conv2DOp>(op->getLoc(), output().getType(),
+                                             ArrayRef<Value>{operands},
+                                             ArrayRef<NamedAttribute>{attrs});
   return newOp.output();
 }
 
@@ -177,9 +175,9 @@ Value top::ConvOp::lowering_f16_bm1684x() {
   auto tensor_type = output().getType().cast<RankedTensorType>();
   auto newType =
       RankedTensorType::get(tensor_type.getShape(), builder.getF16Type());
-  auto newOp = builder.create<tpu::ConvOp>(op->getLoc(), newType,
-                                           ArrayRef<Value>{operands},
-                                           ArrayRef<NamedAttribute>{attrs});
+  auto newOp = builder.create<tpu::Conv2DOp>(op->getLoc(), newType,
+                                             ArrayRef<Value>{operands},
+                                             ArrayRef<NamedAttribute>{attrs});
   return newOp.output();
 }
 
@@ -204,9 +202,9 @@ Value top::ConvOp::lowering_bf16_bm1684x() {
   auto tensor_type = output().getType().cast<RankedTensorType>();
   auto newType =
       RankedTensorType::get(tensor_type.getShape(), builder.getBF16Type());
-  auto newOp = builder.create<tpu::ConvOp>(op->getLoc(), newType,
-                                           ArrayRef<Value>{operands},
-                                           ArrayRef<NamedAttribute>{attrs});
+  auto newOp = builder.create<tpu::Conv2DOp>(op->getLoc(), newType,
+                                             ArrayRef<Value>{operands},
+                                             ArrayRef<NamedAttribute>{attrs});
   return newOp.output();
 }
 
@@ -214,12 +212,8 @@ Value top::ConvOp::lowering_quant_bm1684x() {
   if (Quant::isUniformQuantized(input(), output()) == false) {
     llvm_unreachable("input output should be quantized");
   }
-  int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-      pl, pr, dh, dw;
-  bool is_dw, with_bias, relu;
-  double relu_limit;
-  parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-             pl, pr, dh, dw, is_dw, with_bias, relu, relu_limit);
+  conv_attr_t attr = {0};
+  parseParam(&attr);
   auto input_qtype = Quant::getUniformQuantizedType(input());
   auto output_qtype = Quant::getUniformQuantizedType(output());
   auto filter_type = filter().getType().cast<RankedTensorType>();
@@ -269,7 +263,7 @@ Value top::ConvOp::lowering_quant_bm1684x() {
   attrs.push_back(
       builder.getNamedAttr("rshift", builder.getI64ArrayAttr(rshift)));
   attrs.push_back(
-      builder.getNamedAttr("with_bias", builder.getBoolAttr(with_bias)));
+      builder.getNamedAttr("with_bias", builder.getBoolAttr(attr.has_bias)));
 
   int32_t input_zeroPoint = input_qtype.getZeroPoint();
   if (input_zeroPoint != 0) {
@@ -277,10 +271,10 @@ Value top::ConvOp::lowering_quant_bm1684x() {
     std::shared_ptr<std::vector<int32_t>> bias_quant;
     std::shared_ptr<std::vector<int8_t>> filter_quant;
     filter_quant = cast<top::WeightOp>(filter().getDefiningOp()).read<int8_t>();
-    if (with_bias) {
+    if (attr.has_bias) {
       bias_quant = cast<top::WeightOp>(bias().getDefiningOp()).read<int32_t>();
     } else {
-      bias_quant->resize(oc, 0);
+      bias_quant->resize(attr.oc, 0);
     }
     int64_t oc = filter_type.getShape()[0];
     int64_t kernel_size = filter_type.getNumElements() / oc;
@@ -304,8 +298,8 @@ Value top::ConvOp::lowering_quant_bm1684x() {
     operands.push_back(bias());
   }
 
-  auto newOp = builder.create<tpu::ConvOp>(op->getLoc(), output().getType(),
-                                           ArrayRef<Value>{operands},
-                                           ArrayRef<NamedAttribute>{attrs});
+  auto newOp = builder.create<tpu::Conv2DOp>(op->getLoc(), output().getType(),
+                                             ArrayRef<Value>{operands},
+                                             ArrayRef<NamedAttribute>{attrs});
   return newOp.output();
 }

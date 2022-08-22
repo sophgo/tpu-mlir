@@ -16,69 +16,95 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-void top::ConvOp::parseParam(int64_t &n, int64_t &ic, int64_t &ih, int64_t &iw,
-                             int64_t &oc, int64_t &oh, int64_t &ow, int64_t &g,
-                             int64_t &kh, int64_t &kw, int64_t &ins_h,
-                             int64_t &ins_w, int64_t &sh, int64_t &sw,
-                             int64_t &pt, int64_t &pb, int64_t &pl, int64_t &pr,
-                             int64_t &dh, int64_t &dw, bool &is_dw,
-                             bool &with_bias, bool &do_relu, double &limit) {
+void top::ConvOp::parseParam(void *param) {
+  conv_attr_t *p = (conv_attr_t *)param;
+  memset(p, 0, sizeof(conv_attr_t));
   auto i_s = input().getType().cast<RankedTensorType>().getShape();
   auto o_s = output().getType().cast<RankedTensorType>().getShape();
-  do_relu = this->do_relu();
-  limit = relu_limit().convertToDouble();
-  with_bias = !bias().getType().isa<NoneType>();
-  n = i_s[0];
-  ic = i_s[1];
-  ih = i_s[2];
-  iw = i_s[3];
-  oc = o_s[1];
-  oh = o_s[2];
-  ow = o_s[3];
+  p->do_relu = this->do_relu();
+  p->relu_limit = relu_limit().convertToDouble();
+  p->has_bias = !bias().getType().isa<NoneType>();
   auto kernel = Module::getI64Array(kernel_shape());
-  kh = kernel->at(0);
-  kw = kernel->at(1);
   auto pads_v = Module::getI64Array(pads());
-  pt = pads_v->at(0);
-  pl = pads_v->at(1);
-  pb = pads_v->at(2);
-  pr = pads_v->at(3);
   auto strides_v = Module::getI64Array(strides());
-  sh = strides_v->at(0);
-  sw = strides_v->at(1);
-  auto dhdw = Module::getI64Array(dilations(), 2, 1);
-  dh = dhdw->at(0);
-  dw = dhdw->at(1);
-  auto ins = Module::getI64Array(inserts(), 2, 0);
-  ins_h = ins->at(0);
-  ins_w = ins->at(1);
-  g = group();
-  is_dw = (oc == ic && oc == g && g > 1);
-  return;
+  auto dilation = Module::getI64Array(dilations(), kernel->size(), 1);
+  auto ins = Module::getI64Array(inserts(), kernel->size(), 0);
+  p->n = i_s[0];
+  p->ic = i_s[1];
+  p->oc = o_s[1];
+  if (kernel->size() == 3) {
+    p->id = i_s[2];
+    p->ih = i_s[3];
+    p->iw = i_s[4];
+    p->od = o_s[2];
+    p->oh = o_s[3];
+    p->ow = o_s[4];
+    p->kd = kernel->at(0);
+    p->kh = kernel->at(1);
+    p->kw = kernel->at(2);
+    p->pdf = pads_v->at(0);
+    p->pht = pads_v->at(1);
+    p->pwl = pads_v->at(2);
+    p->pdb = pads_v->at(3);
+    p->phb = pads_v->at(4);
+    p->pwr = pads_v->at(5);
+    p->sd = strides_v->at(0);
+    p->sh = strides_v->at(1);
+    p->sw = strides_v->at(2);
+    p->dd = dilation->at(0);
+    p->dh = dilation->at(1);
+    p->dw = dilation->at(2);
+    p->ins_d = ins->at(0);
+    p->ins_h = ins->at(1);
+    p->ins_w = ins->at(2);
+  } else if (kernel->size() == 2) {
+    p->id = p->od = p->kd = p->dd = p->sd = 1;
+    p->ih = i_s[2];
+    p->iw = i_s[3];
+    p->oh = o_s[2];
+    p->ow = o_s[3];
+    p->kh = kernel->at(0);
+    p->kw = kernel->at(1);
+    p->pht = pads_v->at(0);
+    p->pwl = pads_v->at(1);
+    p->phb = pads_v->at(2);
+    p->pwr = pads_v->at(3);
+    p->sh = strides_v->at(0);
+    p->sw = strides_v->at(1);
+    p->dh = dilation->at(0);
+    p->dw = dilation->at(1);
+    p->ins_h = ins->at(0);
+    p->ins_w = ins->at(1);
+  } else if (kernel->size() == 1) {
+    p->id = p->od = p->kd = p->dd = p->sd = 1;
+    p->iw = p->ow = p->kw = p->dw = p->sw = 1;
+    p->ih = i_s[2];
+    p->oh = o_s[2];
+    p->kh = kernel->at(0);
+    p->pht = pads_v->at(0);
+    p->phb = pads_v->at(1);
+    p->sh = strides_v->at(0);
+    p->dh = dilation->at(0);
+    p->ins_h = ins->at(0);
+  }
+  assert(p->ins_d == 0 && p->ins_h == 0 && p->ins_w == 0);
+  p->groups = group();
+  p->is_dw = (p->oc == p->ic && p->oc == p->groups && p->groups > 1);
 }
 
 int64_t top::ConvOp::getFLOPs() {
-  int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-      pl, pr, dh, dw;
-  bool is_dw, with_bias, has_relu;
-  double relu_limit;
-  parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-             pl, pr, dh, dw, is_dw, with_bias, has_relu, relu_limit);
-  auto extra = with_bias ? 1 : 0 + has_relu ? 1 : 0;
-  return Module::getNumElements(output()) * (kw * kw * ic / g * 2 + extra);
+  conv_attr_t attr = {0};
+  parseParam(&attr);
+  auto extra = attr.has_bias ? 1 : 0 + attr.do_relu ? 1 : 0;
+  return Module::getNumElements(output()) *
+         (attr.kd * attr.kh * attr.kw * attr.ic / attr.groups * 2 + extra);
 }
 
 LogicalResult top::ConvOp::init(InferenceParameter &p) {
   auto conv = new Conv();
-  int64_t n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-      pl, pr, dh, dw;
-  bool is_dw, with_bias, relu;
-  double relu_limit;
-  parseParam(n, ic, ih, iw, oc, oh, ow, g, kh, kw, ins_h, ins_w, sh, sw, pt, pb,
-             pl, pr, dh, dw, is_dw, with_bias, relu, relu_limit);
-  conv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], n, ic, ih,
-              iw, oc, oh, ow, kh, kw, sh, sw, dh, dw, pt, pb, pl, pr, g,
-              do_relu(), relu_limit);
+  conv_attr_t attr = {0};
+  parseParam(&attr);
+  conv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], attr);
   p.handle = (void *)conv;
   return success();
 }
