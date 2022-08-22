@@ -520,14 +520,9 @@ def Tpu_SoftmaxOp: Tpu_Op<"Softmax",[InOutSameShape]> {
 
   let arguments = (ins
     AnyTensor:$input,
+    AnyTensorOrNone:$table,
     I64Attr:$axis,
-    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<F64Attr, "0.0">:$relu_limit,
-    // quant param
-    OptionalAttr<I64Attr>:$multiplier,
-    OptionalAttr<I64Attr>:$rshift,
-    OptionalAttr<F64ArrayAttr>:$table,
-    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
+    DefaultValuedAttr<F64Attr, "1.0">:$beta,
     StrAttr:$name
   );
 

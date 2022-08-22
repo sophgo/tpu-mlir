@@ -161,6 +161,12 @@ Value create_lookup_table(Value in, Value out, activate_f func,
   }
 }
 
+Value create_lookup_table(Operation *owner, const std::vector<float> &table) {
+  OpBuilder builder(owner->getContext());
+  auto table_type = RankedTensorType::get({1, 1, 1, 256}, builder.getF32Type());
+  return top::WeightOp::create(owner, "table", table, table_type);
+}
+
 Value do_quantize(Value v, bool asymmetric) {
   // check whether value has been quantized
   for (auto user : v.getUsers()) {
@@ -547,7 +553,7 @@ protected:
 
   void quant_for_special(Operation *op) {
     if (chip_ == Module::Chip::BM1684x) {
-      if (mode_ == Quant::Type::INT8 && asymmetric_) {
+      if (mode_ == Quant::Type::INT8) {
         if (isa<top::AddOp, top::LeakyReluOp, top::MulOp, top::SoftmaxOp,
                 top::DivOp>(op)) {
           quantize_map[op] = Quant::Type::F32;

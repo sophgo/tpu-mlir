@@ -82,8 +82,9 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
     } else if (out_type.isF16()) {
       f32_to_f16(p.outputs[0], p.outputs[0], num_elem);
     }
-  } else {  // for quant softmax
-    auto exp_table = Module::getF64Array(table().getValue());
+  } else if (Quant::isUniformQuantized(input(),
+                                       output())) { // for quant softmax
+    auto exp_table = p.inputs[1];
     auto o_qtype = Quant::getUniformQuantizedType(output());
     auto zp = o_qtype.getZeroPoint();
     auto scale = o_qtype.getScale();
@@ -93,26 +94,36 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
       for (int j = 0; j < inner_dim; ++j) {
         int max_val = p.inputs[0][out_offset + j];
         for (int c = 1; c < channel; ++c) {
-          max_val = max_val > p.inputs[0][out_offset + c * inner_dim + j] ? max_val :
-                    p.inputs[0][out_offset + c * inner_dim + j];
+          max_val = max_val > p.inputs[0][out_offset + c * inner_dim + j]
+                        ? max_val
+                        : p.inputs[0][out_offset + c * inner_dim + j];
         }
         float sum = 0.f;
         for (int c = 0; c < channel; ++c) {
-          sum += exp_table->at(max_val - p.inputs[0][out_offset + c * inner_dim + j]);
+          auto offset = Quant::to_uint8(
+              max_val - p.inputs[0][out_offset + c * inner_dim + j]);
+          sum += exp_table[offset];
         }
         for (int c = 0; c < channel; ++c) {
-          float prob_rescaled = exp_table->at(max_val - p.inputs[0][out_offset + c * inner_dim + j]);
+          auto offset = Quant::to_uint8(
+              max_val - p.inputs[0][out_offset + c * inner_dim + j]);
+          float prob_rescaled = exp_table[offset];
           prob_rescaled = prob_rescaled / (sum * scale);
           if (out_type.isInteger(8)) {
             int prob_rnd = static_cast<int32_t>(std::round(prob_rescaled));
-            p.outputs[0][out_offset + c * inner_dim + j] = Quant::to_int8(prob_rnd + zp);
+            p.outputs[0][out_offset + c * inner_dim + j] =
+                Quant::to_int8(prob_rnd + zp);
           } else {
             int prob_rnd = static_cast<int32_t>(prob_rescaled + 0.5);
-            p.outputs[0][out_offset + c * inner_dim + j] = Quant::to_uint8(prob_rnd + zp);
+            p.outputs[0][out_offset + c * inner_dim + j] =
+                Quant::to_uint8(prob_rnd + zp);
           }
         }
       }
     }
+  } else {
+    dump();
+    llvm_unreachable("not support type");
   }
   return success();
 }

@@ -5,21 +5,23 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 model_list_all=(
 # classification
+  "densenet121-12"
+  "efficientnet"
+  "mobilenet_v2"
   "resnet18_v1"
   "resnet18"
   "resnet50_v1"
   "resnet50_v2"
-  "mobilenet_v2"
+  #"resnet50_tf"
+  "shufflenet_v12"
   "squeezenet1.0"
   "vgg16"
-  "efficientnet"
-  "densenet121-12"
 # object detection
   "resnet34_ssd1200"
+  "ssd-12"
   "yolov5s"
   "yolov3_tiny"
-  "ssd-12"
-  "shufflenet_v12"
+
 )
 
 # run onnx operation test

@@ -31,7 +31,7 @@ typedef struct {
   int w;
   bool log;
   float scale_val;
-  DATA_TYPE_T dtype;
+  int dtype;
 } softmax_global_param_t;
 
 typedef struct {
@@ -49,6 +49,19 @@ typedef struct {
   int dtype;
 } softmax_local_param_t;
 
+typedef struct {
+  unsigned long long input_addr;
+  unsigned long long output_addr;
+  unsigned long long table_addr;
+  int n;
+  int c;
+  int h;
+  int w;
+  int zero_point;
+  float scale_val;
+  int dtype;
+} softmax_tflite_fix8b_param_t;
+
 #ifdef __cplusplus
 }
 #endif
@@ -57,9 +70,6 @@ typedef struct {
 // GloballGenInterface
 // =========================================
 void tpu::SoftmaxOp::codegen_global_bm1684x() {
-  softmax_global_param_t param = {0};
-  param.input_addr = Module::getAddress(input());
-  param.output_addr = Module::getAddress(output());
   int64_t n, c, h, w;
   Module::getNCHW(input(), n, c, h, w);
   int outer_num = 1, softmax_num = 1, inner_num = 1;
@@ -72,17 +82,41 @@ void tpu::SoftmaxOp::codegen_global_bm1684x() {
   for (uint64_t i = ax + 1; i < in_shape.size(); i++) {
     inner_num *= in_shape[i];
   }
-  param.n = outer_num;
-  param.c = softmax_num;
-  param.h = 1;
-  param.w = inner_num;
-
-  param.log = false;
-  param.dtype = BM168x::getDataType(input());
-  param.scale_val = 0;
   auto op = getOperation();
   auto input_spec = BM1684x::get_input_spec(op);
   auto output_spec = BM1684x::get_output_spec(op);
-  BM1684x::instance().call_global_func("backend_api_softmax_global", &param,
-                                       sizeof(param), input_spec->data(), output_spec->data());
+  bool has_table = !table().getType().isa<NoneType>();
+  if (Quant::isUniformQuantized(input(), output())) {
+    assert(has_table);
+    auto out_qtype = Quant::getUniformQuantizedType(output());
+    softmax_tflite_fix8b_param_t param = {0};
+    param.input_addr = Module::getAddress(input());
+    param.output_addr = Module::getAddress(output());
+    param.table_addr = Module::getAddress(table());
+    param.n = outer_num;
+    param.c = softmax_num;
+    param.h = 1;
+    param.w = inner_num;
+    param.zero_point = out_qtype.getZeroPoint();
+    param.scale_val = out_qtype.getScale();
+    param.dtype = BM168x::getDataType(input());
+    BM1684x::instance().call_global_func(
+        "backend_api_softmax_tflite_fix8b", &param, sizeof(param),
+        input_spec->data(), output_spec->data());
+  } else {
+    softmax_global_param_t param = {0};
+    param.input_addr = Module::getAddress(input());
+    param.output_addr = Module::getAddress(output());
+    param.n = outer_num;
+    param.c = softmax_num;
+    param.h = 1;
+    param.w = inner_num;
+
+    param.log = false;
+    param.dtype = BM168x::getDataType(input());
+    param.scale_val = 0;
+    BM1684x::instance().call_global_func("backend_api_softmax_global", &param,
+                                         sizeof(param), input_spec->data(),
+                                         output_spec->data());
+  }
 }
