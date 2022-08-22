@@ -94,5 +94,7 @@ typedef double (*activate_f)(double);
 Value create_lookup_table(Value in, Value out, activate_f func,
                           bool asymmetric);
 
+Value create_lookup_table(Operation * owner, const std::vector<float>&table);
+
 } // namespace top
 } // namespace tpu_mlir

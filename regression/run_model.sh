@@ -16,6 +16,9 @@ if [ ! -f $cfg_file ]; then
   exit 1
 fi
 
+do_f32=1
+do_cali=1
+do_symmetric=1
 do_asymmetric=1
 
 source ${cfg_file}
@@ -32,6 +35,15 @@ elif [ -f $model_path2 ]; then
 else
   echo "Error: can't find model file for ${model_name}"
   exit 1
+fi
+
+is_tflite=0
+if echo ${model_path} | grep -q -E '\.tflite$'; then
+  if_tflite=1
+  do_cali=0
+  do_f32=0
+  do_symmetric=0
+  do_asymmetric=1
 fi
 
 input_shapes_opt=
@@ -104,6 +116,7 @@ model_transform.py \
 #########################
 # deploy to float bmodel
 #########################
+if [ ${do_f32} == 1 ]; then
 model_deploy.py \
   --mlir ${model_name}.mlir \
   --quantize F32 \
@@ -112,6 +125,7 @@ model_deploy.py \
   --test_reference ${top_result} \
   --tolerance 0.99,0.99 \
   --model ${model_name}_bm1684x_f32.bmodel
+fi
 
 #########################
 # deploy to int8 bmodel
@@ -119,7 +133,7 @@ model_deploy.py \
 
 # only once
 CALI_TABLE=${REGRESSION_PATH}/cali_tables/${model_name}_cali_table
-if [ ! -f ${CALI_TABLE} ]; then
+if [ ${do_cali} == 1 && ! -f ${CALI_TABLE} ]; then
   if [ x${dataset} == x ]; then
     echo "Error: ${model_name} has no dataset"
     exit 1
@@ -130,7 +144,14 @@ if [ ! -f ${CALI_TABLE} ]; then
     -o $CALI_TABLE
 fi
 
+cali_opt=
+if [ -f ${CALI_TABLE} ]; then
+  cali_opt="--calibration_table ${CALI_TABLE}"
+fi
+
 # to symmetric
+if [ ${do_symmetric} == 1 ]; then
+
 tolerance_sym_opt=
 if [ x${int8_sym_tolerance} != x ]; then
   tolerance_sym_opt="--tolerance ${int8_sym_tolerance}"
@@ -138,7 +159,7 @@ fi
 model_deploy.py \
   --mlir ${model_name}.mlir \
   --quantize INT8 \
-  --calibration_table $CALI_TABLE \
+  ${cali_opt} \
   --chip bm1684x \
   ${test_innpz_opt} \
   ${test_reference_opt} \
@@ -147,8 +168,10 @@ model_deploy.py \
   --quant_output \
   --model ${model_name}_bm1684x_int8_sym.bmodel
 
+fi #do_symmetric
+
 # to asymmetric
-if [ x$do_asymmetric == x1 ]; then
+if [ $do_asymmetric == 1 ]; then
 
 tolerance_asym_opt=
 if [ x${int8_asym_tolerance} != x ]; then
@@ -158,13 +181,14 @@ model_deploy.py \
   --mlir ${model_name}.mlir \
   --quantize INT8 \
   --asymmetric \
-  --calibration_table $CALI_TABLE \
+  ${cali_opt} \
   --chip bm1684x \
   ${test_innpz_opt} \
   ${test_reference_opt} \
   ${tolerance_asym_opt} \
   --model ${model_name}_bm1684x_int8_asym.bmodel
-fi
+
+fi #do_asymmetric
 
 #########################
 # app
@@ -189,7 +213,7 @@ ${app} \
   --model ${model_name}_bm1684x_int8_sym.bmodel \
   --output output_int8_sym.jpg
 
-if [ x$do_asymmetric == x1 ]; then
+if [ $do_asymmetric == 1 ]; then
 # by int8 asymmetric bmodel
 ${app} \
   --input ${test_input} \

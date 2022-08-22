@@ -492,7 +492,7 @@ def Top_SoftmaxOp:Top_Op<"Softmax",[InOutSameShape]> {
   let arguments = (ins
     AnyTensor:$input,
     I64Attr:$axis,
-    OptionalAttr<F64Attr>:$beta,
+    DefaultValuedAttr<F64Attr, "1.0">:$beta,
     StrAttr:$name
   );
   let results = (outs AnyTensor:$output);

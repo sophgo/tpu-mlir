@@ -18,12 +18,25 @@ using namespace tpu_mlir::helper;
 using namespace mlir;
 
 Value top::SoftmaxOp::lowering_int8_bm1684x(bool asymmetric) {
-  return lowering_common_float<tpu::SoftmaxOp>(
-      getOperation()); // skip int8 quant for now
+  llvm_unreachable("to be supported for Softmax int8 quantize lowering");
 }
 
 Value top::SoftmaxOp::lowering_f32_bm1684x() {
-  return lowering_common_float<tpu::SoftmaxOp>(getOperation());
+  auto op = getOperation();
+  OpBuilder builder(getContext());
+  std::vector<Value> operands;
+  operands.push_back(input());
+  auto none = Module::getNoneOp(op);
+  operands.push_back(none);
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  builder.setInsertionPointAfter(op);
+  auto newOp = builder.create<tpu::SoftmaxOp>(op->getLoc(), output().getType(),
+                                              ArrayRef<Value>{operands},
+                                              ArrayRef<NamedAttribute>{attrs});
+  return newOp.output();
 }
 
 Value top::SoftmaxOp::lowering_bf16_bm1684x() {
@@ -44,21 +57,21 @@ Value top::SoftmaxOp::lowering_quant_bm1684x() {
   int64_t zeropoint;
   double i_scale;
   Quant::getScaleAndZeroPoint(input(), i_scale, zeropoint, true);
-  SmallVector<double> table(256);
-  double beta_v = betaAttr().getValueAsDouble() ;
-  double scale = -i_scale * beta_v;
+  std::vector<float> table(256, 0.0f);
+  auto beta_v = beta().convertToDouble();
+  auto scale = -i_scale * beta_v;
   for (int i = 0; i < 256; ++i) {
     table[i] = std::exp(scale * i);
   }
+  auto table_opd = create_lookup_table(op, table);
 
   builder.setInsertionPointAfter(op);
   std::vector<NamedAttribute> attrs;
-  attrs.push_back(builder.getNamedAttr("name", nameAttr()));
-  attrs.push_back(builder.getNamedAttr("axis", axisAttr()));
-  attrs.push_back(builder.getNamedAttr(
-      "table", builder.getF64ArrayAttr(table)));
-  auto newOp = builder.create<tpu::SoftmaxOp>(output().getLoc(), output().getType(),
-                                              ValueRange{op->getOperand(0)},
-                                              ArrayRef<NamedAttribute>{attrs});
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  auto newOp = builder.create<tpu::SoftmaxOp>(
+      output().getLoc(), output().getType(), ValueRange{input(), table_opd},
+      ArrayRef<NamedAttribute>{attrs});
   return newOp.output();
 }
