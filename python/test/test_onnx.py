@@ -97,8 +97,9 @@ class ONNX_IR_TESTER(object):
             "Split": self.test_Split,
             "ReduceMean": self.test_ReduceMean,
             "Scale": self.test_Scale,
+            "LayerGroup": self.test_LayerGroup,
         }
-        self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
+        self.quant_modes = ["f32"]  # no quantization when quant_mode == "f32"
 
     def pytorch_transform_onnx(self, model, inputs, test_name):
         in_names = []
@@ -777,6 +778,35 @@ class ONNX_IR_TESTER(object):
 
         graph_def = helper.make_graph([reducemean_def], test_case, [input], [output])
         self.convert_and_test({'input': input_data}, graph_def, test_case)
+
+    def test_LayerGroup(self):
+        import torch
+        import torch.nn as nn
+        model_name = "layer_group.onnx"
+        class Model(nn.Module):
+          def __init__(self):
+            super(Model, self).__init__()
+            self.m1 = nn.Conv2d(3, 8, 3, 1, 0)
+            self.m2 = nn.Conv2d(8, 8, 3, 1, 1)
+
+          def forward(self, x):
+            y0 = self.m1(x)
+            y1 = self.m2(y0)
+            y2 = y0 + y1
+            return y0, y2
+
+        shape = (2, 3, 180, 180)
+        input_data = np.random.randn(*shape).astype(np.float32)
+        torch.onnx.export(Model().eval(),
+                          torch.rand(shape),
+                          model_name,
+                          export_params=True,
+                          opset_version=11,
+                          verbose=True)
+        model = onnx.load(model_name)
+
+        self.convert_and_test({model.graph.node[0].input[0]: input_data},
+                              model.graph, "layer_group")
 
 if __name__ == "__main__":
     os.makedirs("onnx_test", exist_ok=True)
