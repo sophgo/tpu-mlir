@@ -517,8 +517,14 @@ class TFLiteConverter(BaseConverter):
             raise ValueError("Only support reduction in H and W dimensions.")
 
     def softmax_op(self, op):
+        from .tflite.SoftmaxOptions import SoftmaxOptions
+        op_options = op.builtin_options
+        param = SoftmaxOptions()
+        param.Init(op_options.Bytes, op_options.Pos)
+        beta = param.Beta()
         return "top.Softmax", {
-            "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], 1)
+            "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], 1),
+            "beta": FloatAttr.get(self.type_to_mlir[TensorType.FLOAT64], beta)
         }
 
     def convert_subgraph(self, subgraph):
