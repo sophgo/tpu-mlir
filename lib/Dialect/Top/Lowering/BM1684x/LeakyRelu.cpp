@@ -28,7 +28,6 @@ Value top::LeakyReluOp::lowering_int8_bm1684x(bool asymmetric) {
     get_scale_and_shift(alpha().convertToDouble(), multiplier, rshift, 8);
 
     std::vector<NamedAttribute> attrs;
-    attrs.push_back(builder.getNamedAttr("name", nameAttr()));
     attrs.push_back(builder.getNamedAttr(
         "multiplier", builder.getI64IntegerAttr(multiplier)));
     attrs.push_back(

@@ -38,7 +38,6 @@ struct AvgPoolToDwConv : public OpRewritePattern<AvgPoolOp> {
     auto none = Module::getNoneOp(op.getOperation());
     operands.push_back(none);
     std::vector<NamedAttribute> attrs;
-    attrs.push_back(rewriter.getNamedAttr("name", op.nameAttr()));
     attrs.push_back(rewriter.getNamedAttr(
         "kernel_shape", rewriter.getI64ArrayAttr({param.kh, param.kw})));
     attrs.push_back(rewriter.getNamedAttr(

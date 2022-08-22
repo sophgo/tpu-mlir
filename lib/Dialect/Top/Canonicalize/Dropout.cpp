@@ -23,8 +23,6 @@ struct TopDropout : public OpRewritePattern<DropoutOp> {
   LogicalResult matchAndRewrite(DropoutOp op,
                                 PatternRewriter &rewriter) const override {
     auto formerOp = op.input().getDefiningOp();
-
-    formerOp->setAttr("name", op.nameAttr());
     // remove the dropout Op
     rewriter.replaceOp(op, {op.input()});
     return success();

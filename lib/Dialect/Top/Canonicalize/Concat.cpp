@@ -119,12 +119,6 @@ struct ConcatToDepth2SpaceOp : public OpRewritePattern<ConcatOp> {
       use_op->setOperand(1, new_filter_op);
     }
     std::vector<NamedAttribute> attrs;
-    if (need_reorder == false) {
-      attrs.push_back(rewriter.getNamedAttr("name", concat_op.nameAttr()));
-    } else {
-      attrs.push_back(rewriter.getNamedAttr(
-          "name", rewriter.getStringAttr(concat_op.name() + "_S2D")));
-    }
     attrs.push_back(
         rewriter.getNamedAttr("block_h", rewriter.getI64IntegerAttr(bh)));
     attrs.push_back(

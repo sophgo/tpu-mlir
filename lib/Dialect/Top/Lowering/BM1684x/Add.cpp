@@ -9,6 +9,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "../Lowering.h"
+#include "mlir/IR/Location.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/MathUtils.h"
@@ -49,7 +50,6 @@ Value top::AddOp::lowering_int8_bm1684x(bool asymmetric) {
 
     builder.setInsertionPointAfter(op);
     std::vector<NamedAttribute> attrs;
-    attrs.push_back(builder.getNamedAttr("name", nameAttr()));
     attrs.push_back(builder.getNamedAttr("do_relu", do_reluAttr()));
     attrs.push_back(builder.getNamedAttr(
         "multipliers", builder.getI64ArrayAttr(multiplier_v)));
@@ -130,7 +130,6 @@ Value top::AddOp::lowering_quant_bm1684x() {
   std::string new_name = Module::getName(op).str() + suffix;
   builder.setInsertionPointAfterValue(input1_dequant);
   std::vector<NamedAttribute> attrs;
-  attrs.push_back(builder.getNamedAttr("name", builder.getStringAttr(new_name)));
   attrs.push_back(builder.getNamedAttr(
       "multiplier", builder.getI64IntegerAttr(1)));
   attrs.push_back(
@@ -138,10 +137,11 @@ Value top::AddOp::lowering_quant_bm1684x() {
 
   auto newType = RankedTensorType::get(Module::getShape(output()), builder.getI32Type());
   // auto add_quant = lowering_common<tpu::AddOp>(op, newType);
-  auto newOp = builder.create<tpu::AddOp>(output().getLoc(), newType,
-                                          ArrayRef<Value>{operands},
-                                          ArrayRef<NamedAttribute>{attrs});
+  auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
+  auto newOp =
+      builder.create<tpu::AddOp>(name_loc, newType, ArrayRef<Value>{operands},
+                                 ArrayRef<NamedAttribute>{attrs});
   // requant to int8
   QuantizeMultiplier((scale_max * 2) / ((1 << lshift) * o_scale), &scalei, &shifti);
-  return do_requant(newOp.output(), name(), output().getType(), true, scalei, shifti, 1);
+  return do_requant(op->getLoc(), newOp.output(), output().getType(), true, scalei, shifti, 1);
 }

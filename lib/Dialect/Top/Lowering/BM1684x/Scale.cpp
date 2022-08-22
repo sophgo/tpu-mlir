@@ -103,7 +103,6 @@ Value top::ScaleOp::lowering_int8_bm1684x(bool asymmetric) {
 
   builder.setInsertionPointAfter(op);
   std::vector<NamedAttribute> attrs;
-  attrs.push_back(builder.getNamedAttr("name", nameAttr()));
   attrs.push_back(builder.getNamedAttr("do_relu", do_reluAttr()));
   attrs.push_back(builder.getNamedAttr("relu_limit", relu_limitAttr()));
   auto newType = Quant::getQuantInt8Type(output(), asymmetric);

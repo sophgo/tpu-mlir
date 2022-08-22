@@ -136,7 +136,15 @@ class MLIRImporter(object):
             output_types: List[pybind.op]
             kargs: Dict
         """
-        op = Operation.create(op_type, results=output_types, operands=operands, attributes=kargs)
+        loc = Location.fused([Location.name(kargs["name"].value)])
+        del kargs["name"]
+        op = Operation.create(
+            op_type,
+            results=output_types,
+            operands=operands,
+            loc = loc,
+            attributes=kargs,
+        )
         self.insert_point.insert(op)
         return op.results[0]
 
@@ -172,9 +180,7 @@ class MLIRImporter(object):
             StringAttr.get(pad_type)
         }
 
-        param = {
-            "name": StringAttr.get(name),
-        }
+        param = {}
 
         if len(kargs) > 0:
             param["preprocess"] = DictAttr.get(preprocess_param)
@@ -182,6 +188,7 @@ class MLIRImporter(object):
         op = Operation.create(Top.InputOp,
                               results=[self.input_types[index]],
                               operands=[self.func_args[index]],
+                              loc=Location.fused([Location.name(name)]),
                               attributes=param)
         self.insert_point.insert(op)
         return op.results[0]
@@ -193,8 +200,11 @@ class MLIRImporter(object):
                 raise RuntimeError("{} weight conflict".format(name))
             return _op
         tensor_type = RankedTensorType.get(output_shape, self.mlir_type[data_type])
-        attributes = {"name": StringAttr.get(name)}
-        op = Operation.create(Top.WeightOp, results=[tensor_type], attributes=attributes)
+        op = Operation.create(
+            Top.WeightOp,
+            results=[tensor_type],
+            loc=Location.fused([Location.name(name)])
+        )
         self.insert_point.insert(op)
         result = op.results[0]
         self.load_weight[name] = (result, output_shape, data_type)
@@ -484,7 +494,7 @@ class MLIRImporter(object):
         return self.buildOp(Top.ScaleOp, operands, [output_type], **param)
 
     def print_module(self):
-        mlir_format = str(self.mlir_module)
+        mlir_format = self.mlir_module.operation.get_asm(enable_debug_info=True)
         return mlir_format
 
     def declare_func(self, input_types: list, output_types: list):
@@ -501,7 +511,7 @@ class MLIRImporter(object):
             self.output_types.append(RankedTensorType.get(_shape, self.mlir_type[_type]))
         args_txt = str()
         for _idx, _type in enumerate(self.input_types):
-            args_txt += "%args{}: {}".format(_idx, _type.__str__())
+            args_txt += "%args{}: {} loc(unknown)".format(_idx, _type.__str__())
             if (_idx + 1) < self.num_input:
                 args_txt += ", "
 
@@ -515,8 +525,9 @@ class MLIRImporter(object):
         main_func = """
             module attributes {{module.name = \"{name}\", module.weight_file= \"{weight_file}\", module.state=\"{state}\", module.chip=\"{chip}\"}} {{
                 func.func @main({args}) -> {output} {{
-                    %0 = \"top.None\"() : () -> none
-            }}}}
+                    %0 = \"top.None\"() : () -> none loc(unknown)
+            }} loc(unknown)
+        }} loc(unknown)
         """.format(name=self.model_name,
                    weight_file=self.weight_file,
                    state=self.state,

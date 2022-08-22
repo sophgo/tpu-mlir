@@ -37,7 +37,7 @@ ModuleInterpreter::~ModuleInterpreter() {
   for (auto func : module.getOps<FuncOp>()) {
     func.walk([&](Operation *op) {
       if (auto infer_op = llvm::dyn_cast<InferenceInterface>(op)) {
-        auto name = op->getAttrOfType<StringAttr>("name").str();
+        auto name = op->getLoc().cast<::mlir::NameLoc>().getName().str();
         infer_op.deinit(*inference_map[name]);
       }
     });
@@ -59,14 +59,14 @@ void ModuleInterpreter::allocate_resources() {
       } else if (isa<func::ReturnOp>(op)) {
         for (auto v : op->getOperands()) {
           auto opd = v.getDefiningOp();
-          auto name = opd->getAttrOfType<StringAttr>("name").str();
+          auto name = opd->getLoc().cast<::mlir::NameLoc>().getName().str();
           output_names.push_back(name);
         }
       } else {
         auto result = op->getResult(0);
         auto type = result.getType().cast<RankedTensorType>();
         auto count = type.getNumElements();
-        auto name = op->getAttrOfType<StringAttr>("name").str();
+        auto name = op->getLoc().cast<::mlir::NameLoc>().getName().str();
         value_map[name] = result;
         if (auto wOp = llvm::dyn_cast<top::WeightOp>(op)) {
           mem_map[name] = wOp.read_as_float();
@@ -91,7 +91,7 @@ void ModuleInterpreter::allocate_resources() {
     // input output buffers for all ops
     func.walk([&](Operation *op) {
       if (auto infer_op = llvm::dyn_cast<InferenceInterface>(op)) {
-        auto name = op->getAttrOfType<StringAttr>("name").str();
+        auto name = op->getLoc().cast<::mlir::NameLoc>().getName().str();
         auto param = std::make_shared<InferenceParameter>();
         param->outputs.push_back(mem_map[name]->data());
         for (auto input : op->getOperands()) {
@@ -100,7 +100,7 @@ void ModuleInterpreter::allocate_resources() {
             continue;
           }
           auto input_name =
-              input.getDefiningOp()->getAttrOfType<StringAttr>("name").str();
+              input.getDefiningOp()->getLoc().cast<::mlir::NameLoc>().getName().str();
           if (mem_map.find(input_name) == mem_map.end()) {
             input.dump();
             llvm_unreachable("input operands not allocated");
@@ -126,7 +126,7 @@ void ModuleInterpreter::fake_quant_weight() {
       if (isa<top::ConvOp>(op) || isa<top::MatMulOp>(op)) {
         auto bias_op = op->getOperands()[2].getDefiningOp();
         if (auto weight_op = dyn_cast<top::WeightOp>(bias_op)) {
-          not_quant_weight_names.push_back(weight_op.name().str());
+          not_quant_weight_names.push_back(Module::getName(weight_op).str());
         }
       }
     });
@@ -149,7 +149,7 @@ void ModuleInterpreter::fake_quant_weight() {
 void ModuleInterpreter::invoke(bool express_type) {
   for (auto func : module.getOps<FuncOp>()) {
     func.walk([&](InferenceInterface infer_op) {
-      auto name = infer_op->getAttrOfType<StringAttr>("name").str();
+      auto name = infer_op->getLoc().cast<::mlir::NameLoc>().getName().str();
       if (failed(infer_op.inference(*inference_map[name]))) {
         infer_op.dump();
         llvm_unreachable("invoke failed!!");

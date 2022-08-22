@@ -37,12 +37,12 @@ class HasCommonAttributes
     : public ::mlir::OpTrait::TraitBase<ConcreteType, HasCommonAttributes> {
 public:
   static mlir::LogicalResult verifyTrait(mlir::Operation *op) {
-    static constexpr llvm::StringRef commonAttrs[] = {"name"};
-    for (auto attr : commonAttrs) {
-      if (!op->hasAttrOfType<mlir::StringAttr>(attr)) {
-        return op->emitError("expected operation to have attribute: " + attr);
-      }
-    }
+    // static constexpr llvm::StringRef commonAttrs[] = {"name"};
+    // for (auto attr : commonAttrs) {
+    //   if (!op->hasAttrOfType<mlir::StringAttr>(attr)) {
+    //     return op->emitError("expected operation to have attribute: " + attr);
+    //   }
+    // }
     return mlir::success();
   }
 };

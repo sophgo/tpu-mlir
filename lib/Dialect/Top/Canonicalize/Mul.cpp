@@ -39,7 +39,6 @@ struct MulToSiLU : public OpRewritePattern<MulOp> {
       return failure();
     }
     std::vector<NamedAttribute> attrs;
-    attrs.push_back(rewriter.getNamedAttr("name", op.nameAttr()));
     rewriter.replaceOpWithNewOp<SiLUOp>(op, op.getResult().getType(),
                                         ValueRange{in_value}, attrs);
     return success();

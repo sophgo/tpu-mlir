@@ -36,7 +36,7 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   auto pid_node = (CMD_ID_NODE *)BM1684x::instance().gdma_node;
   auto gi = getGroupInfo(n_step, h_step);
   assert(false == gi.overstepped);
-  snprintf(prefix, 63, "LD_%s", name().data());
+  snprintf(prefix, 63, "LD_%s", Module::getName(getOperation()).data());
   BM1684x::instance().dl_set_cmd_id_prefix(pid_node, prefix);
   auto data_type = BM168x::getDataType(output());
   auto gdma_format = BM168x::getGdmaFormat(data_type);

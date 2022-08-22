@@ -20,10 +20,16 @@ def _os_system(cmd: list):
         raise RuntimeError("[!Error]: {}".format(cmd_str))
 
 def mlir_opt_for_top(mlirfile, opt_mlirfile):
-    cmd = ([
-        "tpuc-opt", "--canonicalize", "--mark-FLOPs", "--save-weight", mlirfile, "-o",
-        opt_mlirfile
-    ])
+    cmd = [
+        "tpuc-opt",
+        "--canonicalize",
+        "--mark-FLOPs",
+        "--save-weight",
+        "--mlir-print-debuginfo",
+        mlirfile,
+        "-o",
+        opt_mlirfile,
+    ]
     _os_system(cmd)
 
 def mlir_lowering(top_mlir: str,
@@ -40,7 +46,16 @@ def mlir_lowering(top_mlir: str,
         cmd.extend([cali_param])
     lower_param = "--lowering=\"mode={} asymmetric={} chip={}\"".format(
         mode.upper(), asymmetric, chip.lower())
-    cmd.extend([lower_param, "--canonicalize", "--save-weight", "-o", tpu_mlir])
+    cmd.extend(
+        [
+            lower_param,
+            "--canonicalize",
+            "--save-weight",
+            "--mlir-print-debuginfo",
+            "-o",
+            tpu_mlir,
+        ]
+    )
     _os_system(cmd)
 
 
@@ -63,6 +78,7 @@ def mlir_to_model(tpu_mlir: str,
         "--address-assign",
         "--save-weight",
         codegen_param,
+        "--mlir-print-debuginfo",
         "-o",
         final_mlir,
     ]

@@ -106,19 +106,16 @@ Value top::DeconvOp::lowering_int8_bm1684x(bool asymmetric) {
 
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
-    if (attr.getName() != "name") {
       attrs.push_back(attr);
-    }
   }
   std::string deconv_name = Module::getName(op).str() + "_i32";
-  attrs.push_back(
-      builder.getNamedAttr("name", builder.getStringAttr(deconv_name)));
+  auto name = builder.getStringAttr(deconv_name);
   attrs.push_back(
       builder.getNamedAttr("with_bias", builder.getBoolAttr(param.with_bias)));
   auto deconvType = RankedTensorType::get(
       {param.n, param.oc, param.oh, param.ow}, builder.getI32Type());
   auto deconvOp = builder.create<tpu::DeconvOp>(
-      op->getLoc(), deconvType, ArrayRef<Value>{operands},
+      NameLoc::get(name), deconvType, ArrayRef<Value>{operands},
       ArrayRef<NamedAttribute>{attrs});
 
   auto rqType = Quant::getQuantInt8Type(output(), asymmetric);
@@ -145,10 +142,8 @@ Value top::DeconvOp::lowering_int8_bm1684x(bool asymmetric) {
   operands.push_back(deconvOp.output());
   operands.push_back(new_quant);
   builder.setInsertionPointAfter(deconvOp);
-  std::string rq_name = Module::getName(op).str();
-  attrs.push_back(builder.getNamedAttr("name", builder.getStringAttr(rq_name)));
   auto rqOp = builder.create<tpu::RequantAxisOp>(
-      deconvOp->getLoc(), rqType, ArrayRef<Value>{operands},
+      op->getLoc(), rqType, ArrayRef<Value>{operands},
       ArrayRef<NamedAttribute>{attrs});
   return rqOp.output();
 }
