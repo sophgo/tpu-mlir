@@ -180,7 +180,7 @@ void GroupOps::buildGroups() {
       start_idx--;
     }
     if (start_idx == end_idx) {
-      end_idx -= 2;
+      end_idx -= 1;
       continue;
     }
     auto new_start_idx = start_idx;
@@ -363,10 +363,12 @@ void GroupOps::CreateLoadOp(lmem_info_t &linfo,
   }
   attrs.push_back(builder.getNamedAttr(LocalGenInterface::kLayerGroupAttrName,
                                        getLgParam(linfo, linfo.timestep)));
-  if (current_op != nullptr) {
-    builder.setInsertionPointAfter(current_op);
-  } else {
+  if (current_op == nullptr) {
     builder.setInsertionPointToStart(body);
+  } else if (isa<tpu::StoreOp>(current_op)) {
+    builder.setInsertionPoint(current_op);
+  } else {
+    builder.setInsertionPointAfter(current_op);
   }
   auto loadOp = builder.create<tpu::LoadOp>(func.getLoc(), input.getType(),
                                             ArrayRef<Value>{operands},
@@ -375,7 +377,9 @@ void GroupOps::CreateLoadOp(lmem_info_t &linfo,
     Operation *user = operand.getOwner();
     return find(ops.begin(), ops.end(), user) != ops.end();
   });
-  current_op = loadOp;
+  if (current_op == nullptr || !isa<tpu::StoreOp>(current_op)) {
+    current_op = loadOp;
+  }
 }
 
 StoreOp GroupOps::CreateStoreOp(lmem_info_t &linfo) {
@@ -675,6 +679,9 @@ void GroupOps::assign_timestep(group_lmem_t &group_lmem) {
       }
       break;
     case LMEM_WEIGHT:
+      if (last_type == LMEM_TENSOR) {
+        timestep--;
+      }
       last_type = linfo.type;
       break;
     case LMEM_TENSOR:
