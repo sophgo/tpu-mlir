@@ -526,7 +526,7 @@ def Tpu_SoftmaxOp: Tpu_Op<"Softmax",[InOutSameShape]> {
     // quant param
     OptionalAttr<I64Attr>:$multiplier,
     OptionalAttr<I64Attr>:$rshift,
-    OptionalAttr<I64ArrayAttr>:$table,
+    OptionalAttr<F64ArrayAttr>:$table,
     OptionalAttr<Tpu_LayerGroupAttr>:$layer_group,
     StrAttr:$name
   );
