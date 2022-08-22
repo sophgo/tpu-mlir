@@ -43,7 +43,6 @@ struct TopBatchNormToDwConv : public OpRewritePattern<BatchNormOp> {
     // batch normal to depthwise convolution
     NamedAttrList attrs;
 
-    attrs.set("name", op.nameAttr());
     attrs.set("kernel_shape", rewriter.getI64ArrayAttr({1, 1}));
     attrs.set("strides", rewriter.getI64ArrayAttr({1, 1}));
     attrs.set("pads", rewriter.getI64ArrayAttr({0, 0, 0, 0}));

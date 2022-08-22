@@ -385,10 +385,8 @@ class TFLiteConverter(BaseConverter):
     def __create_weight_op(self, tensor):
         # constant variable/op
         tensor_type = self.__get_tensor_type(tensor)
-        attributes = {"name": StringAttr.get(tensor.name)}
-        op = Operation.create(
-            Top.WeightOp, results=[tensor_type], attributes=attributes
-        )
+        name_loc = Location.name(tensor.name)
+        op = Operation.create(Top.WeightOp, results=[tensor_type], loc=name_loc)
         self.mlir.insert_point.insert(op)
         self.constant[tensor.name] = tensor.buffer
         return op.results[0]
@@ -585,12 +583,15 @@ class TFLiteConverter(BaseConverter):
             rst_type = [
                 self.__get_tensor_type(self.__nhwc2nchw(x)) for x in operation.outputs
             ]
-            attributes.update({"name": StringAttr.get(operation.outputs[0].name)})
+            name_loc = Location.fused(
+                [Location.name(x.name) for x in operation.outputs]
+            )
             op = Operation.create(
                 op_type,
                 results=rst_type,
                 operands=operands,
                 attributes=attributes,
+                loc=name_loc,
             )
             self.mlir.insert_point.insert(op)
             symbol_table.update(dict(zip((x.id for x in operation.outputs), op.results)))  # type: ignore

@@ -70,8 +70,8 @@ Value top::SoftmaxOp::lowering_quant_bm1684x() {
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  auto newOp = builder.create<tpu::SoftmaxOp>(
-      output().getLoc(), output().getType(), ValueRange{input(), table_opd},
-      ArrayRef<NamedAttribute>{attrs});
+  auto newOp = builder.create<tpu::SoftmaxOp>(op->getLoc(), output().getType(),
+                                              ValueRange{input(), table_opd},
+                                              ArrayRef<NamedAttribute>{attrs});
   return newOp.output();
 }

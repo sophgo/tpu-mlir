@@ -32,7 +32,10 @@ class Operation:
 
     @staticmethod
     def name(op):
-        return mlir.ir.StringAttr(op.attributes['name']).value
+        loc = op.location
+        if loc == "loc(unknown)":
+            return None
+        return str(loc)[5:-2]
 
     @staticmethod
     def type(op):

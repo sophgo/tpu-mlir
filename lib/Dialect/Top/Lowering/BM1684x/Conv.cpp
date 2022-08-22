@@ -9,9 +9,11 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/Dnnl/Conv.h"
+#include "mlir/IR/Location.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Support/Helper/Module.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "../Lowering.h"
@@ -255,13 +257,7 @@ Value top::ConvOp::lowering_quant_bm1684x() {
   operands.push_back(filter());
 
   std::vector<NamedAttribute> attrs;
-  std::string new_name = name().str() + "_int32";
   for (auto &attr : op->getAttrs()) {
-    if (attr.getName() == "name") {
-      attrs.push_back(
-          builder.getNamedAttr("name", builder.getStringAttr(new_name)));
-      continue;
-    }
     attrs.push_back(attr);
   }
   int32_t input_zeroPoint = input_qtype.getZeroPoint();
@@ -304,13 +300,15 @@ Value top::ConvOp::lowering_quant_bm1684x() {
       builder.getNamedAttr("with_bias", builder.getBoolAttr(with_bias)));
   auto newType =
       RankedTensorType::get(Module::getShape(output()), builder.getI32Type());
-  auto convOp = builder.create<tpu::Conv2DOp>(op->getLoc(), newType,
+  auto new_name = Module::getName(op).str() + "_int32";
+  auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
+  auto convOp = builder.create<tpu::Conv2DOp>(name_loc, newType,
                                               ArrayRef<Value>{operands},
                                               ArrayRef<NamedAttribute>{attrs});
   // do requant
   int quant_size = filter_scales.size();
   if (quant_size == 1) {
-    return do_requant(convOp.output(), name(), output().getType(), true,
+    return do_requant(op->getLoc(), convOp.output(), output().getType(), true,
                       multiplier[0], shift[0], 0);
   } else {
     std::vector<int32_t> quant(quant_size * 3, 0);
@@ -322,7 +320,7 @@ Value top::ConvOp::lowering_quant_bm1684x() {
     auto quant_type =
         RankedTensorType::get({1, quant_size, 1, 3}, builder.getI32Type());
     auto quantValue = top::WeightOp::create(op, "quant", quant, quant_type);
-    return do_requant(convOp.output(), quantValue, name(), output().getType(),
-                      true, 0);
+    return do_requant(op->getLoc(), convOp.output(), quantValue,
+                      output().getType(), true, 0);
   }
 }

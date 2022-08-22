@@ -356,7 +356,6 @@ void GroupOps::CreateLoadOp(lmem_info_t &linfo,
   } else {
     name = name + std::to_string(input.cast<BlockArgument>().getArgNumber());
   }
-  attrs.push_back(builder.getNamedAttr("name", builder.getStringAttr(name)));
   if (need_bcast(input)) {
     attrs.push_back(
         builder.getNamedAttr("do_bcast", builder.getBoolAttr(true)));
@@ -370,9 +369,9 @@ void GroupOps::CreateLoadOp(lmem_info_t &linfo,
   } else {
     builder.setInsertionPointAfter(current_op);
   }
-  auto loadOp = builder.create<tpu::LoadOp>(func.getLoc(), input.getType(),
-                                            ArrayRef<Value>{operands},
-                                            ArrayRef<NamedAttribute>{attrs});
+  auto loadOp = builder.create<tpu::LoadOp>(
+      NameLoc::get(builder.getStringAttr(name)), input.getType(),
+      ArrayRef<Value>{operands}, ArrayRef<NamedAttribute>{attrs});
   input.replaceUsesWithIf(loadOp.output(), [&](OpOperand &operand) {
     Operation *user = operand.getOwner();
     return find(ops.begin(), ops.end(), user) != ops.end();
@@ -390,13 +389,12 @@ StoreOp GroupOps::CreateStoreOp(lmem_info_t &linfo) {
   std::vector<NamedAttribute> attrs;
   operands.push_back(output);
   std::string name = "store_" + Module::getName(outputOp).str();
-  attrs.push_back(builder.getNamedAttr("name", builder.getStringAttr(name)));
   attrs.push_back(builder.getNamedAttr(LocalGenInterface::kLayerGroupAttrName,
                                        getLgParam(linfo, linfo.timestep)));
   builder.setInsertionPointAfter(current_op);
-  auto storeOp = builder.create<tpu::StoreOp>(func.getLoc(), output.getType(),
-                                              ArrayRef<Value>{operands},
-                                              ArrayRef<NamedAttribute>{attrs});
+  auto storeOp = builder.create<tpu::StoreOp>(
+      NameLoc::get(builder.getStringAttr(name)), output.getType(),
+      ArrayRef<Value>{operands}, ArrayRef<NamedAttribute>{attrs});
   current_op = storeOp;
   return storeOp;
 }

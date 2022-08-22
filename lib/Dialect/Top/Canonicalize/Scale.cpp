@@ -128,7 +128,6 @@ struct TopScaleMergeToConv : public OpRewritePattern<ScaleOp> {
     double relu_limit = op.relu_limit().convertToDouble();
     formerOp->setAttr("do_relu", rewriter.getBoolAttr(op.do_relu()));
     formerOp->setAttr("relu_limit", rewriter.getF64FloatAttr(relu_limit));
-    formerOp->setAttr("name", op.nameAttr());
 
     // remove the scale Op
     rewriter.replaceOp(op, {op.input()});
@@ -200,7 +199,6 @@ struct TopScaleMergeToBatchNorm : public OpRewritePattern<ScaleOp> {
     double relu_limit = op.relu_limit().convertToDouble();
     formerOp->setAttr("do_relu", rewriter.getBoolAttr(op.do_relu()));
     formerOp->setAttr("relu_limit", rewriter.getF64FloatAttr(relu_limit));
-    formerOp->setAttr("name", op.nameAttr());
 
     // remove the scale Op
     rewriter.replaceOp(op, {op.input()});
@@ -232,7 +230,6 @@ struct TopScaleToDwConv : public OpRewritePattern<ScaleOp> {
 
     // scale to depthwise convolution
     NamedAttrList attrs;
-    attrs.set("name", op.nameAttr());
     attrs.set("kernel_shape", rewriter.getI64ArrayAttr({1, 1}));
     attrs.set("strides", rewriter.getI64ArrayAttr({1, 1}));
     attrs.set("pads", rewriter.getI64ArrayAttr({0, 0, 0, 0}));

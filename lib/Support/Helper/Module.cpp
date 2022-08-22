@@ -63,8 +63,8 @@ top::NoneOp Module::getNoneOp(Operation *op) {
   auto ctx = op->getContext();
   auto builder = OpBuilder(ctx);
   builder.setInsertionPointToStart(&block);
-  auto NoneOp =
-      builder.create<top::NoneOp>(op->getLoc(), builder.getNoneType());
+  auto NoneOp = builder.create<top::NoneOp>(builder.getUnknownLoc(),
+                                            builder.getNoneType());
   return NoneOp;
 }
 
@@ -368,11 +368,13 @@ StringRef Module::getName(Operation *op) {
   if (auto module = dyn_cast<ModuleOp>(op)) {
     return getName(module);
   }
-  if (false == op->hasAttr("name")) {
-    op->dump();
-    llvm_unreachable("op has no name!!!");
+  if (auto loc = op->getLoc().dyn_cast<mlir::NameLoc>()) {
+    return loc.getName();
   }
-  return op->getAttrOfType<StringAttr>("name").getValue();
+  op->print(llvm::errs(), OpPrintingFlags().useLocalScope().enableDebugInfo());
+  llvm::errs() << "\n";
+  llvm_unreachable("op has no name location!!!");
+  return "";
 }
 
 void Module::getInputsOutputs(ModuleOp module, std::vector<Value> &inputs,

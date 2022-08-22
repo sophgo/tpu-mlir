@@ -9,6 +9,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "Lowering.h"
+#include "mlir/IR/Location.h"
 #include <map>
 using namespace tpu_mlir::trait;
 namespace tpu_mlir {
@@ -64,9 +65,8 @@ Value do_cast(Value v, Type to, bool tensorType) {
   if (tensorType == false) {
     newType = RankedTensorType::get(Module::getShape(v), to_stype);
   }
-  attrs.push_back(
-      builder.getNamedAttr("name", builder.getStringAttr(new_name)));
-  auto castOp = builder.create<tpu::CastOp>(v.getLoc(), newType, ValueRange{v},
+  auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
+  auto castOp = builder.create<tpu::CastOp>(name_loc, newType, ValueRange{v},
                                             ArrayRef<NamedAttribute>{attrs});
   return castOp.output();
 }
@@ -95,8 +95,7 @@ Value do_transfer(Value in, Value out, bool asymmetric) {
   get_scale_and_shift(in_scale / out_scale, multiplier, rshift, 8);
   if (in_zp == 0 && out_zp == 0) {
     std::vector<NamedAttribute> attrs;
-    attrs.push_back(
-        builder.getNamedAttr("name", builder.getStringAttr(new_name)));
+    auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
     attrs.push_back(builder.getNamedAttr(
         "multiplier", builder.getI64IntegerAttr(multiplier)));
     attrs.push_back(
@@ -104,22 +103,19 @@ Value do_transfer(Value in, Value out, bool asymmetric) {
     auto in_type = in.getType().cast<RankedTensorType>();
     auto in_shape = in_type.getShape();
     builder.setInsertionPointAfterValue(in);
-    auto mrOp =
-        builder.create<tpu::MulShiftOp>(op->getLoc(), new_type, ValueRange{in},
-                                        ArrayRef<NamedAttribute>{attrs});
+    auto mrOp = builder.create<tpu::MulShiftOp>(
+        name_loc, new_type, ValueRange{in}, ArrayRef<NamedAttribute>{attrs});
     return mrOp.output();
   } else {
     std::vector<NamedAttribute> attrs;
-    attrs.push_back(
-        builder.getNamedAttr("name", builder.getStringAttr(new_name)));
+    auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
     attrs.push_back(builder.getNamedAttr(
         "multiplier", builder.getI64IntegerAttr(multiplier)));
     attrs.push_back(
         builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
     builder.setInsertionPointAfterValue(in);
-    auto rqOp =
-        builder.create<tpu::RequantOp>(op->getLoc(), new_type, ValueRange{in},
-                                       ArrayRef<NamedAttribute>{attrs});
+    auto rqOp = builder.create<tpu::RequantOp>(
+        name_loc, new_type, ValueRange{in}, ArrayRef<NamedAttribute>{attrs});
     return rqOp.output();
   }
 }
@@ -186,9 +182,8 @@ Value do_quantize(Value v, bool asymmetric) {
   builder.setInsertionPointAfterValue(v);
   std::vector<NamedAttribute> attrs;
   std::string new_name = Module::getName(v.getDefiningOp()).str() + "_i8";
-  attrs.push_back(
-      builder.getNamedAttr("name", builder.getStringAttr(new_name)));
-  auto castOp = builder.create<tpu::CastOp>(v.getLoc(), newType, ValueRange{v},
+  auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
+  auto castOp = builder.create<tpu::CastOp>(name_loc, newType, ValueRange{v},
                                             ArrayRef<NamedAttribute>{attrs});
   return castOp.output();
 }
@@ -199,15 +194,11 @@ Value do_dequant(Value input, Type to_type, int64_t multiplier, int64_t shift,
   auto to_stype = Module::getStorageType(to_type);
   auto ctx = input.getContext();
   OpBuilder builder(ctx);
-  std::string suffix = "_dequant";
-  std::string new_name = Module::getName(input.getDefiningOp()).str() + suffix;
   auto newType = to_type;
   newType = RankedTensorType::get(Module::getShape(input), to_stype);
 
   builder.setInsertionPointAfterValue(input);
   std::vector<NamedAttribute> attrs;
-  attrs.push_back(
-      builder.getNamedAttr("name", builder.getStringAttr(new_name)));
   attrs.push_back(builder.getNamedAttr("multiplier",
                                        builder.getI64IntegerAttr(multiplier)));
   attrs.push_back(
@@ -218,13 +209,15 @@ Value do_dequant(Value input, Type to_type, int64_t multiplier, int64_t shift,
   attrs.push_back(
       builder.getNamedAttr("quant_mode", builder.getI64IntegerAttr(mode)));
 
-  auto newOp =
-      builder.create<tpu::DequantOp>(input.getLoc(), newType, ValueRange{input},
-                                     ArrayRef<NamedAttribute>{attrs});
+  std::string new_name =
+      Module::getName(input.getDefiningOp()).str() + "_dequant";
+  auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
+  auto newOp = builder.create<tpu::DequantOp>(
+      name_loc, newType, ValueRange{input}, ArrayRef<NamedAttribute>{attrs});
   return newOp.output();
 }
 
-Value do_requant(Value input, StringRef name, Type to_type, bool tensorType,
+Value do_requant(Location name_loc, Value input, Type to_type, bool tensorType,
                  int64_t multiplier, int64_t shift, int64_t mode) {
   auto from_stype = Module::getStorageType(input);
   auto to_stype = Module::getStorageType(to_type);
@@ -237,7 +230,6 @@ Value do_requant(Value input, StringRef name, Type to_type, bool tensorType,
 
   builder.setInsertionPointAfterValue(input);
   std::vector<NamedAttribute> attrs;
-  attrs.push_back(builder.getNamedAttr("name", builder.getStringAttr(name)));
   attrs.push_back(builder.getNamedAttr("multiplier",
                                        builder.getI64IntegerAttr(multiplier)));
   attrs.push_back(
@@ -246,12 +238,12 @@ Value do_requant(Value input, StringRef name, Type to_type, bool tensorType,
       builder.getNamedAttr("quant_mode", builder.getI64IntegerAttr(mode)));
 
   auto newOp =
-      builder.create<tpu::RequantOp>(input.getLoc(), newType, ValueRange{input},
+      builder.create<tpu::RequantOp>(name_loc, newType, ValueRange{input},
                                      ArrayRef<NamedAttribute>{attrs});
   return newOp.output();
 }
 
-Value do_requant(Value input, Value quant, StringRef name, Type to_type,
+Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
                  bool tensorType, int64_t mode) {
   auto from_stype = Module::getStorageType(input);
   auto to_stype = Module::getStorageType(to_type);
@@ -266,13 +258,12 @@ Value do_requant(Value input, Value quant, StringRef name, Type to_type,
 
   builder.setInsertionPointAfterValue(input);
   std::vector<NamedAttribute> attrs;
-  attrs.push_back(builder.getNamedAttr("name", builder.getStringAttr(name)));
   attrs.push_back(
       builder.getNamedAttr("quant_mode", builder.getI64IntegerAttr(mode)));
 
-  auto newOp = builder.create<tpu::RequantAxisOp>(
-      input.getLoc(), newType, ArrayRef<Value>{operands},
-      ArrayRef<NamedAttribute>{attrs});
+  auto newOp = builder.create<tpu::RequantAxisOp>(name_loc, newType,
+                                                  ArrayRef<Value>{operands},
+                                                  ArrayRef<NamedAttribute>{attrs});
   return newOp.output();
 }
 

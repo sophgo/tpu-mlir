@@ -38,7 +38,7 @@ struct TopFuseRelu : public OpRewritePattern<ReluOp> {
     }
     formerOp->setAttr("do_relu", rewriter.getBoolAttr(true));
     formerOp->setAttr("relu_limit", rewriter.getF64FloatAttr(relu_limit));
-    formerOp->setAttr("name", op.nameAttr());
+    formerOp->setLoc(op.getLoc());
     // remove the relu Op
     rewriter.replaceOp(op, {op.input()});
     return success();

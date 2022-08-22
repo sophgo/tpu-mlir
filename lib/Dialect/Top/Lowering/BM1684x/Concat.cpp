@@ -23,7 +23,6 @@ Value top::ConcatOp::lowering_int8_bm1684x(bool asymmetric) {
   OpBuilder builder(op);
   builder.setInsertionPointAfter(op);
   std::vector<Value> operands;
-  auto concat_name = name();
   for (auto in : inputs()) {
       auto new_in = do_transfer(in, output(), asymmetric);
       operands.push_back(new_in);

@@ -79,7 +79,7 @@ public:
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](Operation *op) {
         if (isa<tpu_mlir::InferenceInterface>(op) || isa<InputOp>(op)) {
-          auto name = op->getAttrOfType<StringAttr>("name").str();
+          auto name = Module::getName(op).str();
           if (calibration_map.find(name)== calibration_map.end()) {
             llvm::errs() << "[" << name << "] not in " << this->tableFile << "!!\n";
             llvm_unreachable("Import Calibration failed!!\n");

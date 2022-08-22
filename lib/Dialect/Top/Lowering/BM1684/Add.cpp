@@ -48,7 +48,6 @@ Value top::AddOp::lowering_int8_bm1684() {
     multiplier_v[i] = (double)multiplier_int8;
   }
   std::vector<NamedAttribute> attrs;
-  attrs.push_back(builder.getNamedAttr("name", nameAttr()));
   attrs.push_back(builder.getNamedAttr("do_relu", do_reluAttr()));
   attrs.push_back(builder.getNamedAttr("multipliers",
                                        builder.getI64ArrayAttr(multiplier_v)));
