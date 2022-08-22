@@ -15,10 +15,10 @@
 using namespace mlir;
 using namespace tpu_mlir::tpu;
 
-struct TpuConv : public OpRewritePattern<ConvOp> {
+struct TpuConv : public OpRewritePattern<Conv2DOp> {
   using OpRewritePattern::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(ConvOp op,
+  LogicalResult matchAndRewrite(Conv2DOp op,
                                 PatternRewriter &rewriter) const override {
     if (op.multiplier() == ::llvm::None) {
       return failure();
@@ -38,7 +38,7 @@ struct TpuConv : public OpRewritePattern<ConvOp> {
   }
 };
 
-void ConvOp::getCanonicalizationPatterns(RewritePatternSet &results,
-                                         MLIRContext *context) {
+void Conv2DOp::getCanonicalizationPatterns(RewritePatternSet &results,
+                                           MLIRContext *context) {
   results.insert<TpuConv>(context);
 }
