@@ -225,7 +225,7 @@ Value top::ConvOp::lowering_quant_bm1684x() {
   }
   auto filter_scales = filter_qtype.getScales();
 
-  SmallVector<int64_t> rshift(filter_scales.size());
+  SmallVector<int64_t> shift(filter_scales.size());
   SmallVector<int64_t> multiplier(filter_scales.size());
 
   // tensorflow/lite/kernels/kernel_util.cc::PopulateConvolutionQuantizationParams
@@ -238,9 +238,9 @@ Value top::ConvOp::lowering_quant_bm1684x() {
     // int scale,shift;
     // get_scale_and_shift(effective_output_scale, scale, shift, 32);
     // multiplier[filter.index()] = scale;
-    // rshift[filter.index()] = shift;
+    // shift[filter.index()] = shift;
     QuantizeMultiplier(effective_output_scale, &multiplier[filter.index()],
-                       &rshift[filter.index()]);
+                       &shift[filter.index()]);
   }
   auto ctx = getContext();
   OpBuilder builder(ctx);
@@ -253,6 +253,7 @@ Value top::ConvOp::lowering_quant_bm1684x() {
       RankedTensorType::get(filter_type.getShape(), filter_stype);
   filter().setType(filter_new_type);
   operands.push_back(filter());
+
   std::vector<NamedAttribute> attrs;
   std::string new_name = name().str() + "_int32";
   for (auto &attr : op->getAttrs()) {
@@ -310,12 +311,12 @@ Value top::ConvOp::lowering_quant_bm1684x() {
   int quant_size = filter_scales.size();
   if (quant_size == 1) {
     return do_requant(convOp.output(), name(), output().getType(), true,
-                      multiplier[0], rshift[0], 0);
+                      multiplier[0], shift[0], 0);
   } else {
     std::vector<int32_t> quant(quant_size * 3, 0);
     for (int i = 0; i < quant_size; ++i) {
       quant[i * 3] = multiplier[i];
-      quant[i * 3 + 1] = rshift[i];
+      quant[i * 3 + 1] = shift[i];
       quant[i * 3 + 2] = output_qtype.getZeroPoint();
     }
     auto quant_type =

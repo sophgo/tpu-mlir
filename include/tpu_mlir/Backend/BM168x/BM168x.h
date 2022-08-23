@@ -217,6 +217,30 @@ typedef struct {
   int active_type;
 } active_param_t;
 
+typedef enum {
+  BINARY_ADD          = 0,
+  BINARY_SUB          = 1,
+  BINARY_MUL          = 2,
+  BINARY_DIV          = 3,
+  BINARY_MAX          = 4,
+  BINARY_MIN          = 10000,
+  BINARY_GT           = 10001,
+  BINARY_GE           = 10002,
+  BINARY_LT           = 10003,
+  BINARY_LE           = 10004,
+  BINARY_EQ           = 10005,
+  BINARY_NE           = 10006,
+  BINARY_SQUARED_DIFF = 10007,
+  BINARY_FLOOR_MOD    = 10008,
+  BINARY_FLOOR_DIV    = 10009,
+  BINARY_LOGIC_AND    = 10010,
+  BINARY_LOGIC_OR     = 10011,
+  BINARY_LOGIC_XOR    = 10012,
+  BINARY_BIT_AND      = 10013,
+  BINARY_BIT_OR       = 10014,
+  BINARY_BIT_XOR      = 10015,
+} binary_type_t;
+
 typedef struct {
   uint64_t input_addr;
   uint64_t output_addr;
@@ -241,7 +265,7 @@ typedef struct {
     uint64_t input_addr;
     uint64_t output_addr;
     uint64_t dequant_addr;
-    uint64_t buffer_local_addr;
+    uint32_t buffer_local_addr;
     int n;
     int c;
     int h;

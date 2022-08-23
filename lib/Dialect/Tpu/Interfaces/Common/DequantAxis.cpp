@@ -35,19 +35,17 @@ LogicalResult tpu::DequantAxisOp::inference(InferenceParameter &p) {
     inner *= shape[i];
   }
 
-  auto quant_p = p.inputs[1];
-  auto output_p = p.outputs[0];
   if (mode == 0) {
 #pragma omp parallel for schedule(static, omp_schedule(shape[1]))
     for (int c = 0; c < shape[1]; ++c) {
-      int64_t multi = quant_p[c * 3];
-      int64_t shift_val = quant_p[c * 3 + 1];
-      int64_t zero_point = quant_p[c * 3 + 2];
+      int64_t multi = p.inputs[1][c * 3];
+      int64_t shift_val = p.inputs[1][c * 3 + 1];
+      int64_t zero_point = p.inputs[1][c * 3 + 2];
       for (int n = 0; n < shape[0]; ++n) {
         for (int i = 0; i < inner; ++i) {
           int offset = (n * shape[1] + c) * inner + i;
           int32_t tmp = (int32_t)p.inputs[0][offset] - zero_point;
-          output_p[offset] = applyMultiplierAndRShift(tmp, multi, -shift_val);
+          p.outputs[0][offset] = applyMultiplierAndRShift(tmp, multi, -shift_val);
         }
       }
     }
@@ -55,14 +53,14 @@ LogicalResult tpu::DequantAxisOp::inference(InferenceParameter &p) {
     int64_t lshift_val = lshift().getValue();
 #pragma omp parallel for schedule(static, omp_schedule(shape[1]))
     for (int c = 0; c < shape[1]; ++c) {
-      int64_t multi = quant_p[c * 3];
-      int64_t shift_val = quant_p[c * 3 + 1];
-      int64_t zero_point = quant_p[c * 3 + 2];
+      int64_t multi = p.inputs[1][c * 3];
+      int64_t shift_val = p.inputs[1][c * 3 + 1];
+      int64_t zero_point = p.inputs[1][c * 3 + 2];
       for (int n = 0; n < shape[0]; ++n) {
         for (int i = 0; i < inner; ++i) {
           int offset = (n * shape[1] + c) * inner + i;
           int64_t tmp = ((int32_t)p.inputs[0][offset] - zero_point) << lshift_val;
-          output_p[offset] = MultiplyByQuantizedMultiplier(tmp, 1, -shift_val);
+          p.outputs[0][offset] = MultiplyByQuantizedMultiplier(tmp, 1, -shift_val);
         }
       }
     }
