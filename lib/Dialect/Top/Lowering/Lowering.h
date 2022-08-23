@@ -82,19 +82,22 @@ Value do_quantize(Value v, bool asymmetric);
 Value do_transfer(Value in, Value out, bool asymmetric);
 
 // from int8 to int32
-Value do_dequant(Value input, Type to_type,
-                 int64_t multiplier, int64_t shift, int64_t mode, int64_t lshift);
+Value do_dequant(Value input, Type to_type, int64_t multiplier, int64_t shift,
+                 int64_t mode, int64_t lshift);
 
 // from int8 to int32
-Value do_requant(Value input, std::string name, Type to_type, bool tensorType,
+Value do_requant(Value input, StringRef name, Type to_type, bool tensorType,
                  int64_t multiplier, int64_t shift, int64_t mode);
+
+Value do_requant(Value input, Value quant, StringRef name, Type to_type,
+                 bool tensorType, int64_t mode);
 
 typedef double (*activate_f)(double);
 
 Value create_lookup_table(Value in, Value out, activate_f func,
                           bool asymmetric);
 
-Value create_lookup_table(Operation * owner, const std::vector<float>&table);
+Value create_lookup_table(Operation *owner, const std::vector<float> &table);
 
 } // namespace top
 } // namespace tpu_mlir

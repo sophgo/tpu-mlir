@@ -29,7 +29,7 @@ LogicalResult tpu::RequantAxisOp::inference(InferenceParameter &p) {
   auto o_qtype = Quant::getUniformQuantizedType(output());
 
   auto shape = Module::getShape(output());
-  auto mode = 2;
+  auto mode = quant_mode();
   int64_t inner = 1;
   for (int i = 2; i < shape.size(); ++i) {
     inner *= shape[i];
@@ -38,20 +38,20 @@ LogicalResult tpu::RequantAxisOp::inference(InferenceParameter &p) {
   if (Quant::isUniformQuantized(input())) {
     auto i_qtype = Quant::getUniformQuantizedType(input());
     zp_x = i_qtype.getZeroPoint();
+    assert(mode == 2);
   }
   if (mode == 0) {
 #pragma omp parallel for schedule(static, omp_schedule(shape[1]))
     for (int c = 0; c < shape[1]; ++c) {
       float multi = p.inputs[1][c * 3];
-      float rshift_val = -p.inputs[1][c * 3 + 1];
+      float rshift_val = p.inputs[1][c * 3 + 1];
       float zero_point = p.inputs[1][c * 3 + 2];
       for (int n = 0; n < shape[0]; ++n) {
         for (int i = 0; i < inner; ++i) {
           int offset = (n * shape[1] + c) * inner + i;
           p.outputs[0][offset] =
-              zero_point + MultiplyByQuantizedMultiplier(
-                               (int32_t)(p.inputs[0][offset] - zp_x),
-                               (int32_t)multi, (int32_t)rshift_val);
+              zero_point + MultiplyByQuantizedMultiplier(p.inputs[0][offset],
+                                                         multi, rshift_val);
         }
       }
     }
@@ -59,16 +59,15 @@ LogicalResult tpu::RequantAxisOp::inference(InferenceParameter &p) {
 #pragma omp parallel for schedule(static, omp_schedule(shape[1]))
     for (int c = 0; c < shape[1]; ++c) {
       float multi = p.inputs[1][c * 3];
-      float rshift_val = -p.inputs[1][c * 3 + 1];
+      float rshift_val = p.inputs[1][c * 3 + 1];
       float zero_point = p.inputs[1][c * 3 + 2];
       assert(rshift_val > 0);
       for (int n = 0; n < shape[0]; ++n) {
         for (int i = 0; i < inner; ++i) {
           int offset = (n * shape[1] + c) * inner + i;
           p.outputs[0][offset] =
-              zero_point + MultiplyByQuantizedMultiplier(
-                               (int32_t)(p.inputs[0][offset] - zp_x),
-                               (int32_t)multi, (int32_t)rshift_val);
+              zero_point + MultiplyByQuantizedMultiplier(p.inputs[0][offset],
+                                                         multi, rshift_val);
         }
       }
     }
