@@ -23,7 +23,6 @@ Value top::SigmoidOp::lowering_int8_bm1684x(bool asymmetric) {
   auto op = getOperation();
   OpBuilder builder(op);
   auto stype = Module::getStorageType(output());
-  auto table_type = RankedTensorType::get({256}, stype);
   Value table = create_lookup_table(input(), output(), active_sigmoid, asymmetric);
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {

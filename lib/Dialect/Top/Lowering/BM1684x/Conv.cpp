@@ -318,8 +318,9 @@ Value top::ConvOp::lowering_quant_bm1684x() {
       quant[i * 3 + 2] = output_qtype.getZeroPoint();
     }
     auto quant_type =
-        RankedTensorType::get({quant_size * 3}, builder.getI32Type());
+        RankedTensorType::get({1, quant_size, 1, 3}, builder.getI32Type());
     auto quantValue = top::WeightOp::create(op, "quant", quant, quant_type);
-    return do_requant(convOp.output(), quantValue, name(), output().getType(), true, 0);
+    return do_requant(convOp.output(), quantValue, name(), output().getType(),
+                      true, 0);
   }
 }
