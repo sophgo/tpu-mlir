@@ -1,47 +1,5 @@
-流程概述
-========
-
-.. _env_setup:
-
-开发环境配置
-------------
-
-从 DockerHub https://hub.docker.com/r/sophgo/tpuc_dev 下载所需的镜像:
-
-
-.. code-block:: console
-
-   $ docker pull sophgo/tpuc_dev:latest
-
-
-如果是首次使用Docker，可执行下述命令进行安装和配置（仅首次执行）:
-
-
-.. _docker configuration:
-
-.. code-block:: console
-   :linenos:
-
-   $ sudo apt install docker.io
-   $ sudo systemctl start docker
-   $ sudo systemctl enable docker
-   $ sudo groupadd docker
-   $ sudo usermod -aG docker $USER
-   $ newgrp docker
-
-
-确保安装包在当前目录，然后在当前目录创建容器如下：
-
-
-.. code-block:: console
-
-  $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:latest
-  # myname只是举个名字的例子，请指定成自己想要的容器的名字
-
-后文假定用户已经处于docker里面的/workspace目录。
-
-编译onnx模型
-------------
+编译ONNX模型
+============
 
 本章以 ``yolov5s.onnx`` 为例，介绍如何编译迁移一个onnx模型至BM1684x TPU平台运行。
 
@@ -52,7 +10,7 @@
 **tpu-mlir_xxxx.tar.gz (tpu-mlir的发布包)**
 
 加载tpu-mlir
-~~~~~~~~~~~~
+------------------
 
 .. code-block:: console
    :linenos:
@@ -62,7 +20,7 @@
 
 
 准备工作目录
-~~~~~~~~~~~~
+------------------
 
 建立 ``model_yolov5s`` 目录，注意是与tpu-mlir同级目录；并把模型文件和图片文件都
 放入 ``model_yolov5s`` 目录中。
@@ -83,8 +41,8 @@
 这里的 ``$TPUC_ROOT`` 是环境变量，对应tpu-mlir_xxxx目录。
 
 
-模型转MLIR
-~~~~~~~~~~
+ONNX转MLIR
+------------------
 
 如果模型是图片输入，在转模型之前我们需要了解模型的预处理。如果模型用预处理后的npz文件做输入，则不需要考虑预处理。
 预处理过程用公式表达如下（ :math:`x` 代表输入)：
@@ -171,7 +129,7 @@
 
 
 MLIR转F32模型
-~~~~~~~~~~~~~
+------------------
 
 将mlir文件转换成f32的bmodel，操作方法如下：
 
@@ -234,10 +192,10 @@ MLIR转F32模型
 
 
 MLIR转INT8模型
-~~~~~~~~~~~~~~
+------------------
 
 生成量化表
-++++++++++
+~~~~~~~~~~~~~~~~~~~~
 
 转INT8模型前需要跑calibration，得到量化表；输入数据的数量根据情况准备100~1000张左右。
 
@@ -259,7 +217,7 @@ MLIR转INT8模型
 
 
 编译为INT8对称量化模型
-++++++++++++++++++++++
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 转成INT8对称量化模型，执行如下命令：
 
@@ -279,7 +237,7 @@ MLIR转INT8模型
 
 
 编译为INT8非对称量化模型
-++++++++++++++++++++++++
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 转成INT8非对称量化模型，执行如下命令：
 
@@ -301,7 +259,7 @@ MLIR转INT8模型
 
 
 效果对比
-~~~~~~~~
+------------------
 
 在本发布包中有用python写好的yolov5用例，源码路径
 ``$TPUC_ROOT/python/samples/detect_yolov5.py`` ，用于对图片进行目标检测。阅读该
@@ -352,14 +310,15 @@ int8非对称bmodel的执行方式如下，得到 ``dog_int8_asym.jpg`` ：
 
 四张图片对比如下：
 
-.. _yolov5s:
+.. _yolov5s_result:
 .. figure:: ../assets/yolov5s.jpg
    :height: 13cm
    :align: center
 
    TPU-MLIR对YOLOv5s编译效果对比
 
-由于运行环境不同，最终的效果和精度与 :numref:`yolov5s` 会有些差异。
+由于运行环境不同，最终的效果和精度与 :numref:`yolov5s_result` 会有些差异。
+
 
 模型性能测试
 ------------
@@ -373,7 +332,7 @@ int8非对称bmodel的执行方式如下，得到 ``dog_int8_asym.jpg`` ：
 
 
 检查 ``BModel`` 的性能
-~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
 
 安装好 ``libsophon`` 后，可以使用 ``bmrt_test`` 来测试编译出的 ``bmodel`` 的正确
 性及性能。可以根据 ``bmrt_test`` 输出的性能结果，来估算模型最大的fps，来选择合适的模型。
