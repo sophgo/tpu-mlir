@@ -37,12 +37,10 @@ def model_inference(inputs: dict, model_file: str) -> dict:
             raise ValueError("unknown type: form {inputs[i.name].dtype} to {i.data.dtype}")
     net.forward()
     for i in net.outputs:
-        if i.data.dtype == np.float32 or i.qscale == 0:
-            outputs[i.name] = np.array(i.data)
-        elif i.data.dtype == np.int8 and i.qscale != 0:
+        if i.data.dtype == np.int8 and i.qscale != 0:
             outputs[i.name] = np.array(i.data.astype(np.float32) * i.qscale, dtype=np.float32)
         else:
-            raise ValueError("unsupported type: {i.data.dtype}")
+            outputs[i.name] = np.array(i.data)
     return outputs
 
 
