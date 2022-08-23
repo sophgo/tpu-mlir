@@ -88,6 +88,8 @@ Value do_dequant(Value input, Type to_type, int64_t multiplier, int64_t shift,
 // from int8 to int32
 Value do_requant(Value input, StringRef name, Type to_type, bool tensorType,
                  int64_t multiplier, int64_t shift, int64_t mode);
+Value do_requant(Value input, Value quant, std::string name, Type to_type, bool tensorType,
+                 int64_t mode);
 
 Value do_requant(Value input, Value quant, StringRef name, Type to_type,
                  bool tensorType, int64_t mode);

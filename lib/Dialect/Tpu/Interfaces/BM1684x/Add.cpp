@@ -12,88 +12,13 @@
 #include "tpu_mlir/Backend/BM168x/BM1684x.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
 #include "tpu_mlir/Support/Helper/Module.h"
+#include "Binary_param.h"
 
 using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace tpu_mlir::backend;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-typedef struct {
-  uint64_t input_A_global_addr;
-  uint64_t input_B_global_addr;
-  uint64_t output_global_addr;
-  int n;
-  int c;
-  int h;
-  int w;
-  int op_code;
-  int scale_A;
-  int scale_B;
-  int rshift_A;
-  int rshift_B;
-  int if_relu;
-  DATA_TYPE_T dtype_A;
-  DATA_TYPE_T dtype_B;
-  int round_mode;
-} eltwise_fixed_global_param_t;
-
-typedef struct {
-  uint64_t *input_global_addr;
-  uint64_t output_global_addr;
-  uint64_t mask_global_addr;
-  int input_num;
-  int n;
-  int c;
-  int h;
-  int w;
-  int op_code;
-  int *coeff;
-  int need_mask;
-  int *mask_index;
-  int if_relu;
-  DATA_TYPE_T dtype;
-} eltwise_float_global_param_t;
-
-typedef struct {
-  uint32_t *input_local_addr;
-  uint32_t output_local_addr;
-  uint32_t buffer_local_addr;
-  int n;
-  int c;
-  int h;
-  int w;
-  int op_code;
-  int *input_local_cstride;
-  int *scale_weight;
-  int *rshift;
-  DATA_TYPE_T *input_dtype;
-  int input_num;
-  int if_relu;
-  int round_mode;
-} eltwise_fixed_local_param_t;
-
-typedef struct {
-  uint32_t *input_local_addr;
-  uint32_t output_local_addr;
-  uint32_t buffer_local_addr;
-  int input_num;
-  int n;
-  int c;
-  int h;
-  int w;
-  int op_code;
-  float *coeff;
-  int *input_local_cstride;
-  int if_relu;
-  DATA_TYPE_T dtype;
-} eltwise_float_local_param_t;
-
-#ifdef __cplusplus
-}
-#endif
 // =========================================
 // GlobalGenInterface
 // =========================================
@@ -103,6 +28,8 @@ void tpu::AddOp::codegen_global_bm1684x() {
   int num_inputs = inputs().size();
   int64_t n, c, h, w;
   Module::getNCHW(output(), n, c, h, w);
+  auto out_type = Module::getStorageType(output());
+  auto in_type = Module::getStorageType(inputs()[0]);
   if (Quant::isUniformQuantized(output())) {
     eltwise_fixed_global_param_t p;
     p.input_A_global_addr = Module::getAddress(inputs()[0]);
@@ -125,6 +52,39 @@ void tpu::AddOp::codegen_global_bm1684x() {
     p.round_mode = ROUND_UP;
     BM1684x::instance().call_global_func("backend_api_eltwise_fixed_global", &p,
                                          sizeof(eltwise_fixed_global_param_t));
+  } else if (in_type.isInteger(32) && out_type.isInteger(32)) {
+    auto op = getOperation();
+    auto input_spec = BM1684x::get_input_spec(op);
+    auto output_spec = BM1684x::get_output_spec(op);
+    local_sec_info_t sec_info;
+    memset(&sec_info, 0, sizeof(sec_info));
+    sec_info.n_slice = n;
+    sec_info.out_n_slice = n;
+
+    sec_info.is_h_split = false;
+    sec_info.h_slice = h;
+    sec_info.h_idx = 0;
+    sec_info.out_h_idx = 0;
+    sec_info.out_h_slice = h;
+
+    sec_info.is_h_split = false;
+    sec_info.w_slice = w;
+    sec_info.out_w_slice = w;
+
+    bcbinary_local_param_t param = {0};
+    param.spec.common.binary_type = BINARY_ADD;
+    param.spec.common.if_relu = do_relu();
+    param.spec.common.relu_upper_limit = relu_limit().convertToDouble();
+    param.spec.common.rshift_A = 0;
+    param.spec.common.rshift_B = 0;
+    param.spec.common.scale_A = 1;
+    param.spec.common.scale_B = 1;
+    param.spec.buffer_addr = 0;
+    param.A_is_coeff = false;
+    param.B_is_coeff = false;
+    BM1684x::instance().call_local_func("backend_api_bcbinary_global", &param,
+                                        sizeof(param), &sec_info, input_spec->data(),
+                                        output_spec->data());
   } else {
     llvm::SmallVector<float, 8> coeffs;
     llvm::SmallVector<float, 8> mask_index(num_inputs, 0.0f);
@@ -183,12 +143,14 @@ void tpu::AddOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
                              (uint32_t)in1_gi.out_addr};
   int64_t n, c, h, w;
   Module::getNCHW(output(), n, c, h, w);
+  auto out_type = Module::getStorageType(output());
+  auto in_type = Module::getStorageType(inputs()[0]);
   if (Quant::isUniformQuantized(inputs()[0], output())) {
     auto multiplier_v = Module::getI64Array(multipliers(), 2, 1);
     auto rshift_v = Module::getI64Array(rshifts(), 2, 0);
     SmallVector<int32_t, 2> multi_v(multiplier_v->begin(), multiplier_v->end());
     SmallVector<int32_t, 2> r_v(rshift_v->begin(), rshift_v->end());
-    DATA_TYPE_T input_types[2] = {BM168x::getDataType(inputs()[0]),
+    DATA_TYPE_T input_types[2] = {BM1684x::getDataType(inputs()[0]),
                                   BM1684x::getDataType(inputs()[1])};
     eltwise_fixed_local_param_t p = {0};
     p.input_local_addr = input_offset;
@@ -208,6 +170,39 @@ void tpu::AddOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
     p.round_mode = ROUND_UP;
     BM1684x::instance().call_local_func("backend_api_eltwise_fixed_local", &p,
                                         sizeof(eltwise_fixed_local_param_t));
+  } else if (in_type.isInteger(32) && out_type.isInteger(32)) {
+    auto op = getOperation();
+    auto input_spec = BM1684x::get_input_spec(op);
+    auto output_spec = BM1684x::get_output_spec(op);
+    local_sec_info_t sec_info;
+    memset(&sec_info, 0, sizeof(sec_info));
+    sec_info.n_slice = gi.n_slice;
+    sec_info.out_n_slice = gi.n_slice;
+
+    sec_info.is_h_split = !(gi.h_idx == 0 && gi.h_slice == h);
+    sec_info.h_slice = gi.h_slice;
+    sec_info.h_idx = gi.h_idx;
+    sec_info.out_h_idx = gi.h_idx;
+    sec_info.out_h_slice = gi.h_slice;
+
+    sec_info.is_h_split = false;
+    sec_info.w_slice = w;
+    sec_info.out_w_slice = w;
+
+    bcbinary_local_param_t param = {0};
+    param.spec.common.binary_type = BINARY_ADD;
+    param.spec.common.if_relu = do_relu();
+    param.spec.common.relu_upper_limit = relu_limit().convertToDouble();
+    param.spec.common.rshift_A = 0;
+    param.spec.common.rshift_B = 0;
+    param.spec.common.scale_A = 1;
+    param.spec.common.scale_B = 1;
+    param.spec.buffer_addr = gi.buffer_addr;
+    param.A_is_coeff = false;
+    param.B_is_coeff = false;
+    BM1684x::instance().call_local_func("backend_api_bcbinary_local", &param,
+                                        sizeof(param), &sec_info, input_spec->data(),
+                                        output_spec->data());
   } else {
     auto coeff_v = Module::getF64Array(coeff(), 2, 1.0);
     SmallVector<float, 2> coeff_(coeff_v->begin(), coeff_v->end());

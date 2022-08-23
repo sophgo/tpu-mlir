@@ -51,7 +51,16 @@ void tpu::RequantAxisOp::codegen_global_bm1684x() {
 int64_t tpu::RequantAxisOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
-  return 0;
+  int64_t buffer_size = 0;
+  int64_t n, c, h, w;
+  Module::getNCHW(input(), n, c, h, w);
+  if (quant_mode() == 0) {
+      buffer_size = 2 * in_lmem_bytes;
+      // buffer_size += 1 * ceiling_func(c, BM1684x::NPU_NUM) * align_up(1 * 1L, BM1684x::EU_BYTES / (int64_t)(sizeof(int))) * sizeof(int);
+    } else if (quant_mode() == 1) {
+      buffer_size = in_lmem_bytes;
+    }
+  return buffer_size;
 }
 
 void tpu::RequantAxisOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
