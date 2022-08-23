@@ -217,6 +217,8 @@ def npz_compare(args_list):
           j.join()
 
   for name in names:
+    if dic.get(name) == None:
+      continue
     stats.update(name, dic.get(name))
     print_result_one_array(tc, npz1, name, thresholds, dic, args.verbose)
 

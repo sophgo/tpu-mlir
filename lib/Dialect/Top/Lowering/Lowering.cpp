@@ -251,8 +251,8 @@ Value do_requant(Value input, StringRef name, Type to_type, bool tensorType,
   return newOp.output();
 }
 
-Value do_requant(Value input, Value quant, StringRef name, Type to_type, bool tensorType,
-                 int64_t mode) {
+Value do_requant(Value input, Value quant, StringRef name, Type to_type,
+                 bool tensorType, int64_t mode) {
   auto from_stype = Module::getStorageType(input);
   auto to_stype = Module::getStorageType(to_type);
   auto ctx = input.getContext();
@@ -270,9 +270,9 @@ Value do_requant(Value input, Value quant, StringRef name, Type to_type, bool te
   attrs.push_back(
       builder.getNamedAttr("quant_mode", builder.getI64IntegerAttr(mode)));
 
-  auto newOp = builder.create<tpu::RequantAxisOp>(input.getLoc(), newType,
-                                                  ArrayRef<Value>{operands},
-                                                  ArrayRef<NamedAttribute>{attrs});
+  auto newOp = builder.create<tpu::RequantAxisOp>(
+      input.getLoc(), newType, ArrayRef<Value>{operands},
+      ArrayRef<NamedAttribute>{attrs});
   return newOp.output();
 }
 

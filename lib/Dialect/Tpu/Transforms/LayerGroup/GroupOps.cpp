@@ -66,11 +66,10 @@ bool GroupOps::need_bcast(Value opd) {
     return false;
   }
   auto use_op = *opd.getUsers().begin();
-  auto lut_op = dyn_cast<tpu::LutOp>(use_op);
-  if (!lut_op) {
-    return false;
+  if (auto cast_op = dyn_cast<tpu::LutOp>(use_op)) {
+    return opd == cast_op.table();
   }
-  return opd == lut_op.table();
+  return false;
 }
 
 group_lmem_t GroupOps::list_lmems(int64_t start_idx, int64_t end_idx) {

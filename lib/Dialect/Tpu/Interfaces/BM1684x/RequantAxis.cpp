@@ -28,13 +28,13 @@ void tpu::RequantAxisOp::codegen_global_bm1684x() {
   int64_t n, c, h, w;
   Module::getNCHW(input(), n, c, h, w);
   param.input_addr = Module::getAddress(input());
+  param.requant_addr = Module::getAddress(quant());
   param.output_addr = Module::getAddress(output());
   param.n = (int)n;
   param.c = (int)c;
   param.h = (int)h;
   param.w = (int)w;
 
-  param.requant_addr = Module::getAddress(quant());
   param.is_perchannel = true;
   param.reshaped_coeff = false;
   param.mode = quant_mode();
@@ -59,8 +59,10 @@ void tpu::RequantAxisOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   int64_t n, c, h, w;
   Module::getNCHW(input(), n, c, h, w);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  auto quant_gi = LocalGenInterface::getGroupInfo(quant(), n_step, h_step);
   auto gi = getGroupInfo(n_step, h_step);
   param.input_addr = (uint32_t)in_gi.out_addr;
+  param.requant_addr = (uint32_t)quant_gi.out_addr;
   param.output_addr = (uint32_t)gi.out_addr;
   param.buffer_local_addr = (uint32_t)gi.buffer_addr;
   param.n = gi.n_slice;
