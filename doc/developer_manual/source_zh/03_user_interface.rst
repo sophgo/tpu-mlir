@@ -3,23 +3,56 @@
 
 本章介绍用户的使用界面。
 
+简述
+--------------------
+
 基本操作过程是用 ``model_transform.py`` 将模型转成mlir文件，然后用
 ``model_deploy.py`` 将mlir转成对应的model。如果需要转INT8模型，则
-需要进行calibration。大致过程如下：
+需要进行calibration。大致过程如图(:ref:`ui_0`)。
 
+.. _ui_0:
 .. figure:: ../assets/ui_0.png
    :height: 9.5cm
    :align: center
 
    用户界面1
 
-另外支持一下复杂的情况，支持图片输入带预处理，支持多输入情景，如下：
+另外支持一下复杂的情况，支持图片输入带预处理，支持多输入情景，如图(:ref:`ui_1`)。
 
+.. _ui_1:
 .. figure:: ../assets/ui_1.png
    :height: 9.5cm
    :align: center
 
    用户界面2
+
+
+
+也支持TFLite模型的转换，命令参考如下：
+
+.. code-block:: console
+
+    # TFLite转模型举例
+    $ model_transform.py \
+        --model_name resnet50_tf \
+        --model_def  ../resnet50_int8.tflite \
+        --input_shapes [[1,3,224,224]] \
+        --mean 103.939,116.779,123.68 \
+        --scale 1.0,1.0,1.0 \
+        --pixel_format bgr \
+        --test_input ../image/dog.jpg \
+        --test_result resnet50_tf_top_outputs.npz \
+        --mlir resnet50_tf.mlir
+   $ model_deploy.py \
+       --mlir resnet50_tf.mlir \
+       --quantize INT8 \
+       --asymmetric \
+       --chip bm1684x \
+       --test_input resnet50_tf_in_f32.npz \
+       --test_reference resnet50_tf_top_outputs.npz \
+       --tolerance 0.95,0.85 \
+       --model resnet50_tf_1684x.bmodel
+
 
 .. _model_transform:
 
