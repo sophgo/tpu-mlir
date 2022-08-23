@@ -121,20 +121,44 @@ Value top::AvgPoolOp::lowering_quant_bm1684x() {
   if (false == Quant::isUniformQuantized(input(), output())) {
     llvm_unreachable("input output should be quantized");
   }
-  bool is_pool3d = kernel_shape().size() == 3;
-  // input to f32
-  Builder builder(getContext());
-  auto in_f32 = do_cast(input(), builder.getF32Type(), false);
+  double in_scale, out_scale;
+  int64_t in_zp, out_zp;
+  Quant::getScaleAndZeroPoint(input(), in_scale, in_zp, true);
+  Quant::getScaleAndZeroPoint(output(), out_scale, out_zp, true);
+  auto kernel = Module::getI64Array(kernel_shape());
+  auto kernel_size = kernel->size();
+  auto kernel_sum = std::accumulate(kernel->begin(), kernel->end(), 1,
+                                    std::multiplies<int64_t>());
+  double scale_factor = in_scale / (kernel_sum * out_scale);
+  double offset_factor = out_zp - in_scale / out_scale * in_zp;
   auto op = getOperation();
-  op->setOperand(0, in_f32);
-  auto type = output().getType();
-  Value newValue;
-  if (kernel_shape().size() == 3) {
-    newValue = lowering_common_float<tpu::AvgPool3DOp>(getOperation());
-  } else if (kernel_shape().size() == 2) {
-    newValue = lowering_common_float<tpu::AvgPool2DOp>(getOperation());
-  } else {
-    newValue = lowering_common_float<tpu::AvgPool1DOp>(getOperation());
+  OpBuilder builder(op);
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
   }
-  return do_cast(newValue, type, true);
+  attrs.push_back(
+      builder.getNamedAttr("scale", builder.getF64FloatAttr(scale_factor)));
+  attrs.push_back(
+      builder.getNamedAttr("offset", builder.getF64FloatAttr(offset_factor)));
+
+  builder.setInsertionPointAfter(op);
+  if (kernel_size == 1) {
+    auto newOp = builder.create<tpu::AvgPool1DOp>(
+        getLoc(), output().getType(), ValueRange{input()},
+        ArrayRef<NamedAttribute>{attrs});
+    return newOp.output();
+  } else if (kernel_size == 2) {
+    auto newOp = builder.create<tpu::AvgPool2DOp>(
+        getLoc(), output().getType(), ValueRange{input()},
+        ArrayRef<NamedAttribute>{attrs});
+    return newOp.output();
+  } else {
+    auto newOp = builder.create<tpu::AvgPool3DOp>(
+        getLoc(), output().getType(), ValueRange{input()},
+        ArrayRef<NamedAttribute>{attrs});
+    return newOp.output();
+  }
+  llvm_unreachable("can't be here");
+  return nullptr;
 }
