@@ -201,7 +201,8 @@ Value top::MatMulOp::lowering_quant_bm1684x() {
                                        builder.getI64IntegerAttr(multiplier)));
   attrs.push_back(
       builder.getNamedAttr("rshift", builder.getI64IntegerAttr(shift)));
-
+  attrs.push_back(
+      builder.getNamedAttr("quant_mode", builder.getI64IntegerAttr(0)));
   int32_t input_zeroPoint = input_qtype.getZeroPoint();
 
   if (input_zeroPoint != 0) {

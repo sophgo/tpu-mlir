@@ -140,5 +140,5 @@ Value top::AddOp::lowering_quant_bm1684x() {
                                           ArrayRef<NamedAttribute>{attrs});
   // requant to int8
   QuantizeMultiplier((scale_max * 2) / ((1 << lshift) * o_scale), &scalei, &shifti);
-  return do_requant(newOp.output(), Module::getName(op).str(), output().getType(), true, scalei, shifti, 1);
+  return do_requant(newOp.output(), name(), output().getType(), true, scalei, shifti, 1);
 }

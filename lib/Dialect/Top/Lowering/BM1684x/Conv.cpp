@@ -14,6 +14,7 @@
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "../Lowering.h"
 
 using namespace mlir;
 using namespace tpu_mlir;
@@ -253,15 +254,15 @@ Value top::ConvOp::lowering_quant_bm1684x() {
   filter().setType(filter_new_type);
   operands.push_back(filter());
   std::vector<NamedAttribute> attrs;
+  std::string new_name = name().str() + "_int32";
   for (auto &attr : op->getAttrs()) {
+    if (attr.getName() == "name") {
+      attrs.push_back(
+          builder.getNamedAttr("name", builder.getStringAttr(new_name)));
+      continue;
+    }
     attrs.push_back(attr);
   }
-  attrs.push_back(
-      builder.getNamedAttr("quant_mode", builder.getI64IntegerAttr(0)));
-  attrs.push_back(
-      builder.getNamedAttr("multiplier", builder.getI64ArrayAttr(multiplier)));
-  attrs.push_back(
-      builder.getNamedAttr("rshift", builder.getI64ArrayAttr(rshift)));
   attrs.push_back(
       builder.getNamedAttr("with_bias", builder.getBoolAttr(attr.has_bias)));
 
@@ -290,16 +291,35 @@ Value top::ConvOp::lowering_quant_bm1684x() {
     auto new_bias =
         top::WeightOp::create(op, "_merge_bias", *bias_quant, bias_type);
     operands.push_back(new_bias);
-  } else {
+  } else if (attr.has_bias) {
     auto bias_stype = Module::getStorageType(bias());
     auto bias_new_type =
         RankedTensorType::get(Module::getShape(bias()), bias_stype);
     bias().setType(bias_new_type);
     operands.push_back(bias());
+  } else {
+    operands.push_back(bias());
   }
-
-  auto newOp = builder.create<tpu::Conv2DOp>(op->getLoc(), output().getType(),
-                                             ArrayRef<Value>{operands},
-                                             ArrayRef<NamedAttribute>{attrs});
-  return newOp.output();
+  auto newType =
+      RankedTensorType::get(Module::getShape(output()), builder.getI32Type());
+  auto convOp = builder.create<tpu::Conv2DOp>(op->getLoc(), newType,
+                                              ArrayRef<Value>{operands},
+                                              ArrayRef<NamedAttribute>{attrs});
+  // do requant
+  int quant_size = filter_scales.size();
+  if (quant_size == 1) {
+    return do_requant(convOp.output(), name(), output().getType(), true,
+                      multiplier[0], rshift[0], 0);
+  } else {
+    std::vector<int32_t> quant(quant_size * 3, 0);
+    for (int i = 0; i < quant_size; ++i) {
+      quant[i * 3] = multiplier[i];
+      quant[i * 3 + 1] = rshift[i];
+      quant[i * 3 + 2] = output_qtype.getZeroPoint();
+    }
+    auto quant_type =
+        RankedTensorType::get({quant_size * 3}, builder.getI32Type());
+    auto quantValue = top::WeightOp::create(op, "quant", quant, quant_type);
+    return do_requant(convOp.output(), quantValue, name(), output().getType(), true, 0);
+  }
 }

@@ -35,8 +35,8 @@ LogicalResult tpu::DequantAxisOp::inference(InferenceParameter &p) {
     inner *= shape[i];
   }
 
-  int32_t *quant_p = reinterpret_cast<int32_t*>(p.inputs[1]);
-  int32_t *output_p = reinterpret_cast<int32_t*>(p.outputs[0]);
+  auto quant_p = p.inputs[1];
+  auto output_p = p.outputs[0];
   if (mode == 0) {
 #pragma omp parallel for schedule(static, omp_schedule(shape[1]))
     for (int c = 0; c < shape[1]; ++c) {

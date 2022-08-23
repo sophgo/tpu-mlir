@@ -40,7 +40,7 @@ void tpu::RequantOp::codegen_global_bm1684x() {
   param.shift_value = -rshift();
   param.offset_value = oqtype.getZeroPoint();
   param.zx_value = iqtype.getZeroPoint();
-  param.mode = 2;
+  param.mode = quant_mode();
   param.input_dtype = BM168x::getDataType(input());
   param.output_dtype = BM168x::getDataType(output());
   BM1684x::instance().call_global_func("backend_api_requant_int_global", &param,
@@ -87,7 +87,7 @@ void tpu::RequantOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   }
   param.input_dtype = BM168x::getDataType(input());
   param.output_dtype = BM168x::getDataType(output());
-  param.mode = 2;
+  param.mode = quant_mode();
   BM1684x::instance().call_local_func("backend_api_requant_int_local", &param,
                                       sizeof(param));
 }

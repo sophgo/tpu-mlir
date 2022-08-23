@@ -142,6 +142,13 @@ void tpu::Conv2DOp::weight_reorder_int8_bm1684x() {
   conv_attr_t attr = {0};
   parseParam(&attr);
 
+  bool merge = true;
+  auto out_stype = Module::getStorageType(output());
+  if (out_stype.isInteger(32)) {
+    merge = false;
+  }
+  auto op = getOperation();
+  OpBuilder builder(getContext());
   // filter
   auto filterOp = filter().getDefiningOp<top::WeightOp>();
   auto filter_i8 = filterOp.read<int8_t>();
@@ -171,6 +178,14 @@ void tpu::Conv2DOp::weight_reorder_int8_bm1684x() {
     filter_shape = {1, attr.oc, 1, attr.kh * attr.kw};
   }
   reshape_coeff_for_broadcast_channel(filter_i8, filter_shape, false);
+  op->setAttr("use_3ic_optimize", builder.getI64IntegerAttr(use_3ic_optimize));
+  if (merge == false) {
+    auto elem_type = Module::getStorageType(filter());
+    auto filter_type = RankedTensorType::get(filter_shape, elem_type);
+    auto filter_op =
+        top::WeightOp::create(op, "filter_reorderd", *filter_i8, filter_type);
+    op->setOperand(1, filter_op);
+  }
   int64_t new_oc = filter_shape[1];
   int64_t filter_w_bytes = filter_shape[3] * sizeof(int8_t);
 
@@ -184,10 +199,19 @@ void tpu::Conv2DOp::weight_reorder_int8_bm1684x() {
     reshape_coeff_for_broadcast_channel(bias_new, bias_shape, false);
     assert(new_oc == bias_shape[1]);
     bias_w_bytes = bias_shape[3] * sizeof(int32_t);
+    if (merge == false) {
+      auto elem_type = Module::getStorageType(bias());
+      auto bias_type = RankedTensorType::get(bias_shape, elem_type);
+      auto bias_op =
+          top::WeightOp::create(op, "bias_reorderd", *bias_new, bias_type);
+      op->setOperand(2, bias_op);
+    }
+  }
+  if (merge == false) {
+    return;
   }
 
   // requant
-  auto op = getOperation();
   auto qtype = Quant::getUniformQuantizedType(output());
   std::vector<int64_t> quant_shape = {1, attr.oc, 1, 3};
   auto quant_data = std::make_shared<std::vector<int32_t>>(attr.oc * 3, 0);
@@ -238,14 +262,12 @@ void tpu::Conv2DOp::weight_reorder_int8_bm1684x() {
       coeff_shape[3] /= 64;
     }
   }
-  OpBuilder builder(getContext());
   auto elem_type = Module::getStorageType(filter());
   auto coeff_type = RankedTensorType::get(coeff_shape, elem_type);
   auto coeff_op = top::WeightOp::create(op, "merge", *new_coeff, coeff_type);
   op->removeAttr("rshift");
   op->removeAttr("multiplier");
   op->setAttr("coeff_merged", builder.getBoolAttr(true));
-  op->setAttr("use_3ic_optimize", builder.getI64IntegerAttr(use_3ic_optimize));
   op->setOperand(1, coeff_op);
   auto none = Module::getNoneOp(op);
   op->setOperand(2, none.getResult());
@@ -463,8 +485,8 @@ void tpu::Conv2DOp::codegen_global_bm1684x() {
   common.kzp_is_const = true;
   if (Quant::isUniformQuantized(input())) {
     auto in_qtype = Quant::getUniformQuantizedType(input());
-    spec.merge_coeff = 2;
-    if (spec.merge_coeff == 2) {
+    if (coeff_merged()) {
+      spec.merge_coeff = 2;
       auto out_etype = Module::getStorageType(output());
       common.if_relu = out_etype.isUnsignedInteger(8);
     }
@@ -484,13 +506,13 @@ void tpu::Conv2DOp::codegen_global_bm1684x() {
 int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
-  int64_t sz = out_lmem_bytes * sizeof(int32_t);
-  if (coeff_merged() == false) {
-    sz = 0;
+  int64_t sz = 0;
+  if (coeff_merged()) {
+    sz = out_lmem_bytes * sizeof(int32_t);
   }
 
-  auto i_s = input().getType().cast<RankedTensorType>().getShape();
-  auto o_s = output().getType().cast<RankedTensorType>().getShape();
+  auto i_s = Module::getShape(input());
+  auto o_s = Module::getShape(output());
   auto kernel = Module::getI64Array(kernel_shape());
   int64_t n = i_s[0];
   int64_t ih = i_s[2];
@@ -572,9 +594,9 @@ void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   sec_info.out_w_slice = attr.ow;
   if (Quant::isUniformQuantized(input())) {
     auto in_qtype = Quant::getUniformQuantizedType(input());
-    p.spec.merge_coeff = 2;
-    p.spec.with_requant = 1;
-    if (p.spec.merge_coeff == 2) {
+    if (coeff_merged()) {
+      p.spec.merge_coeff = 2;
+      p.spec.with_requant = 1;
       auto out_etype = Module::getStorageType(output());
       common.if_relu = out_etype.isUnsignedInteger(8);
     }
