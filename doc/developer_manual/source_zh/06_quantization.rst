@@ -96,7 +96,7 @@ Multiplier支持的位数越高，就越接近Scale，但是性能会越差。�
 
 对称和非对称都用在Activation上，对于权重一般只用对称量化。
 
-.. _conv:
+.. _conv_quant:
 
 Convolution
 ~~~~~~~~~~~~
@@ -125,7 +125,7 @@ Convolution
 InnerProduct
 ~~~~~~~~~~~~
 
-表达式和推导方式与(:ref:`conv`)相同
+表达式和推导方式与(:ref:`conv_quant`)相同
 
 
 Add

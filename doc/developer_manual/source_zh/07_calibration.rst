@@ -1,8 +1,6 @@
 Calibration
 ============
 
-.. __calibration_doc0:
-
 总体介绍
 --------------------
 
