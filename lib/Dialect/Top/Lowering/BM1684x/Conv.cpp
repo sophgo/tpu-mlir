@@ -263,10 +263,8 @@ Value top::ConvOp::lowering_quant_bm1684x() {
     }
     attrs.push_back(attr);
   }
-  attrs.push_back(
-      builder.getNamedAttr("with_bias", builder.getBoolAttr(attr.has_bias)));
-
   int32_t input_zeroPoint = input_qtype.getZeroPoint();
+  bool with_bias = true;
   if (input_zeroPoint != 0) {
     // merge input_zeroPoint to bias
     std::shared_ptr<std::vector<int32_t>> bias_quant;
@@ -298,8 +296,11 @@ Value top::ConvOp::lowering_quant_bm1684x() {
     bias().setType(bias_new_type);
     operands.push_back(bias());
   } else {
+    with_bias = false;
     operands.push_back(bias());
   }
+  attrs.push_back(
+      builder.getNamedAttr("with_bias", builder.getBoolAttr(with_bias)));
   auto newType =
       RankedTensorType::get(Module::getShape(output()), builder.getI32Type());
   auto convOp = builder.create<tpu::Conv2DOp>(op->getLoc(), newType,

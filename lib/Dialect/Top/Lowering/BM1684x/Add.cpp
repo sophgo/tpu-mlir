@@ -78,6 +78,10 @@ Value top::AddOp::lowering_f16_bm1684x() {
 }
 
 Value top::AddOp::lowering_quant_bm1684x() {
+  if (Quant::isUniformQuantized(inputs()[0], output()) == false) {
+    llvm_unreachable("input output should be quantized");
+  }
+#if 0
   auto op = getOperation();
   OpBuilder builder(getContext());
   const int nInputs = op->getNumOperands();
@@ -141,4 +145,14 @@ Value top::AddOp::lowering_quant_bm1684x() {
   // requant to int8
   QuantizeMultiplier((scale_max * 2) / ((1 << lshift) * o_scale), &scalei, &shifti);
   return do_requant(newOp.output(), name(), output().getType(), true, scalei, shifti, 1);
+#endif
+  Builder builder(getContext());
+  auto in0_f32 = do_cast(inputs()[0], builder.getF32Type(), false);
+  auto in1_f32 = do_cast(inputs()[1], builder.getF32Type(), false);
+  auto op = getOperation();
+  op->setOperand(0, in0_f32);
+  op->setOperand(1, in1_f32);
+  auto type = output().getType();
+  auto v = lowering_common_float<tpu::AddOp>(op);
+  return do_cast(v, type, true);
 }

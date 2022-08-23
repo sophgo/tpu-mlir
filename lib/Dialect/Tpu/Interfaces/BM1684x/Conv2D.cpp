@@ -35,8 +35,8 @@ reshape_coeff_for_broadcast_channel(std::shared_ptr<std::vector<T>> &coeff,
   if (n != 1 || h != 1 || c <= BM1684x::NPU_NUM) {
     return;
   }
-  int type_len = sizeof(T);
-  auto old_w_align = align_up(w, BM1684x::instance().get_eu_num(type_len));
+  int in_type_len = sizeof(T);
+  auto old_w_align = align_up(w, BM1684x::instance().get_eu_num(in_type_len));
 
   // convert (1, oc, 1, w) to (1, NPU_NUM, 1, DIV_UP(oc, NPU_NUM) * w)
   int64_t new_c = BM1684x::NPU_NUM;
@@ -177,15 +177,21 @@ void tpu::Conv2DOp::weight_reorder_int8_bm1684x() {
   } else {
     filter_shape = {1, attr.oc, 1, attr.kh * attr.kw};
   }
-  reshape_coeff_for_broadcast_channel(filter_i8, filter_shape, false);
   op->setAttr("use_3ic_optimize", builder.getI64IntegerAttr(use_3ic_optimize));
   if (merge == false) {
-    auto elem_type = Module::getStorageType(filter());
-    auto filter_type = RankedTensorType::get(filter_shape, elem_type);
-    auto filter_op =
-        top::WeightOp::create(op, "filter_reorderd", *filter_i8, filter_type);
-    op->setOperand(1, filter_op);
+    auto stype = Module::getStorageType(filter());
+    auto new_type = RankedTensorType::get(filter_shape, stype);
+    auto new_op =
+        top::WeightOp::create(op, "filter_reorderd", *filter_i8, new_type);
+    op->setOperand(1, new_op);
+    if (attr.has_bias) {
+      auto elem_type = Module::getStorageType(bias());
+      auto bias_type = RankedTensorType::get({1, attr.oc, 1, 1}, elem_type);
+      bias().setType(bias_type);
+    }
+    return;
   }
+  reshape_coeff_for_broadcast_channel(filter_i8, filter_shape, false);
   int64_t new_oc = filter_shape[1];
   int64_t filter_w_bytes = filter_shape[3] * sizeof(int8_t);
 
@@ -199,13 +205,6 @@ void tpu::Conv2DOp::weight_reorder_int8_bm1684x() {
     reshape_coeff_for_broadcast_channel(bias_new, bias_shape, false);
     assert(new_oc == bias_shape[1]);
     bias_w_bytes = bias_shape[3] * sizeof(int32_t);
-    if (merge == false) {
-      auto elem_type = Module::getStorageType(bias());
-      auto bias_type = RankedTensorType::get(bias_shape, elem_type);
-      auto bias_op =
-          top::WeightOp::create(op, "bias_reorderd", *bias_new, bias_type);
-      op->setOperand(2, bias_op);
-    }
   }
   if (merge == false) {
     return;
@@ -506,38 +505,43 @@ void tpu::Conv2DOp::codegen_global_bm1684x() {
 int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
+  conv_attr_t p = {0};
+  parseParam(&p);
   int64_t sz = 0;
+  auto in_type = BM168x::getDataType(input());
+  auto out_type = BM168x::getDataType(output());
+  int in_type_len = BM168x::getFmtBytes(in_type);
+  int out_type_len = BM168x::getFmtBytes(out_type);
+  auto eu_num = BM1684x::instance().get_eu_num(in_type_len);
+  auto npu_num = BM1684x::NPU_NUM;
+  int oc_per_npu = ceiling_func(p.oc, npu_num);
+  int ic_per_npu = ceiling_func(p.ic/p.groups, npu_num);
+  int int32_size = out_lmem_bytes * sizeof(int32_t) / out_type_len;
   if (coeff_merged()) {
-    sz = out_lmem_bytes * sizeof(int32_t);
+    sz += int32_size;
+  }
+  if (p.groups > 1) {
+    sz += in_nslice * ic_per_npu * align_up(in_hslice * p.iw, eu_num) * in_type_len;
+    sz += ic_per_npu * 2 * in_type_len;
   }
 
-  auto i_s = Module::getShape(input());
-  auto o_s = Module::getShape(output());
-  auto kernel = Module::getI64Array(kernel_shape());
-  int64_t n = i_s[0];
-  int64_t ih = i_s[2];
-  int64_t iw = i_s[3];
-  int64_t oh = o_s[2];
-  int64_t ow = o_s[3];
-  int64_t kh = kernel->at(0);
-  int64_t kw = kernel->at(1);
-  auto data_type = BM168x::getDataType(output());
-  int type_len = BM168x::getFmtBytes(data_type);
-  int64_t eu_num = BM1684x::instance().get_eu_num(type_len);
-
+  if (p.is_dw) {
+    sz += int32_size;
+    sz += oc_per_npu * p.kh * p.kw;
+  }
   int use_3ic = (use_3ic_optimize() & 0x3);
   if (use_3ic == 1) { // merge kh to ic
-    sz += align_up(out_hslice * iw, eu_num) * n * type_len;
+    sz += align_up(out_hslice * p.iw, eu_num) * in_nslice * in_type_len;
     sz += 64 * 2;
-    sz += kh * type_len;
+    sz += p.kh * in_type_len;
   } else if (use_3ic == 2) { // merge kw to ic
-    sz += align_up(in_hslice * ow, eu_num) * n * type_len;
+    sz += align_up(in_hslice * p.ow, eu_num) * in_nslice * in_type_len;
     sz += 64 * 2;
-    sz += kw * type_len;
+    sz += p.kw * in_type_len;
   } else if (use_3ic == 3) { // merge kh and kw to ic
-    sz += align_up(out_hslice * ow, eu_num) * n * type_len;
+    sz += align_up(out_hslice * p.ow, eu_num) * in_nslice * in_type_len;
     sz += 64 * 2;
-    sz += kh * kw * type_len;
+    sz += p.kh * p.kw * in_type_len;
   }
   return sz;
 }
@@ -574,6 +578,18 @@ void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   common.bias_sign = true;
   common.ipad_is_const = true;
   common.kzp_is_const = true;
+  if (Quant::isUniformQuantized(input())) {
+    auto in_qtype = Quant::getUniformQuantizedType(input());
+    if (coeff_merged()) {
+      p.spec.merge_coeff = 2;
+      p.spec.with_requant = 1;
+      auto out_etype = Module::getStorageType(output());
+      common.if_relu = out_etype.isUnsignedInteger(8);
+    }
+    common.is_asym = true;
+    common.ipad_value = in_qtype.getZeroPoint();
+    common.use_3ic_optimize = use_3ic_optimize();
+  }
   local_sec_info_t sec_info;
   memset(&sec_info, 0, sizeof(sec_info));
   sec_info.n_slice = in_gi.n_slice;
@@ -592,18 +608,6 @@ void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   sec_info.out_h_idx = gi.h_idx;
   sec_info.out_h_slice = gi.h_slice;
   sec_info.out_w_slice = attr.ow;
-  if (Quant::isUniformQuantized(input())) {
-    auto in_qtype = Quant::getUniformQuantizedType(input());
-    if (coeff_merged()) {
-      p.spec.merge_coeff = 2;
-      p.spec.with_requant = 1;
-      auto out_etype = Module::getStorageType(output());
-      common.if_relu = out_etype.isUnsignedInteger(8);
-    }
-    common.is_asym = true;
-    common.ipad_value = in_qtype.getZeroPoint();
-    common.use_3ic_optimize = use_3ic_optimize();
-  }
   BM1684x::instance().call_local_func("backend_api_conv_local", &p, sizeof(p),
                                       &sec_info, input_spec->data(),
                                       output_spec->data());
