@@ -12,7 +12,7 @@ model_list_all=(
   "resnet18"
   "resnet50_v1"
   "resnet50_v2"
-  #"resnet50_tf"
+  "resnet50_tf"
   "shufflenet_v12"
   "squeezenet1.0"
   "vgg16"

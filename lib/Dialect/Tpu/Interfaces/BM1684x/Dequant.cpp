@@ -56,7 +56,7 @@ int64_t tpu::DequantOp::getBufferSize_bm1684x(
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
   auto input_dtype = BM1684x::getDataType(input());
   if (quant_mode() == 1) {
-    return in_lmem_bytes;
+    return out_lmem_bytes;
   }
   return 0;
 }

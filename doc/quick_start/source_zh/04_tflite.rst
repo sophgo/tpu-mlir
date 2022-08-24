@@ -54,7 +54,7 @@ TFLite转MLIR
         --mean 103.939,116.779,123.68 \
         --scale 1.0,1.0,1.0 \
         --pixel_format bgr \
-        --test_input ../image/dog.jpg \
+        --test_input ../image/cat.jpg \
         --test_result resnet50_tf_top_outputs.npz \
         --mlir resnet50_tf.mlir
 
@@ -76,7 +76,6 @@ MLIR转模型
        --chip bm1684x \
        --test_input resnet50_tf_in_f32.npz \
        --test_reference resnet50_tf_top_outputs.npz \
-       --tolerance 0.95,0.85 \
        --model resnet50_tf_1684x.bmodel
 
 
