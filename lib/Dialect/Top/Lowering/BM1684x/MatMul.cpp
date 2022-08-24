@@ -193,14 +193,20 @@ Value top::MatMulOp::lowering_quant_bm1684x() {
     bias().setType(bias_new_type);
   }
 
+  // std::string suffix = "_matmul";
+  // std::string new_name = Module::getName(op).str() + suffix;
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
+    // if (attr.getName() == "name") {
+    //   attrs.push_back(builder.getNamedAttr("name", builder.getStringAttr(new_name)));
+    //   continue;
+    // }
     attrs.push_back(attr);
   }
   attrs.push_back(builder.getNamedAttr("multiplier",
                                        builder.getI64IntegerAttr(multiplier)));
   attrs.push_back(
-      builder.getNamedAttr("rshift", builder.getI64IntegerAttr(shift)));
+      builder.getNamedAttr("rshift", builder.getI64IntegerAttr(-shift)));
   attrs.push_back(
       builder.getNamedAttr("quant_mode", builder.getI64IntegerAttr(0)));
   int32_t input_zeroPoint = input_qtype.getZeroPoint();
@@ -230,8 +236,10 @@ Value top::MatMulOp::lowering_quant_bm1684x() {
   } else {
     operands.push_back(bias());
   }
+  // auto newType = RankedTensorType::get(Module::getShape(output()), builder.getI32Type());
   auto newOp = builder.create<tpu::MatMulOp>(op->getLoc(), output().getType(),
                                              ArrayRef<Value>{operands},
                                              ArrayRef<NamedAttribute>{attrs});
   return newOp.output();
+  // return do_requant(newOp.output(), Module::getName(op).str(), output().getType(), true, multiplier, shift, 1);
 }
