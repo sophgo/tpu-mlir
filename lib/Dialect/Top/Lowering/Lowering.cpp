@@ -414,7 +414,7 @@ struct LoweringPattern : public RewritePattern {
     }
     if (real_mode == Quant::Type::INT8) {
       if (op->hasTrait<SupportFuseRelu>() || isa<top::ReluOp>(op)) {
-        op->setAttr("relu_limit", rewriter.getF64FloatAttr(0.0));
+        op->setAttr("relu_limit", rewriter.getF64FloatAttr(-1.0));
       }
     }
     auto module = Module::getModuleOp(op);

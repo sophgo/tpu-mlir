@@ -55,11 +55,11 @@ int64_t tpu::RequantAxisOp::getBufferSize_bm1684x(
   int64_t n, c, h, w;
   Module::getNCHW(input(), n, c, h, w);
   if (quant_mode() == 0) {
-      buffer_size = 2 * in_lmem_bytes;
-      // buffer_size += 1 * ceiling_func(c, BM1684x::NPU_NUM) * align_up(1 * 1L, BM1684x::EU_BYTES / (int64_t)(sizeof(int))) * sizeof(int);
-    } else if (quant_mode() == 1) {
-      buffer_size = in_lmem_bytes;
-    }
+    buffer_size = in_lmem_bytes;
+    buffer_size += ceiling_func(c, BM1684x::NPU_NUM) * BM1684x::EU_BYTES;
+  } else if (quant_mode() == 1) {
+    buffer_size = in_lmem_bytes;
+  }
   return buffer_size;
 }
 
