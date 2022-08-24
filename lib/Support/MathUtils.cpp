@@ -403,8 +403,8 @@ void function_relu(float *src, float *dst, int64_t size, float relu_limit, mlir:
 #pragma omp parallel for schedule(static, omp_schedule(size))
   for (int64_t i = 0; i < size; ++i) {
     dst[i] = src[i] > 0 ? src[i] : 0;
-    if (relu_limit > 0.f) {
-      dst[i] = dst[i] > relu_limit ? relu_limit : dst[i];
+    if (relu_limit > 0.f && dst[i] > relu_limit) {
+      dst[i] =  relu_limit;
     }
     if (elem_type) {
       if (elem_type.isUnsignedInteger(8)) {
