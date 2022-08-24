@@ -34,12 +34,14 @@ void tpu::RequantOp::codegen_global_bm1684x() {
   param.h = (int)h;
   param.w = (int)w;
 
-  auto iqtype = Quant::getUniformQuantizedType(input());
   auto oqtype = Quant::getUniformQuantizedType(output());
   param.mul_value = multiplier();
-  param.shift_value = rshift();
+  param.shift_value = -rshift();
   param.offset_value = oqtype.getZeroPoint();
-  param.zx_value = iqtype.getZeroPoint();
+  if (Quant::isUniformQuantized(input())) {
+    auto iqtype = Quant::getUniformQuantizedType(input());
+    param.zx_value = iqtype.getZeroPoint();
+  }
   param.mode = quant_mode();
   param.input_dtype = BM168x::getDataType(input());
   param.output_dtype = BM168x::getDataType(output());

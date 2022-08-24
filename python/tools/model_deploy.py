@@ -115,7 +115,10 @@ class DeployTool:
         show_fake_cmd(self.in_f32_npz, self.model, self.model_npz)
         model_outputs = model_inference(self.inputs, self.model)
         np.savez(self.model_npz, **model_outputs)
-        f32_blobs_compare(self.model_npz, self.tpu_npz, self.correctness)
+        if self.state == "TOP_QUANTIZED":
+            f32_blobs_compare(self.model_npz, self.ref_npz, self.correctness)
+        else:
+            f32_blobs_compare(self.model_npz, self.tpu_npz, self.correctness)
 
 
 if __name__ == '__main__':

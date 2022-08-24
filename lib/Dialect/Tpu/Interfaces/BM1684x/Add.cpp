@@ -56,34 +56,17 @@ void tpu::AddOp::codegen_global_bm1684x() {
     auto op = getOperation();
     auto input_spec = BM1684x::get_input_spec(op);
     auto output_spec = BM1684x::get_output_spec(op);
-    local_sec_info_t sec_info;
-    memset(&sec_info, 0, sizeof(sec_info));
-    sec_info.n_slice = n;
-    sec_info.out_n_slice = n;
 
-    sec_info.is_h_split = false;
-    sec_info.h_slice = h;
-    sec_info.h_idx = 0;
-    sec_info.out_h_idx = 0;
-    sec_info.out_h_slice = h;
-
-    sec_info.is_h_split = false;
-    sec_info.w_slice = w;
-    sec_info.out_w_slice = w;
-
-    bcbinary_local_param_t param = {0};
-    param.spec.common.binary_type = BINARY_ADD;
-    param.spec.common.if_relu = do_relu();
-    param.spec.common.relu_upper_limit = relu_limit().convertToDouble();
-    param.spec.common.rshift_A = 0;
-    param.spec.common.rshift_B = 0;
-    param.spec.common.scale_A = 1;
-    param.spec.common.scale_B = 1;
-    param.spec.buffer_addr = 0;
-    param.A_is_coeff = false;
-    param.B_is_coeff = false;
-    BM1684x::instance().call_local_func("backend_api_bcbinary_global", &param,
-                                        sizeof(param), &sec_info, input_spec->data(),
+    bcbinary_common_spec_t param = {0};
+    param.binary_type = BINARY_ADD;
+    param.if_relu = do_relu();
+    param.relu_upper_limit = relu_limit().convertToDouble();
+    param.rshift_A = 0;
+    param.rshift_B = 0;
+    param.scale_A = 1;
+    param.scale_B = 1;
+    BM1684x::instance().call_global_func("backend_api_bcbinary_global", &param,
+                                        sizeof(param), input_spec->data(),
                                         output_spec->data());
   } else {
     llvm::SmallVector<float, 8> coeffs;
@@ -180,12 +163,12 @@ void tpu::AddOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
     sec_info.out_n_slice = gi.n_slice;
 
     sec_info.is_h_split = !(gi.h_idx == 0 && gi.h_slice == h);
-    sec_info.h_slice = gi.h_slice;
-    sec_info.h_idx = gi.h_idx;
+    sec_info.h_idx = in0_gi.h_idx;
+    sec_info.h_slice = in0_gi.h_slice;
     sec_info.out_h_idx = gi.h_idx;
     sec_info.out_h_slice = gi.h_slice;
 
-    sec_info.is_h_split = false;
+    sec_info.is_w_split = false;
     sec_info.w_slice = w;
     sec_info.out_w_slice = w;
 

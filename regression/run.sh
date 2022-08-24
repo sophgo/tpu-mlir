@@ -14,6 +14,7 @@ model_list_basic=(
 # classification
   "mobilenet_v2"
   "resnet50_v2"
+  "resnet50_tf"
   "squeezenet1.0"
 # object detection
   "yolov5s"
