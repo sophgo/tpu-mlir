@@ -241,7 +241,7 @@ Value do_requant(Value input, StringRef name, Type to_type, bool tensorType,
   attrs.push_back(builder.getNamedAttr("multiplier",
                                        builder.getI64IntegerAttr(multiplier)));
   attrs.push_back(
-      builder.getNamedAttr("rshift", builder.getI64IntegerAttr(shift)));
+      builder.getNamedAttr("rshift", builder.getI64IntegerAttr(-shift)));
   attrs.push_back(
       builder.getNamedAttr("quant_mode", builder.getI64IntegerAttr(mode)));
 

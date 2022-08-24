@@ -37,7 +37,7 @@ LogicalResult tpu::RequantOp::inference(InferenceParameter &p) {
     zp_x = i_qtype.getZeroPoint();
     assert(mode == 2);
   }
-  int64_t rshift_val = rshift();
+  int64_t shift_val = -rshift();
   int64_t multi = multiplier();
   int64_t zero_point = o_qtype.getZeroPoint();
 
@@ -51,7 +51,7 @@ LogicalResult tpu::RequantOp::inference(InferenceParameter &p) {
           auto v =
               zero_point + MultiplyByQuantizedMultiplier(
                                (int32_t)(p.inputs[0][offset]),
-                               (int32_t)multi, (int32_t)rshift_val);
+                               (int32_t)multi, (int32_t)shift_val);
           p.outputs[0][offset] = o_sType.isUnsignedInteger(8) ? Quant::to_uint8(v)
                                                               : Quant::to_int8(v);
         }
@@ -60,14 +60,14 @@ LogicalResult tpu::RequantOp::inference(InferenceParameter &p) {
   } else if (mode == 1) {
 #pragma omp parallel for schedule(static, omp_schedule(shape[1]))
     for (int c = 0; c < shape[1]; ++c) {
-      assert(rshift_val <= 0);
+      assert(shift_val <= 0);
       for (int n = 0; n < shape[0]; ++n) {
         for (int i = 0; i < inner; ++i) {
           int offset = (n * shape[1] + c) * inner + i;
           auto v =
               zero_point + MultiplyByQuantizedMultiplier(
                                (int32_t)(p.inputs[0][offset]),
-                               (int32_t)multi, (int32_t)rshift_val);
+                               (int32_t)multi, (int32_t)shift_val);
           p.outputs[0][offset] = o_sType.isUnsignedInteger(8) ? Quant::to_uint8(v)
                                                               : Quant::to_int8(v);
         }
@@ -81,7 +81,7 @@ LogicalResult tpu::RequantOp::inference(InferenceParameter &p) {
           int offset = (n * shape[1] + c) * inner + i;
           auto v =
               zero_point + applyMultiplierAndRShift(
-                               (p.inputs[0][offset] - zp_x), multi, rshift_val);
+                               (p.inputs[0][offset] - zp_x), multi, -shift_val);
           p.outputs[0][offset] = o_sType.isUnsignedInteger(8) ? Quant::to_uint8(v)
                                                               : Quant::to_int8(v);
         }

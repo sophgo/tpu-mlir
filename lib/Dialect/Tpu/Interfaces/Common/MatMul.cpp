@@ -88,10 +88,10 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
     if (quant_mode() == 0 || quant_mode() == 1) {
 #pragma omp parallel for schedule(static, omp_schedule(num_output))
       for (int64_t i = 0; i < num_output; i++) {
-        // auto v = (((int64_t)(p.outputs[0][i] * mlti) + (1 << (rft - 1))) >>
-        // rft);
-        auto v = MultiplyByQuantizedMultiplier((int32_t)(p.outputs[0][i]),
-                                               (int32_t)mlti, (int32_t)rft);
+        // auto v = (((int64_t)(p.outputs[0][i] * mlti) + (1 << (rft - 1))) >> rft);
+        auto v = MultiplyByQuantizedMultiplier(
+                                (int32_t)(p.outputs[0][i]),
+                                (int32_t)mlti, -(int32_t)rft);
         if (out_type.isUnsignedInteger(8)) {
           p.outputs[0][i] = Quant::to_uint8(v + o_qtype.getZeroPoint());
         } else {

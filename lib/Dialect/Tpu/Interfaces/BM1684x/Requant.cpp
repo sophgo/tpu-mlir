@@ -37,7 +37,7 @@ void tpu::RequantOp::codegen_global_bm1684x() {
   auto iqtype = Quant::getUniformQuantizedType(input());
   auto oqtype = Quant::getUniformQuantizedType(output());
   param.mul_value = multiplier();
-  param.shift_value = -rshift();
+  param.shift_value = rshift();
   param.offset_value = oqtype.getZeroPoint();
   param.zx_value = iqtype.getZeroPoint();
   param.mode = quant_mode();
@@ -54,12 +54,15 @@ void tpu::RequantOp::codegen_global_bm1684x() {
 int64_t tpu::RequantOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
+  int64_t buffer_size = 0;
   auto input_dtype = BM1684x::getDataType(input());
   if (input_dtype == DTYPE_INT8 || input_dtype == DTYPE_UINT8) {
     // store INT16:(X - Zx)
-    return in_lmem_bytes * 2;
+    buffer_size = in_lmem_bytes * 2;
+  } else if (quant_mode() == 0 || quant_mode() == 1) {
+    buffer_size = in_lmem_bytes;
   }
-  return 0;
+  return buffer_size;
 }
 
 void tpu::RequantOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
