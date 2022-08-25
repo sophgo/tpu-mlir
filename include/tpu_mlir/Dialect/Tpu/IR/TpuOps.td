@@ -44,23 +44,15 @@ class Tpu_Op<string mnemonic, list<Trait> traits = []> :
        DeclareOpInterfaceMethods<GlobalGenInterface>,
        DeclareOpInterfaceMethods<InferenceInterface>])> ;
 
-class Tpu_ConvOp<string mnemonic> : Tpu_Op<mnemonic,
-    [SupportFuseRelu,
+class Tpu_ConvOp<string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
+    !listconcat(traits, [SupportFuseRelu,
     DeclareOpInterfaceMethods<WeightReorderInterface>,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH"]>]> {
+    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH"]>])> {
   let summary = "convolution operator";
 
   let description = [{
   }];
 
-  let results = (outs AnyTensor:$output);
-  let extraClassDeclaration = [{
-    void parseParam(void *param);
-  }];
-}
-
-// def Tpu_Conv1DOp : Tpu_ConvOp<"Conv1D">;
-def Tpu_Conv2DOp : Tpu_ConvOp<"Conv2D"> {
   let arguments = (ins
     AnyTensor:$input,
     AnyTensor:$filter,
@@ -83,9 +75,38 @@ def Tpu_Conv2DOp : Tpu_ConvOp<"Conv2D"> {
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
 
+  let results = (outs AnyTensor:$output);
+  let extraClassDeclaration = [{
+    void parseParam(void *param);
+  }];
+}
+
+def Tpu_Conv1DOp : Tpu_ConvOp<"Conv1D">;
+def Tpu_Conv2DOp : Tpu_ConvOp<"Conv2D"> {
   let hasCanonicalizer = 1;
 }
-// def Tpu_Conv3DOp : Tpu_ConvOp<"Conv3D">;
+def Tpu_Conv3DOp : Tpu_ConvOp<"Conv3D",
+  [DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$filter,
+    AnyTensorOrNone:$bias,
+    I64ArrayAttr:$kernel_shape,
+    I64ArrayAttr:$strides,
+    I64ArrayAttr:$pads, // front,top,left,back,bottom,right
+    DefaultValuedAttr<I64Attr, "1">:$group,
+    OptionalAttr<I64ArrayAttr>:$dilations,
+    OptionalAttr<I64ArrayAttr>:$inserts,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    //new param
+    BoolAttr:$with_bias,
+    // OptionalAttr<I64ArrayAttr>:$multiplier,
+    // OptionalAttr<I64ArrayAttr>:$rshift,
+    // OptionalAttr<I64Attr>:$quant_mode,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+  );
+}
 
 class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,
   [SupportFuseRelu,

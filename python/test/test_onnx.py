@@ -26,7 +26,9 @@ TEST_ONNX_IR = [
     "AvgPool1D",
     "AvgPool2D",
     "AvgPool3D",
+    "Conv1d",
     "Conv2d",
+    "Conv3d",
     "MaxPool1D",
     "MaxPool2D",
     "MaxPool3D",
@@ -71,7 +73,9 @@ class ONNX_IR_TESTER(object):
     def __init__(self):
         self.test_function = {
             # Todo: add more operators
+            "Conv1d": self.test_Conv1d,
             "Conv2d": self.test_Conv2d,
+            "Conv3d": self.test_Conv3d,
             "AvgPool1D": self.test_AvgPool1D,
             "AvgPool2D": self.test_AvgPool2D,
             "AvgPool3D": self.test_AvgPool3D,
@@ -99,7 +103,7 @@ class ONNX_IR_TESTER(object):
             "Scale": self.test_Scale,
             "LayerGroup": self.test_LayerGroup,
         }
-        self.quant_modes = ["f32"]  # no quantization when quant_mode == "f32"
+        self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
 
     def pytorch_transform_onnx(self, model, inputs, test_name):
         in_names = []
@@ -227,6 +231,21 @@ class ONNX_IR_TESTER(object):
     ##################################
     # adding operators from here
     ##################################
+    def AvgPoolBase(self, test_case, input_shape, output_shape, kernel, strides):
+        input_data = np.random.randn(*input_shape).astype(np.float32)
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+
+        pool_def = onnx.helper.make_node(
+            'AveragePool',
+            inputs=['input'],
+            outputs=['output'],
+            kernel_shape=kernel,
+            strides=strides,
+        )
+        graph_def = helper.make_graph([pool_def], test_case, [input], [output])
+        self.convert_and_test({"input": input_data}, graph_def, test_case)
+
     def test_AvgPool1D(self):
         test_case = 'AvgPool1D'
         input_shape = [1, 32, 128]
@@ -255,94 +274,70 @@ class ONNX_IR_TESTER(object):
         self.convert_and_test({"input": input_data}, graph_def, test_case)
 
     def test_AvgPool2D(self):
-        test_case = 'AvgPool2D'
-        input_shape = [1, 32, 128, 128]
-        output_shape = [1, 32, 64, 64]
-        input_data = np.random.randn(*input_shape).astype(np.float32)
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-
-        pool_def = onnx.helper.make_node(
-            'AveragePool',
-            inputs=['input'],
-            outputs=['output'],
-            kernel_shape=[2, 2],
-            strides=[2, 2],
-        )
-        graph_def = helper.make_graph([pool_def], test_case, [input], [output])
-        self.convert_and_test({"input": input_data}, graph_def, test_case)
+        self.AvgPoolBase('AvgPool2D', [1, 32, 128, 128],
+                         [1, 32, 64, 64], [2, 2], [2, 2])
 
     def test_AvgPool3D(self):
-        test_case = 'AvgPool3D'
-        input_shape = [2, 32, 16, 32, 64]
-        output_shape = [2, 32, 8, 16, 32]
+        self.AvgPoolBase('AvgPool3D', [2, 32, 16, 32, 64],
+                         [2, 32, 8, 16, 32], [2, 2, 2], [2, 2, 2])
+
+    def MaxPoolBase(self, test_case, input_shape, output_shape, kernel, strides):
         input_data = np.random.randn(*input_shape).astype(np.float32)
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
 
         pool_def = onnx.helper.make_node(
-            'AveragePool',
+            'MaxPool',
             inputs=['input'],
             outputs=['output'],
-            kernel_shape=[2, 2, 2],
-            strides=[2, 2, 2],
+            kernel_shape=kernel,
+            strides=strides,
         )
         graph_def = helper.make_graph([pool_def], test_case, [input], [output])
         self.convert_and_test({"input": input_data}, graph_def, test_case)
 
     def test_MaxPool1D(self):
-        test_case = 'MaxPool1D'
-        input_shape = [1, 32, 128]
-        output_shape = [1, 32, 64]
-        input_data = np.random.randn(*input_shape).astype(np.float32)
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-
-        pool_def = onnx.helper.make_node(
-            'MaxPool',
-            inputs=['input'],
-            outputs=['output'],
-            kernel_shape=[2],
-            strides=[2],
-        )
-        graph_def = helper.make_graph([pool_def], test_case, [input], [output])
-        self.convert_and_test({"input": input_data}, graph_def, test_case)
+        self.MaxPoolBase('MaxPool1D', [1, 32, 128], [1, 32, 64], [2], [2])
 
     def test_MaxPool2D(self):
-        test_case = 'MaxPool2D'
-        input_shape = [1, 32, 128, 128]
-        output_shape = [1, 32, 64, 64]
-        input_data = np.random.randn(*input_shape).astype(np.float32)
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-
-        pool_def = onnx.helper.make_node(
-            'MaxPool',
-            inputs=['input'],
-            outputs=['output'],
-            kernel_shape=[2, 2],
-            strides=[2, 2],
-        )
-        graph_def = helper.make_graph([pool_def], test_case, [input], [output])
-        self.convert_and_test({"input": input_data}, graph_def, test_case)
+        self.MaxPoolBase('MaxPool2D', [1, 32, 128, 128],
+                         [1, 32, 64, 64], [2, 2], [2, 2])
 
     def test_MaxPool3D(self):
-        test_case = 'MaxPool3D'
-        input_shape = [1, 32, 16, 32, 64]
-        output_shape = [1, 32, 8, 16, 63]
+        self.MaxPoolBase('MaxPool3D', [1, 32, 16, 32, 64], [1, 32, 8, 16, 63],
+                         [2, 1, 2], [2, 2, 1])
+
+    def ConvBase(self, test_case, input_shape, filter_shape, output_shape,
+                 kernel, padding, stride, dilation, groups):
         input_data = np.random.randn(*input_shape).astype(np.float32)
+        weight_data = np.random.randn(*filter_shape).astype(np.float32)
+        bias_data = np.random.randn(output_shape[1]).astype(np.float32)
+
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
+        bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape), bias_data)
 
-        pool_def = onnx.helper.make_node(
-            'MaxPool',
-            inputs=['input'],
+        conv_def = helper.make_node(
+            "Conv",
+            inputs=['input', 'weight', 'bias'],
             outputs=['output'],
-            kernel_shape=[2, 1, 2],
-            strides=[2, 2, 1],
+            kernel_shape=kernel,
+            pads=padding,
+            strides=stride,
+            dilations=dilation,
+            group=groups,
         )
-        graph_def = helper.make_graph([pool_def], test_case, [input], [output])
-        self.convert_and_test({"input": input_data}, graph_def, test_case)
+
+        graph_def = helper.make_graph([conv_def],
+                                      test_case, [input], [output],
+                                      initializer=[weight, bias])
+        self.convert_and_test({'input': input_data}, graph_def, test_case)
+
+    def test_Conv1d(self):
+        oc = 32
+        self.ConvBase('Conv1d', [1, 16, 100], [oc, 16, 3],
+                      [1, oc, 100], [3], [1, 1], [1], [1], 1)
 
     def test_Conv2d(self):
         test_case = 'Conv2d'
@@ -350,30 +345,19 @@ class ONNX_IR_TESTER(object):
         input_shape = [1, 16, 100, 100]
         filter_shape = [oc, 16, 3, 3]
         output_shape = [1, oc, 100, 100]
-        input_data = np.random.randn(*input_shape).astype(np.float32)
-        weight_data = np.random.randn(*filter_shape).astype(np.float32)
-        bias_data = np.random.randn(oc).astype(np.float32)
+        self.ConvBase(test_case, input_shape, filter_shape, output_shape,
+                      kernel=[3, 3], padding=[1, 1, 1, 1], stride=[1, 1],
+                      dilation=[1, 1], groups=1)
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-        weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
-        bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape), bias_data)
-
-        node_def = helper.make_node(
-            "Conv",
-            inputs=['input', 'weight', 'bias'],
-            outputs=['output'],
-            kernel_shape=[3, 3],
-            pads=[1, 1, 1, 1],
-            strides=[1, 1],
-            dilations=[1, 1],
-            group=1,
-        )
-
-        graph_def = helper.make_graph([node_def],
-                                      test_case, [input], [output],
-                                      initializer=[weight, bias])
-        self.convert_and_test({'input': input_data}, graph_def, test_case)
+    def test_Conv3d(self):
+        test_case = 'Conv3d'
+        oc = 32
+        input_shape = [1, 16, 10, 30, 50]
+        filter_shape = [oc, 16, 3, 3, 3]
+        output_shape = [1, oc, 10, 30, 50]
+        self.ConvBase(test_case, input_shape, filter_shape, output_shape,
+                      kernel=[3, 3, 3], padding=[1, 1, 1, 1, 1, 1], stride=[1, 1, 1],
+                      dilation=[1, 1, 1], groups=1)
 
     def test_SiLU(self):
         test_case = 'SiLU'

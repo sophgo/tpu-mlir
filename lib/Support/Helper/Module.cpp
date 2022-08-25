@@ -294,25 +294,17 @@ static void getNCHW_align_left(llvm::ArrayRef<int64_t> shape, int64_t &n,
                                int64_t &c, int64_t &h, int64_t &w) {
   int num_dims = shape.size();
   n = 1, c = 1, h = 1, w = 1;
-  if (num_dims >= 4) {
-    n = std::accumulate(shape.begin(), shape.begin() + num_dims - 3, 1,
-                        std::multiplies<int64_t>());
-    c = shape[num_dims - 3];
-    h = shape[num_dims - 2];
-    w = shape[num_dims - 1];
-  } else if (num_dims == 3) {
-    n = shape[num_dims - 3];
-    c = shape[num_dims - 2];
-    h = shape[num_dims - 1];
-  } else if (num_dims == 2) {
-    n = shape[num_dims - 2];
-    c = shape[num_dims - 1];
-  } else if (num_dims == 1) {
-    n = shape[num_dims - 1];
-  } else if (num_dims == 0) {
-    // scalar
-  } else {
-    llvm_unreachable("unsupported shape size");
+  if (num_dims > 0) {
+    n = shape[0];
+  }
+  if (num_dims > 1) {
+    c = shape[1];
+  }
+  if (num_dims > 2) {
+    h = shape[2];
+  }
+  for (size_t i = 3; i < num_dims; ++i) {
+    w *= shape[i];
   }
 }
 

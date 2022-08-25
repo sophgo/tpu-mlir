@@ -53,8 +53,9 @@ bool GroupOps::isWeightValue(Value v) {
 }
 
 bool GroupOps::is_eu_align(Value opd, Operation *op) {
-  if (auto castOp = dyn_cast<tpu::Conv2DOp>(op)) {
-    if (opd == castOp.filter() || opd == castOp.bias()) {
+  if (isWeightValue(opd)) {
+    if (isa<tpu::Conv1DOp, tpu::Conv2DOp, tpu::Conv3DOp, tpu::DeconvOp>(op) &&
+        (opd == op->getOperand(1) || opd == op->getOperand(2))) {
       return false;
     }
   }

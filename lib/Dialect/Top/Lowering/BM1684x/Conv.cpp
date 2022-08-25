@@ -9,6 +9,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/Dnnl/Conv.h"
+#include "../Lowering.h"
 #include "mlir/IR/Location.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
@@ -16,7 +17,6 @@
 #include "tpu_mlir/Support/Helper/Module.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "../Lowering.h"
 
 using namespace mlir;
 using namespace tpu_mlir;
@@ -106,8 +106,9 @@ Value top::ConvOp::lowering_int8_bm1684x(bool asymmetric) {
     operands.push_back(new_filter);
   }
   if (attr.has_bias) {
-    auto new_type =
-        RankedTensorType::get({1, attr.oc, 1, 1}, builder.getI32Type());
+    std::vector<int64_t> bias_shape(Module::getShape(output()).size(), 1);
+    bias_shape[1] = attr.oc;
+    auto new_type = RankedTensorType::get(bias_shape, builder.getI32Type());
     auto new_bias = WeightOp::create(op, "bias_int32", *bias_int32, new_type);
     operands.push_back(new_bias);
   } else {
@@ -119,18 +120,55 @@ Value top::ConvOp::lowering_int8_bm1684x(bool asymmetric) {
     attrs.push_back(attr);
   }
   attrs.push_back(
-      builder.getNamedAttr("quant_mode", builder.getI64IntegerAttr(2)));
-  attrs.push_back(builder.getNamedAttr(
-      "rshift", builder.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v})));
-  attrs.push_back(builder.getNamedAttr(
-      "multiplier", builder.getI64ArrayAttr(ArrayRef<int64_t>{multiplier_v})));
-  attrs.push_back(
       builder.getNamedAttr("with_bias", builder.getBoolAttr(attr.has_bias)));
-  auto newType = Quant::getQuantInt8Type(output(), asymmetric);
-  auto newOp = builder.create<tpu::Conv2DOp>(op->getLoc(), newType,
-                                             ArrayRef<Value>{operands},
-                                             ArrayRef<NamedAttribute>{attrs});
-  return newOp.output();
+
+  Value newValue;
+  if (kernel_shape().size() == 3) {
+    /// merge requant to conv3d when 1684x backend supports this
+    /// conv3d(int32) + requant_to_i8
+    auto convType =
+        RankedTensorType::get(Module::getShape(output()), builder.getI32Type());
+    auto conv_name = Module::getName(op).str() + "_int32";
+    auto name_loc = NameLoc::get(builder.getStringAttr(conv_name));
+    auto Conv3dOp = builder.create<tpu::Conv3DOp>(
+        name_loc, convType, ArrayRef<Value>{operands},
+        ArrayRef<NamedAttribute>{attrs});
+
+    // requant
+    auto output_type = Quant::getQuantInt8Type(output(), asymmetric);
+    std::vector<int32_t> quant(attr.oc * 3, 0);
+    for (size_t i = 0; i < attr.oc; ++i) {
+      quant[i * 3] = multiplier_v[i];
+      quant[i * 3 + 1] = -rshift_v[i];
+      quant[i * 3 + 2] = out_zp;
+    }
+    auto quant_type =
+        RankedTensorType::get({1, attr.oc, 1, 1, 3}, builder.getI32Type());
+    auto quant_value = top::WeightOp::create(op, "quant", quant, quant_type);
+    newValue = do_requant(op->getLoc(), Conv3dOp.output(), quant_value,
+                          output_type, true, 2);
+  } else {
+    attrs.push_back(
+        builder.getNamedAttr("quant_mode", builder.getI64IntegerAttr(2)));
+    attrs.push_back(builder.getNamedAttr(
+        "rshift", builder.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v})));
+    attrs.push_back(builder.getNamedAttr(
+        "multiplier",
+        builder.getI64ArrayAttr(ArrayRef<int64_t>{multiplier_v})));
+    auto newType = Quant::getQuantInt8Type(output(), asymmetric);
+    if (kernel_shape().size() == 1) {
+      auto newOp = builder.create<tpu::Conv1DOp>(
+          op->getLoc(), newType, ArrayRef<Value>{operands},
+          ArrayRef<NamedAttribute>{attrs});
+      newValue = newOp.output();
+    } else if (kernel_shape().size() == 2) {
+      auto newOp = builder.create<tpu::Conv2DOp>(
+          op->getLoc(), newType, ArrayRef<Value>{operands},
+          ArrayRef<NamedAttribute>{attrs});
+      newValue = newOp.output();
+    }
+  }
+  return newValue;
 }
 
 Value top::ConvOp::lowering_f32_bm1684x() {
@@ -151,10 +189,24 @@ Value top::ConvOp::lowering_f32_bm1684x() {
   attrs.push_back(
       builder.getNamedAttr("with_bias", builder.getBoolAttr(with_bias)));
 
-  auto newOp = builder.create<tpu::Conv2DOp>(op->getLoc(), output().getType(),
-                                             ArrayRef<Value>{operands},
-                                             ArrayRef<NamedAttribute>{attrs});
-  return newOp.output();
+  Value newValue;
+  if (kernel_shape().size() == 1) {
+    auto newOp = builder.create<tpu::Conv1DOp>(op->getLoc(), output().getType(),
+                                               ArrayRef<Value>{operands},
+                                               ArrayRef<NamedAttribute>{attrs});
+    newValue = newOp.output();
+  } else if (kernel_shape().size() == 2) {
+    auto newOp = builder.create<tpu::Conv2DOp>(op->getLoc(), output().getType(),
+                                               ArrayRef<Value>{operands},
+                                               ArrayRef<NamedAttribute>{attrs});
+    newValue = newOp.output();
+  } else {
+    auto newOp = builder.create<tpu::Conv3DOp>(op->getLoc(), output().getType(),
+                                               ArrayRef<Value>{operands},
+                                               ArrayRef<NamedAttribute>{attrs});
+    newValue = newOp.output();
+  }
+  return newValue;
 }
 
 Value top::ConvOp::lowering_f16_bm1684x() {
@@ -178,10 +230,24 @@ Value top::ConvOp::lowering_f16_bm1684x() {
   auto tensor_type = output().getType().cast<RankedTensorType>();
   auto newType =
       RankedTensorType::get(tensor_type.getShape(), builder.getF16Type());
-  auto newOp = builder.create<tpu::Conv2DOp>(op->getLoc(), newType,
-                                             ArrayRef<Value>{operands},
-                                             ArrayRef<NamedAttribute>{attrs});
-  return newOp.output();
+  Value newValue;
+  if (kernel_shape().size() == 1) {
+    auto newOp = builder.create<tpu::Conv1DOp>(op->getLoc(), newType,
+                                               ArrayRef<Value>{operands},
+                                               ArrayRef<NamedAttribute>{attrs});
+    newValue = newOp.output();
+  } else if (kernel_shape().size() == 2) {
+    auto newOp = builder.create<tpu::Conv2DOp>(op->getLoc(), newType,
+                                               ArrayRef<Value>{operands},
+                                               ArrayRef<NamedAttribute>{attrs});
+    newValue = newOp.output();
+  } else {
+    auto newOp = builder.create<tpu::Conv3DOp>(op->getLoc(), newType,
+                                               ArrayRef<Value>{operands},
+                                               ArrayRef<NamedAttribute>{attrs});
+    newValue = newOp.output();
+  }
+  return newValue;
 }
 
 Value top::ConvOp::lowering_bf16_bm1684x() {
@@ -205,10 +271,24 @@ Value top::ConvOp::lowering_bf16_bm1684x() {
   auto tensor_type = output().getType().cast<RankedTensorType>();
   auto newType =
       RankedTensorType::get(tensor_type.getShape(), builder.getBF16Type());
-  auto newOp = builder.create<tpu::Conv2DOp>(op->getLoc(), newType,
-                                             ArrayRef<Value>{operands},
-                                             ArrayRef<NamedAttribute>{attrs});
-  return newOp.output();
+  Value newValue;
+  if (kernel_shape().size() == 1) {
+    auto newOp = builder.create<tpu::Conv1DOp>(op->getLoc(), newType,
+                                               ArrayRef<Value>{operands},
+                                               ArrayRef<NamedAttribute>{attrs});
+    newValue = newOp.output();
+  } else if (kernel_shape().size() == 2) {
+    auto newOp = builder.create<tpu::Conv2DOp>(op->getLoc(), newType,
+                                               ArrayRef<Value>{operands},
+                                               ArrayRef<NamedAttribute>{attrs});
+    newValue = newOp.output();
+  } else {
+    auto newOp = builder.create<tpu::Conv3DOp>(op->getLoc(), newType,
+                                               ArrayRef<Value>{operands},
+                                               ArrayRef<NamedAttribute>{attrs});
+    newValue = newOp.output();
+  }
+  return newValue;
 }
 
 Value top::ConvOp::lowering_quant_bm1684x() {
@@ -302,13 +382,29 @@ Value top::ConvOp::lowering_quant_bm1684x() {
       RankedTensorType::get(Module::getShape(output()), builder.getI32Type());
   auto new_name = Module::getName(op).str() + "_int32";
   auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
-  auto convOp = builder.create<tpu::Conv2DOp>(name_loc, newType,
-                                              ArrayRef<Value>{operands},
-                                              ArrayRef<NamedAttribute>{attrs});
+
+  Value newValue;
+  if (kernel_shape().size() == 1) {
+    auto newOp = builder.create<tpu::Conv1DOp>(name_loc, newType,
+                                               ArrayRef<Value>{operands},
+                                               ArrayRef<NamedAttribute>{attrs});
+    newValue = newOp.output();
+  } else if (kernel_shape().size() == 2) {
+    auto newOp = builder.create<tpu::Conv2DOp>(name_loc, newType,
+                                               ArrayRef<Value>{operands},
+                                               ArrayRef<NamedAttribute>{attrs});
+    newValue = newOp.output();
+  } else {
+    auto newOp = builder.create<tpu::Conv3DOp>(name_loc, newType,
+                                               ArrayRef<Value>{operands},
+                                               ArrayRef<NamedAttribute>{attrs});
+    newValue = newOp.output();
+  }
+
   // do requant
   int quant_size = filter_scales.size();
   if (quant_size == 1) {
-    return do_requant(op->getLoc(), convOp.output(), output().getType(), true,
+    return do_requant(op->getLoc(), newValue, output().getType(), true,
                       multiplier[0], shift[0], 0);
   } else {
     std::vector<int32_t> quant(quant_size * 3, 0);
@@ -317,10 +413,13 @@ Value top::ConvOp::lowering_quant_bm1684x() {
       quant[i * 3 + 1] = shift[i];
       quant[i * 3 + 2] = output_qtype.getZeroPoint();
     }
-    auto quant_type =
-        RankedTensorType::get({1, quant_size, 1, 3}, builder.getI32Type());
+    std::vector<int64_t> quant_shape(Module::getShape(input()).size(), 1l);
+    quant_shape[1] = quant_size;
+    quant_shape.back() = 3;
+    auto quant_type = RankedTensorType::get(quant_shape, builder.getI32Type());
     auto quantValue = top::WeightOp::create(op, "quant", quant, quant_type);
-    return do_requant(op->getLoc(), convOp.output(), quantValue,
-                      output().getType(), true, 0);
+    return do_requant(op->getLoc(), newValue, quantValue, output().getType(),
+                      true, 0);
   }
+  return nullptr;
 }
