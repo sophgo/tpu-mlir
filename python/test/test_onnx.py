@@ -800,7 +800,7 @@ class ONNX_IR_TESTER(object):
                 y2 = y0 + y1
                 return y0, y2
 
-        shape = (2, 3, 180, 180)
+        shape = (2, 3, 100, 100)
         input_data = torch.randn(*shape)
         self.torch_and_test(input_data, Model(), model_name)
 
@@ -900,7 +900,6 @@ class ONNX_IR_TESTER(object):
             graph_def,
             test_case,
         )
-
 
 if __name__ == "__main__":
     tester = ONNX_IR_TESTER()

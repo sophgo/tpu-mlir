@@ -7,13 +7,28 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "GroupOps.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/GroupOps.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include <numeric>
 
 using namespace mlir;
 using namespace tpu_mlir::tpu;
 using namespace tpu_mlir::backend;
+
+static bool is_ts_overlapped(int64_t start_ts0, int64_t end_ts0,
+                             int64_t start_ts1, int64_t end_ts1) {
+  bool ret = false;
+  if (start_ts0 <= end_ts0) {
+    ret = !(
+        (start_ts1 <= end_ts1 &&
+         (start_ts1 > end_ts0 || end_ts1 < start_ts0)) ||
+        (start_ts1 > end_ts1 && (start_ts1 > end_ts0 && end_ts1 < start_ts0)));
+  } else {
+    ret = !(start_ts1 > end_ts0 && start_ts1 < start_ts0 && end_ts1 > end_ts0 &&
+            end_ts1 < start_ts0);
+  }
+  return ret;
+}
 
 lmem_info_t *GroupOps::find_lmem_info(group_lmem_t &group_lmem, mlir::Value v) {
   if (group_lmem == nullptr || v == nullptr) {
@@ -72,6 +87,8 @@ bool GroupOps::need_bcast(Value opd) {
   return false;
 }
 
+// assign id for all Value and Op
+// mark input and output
 group_lmem_t GroupOps::list_lmems(int64_t start_idx, int64_t end_idx) {
   assert(end_idx > start_idx);
   int64_t id = 0;
@@ -81,7 +98,6 @@ group_lmem_t GroupOps::list_lmems(int64_t start_idx, int64_t end_idx) {
     if (isa<top::WeightOp>(op)) {
       continue;
     }
-    int64_t op_id = id + op->getNumOperands();
     for (auto opd : op->getOperands()) {
       auto in_op_ = opd.getDefiningOp();
       if (in_op_ != nullptr) {
@@ -90,7 +106,7 @@ group_lmem_t GroupOps::list_lmems(int64_t start_idx, int64_t end_idx) {
         }
         if (isa<top::WeightOp>(in_op_)) {
           auto eu_align = is_eu_align(opd, op);
-          lmem_info_t li(LMEM_WEIGHT, id, op_id, op_id, opd, in_op_, eu_align);
+          lmem_info_t li(LMEM_WEIGHT, id, opd, in_op_, eu_align);
           lmems->emplace_back(li);
           id++;
           continue;
@@ -98,20 +114,20 @@ group_lmem_t GroupOps::list_lmems(int64_t start_idx, int64_t end_idx) {
       }
       auto it = find_lmem_info(lmems, opd);
       if (it != nullptr) {
-        it->end_id = op_id;
         continue;
       }
 
-      lmem_info_t li(LMEM_ACTIVATION, id, op_id, op_id, opd, in_op_);
+      lmem_info_t li(LMEM_ACTIVATION, id, opd, in_op_);
       li.is_input = true;
       lmems->emplace_back(li);
       id++;
     }
+
     auto out = op->getResult(0);
-    lmem_info_t li(LMEM_OPERATION, op_id, op_id, op_id, out, op);
+    lmem_info_t li(LMEM_OPERATION, id, out, op);
     lmems->emplace_back(li);
-    id = op_id + 1;
-    lmem_info_t li_out(LMEM_ACTIVATION, id, op_id, op_id, out, op);
+    id++;
+    lmem_info_t li_out(LMEM_ACTIVATION, id, out, op);
     lmems->emplace_back(li_out);
     id++;
   }
@@ -131,7 +147,6 @@ group_lmem_t GroupOps::list_lmems(int64_t start_idx, int64_t end_idx) {
 }
 
 GroupOps::GroupOps(::mlir::func::FuncOp func_) {
-  int id = 1;
   MAX_ID = llvm::maxIntN(64);
   func = func_;
   ctx = func.getContext();
@@ -143,6 +158,13 @@ GroupOps::GroupOps(::mlir::func::FuncOp func_) {
       // do nothing
     } else {
       all_ops.push_back(op);
+      auto opds = op->getOperands();
+      for (auto v : opds) {
+        if (std::find(all_tensors.begin(), all_tensors.end(), v) ==
+            all_tensors.end()) {
+          all_tensors.push_back(v);
+        }
+      }
     }
   });
 }
@@ -188,7 +210,9 @@ void GroupOps::buildGroups() {
     if (group_lmem != nullptr) {
       assert(new_start_idx >= start_idx);
       groups.push_back(group_pair_t(new_start_idx, end_idx));
+      groups_ops.push_back(group_ops);
       all_lmems.push_back(group_lmem);
+      time_steps.push_back(time_step);
       end_idx = new_start_idx - 1;
       continue;
     }
@@ -254,7 +278,10 @@ void GroupOps::buildMlir() {
   }
   auto num_groups = groups.size();
   assert(num_groups == all_lmems.size());
-  for (auto group_lmem : all_lmems) {
+  for (uint32_t i = 0; i < all_lmems.size(); ++i) {
+    auto &group_lmem = all_lmems[i];
+    time_step = time_steps[i];
+    group_ops = groups_ops[i];
     buildGroupOp(group_lmem);
   }
 }
@@ -299,6 +326,8 @@ void GroupOps::buildGroupOp(group_lmem_t &group_lmem) {
       builder.getNamedAttr("nsecs", builder.getI64IntegerAttr(nsecs)));
   attrs.push_back(
       builder.getNamedAttr("hsecs", builder.getI64IntegerAttr(hsecs)));
+  attrs.push_back(
+      builder.getNamedAttr("swpipl_stage_num", builder.getI64IntegerAttr(3)));
   builder.setInsertionPointAfter(ops.back());
   auto groupOp =
       builder.create<tpu::GroupOp>(func.getLoc(), ret_types, operands, attrs);
@@ -314,35 +343,81 @@ void GroupOps::buildGroupOp(group_lmem_t &group_lmem) {
 
   current_op = nullptr;
   llvm::SmallVector<Value, 8> stores;
+  int64_t id = 0;
   for (auto &linfo : *group_lmem) {
     if (linfo.type == LMEM_OPERATION) {
       auto op = linfo.op;
-      UpdateOpLgParam(group_lmem, linfo);
+      UpdateOpLgParam(group_lmem, linfo, id);
       if (current_op != nullptr) {
         op->moveAfter(current_op);
       }
       current_op = op;
+      id++;
     } else if (linfo.is_input || linfo.type == LMEM_WEIGHT) {
-      CreateLoadOp(linfo, ops);
+      CreateLoadOp(linfo, ops, id);
+      id++;
     } else if (linfo.is_output) {
-      auto op = CreateStoreOp(linfo);
+      auto op = CreateStoreOp(linfo, id);
       stores.push_back(op->getResult(0));
+      id++;
     }
   }
   builder.setInsertionPointAfter(current_op);
   builder.create<tpu::YieldOp>(func.getLoc(), stores);
+
+  // update flow attribute
+  std::vector<int64_t> flow;
+  int64_t timestep = -1;
+  for (uint32_t ts = 0; ts < time_step->get_timestep_num(); ++ts) {
+    flow.push_back(timestep);
+    auto cur_ops = time_step->getOps(ts);
+    for (auto op : cur_ops) {
+      auto lgOp = dyn_cast<LocalGenInterface>(op);
+      auto ginfo = lgOp.getGroupInfo((int64_t)0, (int64_t)0);
+      flow.push_back(ginfo.id);
+    } // cur_ops
+    auto cur_tensors = time_step->getValues(ts);
+    for (auto v : cur_tensors) {
+      auto op = v.getDefiningOp();
+      if (op != nullptr && !isa<top::WeightOp>(op) &&
+          std::find(group_ops->begin(), group_ops->end(), op) !=
+              group_ops->end()) {
+        for (auto user : v.getUsers()) {
+          if (isa<tpu::StoreOp>(user)) {
+            op = user;
+            break;
+          }
+        }
+      } else {
+        for (auto user : v.getUsers()) {
+          if (isa<tpu::LoadOp>(user)) {
+            op = user;
+            break;
+          }
+        }
+      }
+      auto lgOp = dyn_cast<LocalGenInterface>(op);
+      auto ginfo = lgOp.getGroupInfo((int64_t)0, (int64_t)0);
+      flow.push_back(ginfo.id);
+    } // cur_tensors
+    timestep--;
+  }
+
+  groupOp->setAttr("flow", builder.getI64ArrayAttr(flow));
 }
 
-void GroupOps::UpdateOpLgParam(group_lmem_t &group_lmem, lmem_info_t &linfo) {
+void GroupOps::UpdateOpLgParam(group_lmem_t &group_lmem, lmem_info_t &linfo,
+                               int64_t id) {
   assert(linfo.type == LMEM_OPERATION);
   auto op = linfo.op;
   auto output = find_lmem_info(group_lmem, linfo.value);
   op->setAttr(LocalGenInterface::kLayerGroupAttrName,
-              getLgParam(*output, linfo.timestep, linfo.addr, linfo.size));
+              getLgParam(*output, id, linfo.stage, linfo.addr, linfo.size));
 }
 
 void GroupOps::CreateLoadOp(lmem_info_t &linfo,
-                            const std::vector<mlir::Operation *> &ops) {
+                            const std::vector<mlir::Operation *> &ops,
+                            int64_t id) {
   auto builder = OpBuilder(ctx);
   auto input = linfo.value;
   auto inputOp = input.getDefiningOp();
@@ -360,7 +435,7 @@ void GroupOps::CreateLoadOp(lmem_info_t &linfo,
         builder.getNamedAttr("do_bcast", builder.getBoolAttr(true)));
   }
   attrs.push_back(builder.getNamedAttr(LocalGenInterface::kLayerGroupAttrName,
-                                       getLgParam(linfo, linfo.timestep)));
+                                       getLgParam(linfo, id, linfo.stage)));
   if (current_op == nullptr) {
     builder.setInsertionPointToStart(body);
   } else if (isa<tpu::StoreOp>(current_op)) {
@@ -380,7 +455,7 @@ void GroupOps::CreateLoadOp(lmem_info_t &linfo,
   }
 }
 
-StoreOp GroupOps::CreateStoreOp(lmem_info_t &linfo) {
+StoreOp GroupOps::CreateStoreOp(lmem_info_t &linfo, int64_t id) {
   auto builder = OpBuilder(ctx);
   auto output = linfo.value;
   auto outputOp = output.getDefiningOp();
@@ -389,7 +464,7 @@ StoreOp GroupOps::CreateStoreOp(lmem_info_t &linfo) {
   operands.push_back(output);
   std::string name = "store_" + Module::getName(outputOp).str();
   attrs.push_back(builder.getNamedAttr(LocalGenInterface::kLayerGroupAttrName,
-                                       getLgParam(linfo, linfo.timestep)));
+                                       getLgParam(linfo, id, linfo.stage)));
   builder.setInsertionPointAfter(current_op);
   auto storeOp =
       builder.create<tpu::StoreOp>(NameLoc::get(builder.getStringAttr(name)),
@@ -398,7 +473,7 @@ StoreOp GroupOps::CreateStoreOp(lmem_info_t &linfo) {
   return storeOp;
 }
 
-LayerGroup GroupOps::getLgParam(lmem_info_t &linfo, int64_t timestep,
+LayerGroup GroupOps::getLgParam(lmem_info_t &linfo, int64_t id, int64_t stage,
                                 int64_t buffer_addr, int64_t buffer_size) {
   auto builder = OpBuilder(ctx);
   auto si = linfo.slice_info;
@@ -424,8 +499,8 @@ LayerGroup GroupOps::getLgParam(lmem_info_t &linfo, int64_t timestep,
       builder.getI64IntegerAttr(buffer_size),
       builder.getBoolAttr(linfo.eu_align), builder.getI64ArrayAttr(h_idxs),
       builder.getI64ArrayAttr(h_slices), builder.getI64ArrayAttr(n_idxs),
-      builder.getI64ArrayAttr(n_slices), builder.getI64IntegerAttr(timestep),
-      ctx);
+      builder.getI64ArrayAttr(n_slices), builder.getI64IntegerAttr(id),
+      builder.getI64IntegerAttr(stage), ctx);
 }
 
 group_lmem_t GroupOps::CreateGroup(int64_t start_idx, int64_t end_idx,
@@ -668,9 +743,12 @@ void GroupOps::assign_timestep(group_lmem_t &group_lmem) {
   int64_t timestep = 0;
   lmem_type_t last_type = LMEM_ANY;
   bool last_output = false;
+  int64_t idx = 0;
+  std::vector<Operation *> ops_v;
   for (auto &linfo : *group_lmem) {
     switch (linfo.type) {
     case LMEM_OPERATION:
+      ops_v.push_back(linfo.op);
       if (last_type != LMEM_OPERATION) {
         timestep++;
         last_type = linfo.type;
@@ -683,8 +761,10 @@ void GroupOps::assign_timestep(group_lmem_t &group_lmem) {
       last_type = linfo.type;
       break;
     case LMEM_ACTIVATION:
-      if (linfo.is_input && last_output) {
-        timestep--;
+      if (linfo.is_input) {
+        if (last_output) {
+          timestep--;
+        }
         last_type = linfo.type;
       } else if (linfo.is_output && last_type == LMEM_OPERATION) {
         timestep++;
@@ -696,49 +776,159 @@ void GroupOps::assign_timestep(group_lmem_t &group_lmem) {
     }
     last_output = linfo.is_output;
     linfo.timestep = timestep;
+    linfo.start_timestep = 0;
+    linfo.end_timestep = 0;
+    idx++;
+  }
+
+  // create timestep table
+  time_step = std::make_shared<BasicTimeStep>();
+  int64_t ts = 0;
+  TpuTsField tpu_field;
+  GdmaTsField gdma_field;
+  while (ts <= timestep) {
+    tpu_field.clear();
+    gdma_field.clear();
+    for (auto &linfo : *group_lmem) {
+      if (linfo.timestep != ts) {
+        continue;
+      }
+      if (linfo.type == LMEM_OPERATION) {
+        tpu_field.emplace_back(linfo.op);
+      } else if (linfo.is_input || linfo.is_output ||
+                 linfo.type == LMEM_WEIGHT) {
+        gdma_field.emplace_back(linfo.value);
+      }
+    }
+    time_step->add_tpu0_gdma0_ts_field(tpu_field, gdma_field);
+    ts++;
+  }
+  time_step->software_pipeline();
+
+  // map op to timestep
+  std::map<Operation *, int64_t, op_compare> op_timestep;
+  for (auto op : ops_v) {
+    for (uint32_t ts = 0; ts < time_step->get_timestep_num(); ++ts) {
+      auto ops = time_step->getOps(ts);
+      if (std::find(ops.begin(), ops.end(), op) != ops.end()) {
+        op_timestep.insert(std::pair<Operation *, int64_t>(op, ts));
+        break;
+      }
+    }
+  }
+
+  // map value to timestep
+  std::map<Value, int64_t, value_compare> tensor_timestep;
+  for (auto &linfo : *group_lmem) {
+    if (linfo.type != LMEM_OPERATION) {
+      for (uint32_t ts = 0; ts < time_step->get_timestep_num(); ++ts) {
+        auto tensors = time_step->getValues(ts);
+        if (std::find(tensors.begin(), tensors.end(), linfo.value) !=
+            tensors.end()) {
+          tensor_timestep.insert(std::pair<Value, int64_t>(linfo.value, ts));
+          break;
+        }
+      }
+      if (linfo.type == LMEM_ACTIVATION && !linfo.is_input &&
+          !linfo.is_output) {
+        for (uint32_t ts = 0; ts < time_step->get_timestep_num(); ++ts) {
+          auto src_op = linfo.value.getDefiningOp();
+          auto ops = time_step->getOps(ts);
+          if (std::find(ops.begin(), ops.end(), src_op) != ops.end()) {
+            tensor_timestep.insert(std::pair<Value, int64_t>(linfo.value, ts));
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // update timestep and stage of op/value in group_lmem
+  for (auto &linfo : *group_lmem) {
+    if (linfo.type == LMEM_WEIGHT || linfo.is_input ||
+        (linfo.type == LMEM_ACTIVATION && !linfo.is_output)) {
+      linfo.stage = time_step->get_tensor_swpipl_stage(linfo.value);
+      linfo.timestep = tensor_timestep[linfo.value];
+      linfo.start_timestep = linfo.timestep;
+      auto users = linfo.value.getUsers();
+      for (auto op : users) {
+        if (op_timestep.find(op) != op_timestep.end()) {
+          linfo.end_timestep = std::max(op_timestep[op], linfo.end_timestep);
+        }
+      }
+      if (linfo.type == LMEM_ACTIVATION && !linfo.is_input) {
+        auto op = linfo.value.getDefiningOp();
+        if (op_timestep.find(op) != op_timestep.end()) {
+          linfo.start_timestep = op_timestep[op];
+        }
+      }
+    }
+    if (linfo.is_output) {
+      linfo.stage = time_step->get_tensor_swpipl_stage(linfo.value);
+      linfo.timestep = tensor_timestep[linfo.value];
+      linfo.end_timestep = linfo.timestep;
+      auto op = linfo.value.getDefiningOp();
+      if (op_timestep.find(op) != op_timestep.end()) {
+        linfo.start_timestep = op_timestep[op];
+      }
+    }
+    if (linfo.type == LMEM_OPERATION) {
+      linfo.stage = time_step->get_layer_swpipl_stage(linfo.op);
+      linfo.timestep = op_timestep[linfo.op];
+      linfo.start_timestep = op_timestep[linfo.op];
+      linfo.end_timestep = op_timestep[linfo.op];
+    }
   }
 }
 
 void GroupOps::adjust_lmem_id(group_lmem_t &group_lmem, int64_t nsecs,
                               int64_t hsecs) {
   bool no_slice = (nsecs == 1 && hsecs == 1);
-  std::vector<int64_t> ops_v;
-  int idx = 0;
   for (auto &linfo : *group_lmem) {
     if (linfo.type == LMEM_WEIGHT && no_slice == false) {
-      // ajust weight end
-      linfo.end_id = MAX_ID;
-      linfo.start_id = 0;
+      linfo.hold_in_lmem = true;
     }
-    if (linfo.type == LMEM_OPERATION) {
-      // get op pos
-      ops_v.push_back(idx);
-    }
-    idx++;
   }
-  for (auto &linfo : *group_lmem) {
-    if (linfo.type == LMEM_WEIGHT || linfo.is_input || linfo.is_output) {
-      for (auto id : ops_v) {
-        auto &op_info = group_lmem->at(id);
-        if (op_info.timestep == linfo.timestep) {
-          if (op_info.id < linfo.start_id) {
-            linfo.start_id = op_info.id;
-          }
-          if (op_info.id > linfo.end_id) {
-            linfo.end_id = op_info.id;
+}
+
+void GroupOps::check_group_lmem(group_lmem_t &group_lmem,
+                                int64_t timestep_num) {
+  std::list<std::pair<addr_pair_t, int64_t>> ts_lmems; // ((addr, size), id)
+  for (int64_t ts = 0; ts < timestep_num; ++ts) {
+    ts_lmems.clear();
+    for (auto &linfo : *group_lmem) {
+      if (linfo.addr == -1 || linfo.size == 0) {
+        continue;
+      }
+      if (linfo.hold_in_lmem ||
+          is_ts_overlapped(ts, ts, linfo.start_timestep, linfo.end_timestep)) {
+        auto it = ts_lmems.begin();
+        for (; it != ts_lmems.end(); ++it) {
+          if (linfo.addr < it->first.first) {
+            break;
           }
         }
+        auto pair =
+            std::make_pair(addr_pair_t(linfo.addr, linfo.size), linfo.id);
+        ts_lmems.insert(it, pair);
       }
+    }
+    llvm::errs() << "=============Timestep idx = " << ts << ":==============\n";
+    int64_t end_addr = 0;
+    for (auto it : ts_lmems) {
+      if (end_addr > it.first.first) {
+        llvm::errs()
+            << "++++++++++++ lmem is overlapped here +++++++++++++++++++++++++";
+      }
+      end_addr = it.first.first + it.first.second;
+      llvm::errs() << it.first.first << "\t" << it.first.second << "\t"
+                   << end_addr << "\t" << it.second << "\n";
     }
   }
 }
 
 group_lmem_t GroupOps::CreateGroupBySecs(int64_t start_idx, int64_t end_idx,
                                          int64_t nsecs, int64_t hsecs) {
-  std::vector<Operation *> group_ops;
-  for (auto i = start_idx; i <= end_idx; i++) {
-    group_ops.push_back(all_ops[i]);
-  }
   auto group_lmem = list_lmems(start_idx, end_idx);
   slice_all_outputs(group_lmem, nsecs, hsecs);
   auto ret = backward_entry(group_lmem);
@@ -764,20 +954,32 @@ group_lmem_t GroupOps::CreateGroupBySecs(int64_t start_idx, int64_t end_idx,
   if (ret == false) {
     return nullptr;
   }
+
+  group_ops = std::make_shared<std::vector<Operation *>>();
+  for (auto &linfo : *group_lmem) {
+    if (linfo.type == LMEM_OPERATION) {
+      group_ops->push_back(linfo.op);
+    }
+  }
+
   return std::move(group_lmem);
 }
 
 lmem_info_t *GroupOps::find_max_unalloc_lmem(group_lmem_t &group_lmem,
-                                             int64_t op_id, lmem_type_t type) {
+                                             int64_t ts, lmem_type_t type) {
   int64_t size = 0;
   int64_t term = -1;
   lmem_info_t *p_li = nullptr;
+  int timestep_num = time_step->get_timestep_num();
   for (auto &linfo : *group_lmem) {
     if (linfo.addr != -1 || linfo.size == 0) {
       continue;
     }
-    if (op_id >= 0) {
-      if (linfo.start_id > op_id || linfo.end_id < op_id) {
+    if (ts != -1) {
+      if ((linfo.stage == 1 &&
+           (linfo.start_timestep > ts || linfo.end_timestep < ts)) ||
+          (linfo.stage != 1 &&
+           (linfo.start_timestep > ts && linfo.end_timestep < ts))) {
         continue;
       }
     }
@@ -786,7 +988,10 @@ lmem_info_t *GroupOps::find_max_unalloc_lmem(group_lmem_t &group_lmem,
         continue;
       }
     }
-    auto term_ = linfo.end_id - linfo.start_id;
+    auto term_ = linfo.end_timestep - linfo.start_timestep;
+    if (linfo.end_timestep < linfo.start_timestep) {
+      term_ = linfo.end_timestep + timestep_num - linfo.start_timestep;
+    }
     if (term_ > term || (term_ == term && linfo.size > size)) {
       term = term_;
       size = linfo.size;
@@ -814,25 +1019,18 @@ bool GroupOps::assign_lmem_addr(group_lmem_t &group_lmem, int64_t nsecs,
       }
     } while (p_li != nullptr);
   }
-  std::vector<int64_t> op_ids;
-  for (auto &linfo : *group_lmem) {
-    if (linfo.type == LMEM_OPERATION) {
-      op_ids.push_back(linfo.id);
-    }
-  }
-  for (auto op_id : op_ids) {
-    rebuild_alloc_lmem(group_lmem, op_id);
-    lmem_info_t *p_li = nullptr;
-    do {
-      p_li = find_max_unalloc_lmem(group_lmem, op_id);
-      if (p_li != nullptr) {
-        p_li->addr = alloc_lmem(p_li->size);
-        if (p_li->addr < 0) {
-          return false;
-        }
+
+  lmem_info_t *p_li = nullptr;
+  do {
+    p_li = find_max_unalloc_lmem(group_lmem);
+    if (p_li != nullptr) {
+      rebuild_alloc_lmem(group_lmem, p_li->start_timestep, p_li->end_timestep);
+      p_li->addr = alloc_lmem(p_li->size);
+      if (p_li->addr < 0) {
+        return false;
       }
-    } while (p_li != nullptr);
-  }
+    }
+  } while (p_li != nullptr);
   return true;
 }
 
@@ -852,15 +1050,16 @@ int64_t GroupOps::alloc_lmem(int64_t size) {
         allocated_lmems.insert(it, pair);
         return addr;
       }
-      addr = align_up(it->first + it->second, bm168x->get_eu_bytes());
+      int64_t addr_tmp = align_up(it->first + it->second, bm168x->get_eu_bytes());
       if (align_bank) {
-        auto bank0 = ceiling_func(addr, bm168x->get_lmem_bank_bytes());
+        auto bank0 = ceiling_func(addr_tmp, bm168x->get_lmem_bank_bytes());
         auto bank1 =
-            ceiling_func(addr + size - 1, bm168x->get_lmem_bank_bytes());
+            ceiling_func(addr_tmp + size - 1, bm168x->get_lmem_bank_bytes());
         if (bank0 != bank1) {
-          addr = align_up(addr, bm168x->get_lmem_bank_bytes());
+          addr_tmp = align_up(addr_tmp, bm168x->get_lmem_bank_bytes());
         }
       }
+      addr = std::max(addr, addr_tmp);
     }
     if (addr + size > bm168x->get_lmem_bytes()) {
       continue;
@@ -872,13 +1071,16 @@ int64_t GroupOps::alloc_lmem(int64_t size) {
   return -1;
 }
 
-void GroupOps::rebuild_alloc_lmem(group_lmem_t &group_lmem, int64_t op_id) {
+void GroupOps::rebuild_alloc_lmem(group_lmem_t &group_lmem, int64_t start_ts,
+                                  int64_t end_ts) {
   allocated_lmems.clear();
   for (auto &linfo : *group_lmem) {
-    if (linfo.start_id <= op_id && linfo.end_id >= op_id) {
-      if (linfo.addr == -1 || linfo.size == 0) {
-        continue;
-      }
+    if (linfo.addr == -1 || linfo.size == 0) {
+      continue;
+    }
+    if (linfo.hold_in_lmem ||
+        is_ts_overlapped(start_ts, end_ts, linfo.start_timestep,
+                         linfo.end_timestep)) {
       auto it = allocated_lmems.begin();
       for (; it != allocated_lmems.end(); ++it) {
         if (linfo.addr < it->first) {
