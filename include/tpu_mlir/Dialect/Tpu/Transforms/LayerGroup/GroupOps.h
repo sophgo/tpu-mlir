@@ -7,13 +7,16 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Backend/BM168x/BM168x.h"
+#pragma once
+
 #include "mlir/Support/LLVM.h"
+#include "tpu_mlir/Backend/BM168x/BM168x.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/TimeStep.h"
+#include "tpu_mlir/Support/Helper/Module.h"
+#include <list>
 #include <map>
 #include <set>
-#include <list>
 namespace tpu_mlir {
 namespace tpu {
 
@@ -36,9 +39,10 @@ struct lmem_info_t {
   int64_t addr;
   int64_t size;
   int64_t id;
-  int64_t start_id;
-  int64_t end_id;
-  int64_t timestep;
+  int64_t start_timestep;
+  int64_t end_timestep;
+  int64_t timestep; // used for operation
+  int64_t stage;
   // memory for value or operation
   lmem_type_t type;
   Value value;
@@ -49,13 +53,13 @@ struct lmem_info_t {
   bool is_input;      // input tensor
   bool is_output;     // output tensor
   bool op_slice_done; // this op's all inputs have been sliced
+  bool hold_in_lmem;  // this value will be hold in lmem
   // init
-  explicit lmem_info_t(lmem_type_t type, int64_t id, int64_t start_id,
-                       int64_t end_id, Value v = nullptr,
+  explicit lmem_info_t(lmem_type_t type, int64_t id, Value v = nullptr,
                        Operation *op = nullptr, bool eu_align = true)
-      : addr(-1), size(0), id(id), start_id(start_id), end_id(end_id),
-        type(type), value(v), op(op), eu_align(eu_align), is_input(false),
-        is_output(false), op_slice_done(false) {}
+      : addr(-1), size(0), id(id), type(type), value(v), op(op),
+        eu_align(eu_align), is_input(false), is_output(false),
+        op_slice_done(false), hold_in_lmem(false) {}
 };
 
 typedef std::shared_ptr<std::vector<lmem_info_t>> group_lmem_t;
@@ -88,7 +92,8 @@ protected:
   lmem_info_t *find_max_unalloc_lmem(group_lmem_t &group_lmem,
                                      int64_t op_id = -1,
                                      lmem_type_t type = LMEM_ANY);
-  void rebuild_alloc_lmem(group_lmem_t &group_lmem, int64_t op_id);
+  void rebuild_alloc_lmem(group_lmem_t &group_lmem, int64_t start_ts,
+                          int64_t end_ts);
   void set_lmem_size(group_lmem_t &group_lmem);
   void assign_timestep(group_lmem_t &group_lmem);
   void adjust_lmem_id(group_lmem_t &group_lmem, int64_t nsecs, int64_t hsecs);
@@ -104,17 +109,26 @@ protected:
   lmem_info_t *find_lmem_info(group_lmem_t &group_lmem, mlir::Value v);
   lmem_info_t *find_lmem_info(group_lmem_t &group_lmem, mlir::Operation *op);
   void CreateLoadOp(lmem_info_t &linfo,
-                    const std::vector<mlir::Operation *> &ops);
-  tpu::StoreOp CreateStoreOp(lmem_info_t &linfo);
-  void UpdateOpLgParam(group_lmem_t &group_lmem, lmem_info_t &linfo);
-  tpu::LayerGroup getLgParam(lmem_info_t &linfo, int64_t timestep,
+                    const std::vector<mlir::Operation *> &ops, int64_t id);
+  tpu::StoreOp CreateStoreOp(lmem_info_t &linfo, int64_t id);
+  void UpdateOpLgParam(group_lmem_t &group_lmem, lmem_info_t &linfo,
+                       int64_t id);
+  tpu::LayerGroup getLgParam(lmem_info_t &linfo, int64_t id, int64_t stage,
                              int64_t buffer_addr = 0, int64_t buffer_size = 0);
   bool need_none(group_lmem_t &group_lmem);
   void buildGroupOp(group_lmem_t &group_lmem);
 
+  // used for debug
+  void check_group_lmem(group_lmem_t &group_lmem, int64_t timestep_num);
+
 protected:
+  std::shared_ptr<BasicTimeStep> time_step;
+  std::vector<std::shared_ptr<BasicTimeStep>> time_steps;
+  std::shared_ptr<std::vector<mlir::Operation*>> group_ops;
+  std::vector<std::shared_ptr<std::vector<mlir::Operation*>>> groups_ops;
   std::vector<group_lmem_t> all_lmems;
   std::vector<mlir::Operation *> all_ops;
+  std::vector<mlir::Value> all_tensors;
   std::vector<group_pair_t> groups;
   std::list<addr_pair_t> allocated_lmems;
   int64_t n_align;

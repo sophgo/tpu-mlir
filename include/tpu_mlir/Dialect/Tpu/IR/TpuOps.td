@@ -471,7 +471,9 @@ def Tpu_GroupOp:Tpu_BaseOp<"Group"> {
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
     I64Attr:$nsecs,
-    I64Attr:$hsecs
+    I64Attr:$hsecs,
+    I64Attr:$swpipl_stage_num,
+    DefaultValuedAttr<I64ArrayAttr, "{0}">:$flow
   );
   let results = (outs Variadic<AnyTensor>:$outputs);
   let regions = (region SizedRegion<1>:$body);
@@ -554,7 +556,8 @@ def Tpu_ConcatOp:Tpu_Op<"Concat",[
   }];
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
-    I64Attr:$axis
+    I64Attr:$axis,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
   let results = (outs AnyTensor:$output);
 }
