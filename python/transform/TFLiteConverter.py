@@ -29,6 +29,24 @@ def _indent(sOrIt_: Union[str, Iterable], numSpaces: int) -> str:
     return _indent(s, numSpaces)
 
 
+def _compute_pad(stride, dilation, input_size, filter, padding):
+    # Matching tensorflow/lite/kernels/padding.h:ComputePaddingHeightWidth()
+    from .tflite.Padding import Padding
+    effective_filter_size = (filter - 1) * dilation + 1
+    if padding == Padding.SAME:
+        output_size = (input_size + stride - 1) // stride
+    elif padding == Padding.VALID:
+        output_size = (input_size + stride - effective_filter_size) // stride
+    padding_needed = np.int64((output_size - 1) * stride + effective_filter_size - input_size)
+    padding_needed = padding_needed.clip(min=0)
+    # For odd values of total padding, add more padding at the 'right'
+    # side of the given dimension.
+    padding_before = padding_needed // 2
+    padding_after = padding_needed - padding_before
+    pad = [i for i in padding_before] + [i for i in padding_after]
+    return pad
+
+
 class TFLiteReader:
     """
     Provide a TensorFlow lite model reader.
@@ -168,7 +186,7 @@ class TFLiteReader:
         class Graph:
             def __init__(self, G):
                 self.G = G
-                self.name = self.G.Name().decode()
+                self.name = "main" if G.Name() is None else self.G.Name().decode()
                 self.inputs = [
                     Tensor(self.G.Tensors(i), i) for i in self.G.InputsAsNumpy()
                 ]
@@ -243,10 +261,13 @@ class TFLiteConverter(BaseConverter):
             "SOFTMAX": self.softmax_op,
             "MEAN": self.mean_op,
             "CONV_2D": self.conv_2d_op,
+            "DEPTHWISE_CONV_2D": self.depthwise_2d_op,
             "FULLY_CONNECTED": self.fully_connected_op,
             "MAX_POOL_2D": self.maxpool_op,
+            "AVERAGE_POOL_2D": self.avgpool_op,
             "DEQUANTIZE": lambda _: ("top.Cast", {}),
             "QUANTIZE": lambda _: ("top.Cast", {}),
+            "RESHAPE": lambda _: ("top.Reshape", {}),
         }
 
     def __del__(self):
@@ -413,20 +434,31 @@ class TFLiteConverter(BaseConverter):
         attr = {"do_relu": BoolAttr.get(fused_active == 1)}
         return Top.AddOp, attr
 
-    def maxpool_op(self, op):
+    def pool_attr(self, op):
         from .tflite.Pool2DOptions import Pool2DOptions
 
         op_options = op.builtin_options
         param = Pool2DOptions()
         param.Init(op_options.Bytes, op_options.Pos)
+        fused_active = param.FusedActivationFunction()
+        stride = np.array([param.StrideH(), param.StrideW()])
+        kernel_size = np.array([param.FilterHeight(), param.FilterWidth()])
+        input_size = np.array(op.inputs[0].shape[1:3], dtype=np.int64)  # NHWC
+        padding = _compute_pad(stride, [1, 1], input_size, kernel_size, param.Padding())
         attr = {
-            "kernel_shape": self.mlir.ArrayAttr(
-                [param.FilterHeight(), param.FilterWidth()]
-            ),
+            "kernel_shape": self.mlir.ArrayAttr([param.FilterHeight(),
+                                                 param.FilterWidth()]),
             "strides": self.mlir.ArrayAttr([param.StrideH(), param.StrideW()]),
-            "pads": self.mlir.ArrayAttr([0, 0, 0, 0]),
+            "pads": self.mlir.ArrayAttr(padding),
+            "do_relu": BoolAttr.get(fused_active == 1),
         }
-        return Top.MaxPoolOp, attr
+        return attr
+
+    def maxpool_op(self, op):
+        return Top.MaxPoolOp, self.pool_attr(op)
+
+    def avgpool_op(self, op):
+        return Top.AvgPoolOp, self.pool_attr(op)
 
     def conv_2d_op(self, op):
         from .tflite.Conv2DOptions import Conv2DOptions
@@ -475,6 +507,39 @@ class TFLiteConverter(BaseConverter):
             ),
             "pads": self.mlir.ArrayAttr(padding),
             "do_relu": BoolAttr.get(fused_active == 1),
+        }
+        return Top.ConvOp, attr
+
+    def depthwise_2d_op(self, op):
+        from .tflite.DepthwiseConv2DOptions import DepthwiseConv2DOptions
+        from .tflite.Padding import Padding
+
+        op_options = op.builtin_options
+        param = DepthwiseConv2DOptions()
+        param.Init(op_options.Bytes, op_options.Pos)
+        in_shape = op.inputs[0].shape
+        kernel_shape = op.inputs[1].shape
+        fused_active = param.FusedActivationFunction()
+        padding = [0, 0, 0, 0]  # VALID padding
+        # high, width
+        stride = np.array([param.StrideH(), param.StrideW()])
+        dilation_rate = np.array([param.DilationHFactor(), param.DilationWFactor()], dtype=np.int64)
+        kernel_size = np.array(kernel_shape[1:3], dtype=np.int64)
+        input_size = np.array(in_shape[1:3], dtype=np.int64)  # NHWC
+        padding = _compute_pad(stride, dilation_rate, input_size, kernel_size, param.Padding())
+
+        if fused_active not in [0, 1]:
+            raise Exception("Not supported ActivationFunctionType: {}!".format(fused_active))
+        attr = {
+            "kernel_shape": self.mlir.ArrayAttr(kernel_shape[1:-1]),
+            "strides": self.mlir.ArrayAttr([param.StrideH(), param.StrideW()]),
+            "dilations": self.mlir.ArrayAttr(
+                [param.DilationHFactor(), param.DilationWFactor()]
+            ),
+            "pads": self.mlir.ArrayAttr(padding),
+            "do_relu": BoolAttr.get(fused_active == 1),
+            "group": IntegerAttr.get(self.type_to_mlir[TensorType.INT64],
+                                     in_shape[3] // kernel_shape[0]),
         }
         return Top.ConvOp, attr
 
@@ -563,7 +628,7 @@ class TFLiteConverter(BaseConverter):
             else:
                 preprocess_hint = {
                     'mean': self.preprocess_args['mean'],
-                    'scale':  self.preprocess_args['scale'],
+                    'scale': self.preprocess_args['scale'],
                     'pixel_format': self.preprocess_args["pixel_format"],
                     'channel_format': self.preprocess_args["channel_format"],
                     'pad_type': self.preprocess_args["pad_type"],
