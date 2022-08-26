@@ -8,7 +8,6 @@
 
 from mlir.ir import *
 
-
 class Top:
     WeightOp = 'top.Weight'
     InputOp = 'top.Input'
@@ -63,7 +62,8 @@ class MLIRImporter(object):
                  model_name: str,
                  input_types: list = [],
                  output_types: list = [],
-                 state: str = State.TOP_F32):
+                 state: str = State.TOP_F32,
+                 do_declare: bool = True):
         """
             input_shape: List[List], put module input shape. ex: [[1, 3, 224, 224]]
             output_shape: List, put module output shape. ex: [1, 1000]
@@ -95,7 +95,8 @@ class MLIRImporter(object):
             "F16": F16Type.get(),
             "BF16": BF16Type.get()
         }
-        self.declare_func(input_types, output_types)
+        if do_declare:
+            self.declare_func(input_types, output_types)
 
     def __del__(self):
         try:
@@ -497,7 +498,7 @@ class MLIRImporter(object):
         mlir_format = self.mlir_module.operation.get_asm(enable_debug_info=True)
         return mlir_format
 
-    def declare_func(self, input_types: list, output_types: list):
+    def declare_func(self, input_types: list = [], output_types: list = []):
         if len(input_types) == 0:
             input_types = self.num_input * ['F32']
         if len(output_types) == 0:
@@ -506,9 +507,15 @@ class MLIRImporter(object):
         self.input_types = list()
         self.output_types = list()
         for _shape, _type in zip(self.input_shapes, input_types):
-            self.input_types.append(RankedTensorType.get(_shape, self.mlir_type[_type]))
+            if isinstance(_type, str):
+                self.input_types.append(RankedTensorType.get(_shape, self.mlir_type[_type]))
+            else:
+                self.input_types.append(RankedTensorType.get(_shape, _type))
         for _shape, _type in zip(self.output_shapes, output_types):
-            self.output_types.append(RankedTensorType.get(_shape, self.mlir_type[_type]))
+            if isinstance(_type, str):
+                self.output_types.append(RankedTensorType.get(_shape, self.mlir_type[_type]))
+            else:
+                self.output_types.append(RankedTensorType.get(_shape, _type))
         args_txt = str()
         for _idx, _type in enumerate(self.input_types):
             args_txt += "%args{}: {} loc(unknown)".format(_idx, _type.__str__())
