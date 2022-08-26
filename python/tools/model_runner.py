@@ -133,6 +133,7 @@ def caffe_inference(inputs: dict, prototxt: str, caffemodel: str, dump_all: bool
             top_map[net.top_names[name][0]] = name
         blobs_dict = dict(inputs)
         for top, name in top_map.items():
+            name += "_{}".format(net.layer_dict[name].type)
             blobs_dict[name] = net.blobs[top].data.copy()
         return blobs_dict
     else:
