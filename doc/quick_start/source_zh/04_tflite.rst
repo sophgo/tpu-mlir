@@ -10,10 +10,7 @@
 加载tpu-mlir
 ------------------
 
-.. code-block:: console
-   :linenos:
-
-   $ source tpu-mlir_xxxx/envsetup.sh
+.. include:: env_var.rst
 
 
 准备工作目录
@@ -80,4 +77,3 @@ MLIR转模型
 
 
 编译完成后，会生成名为 ``resnet50_tf_1684x.bmodel`` 的文件。
-

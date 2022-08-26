@@ -116,9 +116,11 @@ wheel安装包。例如：tpu_perf-x.x.x-py3-none-any.whl 。并将 ``tpu-perf``
 
 ::
 
+   * efficientnet-lite4
    * mobilenet_v2
    * resnet18
    * resnet50_v2
+   * shufflenet_v2
    * squeezenet1.0
    * vgg16
    * yolov5s
