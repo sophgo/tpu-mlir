@@ -2,7 +2,10 @@ from math import ceil
 
 
 def set_auto_pad(auto_pad, input_shape, kernel_shape, strides):
-    pad_method = auto_pad.decode('utf-8')
+    if isinstance(auto_pad, str):
+        pad_method = auto_pad
+    else:
+        pad_method = auto_pad.decode('utf-8')
     if pad_method == "SAME_UPPER":
         padding_along_h = get_TF_SAME_Padding(input_shape[2], kernel_shape[0], strides[0])
         padding_along_w = get_TF_SAME_Padding(input_shape[3], kernel_shape[1], strides[1])

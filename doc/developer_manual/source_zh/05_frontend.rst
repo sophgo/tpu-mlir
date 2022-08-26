@@ -21,7 +21,7 @@
 
     * init_MLIRImporter 部分主要是生成初始的 MLIR 文本
 
-4. generate_MLIR
+4. generate_mlir
 
     * 依次创建 input op，模型中间 nodes op 以及 return op，并将其补充到 MLIR 文本中
 
@@ -31,7 +31,7 @@
 
     * 生成”.prototxt”文件保存除权重外的模型信息
 
-    * 将生成的文本转为 str 并保存为“.MLIR”文件
+    * 将生成的文本转为 str 并保存为“.mlir”文件
 
     * 将模型权重（tensors）保存为“.npz”文件
 
