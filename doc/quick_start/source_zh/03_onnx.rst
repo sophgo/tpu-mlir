@@ -12,11 +12,7 @@
 加载tpu-mlir
 ------------------
 
-.. code-block:: console
-   :linenos:
-
-   $ tar zxf tpu-mlir_xxxx.tar.gz
-   $ source tpu-mlir_xxxx/envsetup.sh
+.. include:: env_var.rst
 
 
 准备工作目录
@@ -342,6 +338,7 @@ int8非对称bmodel的执行方式如下，得到 ``dog_int8_asym.jpg`` ：
    # 下面测试上面编译出的bmodel
    # --bmodel参数后面接bmodel文件，
 
+   $ cp $TPUC_ROOT/model_yolov5s/workspace
    $ bmrt_test --bmodel yolov5s_1684x_f32.bmodel
    $ bmrt_test --bmodel yolov5s_1684x_int8_asym.bmodel
    $ bmrt_test --bmodel yolov5s_1684x_int8_sym.bmodel
