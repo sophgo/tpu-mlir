@@ -244,13 +244,8 @@ class TFLiteConverter(BaseConverter):
             self.input_shapes,
             self.output_shapes,
             model_name=self.model_name,
-            input_types=[
-                self.TFLType2MLIRImporterTypeStr[x.type] for x in self.graph.inputs
-            ],
-            output_types=[
-                self.TFLType2MLIRImporterTypeStr[x.type] for x in self.graph.outputs
-            ],
             state=State.TOP_QUANTIZED,
+            do_declare=False,
         )
         self.weight_file = self.mlir.weight_file
         self.constant = {}
@@ -269,6 +264,19 @@ class TFLiteConverter(BaseConverter):
             "QUANTIZE": lambda _: ("top.Cast", {}),
             "RESHAPE": lambda _: ("top.Reshape", {}),
         }
+        input_types=[]
+        for x in self.graph.inputs:
+            if x.is_quantized:
+                input_types.append(self.get_quantized_type(x))
+            else:
+                input_types.append(self.TFLType2MLIRImporterTypeStr[x.type])
+        output_types=[]
+        for x in self.graph.outputs:
+            if x.is_quantized:
+                output_types.append(self.get_quantized_type(x))
+            else:
+                output_types.append(self.TFLType2MLIRImporterTypeStr[x.type])
+        self.mlir.declare_func(input_types, output_types)
 
     def __del__(self):
         if self.mlir != None:
@@ -280,7 +288,7 @@ class TFLiteConverter(BaseConverter):
             TensorType.FLOAT16: F16Type.get(mlir_ctx),
             TensorType.INT32: IntegerType.get_signless(32, mlir_ctx),
             # tensorflow/tensorflow/compiler/mlir/lite/flatbuffer_import.cc::155
-            TensorType.UINT8: IntegerType.get_signless(8, mlir_ctx),
+            TensorType.UINT8: IntegerType.get_unsigned(8, mlir_ctx),
             TensorType.INT64: IntegerType.get_signless(64, mlir_ctx),
             TensorType.STRING: None,
             TensorType.BOOL: IntegerType.get_signless(1, mlir_ctx),
@@ -296,18 +304,17 @@ class TFLiteConverter(BaseConverter):
             TensorType.UINT16: IntegerType.get_unsigned(16, mlir_ctx),
         }
 
-    def __get_tensor_type(self, tensor):
-        def get_quantized_type(tensor):
+    def get_quantized_type(self, tensor):
             quantParam = tensor.quantization
             if quantParam.Details() is not None:
                 raise ValueError("Cannot handle experimental quantization")
-            is_signed = True
+            is_signed = tensor.type_str is 'INT8' or tensor.type_str is 'INT16' or tensor.type_str is 'INT32'
             storage_type = self.type_to_mlir[tensor.type]
             # TFlite uses narrow-range [u]int8 for constant buffers of quantized weights.
             # Since we don't know which ones are weights, we represent this optimization
             # as a change in the storage bounds for the type for all constants of this type.
             is_constant = tensor.buffer is not None
-            is_weight_buffer = is_constant and (storage_type.width == 8)
+            is_weight_buffer = is_constant and (storage_type.width == 8) and is_signed
             storage_min = (
                 quant.QuantizedType.default_minimum_for_integer(  # type: ignore
                     is_signed, storage_type.width
@@ -343,6 +350,7 @@ class TFLiteConverter(BaseConverter):
                 storage_max,
             )
 
+    def __get_tensor_type(self, tensor):
         def getCalibratedQuantizedType(tensor):
             quantParam = tensor.quantization
             raw_elem_type = self.type_to_mlir[tensor.type]
@@ -354,7 +362,7 @@ class TFLiteConverter(BaseConverter):
         quantParam = tensor.quantization
         elem_type = self.type_to_mlir[tensor.type]
         if tensor.is_quantized:
-            elem_type = get_quantized_type(tensor)
+            elem_type = self.get_quantized_type(tensor)
         # Intermediate tensors with calibration value (but not scale and zero points)
         # should return calibrated quantized type.
         if is_intermediate and quantParam is not None:
@@ -644,7 +652,10 @@ class TFLiteConverter(BaseConverter):
                 operation
             )
 
-            operands = [symbol_table[self.__nhwc2nchw(x)] for x in operation.inputs]
+            if operation.type is 'RESHAPE':
+                operands = [symbol_table[self.__nhwc2nchw(operation.inputs[0])]]
+            else:
+                operands = [symbol_table[self.__nhwc2nchw(x)] for x in operation.inputs]
             rst_type = [
                 self.__get_tensor_type(self.__nhwc2nchw(x)) for x in operation.outputs
             ]
