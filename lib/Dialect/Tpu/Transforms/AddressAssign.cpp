@@ -25,6 +25,8 @@
 #include <sstream>
 #include <fstream>
 #include <set>
+#include <tuple>
+#include <vector>
 
 using namespace llvm;
 using namespace mlir;
@@ -35,6 +37,9 @@ namespace tpu {
 
 class AddressAssignPass : public AddressAssignBase<AddressAssignPass> {
 public:
+  //Value, offset, size, ref_cnt
+  using gmem_entry = std::tuple<mlir::Value, int64_t, int64_t, int64_t>;
+
   AddressAssignPass() {}
   void runOnOperation() override {
     auto module = getOperation();
@@ -69,17 +74,47 @@ public:
     start_addr = addr;
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](Operation *op) {
+        //adjust the lifecycle.
+        calc_tensor_life_cycle(op);
         if (isa<FuncOp, top::NoneOp, func::ReturnOp, top::WeightOp,
                 func::CallOp, tpu::YieldOp>(op)) {
         } else if (fuse_address(op)) {
-          // do nothing
+          if (isa<tpu::ReshapeOp>(op)) {
+            //need to record the lifecycle and allocated addr of output tensor
+            for (auto out : op->getResults()) {
+              int user_size = 0;
+              for (auto user : out.getUsers())
+                user_size++;
+              record_info(out, Module::getAddress(out), user_size);
+            }
+          }
         } else {
           for (auto out : op->getResults()) {
-            Module::setAddress(out, addr);
             int64_t bytes = Module::getBytes(out);
-            addr = align_up(addr + bytes, alignment);
+
+            //check if can reuse the gmem according to the lifecycle of tensor.
+            int64_t reused_addr = 0;
+            check_can_reuse_gmem(op, bytes, reused_addr);
+
+            //use the number of tensor's Users as the life cycle.
+            int user_size = 0;
+            for (auto user : out.getUsers()) {
+              user_size++;
+            }
+
+            /* don't share the gmem between input/output tensor except reshape op .*/
+            if (reused_addr == 0) {
+              Module::setAddress(out, addr);
+              record_info(out, addr, user_size);
+              addr = align_up(addr + bytes, alignment);
+            } else {
+              Module::setAddress(out, reused_addr);
+              record_info(out, reused_addr, user_size);
+            }
+            adjust_eol_edge(op);
           }
         }
+        //adjust_eol_edge(op);
       });
       // sync StoreOp addr
       func.walk([&](tpu::GroupOp gOp) {
@@ -111,7 +146,83 @@ protected:
     }
     return false;
   }
+
+  void calc_tensor_life_cycle(Operation *op) {
+    //decrease the ref_cnt of allocated tensor for further reuse gmem
+    for (auto v: op->getOperands()) {
+      //change the ref_cnt
+      for (auto it = rec_tbl.begin(); it != rec_tbl.end(); it++) {
+        if (std::get<0>(*it) == v && std::get<3>(*it) >= 1 ) {
+          //decrease the ref_cnt
+          std::get<3>(*it)--;
+        }
+      }
+    }
+  }
+
+  void adjust_eol_edge(Operation *op) {
+    //remove the holdtensor
+    for (auto v: op->getOperands()) {
+      auto iter = std::find(std::begin(hold_edges), std::end(hold_edges), v);
+      if (iter != std::end(hold_edges)) {
+        for (auto it = rec_tbl.begin(); it != rec_tbl.end(); it++) {
+          if (std::get<0>(*it) == v && std::get<3>(*it) == 0 ) {
+            //remove the using addr
+            in_using_addr.erase(std::get<1>(*it));
+            hold_edges.erase(std::remove(hold_edges.begin(), hold_edges.end(), v), hold_edges.end());
+          }
+        }
+      }
+    }
+  }
+
+  int is_same_addr_with_input(Operation *op,
+                              int64_t addr) {
+    int64_t same = 0;
+    for (auto in: op->getOperands())
+    {
+      if (in.getType().isa<RankedTensorType>()
+          && in.getType().cast<RankedTensorType>().getEncoding()
+          && in.getType().cast<RankedTensorType>().getEncoding().isa<IntegerAttr>()
+          && Module::getAddress(in) == addr) {
+        same = 1;
+        break;
+      }
+    }
+    return same;
+  }
+
+  void check_can_reuse_gmem(Operation *op,
+                            int64_t need_size,
+                            int64_t &reused_addr) {
+    for (auto iter = rec_tbl.begin(); iter != rec_tbl.end(); iter++) {
+      //TODO: merge more than two EOL tensor's consecutive gmem to one gmem
+      auto it = std::find(std::begin(hold_edges), std::end(hold_edges), std::get<0>(*iter));
+      if (it == hold_edges.end()
+          && !in_using_addr.count(std::get<1>(*iter))
+          && std::get<3>(*iter) == 0
+            && std::get<2>(*iter) >= need_size) {
+        if (!is_same_addr_with_input(op, std::get<1>(*iter))) {
+          reused_addr = std::get<1>(*iter);
+          break;
+        }
+      }
+    }
+  }
+
+  void record_info(mlir::Value tensor,
+                   int64_t offset,
+                   int64_t users){
+    rec_tbl.push_back(std::make_tuple(tensor, offset, Module::getBytes(tensor), users));
+    hold_edges.push_back(tensor);
+    in_using_addr.insert(offset);
+  }
   StringRef chip;
+private:
+   //record the allocated Gmem:Value, offset, size, ref_cnt
+  std::vector<gmem_entry> rec_tbl;
+  std::vector<mlir::Value> hold_edges;
+  std::set<int64_t> in_using_addr;
 };
 
 std::unique_ptr<OperationPass<ModuleOp>> createAddressAssignPass() {
