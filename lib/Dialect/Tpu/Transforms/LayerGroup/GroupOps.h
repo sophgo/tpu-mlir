@@ -20,7 +20,7 @@ namespace tpu {
 
 typedef enum {
   LMEM_WEIGHT,
-  LMEM_TENSOR,
+  LMEM_ACTIVATION,
   LMEM_OPERATION,
   LMEM_ANY,
 } lmem_type_t;

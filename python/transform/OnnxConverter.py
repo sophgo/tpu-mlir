@@ -249,13 +249,13 @@ class OnnxConverter(BaseConverter):
             # TODO: support other type
             # remove astype(np.float32)
             data = numpy_helper.to_array(tensor)
-            self.addTensor(name, data)
+            self.addWeight(name, data)
         # add all shape info
         for info in self.model.graph.value_info:
             shape = [i.dim_value for i in info.type.tensor_type.shape.dim]
             self.addShape(info.name, shape)
         for output in self.model.graph.output:
-            if not self.isTensor(output.name):
+            if not self.isWeight(output.name):
                 self.output_names.append(output.name)
                 shape = [i.dim_value for i in output.type.tensor_type.shape.dim]
                 self.addShape(output.name, shape)
@@ -358,20 +358,20 @@ class OnnxConverter(BaseConverter):
     def convert_add_op(self, onnx_node):
         assert (onnx_node.op_type == "Add")
         assert (len(onnx_node.inputs) == 2)
-        if self.isTensor(onnx_node.inputs[0]) and not self.isTensor(onnx_node.inputs[1]):
+        if self.isWeight(onnx_node.inputs[0]) and not self.isWeight(onnx_node.inputs[1]):
             onnx_node.inputs[0], onnx_node.inputs[1] = onnx_node.inputs[1], onnx_node.inputs[0]
             self.convert_mul_op(onnx_node)
             return
         name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
-        if not self.isTensor(onnx_node.inputs[0]) and self.isTensor(onnx_node.inputs[1]):
+        if not self.isWeight(onnx_node.inputs[0]) and self.isWeight(onnx_node.inputs[1]):
             opd1_num_elem = np.prod(self.getShape(onnx_node.inputs[1]))
             output_shape = self.getShape(onnx_node.name)
             channel = output_shape[1]
             if opd1_num_elem == channel:
                 op0 = self.getOperand(onnx_node.inputs[0])
-                offset = self.getTensor(onnx_node.inputs[1])
+                offset = self.getWeight(onnx_node.inputs[1])
                 weight_data = np.ones_like(offset)
-                self.addTensor(name+'_scale', weight_data)
+                self.addWeight(name+'_scale', weight_data)
                 weight_op = self.getWeightOp(name+'_scale')
                 offset_op = self.getWeightOp(onnx_node.inputs[1])
                 p = {'name': name}
@@ -493,23 +493,23 @@ class OnnxConverter(BaseConverter):
         operands = list()
         operands.append(op)
         B = onnx_node.inputs[1]
-        assert (self.isTensor(B))
+        assert (self.isWeight(B))
         if trans_b == 1 or alpha != 1:
-            _tensor = self.getTensor(B)
+            _tensor = self.getWeight(B)
             if trans_b == 1:
                 _tensor = np.ascontiguousarray(np.transpose(_tensor, (1, 0)))
             if alpha != 1:
                 _tensor *= alpha
             B += '_fix'
-            self.addTensor(B, _tensor)
+            self.addWeight(B, _tensor)
         operands.append(self.getWeightOp(B))
         if len(onnx_node.inputs) > 2 and beta != 0:
             C = onnx_node.inputs[2]
             if beta != 1:
-                _tensor = self.getTensor(C)
+                _tensor = self.getWeight(C)
                 _tensor *= beta
                 C += '_fix'
-                self.addTensor(C, _tensor)
+                self.addWeight(C, _tensor)
             operands.append(self.getWeightOp(C))
         else:
             operands.append(self.mlir.none_op)
@@ -607,14 +607,14 @@ class OnnxConverter(BaseConverter):
     def convert_mul_op(self, onnx_node):
         assert (onnx_node.op_type == "Mul")
         assert (len(onnx_node.inputs) == 2)
-        if self.isTensor(onnx_node.inputs[0]) and not self.isTensor(onnx_node.inputs[1]):
+        if self.isWeight(onnx_node.inputs[0]) and not self.isWeight(onnx_node.inputs[1]):
             onnx_node.inputs[0], onnx_node.inputs[1] = onnx_node.inputs[1], onnx_node.inputs[0]
             self.convert_mul_op(onnx_node)
             return
         name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
-        if (not self.isTensor(onnx_node.inputs[0])) and self.isTensor(onnx_node.inputs[1]):
+        if (not self.isWeight(onnx_node.inputs[0])) and self.isWeight(onnx_node.inputs[1]):
             op0 = self.getOperand(onnx_node.inputs[0])
-            weight = self.getTensor(onnx_node.inputs[1])
+            weight = self.getWeight(onnx_node.inputs[1])
             output_shape = self.getShape(onnx_node.name)
             weight_num_elem = np.prod(self.getShape(onnx_node.inputs[1]))
             first_val = weight.flatten()[0]
@@ -626,7 +626,7 @@ class OnnxConverter(BaseConverter):
                 return
             elif weight_num_elem == channel:
                 offset_data = np.zeros_like(weight)
-                self.addTensor(name+'_bias', offset_data)
+                self.addWeight(name+'_bias', offset_data)
                 weight_op = self.getWeightOp(onnx_node.inputs[1])
                 offset_op = self.getWeightOp(name+'_bias')
                 p = {'name': name}
@@ -704,15 +704,15 @@ class OnnxConverter(BaseConverter):
 
         if len(onnx_node.inputs) > 2:
             # onnx opset 11
-            scale_factor = self.getTensor(onnx_node.inputs[2])
+            scale_factor = self.getWeight(onnx_node.inputs[2])
             if len(scale_factor) == 0:
-                sizes = self.getTensor(onnx_node.inputs[3])
+                sizes = self.getWeight(onnx_node.inputs[3])
                 scale_factor = sizes / input_shape
             else:
                 sizes = input_shape * scale_factor
         else:
             # opset 10
-            scale_factor = self.getTensor(onnx_node.inputs[1])
+            scale_factor = self.getWeight(onnx_node.inputs[1])
             sizes = input_shape * scale_factor
 
         if scale_factor[0] != 1.0 or scale_factor[1] != 1.0:
@@ -757,11 +757,11 @@ class OnnxConverter(BaseConverter):
         num_input = len(onnx_node.inputs)
         num_dims = len(input_shape)
         if num_input > 1:
-            starts = self.getTensor(onnx_node.inputs[1]).astype(int)
-            ends = self.getTensor(onnx_node.inputs[2]).astype(int)
-            axes = self.getTensor(onnx_node.inputs[3]).astype(int) if num_input > 3 else list(
+            starts = self.getWeight(onnx_node.inputs[1]).astype(int)
+            ends = self.getWeight(onnx_node.inputs[2]).astype(int)
+            axes = self.getWeight(onnx_node.inputs[3]).astype(int) if num_input > 3 else list(
                 np.arange(num_dims))
-            steps = self.getTensor(
+            steps = self.getWeight(
                 onnx_node.inputs[4]).astype(int) if num_input > 4 else [1] * len(axes)
         else:
             starts = onnx_node.attrs.get('starts')
@@ -842,7 +842,7 @@ class OnnxConverter(BaseConverter):
         op = self.getOperand(onnx_node.inputs[0])
         input_shape = self.getShape(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
-        pads = list(self.getTensor(onnx_node.inputs[1]))
+        pads = list(self.getWeight(onnx_node.inputs[1]))
         if pads == None:
             raise RuntimeError("No paddings value")
         if len(pads) != 2 * len(input_shape):
@@ -859,7 +859,7 @@ class OnnxConverter(BaseConverter):
 
     def convert_div_op(self, onnx_node):
         assert (len(onnx_node.inputs) == 2)
-        # if self.isTensor(onnx_node.inputs[0]) or self.isTensor(onnx_node.inputs[1]):
+        # if self.isWeight(onnx_node.inputs[0]) or self.isWeight(onnx_node.inputs[1]):
         #     # TODO: support tensor
         #     raise RuntimeError("not support Tensor")
         op0 = self.getOperand(onnx_node.inputs[0])
@@ -889,8 +889,8 @@ class OnnxConverter(BaseConverter):
         assert (onnx_node.op_type == "Clip")
         input = self.getOperand(onnx_node.inputs[0])
         if len(onnx_node.inputs) == 3:
-            min = self.getTensor(onnx_node.inputs[1])
-            max = self.getTensor(onnx_node.inputs[2])
+            min = self.getWeight(onnx_node.inputs[1])
+            max = self.getWeight(onnx_node.inputs[2])
         else:
             min = onnx_node.attrs.get('min', -np.inf)
             max = onnx_node.attrs.get('max', np.inf)
