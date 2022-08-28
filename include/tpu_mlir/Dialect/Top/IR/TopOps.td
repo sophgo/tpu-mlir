@@ -250,7 +250,7 @@ class Top_PoolOp <string mnemonic> : Top_Op<mnemonic,[SupportFuseRelu]> {
 def Top_AvgPoolOp:Top_PoolOp<"AvgPool">;
 def Top_MaxPoolOp:Top_PoolOp<"MaxPool">;
 
-def Top_AddOp: Top_Op<"Add", [SupportFuseRelu, InOutSameShape]> {
+def Top_AddOp: Top_Op<"Add", [SupportFuseRelu, InOutSameDim]> {
   let summary = "add operator";
 
   let description = [{

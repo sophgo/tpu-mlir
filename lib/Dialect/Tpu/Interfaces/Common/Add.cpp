@@ -9,17 +9,36 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/Helper/Module.h"
 #include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-LogicalResult tpu::AddOp::init(InferenceParameter &p) { return success(); }
-void tpu::AddOp::deinit(InferenceParameter &p) {}
+LogicalResult tpu::AddOp::init(InferenceParameter &p) {
+  auto binary = new Binary();
+  (*binary)
+      .lhs(p.inputs[0], Module::getShape(inputs()[0]))
+      .rhs(p.inputs[1], Module::getShape(inputs()[1]))
+      .dst(p.outputs[0], Module::getShape(output()))
+      .do_relu(do_relu())
+      .relu_limit(relu_limit().convertToDouble())
+      .algorithem(algorithm::binary_add)
+      .setup();
+  p.handle = (void *)binary;
+  return success();
+}
+
+void tpu::AddOp::deinit(InferenceParameter &p) {
+  if (p.handle != nullptr) {
+    auto binary = (Binary *)p.handle;
+    delete binary;
+    p.handle = nullptr;
+  }
+}
 
 LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
   auto module = Module::getModuleOp(getOperation());
@@ -29,15 +48,8 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
   memset(p.outputs[0], 0, num_elem * sizeof(float));
   auto asym = Module::getAsymmetric(module);
   if (out_type.isa<FloatType>()) {
-#pragma omp parallel for schedule(static, omp_schedule(num_elem))
-    for (int64_t j = 0; j < num_elem; j++) {
-      for (int i = 0; i < nInputs; i++) {
-        p.outputs[0][j] += p.inputs[i][j];
-      }
-      if (do_relu()) {
-        p.outputs[0][j] = std::max(0.0f, p.outputs[0][j]);
-      }
-    }
+    auto binary = (Binary *)p.handle;
+    binary->run();
     if (out_type.isBF16()) {
       f32_to_bf16(p.outputs[0], p.outputs[0], num_elem);
     } else if (out_type.isF16()) {
@@ -47,15 +59,8 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
     // auto in0 = reinterpret_cast<int32_t*>(p.inputs[0]);
     // auto in1 = reinterpret_cast<int32_t*>(p.inputs[1]);
     // auto out = reinterpret_cast<int32_t*>(p.outputs[0]);
-#pragma omp parallel for schedule(static, omp_schedule(num_elem))
-    for (int64_t j = 0; j < num_elem; j++) {
-      for (int i = 0; i < nInputs; i++) {
-        p.outputs[0][j] += p.inputs[i][j];
-      }
-      if (do_relu()) {
-        p.outputs[0][j] = std::max(0.0f, p.outputs[0][j]);
-      }
-    }
+    auto binary = (Binary *)p.handle;
+    binary->run();
   } else if (asym == false) {
     auto o_qtype = Quant::getUniformQuantizedType(output());
     auto zp = o_qtype.getZeroPoint();
@@ -64,37 +69,60 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
     auto op = getOperation();
     auto multiplier_v = Module::getI64Array(multipliers(), 2, 1);
     auto rshift_v = Module::getI64Array(rshifts(), 2, 0);
-    memset(p.outputs[0], 0, num_elem * sizeof(float));
+    auto lhs_num_elem = Module::getNumElements(inputs()[0]);
+    auto rhs_num_elem = Module::getNumElements(inputs()[1]);
+    std::vector<float> lhs_tmp(lhs_num_elem);
+    std::vector<float> rhs_tmp(rhs_num_elem);
+#pragma omp parallel for schedule(static, omp_schedule(lhs_num_elem))
+    for (int i = 0; i < lhs_num_elem; i++) {
+      lhs_tmp[i] = applyMultiplierAndRShift(p.inputs[0][i], multiplier_v->at(0),
+                                            rshift_v->at(0));
+    }
+#pragma omp parallel for schedule(static, omp_schedule(rhs_num_elem))
+    for (int i = 0; i < rhs_num_elem; i++) {
+      rhs_tmp[i] = applyMultiplierAndRShift(p.inputs[1][i], multiplier_v->at(1),
+                                            rshift_v->at(1));
+    }
+
+    auto binary = (Binary *)p.handle;
+    (*binary)
+        .lhs(lhs_tmp.data(), Module::getShape(inputs()[0]))
+        .rhs(rhs_tmp.data(), Module::getShape(inputs()[1]))
+        .run();
+
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int i = 0; i < num_elem; i++) {
-      int64_t data0 = applyMultiplierAndRShift(
-          p.inputs[0][i], multiplier_v->at(0), rshift_v->at(0));
-      int64_t data1 = applyMultiplierAndRShift(
-          p.inputs[1][i], multiplier_v->at(1), rshift_v->at(1));
-      int64_t sum = data0 + data1;
-      if (do_relu() && sum < 0) {
-        sum = 0;
-      }
-      p.outputs[0][i] = out_type.isUnsignedInteger(8) ? Quant::to_uint8(sum)
-                                                      : Quant::to_int8(sum);
+      auto &out = p.outputs[0][i];
+      out = out_type.isUnsignedInteger(8) ? Quant::to_uint8(out)
+                                          : Quant::to_int8(out);
     }
   } else {
+    auto op = getOperation();
+    auto lhs_num_elem = Module::getNumElements(inputs()[0]);
+    auto rhs_num_elem = Module::getNumElements(inputs()[1]);
+    std::vector<float> lhs_tmp(lhs_num_elem);
+    std::vector<float> rhs_tmp(rhs_num_elem);
+    auto qtype = Quant::getUniformQuantizedType(inputs()[0]);
+#pragma omp parallel for schedule(static, omp_schedule(lhs_num_elem))
+    for (int i = 0; i < lhs_num_elem; i++) {
+      lhs_tmp[i] = (p.inputs[0][i] - qtype.getZeroPoint()) * qtype.getScale();
+    }
+    qtype = Quant::getUniformQuantizedType(inputs()[0]);
+#pragma omp parallel for schedule(static, omp_schedule(rhs_num_elem))
+    for (int i = 0; i < rhs_num_elem; i++) {
+      rhs_tmp[i] = (p.inputs[1][i] - qtype.getZeroPoint()) * qtype.getScale();
+    }
+    auto binary = (Binary *)p.handle;
+    (*binary)
+        .lhs(lhs_tmp.data(), Module::getShape(inputs()[0]))
+        .rhs(rhs_tmp.data(), Module::getShape(inputs()[1]))
+        .run();
+
     auto o_qtype = Quant::getUniformQuantizedType(output());
     auto zp = o_qtype.getZeroPoint();
     auto scale = o_qtype.getScale();
-    auto op = getOperation();
-    for (int i = 0; i < nInputs; i++) {
-      auto input = inputs()[i];
-      auto qtype = Quant::getUniformQuantizedType(input);
-      for (int64_t j = 0; j < num_elem; j++) {
-        p.outputs[0][j] +=
-            (p.inputs[i][j] - qtype.getZeroPoint()) * qtype.getScale();
-      }
-    }
+#pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int i = 0; i < num_elem; i++) {
-      if (do_relu()) {
-        p.outputs[0][i] = std::max(0.0f, p.outputs[0][i]);
-      }
       p.outputs[0][i] = p.outputs[0][i] / scale + zp;
       p.outputs[0][i] = out_type.isUnsignedInteger(8)
                             ? Quant::to_uint8(p.outputs[0][i])

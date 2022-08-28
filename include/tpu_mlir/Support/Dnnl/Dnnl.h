@@ -9,6 +9,7 @@
 
 #pragma once
 
+#include "tpu_mlir/Support/Dnnl/Binary.h"
 #include "tpu_mlir/Support/Dnnl/Conv.h"
 #include "tpu_mlir/Support/Dnnl/MatMul.h"
 #include "tpu_mlir/Support/Dnnl/Pool.h"

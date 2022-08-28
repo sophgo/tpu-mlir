@@ -22,6 +22,7 @@ namespace trait {
 namespace impl {
 mlir::LogicalResult verifyTpuTypeRestrictTrait(mlir::Operation *op);
 mlir::LogicalResult verifyInOutSameShapeTrait(mlir::Operation *op);
+mlir::LogicalResult verifyInOutSameDimTrait(mlir::Operation *op);
 } // namespace impl
 
 // If a op has this trait, it means that relu follow this op can be fused to
@@ -61,6 +62,15 @@ class InOutSameShape
 public:
   static mlir::LogicalResult verifyTrait(mlir::Operation *op) {
     return impl::verifyInOutSameShapeTrait(op);
+  }
+};
+
+template <typename ConcreteType>
+class InOutSameDim
+    : public ::mlir::OpTrait::TraitBase<ConcreteType, InOutSameDim> {
+public:
+  static mlir::LogicalResult verifyTrait(mlir::Operation *op) {
+    return impl::verifyInOutSameDimTrait(op);
   }
 };
 

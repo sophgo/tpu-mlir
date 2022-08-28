@@ -195,7 +195,7 @@ def Tpu_AvgPool3DOp:Tpu_PoolOp<"AvgPool3D"> {
   );
 }
 
-def Tpu_AddOp: Tpu_Op<"Add", [SupportFuseRelu, InOutSameShape,
+def Tpu_AddOp: Tpu_Op<"Add", [SupportFuseRelu, InOutSameDim,
   DeclareOpInterfaceMethods<LocalGenInterface>]> {
   let summary = "add operator";
 
