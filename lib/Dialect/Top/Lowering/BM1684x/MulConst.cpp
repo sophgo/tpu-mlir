@@ -38,8 +38,7 @@ Value top::MulConstOp::lowering_int8_bm1684x(bool asymmetric) {
   auto newType = Quant::getQuantInt8Type(output(), asymmetric);
   builder.setInsertionPointAfter(op);
   auto newOp = builder.create<tpu::MulShiftOp>(op->getLoc(), newType,
-                                               ValueRange{input()},
-                                               ArrayRef<NamedAttribute>{attrs});
+                                               ValueRange{input()}, attrs);
   return newOp.output();
 }
 

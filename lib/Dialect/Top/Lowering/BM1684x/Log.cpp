@@ -31,9 +31,8 @@ Value top::LogOp::lowering_int8_bm1684x(bool asymmetric) {
   }
   builder.setInsertionPointAfter(op);
   auto newType = Quant::getQuantInt8Type(output(), asymmetric);
-  auto newOp =
-      builder.create<tpu::LutOp>(getLoc(), newType, ValueRange{input(), table},
-                                 ArrayRef<NamedAttribute>{attrs});
+  auto newOp = builder.create<tpu::LutOp>(getLoc(), newType,
+                                          ValueRange{input(), table}, attrs);
   return newOp.output();
 }
 

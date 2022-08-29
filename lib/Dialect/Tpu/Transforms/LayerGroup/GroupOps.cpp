@@ -301,9 +301,8 @@ void GroupOps::buildGroupOp(group_lmem_t &group_lmem) {
   attrs.push_back(
       builder.getNamedAttr("hsecs", builder.getI64IntegerAttr(hsecs)));
   builder.setInsertionPointAfter(ops.back());
-  auto groupOp = builder.create<tpu::GroupOp>(func.getLoc(), ret_types,
-                                              ArrayRef<Value>{operands},
-                                              ArrayRef<NamedAttribute>{attrs});
+  auto groupOp =
+      builder.create<tpu::GroupOp>(func.getLoc(), ret_types, operands, attrs);
   body = new Block();
   groupOp.body().push_back(body);
   //  replace outputs
@@ -370,9 +369,9 @@ void GroupOps::CreateLoadOp(lmem_info_t &linfo,
   } else {
     builder.setInsertionPointAfter(current_op);
   }
-  auto loadOp = builder.create<tpu::LoadOp>(
-      NameLoc::get(builder.getStringAttr(name)), input.getType(),
-      ArrayRef<Value>{operands}, ArrayRef<NamedAttribute>{attrs});
+  auto loadOp =
+      builder.create<tpu::LoadOp>(NameLoc::get(builder.getStringAttr(name)),
+                                  input.getType(), operands, attrs);
   input.replaceUsesWithIf(loadOp.output(), [&](OpOperand &operand) {
     Operation *user = operand.getOwner();
     return find(ops.begin(), ops.end(), user) != ops.end();
@@ -393,9 +392,9 @@ StoreOp GroupOps::CreateStoreOp(lmem_info_t &linfo) {
   attrs.push_back(builder.getNamedAttr(LocalGenInterface::kLayerGroupAttrName,
                                        getLgParam(linfo, linfo.timestep)));
   builder.setInsertionPointAfter(current_op);
-  auto storeOp = builder.create<tpu::StoreOp>(
-      NameLoc::get(builder.getStringAttr(name)), output.getType(),
-      ArrayRef<Value>{operands}, ArrayRef<NamedAttribute>{attrs});
+  auto storeOp =
+      builder.create<tpu::StoreOp>(NameLoc::get(builder.getStringAttr(name)),
+                                   output.getType(), operands, attrs);
   current_op = storeOp;
   return storeOp;
 }

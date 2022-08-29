@@ -82,9 +82,8 @@ Value top::ConvOp::lowering_int8_bm1684() {
   attrs.push_back(
       builder.getNamedAttr("with_bias", builder.getBoolAttr(attr.has_bias)));
   auto newType = Quant::getQuantInt8Type(output());
-  auto newOp = builder.create<tpu::Conv2DOp>(op->getLoc(), newType,
-                                             ArrayRef<Value>{operands},
-                                             ArrayRef<NamedAttribute>{attrs});
+  auto newOp =
+      builder.create<tpu::Conv2DOp>(op->getLoc(), newType, operands, attrs);
   return newOp.output();
 }
 

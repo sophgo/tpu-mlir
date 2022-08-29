@@ -34,18 +34,17 @@ Value top::SoftmaxOp::lowering_f32_bm1684x() {
   }
   builder.setInsertionPointAfter(op);
   auto newOp = builder.create<tpu::SoftmaxOp>(op->getLoc(), output().getType(),
-                                              ArrayRef<Value>{operands},
-                                              ArrayRef<NamedAttribute>{attrs});
+                                              operands, attrs);
   return newOp.output();
 }
 
 Value top::SoftmaxOp::lowering_bf16_bm1684x() {
-  //return lowering_common_float<tpu::SoftmaxOp, BFloat16Type>(getOperation());
+  // return lowering_common_float<tpu::SoftmaxOp, BFloat16Type>(getOperation());
   return lowering_f32_bm1684x();
 }
 
 Value top::SoftmaxOp::lowering_f16_bm1684x() {
-  //return lowering_common_float<tpu::SoftmaxOp, Float16Type>(getOperation());
+  // return lowering_common_float<tpu::SoftmaxOp, Float16Type>(getOperation());
   return lowering_f32_bm1684x();
 }
 
@@ -72,8 +71,7 @@ Value top::SoftmaxOp::lowering_quant_bm1684x() {
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  auto newOp = builder.create<tpu::SoftmaxOp>(op->getLoc(), output().getType(),
-                                              ValueRange{input(), table_opd},
-                                              ArrayRef<NamedAttribute>{attrs});
+  auto newOp = builder.create<tpu::SoftmaxOp>(
+      op->getLoc(), output().getType(), ValueRange{input(), table_opd}, attrs);
   return newOp.output();
 }
