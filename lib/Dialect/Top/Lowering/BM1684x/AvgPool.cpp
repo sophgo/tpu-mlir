@@ -58,19 +58,16 @@ Value top::AvgPoolOp::lowering_int8_bm1684x(bool asymmetric) {
   builder.setInsertionPointAfter(op);
   auto newType = Quant::getQuantInt8Type(output(), asymmetric);
   if (kernel_size == 1) {
-    auto newOp =
-        builder.create<tpu::AvgPool1DOp>(getLoc(), newType, ValueRange{input()},
-                                         ArrayRef<NamedAttribute>{attrs});
+    auto newOp = builder.create<tpu::AvgPool1DOp>(getLoc(), newType,
+                                                  ValueRange{input()}, attrs);
     return newOp.output();
   } else if (kernel_size == 2) {
-    auto newOp =
-        builder.create<tpu::AvgPool2DOp>(getLoc(), newType, ValueRange{input()},
-                                         ArrayRef<NamedAttribute>{attrs});
+    auto newOp = builder.create<tpu::AvgPool2DOp>(getLoc(), newType,
+                                                  ValueRange{input()}, attrs);
     return newOp.output();
   } else {
-    auto newOp =
-        builder.create<tpu::AvgPool3DOp>(getLoc(), newType, ValueRange{input()},
-                                         ArrayRef<NamedAttribute>{attrs});
+    auto newOp = builder.create<tpu::AvgPool3DOp>(getLoc(), newType,
+                                                  ValueRange{input()}, attrs);
     return newOp.output();
   }
 }
@@ -144,19 +141,16 @@ Value top::AvgPoolOp::lowering_quant_bm1684x() {
 
   builder.setInsertionPointAfter(op);
   if (kernel_size == 1) {
-    auto newOp = builder.create<tpu::AvgPool1DOp>(
-        getLoc(), output().getType(), ValueRange{input()},
-        ArrayRef<NamedAttribute>{attrs});
+    auto newOp = builder.create<tpu::AvgPool1DOp>(getLoc(), output().getType(),
+                                                  ValueRange{input()}, attrs);
     return newOp.output();
   } else if (kernel_size == 2) {
-    auto newOp = builder.create<tpu::AvgPool2DOp>(
-        getLoc(), output().getType(), ValueRange{input()},
-        ArrayRef<NamedAttribute>{attrs});
+    auto newOp = builder.create<tpu::AvgPool2DOp>(getLoc(), output().getType(),
+                                                  ValueRange{input()}, attrs);
     return newOp.output();
   } else {
-    auto newOp = builder.create<tpu::AvgPool3DOp>(
-        getLoc(), output().getType(), ValueRange{input()},
-        ArrayRef<NamedAttribute>{attrs});
+    auto newOp = builder.create<tpu::AvgPool3DOp>(getLoc(), output().getType(),
+                                                  ValueRange{input()}, attrs);
     return newOp.output();
   }
   llvm_unreachable("can't be here");

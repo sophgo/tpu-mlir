@@ -35,11 +35,12 @@ Value top::LeakyReluOp::lowering_int8_bm1684x(bool asymmetric) {
 
     builder.setInsertionPointAfter(op);
     auto newType = Quant::getQuantInt8Type(output(), asymmetric);
-    auto newOp = builder.create<tpu::LeakyReluOp>(
-        op->getLoc(), newType, Value(input), ArrayRef<NamedAttribute>{attrs});
+    auto newOp = builder.create<tpu::LeakyReluOp>(op->getLoc(), newType,
+                                                  Value(input), attrs);
     return newOp;
   } else {
-    llvm_unreachable("to be supported for LeakyRelu asymmetric quantize lowering");
+    llvm_unreachable(
+        "to be supported for LeakyRelu asymmetric quantize lowering");
   }
   return nullptr;
 }

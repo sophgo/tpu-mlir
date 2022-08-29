@@ -98,9 +98,8 @@ Value top::MatMulOp::lowering_int8_bm1684x(bool asymmetric) {
     attrs.push_back(attr);
   }
   auto newType = Quant::getQuantInt8Type(output(), asymmetric);
-  auto newOp = builder.create<tpu::MatMulOp>(op->getLoc(), newType,
-                                             ArrayRef<Value>{operands},
-                                             ArrayRef<NamedAttribute>{attrs});
+  auto newOp =
+      builder.create<tpu::MatMulOp>(op->getLoc(), newType, operands, attrs);
   return newOp.output();
 }
 
@@ -127,9 +126,8 @@ Value top::MatMulOp::lowering_f16_bm1684x() {
   auto tensor_type = output().getType().cast<RankedTensorType>();
   auto newType =
       RankedTensorType::get(tensor_type.getShape(), builder.getF16Type());
-  auto newOp = builder.create<tpu::MatMulOp>(op->getLoc(), newType,
-                                             ArrayRef<Value>{operands},
-                                             ArrayRef<NamedAttribute>{attrs});
+  auto newOp =
+      builder.create<tpu::MatMulOp>(op->getLoc(), newType, operands, attrs);
   return newOp.output();
 }
 
@@ -152,9 +150,8 @@ Value top::MatMulOp::lowering_bf16_bm1684x() {
   auto tensor_type = output().getType().cast<RankedTensorType>();
   auto newType =
       RankedTensorType::get(tensor_type.getShape(), builder.getBF16Type());
-  auto newOp = builder.create<tpu::MatMulOp>(op->getLoc(), newType,
-                                             ArrayRef<Value>{operands},
-                                             ArrayRef<NamedAttribute>{attrs});
+  auto newOp =
+      builder.create<tpu::MatMulOp>(op->getLoc(), newType, operands, attrs);
   return newOp.output();
 }
 
@@ -198,8 +195,8 @@ Value top::MatMulOp::lowering_quant_bm1684x() {
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     // if (attr.getName() == "name") {
-    //   attrs.push_back(builder.getNamedAttr("name", builder.getStringAttr(new_name)));
-    //   continue;
+    //   attrs.push_back(builder.getNamedAttr("name",
+    //   builder.getStringAttr(new_name))); continue;
     // }
     attrs.push_back(attr);
   }
@@ -236,10 +233,11 @@ Value top::MatMulOp::lowering_quant_bm1684x() {
   } else {
     operands.push_back(bias());
   }
-  // auto newType = RankedTensorType::get(Module::getShape(output()), builder.getI32Type());
+  // auto newType = RankedTensorType::get(Module::getShape(output()),
+  // builder.getI32Type());
   auto newOp = builder.create<tpu::MatMulOp>(op->getLoc(), output().getType(),
-                                             ArrayRef<Value>{operands},
-                                             ArrayRef<NamedAttribute>{attrs});
+                                             operands, attrs);
   return newOp.output();
-  // return do_requant(newOp.output(), Module::getName(op).str(), output().getType(), true, multiplier, shift, 1);
+  // return do_requant(newOp.output(), Module::getName(op).str(),
+  // output().getType(), true, multiplier, shift, 1);
 }

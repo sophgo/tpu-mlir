@@ -24,17 +24,16 @@ Value top::ConcatOp::lowering_int8_bm1684x(bool asymmetric) {
   builder.setInsertionPointAfter(op);
   std::vector<Value> operands;
   for (auto in : inputs()) {
-      auto new_in = do_transfer(in, output(), asymmetric);
-      operands.push_back(new_in);
+    auto new_in = do_transfer(in, output(), asymmetric);
+    operands.push_back(new_in);
   }
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
   auto newType = Quant::getQuantInt8Type(output(), asymmetric);
-  auto newOp = builder.create<tpu::ConcatOp>(getLoc(), newType,
-                                             ArrayRef<Value>{operands},
-                                             ArrayRef<NamedAttribute>{attrs});
+  auto newOp =
+      builder.create<tpu::ConcatOp>(getLoc(), newType, operands, attrs);
   return newOp.output();
 }
 
