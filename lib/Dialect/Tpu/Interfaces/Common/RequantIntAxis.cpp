@@ -17,12 +17,12 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-LogicalResult tpu::RequantAxisOp::init(InferenceParameter &p) {
+LogicalResult tpu::RequantIntAxisOp::init(InferenceParameter &p) {
   return success();
 }
-void tpu::RequantAxisOp::deinit(InferenceParameter &p) {}
+void tpu::RequantIntAxisOp::deinit(InferenceParameter &p) {}
 
-LogicalResult tpu::RequantAxisOp::inference(InferenceParameter &p) {
+LogicalResult tpu::RequantIntAxisOp::inference(InferenceParameter &p) {
   auto i_sType = Module::getStorageType(input());
   auto o_sType = Module::getStorageType(output());
   auto o_qtype = Quant::getUniformQuantizedType(output());

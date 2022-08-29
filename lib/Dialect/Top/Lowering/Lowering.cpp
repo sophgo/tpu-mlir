@@ -59,7 +59,7 @@ Value do_cast(Value v, Type to, bool tensorType) {
   }
   std::vector<NamedAttribute> attrs;
   builder.setInsertionPointAfterValue(v);
-  std::string new_name = Module::getName(v.getDefiningOp()).str() + suffix;
+  std::string new_name = Module::getName(v).str() + suffix;
   auto newType = to;
   if (tensorType == false) {
     newType = RankedTensorType::get(Module::getShape(v), to_stype);
@@ -113,7 +113,7 @@ Value do_transfer(Value in, Value out, bool asymmetric) {
     attrs.push_back(
         builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
     builder.setInsertionPointAfterValue(in);
-    auto rqOp = builder.create<tpu::RequantOp>(name_loc, new_type,
+    auto rqOp = builder.create<tpu::RequantIntOp>(name_loc, new_type,
                                                ValueRange{in}, attrs);
     return rqOp.output();
   }
@@ -179,11 +179,9 @@ Value do_quantize(Value v, bool asymmetric) {
   OpBuilder builder(ctx);
   auto newType = Quant::getQuantInt8Type(v, asymmetric);
   builder.setInsertionPointAfterValue(v);
-  std::vector<NamedAttribute> attrs;
-  std::string new_name = Module::getName(v.getDefiningOp()).str() + "_i8";
+  std::string new_name = Module::getName(v).str() + "_i8";
   auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
-  auto castOp =
-      builder.create<tpu::CastOp>(name_loc, newType, ValueRange{v}, attrs);
+  auto castOp = builder.create<tpu::CastOp>(name_loc, newType, ValueRange{v});
   return castOp.output();
 }
 
@@ -211,7 +209,7 @@ Value do_dequant(Value input, Type to_type, int64_t multiplier, int64_t shift,
   std::string new_name =
       Module::getName(input.getDefiningOp()).str() + "_dequant";
   auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
-  auto newOp = builder.create<tpu::DequantOp>(name_loc, newType,
+  auto newOp = builder.create<tpu::DequantIntOp>(name_loc, newType,
                                               ValueRange{input}, attrs);
   return newOp.output();
 }
@@ -236,7 +234,7 @@ Value do_requant(Location name_loc, Value input, Type to_type, bool tensorType,
   attrs.push_back(
       builder.getNamedAttr("quant_mode", builder.getI64IntegerAttr(mode)));
 
-  auto newOp = builder.create<tpu::RequantOp>(name_loc, newType,
+  auto newOp = builder.create<tpu::RequantIntOp>(name_loc, newType,
                                               ValueRange{input}, attrs);
   return newOp.output();
 }
@@ -260,7 +258,7 @@ Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
       builder.getNamedAttr("quant_mode", builder.getI64IntegerAttr(mode)));
 
   auto newOp =
-      builder.create<tpu::RequantAxisOp>(name_loc, newType, operands, attrs);
+      builder.create<tpu::RequantIntAxisOp>(name_loc, newType, operands, attrs);
   return newOp.output();
 }
 
@@ -517,12 +515,12 @@ protected:
   void cast_process() {
     mainFunc_.walk([&](Operation *op) {
       if (op->getDialect()->getNamespace() == "tpu" &&
-          false == isa<tpu::CastOp, tpu::RequantOp, tpu::DequantOp,
-                       tpu::RequantAxisOp, tpu::DequantAxisOp>(op)) {
+          false == isa<tpu::CastOp, tpu::RequantIntOp, tpu::DequantIntOp,
+                       tpu::RequantIntAxisOp, tpu::DequantIntAxisOp>(op)) {
         auto oType = op->getResult(0).getType();
         if (op->hasOneUse()) {
           auto nextOp = *(op->getUsers().begin());
-          if (isa<tpu::RequantOp, tpu::RequantAxisOp>(nextOp)) {
+          if (isa<tpu::RequantIntOp, tpu::RequantIntAxisOp>(nextOp)) {
             oType = nextOp->getResult(0).getType();
           }
         }
