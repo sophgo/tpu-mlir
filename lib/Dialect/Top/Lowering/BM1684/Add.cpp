@@ -54,9 +54,8 @@ Value top::AddOp::lowering_int8_bm1684() {
   attrs.push_back(
       builder.getNamedAttr("rshifts", builder.getI64ArrayAttr(rshift_v)));
   auto newType = Quant::getQuantInt8Type(output());
-  auto newOp = builder.create<tpu::AddOp>(op->getLoc(), newType,
-                                          ArrayRef<Value>{operands},
-                                          ArrayRef<NamedAttribute>{attrs});
+  auto newOp =
+      builder.create<tpu::AddOp>(op->getLoc(), newType, operands, attrs);
   return newOp.output();
 }
 

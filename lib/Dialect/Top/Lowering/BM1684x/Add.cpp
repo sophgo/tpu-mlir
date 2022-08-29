@@ -56,9 +56,8 @@ Value top::AddOp::lowering_int8_bm1684x(bool asymmetric) {
     attrs.push_back(
         builder.getNamedAttr("rshifts", builder.getI64ArrayAttr(rshift_v)));
     auto newType = Quant::getQuantInt8Type(output(), asymmetric);
-    auto newOp = builder.create<tpu::AddOp>(op->getLoc(), newType,
-                                            ArrayRef<Value>{operands},
-                                            ArrayRef<NamedAttribute>{attrs});
+    auto newOp =
+        builder.create<tpu::AddOp>(op->getLoc(), newType, operands, attrs);
     return newOp.output();
   } else {
     llvm_unreachable("AddOp asymmetric use f32");
@@ -84,9 +83,9 @@ Value top::AddOp::lowering_quant_bm1684x() {
   auto op = getOperation();
   OpBuilder builder(getContext());
   const int nInputs = op->getNumOperands();
-  assert(nInputs==2);     // TODO: nInput==1
+  assert(nInputs == 2); // TODO: nInput==1
   const int nTensors = nInputs + 1;
-  const int lshift = 20;  // TODO: lshift == 15 if input dtype is int16
+  const int lshift = 20; // TODO: lshift == 15 if input dtype is int16
   std::vector<int64_t> shift_v(nTensors);
   std::vector<int64_t> multiplier_v(nTensors, 1);
   std::vector<double> scale_v(nInputs);
@@ -118,11 +117,13 @@ Value top::AddOp::lowering_quant_bm1684x() {
   auto ctx = op->getContext();
 
   // dequant left
-  auto input0_dequant = do_dequant(inputs()[0], builder.getI32Type(), multiplier_v[0], shift_v[0], 1, lshift);
+  auto input0_dequant = do_dequant(inputs()[0], builder.getI32Type(),
+                                   multiplier_v[0], shift_v[0], 1, lshift);
   // op->setOperand(0, input0_dequant);
   operands.push_back(input0_dequant);
   // dequant right
-  auto input1_dequant = do_dequant(inputs()[1], builder.getI32Type(), multiplier_v[1], shift_v[1], 1, lshift);
+  auto input1_dequant = do_dequant(inputs()[1], builder.getI32Type(),
+                                   multiplier_v[1], shift_v[1], 1, lshift);
   // op->setOperand(1, input1_dequant);
   operands.push_back(input1_dequant);
   // add
@@ -130,18 +131,18 @@ Value top::AddOp::lowering_quant_bm1684x() {
   std::string new_name = Module::getName(op).str() + suffix;
   builder.setInsertionPointAfterValue(input1_dequant);
   std::vector<NamedAttribute> attrs;
-  attrs.push_back(builder.getNamedAttr(
-      "multiplier", builder.getI64IntegerAttr(1)));
   attrs.push_back(
-      builder.getNamedAttr("shift", builder.getI64IntegerAttr(0)));
+      builder.getNamedAttr("multiplier", builder.getI64IntegerAttr(1)));
+  attrs.push_back(builder.getNamedAttr("shift", builder.getI64IntegerAttr(0)));
 
-  auto newType = RankedTensorType::get(Module::getShape(output()), builder.getI32Type());
+  auto newType =
+      RankedTensorType::get(Module::getShape(output()), builder.getI32Type());
   // auto add_quant = lowering_common<tpu::AddOp>(op, newType);
   auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
-  auto newOp =
-      builder.create<tpu::AddOp>(name_loc, newType, ArrayRef<Value>{operands},
-                                 ArrayRef<NamedAttribute>{attrs});
+  auto newOp = builder.create<tpu::AddOp>(name_loc, newType, operands, attrs);
   // requant to int8
-  QuantizeMultiplier((scale_max * 2) / ((1 << lshift) * o_scale), &scalei, &shifti);
-  return do_requant(op->getLoc(), newOp.output(), output().getType(), true, scalei, shifti, 1);
+  QuantizeMultiplier((scale_max * 2) / ((1 << lshift) * o_scale), &scalei,
+                     &shifti);
+  return do_requant(op->getLoc(), newOp.output(), output().getType(), true,
+                    scalei, shifti, 1);
 }

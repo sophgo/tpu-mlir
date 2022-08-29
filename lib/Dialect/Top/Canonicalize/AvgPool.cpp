@@ -51,8 +51,7 @@ struct AvgPoolToDwConv : public OpRewritePattern<AvgPoolOp> {
     attrs.push_back(
         rewriter.getNamedAttr("do_relu", rewriter.getBoolAttr(param.do_relu)));
     auto newOp = rewriter.create<ConvOp>(op.getLoc(), op.output().getType(),
-                                         ArrayRef<Value>{operands},
-                                         ArrayRef<NamedAttribute>{attrs});
+                                         operands, attrs);
     rewriter.replaceOp(op, {newOp.getResult()});
     return success();
   }
@@ -60,5 +59,5 @@ struct AvgPoolToDwConv : public OpRewritePattern<AvgPoolOp> {
 
 void AvgPoolOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                             MLIRContext *context) {
-//  results.insert<AvgPoolToDwConv>(context);
+  //  results.insert<AvgPoolToDwConv>(context);
 }

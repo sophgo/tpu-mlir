@@ -41,19 +41,22 @@ Value top::ScaleOp::lowering_int8_bm1684x(bool asymmetric) {
   float overflow_ratio;
   for (int cidx = 0; cidx < c; cidx++) {
     // get right shift
-    int rightShiftTmp = calRightShiftNumUseCblas(scale_f32->data()[cidx], in_scale, out_scale, 8);
+    int rightShiftTmp = calRightShiftNumUseCblas(scale_f32->data()[cidx],
+                                                 in_scale, out_scale, 8);
     rightShiftTmp++;
     do {
       rightShiftTmp--;
       scale_val = std::pow(2, rightShiftTmp) / out_scale;
       int16_t bias_int16_val;
-      overflow_ratio = quantizeToInt16(bias_f32->data()+cidx, &bias_int16_val, 1, scale_val);
+      overflow_ratio = quantizeToInt16(bias_f32->data() + cidx, &bias_int16_val,
+                                       1, scale_val);
       if (asymmetric) {
-        scale_val = std::pow(2, rightShiftTmp) *in_scale / out_scale;
+        scale_val = std::pow(2, rightShiftTmp) * in_scale / out_scale;
         int8_t tmp_scale = 1;
-        quantizeToInt8(scale_f32->data()+cidx, &tmp_scale, 1, scale_val);
+        quantizeToInt8(scale_f32->data() + cidx, &tmp_scale, 1, scale_val);
         int tmp_zp = tmp_scale * in_zp;
-        if (std::abs((int)bias_int16_val - tmp_zp) > std::numeric_limits<int16_t>::max()) {
+        if (std::abs((int)bias_int16_val - tmp_zp) >
+            std::numeric_limits<int16_t>::max()) {
           overflow_ratio = 1;
         }
       }
@@ -61,40 +64,48 @@ Value top::ScaleOp::lowering_int8_bm1684x(bool asymmetric) {
     lshift_int8->data()[cidx] = -rightShiftTmp;
 
     // quantize bias
-    scale_val = std::pow(2,rightShiftTmp) / out_scale;
-    quantizeToInt16(bias_f32->data()+cidx, bias_int16->data()+cidx, 1, scale_val);
+    scale_val = std::pow(2, rightShiftTmp) / out_scale;
+    quantizeToInt16(bias_f32->data() + cidx, bias_int16->data() + cidx, 1,
+                    scale_val);
     if (asymmetric) {
       scale_val = std::pow(2, rightShiftTmp) * in_scale / out_scale;
       int8_t tmp_scale = 1;
-      quantizeToInt8(scale_f32->data()+cidx, &tmp_scale, 1, scale_val);
+      quantizeToInt8(scale_f32->data() + cidx, &tmp_scale, 1, scale_val);
       int tmp_zp = tmp_scale * in_zp;
       bias_int16->data()[cidx] -= tmp_zp;
     }
-    // due to floor round mode in shift operation, add 1 << (rightShiftTmp - 1) to bias
-    // to change the floor to nearest round mode
+    // due to floor round mode in shift operation, add 1 << (rightShiftTmp - 1)
+    // to bias to change the floor to nearest round mode
     if (rightShiftTmp > 0) {
-      int16_t bias_shift = bias_int16->data()[cidx] + (1 << (rightShiftTmp - 1));
+      int16_t bias_shift =
+          bias_int16->data()[cidx] + (1 << (rightShiftTmp - 1));
       bias_int16->data()[cidx] = std::max(bias_shift, bias_int16->data()[cidx]);
     }
 
     // quantize scale
     scale_val = std::pow(2, rightShiftTmp) * in_scale / out_scale;
-    quantizeToInt8(scale_f32->data()+cidx, scale_int8->data()+cidx, 1, scale_val);
+    quantizeToInt8(scale_f32->data() + cidx, scale_int8->data() + cidx, 1,
+                   scale_val);
   }
 
   // scale
   auto scale_type = scale().getType().cast<RankedTensorType>();
-  auto new_scale_type = RankedTensorType::get(scale_type.getShape(),
-                                        builder.getI8Type());
-  auto new_scale = WeightOp::create(op, "scale_int8", *scale_int8, new_scale_type);
+  auto new_scale_type =
+      RankedTensorType::get(scale_type.getShape(), builder.getI8Type());
+  auto new_scale =
+      WeightOp::create(op, "scale_int8", *scale_int8, new_scale_type);
 
   // bias
-  auto new_bias_type = RankedTensorType::get({1, c, 1, 1}, builder.getIntegerType(16, true));
-  auto new_bias = WeightOp::create(op, "bias_int16", *bias_int16, new_bias_type);
+  auto new_bias_type =
+      RankedTensorType::get({1, c, 1, 1}, builder.getIntegerType(16, true));
+  auto new_bias =
+      WeightOp::create(op, "bias_int16", *bias_int16, new_bias_type);
 
   // lshift
-  auto new_lshift_type = RankedTensorType::get({1, c, 1, 1}, builder.getI8Type());
-  auto new_lshift = WeightOp::create(op, "lshift_i8", *lshift_int8, new_lshift_type);
+  auto new_lshift_type =
+      RankedTensorType::get({1, c, 1, 1}, builder.getI8Type());
+  auto new_lshift =
+      WeightOp::create(op, "lshift_i8", *lshift_int8, new_lshift_type);
 
   operands.push_back(input());
   operands.push_back(new_scale);
@@ -106,9 +117,8 @@ Value top::ScaleOp::lowering_int8_bm1684x(bool asymmetric) {
   attrs.push_back(builder.getNamedAttr("do_relu", do_reluAttr()));
   attrs.push_back(builder.getNamedAttr("relu_limit", relu_limitAttr()));
   auto newType = Quant::getQuantInt8Type(output(), asymmetric);
-  auto newOp = builder.create<tpu::ScaleOp>(op->getLoc(), newType,
-                                          ArrayRef<Value>{operands},
-                                          ArrayRef<NamedAttribute>{attrs});
+  auto newOp =
+      builder.create<tpu::ScaleOp>(op->getLoc(), newType, operands, attrs);
   return newOp.output();
 }
 
@@ -145,8 +155,7 @@ Value top::ScaleOp::lowering_f32_bm1684x() {
   }
   builder.setInsertionPointAfter(op);
   auto newOp =
-      builder.create<tpu::ScaleOp>(op->getLoc(), newType, ArrayRef<Value>{operands},
-                           ArrayRef<NamedAttribute>{attrs});
+      builder.create<tpu::ScaleOp>(op->getLoc(), newType, operands, attrs);
   return newOp.output();
 }
 

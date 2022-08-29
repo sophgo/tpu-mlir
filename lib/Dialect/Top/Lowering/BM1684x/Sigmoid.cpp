@@ -23,16 +23,16 @@ Value top::SigmoidOp::lowering_int8_bm1684x(bool asymmetric) {
   auto op = getOperation();
   OpBuilder builder(op);
   auto stype = Module::getStorageType(output());
-  Value table = create_lookup_table(input(), output(), active_sigmoid, asymmetric);
+  Value table =
+      create_lookup_table(input(), output(), active_sigmoid, asymmetric);
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
   builder.setInsertionPointAfter(op);
   auto newType = Quant::getQuantInt8Type(output(), asymmetric);
-  auto newOp =
-      builder.create<tpu::LutOp>(getLoc(), newType, ValueRange{input(), table},
-                                 ArrayRef<NamedAttribute>{attrs});
+  auto newOp = builder.create<tpu::LutOp>(getLoc(), newType,
+                                          ValueRange{input(), table}, attrs);
   return newOp.output();
 }
 

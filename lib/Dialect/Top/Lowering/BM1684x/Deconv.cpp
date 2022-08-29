@@ -106,7 +106,7 @@ Value top::DeconvOp::lowering_int8_bm1684x(bool asymmetric) {
 
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
-      attrs.push_back(attr);
+    attrs.push_back(attr);
   }
   std::string deconv_name = Module::getName(op).str() + "_i32";
   auto name = builder.getStringAttr(deconv_name);
@@ -114,9 +114,8 @@ Value top::DeconvOp::lowering_int8_bm1684x(bool asymmetric) {
       builder.getNamedAttr("with_bias", builder.getBoolAttr(param.with_bias)));
   auto deconvType = RankedTensorType::get(
       {param.n, param.oc, param.oh, param.ow}, builder.getI32Type());
-  auto deconvOp = builder.create<tpu::DeconvOp>(
-      NameLoc::get(name), deconvType, ArrayRef<Value>{operands},
-      ArrayRef<NamedAttribute>{attrs});
+  auto deconvOp = builder.create<tpu::DeconvOp>(NameLoc::get(name), deconvType,
+                                                operands, attrs);
 
   auto rqType = Quant::getQuantInt8Type(output(), asymmetric);
 
@@ -142,9 +141,8 @@ Value top::DeconvOp::lowering_int8_bm1684x(bool asymmetric) {
   operands.push_back(deconvOp.output());
   operands.push_back(new_quant);
   builder.setInsertionPointAfter(deconvOp);
-  auto rqOp = builder.create<tpu::RequantAxisOp>(
-      op->getLoc(), rqType, ArrayRef<Value>{operands},
-      ArrayRef<NamedAttribute>{attrs});
+  auto rqOp =
+      builder.create<tpu::RequantAxisOp>(op->getLoc(), rqType, operands, attrs);
   return rqOp.output();
 }
 
@@ -167,8 +165,7 @@ Value top::DeconvOp::lowering_f32_bm1684x() {
       builder.getNamedAttr("with_bias", builder.getBoolAttr(with_bias)));
 
   auto newOp = builder.create<tpu::DeconvOp>(op->getLoc(), output().getType(),
-                                             ArrayRef<Value>{operands},
-                                             ArrayRef<NamedAttribute>{attrs});
+                                             operands, attrs);
   return newOp.output();
 }
 
@@ -193,9 +190,8 @@ Value top::DeconvOp::lowering_f16_bm1684x() {
   auto tensor_type = output().getType().cast<RankedTensorType>();
   auto newType =
       RankedTensorType::get(tensor_type.getShape(), builder.getF16Type());
-  auto newOp = builder.create<tpu::DeconvOp>(op->getLoc(), newType,
-                                             ArrayRef<Value>{operands},
-                                             ArrayRef<NamedAttribute>{attrs});
+  auto newOp =
+      builder.create<tpu::DeconvOp>(op->getLoc(), newType, operands, attrs);
   return newOp.output();
 }
 
@@ -220,9 +216,8 @@ Value top::DeconvOp::lowering_bf16_bm1684x() {
   auto tensor_type = output().getType().cast<RankedTensorType>();
   auto newType =
       RankedTensorType::get(tensor_type.getShape(), builder.getBF16Type());
-  auto newOp = builder.create<tpu::DeconvOp>(op->getLoc(), newType,
-                                             ArrayRef<Value>{operands},
-                                             ArrayRef<NamedAttribute>{attrs});
+  auto newOp =
+      builder.create<tpu::DeconvOp>(op->getLoc(), newType, operands, attrs);
   return newOp.output();
 }
 

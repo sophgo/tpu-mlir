@@ -130,9 +130,8 @@ Value top::ConvOp::lowering_int8_bm1684x(bool asymmetric) {
         RankedTensorType::get(Module::getShape(output()), builder.getI32Type());
     auto conv_name = Module::getName(op).str() + "_int32";
     auto name_loc = NameLoc::get(builder.getStringAttr(conv_name));
-    auto Conv3dOp = builder.create<tpu::Conv3DOp>(
-        name_loc, convType, ArrayRef<Value>{operands},
-        ArrayRef<NamedAttribute>{attrs});
+    auto Conv3dOp =
+        builder.create<tpu::Conv3DOp>(name_loc, convType, operands, attrs);
 
     // requant
     auto output_type = Quant::getQuantInt8Type(output(), asymmetric);
@@ -157,14 +156,12 @@ Value top::ConvOp::lowering_int8_bm1684x(bool asymmetric) {
         builder.getI64ArrayAttr(ArrayRef<int64_t>{multiplier_v})));
     auto newType = Quant::getQuantInt8Type(output(), asymmetric);
     if (kernel_shape().size() == 1) {
-      auto newOp = builder.create<tpu::Conv1DOp>(
-          op->getLoc(), newType, ArrayRef<Value>{operands},
-          ArrayRef<NamedAttribute>{attrs});
+      auto newOp =
+          builder.create<tpu::Conv1DOp>(op->getLoc(), newType, operands, attrs);
       newValue = newOp.output();
     } else if (kernel_shape().size() == 2) {
-      auto newOp = builder.create<tpu::Conv2DOp>(
-          op->getLoc(), newType, ArrayRef<Value>{operands},
-          ArrayRef<NamedAttribute>{attrs});
+      auto newOp =
+          builder.create<tpu::Conv2DOp>(op->getLoc(), newType, operands, attrs);
       newValue = newOp.output();
     }
   }
@@ -192,18 +189,15 @@ Value top::ConvOp::lowering_f32_bm1684x() {
   Value newValue;
   if (kernel_shape().size() == 1) {
     auto newOp = builder.create<tpu::Conv1DOp>(op->getLoc(), output().getType(),
-                                               ArrayRef<Value>{operands},
-                                               ArrayRef<NamedAttribute>{attrs});
+                                               operands, attrs);
     newValue = newOp.output();
   } else if (kernel_shape().size() == 2) {
     auto newOp = builder.create<tpu::Conv2DOp>(op->getLoc(), output().getType(),
-                                               ArrayRef<Value>{operands},
-                                               ArrayRef<NamedAttribute>{attrs});
+                                               operands, attrs);
     newValue = newOp.output();
   } else {
     auto newOp = builder.create<tpu::Conv3DOp>(op->getLoc(), output().getType(),
-                                               ArrayRef<Value>{operands},
-                                               ArrayRef<NamedAttribute>{attrs});
+                                               operands, attrs);
     newValue = newOp.output();
   }
   return newValue;
@@ -232,19 +226,16 @@ Value top::ConvOp::lowering_f16_bm1684x() {
       RankedTensorType::get(tensor_type.getShape(), builder.getF16Type());
   Value newValue;
   if (kernel_shape().size() == 1) {
-    auto newOp = builder.create<tpu::Conv1DOp>(op->getLoc(), newType,
-                                               ArrayRef<Value>{operands},
-                                               ArrayRef<NamedAttribute>{attrs});
+    auto newOp =
+        builder.create<tpu::Conv1DOp>(op->getLoc(), newType, operands, attrs);
     newValue = newOp.output();
   } else if (kernel_shape().size() == 2) {
-    auto newOp = builder.create<tpu::Conv2DOp>(op->getLoc(), newType,
-                                               ArrayRef<Value>{operands},
-                                               ArrayRef<NamedAttribute>{attrs});
+    auto newOp =
+        builder.create<tpu::Conv2DOp>(op->getLoc(), newType, operands, attrs);
     newValue = newOp.output();
   } else {
-    auto newOp = builder.create<tpu::Conv3DOp>(op->getLoc(), newType,
-                                               ArrayRef<Value>{operands},
-                                               ArrayRef<NamedAttribute>{attrs});
+    auto newOp =
+        builder.create<tpu::Conv3DOp>(op->getLoc(), newType, operands, attrs);
     newValue = newOp.output();
   }
   return newValue;
@@ -273,19 +264,16 @@ Value top::ConvOp::lowering_bf16_bm1684x() {
       RankedTensorType::get(tensor_type.getShape(), builder.getBF16Type());
   Value newValue;
   if (kernel_shape().size() == 1) {
-    auto newOp = builder.create<tpu::Conv1DOp>(op->getLoc(), newType,
-                                               ArrayRef<Value>{operands},
-                                               ArrayRef<NamedAttribute>{attrs});
+    auto newOp =
+        builder.create<tpu::Conv1DOp>(op->getLoc(), newType, operands, attrs);
     newValue = newOp.output();
   } else if (kernel_shape().size() == 2) {
-    auto newOp = builder.create<tpu::Conv2DOp>(op->getLoc(), newType,
-                                               ArrayRef<Value>{operands},
-                                               ArrayRef<NamedAttribute>{attrs});
+    auto newOp =
+        builder.create<tpu::Conv2DOp>(op->getLoc(), newType, operands, attrs);
     newValue = newOp.output();
   } else {
-    auto newOp = builder.create<tpu::Conv3DOp>(op->getLoc(), newType,
-                                               ArrayRef<Value>{operands},
-                                               ArrayRef<NamedAttribute>{attrs});
+    auto newOp =
+        builder.create<tpu::Conv3DOp>(op->getLoc(), newType, operands, attrs);
     newValue = newOp.output();
   }
   return newValue;
@@ -386,19 +374,16 @@ Value top::ConvOp::lowering_quant_bm1684x() {
 
   Value newValue;
   if (kernel_shape().size() == 1) {
-    auto newOp = builder.create<tpu::Conv1DOp>(name_loc, newType,
-                                               ArrayRef<Value>{operands},
-                                               ArrayRef<NamedAttribute>{attrs});
+    auto newOp =
+        builder.create<tpu::Conv1DOp>(name_loc, newType, operands, attrs);
     newValue = newOp.output();
   } else if (kernel_shape().size() == 2) {
-    auto newOp = builder.create<tpu::Conv2DOp>(name_loc, newType,
-                                               ArrayRef<Value>{operands},
-                                               ArrayRef<NamedAttribute>{attrs});
+    auto newOp =
+        builder.create<tpu::Conv2DOp>(name_loc, newType, operands, attrs);
     newValue = newOp.output();
   } else {
-    auto newOp = builder.create<tpu::Conv3DOp>(name_loc, newType,
-                                               ArrayRef<Value>{operands},
-                                               ArrayRef<NamedAttribute>{attrs});
+    auto newOp =
+        builder.create<tpu::Conv3DOp>(name_loc, newType, operands, attrs);
     newValue = newOp.output();
   }
 
