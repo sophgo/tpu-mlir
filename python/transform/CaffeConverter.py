@@ -44,7 +44,7 @@ class CaffeConverter(BaseConverter):
         text_format.Merge(open(prototxt).read(), self.param)
         self.layers = self.param.layer if len(self.param.layer) != 0 else self.param.layers
         self.input_names = self.net.inputs
-        self.output_names = self.net.outputs
+        self.select_outputs = set(output_names) if output_names else set(self.net.outputs)
         self.blobs = self.net.blobs
         self.mlir = None
         self.layer_dict = self.net.layer_dict
@@ -55,37 +55,15 @@ class CaffeConverter(BaseConverter):
 
         self.caffeop_factory = {
             #pls add the Op according to the Op's alphabetical order as below
-            "Add": lambda layer: self.convert_add_op(layer),  #
-            "AveragePool": lambda layer: self.convert_avgpool_op(layer),  #
-            "BatchNorm": lambda layer: self.convert_batchnorm_op(layer),  #
-            "Concat": lambda layer: self.convert_concat_op(layer),
-            "Convolution": lambda layer: self.convert_conv_op(layer),  #
-            "Clip": lambda layer: self.convert_clip_op(layer),
-            "ConvTranspose": lambda layer: self.convert_conv_transpose_op(layer),
-            "DepthToSpace": lambda layer: self.convert_depth2space_op(layer),
-            "Div": lambda layer: self.convert_div_op(layer),
-            "Dropout": lambda layer: self.convert_skip_op(layer),
-            "Flatten": lambda layer: self.convert_flatten_op(layer),
-            "GlobalAveragePool": lambda layer: self.convert_global_avgpool_op(layer),
-            "GlobalMaxPool": lambda layer: self.convert_global_maxpool_op(layer),
-            "InnerProduct": lambda layer: self.convert_inner_product_op(layer),  #
-            "LeakyRelu": lambda layer: self.convert_leaky_relu_op(layer),
-            "Log": lambda layer: self.convert_log_op(layer),
-            "MaxPool": lambda layer: self.convert_maxpool_op(layer),  #
-            "Mul": lambda layer: self.convert_mul_op(layer),  #
-            "Pad": lambda layer: self.convert_pad_op(layer),
-            "ReduceMean": lambda layer: self.convert_reduce_op(layer),
-            "ReLU": lambda layer: self.convert_relu_op(layer),  #
-            "Reshape": lambda layer: self.convert_reshape_op(layer),
-            "Resize": lambda layer: self.convert_resize_op(layer),
-            "Scale": lambda layer: self.convert_scale_op(layer),  #
-            "Sigmoid": lambda layer: self.convert_sigmoid_op(layer),
-            "Slice": lambda layer: self.convert_slice_op(layer),
-            "Softmax": lambda layer: self.convert_softmax_op(layer),
-            "Squeeze": lambda layer: self.convert_squeeze_op(layer),
-            "Split": lambda layer: self.convert_split_op(layer),
-            "Transpose": lambda layer: self.convert_transpose_op(layer),
-            "Unsqueeze": lambda layer: self.convert_unsqueeze_op(layer),
+            "Add": lambda layer: self.convert_add_op(layer),
+            "AveragePool": lambda layer: self.convert_avgpool_op(layer),
+            "BatchNorm": lambda layer: self.convert_batchnorm_op(layer),
+            "Convolution": lambda layer: self.convert_conv_op(layer),
+            "InnerProduct": lambda layer: self.convert_inner_product_op(layer),
+            "MaxPool": lambda layer: self.convert_maxpool_op(layer),
+            "Mul": lambda layer: self.convert_mul_op(layer),
+            "ReLU": lambda layer: self.convert_relu_op(layer),
+            "Scale": lambda layer: self.convert_scale_op(layer),
         }
 
     def __del__(self):
@@ -110,17 +88,14 @@ class CaffeConverter(BaseConverter):
             for _i, _dim in enumerate(shape):
                 check_shape(_dim, input_shapes[idx][_i])
 
-    def select_output(self, output_names):
-        pass
-
     def get_model_info(self, input_shapes: list, output_names: list):
         # Todo: add select outputs func
-        if output_names:
-            self.select_output(output_names)
-
         for layer_name, blob in self.blobs.items():
             self.addShape(layer_name, blob.data.shape)
-
+        layer_names = list(self.layer_dict.keys())
+        for idx, layer_name in enumerate(layer_names):
+            if layer_name not in self.shapes and idx != 0:
+                self.addShape(layer_name, self.getShape(layer_names[idx - 1]))
         self.check_input(input_shapes)
 
         pre_name = ""
@@ -145,7 +120,7 @@ class CaffeConverter(BaseConverter):
         for _name in self.input_names:
             input_shapes.append(self.getShape(_name))
         output_shapes = list()
-        for _name in self.output_names:
+        for _name in self.select_outputs:
             output_shapes.append(self.getShape(_name))
         # init importer
         self.mlir = MLIRImporter(input_shapes, output_shapes, self.model_name)
@@ -181,6 +156,7 @@ class CaffeConverter(BaseConverter):
 
         # add mid layer op
         for layer in self.layers:
+            if not len(self.select_outputs): break
             layer_type = layer.type
             if layer.type == "DummyData":
                 continue
@@ -202,7 +178,10 @@ class CaffeConverter(BaseConverter):
                     # TODO: MaxOp to be implemented
                     raise RuntimeError("{} Op not support now".format(type.captialize()))
 
-            self.caffeop_factory.get(layer_type, lambda x: NoneAndRaise(x))(layer)
+            op_name = self.caffeop_factory.get(layer_type, lambda x: NoneAndRaise(x))(layer)
+            if layer.name in self.select_outputs:
+                self.select_outputs.remove(layer.name)
+                self.output_names.append(op_name)
 
         # add return op
         return_op = list()
@@ -250,7 +229,8 @@ class CaffeConverter(BaseConverter):
         }
         output_shape = self.getShape(caffe_layer.name)
         new_op = self.mlir.create_conv_op(operands, output_shape, **p)
-        self.addOperand(caffe_layer.name, new_op)
+        self.addOperand(caffe_layer.top[0], new_op)
+        return caffe_layer.top[0]
 
     def convert_batchnorm_op(self, caffe_layer):
         assert (caffe_layer.type == "BatchNorm")
@@ -271,6 +251,7 @@ class CaffeConverter(BaseConverter):
         }
         new_op = self.mlir.create_batchnorm_op([op, gamma, beta, mean, variance], output_shape, **p)
         self.addOperand(caffe_layer.top[0], new_op)
+        return caffe_layer.top[0]
 
     def convert_scale_op(self, caffe_layer):
         assert (caffe_layer.type == "Scale")
@@ -291,6 +272,7 @@ class CaffeConverter(BaseConverter):
             operands.append(self.mlir.none_op)
         new_op = self.mlir.create_scale_op(operands, output_shape, **p)
         self.addOperand(caffe_layer.top[0], new_op)
+        return caffe_layer.top[0]
 
     def convert_relu_op(self, caffe_layer):
         assert (caffe_layer.type == "ReLU")
@@ -302,6 +284,7 @@ class CaffeConverter(BaseConverter):
         }
         new_op = self.mlir.create_relu_op([op], output_shape, **p)
         self.addOperand(caffe_layer.top[0], new_op)
+        return caffe_layer.top[0]
 
     def convert_maxpool_op(self, caffe_layer):
         assert (caffe_layer.type == "Pooling" and caffe_layer.pooling_param.pool == 0)
@@ -322,7 +305,8 @@ class CaffeConverter(BaseConverter):
             'do_relu': False,
         }
         new_op = self.mlir.create_maxpool_op([op], output_shape, **p)
-        self.addOperand(caffe_layer.name, new_op)
+        self.addOperand(caffe_layer.top[0], new_op)
+        return caffe_layer.top[0]
 
     def convert_avgpool_op(self, caffe_layer):
         assert (caffe_layer.type == "Pooling" and caffe_layer.pooling_param.pool == 1)
@@ -344,16 +328,12 @@ class CaffeConverter(BaseConverter):
             'do_relu': False,
         }
         new_op = self.mlir.create_avgpool_op([op], output_shape, **p)
-        self.addOperand(caffe_layer.name, new_op)
+        self.addOperand(caffe_layer.top[0], new_op)
+        return caffe_layer.top[0]
 
     def convert_add_op(self, caffe_layer):
         assert (caffe_layer.type == "Eltwise" and caffe_layer.eltwise_param.operation == 1)
         assert (len(caffe_layer.bottom) == 2)
-        if self.isWeight(caffe_layer.bottom[0]) and not self.isWeight(caffe_layer.bottom[1]):
-            caffe_layer.bottom[0], caffe_layer.bottom[1] = caffe_layer.bottom[
-                1], caffe_layer.bottom[0]
-            self.convert_mul_op(caffe_layer)
-            return
         name = "{}_{}".format(caffe_layer.name, caffe_layer.type)
         if not self.isWeight(caffe_layer.bottom[0]) and self.isWeight(caffe_layer.bottom[1]):
             opd1_num_elem = np.prod(self.getShape(caffe_layer.bottom[1]))
@@ -368,8 +348,8 @@ class CaffeConverter(BaseConverter):
                 offset_op = self.getWeightOp(caffe_layer.bottom[1])
                 p = {'name': name}
                 scale_op = self.mlir.create_scale_op([op0, weight_op, offset_op], output_shape, **p)
-                self.addOperand(caffe_layer.name, scale_op)
-                return
+                self.addOperand(caffe_layer.top[0], scale_op)
+                return caffe_layer.top[0]
             else:
                 raise RuntimeError("To support adding with weight")
         op0 = self.getOperand(caffe_layer.bottom[0])
@@ -377,8 +357,8 @@ class CaffeConverter(BaseConverter):
         p = {'name': "{}_{}".format(caffe_layer.name, caffe_layer.type)}
         output_shape = self.getShape(caffe_layer.name)
         add_op = self.mlir.create_add_op([op0, op1], output_shape, **p)
-        self.addOperand(caffe_layer.name, add_op)
-        return
+        self.addOperand(caffe_layer.top[0], add_op)
+        return caffe_layer.top[0]
 
     def convert_mul_op(self, caffe_layer):
         assert (caffe_layer.op_type == "Eltwise" and caffe_layer.eltwise_param.operation == 0)
@@ -386,8 +366,7 @@ class CaffeConverter(BaseConverter):
         if self.isWeight(caffe_layer.bottom[0]) and not self.isWeight(caffe_layer.bottom[1]):
             caffe_layer.bottom[0], caffe_layer.bottom[1] = caffe_layer.bottom[
                 1], caffe_layer.bottom[0]
-            self.convert_mul_op(caffe_layer)
-            return
+            return self.convert_mul_op(caffe_layer)
         name = "{}_{}".format(caffe_layer.name, caffe_layer.type)
         if (not self.isWeight(caffe_layer.bottom[0])) and self.isWeight(caffe_layer.bottom[1]):
             op0 = self.getOperand(caffe_layer.bottom[0])
@@ -399,8 +378,8 @@ class CaffeConverter(BaseConverter):
             if weight_num_elem == 1 or np.all(weight == first_val):
                 p = {'name': name, 'const_val': weight.flatten()[0]}
                 mul_const_op = self.mlir.create_mul_const_op([op0], output_shape, **p)
-                self.addOperand(caffe_layer.name, mul_const_op)
-                return
+                self.addOperand(caffe_layer.top[0], mul_const_op)
+                return caffe_layer.top[0]
             elif weight_num_elem == channel:
                 offset_data = np.zeros_like(weight)
                 self.addWeight(name + '_bias', offset_data)
@@ -408,16 +387,16 @@ class CaffeConverter(BaseConverter):
                 offset_op = self.getWeightOp(name + '_bias')
                 p = {'name': name}
                 scale_op = self.mlir.create_scale_op([op0, weight_op, offset_op], output_shape, **p)
-                self.addOperand(caffe_layer.name, scale_op)
-                return
+                self.addOperand(caffe_layer.top[0], scale_op)
+                return caffe_layer.top[0]
         else:
             op0 = self.getOperand(caffe_layer.bottom[0])
             op1 = self.getOperand(caffe_layer.bottom[1])
             p = {'name': name}
             output_shape = self.getShape(caffe_layer.name)
             mul_op = self.mlir.create_mul_op([op0, op1], output_shape, **p)
-            self.addOperand(caffe_layer.name, mul_op)
-            return
+            self.addOperand(caffe_layer.top[0], mul_op)
+            return caffe_layer.top[0]
 
     def convert_inner_product_op(self, caffe_layer):
         assert (caffe_layer.type == "InnerProduct")
@@ -452,4 +431,5 @@ class CaffeConverter(BaseConverter):
         p = {'name': "{}_{}".format(caffe_layer.name, caffe_layer.type), 'do_relu': False}
 
         new_op = self.mlir.create_matmul_op(operands, output_shape, **p)
-        self.addOperand(caffe_layer.name, new_op)
+        self.addOperand(caffe_layer.top[0], new_op)
+        return caffe_layer.top[0]
