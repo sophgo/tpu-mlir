@@ -293,6 +293,7 @@ void BM168x::init() {
   dl_set_total_id_ptr(&gdma_total_id, &bdc_total_id, cmdid_node,
                       (void *)&gdma_group_id, (void *)&bdc_group_id,
                       &cmdid_groupnum);
+  dl_allow_store_cmd();
   dl_forbid_atomic_cmodel(); // TODO:(no compare)
   dl_sg_set_profile_dump(true);
 }
@@ -312,7 +313,7 @@ void BM168x::before_codegen() {
   dl_reset_cmd_id(cmdid_node);
   dl_reset_cmd_id(bdc_node);
   dl_reset_cmd_id(gdma_node);
-  set_command_issue_flag(true);
+  // set_command_issue_flag(true);
   gdma_group_id.clear();
   gdma_group_id.push_back(0);
   bdc_group_id.clear();

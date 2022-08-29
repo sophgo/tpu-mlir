@@ -103,7 +103,7 @@ group_lmem_t GroupOps::list_lmems(int64_t start_idx, int64_t end_idx) {
         continue;
       }
 
-      lmem_info_t li(LMEM_TENSOR, id, op_id, op_id, opd, in_op_);
+      lmem_info_t li(LMEM_ACTIVATION, id, op_id, op_id, opd, in_op_);
       li.is_input = true;
       lmems->emplace_back(li);
       id++;
@@ -112,13 +112,13 @@ group_lmem_t GroupOps::list_lmems(int64_t start_idx, int64_t end_idx) {
     lmem_info_t li(LMEM_OPERATION, op_id, op_id, op_id, out, op);
     lmems->emplace_back(li);
     id = op_id + 1;
-    lmem_info_t li_out(LMEM_TENSOR, id, op_id, op_id, out, op);
+    lmem_info_t li_out(LMEM_ACTIVATION, id, op_id, op_id, out, op);
     lmems->emplace_back(li_out);
     id++;
   }
   // mark output
   for (auto &linfo : *lmems) {
-    if (linfo.type != LMEM_TENSOR || linfo.is_input) {
+    if (linfo.type != LMEM_ACTIVATION || linfo.is_input) {
       continue;
     }
     for (auto user : linfo.value.getUsers()) {
@@ -532,7 +532,7 @@ bool GroupOps::is_same_slice(const std::vector<slice_pair_t> &a,
 bool GroupOps::backward_from_tensor(group_lmem_t &group_lmem,
                                     lmem_info_t *linfo) {
   assert(linfo != nullptr);
-  assert(linfo->type == LMEM_TENSOR);
+  assert(linfo->type == LMEM_ACTIVATION);
   if (linfo->is_input) {
     return true;
   }
@@ -577,7 +577,7 @@ bool GroupOps::backward_from_tensor(group_lmem_t &group_lmem,
   llvm::SmallVector<lmem_info_t *, 8> back_info;
   for (auto opd : op->getOperands()) {
     auto in_info = find_lmem_info(group_lmem, opd);
-    if (in_info == nullptr || in_info->type != LMEM_TENSOR) {
+    if (in_info == nullptr || in_info->type != LMEM_ACTIVATION) {
       continue;
     }
     auto si = &in_info->slice_info;
@@ -642,7 +642,7 @@ void GroupOps::set_lmem_size(group_lmem_t &group_lmem) {
   for (auto &linfo : *group_lmem) {
     if (LMEM_WEIGHT == linfo.type) {
       linfo.size = bm168x->get_weight_lmem_bytes(linfo.value, linfo.eu_align);
-    } else if (LMEM_TENSOR == linfo.type) {
+    } else if (LMEM_ACTIVATION == linfo.type) {
       get_max_slice_nh(linfo, slice_n, slice_h);
       linfo.size = bm168x->get_tensor_lmem_bytes(linfo.value, slice_n, slice_h,
                                                  linfo.eu_align);
@@ -669,6 +669,7 @@ void GroupOps::set_lmem_size(group_lmem_t &group_lmem) {
 void GroupOps::assign_timestep(group_lmem_t &group_lmem) {
   int64_t timestep = 0;
   lmem_type_t last_type = LMEM_ANY;
+  bool last_output = false;
   for (auto &linfo : *group_lmem) {
     switch (linfo.type) {
     case LMEM_OPERATION:
@@ -678,13 +679,16 @@ void GroupOps::assign_timestep(group_lmem_t &group_lmem) {
       }
       break;
     case LMEM_WEIGHT:
-      if (last_type == LMEM_TENSOR) {
+      if (last_output) {
         timestep--;
       }
       last_type = linfo.type;
       break;
-    case LMEM_TENSOR:
-      if (linfo.is_output && last_type == LMEM_OPERATION) {
+    case LMEM_ACTIVATION:
+      if (linfo.is_input && last_output) {
+        timestep--;
+        last_type = linfo.type;
+      } else if (linfo.is_output && last_type == LMEM_OPERATION) {
         timestep++;
         last_type = linfo.type;
       }
@@ -692,6 +696,7 @@ void GroupOps::assign_timestep(group_lmem_t &group_lmem) {
     default:
       break;
     }
+    last_output = linfo.is_output;
     linfo.timestep = timestep;
   }
 }
@@ -714,12 +719,16 @@ void GroupOps::adjust_lmem_id(group_lmem_t &group_lmem, int64_t nsecs,
     idx++;
   }
   for (auto &linfo : *group_lmem) {
-    if (linfo.type == LMEM_WEIGHT || linfo.is_input) {
+    if (linfo.type == LMEM_WEIGHT || linfo.is_input || linfo.is_output) {
       for (auto id : ops_v) {
         auto &op_info = group_lmem->at(id);
-        if (op_info.timestep == linfo.timestep && op_info.id < linfo.start_id) {
-          linfo.start_id = op_info.id;
-          break;
+        if (op_info.timestep == linfo.timestep) {
+          if (op_info.id < linfo.start_id) {
+            linfo.start_id = op_info.id;
+          }
+          if (op_info.id > linfo.end_id) {
+            linfo.end_id = op_info.id;
+          }
         }
       }
     }
@@ -740,7 +749,7 @@ group_lmem_t GroupOps::CreateGroupBySecs(int64_t start_idx, int64_t end_idx,
   }
   // checkout all values have been sliced
   for (auto &linfo : *group_lmem) {
-    if (linfo.type != LMEM_TENSOR) {
+    if (linfo.type != LMEM_ACTIVATION) {
       continue;
     }
     auto si = linfo.slice_info;
@@ -885,7 +894,7 @@ void GroupOps::rebuild_alloc_lmem(group_lmem_t &group_lmem, int64_t op_id) {
 }
 
 bool GroupOps::check_hsecs(lmem_info_t &lmem_info) {
-  assert(lmem_info.type == LMEM_TENSOR);
+  assert(lmem_info.type == LMEM_ACTIVATION);
   auto &si_h = lmem_info.slice_info.h;
   assert(lmem_info.slice_info.h.size() > 0);
   int64_t n, c, h, w;
