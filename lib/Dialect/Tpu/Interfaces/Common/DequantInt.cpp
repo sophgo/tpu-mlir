@@ -17,10 +17,10 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-LogicalResult tpu::DequantOp::init(InferenceParameter &p) { return success(); }
-void tpu::DequantOp::deinit(InferenceParameter &p) {}
+LogicalResult tpu::DequantIntOp::init(InferenceParameter &p) { return success(); }
+void tpu::DequantIntOp::deinit(InferenceParameter &p) {}
 
-LogicalResult tpu::DequantOp::inference(InferenceParameter &p) {
+LogicalResult tpu::DequantIntOp::inference(InferenceParameter &p) {
   auto o_sType = Module::getStorageType(output());
   auto qtype = Quant::getUniformQuantizedType(input());
   int64_t num_elem = Module::getNumElements(input());

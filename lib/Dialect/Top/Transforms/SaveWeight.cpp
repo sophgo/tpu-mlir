@@ -58,7 +58,7 @@ public:
     std::set<StringRef> weight_names;
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](top::WeightOp op) {
-        weight_names.insert(Module::getName(op));
+        weight_names.insert(Module::getName(op.getOperation()));
       });
     }
     std::set<StringRef> npz_names;

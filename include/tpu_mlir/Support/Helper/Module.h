@@ -63,7 +63,7 @@ struct Module {
                       int64_t &h, int64_t &w, bool left_align = true);
   static size_t getBytes(Value v);
   static int64_t getNumElements(Value v);
-  static Type getStorageType(Value v);      // storage type
+  static Type getStorageType(Value v); // storage type
   static Type getStorageType(Type type);
   static llvm::ArrayRef<int64_t> getShape(Value v);
   static inline FuncOp getMainFuncOp(ModuleOp module) {
@@ -84,6 +84,7 @@ struct Module {
     return module->getAttrOfType<StringAttr>(Attr::NAME).getValue();
   }
   static llvm::StringRef getName(Operation *op);
+  static llvm::StringRef getName(Value v);
   static void getInputsOutputs(ModuleOp module, std::vector<Value> &inputs,
                                std::vector<Value> &outputs);
   static void getInputsOutputs(func::CallOp call, std::vector<Value> &inputs,

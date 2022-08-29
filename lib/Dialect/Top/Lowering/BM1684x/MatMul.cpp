@@ -197,10 +197,6 @@ Value top::MatMulOp::lowering_quant_bm1684x() {
   // std::string new_name = Module::getName(op).str() + suffix;
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
-    // if (attr.getName() == "name") {
-    //   attrs.push_back(builder.getNamedAttr("name",
-    //   builder.getStringAttr(new_name))); continue;
-    // }
     attrs.push_back(attr);
   }
   attrs.push_back(builder.getNamedAttr("multiplier",
