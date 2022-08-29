@@ -181,7 +181,7 @@ mlir::Value WeightOp::clone_bf16(Operation *OwnerOp) {
   auto dialect = ctx->getLoadedDialect("top");
   auto topDialect = llvm::cast<TopDialect>(dialect);
   assert(topDialect->wFile != nullptr);
-  std::string new_name = Module::getName(OwnerOp).str() + "_bf16";
+  std::string new_name = Module::getName(getOperation()).str() + "_bf16";
   auto new_type = RankedTensorType::get(type.getShape(), builder.getBF16Type());
   auto ret =
       topDialect->wFile->addTensor(new_name, data_bf16->data(), new_type);
@@ -208,7 +208,8 @@ mlir::Value WeightOp::clone_f16(Operation *OwnerOp) {
   auto dialect = ctx->getLoadedDialect("top");
   auto topDialect = llvm::cast<TopDialect>(dialect);
   assert(topDialect->wFile != nullptr);
-  std::string new_name = Module::getName(OwnerOp).str() + "_f16";
+
+  std::string new_name = Module::getName(getOperation()).str() + "_f16";
   auto new_type = RankedTensorType::get(type.getShape(), builder.getF16Type());
   auto ret = topDialect->wFile->addTensor(new_name, data_f16->data(), new_type);
   assert(succeeded(ret));

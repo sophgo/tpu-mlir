@@ -117,7 +117,9 @@ Value top::MatMulOp::lowering_f16_bm1684x() {
   if (auto rightOp = dyn_cast<top::WeightOp>(right().getDefiningOp())) {
     operands.push_back(rightOp.clone_f16(op));
   }
-  operands.push_back(bias());
+  if (auto rightOp = dyn_cast<top::WeightOp>(bias().getDefiningOp())) {
+    operands.push_back(rightOp.clone_f16(op));
+  }
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
@@ -141,7 +143,9 @@ Value top::MatMulOp::lowering_bf16_bm1684x() {
   if (auto rightOp = dyn_cast<top::WeightOp>(right().getDefiningOp())) {
     operands.push_back(rightOp.clone_bf16(op));
   }
-  operands.push_back(bias());
+  if (auto rightOp = dyn_cast<top::WeightOp>(bias().getDefiningOp())) {
+    operands.push_back(rightOp.clone_bf16(op));
+  }
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
