@@ -13,6 +13,7 @@
 #include "omp.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
 #include <map>
+#include "tpu_mlir/Support/Dnnl/Dnnl.h"
 
 namespace tpu_mlir {
 
@@ -421,6 +422,111 @@ void function_relu(float *src, float *dst, int64_t size, float relu_limit, mlir:
       }
     }
   }
+}
+
+int dnnl_mm(float *input, float *weight, float *bias,
+    float *output, int m, int k, int n, bool transpose) {
+  if (!bias) {
+    auto zero_bias = new std::vector<float>(n, 0.0f);
+    bias = zero_bias->data();
+  }
+
+#ifdef DUMP_FLAG
+  static int dump_idx = 0;
+  std::string prefix = std::string("ip") + std::to_string(dump_idx);
+  if (dump_idx == 0) {
+    write_bianry_file(prefix + std::string("_in.bin"),
+        (const char *)input, m * k * sizeof(float));
+  }
+#endif // DUMP_FLAG
+
+  using tag = memory::format_tag;
+  using dt = memory::data_type;
+
+  engine eng(engine::kind::cpu, 0);
+  stream s(eng);
+
+  std::vector<primitive> net;
+  std::vector<std::unordered_map<int, memory>> net_args;
+
+  memory::dims src_tz = { m, k };
+  memory::dims weights_tz = { n, k };
+  memory::dims bias_tz = { n };
+  memory::dims dst_tz = { m, n };
+
+  if (!bias) {
+    auto zero_bias = new std::vector<float>(n, 0.0f);
+    bias = zero_bias->data();
+  }
+
+  // memory
+  auto user_src_memory = memory(
+      { { src_tz }, dt::f32, tag::nc }, eng, input);
+  auto user_weights_memory = memory(
+      { { weights_tz }, dt::f32, tag::oi }, eng, weight);
+  auto user_bias_memory = memory(
+      { { bias_tz }, dt::f32, tag::x }, eng, bias);
+  auto user_dst_memory = memory(
+      { { dst_tz }, dt::f32, tag::nc }, eng, output);
+
+  // md
+  auto src_md = memory::desc({ src_tz }, dt::f32, tag::any);
+  auto weights_md = memory::desc({ weights_tz }, dt::f32, tag::any);
+  auto bias_md = memory::desc({ bias_tz }, dt::f32, tag::any);
+  auto dst_md = memory::desc({ dst_tz }, dt::f32, tag::any);
+
+  // fc desc
+  auto fc_desc = inner_product_forward::desc(prop_kind::forward_inference,
+      src_md, weights_md, bias_md, dst_md);
+  auto fc_prim_desc = inner_product_forward::primitive_desc(fc_desc, eng);
+
+  // do reorder if needed
+  auto src_memory = user_src_memory;
+  if (fc_prim_desc.src_desc() != user_src_memory.get_desc()) {
+    src_memory = memory(fc_prim_desc.src_desc(), eng);
+    net.push_back(reorder(user_src_memory, src_memory));
+    net_args.push_back({ { DNNL_ARG_FROM, user_src_memory },
+        { DNNL_ARG_TO, src_memory } });
+  }
+  auto weights_memory = user_weights_memory;
+  if (fc_prim_desc.weights_desc() != user_weights_memory.get_desc()) {
+    weights_memory = memory(fc_prim_desc.weights_desc(), eng);
+    reorder(user_weights_memory, weights_memory)
+        .execute(s, user_weights_memory, weights_memory);
+  }
+  auto bias_memory = user_bias_memory;
+
+  auto dst_memory = memory(fc_prim_desc.dst_desc(), eng);
+
+  net.push_back(inner_product_forward(fc_prim_desc));
+  net_args.push_back({ { DNNL_ARG_SRC, src_memory },
+      { DNNL_ARG_WEIGHTS, weights_memory },
+      { DNNL_ARG_BIAS, bias_memory },
+      { DNNL_ARG_DST, dst_memory } });
+
+  // reorder or copy the output
+  if (dst_memory != user_dst_memory) {
+    net.push_back(reorder(dst_memory, user_dst_memory));
+    net_args.push_back({ { DNNL_ARG_FROM, dst_memory },
+        { DNNL_ARG_TO, user_dst_memory } });
+  }
+
+  // run
+  assert(net.size() == net_args.size() && "something is missing");
+  for (size_t i = 0; i < net.size(); ++i)
+      net.at(i).execute(s, net_args.at(i));
+
+  s.wait();
+
+#ifdef DUMP_FLAG
+  if (dump_idx == 0) {
+    write_bianry_file(prefix + std::string("_out.bin"),
+        (const char *)output, m * n * sizeof(float));
+  }
+  dump_idx ++;
+#endif // DUMP_FLAG
+
+  return 0;
 }
 
 } // namespace tpu_mlir

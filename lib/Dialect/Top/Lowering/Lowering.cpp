@@ -567,7 +567,7 @@ protected:
     if (chip_ == Module::Chip::BM1684x) {
       if (mode_ == Quant::Type::INT8) {
         if (isa<top::AddOp, top::LeakyReluOp, top::MulOp, top::SoftmaxOp,
-                top::DivOp>(op)) {
+                top::DivOp, top::LSTMOp>(op)) {
           quantize_map[op] = Quant::Type::F32;
         }
       }

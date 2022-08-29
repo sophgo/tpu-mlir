@@ -55,6 +55,7 @@ TEST_ONNX_IR = [
     "Split",
     "ReduceMean",
     "Scale",
+    "LSTM",
 ]
 
 TEST_TORCH_IR = [
@@ -116,6 +117,7 @@ class ONNX_IR_TESTER(object):
             "Split": self.test_Split,
             "ReduceMean": self.test_ReduceMean,
             "Scale": self.test_Scale,
+            "LSTM": self.test_LSTM,
             "LayerGroup": self.test_LayerGroup,
         }
         self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
@@ -875,6 +877,57 @@ class ONNX_IR_TESTER(object):
             test_case,
         )
 
+    def test_LSTM(self):
+        test_case = 'LSTM'
+        seq_length = 75
+        batch_size = 2
+        num_dir = 2
+        input_size = 128
+        hidden_size = 64
+        direction = 'forward' if num_dir == 1 else 'bidirectional'
+        #layout = 0
+        np.random.seed(0)
+        input_data = np.random.rand(
+            seq_length, batch_size, input_size).astype(np.float32)
+        w_data = np.random.rand(
+            num_dir, 4 * hidden_size, input_size).astype(np.float32)
+        r_data = np.random.rand(
+            num_dir, 4 * hidden_size, hidden_size).astype(np.float32)
+        b_data = np.random.rand(num_dir, 8 * hidden_size).astype(np.float32)
+        h0_data = np.random.rand(num_dir, batch_size, hidden_size).astype(np.float32)
+        c0_data = np.random.rand(num_dir, batch_size, hidden_size).astype(np.float32)
+        input = helper.make_tensor_value_info(
+            'input', TensorProto.FLOAT, list(input_data.shape))
+
+        output = helper.make_tensor_value_info(
+            'output', TensorProto.FLOAT, [seq_length, num_dir, batch_size, hidden_size])
+
+        w = helper.make_tensor('w', TensorProto.FLOAT, w_data.shape, w_data)
+        r = helper.make_tensor('r', TensorProto.FLOAT, r_data.shape, r_data)
+        b = helper.make_tensor('b', TensorProto.FLOAT, b_data.shape, b_data)
+        h0 = helper.make_tensor('h0', TensorProto.FLOAT, h0_data.shape, h0_data)
+        c0 = helper.make_tensor('c0', TensorProto.FLOAT, c0_data.shape, c0_data)
+        sequence_lens = helper.make_tensor('sequence_lens', TensorProto.FLOAT, dims = [], vals = [seq_length])
+
+        node_def = onnx.helper.make_node(
+            "LSTM",
+            inputs = ['input', 'w', 'r', 'b', '', 'h0', 'c0'],
+            outputs = ['output'],
+            direction = direction,
+            hidden_size = hidden_size,
+        )
+        graph_def = helper.make_graph(
+            [node_def],
+            test_case,
+            [input],
+            [output],
+            initializer = [w, r, b, sequence_lens, h0, c0]
+        )
+        self.onnx_and_test(
+            {'input': input_data},
+            graph_def,
+            test_case
+        )
 
 if __name__ == "__main__":
     tester = ONNX_IR_TESTER()

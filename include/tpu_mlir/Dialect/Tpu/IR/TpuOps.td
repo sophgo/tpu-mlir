@@ -770,4 +770,30 @@ def Tpu_ScaleOp: Tpu_Op<"Scale", [SupportFuseRelu, InOutSameShape,
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_LSTMOp: Tpu_Op<"LSTM",[
+    DeclareOpInterfaceMethods<WeightReorderInterface>]> {
+  let summary = "LSTM operator";
+
+  let description = [{
+    Perform RNN LSTM operation.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$filter,
+    AnyTensor:$recurrence,
+    AnyTensorOrNone:$bias,
+    AnyTensorOrNone:$initial_h,
+    AnyTensorOrNone:$initial_c,
+
+    DefaultValuedAttr<BoolAttr, "false">:$have_bias,
+    DefaultValuedAttr<BoolAttr, "false">:$bidirectional,
+    DefaultValuedAttr<BoolAttr, "false">:$batch_first,
+    DefaultValuedAttr<I64Attr, "1">:$num_layers,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 #endif // TPU_OPS

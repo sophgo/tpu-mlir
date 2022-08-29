@@ -139,6 +139,7 @@ class OnnxConverter(BaseConverter):
             "Split" :  lambda node: self.convert_split_op(node),
             "Transpose": lambda node: self.convert_transpose_op(node),
             "Unsqueeze": lambda node: self.convert_unsqueeze_op(node),
+            "LSTM": lambda node: self.convert_lstm_op(node),
         }
 
     def __del__(self):
@@ -1047,3 +1048,44 @@ class OnnxConverter(BaseConverter):
         new_op = self.mlir.create_reduce_op([op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
         '''
+    def convert_lstm_op(self, onnx_node):
+        assert (onnx_node.op_type == "LSTM")
+        direction = onnx_node.attrs.get("direction")
+        bidirectional = True if onnx_node.attrs.get(
+            "direction", 'forward') == b'bidirectional' else False
+        layout = onnx_node.attrs.get("layout")
+        batch_first = True if layout == 1 else False
+        hidden_size = onnx_node.attrs.get("hidden_size")
+        input_size = len(onnx_node.inputs)
+        operands = list()
+        operands.append(self.getOperand(onnx_node.inputs[0])) # in
+        operands.append(self.getWeightOp(onnx_node.inputs[1])) # W
+        operands.append(self.getWeightOp(onnx_node.inputs[2])) # R
+        have_bias = False
+        if len(onnx_node.inputs) > 3:
+            have_bias = True
+            operands.append(self.getWeightOp(onnx_node.inputs[3]))
+        if len(onnx_node.inputs) > 4:
+            if onnx_node.inputs[4] in self.tensors:
+                sequence_lens = self.getWeightOp(onnx_node.inputs[4])
+        if len(onnx_node.inputs) > 5:
+            initial_h = self.getWeightOp(onnx_node.inputs[5])
+            operands.append(initial_h)
+        if len(onnx_node.inputs) > 6:
+            initial_c = self.getWeightOp(onnx_node.inputs[6])
+            operands.append(initial_c)
+        p = {
+            "name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            "have_bias": have_bias,
+            "bidirectional": bidirectional,
+            "batch_first": batch_first,
+        }
+        input_shape = self.getShape(onnx_node.inputs[0])
+        weight_shape = self.getShape(onnx_node.inputs[1])
+        seq_length = input_shape[1] if layout == 1 else input_shape[0]
+        batch_size = input_shape[0] if layout == 1 else input_shape[1]
+        input_size = input_shape[2]
+        num_direction = weight_shape[0]
+        output_shape = [seq_length, num_direction, batch_size, hidden_size]
+        new_op = self.mlir.create_lstm_op(operands, output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)

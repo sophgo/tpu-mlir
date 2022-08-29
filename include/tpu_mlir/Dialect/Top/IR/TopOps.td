@@ -632,4 +632,28 @@ def Top_ScaleOp: Top_Op<"Scale", [SupportFuseRelu, InOutSameShape]> {
   let hasCanonicalizer = 1;
 }
 
+def Top_LSTMOp: Top_Op<"LSTM"> {
+  let summary = "LSTM operator";
+
+  let description = [{
+    Perform RNN LSTM operation.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$filter,
+    AnyTensor:$recurrence,
+    AnyTensorOrNone:$bias,
+    AnyTensorOrNone:$initial_h,
+    AnyTensorOrNone:$initial_c,
+
+    DefaultValuedAttr<BoolAttr, "false">:$have_bias,
+    DefaultValuedAttr<BoolAttr, "false">:$bidirectional,
+    DefaultValuedAttr<BoolAttr, "false">:$batch_first,
+    DefaultValuedAttr<I64Attr, "1">:$num_layers
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 #endif // Top_OPS
