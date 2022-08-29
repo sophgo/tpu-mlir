@@ -39,9 +39,7 @@ static mlir::Value lowering_common(Operation *from, Type newType) {
     attrs.push_back(attr);
   }
   builder.setInsertionPointAfter(from);
-  auto newOp =
-      builder.create<OpTy>(from->getLoc(), newType, ArrayRef<Value>{operands},
-                           ArrayRef<NamedAttribute>{attrs});
+  auto newOp = builder.create<OpTy>(from->getLoc(), newType, operands, attrs);
   return newOp.output();
 }
 
@@ -88,8 +86,8 @@ Value do_dequant(Value input, Type to_type, int64_t multiplier, int64_t shift,
 // from int8 to int32
 Value do_requant(Location name_loc, Value input, Type to_type, bool tensorType,
                  int64_t multiplier, int64_t shift, int64_t mode);
-Value do_requant(Value input, Value quant, std::string name, Type to_type, bool tensorType,
-                 int64_t mode);
+Value do_requant(Value input, Value quant, std::string name, Type to_type,
+                 bool tensorType, int64_t mode);
 
 Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
                  bool tensorType, int64_t mode);

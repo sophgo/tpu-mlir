@@ -49,12 +49,13 @@ Value top::MulOp::lowering_int8_bm1684x(bool asymmetric) {
     builder.setInsertionPointAfter(op);
     std::vector<NamedAttribute> attrs;
     attrs.push_back(builder.getNamedAttr("do_relu", do_reluAttr()));
-    attrs.push_back(builder.getNamedAttr("multiplier", builder.getI64IntegerAttr(multiplier)));
-    attrs.push_back(builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
+    attrs.push_back(builder.getNamedAttr(
+        "multiplier", builder.getI64IntegerAttr(multiplier)));
+    attrs.push_back(
+        builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
     auto newType = Quant::getQuantInt8Type(output(), asymmetric);
-    auto newOp = builder.create<tpu::MulOp>(op->getLoc(), newType,
-                                            ArrayRef<Value>{operands},
-                                            ArrayRef<NamedAttribute>{attrs});
+    auto newOp =
+        builder.create<tpu::MulOp>(op->getLoc(), newType, operands, attrs);
     return newOp.output();
   } else {
     llvm_unreachable("MulOp asymmetric use FP32");
