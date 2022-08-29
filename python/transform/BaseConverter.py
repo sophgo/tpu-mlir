@@ -45,7 +45,7 @@ class BaseConverter(object):
             raise KeyError("operand {} not found".format(name))
         return self.operands[name]
 
-    def addTensor(self, name, data):
+    def addWeight(self, name, data):
         if name in self.tensors:
             raise KeyError("tensor {} conflict".format(name))
         if not isinstance(data, np.ndarray):
@@ -53,19 +53,19 @@ class BaseConverter(object):
         self.tensors[name] = data
         self.addShape(name, data.shape)
 
-    def isTensor(self, name):
+    def isWeight(self, name):
         if name in self.tensors:
             return True
         return False
 
-    def getTensor(self, name):
+    def getWeight(self, name):
         if name not in self.tensors:
             raise KeyError("No {} tensor in model".format(name))
         return self.tensors[name]
 
     def getWeightOp(self, name):
         if name not in self.tensors:
-            raise KeyError("Should addTensor first:{}!!!".format(name))
+            raise KeyError("Should addWeight first:{}!!!".format(name))
         op = self.mlir.create_weight_op(name, self.getShape(name))
         self.addOperand(name, op)
         return op

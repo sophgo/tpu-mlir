@@ -131,14 +131,14 @@ class CaffeConverter(BaseConverter):
                 mean = param[0].data / s
                 variance = param[1].data / s
 
-                self.addTensor(layer_name + "_mean", mean)
-                self.addTensor(layer_name + "_variance", variance)
-                self.addTensor(layer_name + "_gamma", np.ones_like(mean))
-                self.addTensor(layer_name + "_beta", np.zeros_like(mean))
+                self.addWeight(layer_name + "_mean", mean)
+                self.addWeight(layer_name + "_variance", variance)
+                self.addWeight(layer_name + "_gamma", np.ones_like(mean))
+                self.addWeight(layer_name + "_beta", np.zeros_like(mean))
             else:
-                self.addTensor(layer_name + "_weight", param[0].data)
+                self.addWeight(layer_name + "_weight", param[0].data)
                 if len(param) > 1:
-                    self.addTensor(layer_name + "_bias", param[1].data)
+                    self.addWeight(layer_name + "_bias", param[1].data)
 
     def init_MLIRImporter(self):
         input_shapes = list()
@@ -349,21 +349,21 @@ class CaffeConverter(BaseConverter):
     def convert_add_op(self, caffe_layer):
         assert (caffe_layer.type == "Eltwise" and caffe_layer.eltwise_param.operation == 1)
         assert (len(caffe_layer.bottom) == 2)
-        if self.isTensor(caffe_layer.bottom[0]) and not self.isTensor(caffe_layer.bottom[1]):
+        if self.isWeight(caffe_layer.bottom[0]) and not self.isWeight(caffe_layer.bottom[1]):
             caffe_layer.bottom[0], caffe_layer.bottom[1] = caffe_layer.bottom[
                 1], caffe_layer.bottom[0]
             self.convert_mul_op(caffe_layer)
             return
         name = "{}_{}".format(caffe_layer.name, caffe_layer.type)
-        if not self.isTensor(caffe_layer.bottom[0]) and self.isTensor(caffe_layer.bottom[1]):
+        if not self.isWeight(caffe_layer.bottom[0]) and self.isWeight(caffe_layer.bottom[1]):
             opd1_num_elem = np.prod(self.getShape(caffe_layer.bottom[1]))
             output_shape = self.getShape(caffe_layer.name)
             channel = output_shape[1]
             if opd1_num_elem == channel:
                 op0 = self.getOperand(caffe_layer.bottom[0])
-                offset = self.getTensor(caffe_layer.bottom[1])
+                offset = self.getWeight(caffe_layer.bottom[1])
                 weight_data = np.ones_like(offset)
-                self.addTensor(name + '_scale', weight_data)
+                self.addWeight(name + '_scale', weight_data)
                 weight_op = self.getWeightOp(name + '_scale')
                 offset_op = self.getWeightOp(caffe_layer.bottom[1])
                 p = {'name': name}
@@ -383,15 +383,15 @@ class CaffeConverter(BaseConverter):
     def convert_mul_op(self, caffe_layer):
         assert (caffe_layer.op_type == "Eltwise" and caffe_layer.eltwise_param.operation == 0)
         assert (len(caffe_layer.bottom) == 2)
-        if self.isTensor(caffe_layer.bottom[0]) and not self.isTensor(caffe_layer.bottom[1]):
+        if self.isWeight(caffe_layer.bottom[0]) and not self.isWeight(caffe_layer.bottom[1]):
             caffe_layer.bottom[0], caffe_layer.bottom[1] = caffe_layer.bottom[
                 1], caffe_layer.bottom[0]
             self.convert_mul_op(caffe_layer)
             return
         name = "{}_{}".format(caffe_layer.name, caffe_layer.type)
-        if (not self.isTensor(caffe_layer.bottom[0])) and self.isTensor(caffe_layer.bottom[1]):
+        if (not self.isWeight(caffe_layer.bottom[0])) and self.isWeight(caffe_layer.bottom[1]):
             op0 = self.getOperand(caffe_layer.bottom[0])
-            weight = self.getTensor(caffe_layer.bottom[1])
+            weight = self.getWeight(caffe_layer.bottom[1])
             output_shape = self.getShape(caffe_layer.name)
             weight_num_elem = np.prod(self.getShape(caffe_layer.bottom[1]))
             first_val = weight.flatten()[0]
@@ -403,7 +403,7 @@ class CaffeConverter(BaseConverter):
                 return
             elif weight_num_elem == channel:
                 offset_data = np.zeros_like(weight)
-                self.addTensor(name + '_bias', offset_data)
+                self.addWeight(name + '_bias', offset_data)
                 weight_op = self.getWeightOp(caffe_layer.bottom[1])
                 offset_op = self.getWeightOp(name + '_bias')
                 p = {'name': name}
@@ -438,11 +438,11 @@ class CaffeConverter(BaseConverter):
         operands = list()
         operands.append(op)
         weight = caffe_layer.name + "_weight"
-        _tensor = self.getTensor(weight)
+        _tensor = self.getWeight(weight)
         if output_shape[1] != _tensor.shape[-1]:
             _tensor = np.ascontiguousarray(np.transpose(_tensor, (1, 0)))
             weight += "_fix"
-            self.addTensor(weight, _tensor)
+            self.addWeight(weight, _tensor)
         operands.append(self.getWeightOp(weight))
         if attrs.bias_term:
             bias = caffe_layer.name + "_bias"
