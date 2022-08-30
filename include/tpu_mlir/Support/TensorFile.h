@@ -43,6 +43,8 @@ namespace mlir {
 template <typename T> static bool check_type(Type eltType) {
   if (eltType.isa<quant::UniformQuantizedPerAxisType>()) {
     eltType = eltType.cast<quant::UniformQuantizedPerAxisType>().getStorageType();
+  } else if (eltType.isa<quant::UniformQuantizedType>()) {
+    eltType = eltType.cast<quant::UniformQuantizedType>().getStorageType();
   }
 
   bool same;
