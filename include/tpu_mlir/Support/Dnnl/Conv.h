@@ -30,6 +30,7 @@ typedef struct {
   int64_t pwl, pwr;
   int64_t groups;
   int64_t pad_value;
+  int64_t kernel_zp;
   bool has_bias;
   bool is_dw;
   bool do_relu;
@@ -42,6 +43,7 @@ public:
   ~Conv();
 
   void pad_init(float *input, conv_attr_t &attr);
+  void filter_init(float *weight, conv_attr_t &attr);
   void setup(float *input, float *weight, float *bias, float *output,
              conv_attr_t attr);
 
@@ -57,9 +59,9 @@ private:
   memory prim_bias_memory;
   memory::dims src_shape;
   memory::dims dst_shape;
-  float *p_input;
-  float *origin_input;
-  std::shared_ptr<std::vector<float>> input_after_pad;
+  float *p_input, *p_weight;
+  float *origin_input, *origin_weight;
+  std::shared_ptr<std::vector<float>> input_after_pad, weight_after_zp;
   conv_attr_t _attr;
 };
 } // namespace tpu_mlir

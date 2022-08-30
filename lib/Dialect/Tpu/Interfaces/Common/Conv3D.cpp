@@ -49,6 +49,9 @@ void tpu::Conv3DOp::parseParam(void *param) {
   if (Quant::isUniformQuantized(input())) {
     p->pad_value = Quant::getUniformQuantizedType(input()).getZeroPoint();
   }
+  if (Quant::isUniformQuantized(filter())) {
+    p->kernel_zp = Quant::getUniformQuantizedType(filter()).getZeroPoint();
+  }
   auto strides_v = Module::getI64Array(strides());
   p->sd = strides_v->at(0);
   p->sh = strides_v->at(1);

@@ -256,7 +256,7 @@ void tpu::Conv3DOp::codegen_global_bm1684x() {
     spec.do_relu = out_etype.isUnsignedInteger(8);
     auto in_qtype = Quant::getUniformQuantizedType(input());
     spec.kzp_is_const = true;
-    spec.kzp_val = 0;
+    spec.kzp_val = attr.kernel_zp;
     spec.kzp_dtype = spec.weight_dtype;
     spec.pad_is_const = true;
     spec.pad_val = in_qtype.getZeroPoint();
@@ -362,7 +362,7 @@ void tpu::Conv3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
     spec.do_relu = out_etype.isUnsignedInteger(8);
     auto in_qtype = Quant::getUniformQuantizedType(input());
     spec.kzp_is_const = true;
-    spec.kzp_val = 0;
+    spec.kzp_val = attr.kernel_zp;
     spec.kzp_dtype = spec.weight_dtype;
     spec.pad_is_const = true;
     spec.pad_val = in_qtype.getZeroPoint();

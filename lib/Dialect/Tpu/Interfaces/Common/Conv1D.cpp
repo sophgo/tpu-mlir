@@ -41,6 +41,9 @@ void tpu::Conv1DOp::parseParam(void *param) {
   if (Quant::isUniformQuantized(input())) {
     p->pad_value = Quant::getUniformQuantizedType(input()).getZeroPoint();
   }
+  if (Quant::isUniformQuantized(filter())) {
+    p->kernel_zp = Quant::getUniformQuantizedType(filter()).getZeroPoint();
+  }
   auto strides_v = Module::getI64Array(strides());
   p->sh = strides_v->at(0);
   auto dilation = Module::getI64Array(dilations(), 1, 1);
