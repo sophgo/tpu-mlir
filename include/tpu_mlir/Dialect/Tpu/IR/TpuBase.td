@@ -16,6 +16,7 @@ def Tpu_Dialect : Dialect {
   let name = "tpu";
   let summary = "A tpu dialect for the SOPHGO AI chips";
   let cppNamespace = "::tpu_mlir::tpu";
+  let useDefaultAttributePrinterParser = 1;
 }
 
 #endif

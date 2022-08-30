@@ -32,7 +32,6 @@ template <typename T> std::shared_ptr<std::vector<T>> WeightOp::read() {
 }
 
 std::shared_ptr<std::vector<float>> WeightOp::read_as_float() {
-  auto type = getType().cast<RankedTensorType>();
   auto dtype = Module::getStorageType(output());
   if (dtype.isUnsignedInteger(8)) {
     auto data_u8 = read<uint8_t>();
@@ -58,10 +57,6 @@ std::shared_ptr<std::vector<float>> WeightOp::read_as_float() {
       data_f32->data()[i] = bf16_uint16_to_float_simple(data_u16->data()[i]);
     }
     return data_f32;
-  } else if (Quant::isUniformQuantized(output())) {
-    auto data_i8 = read<int8_t>();
-    return std::make_shared<std::vector<float>>(data_i8->begin(),
-                                                data_i8->end());
   } else if (dtype.isUnsignedInteger(16)) {
     auto data_u16 = read<uint16_t>();
     return std::make_shared<std::vector<float>>(data_u16->begin(),

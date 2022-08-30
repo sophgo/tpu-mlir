@@ -8,11 +8,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "../Lowering.h"
-#include "mlir/IR/Location.h"
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
 
 using namespace mlir;
 using namespace tpu_mlir;
@@ -117,12 +112,12 @@ Value top::AddOp::lowering_quant_bm1684x() {
 
   // dequant left
   auto input0_dequant = do_dequant(inputs()[0], builder.getI32Type(),
-                                   multiplier_v[0], shift_v[0], 1, lshift);
+                                   multiplier_v[0], shift_v[0], tpu::DequantMode::TFlite, lshift);
   // op->setOperand(0, input0_dequant);
   operands.push_back(input0_dequant);
   // dequant right
   auto input1_dequant = do_dequant(inputs()[1], builder.getI32Type(),
-                                   multiplier_v[1], shift_v[1], 1, lshift);
+                                   multiplier_v[1], shift_v[1], tpu::DequantMode::TFlite, lshift);
   // op->setOperand(1, input1_dequant);
   operands.push_back(input1_dequant);
   // add

@@ -442,8 +442,8 @@ def Tpu_DequantIntOp:Tpu_Op<"DequantInt",
     AnyTensor:$input,
     I64Attr:$multiplier,
     I64Attr:$shift,
-    OptionalAttr<I64Attr>:$lshift,
-    DefaultValuedAttr<I64Attr, "0">:$quant_mode,
+    DefaultValuedAttr<I64Attr, "0">:$lshift,
+    Tpu_DequantModeAttr:$quant_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
   let results = (outs AnyTensor:$output);
@@ -453,13 +453,13 @@ def Tpu_DequantIntAxisOp:Tpu_Op<"DequantIntAxis",
   [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
   let summary = "dequant operation";
   let description = [{
-    Dequant 32/16/8 bit data to int8 or uint8 data, PerAxis(or PerChannel)
+    Dequant 8 bit data to 32/16 bit data, PerAxis(or PerChannel)
   }];
   let arguments = (ins
     AnyTensor:$input,
     AnyTensor:$quant,
-    OptionalAttr<I64Attr>:$lshift,
-    DefaultValuedAttr<I64Attr, "0">:$quant_mode,
+    DefaultValuedAttr<I64Attr, "0">:$lshift,
+    Tpu_DequantModeAttr:$quant_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
   let results = (outs AnyTensor:$output);

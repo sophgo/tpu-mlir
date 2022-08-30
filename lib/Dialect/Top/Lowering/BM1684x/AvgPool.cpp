@@ -8,10 +8,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "../Lowering.h"
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace mlir;
 using namespace tpu_mlir;

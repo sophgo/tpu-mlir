@@ -8,7 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "Lowering.h"
-#include "mlir/IR/Location.h"
+
 #include <map>
 using namespace tpu_mlir::trait;
 namespace tpu_mlir {
@@ -114,7 +114,7 @@ Value do_transfer(Value in, Value out, bool asymmetric) {
         builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
     builder.setInsertionPointAfterValue(in);
     auto rqOp = builder.create<tpu::RequantIntOp>(name_loc, new_type,
-                                               ValueRange{in}, attrs);
+                                                  ValueRange{in}, attrs);
     return rqOp.output();
   }
 }
@@ -186,7 +186,7 @@ Value do_quantize(Value v, bool asymmetric) {
 }
 
 Value do_dequant(Value input, Type to_type, int64_t multiplier, int64_t shift,
-                 int64_t mode, int64_t lshift) {
+                 tpu::DequantMode mode, int64_t lshift) {
   auto from_stype = Module::getStorageType(input);
   auto to_stype = Module::getStorageType(to_type);
   auto ctx = input.getContext();
@@ -200,17 +200,18 @@ Value do_dequant(Value input, Type to_type, int64_t multiplier, int64_t shift,
                                        builder.getI64IntegerAttr(multiplier)));
   attrs.push_back(
       builder.getNamedAttr("shift", builder.getI64IntegerAttr(shift)));
-  if (mode == 1)
+  if (mode == tpu::DequantMode::TFlite) {
     attrs.push_back(
         builder.getNamedAttr("lshift", builder.getI64IntegerAttr(lshift)));
+  }
   attrs.push_back(
-      builder.getNamedAttr("quant_mode", builder.getI64IntegerAttr(mode)));
+      builder.getNamedAttr("quant_mode", tpu::DequantModeAttr::get(ctx, mode)));
 
   std::string new_name =
       Module::getName(input.getDefiningOp()).str() + "_dequant";
   auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
   auto newOp = builder.create<tpu::DequantIntOp>(name_loc, newType,
-                                              ValueRange{input}, attrs);
+                                                 ValueRange{input}, attrs);
   return newOp.output();
 }
 
@@ -235,7 +236,7 @@ Value do_requant(Location name_loc, Value input, Type to_type, bool tensorType,
       builder.getNamedAttr("quant_mode", builder.getI64IntegerAttr(mode)));
 
   auto newOp = builder.create<tpu::RequantIntOp>(name_loc, newType,
-                                              ValueRange{input}, attrs);
+                                                 ValueRange{input}, attrs);
   return newOp.output();
 }
 

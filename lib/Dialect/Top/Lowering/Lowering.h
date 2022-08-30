@@ -9,11 +9,16 @@
 
 #pragma once
 
-#include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Helper/Module.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Support/Dnnl/Dnnl.h"
+#include "tpu_mlir/Support/Float16.h"
 
+#include "mlir/IR/Location.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Dialect/Quant/QuantTypes.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
@@ -65,18 +70,19 @@ static mlir::Value lowering_common_float(Operation *from) {
   return lowering_common<OpTy>(from, newType);
 }
 
-// from int8 cast to f32
+// cast Value to new type. if tensorType is true, new type will be "to", else
+// {getShape(v), to}. support F32/F16/BF16/qint8
 Value do_cast(Value v, Type to, bool tensorType);
 
-// from f32 quant to int8
+// from f32 quant to qint8
 Value do_quantize(Value v, bool asymmetric);
 
 // from int8 to int8, convert one (scale zp) to another (scale zp)
 Value do_transfer(Value in, Value out, bool asymmetric);
 
 // from int8 to int32
-Value do_dequant(Value input, Type to_type, int64_t multiplier, int64_t shift,
-                 int64_t mode, int64_t lshift);
+Value do_dequant(Value input, Type to_type, int64_t multiplier, int64_t rshift,
+                 tpu::DequantMode mode, int64_t lshift);
 
 // from int8 to int32
 Value do_requant(Location name_loc, Value input, Type to_type, bool tensorType,

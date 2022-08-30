@@ -10,6 +10,7 @@
 #ifndef TPU_MLIR_TPU_ATTRS
 #define TPU_MLIR_TPU_ATTRS
 
+include "mlir/IR/EnumAttr.td"
 include "tpu_mlir/Dialect/Tpu/IR/TpuBase.td"
 
 def Tpu_LayerGroupAttr :
@@ -27,5 +28,16 @@ def Tpu_LayerGroupAttr :
 ]> {
   let summary = "Structure of layer group parameters";
 }
+
+def Tpu_DequantMode: I32EnumAttr<"DequantMode",
+    "dequant mode supported by DequantOp",
+    [
+      I32EnumAttrCase<"Normal", 0>,
+      I32EnumAttrCase<"TFlite", 1>
+    ]>{
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::tpu_mlir::tpu";
+}
+def Tpu_DequantModeAttr : EnumAttr<Tpu_Dialect, Tpu_DequantMode, "dq_mode">;
 
 #endif
