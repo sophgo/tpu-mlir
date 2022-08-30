@@ -34,7 +34,7 @@ LogicalResult tpu::DequantIntAxisOp::inference(InferenceParameter &p) {
     inner *= shape[i];
   }
 
-  if (mode == 0) {
+  if (mode == DequantMode::Normal) {
 #pragma omp parallel for schedule(static, omp_schedule(shape[1]))
     for (int c = 0; c < shape[1]; ++c) {
       int64_t multi = p.inputs[1][c * 3];
@@ -48,8 +48,8 @@ LogicalResult tpu::DequantIntAxisOp::inference(InferenceParameter &p) {
         }
       }
     }
-  } else if (mode == 1) {
-    int64_t lshift_val = lshift().getValue();
+  } else if (mode == DequantMode::TFlite) {
+    int64_t lshift_val = lshift();
 #pragma omp parallel for schedule(static, omp_schedule(shape[1]))
     for (int c = 0; c < shape[1]; ++c) {
       int64_t multi = p.inputs[1][c * 3];

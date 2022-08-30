@@ -17,7 +17,9 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-LogicalResult tpu::DequantIntOp::init(InferenceParameter &p) { return success(); }
+LogicalResult tpu::DequantIntOp::init(InferenceParameter &p) {
+  return success();
+}
 void tpu::DequantIntOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::DequantIntOp::inference(InferenceParameter &p) {
@@ -27,22 +29,30 @@ LogicalResult tpu::DequantIntOp::inference(InferenceParameter &p) {
   int64_t shift_val = shift();
   int64_t mul_val = multiplier();
   int64_t offset = (int64_t)qtype.getZeroPoint();
-  if (quant_mode() == 0) {
+  auto qmode = quant_mode();
+  switch (qmode) {
+  case DequantMode::Normal: {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int64_t idx = 0; idx < num_elem; idx++) {
       int32_t tmp = (int32_t)p.inputs[0][idx] - offset;
       auto v = applyMultiplierAndRShift(tmp, mul_val, -shift_val);
       p.outputs[0][idx] = v;
     }
-  } else {
-    int64_t lshift_val = lshift().getValue();
+  } break;
+  case DequantMode::TFlite: {
+    int64_t lshift_val = lshift();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int64_t idx = 0; idx < num_elem; idx++) {
-      int64_t tmp = ((int32_t)p.inputs[0][idx] - offset) * mul_val << lshift_val;
+      int64_t tmp = ((int32_t)p.inputs[0][idx] - offset) * mul_val
+                    << lshift_val;
       auto v = RightShiftRound(tmp, 31, ROUNDING_HALF_UP);
       v = RightShiftRound(v, -shift_val, ROUNDING_HALF_AWAY_FROM_ZERO);
       p.outputs[0][idx] = v;
     }
+  } break;
+  default:
+    llvm_unreachable("Unknown dequant mode");
+    break;
   }
   return success();
 }
