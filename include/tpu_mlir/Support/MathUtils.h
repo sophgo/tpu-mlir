@@ -88,4 +88,5 @@ void pad_tensor_for_deconv(float *p_after_pad, float *src, int n, int c, int d,
                            int dw, int sd, int sh, int sw, int pdf, int pdb,
                            int pht, int phb, int pwl, int pwr,
                            float pad_value);
+void tensor_sub_zp(float* tensor_after_zp, float* src, int64_t length, float zero_point);
 } // namespace tpu_mlir

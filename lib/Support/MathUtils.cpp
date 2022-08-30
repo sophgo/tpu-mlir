@@ -394,6 +394,14 @@ void pad_tensor_for_deconv(float *p_after_pad, float *src, int n, int c, int d,
   }
 }
 
+
+void tensor_sub_zp(float* tensor_after_zp, float* src, int64_t length, float zero_point) {
+#pragma omp parallel for schedule(static, omp_schedule(length))
+  for (int i = 0; i < length; ++i) {
+    tensor_after_zp[i] = src[i] - zero_point;
+  }
+}
+
 int omp_schedule(int count) {
   return (count + omp_get_num_threads() - 1) / omp_get_num_threads();
 }

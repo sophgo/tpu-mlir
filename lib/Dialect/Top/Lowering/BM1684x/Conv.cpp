@@ -340,6 +340,7 @@ Value top::ConvOp::lowering_quant_bm1684x() {
   bool with_bias = true;
   if (input_zeroPoint != 0) {
     // merge input_zeroPoint to bias
+    auto filter_stype = Module::getStorageType(filter());
     std::shared_ptr<std::vector<int32_t>> bias_quant;
     std::shared_ptr<std::vector<int8_t>> filter_quant;
     filter_quant = cast<top::WeightOp>(filter().getDefiningOp()).read<int8_t>();
@@ -351,11 +352,21 @@ Value top::ConvOp::lowering_quant_bm1684x() {
     int64_t oc = filter_type.getShape()[0];
     int64_t kernel_size = filter_type.getNumElements() / oc;
 
-    for (size_t oc_ind = 0; oc_ind < oc; ++oc_ind) {
-      for (size_t kernel_ind = 0; kernel_ind < kernel_size; ++kernel_ind) {
-        bias_quant->data()[oc_ind] -=
-            input_zeroPoint *
-            (filter_quant->at(kernel_ind + oc_ind * kernel_size) - filter_zeroPoint);
+    if (filter_stype.isUnsignedInteger(8)) {
+      for (size_t oc_ind = 0; oc_ind < oc; ++oc_ind) {
+        for (size_t kernel_ind = 0; kernel_ind < kernel_size; ++kernel_ind) {
+          bias_quant->data()[oc_ind] -=
+              input_zeroPoint *
+              ((uint8_t)filter_quant->at(kernel_ind + oc_ind * kernel_size) - filter_zeroPoint);
+        }
+      }
+    } else {
+      for (size_t oc_ind = 0; oc_ind < oc; ++oc_ind) {
+        for (size_t kernel_ind = 0; kernel_ind < kernel_size; ++kernel_ind) {
+          bias_quant->data()[oc_ind] -=
+              input_zeroPoint *
+              (filter_quant->at(kernel_ind + oc_ind * kernel_size) - filter_zeroPoint);
+        }
       }
     }
     auto bias_type = RankedTensorType::get({oc}, builder.getI32Type());

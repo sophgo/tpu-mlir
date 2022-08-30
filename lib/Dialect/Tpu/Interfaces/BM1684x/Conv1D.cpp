@@ -241,6 +241,7 @@ void tpu::Conv1DOp::codegen_global_bm1684x() {
   common.bias_sign = true;
   common.ipad_is_const = true;
   common.kzp_is_const = true;
+  common.kzp_value = attr.kernel_zp;
   if (Quant::isUniformQuantized(input())) {
     auto in_qtype = Quant::getUniformQuantizedType(input());
     if (coeff_merged()) {
@@ -332,6 +333,7 @@ void tpu::Conv1DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   common.bias_sign = true;
   common.ipad_is_const = true;
   common.kzp_is_const = true;
+  common.kzp_value = attr.kernel_zp;
   if (Quant::isUniformQuantized(input())) {
     auto in_qtype = Quant::getUniformQuantizedType(input());
     if (coeff_merged()) {

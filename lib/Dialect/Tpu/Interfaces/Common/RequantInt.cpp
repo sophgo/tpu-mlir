@@ -40,7 +40,6 @@ LogicalResult tpu::RequantIntOp::inference(InferenceParameter &p) {
   int64_t multi = multiplier();
   int64_t zero_point = o_qtype.getZeroPoint();
 
-  int32_t *output_p = reinterpret_cast<int32_t*>(p.outputs[0]);
   if (mode == 0) {
 #pragma omp parallel for schedule(static, omp_schedule(shape[1]))
     for (int c = 0; c < shape[1]; ++c) {
