@@ -97,7 +97,7 @@ void tpu::DeconvOp::weight_reorder_bf16_bm1684x() {
 
   // filter op
   auto filterOp = filter().getDefiningOp<top::WeightOp>();
-  auto filter_i16 = filterOp.read<uint16_t>();
+  auto filter_u16 = filterOp.read<uint16_t>();
   auto filter_type = Module::getStorageType(filter());
   std::vector<int64_t> filter_shape = {attrs.oc, attrs.ic / attrs.g, attrs.kh,
                                        attrs.kw};
@@ -107,12 +107,12 @@ void tpu::DeconvOp::weight_reorder_bf16_bm1684x() {
     auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
     filter().setType(new_filter_type);
   } else {
-    filter_reorder(filter_i16, filter_shape);
+    filter_reorder(filter_u16, filter_shape);
     auto op = getOperation();
     OpBuilder builder(getContext());
     auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
     auto newFilterOp =
-        top::WeightOp::create(op, "_reordered", *filter_i16, new_filter_type);
+        top::WeightOp::create(op, "_reordered", *filter_u16, new_filter_type);
     op->setOperand(1, newFilterOp);
   }
 
