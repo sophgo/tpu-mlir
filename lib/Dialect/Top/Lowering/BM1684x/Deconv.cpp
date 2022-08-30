@@ -141,7 +141,7 @@ Value top::DeconvOp::lowering_int8_bm1684x(bool asymmetric) {
   operands.push_back(new_quant);
   builder.setInsertionPointAfter(deconvOp);
   auto rqOp =
-      builder.create<tpu::RequantAxisOp>(op->getLoc(), rqType, operands, attrs);
+      builder.create<tpu::RequantIntAxisOp>(op->getLoc(), rqType, operands, attrs);
   return rqOp.output();
 }
 

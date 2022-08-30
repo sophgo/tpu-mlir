@@ -368,6 +368,15 @@ StringRef Module::getName(Operation *op) {
   return "";
 }
 
+StringRef Module::getName(Value v) {
+  if (auto op = v.getDefiningOp()) {
+    return Module::getName(op);
+  }
+  v.dump();
+  llvm_unreachable("No name info");
+  return "";
+}
+
 void Module::getInputsOutputs(ModuleOp module, std::vector<Value> &inputs,
                               std::vector<Value> &outputs) {
   auto main_func = Module::getMainFuncOp(module);
