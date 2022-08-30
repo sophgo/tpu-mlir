@@ -289,27 +289,35 @@ Value top::ConvOp::lowering_quant_bm1684x() {
   auto filter_type = filter().getType().cast<RankedTensorType>();
   auto filter_qtype = filter_type.getElementType()
                           .dyn_cast<quant::UniformQuantizedPerAxisType>();
-  if (!filter_qtype) {
-    llvm_unreachable("TODO: per layer to support");
-  }
-  auto filter_scales = filter_qtype.getScales();
-
-  SmallVector<int64_t> shift(filter_scales.size());
-  SmallVector<int64_t> multiplier(filter_scales.size());
-
-  // tensorflow/lite/kernels/kernel_util.cc::PopulateConvolutionQuantizationParams
-  // Populate multiplier and shift using affine quantization.
+  int quant_size = 1;
+  SmallVector<int64_t> shift(1);
+  SmallVector<int64_t> multiplier(1);
   auto input_scale = input_qtype.getScale();
   auto output_scale = output_qtype.getScale();
-  for (auto filter : llvm::enumerate(filter_scales)) {
+  int32_t filter_zeroPoint;
+
+  if (!filter_qtype) {
+    auto filter_qtype = Quant::getUniformQuantizedType(filter());
+    filter_zeroPoint = filter_qtype.getZeroPoint();
+    auto filter_scale = filter_qtype.getScale();
     const double effective_output_scale =
-        input_scale * filter.value() / output_scale;
-    // int scale,shift;
-    // get_scale_and_shift(effective_output_scale, scale, shift, 32);
-    // multiplier[filter.index()] = scale;
-    // shift[filter.index()] = shift;
-    QuantizeMultiplier(effective_output_scale, &multiplier[filter.index()],
-                       &shift[filter.index()]);
+        input_scale * filter_scale / output_scale;
+    QuantizeMultiplier(effective_output_scale, &multiplier[0],
+                       &shift[0]);
+  } else {
+    auto filter_scales = filter_qtype.getScales();
+    filter_zeroPoint = filter_qtype.getZeroPoints()[0];
+    quant_size = filter_scales.size();
+    shift.resize(quant_size);
+    multiplier.resize(quant_size);
+    // tensorflow/lite/kernels/kernel_util.cc::PopulateConvolutionQuantizationParams
+    // Populate multiplier and shift using affine quantization.
+    for (auto filter : llvm::enumerate(filter_scales)) {
+      const double effective_output_scale =
+          input_scale * filter.value() / output_scale;
+      QuantizeMultiplier(effective_output_scale, &multiplier[filter.index()],
+                        &shift[filter.index()]);
+    }
   }
   auto ctx = getContext();
   OpBuilder builder(ctx);
@@ -317,10 +325,10 @@ Value top::ConvOp::lowering_quant_bm1684x() {
   builder.setInsertionPointAfter(op);
   std::vector<Value> operands;
   operands.push_back(input());
-  auto filter_stype = Module::getStorageType(filter());
-  auto filter_new_type =
-      RankedTensorType::get(filter_type.getShape(), filter_stype);
-  filter().setType(filter_new_type);
+  // auto filter_stype = Module::getStorageType(filter());
+  // auto filter_new_type =
+  //     RankedTensorType::get(filter_type.getShape(), filter_stype);
+  // filter().setType(filter_new_type);
   operands.push_back(filter());
 
   std::vector<NamedAttribute> attrs;
@@ -347,7 +355,7 @@ Value top::ConvOp::lowering_quant_bm1684x() {
       for (size_t kernel_ind = 0; kernel_ind < kernel_size; ++kernel_ind) {
         bias_quant->data()[oc_ind] -=
             input_zeroPoint *
-            filter_quant->at(kernel_ind + oc_ind * kernel_size);
+            (filter_quant->at(kernel_ind + oc_ind * kernel_size) - filter_zeroPoint);
       }
     }
     auto bias_type = RankedTensorType::get({oc}, builder.getI32Type());
@@ -387,7 +395,6 @@ Value top::ConvOp::lowering_quant_bm1684x() {
   }
 
   // do requant
-  int quant_size = filter_scales.size();
   if (quant_size == 1) {
     return do_requant(op->getLoc(), newValue, output().getType(), true,
                       multiplier[0], shift[0], 0);

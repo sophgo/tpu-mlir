@@ -33,7 +33,7 @@ template <typename T> std::shared_ptr<std::vector<T>> WeightOp::read() {
 
 std::shared_ptr<std::vector<float>> WeightOp::read_as_float() {
   auto type = getType().cast<RankedTensorType>();
-  auto dtype = type.getElementType();
+  auto dtype = Module::getStorageType(output());
   if (dtype.isUnsignedInteger(8)) {
     auto data_u8 = read<uint8_t>();
     return std::make_shared<std::vector<float>>(data_u8->begin(),
