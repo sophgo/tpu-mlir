@@ -128,7 +128,7 @@ Value top::AddOp::lowering_quant_bm1684x() {
   // add
   std::string suffix = "_add";
   std::string new_name = Module::getName(op).str() + suffix;
-  builder.setInsertionPointAfterValue(input1_dequant);
+  builder.setInsertionPointAfter(op);
   std::vector<NamedAttribute> attrs;
   attrs.push_back(
       builder.getNamedAttr("multiplier", builder.getI64IntegerAttr(1)));
