@@ -17,9 +17,12 @@ if [ ! -f $cfg_file ]; then
 fi
 
 do_f32=1
+do_f16=0
+do_bf16=0
 do_cali=1
 do_symmetric=1
 do_asymmetric=1
+
 
 source ${cfg_file}
 
@@ -127,13 +130,34 @@ model_deploy.py \
   --model ${model_name}_bm1684x_f32.bmodel
 fi
 
+if [ ${do_f16} == 1 ]; then
+model_deploy.py \
+  --mlir ${model_name}.mlir \
+  --quantize F16 \
+  --chip bm1684x \
+  --test_input ${model_name}_in_f32.npz \
+  --test_reference ${top_result} \
+  --tolerance 0.98,0.98 \
+  --model ${model_name}_bm1684x_f16.bmodel
+fi
+
+if [ ${do_bf16} == 1 ]; then
+model_deploy.py \
+  --mlir ${model_name}.mlir \
+  --quantize BF16 \
+  --chip bm1684x \
+  --test_input ${model_name}_in_f32.npz \
+  --test_reference ${top_result} \
+  --tolerance 0.99,0.70 \
+  --model ${model_name}_bm1684x_bf16.bmodel
+fi
 #########################
 # deploy to int8 bmodel
 #########################
 
 # only once
 CALI_TABLE=${REGRESSION_PATH}/cali_tables/${model_name}_cali_table
-if [ ${do_cali} == 1 && ! -f ${CALI_TABLE} ]; then
+if [ ${do_cali} == 1 ] && [! -f ${CALI_TABLE} ]; then
   if [ x${dataset} == x ]; then
     echo "Error: ${model_name} has no dataset"
     exit 1
