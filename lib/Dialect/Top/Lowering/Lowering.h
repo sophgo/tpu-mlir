@@ -24,24 +24,19 @@ using namespace tpu_mlir::helper;
 namespace tpu_mlir {
 namespace top {
 
+// Lowering to a new Operation, with the same operands and same attrs, and
+// newType
 template <typename OpTy>
 static mlir::Value lowering_common(Operation *from, Type newType) {
-  auto ctx = from->getContext();
-  OpBuilder builder(ctx);
-  std::vector<Value> operands;
-  const int nInputs = from->getNumOperands();
-  for (auto i = 0; i < nInputs; ++i) {
-    operands.push_back(from->getOperand(i));
-  }
-  std::vector<NamedAttribute> attrs;
-  for (auto &attr : from->getAttrs()) {
-    attrs.push_back(attr);
-  }
+  OpBuilder builder(from);
   builder.setInsertionPointAfter(from);
-  auto newOp = builder.create<OpTy>(from->getLoc(), newType, operands, attrs);
+  auto newOp = builder.create<OpTy>(from->getLoc(), newType,
+                                    from->getOperands(), from->getAttrs());
   return newOp.output();
 }
 
+// lowering to a new Operation, with same operands and same attrs, and quantize
+// f32 output to int8 output
 template <typename OpTy>
 static mlir::Value lowering_common_int8(Operation *from,
                                         bool asymmetric = false) {
@@ -49,6 +44,7 @@ static mlir::Value lowering_common_int8(Operation *from,
   return lowering_common<OpTy>(from, newType);
 }
 
+// lowering to f32/f16/bf16
 template <typename OpTy, typename ElemTy = Float32Type>
 static mlir::Value lowering_common_float(Operation *from) {
   auto output = from->getResult(0);
@@ -91,6 +87,7 @@ Value do_requant(Value input, Value quant, std::string name, Type to_type,
 Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
                  bool tensorType, int64_t mode);
 
+// create lookup table
 typedef double (*activate_f)(double);
 
 Value create_lookup_table(Value in, Value out, activate_f func,

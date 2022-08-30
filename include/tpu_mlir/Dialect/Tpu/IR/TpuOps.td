@@ -401,7 +401,7 @@ def Tpu_StoreOp:Tpu_Op<"Store",
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_RequantOp:Tpu_Op<"Requant",
+def Tpu_RequantIntOp:Tpu_Op<"RequantInt",
   [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
   let summary = "requant operation";
   let description = [{
@@ -417,7 +417,7 @@ def Tpu_RequantOp:Tpu_Op<"Requant",
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_RequantAxisOp:Tpu_Op<"RequantAxis",
+def Tpu_RequantIntAxisOp:Tpu_Op<"RequantIntAxis",
   [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
   let summary = "requant operation";
   let description = [{
@@ -432,11 +432,11 @@ def Tpu_RequantAxisOp:Tpu_Op<"RequantAxis",
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_DequantOp:Tpu_Op<"Dequant",
+def Tpu_DequantIntOp:Tpu_Op<"DequantInt",
   [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
   let summary = "dequant operation";
   let description = [{
-    Dequant 32/16/8 bit data to int8 or uint8 data
+    Dequant 8 bit data to 32/16 bit data
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -449,7 +449,7 @@ def Tpu_DequantOp:Tpu_Op<"Dequant",
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_DequantAxisOp:Tpu_Op<"DequantAxis",
+def Tpu_DequantIntAxisOp:Tpu_Op<"DequantIntAxis",
   [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
   let summary = "dequant operation";
   let description = [{
