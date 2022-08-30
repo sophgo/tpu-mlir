@@ -115,10 +115,10 @@ struct TopScaleMergeToConv : public OpRewritePattern<ScaleOp> {
 
     auto weight_type =
         RankedTensorType::get({oc, ic, kh, kw}, rewriter.getF32Type());
-    auto conv_weight = WeightOp::create(conv_op, "scale_merged_to_conv_weight",
+    auto conv_weight = WeightOp::create(conv_op, "merged_to_conv_weight",
                                         conv_weight_v, weight_type);
     auto bias_type = RankedTensorType::get({oc}, rewriter.getF32Type());
-    auto conv_bias = WeightOp::create(conv_op, "scale_merged_to_conv_bias",
+    auto conv_bias = WeightOp::create(conv_op, "merged_to_conv_bias",
                                       conv_bias_v, bias_type);
     conv_op->setOperand(1, conv_weight);
     conv_op->setOperand(2, conv_bias);
