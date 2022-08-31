@@ -37,9 +37,9 @@ LogicalResult tpu::RequantIntAxisOp::inference(InferenceParameter &p) {
   if (Quant::isUniformQuantized(input())) {
     auto i_qtype = Quant::getUniformQuantizedType(input());
     zp_x = i_qtype.getZeroPoint();
-    assert(mode == 2);
+    assert(mode == tpu::RequantMode::Normal);
   }
-  if (mode == 0) {
+  if (mode == tpu::RequantMode::TFlite_Lshift) {
 #pragma omp parallel for schedule(static, omp_schedule(shape[1]))
     for (int c = 0; c < shape[1]; ++c) {
       int64_t multi = p.inputs[1][c * 3];
@@ -55,7 +55,7 @@ LogicalResult tpu::RequantIntAxisOp::inference(InferenceParameter &p) {
         }
       }
     }
-  } else if (mode == 1) {
+  } else if (mode == tpu::RequantMode::TFlite) {
 #pragma omp parallel for schedule(static, omp_schedule(shape[1]))
     for (int c = 0; c < shape[1]; ++c) {
       int64_t multi = p.inputs[1][c * 3];
@@ -72,7 +72,7 @@ LogicalResult tpu::RequantIntAxisOp::inference(InferenceParameter &p) {
         }
       }
     }
-  } else if (mode == 2) {
+  } else if (mode == tpu::RequantMode::Normal) {
 #pragma omp parallel for schedule(static, omp_schedule(shape[1]))
     for (int c = 0; c < shape[1]; ++c) {
       int64_t multi = p.inputs[1][c * 3];
