@@ -24,18 +24,28 @@ struct TopBatchNormToScale : public OpRewritePattern<BatchNormOp> {
 
   LogicalResult matchAndRewrite(BatchNormOp op,
                                 PatternRewriter &rewriter) const override {
-    auto gamma = dyn_cast<WeightOp>(op.gamma().getDefiningOp());
-    auto beta = dyn_cast<WeightOp>(op.beta().getDefiningOp());
-    auto mean = dyn_cast<WeightOp>(op.mean().getDefiningOp());
-    auto variance = dyn_cast<WeightOp>(op.variance().getDefiningOp());
-    if (!(mean && variance && gamma && beta))
-      return failure();
-    auto gamma_f32 = gamma.read<float>();
-    auto beta_f32 = beta.read<float>();
+
+    auto mean = cast<WeightOp>(op.mean().getDefiningOp());
+    auto variance = cast<WeightOp>(op.variance().getDefiningOp());
     auto mean_f32 = mean.read<float>();
     auto variance_f32 = variance.read<float>();
 
-    int channel = gamma.getType().cast<RankedTensorType>().getNumElements();
+    auto shape = Module::getShape(op.input());
+    auto channel = shape.size() > 1 ? shape[1] : shape[0];
+
+    std::shared_ptr<std::vector<float>> gamma_f32;
+    if (auto gamma = dyn_cast<WeightOp>(op.gamma().getDefiningOp())) {
+      gamma_f32 = gamma.read<float>();
+    } else {
+      gamma_f32 = std::make_shared<std::vector<float>>(channel, 1.0f);
+    }
+    std::shared_ptr<std::vector<float>> beta_f32;
+    if (auto beta = dyn_cast<WeightOp>(op.beta().getDefiningOp())) {
+      beta_f32 = beta.read<float>();
+    } else {
+      beta_f32 = std::make_shared<std::vector<float>>(channel, 0.0f);
+    }
+
     std::vector<float> scale(channel);
     std::vector<float> bias(channel);
 

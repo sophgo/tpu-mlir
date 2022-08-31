@@ -30,9 +30,9 @@ mkdir -p regression_out/${model_name}
 pushd regression_out/${model_name}
 
 model_def_opt=
-if [ -f $model_path ]; then
+if [ x$model_path != x ] && [ -f $model_path ]; then
   model_def_opt="--model_def ${model_path}"
-elif [ -f $model_path2 ]; then
+elif [ x$model_path2 != x ] && [ -f $model_path2 ]; then
   model_path=${model_path2}
   model_def_opt="--model_def ${model_path2}"
 else
@@ -40,9 +40,12 @@ else
   exit 1
 fi
 
-is_tflite=0
+model_data_opt=
+if [ x$model_data != x ] && [ -f $model_data ]; then
+  model_data_opt="--model_data ${model_data}"
+fi
+
 if echo ${model_path} | grep -q -E '\.tflite$'; then
-  if_tflite=1
   do_cali=0
   do_f32=0
   do_symmetric=0
@@ -104,6 +107,7 @@ fi
 model_transform.py \
   --model_name ${model_name} \
   ${model_def_opt} \
+  ${model_data_opt} \
   ${output_names_opt} \
   ${input_shapes_opt} \
   ${resize_dims_opt} \
@@ -124,8 +128,8 @@ model_deploy.py \
   --mlir ${model_name}.mlir \
   --quantize F32 \
   --chip bm1684x \
-  --test_input ${model_name}_in_f32.npz \
-  --test_reference ${top_result} \
+  ${test_innpz_opt} \
+  ${test_reference_opt} \
   --tolerance 0.99,0.99 \
   --model ${model_name}_bm1684x_f32.bmodel
 fi
@@ -135,8 +139,8 @@ model_deploy.py \
   --mlir ${model_name}.mlir \
   --quantize F16 \
   --chip bm1684x \
-  --test_input ${model_name}_in_f32.npz \
-  --test_reference ${top_result} \
+  ${test_innpz_opt} \
+  ${test_reference_opt} \
   --tolerance 0.98,0.98 \
   --model ${model_name}_bm1684x_f16.bmodel
 fi
@@ -146,8 +150,8 @@ model_deploy.py \
   --mlir ${model_name}.mlir \
   --quantize BF16 \
   --chip bm1684x \
-  --test_input ${model_name}_in_f32.npz \
-  --test_reference ${top_result} \
+  ${test_innpz_opt} \
+  ${test_reference_opt} \
   --tolerance 0.99,0.70 \
   --model ${model_name}_bm1684x_bf16.bmodel
 fi
@@ -157,7 +161,7 @@ fi
 
 # only once
 CALI_TABLE=${REGRESSION_PATH}/cali_tables/${model_name}_cali_table
-if [ ${do_cali} == 1 ] && [! -f ${CALI_TABLE} ]; then
+if [ ${do_cali} == 1 ] && [ ! -f ${CALI_TABLE} ]; then
   if [ x${dataset} == x ]; then
     echo "Error: ${model_name} has no dataset"
     exit 1

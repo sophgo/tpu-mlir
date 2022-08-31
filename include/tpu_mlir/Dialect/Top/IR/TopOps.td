@@ -105,10 +105,10 @@ def Top_BatchNormOp: Top_Op<"BatchNorm", [SupportFuseRelu, InOutSameShape]> {
   }];
   let arguments = (ins
     AnyTensor:$input,
-    AnyTensor:$gamma,
-    AnyTensor:$beta,
     AnyTensor:$mean,
     AnyTensor:$variance,
+    AnyTensorOrNone:$gamma,
+    AnyTensorOrNone:$beta,
     DefaultValuedAttr<F64Attr, "1e-05">:$epsilon,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
