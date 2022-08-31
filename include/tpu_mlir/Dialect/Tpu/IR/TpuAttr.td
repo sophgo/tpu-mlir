@@ -40,4 +40,16 @@ def Tpu_DequantMode: I32EnumAttr<"DequantMode",
 }
 def Tpu_DequantModeAttr : EnumAttr<Tpu_Dialect, Tpu_DequantMode, "dq_mode">;
 
+def Tpu_RequantMode: I32EnumAttr<"RequantMode",
+    "requant mode supported by RequantOp",
+    [
+      I32EnumAttrCase<"TFlite_Lshift", 0>,
+      I32EnumAttrCase<"TFlite", 1>,
+      I32EnumAttrCase<"Normal", 2>,
+    ]>{
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::tpu_mlir::tpu";
+}
+def Tpu_RequantModeAttr : EnumAttr<Tpu_Dialect, Tpu_RequantMode, "rq_mode">;
+
 #endif

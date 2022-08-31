@@ -138,5 +138,5 @@ Value top::AddOp::lowering_quant_bm1684x() {
   QuantizeMultiplier((scale_max * 2) / ((1 << lshift) * o_scale), &scalei,
                      &shifti);
   return do_requant(op->getLoc(), newOp.output(), output().getType(), true,
-                    scalei, shifti, 1);
+                    scalei, shifti, tpu::RequantMode::TFlite);
 }

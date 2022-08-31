@@ -136,10 +136,11 @@ Value top::ConvOp::lowering_int8_bm1684x(bool asymmetric) {
         RankedTensorType::get({1, attr.oc, 1, 1, 3}, builder.getI32Type());
     auto quant_value = top::WeightOp::create(op, "quant", quant, quant_type);
     newValue = do_requant(op->getLoc(), Conv3dOp.output(), quant_value,
-                          output_type, true, 2);
+                          output_type, true, tpu::RequantMode::Normal);
   } else {
-    attrs.push_back(
-        builder.getNamedAttr("quant_mode", builder.getI64IntegerAttr(2)));
+    auto ctx = op->getContext();
+    attrs.push_back(builder.getNamedAttr(
+        "quant_mode", tpu::RequantModeAttr::get(ctx, tpu::RequantMode::Normal)));
     attrs.push_back(builder.getNamedAttr(
         "rshift", builder.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v})));
     attrs.push_back(builder.getNamedAttr(
@@ -400,7 +401,7 @@ Value top::ConvOp::lowering_quant_bm1684x() {
   // do requant
   if (quant_size == 1) {
     return do_requant(op->getLoc(), newValue, output().getType(), true,
-                      multiplier[0], shift[0], 0);
+                      multiplier[0], shift[0], tpu::RequantMode::TFlite_Lshift);
   } else {
     std::vector<int32_t> quant(quant_size * 3, 0);
     for (int i = 0; i < quant_size; ++i) {
@@ -414,7 +415,7 @@ Value top::ConvOp::lowering_quant_bm1684x() {
     auto quant_type = RankedTensorType::get(quant_shape, builder.getI32Type());
     auto quantValue = top::WeightOp::create(op, "quant", quant, quant_type);
     return do_requant(op->getLoc(), newValue, quantValue, output().getType(),
-                      true, 0);
+                      true, tpu::RequantMode::TFlite_Lshift);
   }
   return nullptr;
 }
