@@ -26,7 +26,7 @@ struct TopMultiScaleMergeToOne : public OpRewritePattern<ScaleOp> {
   LogicalResult matchAndRewrite(ScaleOp op,
                                 PatternRewriter &rewriter) const override {
     auto nextOp = *op->getUsers().begin();
-    if (!op->getResult(0).hasOneUse() || !isa<ScaleOp>(nextOp)) {
+    if (!op->hasOneUse() || !isa<ScaleOp>(nextOp)) {
       return failure();
     }
 
@@ -71,7 +71,7 @@ struct TopScaleMergeToConv : public OpRewritePattern<ScaleOp> {
   LogicalResult matchAndRewrite(ScaleOp op,
                                 PatternRewriter &rewriter) const override {
     auto formerOp = op.input().getDefiningOp();
-    if (!formerOp->getResult(0).hasOneUse() || !isa<ConvOp>(formerOp)) {
+    if (!formerOp->hasOneUse() || !isa<ConvOp>(formerOp)) {
       return failure();
     }
     auto conv_op = cast<ConvOp>(formerOp);
@@ -125,6 +125,7 @@ struct TopScaleMergeToConv : public OpRewritePattern<ScaleOp> {
 
     // update attrs
     double relu_limit = op.relu_limit().convertToDouble();
+    formerOp->setLoc(op.getLoc());
     formerOp->setAttr("do_relu", rewriter.getBoolAttr(op.do_relu()));
     formerOp->setAttr("relu_limit", rewriter.getF64FloatAttr(relu_limit));
 

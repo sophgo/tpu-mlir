@@ -12,10 +12,8 @@ popd
 # run models
 model_list_basic=(
 # classification
-  "mobilenet_v2"
-  "resnet50_v2"
+  "mobilenet_v2_cf"
   "resnet50_tf"
-  "squeezenet1.0"
 # object detection
   "yolov5s"
 )

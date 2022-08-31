@@ -128,7 +128,7 @@ class OnnxConverter(BaseConverter):
             "MaxPool": lambda node: self.convert_maxpool_op(node),
             "Mul": lambda node: self.convert_mul_op(node),
             "Pad": lambda node: self.convert_pad_op(node),
-            "ReduceMean": lambda node: self.convert_reduce_op(node), #
+            "ReduceMean": lambda node: self.convert_reduce_op(node),  #
             "Relu": lambda node: self.convert_relu_op(node),
             "Reshape": lambda node: self.convert_reshape_op(node),
             "Resize": lambda node: self.convert_resize_op(node),
@@ -136,7 +136,7 @@ class OnnxConverter(BaseConverter):
             "Slice": lambda node: self.convert_slice_op(node),
             "Softmax": lambda node: self.convert_softmax_op(node),
             "Squeeze": lambda node: self.convert_squeeze_op(node),
-            "Split" :  lambda node: self.convert_split_op(node),
+            "Split": lambda node: self.convert_split_op(node),
             "Transpose": lambda node: self.convert_transpose_op(node),
             "Unsqueeze": lambda node: self.convert_unsqueeze_op(node),
             "LSTM": lambda node: self.convert_lstm_op(node),
@@ -371,8 +371,8 @@ class OnnxConverter(BaseConverter):
                 op0 = self.getOperand(onnx_node.inputs[0])
                 offset = self.getWeight(onnx_node.inputs[1])
                 weight_data = np.ones_like(offset)
-                self.addWeight(name+'_scale', weight_data)
-                weight_op = self.getWeightOp(name+'_scale')
+                self.addWeight(name + '_scale', weight_data)
+                weight_op = self.getWeightOp(name + '_scale')
                 offset_op = self.getWeightOp(onnx_node.inputs[1])
                 p = {'name': name}
                 scale_op = self.mlir.create_scale_op([op0, weight_op, offset_op], output_shape, **p)
@@ -626,9 +626,9 @@ class OnnxConverter(BaseConverter):
                 return
             elif weight_num_elem == channel:
                 offset_data = np.zeros_like(weight)
-                self.addWeight(name+'_bias', offset_data)
+                self.addWeight(name + '_bias', offset_data)
                 weight_op = self.getWeightOp(onnx_node.inputs[1])
-                offset_op = self.getWeightOp(name+'_bias')
+                offset_op = self.getWeightOp(name + '_bias')
                 p = {'name': name}
                 scale_op = self.mlir.create_scale_op([op0, weight_op, offset_op], output_shape, **p)
                 self.addOperand(onnx_node.name, scale_op)
@@ -901,12 +901,12 @@ class OnnxConverter(BaseConverter):
                 'relu_limit': max if max != np.inf else 0.0,
             }
             new_op = self.mlir.create_relu_op([input], input_shape, **p)
-        else :
+        else:
             raise RuntimeError("To be supported")
         self.addOperand(onnx_node.name, new_op)
 
     def convert_conv_transpose_op(self, onnx_node):
-        assert(onnx_node.op_type == "ConvTranspose")
+        assert (onnx_node.op_type == "ConvTranspose")
         input_shape = self.getShape(onnx_node.inputs[0])
         kernel_shape = onnx_node.attrs['kernel_shape']
         output_shape = self.getShape(onnx_node.name)
@@ -932,7 +932,7 @@ class OnnxConverter(BaseConverter):
         # handle ConvTranspose1d case
         is_shape_3 = len(input_shape) == 3
         if is_shape_3:
-            assert(dim == 1)
+            assert (dim == 1)
             strides = [1, strides[0]]
             pads = [0, 0, pads[0], pads[1]]
             kernel_shape = [1, kernel_shape[0]]
@@ -994,16 +994,11 @@ class OnnxConverter(BaseConverter):
             offset = offset + i
 
     def convert_reduce_op(self, onnx_node):
-        assert (onnx_node.op_type == "ReduceMean"
-                or onnx_node.op_type == "ReduceMax"
-                or onnx_node.op_type == "ReduceMin"
-                or onnx_node.op_type == "ReduceProd"
-                or onnx_node.op_type == "ReduceSum"
-                or onnx_node.op_type == "ReduceSumSquare"
-                or onnx_node.op_type == "ReduceL1"
-                or onnx_node.op_type == "ReduceL2"
-                or onnx_node.op_type == "ReduceLogSum"
-                or onnx_node.op_type == "ReduceLogSumExp")
+        assert (onnx_node.op_type == "ReduceMean" or onnx_node.op_type == "ReduceMax"
+                or onnx_node.op_type == "ReduceMin" or onnx_node.op_type == "ReduceProd"
+                or onnx_node.op_type == "ReduceSum" or onnx_node.op_type == "ReduceSumSquare"
+                or onnx_node.op_type == "ReduceL1" or onnx_node.op_type == "ReduceL2"
+                or onnx_node.op_type == "ReduceLogSum" or onnx_node.op_type == "ReduceLogSumExp")
 
         input_shape = self.getShape(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
@@ -1014,12 +1009,8 @@ class OnnxConverter(BaseConverter):
             axes[i] = axes[i] if axes[i] >= 0 else axes[i] + num_dims
         op = self.getOperand(onnx_node.inputs[0])
         #if reducemean the h & w, replace it with avgpool
-        if (onnx_node.op_type == "ReduceMean"
-            and num_dims == 4
-            and keepdims == 0
-            and len(output_shape) == 2
-            and axes[0] == 2
-            and axes[1] == 3):
+        if (onnx_node.op_type == "ReduceMean" and num_dims == 4 and keepdims == 0
+                and len(output_shape) == 2 and axes[0] == 2 and axes[1] == 3):
             onnx_node.op_type = "GlobalAveragePool"
             num_dims = len(input_shape) - 2
             p = {
@@ -1048,19 +1039,20 @@ class OnnxConverter(BaseConverter):
         new_op = self.mlir.create_reduce_op([op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
         '''
+
     def convert_lstm_op(self, onnx_node):
         assert (onnx_node.op_type == "LSTM")
         direction = onnx_node.attrs.get("direction")
-        bidirectional = True if onnx_node.attrs.get(
-            "direction", 'forward') == b'bidirectional' else False
+        bidirectional = True if onnx_node.attrs.get("direction",
+                                                    'forward') == b'bidirectional' else False
         layout = onnx_node.attrs.get("layout")
         batch_first = True if layout == 1 else False
         hidden_size = onnx_node.attrs.get("hidden_size")
         input_size = len(onnx_node.inputs)
         operands = list()
-        operands.append(self.getOperand(onnx_node.inputs[0])) # in
-        operands.append(self.getWeightOp(onnx_node.inputs[1])) # W
-        operands.append(self.getWeightOp(onnx_node.inputs[2])) # R
+        operands.append(self.getOperand(onnx_node.inputs[0]))  # in
+        operands.append(self.getWeightOp(onnx_node.inputs[1]))  # W
+        operands.append(self.getWeightOp(onnx_node.inputs[2]))  # R
         have_bias = False
         if len(onnx_node.inputs) > 3:
             have_bias = True

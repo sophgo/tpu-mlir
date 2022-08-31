@@ -103,7 +103,6 @@ class OnnxTransformer(ModelTransformer):
         return onnx_inference(inputs, self.converter.onnx_file)
 
 class CaffeTransformer(ModelTransformer):
-
     def __init__(self,
                  model_name,
                  model_def,

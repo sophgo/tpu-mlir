@@ -26,32 +26,24 @@ class ImageResizeTool:
         rescale_w = int(iw * scale)
         rescale_h = int(ih * scale)
         resized_img = cv2.resize(image, (rescale_w, rescale_h))
+        paste_w = 0
+        paste_h = 0
         if pad_type == 'center':
             paste_w = (w - rescale_w) // 2
             paste_h = (h - rescale_h) // 2
         if image.ndim == 3 and image.shape[2] == 3:
             new_image = np.full((h, w, 3), pad_value, dtype=image.dtype)
-            if pad_type == 'center':
-                new_image[paste_h:paste_h + rescale_h,
-                          paste_w: paste_w + rescale_w, :] = resized_img
-            else:
-                new_image[: rescale_h,
-                        : rescale_w, :] = resized_img
+            new_image[paste_h:paste_h + rescale_h,
+                      paste_w: paste_w + rescale_w, :] = resized_img
             return new_image
         elif image.ndim == 2:
             new_image = np.full((h, w),pad_value, dtype=image.dtype)
-            if pad_type == 'center':
-                new_image[paste_h:paste_h + rescale_h,
-                        paste_w: paste_w + rescale_w] = resized_img
-            else:
-                new_image[:rescale_h,
-                        : rescale_w] = resized_img
+            new_image[paste_h:paste_h + rescale_h,
+                      paste_w: paste_w + rescale_w] = resized_img
             return new_image
         raise RuntimeError("invalid image shape:{}".format(image.shape))
 
 def add_preprocess_parser(parser):
-    parser.add_argument("--net_input_dims", type=str,
-                         help="model's input heigh/width dimension")
     parser.add_argument("--resize_dims", type=str,
                         help="Image was resize to fixed 'h,w', default is same as net input dims")
     parser.add_argument("--keep_aspect_ratio", action='store_true', default=False,
@@ -64,7 +56,7 @@ def add_preprocess_parser(parser):
     parser.add_argument("--channel_format", choices=['nhwc','nchw'], default='nchw',
                         help='channel first or channel last')
     parser.add_argument("--pad_value", type=int, default=0, help="pad value when resize ")
-    parser.add_argument("--pad_type", type=str, default='center', help="type of pad when resize ")
+    parser.add_argument("--pad_type", type=str, choices=['normal','center'], default='center', help="type of pad when resize ")
     return parser
 
 def get_preprocess_parser(existed_parser=None):
@@ -81,25 +73,14 @@ class preprocess(object):
     def __init__(self):
         pass
 
-    def config(self, net_input_dims=None, resize_dims=None, keep_aspect_ratio=False,
+    def config(self, resize_dims=None, keep_aspect_ratio=False,
                mean='0,0,0', scale='1,1,1', pixel_format='bgr', pad_type='center', pad_value=0,
                channel_format='nchw', **ignored):
         self.batch_size = 1
-        if net_input_dims:
-            input_shapes = ast.literal_eval(net_input_dims)
-            self.net_input_dims = input_shapes[0][-2:]
-            self.batch_size = input_shapes[0][0]
-            if not resize_dims:
-                self.resize_dims = self.net_input_dims
+        self.net_input_dims=[]
+        self.resize_dims=[]
         if resize_dims:
             self.resize_dims = [int(s) for s in resize_dims.split(',')]
-            if not net_input_dims:
-                self.net_input_dims = self.resize_dims
-            self.resize_dims = [max(x,y) for (x,y) in zip(self.resize_dims, self.net_input_dims)]
-        if not net_input_dims and not resize_dims:
-            self.net_input_dims=[]
-            self.resize_dims=[]
-
         self.crop_method = 'center'
         self.keep_aspect_ratio = keep_aspect_ratio
         self.pad_value = pad_value

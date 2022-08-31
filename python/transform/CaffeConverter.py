@@ -9,20 +9,9 @@ from .MLIRImporter import MLIRImporter
 from .BaseConverter import BaseConverter
 import numpy as np
 
-import math
 import caffe
 from caffe.proto import caffe_pb2
 from google.protobuf import text_format
-from termcolor import colored, cprint
-from utils.pad_setting import get_TF_SAME_Padding, set_auto_pad
-
-
-class CaffeTensor():
-
-    def __init__(self, name, value, shape):
-        self.name = name
-        self.tensor_data = value
-        self.shape = shape
 
 
 class CaffeConverter(BaseConverter):
@@ -48,22 +37,36 @@ class CaffeConverter(BaseConverter):
         self.mlir = None
         self.layer_dict = self.net.layer_dict
         self.weight_file = "{}_top_weight.npz".format(model_name)
-        self.get_model_info(input_shapes, output_names)
+        self.init_shapes(input_shapes)
         self.init_MLIRImporter()
         self.preprocess_args = preprocess_args
 
         self.caffeop_factory = {
             #pls add the Op according to the Op's alphabetical order as below
-            "Add": lambda layer: self.convert_add_op(layer),
-            "AveragePool": lambda layer: self.convert_avgpool_op(layer),
             "BatchNorm": lambda layer: self.convert_batchnorm_op(layer),
-            "Convolution": lambda layer: self.convert_conv_op(layer),
+            "Convolution": lambda layer: self.convert_convolution_op(layer),
+            'ConvolutionDepthwise': lambda layer: self.convert_convolution_op(layer),
+            "Eltwise": lambda layer: self.convert_eltwise_op(layer),
             "InnerProduct": lambda layer: self.convert_inner_product_op(layer),
-            "MaxPool": lambda layer: self.convert_maxpool_op(layer),
-            "Mul": lambda layer: self.convert_mul_op(layer),
+            'Pooling': lambda layer: self.convert_pooling_op(layer),
             "ReLU": lambda layer: self.convert_relu_op(layer),
             "Scale": lambda layer: self.convert_scale_op(layer),
+            'Softmax': lambda layer: self.convert_softmax_op(layer),
         }
+        # yapf: disable
+        # for caffe v1
+        self.layer_type = {
+            0: 'None', 35: 'Absval', 1: 'Accuracy', 30: 'Argmax', 2: 'Bnll',
+            3: 'Concat', 37: 'ContrastiveLoss', 4: 'Convolution', 5: 'Data',
+            39: 'Deconvolution', 6: 'Dropout', 32: 'DummyData', 7: 'EuclideanLoss',
+            25: 'Eltwise', 38: 'Exp', 8: 'Flatten', 9: 'Hdf5Data', 10: 'Hdf5Output',
+            28: 'HingeLoss', 11: 'Im2col', 12: 'ImageData', 13: 'InfogainLoss',
+            14: 'InnerProduct', 15: 'LRN', 29: 'MemoryData', 16: 'MultinomialLogisticLoss',
+            34: 'MVN', 17: 'Pooling', 26: 'Power', 18: 'ReLU', 19: 'Sigmoid',
+            27: 'SigmoidCrossEntropyLoss', 36: 'Silence', 20: 'Softmax', 21: 'SoftmaxLoss',
+            22: 'Split', 33: 'Slice', 23: 'Tanh', 24: 'WindowData', 31: 'Threshold', 32: 'Relu6',
+        }
+        # yapf: enable
 
     def __del__(self):
         if self.mlir != None:
@@ -73,46 +76,15 @@ class CaffeConverter(BaseConverter):
     def addOperand(self, name, op):
         self.operands[name] = op
 
-    def check_input(self, input_shapes):
+    def init_shapes(self, input_shapes: list):
         num_input = len(self.input_names)
-
-        def check_shape(l, r):
-            if l != r:
-                raise KeyError("input shapes error:{}, {} vs {}".format(input_shapes, l, r))
-
-        check_shape(len(input_shapes), num_input)
-
-        for idx, shape in enumerate([self.shapes[name] for name in self.input_names]):
-            check_shape(len(shape), len(input_shapes[idx]))
-            for _i, _dim in enumerate(shape):
-                check_shape(_dim, input_shapes[idx][_i])
-
-    def get_model_info(self, input_shapes: list, output_names: list):
-        # Todo: add select outputs func
-        for layer_name, blob in self.blobs.items():
-            self.addShape(layer_name, blob.data.shape)
-        layer_names = list(self.layer_dict.keys())
-        for idx, layer_name in enumerate(layer_names):
-            if layer_name not in self.shapes and idx != 0:
-                self.addShape(layer_name, self.getShape(layer_names[idx - 1]))
-        self.check_input(input_shapes)
-
-        pre_name = ""
-        for layer_name, param in self.net.params.items():
-            layer_type = self.layer_dict[layer_name].type
-            if layer_type == "BatchNorm":
-                s = param[2].data if param[2].data != 0 else 1
-                mean = param[0].data / s
-                variance = param[1].data / s
-
-                self.addWeight(layer_name + "_mean", mean)
-                self.addWeight(layer_name + "_variance", variance)
-                self.addWeight(layer_name + "_gamma", np.ones_like(mean))
-                self.addWeight(layer_name + "_beta", np.zeros_like(mean))
-            else:
-                self.addWeight(layer_name + "_weight", param[0].data)
-                if len(param) > 1:
-                    self.addWeight(layer_name + "_bias", param[1].data)
+        if len(input_shapes) > 0:
+            assert (num_input == len(input_shapes))
+            for name, shape in zip(self.input_names, input_shapes):
+                self.blobs[name].reshape(*shape)
+        self.net.reshape()
+        for name, blob in self.blobs.items():
+            self.addShape(name, list(blob.shape))
 
     def init_MLIRImporter(self):
         input_shapes = list()
@@ -124,6 +96,12 @@ class CaffeConverter(BaseConverter):
         # init importer
         self.mlir = MLIRImporter(input_shapes, output_shapes, self.model_name)
         self.weight_file = self.mlir.weight_file
+
+    def layerType(self, layer):
+        if type(layer.type) == int:
+            return self.layer_type.get(layer.type)
+        else:
+            return layer.type
 
     def generate_mlir(self, mlir_file: str):
         # add input op
@@ -153,40 +131,30 @@ class CaffeConverter(BaseConverter):
         def NoneAndRaise(layer):
             raise RuntimeError("{} Op not support now".format(layer.type))
 
-        # add mid layer op
         for layer in self.layers:
-            if not len(self.select_outputs): break
-            layer_type = layer.type
-            if layer.type == "DummyData":
+            if not len(self.select_outputs):
+                break
+            is_test_phase = True
+            if len(layer.include) != 0:
+                # only test phase convert
+                is_test_phase = False
+                for include in layer.include:
+                    if include.HasField('phase') and include.phase == 1:
+                        is_test_phase = True
+                        break
+            if not is_test_phase:
                 continue
-            elif layer.type == "Pooling":
-                pool_type = layer.pooling_param.pool
-                if pool_type == 0:
-                    layer_type = "MaxPool"
-                elif pool_type == 1:
-                    layer_type = "AveragePool"
-                else:
-                    raise RuntimeError("{} Pool Op not support now".format(pool_type))
-            elif layer.type == "Eltwise":
-                eltwise_type = layer.eltwise_param.operation
-                if eltwise_type == 0:
-                    layer_type = "Mul"
-                elif eltwise_type == 1:
-                    layer_type = "Add"
-                else:
-                    # TODO: MaxOp to be implemented
-                    raise RuntimeError("{} Op not support now".format(type.captialize()))
-
-            op_name = self.caffeop_factory.get(layer_type, lambda x: NoneAndRaise(x))(layer)
-            if layer.name in self.select_outputs:
-                self.select_outputs.remove(layer.name)
-                self.output_names.append(op_name)
+            self.caffeop_factory.get(self.layerType(layer), lambda x: NoneAndRaise(x))(layer)
+            for out in layer.top:
+                if out in self.select_outputs:
+                    self.select_outputs.remove(out)
+                    self.output_names.append(out)
 
         # add return op
         return_op = list()
         # Set output
-        for idx, _name in enumerate(self.output_names):
-            op = self.getOperand(_name)
+        for name in self.output_names:
+            op = self.getOperand(name)
             return_op.append(op)
 
         self.mlir.create_return_op(return_op)
@@ -196,239 +164,218 @@ class CaffeConverter(BaseConverter):
         self.WeightToNpz(self.weight_file)
         print("Save mlir file: {}".format(mlir_file))
 
-    def convert_conv_op(self, caffe_layer):
-        assert (caffe_layer.type == "Convolution")
-        op = self.getOperand(caffe_layer.bottom[0])
-        input_shape = self.getShape(caffe_layer.bottom[0])
-        attrs = caffe_layer.convolution_param
-        dim = len(input_shape) - 2
-        kernel_shape = list(attrs.kernel_size) * dim
-        dilations = (list(attrs.dilation) * dim) if attrs.dilation else dim * [1]
-        strides = (list(attrs.stride) * dim) if attrs.stride else dim * [1]
-        pads = (list(attrs.pad) * dim * 2) if attrs.pad else dim * [0] * 2
+    def blob_to_weight_op(self, layer, index):
+        name = layer.name + "_{}".format(index)
+        blob = self.layer_dict[layer.name].blobs[index]
+        return self.create_weight_op(name, blob.data)
 
-        operands = list()
-        operands.append(op)
-        filter_op = self.getWeightOp(caffe_layer.name + "_weight")
-        operands.append(filter_op)
-        if attrs.bias_term:
-            bias_op = self.getWeightOp(caffe_layer.name + "_bias")
+    def create_weight_op(self, name, data):
+        self.addWeight(name, data)
+        return self.getWeightOp(name)
+
+    def convert_convolution_op(self, layer):
+        layer_type = self.layerType(layer)
+        assert (layer_type == "Convolution" or layer_type == "ConvolutionDepthwise")
+        input_shape = self.getShape(layer.bottom[0])
+        p = layer.convolution_param
+        oc = p.num_output
+        dim = len(input_shape) - 2
+        g = 1
+        if layer_type == "ConvolutionDepthwise":
+            g = oc
         else:
-            bias_op = self.mlir.none_op
-        operands.append(bias_op)
-        p = {
-            'name': "{}_{}".format(caffe_layer.name, caffe_layer.type),
-            'kernel_shape': kernel_shape,
-            'strides': strides,
-            'dilations': dilations,
-            'pads': pads,
-            'group': 1,
+            g = p.group
+        kernel = [0, 0]
+        if len(p.kernel_size) != 0:
+            kernel[0] = p.kernel_size[1] if len(p.kernel_size) > 1 else p.kernel_size[0]
+            kernel[1] = p.kernel_size[0]
+        if p.HasField('kernel_h'):
+            kernel[0] = p.kernel_h
+        if p.HasField('kernel_w'):
+            kernel[1] = p.kernel_w
+        stride = [1, 1]
+        if len(p.stride) != 0:
+            stride[0] = p.stride[1] if len(p.stride) > 1 else p.stride[0]
+            stride[1] = p.stride[0]
+        if p.HasField('stride_h'):
+            stride[0] = p.stride_h
+        if p.HasField('stride_w'):
+            stride[1] = p.stride_w
+        padding = [0, 0]
+        if len(p.pad) != 0:
+            padding[0] = p.pad[1] if len(p.pad) > 1 else p.pad[0]
+            padding[1] = p.pad[0]
+        if p.HasField('pad_h'):
+            padding[0] = p.pad_h
+        if p.HasField('pad_w'):
+            padding[1] = p.pad_w
+        dilation = [1, 1]
+        if len(p.dilation) != 0:
+            dilation[0] = p.dilation[1] if len(p.dilation) > 1 else p.dilation[0]
+            dilation[1] = p.dilation[0]
+        in_op = self.getOperand(layer.bottom[0])
+        filter_op = self.blob_to_weight_op(layer, 0)
+        bias_op = self.mlir.none_op
+        if p.bias_term:
+            bias_op = self.blob_to_weight_op(layer, 1)
+        attrs = {
+            'name': layer.name,
+            'kernel_shape': kernel,
+            'strides': stride,
+            'dilations': dilation,
+            'pads': padding * dim,
+            'group': g,
             'do_relu': False,
             'ins': [],
         }
-        output_shape = self.getShape(caffe_layer.name)
-        new_op = self.mlir.create_conv_op(operands, output_shape, **p)
-        self.addOperand(caffe_layer.top[0], new_op)
-        return caffe_layer.top[0]
+        output_shape = self.getShape(layer.top[0])
+        new_op = self.mlir.create_conv_op([in_op, filter_op, bias_op], output_shape, **attrs)
+        self.addOperand(layer.top[0], new_op)
 
-    def convert_batchnorm_op(self, caffe_layer):
-        assert (caffe_layer.type == "BatchNorm")
-        if caffe_layer.HasField('batch_norm_param') and caffe_layer.batch_norm_param.HasField(
-                'use_global_stats'):
-            assert (caffe_layer.batch_norm_param.use_global_stats == True)
-        op = self.getOperand(caffe_layer.bottom[0])
-        input_shape = self.getShape(caffe_layer.bottom[0])
-        gamma = self.getWeightOp(caffe_layer.name + "_gamma")
-        beta = self.getWeightOp(caffe_layer.name + "_beta")
-        mean = self.getWeightOp(caffe_layer.name + "_mean")
-        variance = self.getWeightOp(caffe_layer.name + "_variance")
-        eps = np.array(caffe_layer.batch_norm_param.eps)
-        output_shape = input_shape
-        p = {
-            "name": "{}_{}".format(caffe_layer.name, caffe_layer.type),
+    def convert_batchnorm_op(self, layer):
+        assert (self.layerType(layer) == "BatchNorm")
+        eps = 1e-5
+        if layer.HasField('batch_norm_param'):
+            if layer.batch_norm_param.HasField('eps'):
+                eps = layer.batch_norm_param.eps
+            if layer.batch_norm_param.HasField('use_global_stats'):
+                assert (layer.batch_norm_param.use_global_stats == True)
+        in_op = self.getOperand(layer.bottom[0])
+        blobs = self.layer_dict[layer.name].blobs
+        mean = np.array(blobs[0].data)
+        variance = np.array(blobs[1].data)
+        scale = blobs[2].data
+        mean /= scale
+        variance /= scale
+        mean_op = self.create_weight_op(layer.name + "_mean", mean)
+        var_op = self.create_weight_op(layer.name + "_var", variance)
+        output_shape = self.getShape(layer.top[0])
+        attrs = {
+            "name": layer.name,
             "epsilon": eps,
         }
-        new_op = self.mlir.create_batchnorm_op([op, gamma, beta, mean, variance], output_shape, **p)
-        self.addOperand(caffe_layer.top[0], new_op)
-        return caffe_layer.top[0]
+        gamma_op = self.mlir.none_op
+        beta_op = self.mlir.none_op
+        new_op = self.mlir.create_batchnorm_op([in_op, mean_op, var_op, gamma_op, beta_op],
+                                               output_shape, **attrs)
+        self.addOperand(layer.top[0], new_op)
 
-    def convert_scale_op(self, caffe_layer):
-        assert (caffe_layer.type == "Scale")
-        op = self.getOperand(caffe_layer.bottom[0])
-        input_shape = self.getShape(caffe_layer.bottom[0])
-        operands = list()
-        operands.append(op)
+    def convert_scale_op(self, layer):
+        assert (self.layerType(layer) == "Scale")
+        in_op = self.getOperand(layer.bottom[0])
+        input_shape = self.getShape(layer.bottom[0])
         num_dims = len(input_shape)
         assert (num_dims == 4 or num_dims == 2)
+        if num_dims == 2:
+            raise RuntimeError("Not support now, shape {}".format(input_shape))
         output_shape = input_shape
-        p = {"name": "{}_{}".format(caffe_layer.name, caffe_layer.type)}
-        scale = self.getWeightOp(caffe_layer.name + "_weight")
-        operands.append(scale)
-        if caffe_layer.scale_param.bias_term:
-            bias = self.getWeightOp(caffe_layer.name + "_bias")
-            operands.append(bias)
-        else:
-            operands.append(self.mlir.none_op)
-        new_op = self.mlir.create_scale_op(operands, output_shape, **p)
-        self.addOperand(caffe_layer.top[0], new_op)
-        return caffe_layer.top[0]
+        attrs = {"name": layer.name}
+        scale_op = self.blob_to_weight_op(layer, 0)
+        bias_op = self.mlir.none_op
+        if layer.scale_param.bias_term:
+            bias_op = self.blob_to_weight_op(layer, 1)
+        new_op = self.mlir.create_scale_op([in_op, scale_op, bias_op], output_shape, **attrs)
+        self.addOperand(layer.top[0], new_op)
 
-    def convert_relu_op(self, caffe_layer):
-        assert (caffe_layer.type == "ReLU")
-        op = self.getOperand(caffe_layer.bottom[0])
-        input_shape = self.getShape(caffe_layer.bottom[0])
+    def convert_relu_op(self, layer):
+        assert (layer.type == "ReLU")
+        op = self.getOperand(layer.bottom[0])
+        input_shape = self.getShape(layer.bottom[0])
         output_shape = input_shape
-        p = {
-            'name': "{}_{}".format(caffe_layer.name, caffe_layer.type),
-        }
-        new_op = self.mlir.create_relu_op([op], output_shape, **p)
-        self.addOperand(caffe_layer.top[0], new_op)
-        return caffe_layer.top[0]
+        attrs = {'name': layer.name}
+        new_op = self.mlir.create_relu_op([op], output_shape, **attrs)
+        self.addOperand(layer.top[0], new_op)
 
-    def convert_maxpool_op(self, caffe_layer):
-        assert (caffe_layer.type == "Pooling" and caffe_layer.pooling_param.pool == 0)
-        input_shape = self.getShape(caffe_layer.bottom[0])
-        op = self.getOperand(caffe_layer.bottom[0])
-        attrs = caffe_layer.pooling_param
-        dim = len(input_shape) - 2
-        kernel_shape = [attrs.kernel_size] * dim
-        strides = ([attrs.stride] * dim) if attrs.stride else kernel_shape
-        output_shape = self.getShape(caffe_layer.name)
-        pads = set_auto_pad("SAME_UPPER", input_shape, kernel_shape, strides)
-        p = {
-            'name': "{}_{}".format(caffe_layer.name, caffe_layer.type),
-            'kernel_shape': kernel_shape,
-            'strides': strides,
-            'pads': pads,
-            'count_include_pad': False,
-            'do_relu': False,
-        }
-        new_op = self.mlir.create_maxpool_op([op], output_shape, **p)
-        self.addOperand(caffe_layer.top[0], new_op)
-        return caffe_layer.top[0]
-
-    def convert_avgpool_op(self, caffe_layer):
-        assert (caffe_layer.type == "Pooling" and caffe_layer.pooling_param.pool == 1)
-        input_shape = self.getShape(caffe_layer.bottom[0])
-        op = self.getOperand(caffe_layer.bottom[0])
-        attrs = caffe_layer.pooling_param
-        dim = len(input_shape) - 2
-        kernel_shape = [attrs.kernel_size] * dim
-        strides = ([attrs.stride] * dim) if attrs.stride else kernel_shape
-        output_shape = self.getShape(caffe_layer.name)
-        pad = (output_shape[-1] - 1) * strides[-1] - input_shape[-1] + attrs.kernel_size
-        pads = [pad] * dim * 2
-        p = {
-            'name': "{}_{}".format(caffe_layer.name, caffe_layer.type),
-            'kernel_shape': kernel_shape,
-            'strides': strides,
+    def convert_pooling_op(self, layer):
+        assert (layer.type == "Pooling")
+        input_shape = self.getShape(layer.bottom[0])
+        op = self.getOperand(layer.bottom[0])
+        p = layer.pooling_param
+        method = p.pool
+        kernel = [input_shape[2], input_shape[3]]
+        if not p.global_pooling:
+            kernel[0] = p.kernel_h if p.HasField('kernel_h') else p.kernel_size
+            kernel[1] = p.kernel_w if p.HasField('kernel_w') else p.kernel_size
+        stride = [p.stride, p.stride]
+        if p.HasField('stride_h'):
+            stride[0] = p.stride_h
+        if p.HasField('stride_w'):
+            stride[1] = p.stride_w
+        padding = [p.pad, p.pad]
+        if p.HasField('pad_h'):
+            padding[0] = p.pad_h
+        if p.HasField('pad_w'):
+            padding[1] = p.pad_w
+        pads = [0, 0, padding[0], padding[1]]
+        output_shape = self.getShape(layer.top[0])
+        attrs = {
+            'name': layer.name,
+            'kernel_shape': kernel,
+            'strides': stride,
             'pads': pads,
             'count_include_pad': True,
             'do_relu': False,
         }
-        new_op = self.mlir.create_avgpool_op([op], output_shape, **p)
-        self.addOperand(caffe_layer.top[0], new_op)
-        return caffe_layer.top[0]
-
-    def convert_add_op(self, caffe_layer):
-        assert (caffe_layer.type == "Eltwise" and caffe_layer.eltwise_param.operation == 1)
-        assert (len(caffe_layer.bottom) == 2)
-        name = "{}_{}".format(caffe_layer.name, caffe_layer.type)
-        if not self.isWeight(caffe_layer.bottom[0]) and self.isWeight(caffe_layer.bottom[1]):
-            opd1_num_elem = np.prod(self.getShape(caffe_layer.bottom[1]))
-            output_shape = self.getShape(caffe_layer.name)
-            channel = output_shape[1]
-            if opd1_num_elem == channel:
-                op0 = self.getOperand(caffe_layer.bottom[0])
-                offset = self.getWeight(caffe_layer.bottom[1])
-                weight_data = np.ones_like(offset)
-                self.addWeight(name + '_scale', weight_data)
-                weight_op = self.getWeightOp(name + '_scale')
-                offset_op = self.getWeightOp(caffe_layer.bottom[1])
-                p = {'name': name}
-                scale_op = self.mlir.create_scale_op([op0, weight_op, offset_op], output_shape, **p)
-                self.addOperand(caffe_layer.top[0], scale_op)
-                return caffe_layer.top[0]
-            else:
-                raise RuntimeError("To support adding with weight")
-        op0 = self.getOperand(caffe_layer.bottom[0])
-        op1 = self.getOperand(caffe_layer.bottom[1])
-        p = {'name': "{}_{}".format(caffe_layer.name, caffe_layer.type)}
-        output_shape = self.getShape(caffe_layer.name)
-        add_op = self.mlir.create_add_op([op0, op1], output_shape, **p)
-        self.addOperand(caffe_layer.top[0], add_op)
-        return caffe_layer.top[0]
-
-    def convert_mul_op(self, caffe_layer):
-        assert (caffe_layer.op_type == "Eltwise" and caffe_layer.eltwise_param.operation == 0)
-        assert (len(caffe_layer.bottom) == 2)
-        if self.isWeight(caffe_layer.bottom[0]) and not self.isWeight(caffe_layer.bottom[1]):
-            caffe_layer.bottom[0], caffe_layer.bottom[1] = caffe_layer.bottom[
-                1], caffe_layer.bottom[0]
-            return self.convert_mul_op(caffe_layer)
-        name = "{}_{}".format(caffe_layer.name, caffe_layer.type)
-        if (not self.isWeight(caffe_layer.bottom[0])) and self.isWeight(caffe_layer.bottom[1]):
-            op0 = self.getOperand(caffe_layer.bottom[0])
-            weight = self.getWeight(caffe_layer.bottom[1])
-            output_shape = self.getShape(caffe_layer.name)
-            weight_num_elem = np.prod(self.getShape(caffe_layer.bottom[1]))
-            first_val = weight.flatten()[0]
-            channel = output_shape[1]
-            if weight_num_elem == 1 or np.all(weight == first_val):
-                p = {'name': name, 'const_val': weight.flatten()[0]}
-                mul_const_op = self.mlir.create_mul_const_op([op0], output_shape, **p)
-                self.addOperand(caffe_layer.top[0], mul_const_op)
-                return caffe_layer.top[0]
-            elif weight_num_elem == channel:
-                offset_data = np.zeros_like(weight)
-                self.addWeight(name + '_bias', offset_data)
-                weight_op = self.getWeightOp(caffe_layer.bottom[1])
-                offset_op = self.getWeightOp(name + '_bias')
-                p = {'name': name}
-                scale_op = self.mlir.create_scale_op([op0, weight_op, offset_op], output_shape, **p)
-                self.addOperand(caffe_layer.top[0], scale_op)
-                return caffe_layer.top[0]
+        if method == 0:  # MAX
+            new_op = self.mlir.create_maxpool_op([op], output_shape, **attrs)
+        elif method == 1:  # AVE
+            new_op = self.mlir.create_avgpool_op([op], output_shape, **attrs)
         else:
-            op0 = self.getOperand(caffe_layer.bottom[0])
-            op1 = self.getOperand(caffe_layer.bottom[1])
-            p = {'name': name}
-            output_shape = self.getShape(caffe_layer.name)
-            mul_op = self.mlir.create_mul_op([op0, op1], output_shape, **p)
-            self.addOperand(caffe_layer.top[0], mul_op)
-            return caffe_layer.top[0]
+            raise RuntimeError("Method {} not support".format(method))
+        self.addOperand(layer.top[0], new_op)
 
-    def convert_inner_product_op(self, caffe_layer):
-        assert (caffe_layer.type == "InnerProduct")
-        #(M, K) * (K, N) => (M, N)
-        attrs = caffe_layer.inner_product_param
-        op = self.getOperand(caffe_layer.bottom[0])
-        # TODO:support more situations
-        input_shape = self.getShape(caffe_layer.bottom[0])
-        output_shape = self.getShape(caffe_layer.name)
-        if len(input_shape) > 2:
-            sec_dim = 1
-            for dim in input_shape[1:]:
-                sec_dim *= dim
-            op = self.mlir.create_reshape_op([op], [input_shape[0], sec_dim], **{
-                "name":
-                "{}_{}".format(caffe_layer.bottom[0], "Reshape")
-            })
+    def convert_eltwise_op(self, layer):
+        assert (layer.type == "Eltwise")
         operands = list()
-        operands.append(op)
-        weight = caffe_layer.name + "_weight"
-        _tensor = self.getWeight(weight)
-        if output_shape[1] != _tensor.shape[-1]:
-            _tensor = np.ascontiguousarray(np.transpose(_tensor, (1, 0)))
-            weight += "_fix"
-            self.addWeight(weight, _tensor)
-        operands.append(self.getWeightOp(weight))
-        if attrs.bias_term:
-            bias = caffe_layer.name + "_bias"
-            operands.append(self.getWeightOp(bias))
-        else:
-            operands.append(self.mlir.none_op)
-        p = {'name': "{}_{}".format(caffe_layer.name, caffe_layer.type), 'do_relu': False}
+        for bottom in layer.bottom:
+            op = self.getOperand(bottom)
+            operands.append(op)
+        num_input = len(layer.bottom)
+        p = layer.eltwise_param
+        attrs = {"name": layer.name}
+        output_shape = self.getShape(layer.top[0])
+        if p.operation == 0:  # mul
+            new_op = self.mlir.create_mul_op(operands, output_shape, **attrs)
+        elif p.operation == 1:  # add
+            coeff = None
+            if (len(p.coeff) != 0):
+                assert (len(p.coeff) == num_input)
+                coeff = [c for c in p.coeff]
+            else:
+                coeff = [1] * num_input
+            attrs['coeff'] = coeff
+            new_op = self.mlir.create_add_op(operands, output_shape, **attrs)
+        elif p.operation == 2:  # max
+            raise RuntimeError("Max not support now")
+        elif p.operation == 3:  # min
+            raise RuntimeError("Min not support now")
+        self.addOperand(layer.top[0], new_op)
 
-        new_op = self.mlir.create_matmul_op(operands, output_shape, **p)
-        self.addOperand(caffe_layer.top[0], new_op)
-        return caffe_layer.top[0]
+    def convert_inner_product_op(self, layer):
+        #(M, K) * (K, N) => (M, N)
+        assert (self.layerType(layer) == 'InnerProduct')
+        in_op = self.getOperand(layer.bottom[0])
+        p = layer.inner_product_param
+        with_bias = p.bias_term
+        if p.transpose:
+            filter_op = self.blob_to_weight_op(layer, 0)
+        else:
+            raise RuntimeError("Not support now")
+        attrs = {"name": layer.name}
+        bias_op = self.mlir.none_op
+        if with_bias:
+            bias_op = self.blob_to_weight_op(layer, 1)
+        output_shape = self.getShape(layer.top[0])
+        new_op = self.mlir.create_matmul_op([in_op, filter_op, bias_op], output_shape, **attrs)
+        self.addOperand(layer.top[0], new_op)
+
+    def convert_softmax_op(self, layer):
+        assert (self.layerType(layer) == 'Softmax')
+        in_op = self.getOperand(layer.bottom[0])
+        axis = 1
+        if layer.HasField('softmax_param') and layer.softmax_param.HasField('axis'):
+            axis = layer.softmax_param.axis
+        attrs = {'name': layer.name, 'axis': axis}
+        output_shape = self.getShape(layer.top[0])
+        new_op = self.mlir.create_softmax_op([in_op], output_shape, **attrs)
+        self.addOperand(layer.top[0], new_op)
