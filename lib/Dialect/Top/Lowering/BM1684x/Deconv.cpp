@@ -131,6 +131,9 @@ Value top::DeconvOp::lowering_int8_bm1684x(bool asymmetric) {
       WeightOp::create(deconvOp, "quant_int32", *quant_int32, new_quant_type);
 
   attrs.clear();
+  auto ctx = op->getContext();
+  attrs.push_back(builder.getNamedAttr(
+      "quant_mode", tpu::RequantModeAttr::get(ctx, tpu::RequantMode::Normal)));
   operands.clear();
   operands.push_back(deconvOp.output());
   operands.push_back(new_quant);

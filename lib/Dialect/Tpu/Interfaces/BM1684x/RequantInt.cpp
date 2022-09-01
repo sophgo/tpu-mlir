@@ -41,7 +41,7 @@ void tpu::RequantIntOp::codegen_global_bm1684x() {
     auto iqtype = Quant::getUniformQuantizedType(input());
     param.zx_value = iqtype.getZeroPoint();
   }
-  param.mode = quant_mode();
+  param.mode = static_cast<int>(quant_mode());
   param.input_dtype = BM168x::getDataType(input());
   param.output_dtype = BM168x::getDataType(output());
   BM1684x::instance().call_global_func("backend_api_requant_int_global", &param,
@@ -60,7 +60,8 @@ int64_t tpu::RequantIntOp::getBufferSize_bm1684x(
   if (input_dtype == DTYPE_INT8 || input_dtype == DTYPE_UINT8) {
     // store INT16:(X - Zx)
     buffer_size = in_lmem_bytes * 2;
-  } else if (quant_mode() == 0 || quant_mode() == 1) {
+  } else if (quant_mode() == tpu::RequantMode::TFlite_Lshift ||
+             quant_mode() == tpu::RequantMode::TFlite) {
     buffer_size = in_lmem_bytes;
   }
   return buffer_size;
@@ -91,7 +92,7 @@ void tpu::RequantIntOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   }
   param.input_dtype = BM168x::getDataType(input());
   param.output_dtype = BM168x::getDataType(output());
-  param.mode = quant_mode();
+  param.mode = static_cast<int>(quant_mode());
   BM1684x::instance().call_local_func("backend_api_requant_int_local", &param,
                                       sizeof(param));
 }

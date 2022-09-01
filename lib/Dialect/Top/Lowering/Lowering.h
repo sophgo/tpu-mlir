@@ -86,12 +86,10 @@ Value do_dequant(Value input, Type to_type, int64_t multiplier, int64_t rshift,
 
 // from int8 to int32
 Value do_requant(Location name_loc, Value input, Type to_type, bool tensorType,
-                 int64_t multiplier, int64_t shift, int64_t mode);
-Value do_requant(Value input, Value quant, std::string name, Type to_type,
-                 bool tensorType, int64_t mode);
+                 int64_t multiplier, int64_t shift, tpu::RequantMode mode);
 
 Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
-                 bool tensorType, int64_t mode);
+                 bool tensorType, tpu::RequantMode mode);
 
 // create lookup table
 typedef double (*activate_f)(double);
