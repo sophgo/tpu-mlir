@@ -9,7 +9,6 @@
 
 #include "tpu_mlir/Support/Dnnl/Binary.h"
 #include "oneapi/dnnl/dnnl.hpp"
-#include <string>
 
 using namespace dnnl;
 

@@ -62,11 +62,6 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
     auto binary = (Binary *)p.handle;
     binary->run();
   } else if (asym == false) {
-    auto o_qtype = Quant::getUniformQuantizedType(output());
-    auto zp = o_qtype.getZeroPoint();
-    auto scale = o_qtype.getScale();
-    auto chip = Module::getChip(module);
-    auto op = getOperation();
     auto multiplier_v = Module::getI64Array(multipliers(), 2, 1);
     auto rshift_v = Module::getI64Array(rshifts(), 2, 0);
     auto lhs_num_elem = Module::getNumElements(inputs()[0]);
@@ -97,7 +92,6 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
                                           : Quant::to_int8(out);
     }
   } else {
-    auto op = getOperation();
     auto lhs_num_elem = Module::getNumElements(inputs()[0]);
     auto rhs_num_elem = Module::getNumElements(inputs()[1]);
     std::vector<float> lhs_tmp(lhs_num_elem);

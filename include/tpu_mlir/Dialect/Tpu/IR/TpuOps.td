@@ -216,7 +216,7 @@ def Tpu_AddOp: Tpu_Op<"Add", [SupportFuseRelu, InOutSameDim,
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_MulOp: Tpu_Op<"Mul", [SupportFuseRelu, InOutSameShape,
+def Tpu_MulOp: Tpu_Op<"Mul", [SupportFuseRelu, InOutSameDim,
   DeclareOpInterfaceMethods<LocalGenInterface>]> {
   let summary = "mul operator";
 

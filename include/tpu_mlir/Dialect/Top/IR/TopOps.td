@@ -292,7 +292,7 @@ def Top_Depth2SpaceOp: Top_Op<"Depth2Space"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_MulOp: Top_Op<"Mul", [SupportFuseRelu, InOutSameShape]> {
+def Top_MulOp: Top_Op<"Mul", [SupportFuseRelu, InOutSameDim]> {
   let summary = "Mul operator";
 
   let description = [{
