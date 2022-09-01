@@ -70,7 +70,7 @@ class Tpu_ConvOp<string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
     DefaultValuedAttr<I64Attr, "0">:$use_3ic_optimize,
     OptionalAttr<I64ArrayAttr>:$multiplier,
     OptionalAttr<I64ArrayAttr>:$rshift,
-    OptionalAttr<I64Attr>:$quant_mode,
+    DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::Normal">:$quant_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
 
@@ -81,9 +81,7 @@ class Tpu_ConvOp<string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
 }
 
 def Tpu_Conv1DOp : Tpu_ConvOp<"Conv1D">;
-def Tpu_Conv2DOp : Tpu_ConvOp<"Conv2D"> {
-  let hasCanonicalizer = 1;
-}
+def Tpu_Conv2DOp : Tpu_ConvOp<"Conv2D">;
 def Tpu_Conv3DOp : Tpu_ConvOp<"Conv3D",
   [DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
   let arguments = (ins
@@ -102,7 +100,7 @@ def Tpu_Conv3DOp : Tpu_ConvOp<"Conv3D",
     BoolAttr:$with_bias,
     // OptionalAttr<I64ArrayAttr>:$multiplier,
     // OptionalAttr<I64ArrayAttr>:$rshift,
-    // OptionalAttr<I64Attr>:$quant_mode,
+    // Tpu_RequantModeAttr:$quant_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
 }
@@ -319,7 +317,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     DefaultValuedAttr<I64Attr, "1">:$multiplier,
     DefaultValuedAttr<I64Attr, "0">:$rshift,
-    DefaultValuedAttr<I64Attr, "2">:$quant_mode,
+    DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::Normal">:$quant_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
 
@@ -411,7 +409,7 @@ def Tpu_RequantIntOp:Tpu_Op<"RequantInt",
     AnyTensor:$input,
     I64Attr:$multiplier,
     I64Attr:$rshift,
-    DefaultValuedAttr<I64Attr, "2">:$quant_mode,
+    Tpu_RequantModeAttr:$quant_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
   let results = (outs AnyTensor:$output);
@@ -426,7 +424,7 @@ def Tpu_RequantIntAxisOp:Tpu_Op<"RequantIntAxis",
   let arguments = (ins
     AnyTensor:$input,
     AnyTensor:$quant,
-    DefaultValuedAttr<I64Attr, "2">:$quant_mode,
+    Tpu_RequantModeAttr:$quant_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
   let results = (outs AnyTensor:$output);
@@ -721,7 +719,7 @@ def Tpu_DeconvOp: Tpu_Op<"Deconv",[
     BoolAttr:$with_bias,
     OptionalAttr<I64ArrayAttr>:$multiplier,
     OptionalAttr<I64ArrayAttr>:$rshift,
-    OptionalAttr<I64Attr>:$quant_mode,
+    DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::Normal">:$quant_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
 

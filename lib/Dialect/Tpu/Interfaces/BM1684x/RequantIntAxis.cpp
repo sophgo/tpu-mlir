@@ -36,7 +36,7 @@ void tpu::RequantIntAxisOp::codegen_global_bm1684x() {
 
   param.is_perchannel = true;
   param.reshaped_coeff = false;
-  param.mode = quant_mode();
+  param.mode = static_cast<int>(quant_mode());
   param.input_dtype = BM168x::getDataType(input());
   param.output_dtype = BM168x::getDataType(output());
   BM1684x::instance().call_global_func("backend_api_requant_int_global", &param,
@@ -53,10 +53,10 @@ int64_t tpu::RequantIntAxisOp::getBufferSize_bm1684x(
   int64_t buffer_size = 0;
   int64_t n, c, h, w;
   Module::getNCHW(input(), n, c, h, w);
-  if (quant_mode() == 0) {
+  if (quant_mode() == tpu::RequantMode::TFlite_Lshift) {
     buffer_size = in_lmem_bytes;
     buffer_size += ceiling_func(c, BM1684x::NPU_NUM) * BM1684x::EU_BYTES;
-  } else if (quant_mode() == 1) {
+  } else if (quant_mode() == tpu::RequantMode::TFlite) {
     buffer_size = in_lmem_bytes;
   }
   return buffer_size;
@@ -89,7 +89,7 @@ void tpu::RequantIntAxisOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step
   }
   param.input_dtype = BM168x::getDataType(input());
   param.output_dtype = BM168x::getDataType(output());
-  param.mode = quant_mode();
+  param.mode = static_cast<int>(quant_mode());
   BM1684x::instance().call_local_func("backend_api_requant_int_local", &param,
                                       sizeof(param));
 }

@@ -112,6 +112,8 @@ Value do_transfer(Value in, Value out, bool asymmetric) {
         "multiplier", builder.getI64IntegerAttr(multiplier)));
     attrs.push_back(
         builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
+    attrs.push_back(builder.getNamedAttr(
+        "quant_mode", tpu::RequantModeAttr::get(op->getContext(), tpu::RequantMode::Normal)));
     builder.setInsertionPointAfterValue(in);
     auto rqOp = builder.create<tpu::RequantIntOp>(name_loc, new_type,
                                                   ValueRange{in}, attrs);
@@ -216,7 +218,7 @@ Value do_dequant(Value input, Type to_type, int64_t multiplier, int64_t shift,
 }
 
 Value do_requant(Location name_loc, Value input, Type to_type, bool tensorType,
-                 int64_t multiplier, int64_t shift, int64_t mode) {
+                 int64_t multiplier, int64_t shift, tpu::RequantMode mode) {
   auto from_stype = Module::getStorageType(input);
   auto to_stype = Module::getStorageType(to_type);
   auto ctx = input.getContext();
@@ -233,7 +235,7 @@ Value do_requant(Location name_loc, Value input, Type to_type, bool tensorType,
   attrs.push_back(
       builder.getNamedAttr("rshift", builder.getI64IntegerAttr(-shift)));
   attrs.push_back(
-      builder.getNamedAttr("quant_mode", builder.getI64IntegerAttr(mode)));
+      builder.getNamedAttr("quant_mode", tpu::RequantModeAttr::get(ctx, mode)));
 
   auto newOp = builder.create<tpu::RequantIntOp>(name_loc, newType,
                                                  ValueRange{input}, attrs);
@@ -241,7 +243,7 @@ Value do_requant(Location name_loc, Value input, Type to_type, bool tensorType,
 }
 
 Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
-                 bool tensorType, int64_t mode) {
+                 bool tensorType, tpu::RequantMode mode) {
   auto from_stype = Module::getStorageType(input);
   auto to_stype = Module::getStorageType(to_type);
   auto ctx = input.getContext();
@@ -256,7 +258,7 @@ Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
   builder.setInsertionPointAfterValue(input);
   std::vector<NamedAttribute> attrs;
   attrs.push_back(
-      builder.getNamedAttr("quant_mode", builder.getI64IntegerAttr(mode)));
+      builder.getNamedAttr("quant_mode", tpu::RequantModeAttr::get(ctx, mode)));
 
   auto newOp =
       builder.create<tpu::RequantIntAxisOp>(name_loc, newType, operands, attrs);

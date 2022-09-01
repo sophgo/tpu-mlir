@@ -24,7 +24,7 @@ LogicalResult tpu::RequantIntOp::inference(InferenceParameter &p) {
   auto o_sType = Module::getStorageType(output());
   auto o_qtype = Quant::getUniformQuantizedType(output());
   int64_t num_elem = Module::getNumElements(input());
-  int64_t mode = quant_mode();
+  auto mode = quant_mode();
   auto shape = Module::getShape(output());
   int64_t inner = 1;
   for (int i = 2; i < shape.size(); ++i) {
@@ -34,13 +34,13 @@ LogicalResult tpu::RequantIntOp::inference(InferenceParameter &p) {
   if (Quant::isUniformQuantized(input())) {
     auto i_qtype = Quant::getUniformQuantizedType(input());
     zp_x = i_qtype.getZeroPoint();
-    assert(mode == 2);
+    assert(mode == tpu::RequantMode::Normal);
   }
   int64_t shift_val = -rshift();
   int64_t multi = multiplier();
   int64_t zero_point = o_qtype.getZeroPoint();
 
-  if (mode == 0) {
+  if (mode == tpu::RequantMode::TFlite_Lshift) {
 #pragma omp parallel for schedule(static, omp_schedule(shape[1]))
     for (int c = 0; c < shape[1]; ++c) {
       for (int n = 0; n < shape[0]; ++n) {
@@ -55,7 +55,7 @@ LogicalResult tpu::RequantIntOp::inference(InferenceParameter &p) {
         }
       }
     }
-  } else if (mode == 1) {
+  } else if (mode == tpu::RequantMode::TFlite) {
 #pragma omp parallel for schedule(static, omp_schedule(shape[1]))
     for (int c = 0; c < shape[1]; ++c) {
       assert(shift_val <= 0);
@@ -71,7 +71,7 @@ LogicalResult tpu::RequantIntOp::inference(InferenceParameter &p) {
         }
       }
     }
-  } else if (mode == 2) {
+  } else if (mode == tpu::RequantMode::Normal) {
 #pragma omp parallel for schedule(static, omp_schedule(shape[1]))
     for (int c = 0; c < shape[1]; ++c) {
       for (int n = 0; n < shape[0]; ++n) {
