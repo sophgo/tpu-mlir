@@ -30,6 +30,7 @@ TEST_ONNX_IR = [
     "AvgPool2D",
     "AvgPool3D",
     "BroadcastAdd",
+    "BroadcastMul",
     "Conv1d",
     "Conv2d",
     "Conv3d",
@@ -90,6 +91,7 @@ class ONNX_IR_TESTER(object):
             "Conv1d": self.test_Conv1d,
             "Add": self.test_Add,
             "BroadcastAdd": self.test_BroadcastAdd,
+            "BroadcastMul": self.test_BroadcastMul,
             "Conv2d": self.test_Conv2d,
             "Conv3d": self.test_Conv3d,
             "AvgPool1D": self.test_AvgPool1D,
@@ -927,6 +929,30 @@ class ONNX_IR_TESTER(object):
             {'input': input_data},
             graph_def,
             test_case
+        )
+
+    def test_BroadcastMul(self):
+        test_case = "BroadcastMul"
+        input_shape = {"input1": [1, 3, 1, 27], "input2": [2, 1, 27, 1]}
+        output_shape = [2, 3, 27, 27]
+        input_data = {
+            k: np.random.randn(*x).astype(np.float32) for k, x in input_shape.items()
+        }
+        inputs = [
+            helper.make_tensor_value_info(k, TensorProto.FLOAT, x)
+            for k, x in input_shape.items()
+        ]
+        output = helper.make_tensor_value_info(
+            "output", TensorProto.FLOAT, output_shape
+        )
+        add_def = helper.make_node(
+            "Mul", inputs=list(input_shape.keys()), outputs=["output"]
+        )
+        graph_def = helper.make_graph([add_def], test_case, inputs, [output])
+        self.onnx_and_test(
+            input_data,
+            graph_def,
+            test_case,
         )
 
 if __name__ == "__main__":

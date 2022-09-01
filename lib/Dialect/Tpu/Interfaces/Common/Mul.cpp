@@ -9,18 +9,36 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-LogicalResult tpu::MulOp::init(InferenceParameter &p) { return success(); }
+LogicalResult tpu::MulOp::init(InferenceParameter &p) {
+  auto binary = new Binary();
+  (*binary)
+      .lhs(p.inputs[0], Module::getShape(inputs()[0]))
+      .rhs(p.inputs[1], Module::getShape(inputs()[1]))
+      .dst(p.outputs[0], Module::getShape(output()))
+      .do_relu(do_relu())
+      .relu_limit(relu_limit().convertToDouble())
+      .algorithem(algorithm::binary_mul)
+      .setup();
+  p.handle = (void *)binary;
+  return success();
+}
 
-void tpu::MulOp::deinit(InferenceParameter &p) {}
+void tpu::MulOp::deinit(InferenceParameter &p) {
+  if (p.handle != nullptr) {
+    auto binary = (Binary *)p.handle;
+    delete binary;
+    p.handle = nullptr;
+  }
+}
 
 LogicalResult tpu::MulOp::inference(InferenceParameter &p) {
   auto module = Module::getModuleOp(getOperation());
@@ -29,28 +47,20 @@ LogicalResult tpu::MulOp::inference(InferenceParameter &p) {
   auto out_type = Module::getStorageType(output());
   auto asym = Module::getAsymmetric(module);
   if (out_type.isa<FloatType>()) {
-    std::fill(p.outputs[0], p.outputs[0] + num_elem, 1.0f);
-#pragma omp parallel for schedule(static, omp_schedule(num_elem))
-    for (int64_t j = 0; j < num_elem; j++) {
-      for (int i = 0; i < nInputs; i++) {
-        p.outputs[0][j] *= p.inputs[i][j];
-      }
-      if (do_relu()) {
-        p.outputs[0][j] = std::max(0.0f, p.outputs[0][j]);
-      }
-    }
+    auto binary = (Binary *)p.handle;
+    binary->run();
     if (out_type.isBF16()) {
       f32_to_bf16(p.outputs[0], p.outputs[0], num_elem);
     } else if (out_type.isF16()) {
       f32_to_f16(p.outputs[0], p.outputs[0], num_elem);
     }
   } else if (asym == false) {
-    memset(p.outputs[0], 0, num_elem * sizeof(float));
+    auto binary = (Binary *)p.handle;
+    binary->run();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int i = 0; i < num_elem; i++) {
-      double sum = p.inputs[0][i] * p.inputs[1][i];
+      double sum = p.outputs[0][i];
       sum = applyMultiplierAndRShift(sum, multiplier(), rshift());
-      if (do_relu() && sum < 0) sum = 0;
       p.outputs[0][i] = out_type.isUnsignedInteger(8) ? Quant::to_uint8(sum)
                                                       : Quant::to_int8(sum);
     }

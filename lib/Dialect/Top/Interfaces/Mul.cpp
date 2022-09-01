@@ -21,23 +21,34 @@ int64_t top::MulOp::getFLOPs() {
          (inputs().size() - 1 + do_relu() ? 1 : 0);
 }
 
-LogicalResult top::MulOp::init(InferenceParameter &p) { return success(); }
-void top::MulOp::deinit(InferenceParameter &p) {}
+LogicalResult top::MulOp::init(InferenceParameter &p) {
+  auto binary = new Binary();
+  (*binary)
+      .lhs(p.inputs[0], Module::getShape(inputs()[0]))
+      .rhs(p.inputs[1], Module::getShape(inputs()[1]))
+      .dst(p.outputs[0], Module::getShape(output()))
+      .do_relu(do_relu())
+      .relu_limit(relu_limit().convertToDouble())
+      .algorithem(algorithm::binary_mul)
+      .setup();
+
+  p.handle = (void *)binary;
+
+  return success();
+}
+void top::MulOp::deinit(InferenceParameter &p) {
+  if (p.handle != nullptr) {
+    auto binary = (Binary *)p.handle;
+    delete binary;
+    p.handle = nullptr;
+  }
+}
 
 LogicalResult top::MulOp::inference(InferenceParameter &p) {
-  int64_t num_elem = Module::getNumElements(output());
-#pragma omp parallel for schedule(static, omp_schedule(num_elem))
-  for (int64_t i = 0; i < num_elem; i++) {
-    p.outputs[0][i] = 1;
-    for (auto in : p.inputs) {
-      if (in != nullptr) {
-        p.outputs[0][i] *= in[i];
-      }
-    }
+  if (p.handle == nullptr) {
+    return failure();
   }
-  if (do_relu()) {
-    auto limit = relu_limit().convertToDouble();
-    function_relu(p.outputs[0], p.outputs[0], num_elem, limit);
-  }
+  auto binary = (Binary *)p.handle;
+  binary->run();
   return success();
 }

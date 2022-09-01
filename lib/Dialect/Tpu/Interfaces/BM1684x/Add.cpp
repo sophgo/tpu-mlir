@@ -114,8 +114,8 @@ void tpu::AddOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   param.spec.common.scale_A = multi_v[0];
   param.spec.common.scale_B = multi_v[1];
   param.spec.buffer_addr = gi.buffer_addr;
-  param.A_is_coeff = isa<top::WeightOp>(getOperand(0).getDefiningOp());
-  param.B_is_coeff = isa<top::WeightOp>(getOperand(0).getDefiningOp());
+  param.A_is_coeff = false;
+  param.B_is_coeff = false;
   BM1684x::instance().call_local_func("backend_api_bcbinary_local", &param,
                                       sizeof(param), &sec_info,
                                       input_spec->data(), output_spec->data());
