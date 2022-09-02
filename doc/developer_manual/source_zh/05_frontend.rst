@@ -5,9 +5,9 @@
 
 主要工作
 ----------------
-前端主要负责将原始模型转换为 Top 层（芯片无关层）MLIR 模型的工作（不包含 Canonicalize 部分，因
-此生成的文件名为“\*_origin.MLIR”），这个过程会根据原始模型与运行 model_transform.py 时输入的参数逐
-一创建并添加对应的算子（Op），最终生成 MLIR 文件与保存权重的 npz 文件。
+前端主要负责将原始模型转换为 Top 层（芯片无关层）mlir 模型的工作（不包含 Canonicalize 部分，因
+此生成的文件名为“\*_origin.mlir”），这个过程会根据原始模型与运行 model_transform.py 时输入的参数逐
+一创建并添加对应的算子（Op），最终生成 mlir 文件与保存权重的 npz 文件。
 
 工作流程
 ----------------
@@ -19,11 +19,11 @@
 
     * load_onnx_model 部分主要是对模型进行精简化，根据 arguments 中的 output_names 截取模型，并提取精简后模型的相关信息
 
-    * init_MLIRImporter 部分主要是生成初始的 MLIR 文本
+    * init_MLIRImporter 部分主要是生成初始的 mlir 文本
 
 4. generate_mlir
 
-    * 依次创建 input op，模型中间 nodes op 以及 return op，并将其补充到 MLIR 文本中
+    * 依次创建 input op，模型中间 nodes op 以及 return op，并将其补充到 mlir 文本中（如果该op带有权重，则会额外创建weight op）
 
 5. 输出（Output）
 
@@ -66,13 +66,13 @@
 
       依照 output_names 从 operands 获取相应的 op
 
-  * 每创建或者转换一个算子都会执行一次插入操作，将算子插入到 MLIR 文本中，使最终生成的文本能从头到尾与原 onnx 模型一一对应
+  * 每创建或者转换一个算子都会执行一次插入操作，将算子插入到 mlir 文本中，使最终生成的文本能从头到尾与原 onnx 模型一一对应
 
 
 算子转换样例
 ----------------
 
-本节以 Conv 算子为例，将单 Conv 算子的 onnx 模型转换为 Top MLIR，原模型如图所示(:ref:`conv_op`)
+本节以 Conv 算子为例，将单 Conv 算子的 onnx 模型转换为 Top mlir，原模型如图所示(:ref:`conv_op`)
 
 .. _conv_op:
 .. figure:: ../assets/conv_op.png
@@ -106,22 +106,22 @@
 
   * tensors 中保存了 Conv 算子的权重 weight 与 bias
 
-  * shapes 中保存了 input_shape, output_shapes (Conv 算子输出的 shapes 即为 output_shape，不会重复保存)。
+  * shapes 中保存了Conv算子的输入和输出shape。
 
   * output_names 中保存了 Conv 算子的输出名“output”
 
   init_MLIRImporter:
 
-  根据 input_names 与 output_names 从 shapes 中获取了对应的 input_shape 与 output_shape, 加上model_name，生成了初始的 MLIR 文本 MLIRImporter.mlir_module，如图所示(:ref:`origin_mlir`)。
+  根据 input_names 与 output_names 从 shapes 中获取了对应的 input_shape 与 output_shape, 加上model_name，生成了初始的 mlir 文本 MLIRImporter.mlir_module，如图所示(:ref:`origin_mlir`)。
 
 .. _origin_mlir:
 .. figure:: ../assets/origin_mlir.png
    :align: center
 
-   初始 MLIR 文本
+   初始 mlir 文本
 
 
-3. generate_mlir
+1. generate_mlir
 
    * build input op，生成的 Top.inputOp 会被插入到 MLIRImporter.mlir_module 中。
 
@@ -129,22 +129,22 @@
 
       1) 输入 op：从(:ref:`conv_op`)可知，Conv 算子的 inputs 一共包含了 input，weight 与 bias，inputOp 已被创建好，weight 与 bias 的 op 则通过 getWeightOp()创建。
 
-      2) output_shape：利用 onnx_node.name 从 shapes 中获取 Conv 算子的 output_shape
+      2) output_shape：利用 onnx_node.name 从 shapes 中获取 Conv 算子的输出shape。
 
-      3) Attributes：从 onnx Conv 算子中获取如(:ref:`conv_op`)中的 attributes；
+      3) Attributes：从 onnx Conv 算子中获取如(:ref:`conv_op`)中的 attributes。
 
-         在 create 函数里 Top.Conv 算子的 attributes 会根据(:ref:`convop_def`)中的定义来设定。Top.ConvOp 创建后会被插入到 MLIR 文本中
+         在 create 函数里 Top.Conv 算子的 attributes 会根据(:ref:`convop_def`)中的定义来设定。Top.ConvOp 创建后会被插入到 mlir 文本中
 
-   * 根据 output_names 从 operands 中获取相应的 op，创建 return_op 并插入到 MLIR 文本中。到此为止，生成的 MLIR 文本如图所示(:ref:`mlir_txt`)。
+   * 根据 output_names 从 operands 中获取相应的 op，创建 return_op 并插入到 mlir 文本中。到此为止，生成的 mlir 文本如图所示(:ref:`mlir_txt`)。
 
 .. _mlir_txt:
 .. figure:: ../assets/mlir_txt.png
    :align: center
 
-   完整的 MLIR 文本
+   完整的 mlir 文本
 
 
 4. 输出
 
-  将 MLIR 文本保存为 Conv_origin.mlir，tensors 中的权重保存为 Conv_TOP_F32_all_weight.npz。
+  将 mlir 文本保存为 Conv_origin.mlir，tensors 中的权重保存为 Conv_TOP_F32_all_weight.npz。
 
