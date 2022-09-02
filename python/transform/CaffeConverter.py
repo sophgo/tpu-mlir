@@ -12,7 +12,7 @@ import numpy as np
 import caffe
 from caffe.proto import caffe_pb2
 from google.protobuf import text_format
-
+from utils.pad_setting import set_auto_pad
 
 class CaffeConverter(BaseConverter):
 
@@ -332,30 +332,33 @@ class CaffeConverter(BaseConverter):
         op = self.getOperand(layer.bottom[0])
         p = layer.pooling_param
         method = p.pool
-        kernel = [input_shape[2], input_shape[3]]
-        if not p.global_pooling:
-            kernel[0] = p.kernel_h if p.HasField('kernel_h') else p.kernel_size
-            kernel[1] = p.kernel_w if p.HasField('kernel_w') else p.kernel_size
-        stride = [p.stride, p.stride]
-        if p.HasField('stride_h'):
-            stride[0] = p.stride_h
-        if p.HasField('stride_w'):
-            stride[1] = p.stride_w
-        padding = [p.pad, p.pad]
-        if p.HasField('pad_h'):
-            padding[0] = p.pad_h
-        if p.HasField('pad_w'):
-            padding[1] = p.pad_w
-        pads = [0, 0, padding[0], padding[1]]
-        output_shape = self.getShape(layer.top[0])
+        imap_shape = [input_shape[2], input_shape[3]]
+        kernel_shape = list(imap_shape)
+        is_global = p.global_pooling
+        if not is_global:
+            kernel_shape[0] = p.kernel_h if p.HasField('kernel_h') else p.kernel_size
+            kernel_shape[1] = p.kernel_w if p.HasField('kernel_w') else p.kernel_size
+            if kernel_shape == imap_shape:
+                is_global = True
+        if not is_global:
+            strides = [p.stride, p.stride]
+            if p.HasField('stride_h'):
+                strides[0] = p.stride_h
+            if p.HasField('stride_w'):
+                strides[1] = p.stride_w
+            pads = set_auto_pad("SAME_UPPER", input_shape, kernel_shape, strides)
+        else:
+            pads = [0] * 4
+            strides = [1] * 2
         attrs = {
             'name': layer.name,
-            'kernel_shape': kernel,
-            'strides': stride,
+            'kernel_shape': kernel_shape,
+            'strides': strides,
             'pads': pads,
             'count_include_pad': True,
             'do_relu': False,
         }
+        output_shape = self.getShape(layer.top[0])
         if method == 0:  # MAX
             new_op = self.mlir.create_maxpool_op([op], output_shape, **attrs)
         elif method == 1:  # AVE
@@ -399,9 +402,11 @@ class CaffeConverter(BaseConverter):
         with_bias = p.bias_term
         if p.transpose:
             filter_op = self.blob_to_weight_op(layer, 0)
-        else:
-            raise RuntimeError("Not support now")
-        attrs = {"name": layer.name}
+        else: # do transpose
+            filter = self.layer_dict[layer.name].blobs[0].data
+            new_filter = np.ascontiguousarray(np.transpose(filter, (1, 0)))
+            filter_op = self.create_weight_op(layer.name + "_filter", new_filter)
+        attrs = {"name": layer.name, "do_relu": False}
         bias_op = self.mlir.none_op
         if with_bias:
             bias_op = self.blob_to_weight_op(layer, 1)
@@ -451,7 +456,7 @@ class CaffeConverter(BaseConverter):
 
     def convert_dummydata_op(self, layer):
         assert(self.layerType(layer) == 'DummyData')
-        raise RuntimeError("not implemented")
+        # do nothing
 
     def convert_embed_op(self, layer):
         assert(self.layerType(layer) == 'Embed')
