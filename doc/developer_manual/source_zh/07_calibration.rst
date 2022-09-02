@@ -96,15 +96,27 @@ tpu-mlir实现的kld算法参考tensorRT的实现，本质上是将abs(fp32_tens
 概率后，再扩展到相同的bin数以保证和P具有相同的长度，最终得到量化后int8值的概率分布Q，计算P和Q的KL散度，
 在一个循环中，分别对128bin、256bin、...、2048bin这些截取位置计算KL散度，找出具有最小散度的截取位置，
 这说明在这里截取，能用int8这128个量化等级最好的模拟fp32的概率分布，故量化门限设在这里是最合适的。kld算法实现伪码
-如(:ref:`kld_flow`)图中所示
+如下所示:
 
-.. _kld_flow:
-.. figure:: ../assets/kld.jpg
-   :align: center
-
-   KLD算法伪码
-
-
+.. code-block:: console
+   :linenos:
+   the pseudocode of computing int8 quantize threshold by kld:
+       Prepare fp32 histogram H with 2048 bins
+       compute the absmax of fp32 value 
+       
+       for i in range(128,2048,128):
+         Outliers_num=sum(bin[i], bin[i+1],…, bin[2047])
+         Fp32_distribution=[bin[0], bin[1],…, bin[i-1]+Outliers_num]
+         Fp32_distribution/= sum(Fp32_distribution)
+         
+         int8_distribution = quantize [bin[0], bin[1],…, bin[i]] into 128 quant level
+         expand int8_distribution to i bins
+         int8_distribution /= sum(int8_distribution)
+         kld[i] = KLD(Fp32_distribution, int8_distribution)
+       end for
+       
+       find i which kld[i] is minimal
+       int8 quantize threshold = (i + 0.5)*fp32 absmax/2048
 
 auto-tune算法
 ~~~~~~~~~~~~~~~~
