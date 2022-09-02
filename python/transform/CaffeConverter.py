@@ -43,15 +43,55 @@ class CaffeConverter(BaseConverter):
 
         self.caffeop_factory = {
             #pls add the Op according to the Op's alphabetical order as below
-            "BatchNorm": lambda layer: self.convert_batchnorm_op(layer),
-            "Convolution": lambda layer: self.convert_convolution_op(layer),
+            'BatchNorm': lambda layer: self.convert_batchnorm_op(layer),
+            'BN': lambda layer: self.convert_bn_op(layer),
+            'Concat': lambda layer: self.convert_concat_op(layer),
+            'ContinuationIndicator': lambda layer: self.convert_continuation_indicator_op(layer),
+            'Convolution': lambda layer: self.convert_convolution_op(layer),
             'ConvolutionDepthwise': lambda layer: self.convert_convolution_op(layer),
-            "Eltwise": lambda layer: self.convert_eltwise_op(layer),
-            "InnerProduct": lambda layer: self.convert_inner_product_op(layer),
+            'Crop': lambda layer: self.convert_crop_op(layer),
+            'Deconvolution': lambda layer: self.convert_deconvolution_op(layer),
+            'DetectionOutput': lambda layer: self.convert_detection_output_op(layer),
+            'Dropout': lambda layer: self.convert_dropout_op(layer),
+            'DummyData': lambda layer: self.convert_dummydata_op(layer),
+            'Embed': lambda layer: self.convert_embed_op(layer),
+            'Eltwise': lambda layer: self.convert_eltwise_op(layer),
+            'Flatten': lambda layer: self.convert_flatten_op(layer),
+            'FrcnDetection': lambda layer: self.convert_frcn_detection_op(layer),
+            'InnerProduct': lambda layer: self.convert_inner_product_op(layer),
+            'Input': lambda layer: self.convert_input_op(layer),
+            'Interp': lambda layer: self.convert_interp_op(layer),
+            'LRN': lambda layer: self.convert_lrn_op(layer),
+            'LSTM': lambda layer: self.convert_lstm_op(layer),
+            'Lstm': lambda layer: self.convert_lstm_jun_op(layer),
+            'Normalize': lambda layer: self.convert_normalize_op(layer),
+            'Mish': lambda layer: self.convert_mish_op(layer),
+            'Padding': lambda layer: self.convert_padding_op(layer),
+            'Permute': lambda layer: self.convert_permute_op(layer),
             'Pooling': lambda layer: self.convert_pooling_op(layer),
-            "ReLU": lambda layer: self.convert_relu_op(layer),
-            "Scale": lambda layer: self.convert_scale_op(layer),
+            'Power': lambda layer: self.convert_power_op(layer),
+            'PReLU': lambda layer: self.convert_prelu_op(layer),
+            'PriorBox': lambda layer: self.convert_priorbox_op(layer),
+            'Proposal': lambda layer: self.convert_proposal_op(layer),
+            'ReLU': lambda layer: self.convert_relu_op(layer),
+            'ReLU6': lambda layer: self.convert_relu6_op(layer),
+            'Reorg': lambda layer: self.convert_reorg_op(layer),
+            'Reshape': lambda layer: self.convert_reshape_op(layer),
+            'Reverse': lambda layer: self.convert_reverse_op(layer),
+            'RetinaFaceDetection': lambda layer: self.convert_retinaface_detection_op(layer),
+            'ROIPooling': lambda layer: self.convert_roipooling_op(layer),
+            'Scale': lambda layer: self.convert_scale_op(layer),
+            'ShuffleChannel': lambda layer: self.convert_shufflechannel_op(layer),
+            'Sigmoid': lambda layer: self.convert_sigmoid_op(layer),
+            'Silence': lambda layer: self.convert_silence_op(layer),
+            'Slice': lambda layer: self.convert_slice_op(layer),
             'Softmax': lambda layer: self.convert_softmax_op(layer),
+            'Split': lambda layer: self.convert_split_op(layer),
+            'TanH': lambda layer: self.convert_tanh_op(layer),
+            'Tile': lambda layer: self.convert_tile_op(layer),
+            'Upsample': lambda layer: self.convert_upsample_op(layer),
+            'YoloDetection': lambda layer: self.convert_yolo_detection_op(layer),
+            'MatMul': lambda layer: self.convert_matmul_op(layer),
         }
         # yapf: disable
         # for caffe v1
@@ -379,3 +419,164 @@ class CaffeConverter(BaseConverter):
         output_shape = self.getShape(layer.top[0])
         new_op = self.mlir.create_softmax_op([in_op], output_shape, **attrs)
         self.addOperand(layer.top[0], new_op)
+
+    def convert_bn_op(self, layer):
+        assert(self.layerType(layer) == 'BN')
+        raise RuntimeError("not implemented")
+
+    def convert_concat_op(self, layer):
+        assert(self.layerType(layer) == 'Concat')
+        raise RuntimeError("not implemented")
+
+    def convert_continuation_indicator_op(self, layer):
+        assert(self.layerType(layer) == 'ContinuationIndicator')
+        raise RuntimeError("not implemented")
+
+    def convert_crop_op(self, layer):
+        assert(self.layerType(layer) == 'Crop')
+        raise RuntimeError("not implemented")
+
+    def convert_deconvolution_op(self, layer):
+        assert(self.layerType(layer) == "Deconvolution")
+        raise RuntimeError("not implemented")
+
+    def convert_detection_output_op(self, layer):
+        assert(self.layerType(layer) == "DetectionOutput")
+        raise RuntimeError("not implemented")
+
+    def convert_dropout_op(self, layer):
+        assert(self.layerType(layer) == 'Dropout')
+        op = self.getOperand(layer.bottom[0])
+        self.addOperand(layer.top[0], op)
+
+    def convert_dummydata_op(self, layer):
+        assert(self.layerType(layer) == 'DummyData')
+        raise RuntimeError("not implemented")
+
+    def convert_embed_op(self, layer):
+        assert(self.layerType(layer) == 'Embed')
+        raise RuntimeError("not implemented")
+
+    def convert_flatten_op(self, layer):
+        assert(self.layerType(layer) == 'Flatten')
+        raise RuntimeError("not implemented")
+
+    def convert_frcn_detection_op(self, layer):
+        assert(self.layerType(layer) == 'FrcnDetection')
+        raise RuntimeError("not implemented")
+
+    def convert_input_op(self, layer):
+        assert(self.layerType(layer) == 'Input')
+        # do nothing
+
+    def convert_interp_op(self, layer):
+        assert(self.layerType(layer) == 'Interp')
+        raise RuntimeError("not implemented")
+
+    def convert_lrn_op(self, layer):
+        assert(self.layerType(layer) == 'LRN')
+        raise RuntimeError("not implemented")
+
+    def convert_lstm_op(self, layer):
+        assert(self.layerType(layer) == 'LSTM')
+        raise RuntimeError("not implemented")
+
+    def convert_lstm_jun_op(self, layer):
+        assert(self.layerType(layer) == 'Lstm')
+        raise RuntimeError("not implemented")
+
+    def convert_matmul_op(self, layer):
+        assert(self.layerType(layer) == 'MatMul')
+        raise RuntimeError("not implemented")
+
+    def convert_normalize_op(self, layer):
+        assert(self.layerType(layer) == 'Normalize')
+        raise RuntimeError("not implemented")
+
+    def convert_mish_op(self, layer):
+        assert(self.layerType(layer) == 'Mish')
+        raise RuntimeError("not implemented")
+
+    def convert_padding_op(self, layer):
+        assert(self.layerType(layer) == 'Padding')
+        raise RuntimeError("not implemented")
+
+    def convert_permute_op(self, layer):
+        assert(self.layerType(layer) == 'Permute')
+        raise RuntimeError("not implemented")
+
+    def convert_power_op(self, layer):
+        assert (self.layerType(layer) == 'Power')
+        raise RuntimeError("not implemented")
+
+    def convert_prelu_op(self, layer):
+        assert(self.layerType(layer) == 'PReLU')
+        raise RuntimeError("not implemented")
+
+    def convert_priorbox_op(self, layer):
+        assert(self.layerType(layer) == 'PriorBox')
+        raise RuntimeError("not implemented")
+
+    def convert_proposal_op(self, layer):
+        assert(self.layerType(layer) == 'Proposal')
+        raise RuntimeError("not implemented")
+
+    def convert_relu6_op(self, layer):
+        assert(self.layerType(layer) == 'ReLU6')
+        raise RuntimeError("not implemented")
+
+    def convert_reorg_op(self, layer):
+        assert(self.layerType(layer) == 'Reorg')
+        raise RuntimeError("not implemented")
+
+    def convert_reshape_op(self, layer):
+        assert(self.layerType(layer) == 'Reshape')
+        raise RuntimeError("not implemented")
+
+    def convert_reverse_op(self, layer):
+        assert(self.layerType(layer) == 'Reverse')
+        raise RuntimeError("not implemented")
+
+    def convert_retinaface_detection_op(self, layer):
+        assert(self.layerType(layer) == 'RetinaFaceDetection')
+        raise RuntimeError("not implemented")
+
+    def convert_roipooling_op(self, layer):
+        assert(self.layerType(layer) == 'ROIPooling')
+        raise RuntimeError("not implemented")
+
+    def convert_shufflechannel_op(self, layer):
+        assert(self.layerType(layer) == 'ShuffleChannel')
+        raise RuntimeError("not implemented")
+
+    def convert_sigmoid_op(self, layer):
+        assert(self.layerType(layer) == 'Sigmoid')
+        raise RuntimeError("not implemented")
+
+    def convert_silence_op(self, layer):
+        assert(self.layerType(layer) == 'Silence')
+        # do nothing now
+
+    def convert_slice_op(self, layer):
+        assert(self.layerType(layer) == 'Slice')
+        raise RuntimeError("not implemented")
+
+    def convert_split_op(self, layer):
+        assert(self.layerType(layer) == 'Split')
+        raise RuntimeError("not implemented")
+
+    def convert_tanh_op(self, layer):
+        assert(self.layerType(layer) == 'TanH')
+        raise RuntimeError("not implemented")
+
+    def convert_tile_op(self, layer):
+        assert(self.layerType(layer) == 'Tile')
+        raise RuntimeError("not implemented")
+
+    def convert_upsample_op(self, layer):
+        assert(self.layerType(layer) == 'Upsample')
+        raise RuntimeError("not implemented")
+
+    def convert_yolo_detection_op(self, layer):
+        assert(self.layerType(layer) == 'YoloDetection')
+        raise RuntimeError("not implemented")

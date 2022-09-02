@@ -401,7 +401,7 @@ class OnnxConverter(BaseConverter):
             "name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
             "epsilon": epsilon,
         }
-        new_op = self.mlir.create_batchnorm_op([op, gamma, beta, mean, variance], output_shape, **p)
+        new_op = self.mlir.create_batchnorm_op([op, mean, variance, gamma, beta], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
     def convert_concat_op(self, onnx_node):

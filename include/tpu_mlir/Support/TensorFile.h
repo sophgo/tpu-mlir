@@ -88,7 +88,7 @@ public:
       if (!succeeded(ret)) {
         if (readOnly) {
           llvm::errs() << filename << " not exist, failed to read for read\n";
-          assert(0);
+          llvm_unreachable("TensorFile error!");
         }
         map.clear();
       }
@@ -110,6 +110,7 @@ public:
     if (it != map.end()) {
       llvm::errs() << "failed to add tensor " << name.str()
                    << ", already exist\n";
+      llvm_unreachable("addTensor error!");
       return failure();
     }
     std::vector<int64_t> shape = type.getShape();
@@ -140,6 +141,7 @@ public:
     if (it != map.end()) {
       llvm::errs() << "failed to add tensor " << name.str()
                    << ", already exist\n";
+      llvm_unreachable("addTensor error!");
       return failure();
     }
     std::vector<size_t> shape_npz;
@@ -166,11 +168,13 @@ public:
     auto it = map.find(name.str());
     if (it == map.end()) {
       llvm::errs() << "failed to find tensor " << name.str() << " to read\n";
+      llvm_unreachable("readTensor failed");
       return failure();
     }
     auto arr = it->second;
     if (arr.num_bytes() != count * sizeof(T)) {
       llvm::errs() << "size does not match for tensor " << name.str() << "\n";
+      llvm_unreachable("readTensor failed");
       return failure();
     }
     if (arr.fortran_order) {
