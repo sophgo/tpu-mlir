@@ -118,10 +118,10 @@ def caffe_inference(inputs: dict, prototxt: str, caffemodel: str, dump_all: bool
     for in_ in  net.inputs:
         if in_ not in inputs:
             raise RuntimeError("inputs have no name [{}]".format(in_))
-        input = inputs[in_]
-        net.blobs[in_].reshape(*input.shape)
+        net.blobs[in_].reshape(*inputs[in_].shape)
+        net.blobs[in_].data[...] = inputs[in_]
     top_map = {}
-    out = net.forward_all(**inputs)
+    out = net.forward()
     if dump_all:
         for name, layer in net.layer_dict.items():
             if layer.type == "Split":

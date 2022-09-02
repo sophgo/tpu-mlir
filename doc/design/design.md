@@ -41,7 +41,7 @@
 
 #### 调试方法
 ``` shell
-gdb --args python /work/python/tools/model_runner.py --input resnet18_in_f32.npz --model resnet18_opt.mlir --output resnet18_out.npz
+gdb --args python /workspace/tpu-mlir/python/tools/model_runner.py --input resnet18_in_f32.npz --model resnet18_opt.mlir --output resnet18_out.npz
 ```
 
 ## 待解决问题

@@ -10,7 +10,8 @@ model_list_all=(
   "mobilenet_v2"
   "mobilenet_v2_cf"
   "resnet18_v1"
-  "resnet18"
+  "resnet18_v2"
+  "resnet18_cf"
   "resnet50_v1"
   "resnet50_v2"
   "resnet50_tf"
@@ -18,7 +19,6 @@ model_list_all=(
   "squeezenet1.0"
   "vgg16"
 # object detection
-  "resnet34_ssd1200"
   "ssd-12"
   "yolov5s"
   "yolov3_tiny"
