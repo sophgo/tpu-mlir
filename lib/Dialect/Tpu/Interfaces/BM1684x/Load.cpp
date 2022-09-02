@@ -31,12 +31,12 @@ int64_t tpu::LoadOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
 }
 
 void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
-  char prefix[64];
   auto pid_node = (CMD_ID_NODE *)BM1684x::instance().gdma_node;
   auto gi = getGroupInfo(n_step, h_step);
   assert(false == gi.overstepped);
-  snprintf(prefix, 63, "LD_%s", Module::getName(getOperation()).data());
-  BM1684x::instance().dl_set_cmd_id_prefix(pid_node, prefix);
+  std::string name = Module::getName(getOperation()).str();
+  std::string prefix = "LD_" + name;
+  BM1684x::instance().dl_set_cmd_id_prefix(pid_node, prefix.c_str());
   auto data_type = BM168x::getDataType(output());
   auto gdma_format = BM168x::getGdmaFormat(data_type);
   auto fmt_bytes = BM168x::getFmtBytes(data_type);

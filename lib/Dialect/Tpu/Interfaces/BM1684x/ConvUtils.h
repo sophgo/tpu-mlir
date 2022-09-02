@@ -142,6 +142,8 @@ static void reshape_coeff_for_3ic(std::shared_ptr<std::vector<T>> &weight,
 extern "C" {
 #endif
 
+#define  MAX_TPU_DIM   65535
+
 typedef struct conv_common_spec {
   int32_t groups;
   int32_t input_c;

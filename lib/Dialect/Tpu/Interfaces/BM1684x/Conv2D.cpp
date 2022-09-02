@@ -94,9 +94,6 @@ void tpu::Conv2DOp::weight_reorder_int8_bm1684x() {
     assert(new_oc == bias_shape[1]);
     bias_w_bytes = bias_shape[3] * sizeof(int32_t);
   }
-  if (merge == false) {
-    return;
-  }
 
   // requant
   auto qtype = Quant::getUniformQuantizedType(output());
@@ -140,7 +137,7 @@ void tpu::Conv2DOp::weight_reorder_int8_bm1684x() {
     }
     memcpy(coeff_ptr + filter_offset, filter_ptr, filter_w_bytes);
   }
-  if (merge_w > 65535) {
+  if (merge_w > MAX_TPU_DIM) {
     if (attr.is_dw) {
       coeff_shape[2] = ceiling_func(attr.oc, (int64_t)64);
       coeff_shape[3] /= coeff_shape[2];
@@ -163,13 +160,35 @@ void tpu::Conv2DOp::weight_reorder_int8_bm1684x() {
 void tpu::Conv2DOp::weight_reorder_bf16_bm1684x() {
   conv_attr_t attr = {0};
   parseParam(&attr);
+
   auto filterOp = filter().getDefiningOp<top::WeightOp>();
+  std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.groups, attr.kh,
+                                       attr.kw};
+  const int IC_PARALLEL = 32;
   auto filter_u16 = filterOp.read<uint16_t>();
   auto biasOp = bias().getDefiningOp<top::WeightOp>();
   auto filter_type = Module::getStorageType(filter());
-  std::vector<int64_t> filter_shape;
+
   auto op = getOperation();
   OpBuilder builder(getContext());
+
+  int use_3ic_optimize = 0;
+  if (attr.ic * attr.kh * attr.kw <= IC_PARALLEL && attr.kh > 1 &&
+      attr.kw > 1) {
+    use_3ic_optimize = 3; // merge kh and kw to ic
+  } else if (attr.ic * attr.kw <= IC_PARALLEL && attr.kw > 1 &&
+             (attr.kh < attr.kw || attr.ic * attr.kh > IC_PARALLEL)) {
+    use_3ic_optimize = 2; // merge kw to ic
+  } else if (attr.ic * attr.kh <= IC_PARALLEL && attr.kh > 1) {
+    use_3ic_optimize = 1; // merge kh to ic
+  } else {
+    use_3ic_optimize = 0;
+  }
+  if (use_3ic_optimize) {
+    // Now only support broadcast using BDC when it is a local layer.
+    use_3ic_optimize |= 0x10;
+  }
+
   if (attr.is_dw || attr.groups > 1) {
     filter_shape = {1, attr.ic, attr.kh, attr.kw};
     auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
@@ -193,15 +212,8 @@ void tpu::Conv2DOp::weight_reorder_bf16_bm1684x() {
         top::WeightOp::create(op, "reordered", *data_u16, new_bias_type);
     op->setOperand(2, newBiasOp);
   } else {
-    filter_shape = {attr.oc, attr.ic, attr.kh, attr.kw};
-    filter_reorder(filter_u16, filter_shape);
-    reshape_coeff_for_broadcast_channel(filter_u16, filter_shape);
-
-    auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
-    auto newFilterOp =
-        top::WeightOp::create(op, "reordered", *filter_u16, new_filter_type);
-    op->setOperand(1, newFilterOp);
-
+    reshape_coeff_for_3ic(filter_u16, filter_shape, use_3ic_optimize);
+    op->setAttr("use_3ic_optimize", builder.getI64IntegerAttr(use_3ic_optimize));
     // bias op
     if (attr.has_bias) {
       auto bias_type = Module::getStorageType(bias());
@@ -210,6 +222,19 @@ void tpu::Conv2DOp::weight_reorder_bf16_bm1684x() {
       bias().setType(new_bias_type);
     }
   }
+
+  if(filter_shape[3] > MAX_TPU_DIM) {
+    if (attr.is_dw) {
+      filter_shape[2] = ceiling_func(attr.oc, (int64_t)64);
+      filter_shape[3] /= filter_shape[2];
+    } else {
+      filter_shape[2] = 64;
+      filter_shape[3] /= 64;
+    }
+  }
+  auto new_type = RankedTensorType::get(filter_shape, filter_type);
+  auto new_op = top::WeightOp::create(op, "filter_reorderd", *filter_u16, new_type);
+  op->setOperand(1, new_op);
 }
 
 void tpu::Conv2DOp::weight_reorder_f16_bm1684x() {
@@ -279,6 +304,7 @@ void tpu::Conv2DOp::codegen_global_bm1684x() {
   common.ipad_is_const = true;
   common.kzp_is_const = true;
   common.kzp_value = attr.kernel_zp;
+  common.use_3ic_optimize = use_3ic_optimize();
   if (Quant::isUniformQuantized(input())) {
     auto in_qtype = Quant::getUniformQuantizedType(input());
     if (coeff_merged()) {
@@ -288,7 +314,6 @@ void tpu::Conv2DOp::codegen_global_bm1684x() {
     }
     common.is_asym = true;
     common.ipad_value = in_qtype.getZeroPoint();
-    common.use_3ic_optimize = use_3ic_optimize();
   }
   BM1684x::instance().call_global_func("backend_api_conv_global", &spec,
                                        sizeof(spec), input_spec->data(),
@@ -376,6 +401,7 @@ void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   common.ipad_is_const = true;
   common.kzp_is_const = true;
   common.kzp_value = attr.kernel_zp;
+  common.use_3ic_optimize = use_3ic_optimize();
   if (Quant::isUniformQuantized(input())) {
     auto in_qtype = Quant::getUniformQuantizedType(input());
     if (coeff_merged()) {
@@ -386,7 +412,6 @@ void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
     }
     common.is_asym = true;
     common.ipad_value = in_qtype.getZeroPoint();
-    common.use_3ic_optimize = use_3ic_optimize();
   }
   local_sec_info_t sec_info;
   memset(&sec_info, 0, sizeof(sec_info));
