@@ -57,13 +57,12 @@ struct TopBatchNormToScale : public OpRewritePattern<BatchNormOp> {
     }
 
     auto scale_type = RankedTensorType::get({channel}, rewriter.getF32Type());
-    auto scale_op = WeightOp::create(mean, "bn_to_scale", scale, scale_type);
+    auto scale_op = WeightOp::create(op, "scale", scale, scale_type);
     auto bias_type = RankedTensorType::get({channel}, rewriter.getF32Type());
-    auto bias_op = WeightOp::create(mean, "bn_to_bias", bias, bias_type);
+    auto bias_op = WeightOp::create(op, "bias", bias, bias_type);
     // replace the BatchNorm Op
     rewriter.replaceOpWithNewOp<ScaleOp>(
-        op, op.getResult().getType(),
-        ValueRange{op.input(), scale_op, bias_op});
+        op, op.output().getType(), ValueRange{op.input(), scale_op, bias_op});
     return success();
   }
 };

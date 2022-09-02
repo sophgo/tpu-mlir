@@ -153,18 +153,21 @@ std::string Module::genWeightFileName(ModuleOp module) {
   auto name = getName(module);
   auto state = getState(module);
   auto chip = getChip(module);
-  std::string weight_file_name = name.lower() + std::string("_") +
+  auto old_name = getWeightFile(module);
+  std::string file_name = name.lower() + std::string("_") +
                                  state.lower() + std::string("_") +
                                  chip.lower();
   if (std::string(chip) != "ALL") {
     auto mode = getMode(module);
     std::string sym = "";
     sym = getAsymmetric(module) ? "_asym" : "_sym";
-    weight_file_name += std::string("_") + mode.lower() + sym;
+    file_name += std::string("_") + mode.lower() + sym;
   }
-  weight_file_name += "_weight.npz";
-
-  return weight_file_name;
+  auto new_name = file_name + "_weight.npz";
+  if (old_name == new_name) {
+    new_name = file_name + "_weight_fix.npz";
+  }
+  return new_name;
 }
 
 int64_t Module::getAddress(Value v) {
