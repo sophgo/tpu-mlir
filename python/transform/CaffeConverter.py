@@ -14,6 +14,7 @@ from caffe.proto import caffe_pb2
 from google.protobuf import text_format
 from utils.pad_setting import set_auto_pad
 
+
 class CaffeConverter(BaseConverter):
 
     def __init__(self,
@@ -402,7 +403,7 @@ class CaffeConverter(BaseConverter):
         with_bias = p.bias_term
         if p.transpose:
             filter_op = self.blob_to_weight_op(layer, 0)
-        else: # do transpose
+        else:  # do transpose
             filter = self.layer_dict[layer.name].blobs[0].data
             new_filter = np.ascontiguousarray(np.transpose(filter, (1, 0)))
             filter_op = self.create_weight_op(layer.name + "_filter", new_filter)
@@ -426,88 +427,88 @@ class CaffeConverter(BaseConverter):
         self.addOperand(layer.top[0], new_op)
 
     def convert_bn_op(self, layer):
-        assert(self.layerType(layer) == 'BN')
+        assert (self.layerType(layer) == 'BN')
         raise RuntimeError("not implemented")
 
     def convert_concat_op(self, layer):
-        assert(self.layerType(layer) == 'Concat')
+        assert (self.layerType(layer) == 'Concat')
         raise RuntimeError("not implemented")
 
     def convert_continuation_indicator_op(self, layer):
-        assert(self.layerType(layer) == 'ContinuationIndicator')
+        assert (self.layerType(layer) == 'ContinuationIndicator')
         raise RuntimeError("not implemented")
 
     def convert_crop_op(self, layer):
-        assert(self.layerType(layer) == 'Crop')
+        assert (self.layerType(layer) == 'Crop')
         raise RuntimeError("not implemented")
 
     def convert_deconvolution_op(self, layer):
-        assert(self.layerType(layer) == "Deconvolution")
+        assert (self.layerType(layer) == "Deconvolution")
         raise RuntimeError("not implemented")
 
     def convert_detection_output_op(self, layer):
-        assert(self.layerType(layer) == "DetectionOutput")
+        assert (self.layerType(layer) == "DetectionOutput")
         raise RuntimeError("not implemented")
 
     def convert_dropout_op(self, layer):
-        assert(self.layerType(layer) == 'Dropout')
+        assert (self.layerType(layer) == 'Dropout')
         op = self.getOperand(layer.bottom[0])
         self.addOperand(layer.top[0], op)
 
     def convert_dummydata_op(self, layer):
-        assert(self.layerType(layer) == 'DummyData')
+        assert (self.layerType(layer) == 'DummyData')
         # do nothing
 
     def convert_embed_op(self, layer):
-        assert(self.layerType(layer) == 'Embed')
+        assert (self.layerType(layer) == 'Embed')
         raise RuntimeError("not implemented")
 
     def convert_flatten_op(self, layer):
-        assert(self.layerType(layer) == 'Flatten')
+        assert (self.layerType(layer) == 'Flatten')
         raise RuntimeError("not implemented")
 
     def convert_frcn_detection_op(self, layer):
-        assert(self.layerType(layer) == 'FrcnDetection')
+        assert (self.layerType(layer) == 'FrcnDetection')
         raise RuntimeError("not implemented")
 
     def convert_input_op(self, layer):
-        assert(self.layerType(layer) == 'Input')
+        assert (self.layerType(layer) == 'Input')
         # do nothing
 
     def convert_interp_op(self, layer):
-        assert(self.layerType(layer) == 'Interp')
+        assert (self.layerType(layer) == 'Interp')
         raise RuntimeError("not implemented")
 
     def convert_lrn_op(self, layer):
-        assert(self.layerType(layer) == 'LRN')
+        assert (self.layerType(layer) == 'LRN')
         raise RuntimeError("not implemented")
 
     def convert_lstm_op(self, layer):
-        assert(self.layerType(layer) == 'LSTM')
+        assert (self.layerType(layer) == 'LSTM')
         raise RuntimeError("not implemented")
 
     def convert_lstm_jun_op(self, layer):
-        assert(self.layerType(layer) == 'Lstm')
+        assert (self.layerType(layer) == 'Lstm')
         raise RuntimeError("not implemented")
 
     def convert_matmul_op(self, layer):
-        assert(self.layerType(layer) == 'MatMul')
+        assert (self.layerType(layer) == 'MatMul')
         raise RuntimeError("not implemented")
 
     def convert_normalize_op(self, layer):
-        assert(self.layerType(layer) == 'Normalize')
+        assert (self.layerType(layer) == 'Normalize')
         raise RuntimeError("not implemented")
 
     def convert_mish_op(self, layer):
-        assert(self.layerType(layer) == 'Mish')
+        assert (self.layerType(layer) == 'Mish')
         raise RuntimeError("not implemented")
 
     def convert_padding_op(self, layer):
-        assert(self.layerType(layer) == 'Padding')
+        assert (self.layerType(layer) == 'Padding')
         raise RuntimeError("not implemented")
 
     def convert_permute_op(self, layer):
-        assert(self.layerType(layer) == 'Permute')
+        assert (self.layerType(layer) == 'Permute')
         raise RuntimeError("not implemented")
 
     def convert_power_op(self, layer):
@@ -515,73 +516,73 @@ class CaffeConverter(BaseConverter):
         raise RuntimeError("not implemented")
 
     def convert_prelu_op(self, layer):
-        assert(self.layerType(layer) == 'PReLU')
+        assert (self.layerType(layer) == 'PReLU')
         raise RuntimeError("not implemented")
 
     def convert_priorbox_op(self, layer):
-        assert(self.layerType(layer) == 'PriorBox')
+        assert (self.layerType(layer) == 'PriorBox')
         raise RuntimeError("not implemented")
 
     def convert_proposal_op(self, layer):
-        assert(self.layerType(layer) == 'Proposal')
+        assert (self.layerType(layer) == 'Proposal')
         raise RuntimeError("not implemented")
 
     def convert_relu6_op(self, layer):
-        assert(self.layerType(layer) == 'ReLU6')
+        assert (self.layerType(layer) == 'ReLU6')
         raise RuntimeError("not implemented")
 
     def convert_reorg_op(self, layer):
-        assert(self.layerType(layer) == 'Reorg')
+        assert (self.layerType(layer) == 'Reorg')
         raise RuntimeError("not implemented")
 
     def convert_reshape_op(self, layer):
-        assert(self.layerType(layer) == 'Reshape')
+        assert (self.layerType(layer) == 'Reshape')
         raise RuntimeError("not implemented")
 
     def convert_reverse_op(self, layer):
-        assert(self.layerType(layer) == 'Reverse')
+        assert (self.layerType(layer) == 'Reverse')
         raise RuntimeError("not implemented")
 
     def convert_retinaface_detection_op(self, layer):
-        assert(self.layerType(layer) == 'RetinaFaceDetection')
+        assert (self.layerType(layer) == 'RetinaFaceDetection')
         raise RuntimeError("not implemented")
 
     def convert_roipooling_op(self, layer):
-        assert(self.layerType(layer) == 'ROIPooling')
+        assert (self.layerType(layer) == 'ROIPooling')
         raise RuntimeError("not implemented")
 
     def convert_shufflechannel_op(self, layer):
-        assert(self.layerType(layer) == 'ShuffleChannel')
+        assert (self.layerType(layer) == 'ShuffleChannel')
         raise RuntimeError("not implemented")
 
     def convert_sigmoid_op(self, layer):
-        assert(self.layerType(layer) == 'Sigmoid')
+        assert (self.layerType(layer) == 'Sigmoid')
         raise RuntimeError("not implemented")
 
     def convert_silence_op(self, layer):
-        assert(self.layerType(layer) == 'Silence')
+        assert (self.layerType(layer) == 'Silence')
         # do nothing now
 
     def convert_slice_op(self, layer):
-        assert(self.layerType(layer) == 'Slice')
+        assert (self.layerType(layer) == 'Slice')
         raise RuntimeError("not implemented")
 
     def convert_split_op(self, layer):
-        assert(self.layerType(layer) == 'Split')
+        assert (self.layerType(layer) == 'Split')
         raise RuntimeError("not implemented")
 
     def convert_tanh_op(self, layer):
-        assert(self.layerType(layer) == 'TanH')
+        assert (self.layerType(layer) == 'TanH')
         raise RuntimeError("not implemented")
 
     def convert_tile_op(self, layer):
-        assert(self.layerType(layer) == 'Tile')
+        assert (self.layerType(layer) == 'Tile')
         raise RuntimeError("not implemented")
 
     def convert_upsample_op(self, layer):
-        assert(self.layerType(layer) == 'Upsample')
+        assert (self.layerType(layer) == 'Upsample')
         raise RuntimeError("not implemented")
 
     def convert_yolo_detection_op(self, layer):
-        assert(self.layerType(layer) == 'YoloDetection')
+        assert (self.layerType(layer) == 'YoloDetection')
         raise RuntimeError("not implemented")
