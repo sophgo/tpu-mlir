@@ -26,8 +26,9 @@ do_asymmetric=1
 
 source ${cfg_file}
 
-mkdir -p regression_out/${model_name}
-pushd regression_out/${model_name}
+NET_DIR=$REGRESSION_PATH/regression_out/${model_name}
+mkdir -p $NET_DIR
+pushd $NET_DIR
 
 model_def_opt=
 if [ x$model_path != x ] && [ -f $model_path ]; then
