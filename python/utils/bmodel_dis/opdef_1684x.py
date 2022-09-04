@@ -51,7 +51,7 @@ def get_dtype(prec, sign=1):  # unsigned -> 0; sign -> 1
 
 
 class MemRef:
-    def __init__(self, addr, shape, stride, dtype: DType, relative_addr=False):
+    def __init__(self, addr, shape, dtype: DType, stride=None, relative_addr=False):
         self.addr = addr
         self.shape = shape
         self.dtype = dtype
@@ -61,19 +61,27 @@ class MemRef:
     @property
     def addr_str(self):
         if self.relative_addr:
-            return f"R{self.fmt_lmem(self.addr)}"
+            return f"%R{self.fmt_lmem(self.addr)}"
         for k, v in memmap.items():
             if self.addr >= v[0] and self.addr < v[1]:
                 if k == "R":
-                    return f"R{self.fmt_lmem(self.addr - v[0])}"
-                return f"{k}.{self.addr - v[0]:,}".replace(",", "`")
+                    return f"%R{self.fmt_lmem(self.addr - v[0])}"
+                return f"%{k}.{self.addr - v[0]}"
 
     @property
     def shape_str(self):
-        s = [str(s) for s in self.shape]
-        if self.stride:
-            return f"<{'x'.join(s)}x{self.dtype.name} {self.stride}>"
-        return f"<{'x'.join(s)}x{self.dtype.name}>"
+        s = self.shape
+        if s == "*":
+            s = ["?"] * 4
+        elif isinstance(s, list):
+            for i, x in enumerate(s):
+                s[i] = "?"
+                if x != 0:
+                    s[i] = str(x)
+
+        if self.stride and any((x != 0 for x in self.stride)):
+            return f"memref<{'x'.join(s)}x{self.dtype.name}, offset: 0, strides: {self.stride}>"
+        return f"memref<{'x'.join(s)}x{self.dtype.name}>"
 
     def fmt_lmem(self, addr):
         i = addr // bank_size
@@ -209,15 +217,19 @@ class bdc_base:
         self.attribute = {}
 
     def __memref(self, reg_field):
-        for addr, shape, dtype in zip(*(reg_field[i::3] for i in range(3))):  # type: ignore
+        for opoperad in reg_field:
+            addr, shape, dtype, *stride = opoperad
             addr = self.attr[addr]
-            shape = [self.attr[x] for x in shape]
+            if shape != "*":
+                shape = [self.attr[x] for x in shape]
+            if stride:
+                stride = [self.attr[x] for x in stride[0]]
             if isinstance(dtype, str):
                 dtype = get_dtype(self.attr[dtype])
             elif isinstance(dtype, tuple):
                 _type, _sign = dtype
                 dtype = get_dtype(self.attr[_type], self.attr[_sign])
-            yield MemRef(addr, shape, None, dtype, True)
+            yield MemRef(addr, shape, dtype, stride, True)
 
     def memref(self, reg_field):
         return list(self.__memref(reg_field))
@@ -231,12 +243,15 @@ class bdc_base:
         res_str, res_shape_t = zip(*((x.addr_str, x.shape_str) for x in self.results))
         opd_str, opd_shape_t = zip(*((x.addr_str, x.shape_str) for x in self.operands))
         op_name = self.eu_type[self.attr["des_tsk_eu_typ"]]
+        attribute = ""
+        if self.attribute:
+            attribute = f" {self.attribute}".replace(":", " =").replace("'", "")
+
         return (
-            f"{', '.join(res_str)} = {op_name}.{self.cmd_id}"
-            + f" ({', '.join(opd_str)}, {{{self.cmd_id_dep}}}) "
-            + f"{self.attribute}".replace(":", " =").replace("'", "")
-            + " : "
-            + f"({', '.join(opd_shape_t)}) -> ({', '.join(res_shape_t)})"
+            f"{', '.join(res_str)}, %B{self.cmd_id} = \"{op_name}\""
+            + f"({', '.join(opd_str)}, %D{self.cmd_id_dep})"
+            + attribute
+            + f" : ({', '.join(opd_shape_t)}, none) -> ({', '.join(res_shape_t)}, none)"
         )
 
 
@@ -255,19 +270,25 @@ class sconv_op(conv_op):
     def set_elt(self):
         results = (
             "des_res0_addr",
-            ("des_res0_n", "des_res0_c", "des_res0_h", "des_res0_w"),
+            (f"des_res0_{x}" for x in "nchw"),
             "des_opt_res0_prec",
         )
         operands = (
-            "des_opd0_addr",
-            ("des_opd0_c", "des_opd0_h", "des_opd0_w"),
-            ("des_opt_opd0_prec", "des_opt_opd0_sign"),
-            "des_opd1_addr",
-            ("des_opd1_h", "des_opd1_w"),
-            ("des_opt_opd0_prec", "des_opt_opd1_sign"),
-            "des_opd2_addr",
-            ("des_res0_c",),
-            ("des_opt_opd0_prec", "des_opt_opd2_sign"),
+            (
+                "des_opd0_addr",
+                ("des_opd0_c", "des_opd0_h", "des_opd0_w"),
+                ("des_opt_opd0_prec", "des_opt_opd0_sign"),
+            ),
+            (
+                "des_opd1_addr",
+                ("des_opd1_h", "des_opd1_w"),
+                ("des_opt_opd0_prec", "des_opt_opd1_sign"),
+            ),
+            (
+                "des_opd2_addr",
+                ("des_res0_c",),
+                ("des_opt_opd0_prec", "des_opt_opd2_sign"),
+            ),
         )
         attribute = {
             "padding": (
@@ -281,7 +302,7 @@ class sconv_op(conv_op):
             "ins0": ("des_opd0_x_ins0", "des_opd0_y_ins0"),
             "dilation": ("des_opd1_x_ins0", "des_opd1_y_ins0"),
         }
-        self.results = self.memref(results)
+        self.results = self.memref((results,))
         self.operands = self.memref(operands)
         self.attribute = self.set_attibute(attribute)
 
@@ -301,14 +322,18 @@ class smm_op(mm_op):
     def set_elt(self):
         results = ("des_res0_addr", ("des_res0_c", "des_res0_w"), "des_opt_res0_prec")
         operands = (
-            "des_opd0_addr",
-            ("des_opd0_n", "des_opd0_c", "des_opd0_w"),
-            ("des_opt_opd0_prec", "des_opt_opd0_sign"),
-            "des_opd1_addr",
-            ("des_opd1_w",),
-            ("des_opt_opd0_prec", "des_opt_opd1_sign"),
+            (
+                "des_opd0_addr",
+                ("des_opd0_n", "des_opd0_c", "des_opd0_w"),
+                ("des_opt_opd0_prec", "des_opt_opd0_sign"),
+            ),
+            (
+                "des_opd1_addr",
+                ("des_opd1_w",),
+                ("des_opt_opd0_prec", "des_opt_opd1_sign"),
+            ),
         )
-        self.results = self.memref(results)
+        self.results = self.memref((results,))
         self.operands = self.memref(operands)
         self.attribute = None
 
@@ -422,15 +447,25 @@ class sar_op(ar_op):
     def set_elt(self):
         results = (
             "des_res0_addr",
-            ("des_res0_n", "des_res0_c", "des_res0_h", "des_res0_w"),
+            (f"des_res0_{x}" for x in "nchw"),
             "des_opt_res0_prec",
+            (f"des_res0_{x}_str" for x in "nchw"),
         )
         operands = (
-            "des_opd0_addr",
-            ("des_res0_n", "des_res0_c", "des_res0_h", "des_res0_w"),
-            ("des_opt_opd0_prec", "des_opt_opd0_sign"),
+            (
+                "des_opd0_addr",
+                "*",
+                ("des_opt_opd0_prec", "des_opt_opd0_sign"),
+                (f"des_opd0_{x}_str" for x in "nchw"),
+            ),
+            (
+                "des_opd1_addr",
+                "*",
+                ("des_opt_opd1_prec", "des_opt_opd1_sign"),
+                (f"des_opd1_{x}_str" for x in "nchw"),
+            ),
         )
-        self.results = self.memref(results)
+        self.results = self.memref((results,))
         self.operands = self.memref(operands)
         self.attribute = {}
         if self.attr.des_tsk_eu_typ == 18:
@@ -482,14 +517,18 @@ class spord_op(pord_op):
             "des_opt_res0_prec",
         )
         operands = (
-            "des_opd0_addr",
-            ("des_opd0_h", "des_opd0_w"),
-            ("des_opt_opd0_prec", "des_opt_opd0_sign"),
-            "des_opd1_addr",
-            ("des_opd1_h", "des_opd1_w"),
-            ("des_opt_opd0_prec", "des_opt_opd1_sign"),
+            (
+                "des_opd0_addr",
+                ("des_opd0_h", "des_opd0_w"),
+                ("des_opt_opd0_prec", "des_opt_opd0_sign"),
+            ),
+            (
+                "des_opd1_addr",
+                ("des_opd1_h", "des_opd1_w"),
+                ("des_opt_opd0_prec", "des_opt_opd1_sign"),
+            ),
         )
-        self.results = self.memref(results)
+        self.results = self.memref((results,))
         self.operands = self.memref(operands)
         self.attribute = None
 
@@ -524,8 +563,8 @@ class srqdq_op(rqdq_op):
             ("des_res0_n", "des_res0_c", "des_res0_h", "des_res0_w"),
             ("des_opt_opd0_prec", "des_opt_opd0_sign"),
         )
-        self.results = self.memref(results)
-        self.operands = self.memref(operands)
+        self.results = self.memref((results,))
+        self.operands = self.memref((operands,))
         self.attribute = None
 
 
@@ -558,7 +597,14 @@ class ssgl_op(sgl_op):
 @registry_bdc("TRANS&BC")
 class transbc_op(bdc_base):
     opcode = 5
-    eu_type = range(6)
+    eu_type = {
+        0: "tsbc.cw_ts",
+        1: "tsbc.wc_ts",
+        2: "tsbc.l_copy",
+        3: "tsbc.l_bc",
+        4: "tsbc.s_bc",
+        5: "tsbc.s_distribute",
+    }
     description = "TRANS && BC"
 
 
@@ -566,6 +612,21 @@ class transbc_op(bdc_base):
 class stransbc_op(transbc_op):
     short_cmd = True
     description = "short TRANS && BC"
+
+    def set_elt(self):
+        results = (
+            "des_res0_addr",
+            (f"des_res0_{x}" for x in "nchw"),
+            "des_opt_res0_prec",
+        )
+        operands = (
+            "des_opd0_addr",
+            (f"des_opd0_{x}" for x in "cw"),
+            "des_opt_res0_prec",
+        )
+        self.results = self.memref((results,))
+        self.operands = self.memref((operands,))
+        self.attribute = None
 
 
 @registry_bdc("LAR")
@@ -653,7 +714,7 @@ class dma_base:
             shape = [self.attr[x] for x in shape]
             stride = [self.attr[x] for x in stride]
             dtype = get_dtype(self.attr[dtype])
-            yield MemRef(addr, shape, stride, dtype, False)
+            yield MemRef(addr, shape, dtype, stride, False)
 
     def memref(self, reg_field):
         return list(self.__memref(reg_field))
@@ -663,10 +724,16 @@ class dma_base:
             return self.description
         opd_str, opd_shape_t = zip(*((x.addr_str, x.shape_str) for x in self.operands))
         res_str, res_shape_t = zip(*((x.addr_str, x.shape_str) for x in self.results))
+        attribute = ""
+        if self.attribute:
+            attribute = f" {{{self.attribute}}}"
+        actions = {"G->R": "load", "R->G": "store", "R->R": "transfer"}
+        action = actions[opd_str[0][1] + "->" + res_str[0][1]]
         return (
-            f"{', '.join(res_str)} = {self.op_name}.{self.cmd_id}"
-            + f" ({', '.join(opd_str)}, {{{self.cmd_id_dep}}}) "
-            + f"{{{self.attribute}}} : {opd_shape_t[0]} -> {res_shape_t[0]}"
+            f"{', '.join(res_str)}, %D{self.cmd_id} = \"{self.op_name}.{action}\""
+            + f"({', '.join(opd_str)}, %B{self.cmd_id_dep})"
+            + attribute
+            + f" : ({opd_shape_t[0]}, none) -> ({res_shape_t[0]}, none)"
         )
 
 

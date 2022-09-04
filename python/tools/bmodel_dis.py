@@ -202,4 +202,5 @@ if __name__ == "__main__":
     for idx, cmd in tpu_cmd.cmd:
         fmt_cmd = ["\n    " + str(x) for x in cmd.all]
         fmt_cmd = "".join(fmt_cmd) + "\n"
-        print(f"Net{tuple(idx)} {{{fmt_cmd}}}")
+        fun_name = "graph" + "".join((str(x) for x in idx))
+        print(f'func.func @"{fun_name}"() {{{fmt_cmd}}}')
