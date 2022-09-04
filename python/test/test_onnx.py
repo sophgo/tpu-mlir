@@ -18,112 +18,67 @@ import os
 import torch
 import torch.nn as nn
 import onnxruntime
-'''
-    There are 3 places to add new operator:
-      1. TEST_ONNX_IR / TEST_TORCH_IR (if the origin model is built by torch): list
-      2. ONNX_IR_TESTER.test_function: dict
-      3. for function of building new operator plz add at the tail of the class
-'''
-TEST_ONNX_IR = [
-    "AvgPool1D",
-    "Add",
-    "AvgPool2D",
-    "AvgPool3D",
-    "BroadcastAdd",
-    "BroadcastMul",
-    "Conv1d",
-    "Conv2d",
-    "Conv3d",
-    "MaxPool1D",
-    "MaxPool2D",
-    "MaxPool3D",
-    "SiLU",
-    "Concat",
-    "Transpose",
-    "LeakyRelu",
-    "Mul",
-    "MulConst",
-    "Resize",
-    "Softmax",
-    "Log",
-    #"Pad",
-    "Div",
-    #"Squeeze",
-    "Clip",
-    "Sigmoid",
-    "Slice",
-    "ConvTranspose2D",
-    "Split",
-    "ReduceMean",
-    "Scale",
-    "LSTM",
-]
-
-TEST_TORCH_IR = [
-    "LayerGroup",
-]
-
-
-def make_test_calibration_table(tensors, table_name):
-    # simple calibration table
-    with open(table_name, 'w') as f:
-        for name in tensors:
-            flatten_tensor = tensors[name].flatten()
-            max_val = max(flatten_tensor)
-            min_val = min(flatten_tensor)
-            t = 1.1 * max(abs(min_val), abs(max_val)) + 0.01
-            f.write("{} {} {} {}\n".format(name, t, min_val, max_val))
-
-
-def simple_onnx_inference(input_data, onnx_file):
-    ort_session = onnxruntime.InferenceSession(onnx_file)
-    return ort_session.run(None, input_data)
 
 
 class ONNX_IR_TESTER(object):
-    '''
-        This class is built for testing single operator transform. Currently only onnx operator is supoorted.
-    '''
-
+    # This class is built for testing single operator transform.
     def __init__(self):
         self.test_function = {
-            # Todo: add more operators
-            "Conv1d": self.test_Conv1d,
+            #############################
+            # ONNX Test Case, Alphabetically
+            #############################
             "Add": self.test_Add,
-            "BroadcastAdd": self.test_BroadcastAdd,
-            "BroadcastMul": self.test_BroadcastMul,
-            "Conv2d": self.test_Conv2d,
-            "Conv3d": self.test_Conv3d,
             "AvgPool1D": self.test_AvgPool1D,
             "AvgPool2D": self.test_AvgPool2D,
             "AvgPool3D": self.test_AvgPool3D,
+            "BroadcastAdd": self.test_BroadcastAdd,
+            "BroadcastMul": self.test_BroadcastMul,
+            "Concat": self.test_Concat,
+            "Conv1d": self.test_Conv1d,
+            "Conv2d": self.test_Conv2d,
+            "Conv3d": self.test_Conv3d,
+            "ConvTranspose2D": self.test_ConvTranspose,
+            "Clip": self.test_Clip,
+            "Div": self.test_Div,
+            "LeakyRelu": self.test_LeakyRelu,
+            "Log": self.test_Log,
+            "LSTM": self.test_LSTM,
             "MaxPool1D": self.test_MaxPool1D,
             "MaxPool2D": self.test_MaxPool2D,
             "MaxPool3D": self.test_MaxPool3D,
-            "SiLU": self.test_SiLU,
-            "Concat": self.test_Concat,
-            "Transpose": self.test_Transpose,
-            "LeakyRelu": self.test_LeakyRelu,
             "Mul": self.test_Mul,
             "MulConst": self.test_MulConst,
+            #"Pad": self.test_Pad,
             "Resize": self.test_Resize,
+            "ReduceMean": self.test_ReduceMean,
+            "SiLU": self.test_SiLU,
             "Softmax": self.test_Softmax,
-            "Log": self.test_Log,
-            "Pad": self.test_Pad,
-            "Div": self.test_Div,
-            "Squeeze": self.test_Squeeze,
-            "Clip": self.test_Clip,
+            #"Squeeze": self.test_Squeeze,
             "Sigmoid": self.test_Sigmoid,
             "Slice": self.test_Slice,
-            "ConvTranspose2D": self.test_ConvTranspose,
             "Split": self.test_Split,
-            "ReduceMean": self.test_ReduceMean,
             "Scale": self.test_Scale,
-            "LSTM": self.test_LSTM,
+            "Transpose": self.test_Transpose,
+            #############################
+            # Torch Test Case, Alphabetically
+            #############################
             "LayerGroup": self.test_LayerGroup,
         }
         self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
         #self.quant_modes = ["f16", "bf16"]  # add later
+
+    def test_single(self, case: str):
+        print("Test: {}".format(case))
+        if case in self.test_function:
+            self.test_function[case]()
+            print("====== TEST {} Success ======".format(case))
+        else:
+            raise RuntimeError("case [{}] is not exist".format(case))
+
+    def test_all(self):
+        for case in self.test_function:
+            self.test_single(case)
+        print("====== ALL TEST Success ======".format(case))
 
     def onnx_convert(self, input_data: dict, graph_def, model_name: str):
         # onnx --> mlir conversion (origin and optimized mlir models will be generated and saved)
@@ -155,7 +110,7 @@ class ONNX_IR_TESTER(object):
         tpu_mlir = "{}_{}".format(model_name, quant_mode)
         if quant_mode == "int8":
             table_name = "{}_cali_table".format(model_name)
-            make_test_calibration_table(top_mlir_outs, table_name)
+            self.make_test_calibration_table(top_mlir_outs, table_name)
             tpu_mlir += "_asym" if isAsym else "_sym"
 
         # lowering
@@ -208,8 +163,22 @@ class ONNX_IR_TESTER(object):
 
         print("[Success] test {} {}".format(model_name, msg))
 
+    def make_test_calibration_table(self, tensors, table_name):
+        # simple calibration table
+        with open(table_name, 'w') as f:
+            for name in tensors:
+                flatten_tensor = tensors[name].flatten()
+                max_val = max(flatten_tensor)
+                min_val = min(flatten_tensor)
+                t = 1.1 * max(abs(min_val), abs(max_val)) + 0.01
+                f.write("{} {} {} {}\n".format(name, t, min_val, max_val))
+
+    def simple_onnx_inference(self, input_data, onnx_file):
+        ort_session = onnxruntime.InferenceSession(onnx_file)
+        return ort_session.run(None, input_data)
+
     def torch_and_onnx_compare(self, input_data: dict, onnx_file: str, origin_output):
-        onnx_outs = simple_onnx_inference(input_data, onnx_file)
+        onnx_outs = self.simple_onnx_inference(input_data, onnx_file)
         num_outputs = len(onnx_outs)
         assert (len(origin_output) == num_outputs)
         for i in range(num_outputs):
@@ -859,19 +828,12 @@ class ONNX_IR_TESTER(object):
         test_case = "BroadcastAdd"
         input_shape = {"input1": [1, 3, 1, 27], "input2": [2, 1, 27, 1]}
         output_shape = [2, 3, 27, 27]
-        input_data = {
-            k: np.random.randn(*x).astype(np.float32) for k, x in input_shape.items()
-        }
+        input_data = {k: np.random.randn(*x).astype(np.float32) for k, x in input_shape.items()}
         inputs = [
-            helper.make_tensor_value_info(k, TensorProto.FLOAT, x)
-            for k, x in input_shape.items()
+            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
         ]
-        output = helper.make_tensor_value_info(
-            "output", TensorProto.FLOAT, output_shape
-        )
-        add_def = helper.make_node(
-            "Add", inputs=list(input_shape.keys()), outputs=["output"]
-        )
+        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
+        add_def = helper.make_node("Add", inputs=list(input_shape.keys()), outputs=["output"])
         graph_def = helper.make_graph([add_def], test_case, inputs, [output])
         self.onnx_and_test(
             input_data,
@@ -889,65 +851,49 @@ class ONNX_IR_TESTER(object):
         direction = 'forward' if num_dir == 1 else 'bidirectional'
         #layout = 0
         np.random.seed(0)
-        input_data = np.random.rand(
-            seq_length, batch_size, input_size).astype(np.float32)
-        w_data = np.random.rand(
-            num_dir, 4 * hidden_size, input_size).astype(np.float32)
-        r_data = np.random.rand(
-            num_dir, 4 * hidden_size, hidden_size).astype(np.float32)
+        input_data = np.random.rand(seq_length, batch_size, input_size).astype(np.float32)
+        w_data = np.random.rand(num_dir, 4 * hidden_size, input_size).astype(np.float32)
+        r_data = np.random.rand(num_dir, 4 * hidden_size, hidden_size).astype(np.float32)
         b_data = np.random.rand(num_dir, 8 * hidden_size).astype(np.float32)
         h0_data = np.random.rand(num_dir, batch_size, hidden_size).astype(np.float32)
         c0_data = np.random.rand(num_dir, batch_size, hidden_size).astype(np.float32)
-        input = helper.make_tensor_value_info(
-            'input', TensorProto.FLOAT, list(input_data.shape))
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, list(input_data.shape))
 
-        output = helper.make_tensor_value_info(
-            'output', TensorProto.FLOAT, [seq_length, num_dir, batch_size, hidden_size])
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT,
+                                               [seq_length, num_dir, batch_size, hidden_size])
 
         w = helper.make_tensor('w', TensorProto.FLOAT, w_data.shape, w_data)
         r = helper.make_tensor('r', TensorProto.FLOAT, r_data.shape, r_data)
         b = helper.make_tensor('b', TensorProto.FLOAT, b_data.shape, b_data)
         h0 = helper.make_tensor('h0', TensorProto.FLOAT, h0_data.shape, h0_data)
         c0 = helper.make_tensor('c0', TensorProto.FLOAT, c0_data.shape, c0_data)
-        sequence_lens = helper.make_tensor('sequence_lens', TensorProto.FLOAT, dims = [], vals = [seq_length])
+        sequence_lens = helper.make_tensor('sequence_lens',
+                                           TensorProto.FLOAT,
+                                           dims=[],
+                                           vals=[seq_length])
 
         node_def = onnx.helper.make_node(
             "LSTM",
-            inputs = ['input', 'w', 'r', 'b', '', 'h0', 'c0'],
-            outputs = ['output'],
-            direction = direction,
-            hidden_size = hidden_size,
+            inputs=['input', 'w', 'r', 'b', '', 'h0', 'c0'],
+            outputs=['output'],
+            direction=direction,
+            hidden_size=hidden_size,
         )
-        graph_def = helper.make_graph(
-            [node_def],
-            test_case,
-            [input],
-            [output],
-            initializer = [w, r, b, sequence_lens, h0, c0]
-        )
-        self.onnx_and_test(
-            {'input': input_data},
-            graph_def,
-            test_case
-        )
+        graph_def = helper.make_graph([node_def],
+                                      test_case, [input], [output],
+                                      initializer=[w, r, b, sequence_lens, h0, c0])
+        self.onnx_and_test({'input': input_data}, graph_def, test_case)
 
     def test_BroadcastMul(self):
         test_case = "BroadcastMul"
         input_shape = {"input1": [1, 3, 1, 27], "input2": [2, 1, 27, 1]}
         output_shape = [2, 3, 27, 27]
-        input_data = {
-            k: np.random.randn(*x).astype(np.float32) for k, x in input_shape.items()
-        }
+        input_data = {k: np.random.randn(*x).astype(np.float32) for k, x in input_shape.items()}
         inputs = [
-            helper.make_tensor_value_info(k, TensorProto.FLOAT, x)
-            for k, x in input_shape.items()
+            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
         ]
-        output = helper.make_tensor_value_info(
-            "output", TensorProto.FLOAT, output_shape
-        )
-        add_def = helper.make_node(
-            "Mul", inputs=list(input_shape.keys()), outputs=["output"]
-        )
+        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
+        add_def = helper.make_node("Mul", inputs=list(input_shape.keys()), outputs=["output"])
         graph_def = helper.make_graph([add_def], test_case, inputs, [output])
         self.onnx_and_test(
             input_data,
@@ -955,14 +901,12 @@ class ONNX_IR_TESTER(object):
             test_case,
         )
 
+
 if __name__ == "__main__":
     tester = ONNX_IR_TESTER()
     os.makedirs("onnx_test", exist_ok=True)
     os.chdir("onnx_test")
     if len(sys.argv) == 2:
-        tester.test_function[sys.argv[1]]()
+        tester.test_single(sys.argv[1])
     else:
-        for IR in [TEST_ONNX_IR, TEST_TORCH_IR]:
-            for test_item in IR:
-                tester.test_function[test_item]()
-                print("====== TEST {} Success ======".format(test_item))
+        tester.test_all()

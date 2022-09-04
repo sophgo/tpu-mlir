@@ -108,7 +108,7 @@ class OnnxConverter(BaseConverter):
         self.preprocess_args = preprocess_args
 
         self.onnxop_factory = {
-            #pls add the Op according to the Op's alphabetical order as below
+            #pls add the Op alphabetically
             "Add": lambda node: self.convert_add_op(node),
             "AveragePool": lambda node: self.convert_avgpool_op(node),
             "BatchNormalization": lambda node: self.convert_batchnorm_op(node),
@@ -125,10 +125,11 @@ class OnnxConverter(BaseConverter):
             "GlobalMaxPool": lambda node: self.convert_global_maxpool_op(node),
             "LeakyRelu": lambda node: self.convert_leaky_relu_op(node),
             "Log": lambda node: self.convert_log_op(node),
+            "LSTM": lambda node: self.convert_lstm_op(node),
             "MaxPool": lambda node: self.convert_maxpool_op(node),
             "Mul": lambda node: self.convert_mul_op(node),
             "Pad": lambda node: self.convert_pad_op(node),
-            "ReduceMean": lambda node: self.convert_reduce_op(node),  #
+            "ReduceMean": lambda node: self.convert_reduce_op(node),
             "Relu": lambda node: self.convert_relu_op(node),
             "Reshape": lambda node: self.convert_reshape_op(node),
             "Resize": lambda node: self.convert_resize_op(node),
@@ -139,7 +140,6 @@ class OnnxConverter(BaseConverter):
             "Split": lambda node: self.convert_split_op(node),
             "Transpose": lambda node: self.convert_transpose_op(node),
             "Unsqueeze": lambda node: self.convert_unsqueeze_op(node),
-            "LSTM": lambda node: self.convert_lstm_op(node),
         }
 
     def __del__(self):
