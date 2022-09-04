@@ -74,13 +74,29 @@ Algorithm Implementation
 KLD Algorithm
 ~~~~~~~~~~~~~~~~
 
-The KLD algorithm implemented by tpu-mlir refers to the implementation of tensorRT. In essence, it cuts off some high-order outliers (the intercepted position is fixed at 128 bin, 256bin ... until 2048 bin) from the waveform of abs (fp32_tensor) (represented by the histogram of 2048 fp32 bins) to get the fp32 reference probability distribution P. This fp32 waveform is expressed in terms of 128 ranks of int8 type. By merging multiple adjacent bins (e.g., 256 bins are 2 adjacent fp32 bins) into 1 rank of int8 values, calculating the distribution probability, and then expanding bins to ensure the same length as P, the probability distribution Q of the quantized int8 values can be got. The KL divergences of P and Q are calculated for the interception positions of 128bin, 256bin, ..., and 2048 bin, respectively in each loop until the interception with the smallest divergence is found. Interception here means the probability distribution of fp32 can be best simulated with the 128 quantization levels of int8. Therefore, it is most appropriate to set the quantization threshold here. The pseudo-code for the implementation of the KLD algorithm is shown in the figure (:ref:`kld_flow`).
+The KLD algorithm implemented by tpu-mlir refers to the implementation of tensorRT. In essence, it cuts off some high-order outliers (the intercepted position is fixed at 128 bin, 256bin ... until 2048 bin) from the waveform of abs (fp32_tensor) (represented by the histogram of 2048 fp32 bins) to get the fp32 reference probability distribution P. This fp32 waveform is expressed in terms of 128 ranks of int8 type. By merging multiple adjacent bins (e.g., 256 bins are 2 adjacent fp32 bins) into 1 rank of int8 values, calculating the distribution probability, and then expanding bins to ensure the same length as P, the probability distribution Q of the quantized int8 values can be got. The KL divergences of P and Q are calculated for the interception positions of 128bin, 256bin, ..., and 2048 bin, respectively in each loop until the interception with the smallest divergence is found. Interception here means the probability distribution of fp32 can be best simulated with the 128 quantization levels of int8. Therefore, it is most appropriate to set the quantization threshold here. The pseudo-code for the implementation of the KLD algorithm is shown below:
 
-.. _kld_flow:
-.. figure:: ../assets/kld.jpg
-   :align: center
 
-   The pseudo-code of KLD algorithm
+.. code-block:: console
+   :linenos:
+
+   the pseudocode of computing int8 quantize threshold by kld:
+       Prepare fp32 histogram H with 2048 bins
+       compute the absmax of fp32 value
+
+       for i in range(128,2048,128):
+         Outliers_num=sum(bin[i], bin[i+1],…, bin[2047])
+         Fp32_distribution=[bin[0], bin[1],…, bin[i-1]+Outliers_num]
+         Fp32_distribution/= sum(Fp32_distribution)
+
+         int8_distribution = quantize [bin[0], bin[1],…, bin[i]] into 128 quant level
+         expand int8_distribution to i bins
+         int8_distribution /= sum(int8_distribution)
+         kld[i] = KLD(Fp32_distribution, int8_distribution)
+       end for
+
+       find i which kld[i] is minimal
+       int8 quantize threshold = (i + 0.5)*fp32 absmax/2048
 
 
 

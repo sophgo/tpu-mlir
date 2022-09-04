@@ -489,21 +489,6 @@ def Top_LeakyReluOp : Top_Op<"LeakyRelu", [InOutSameShape]> {
   let results = (outs AnyTenor:$output);
 }
 
-def Top_DropoutOp : Top_Op<"Dropout", [InOutSameShape]> {
-  let summary = "Dropout operation";
-  let description = [{
-    During evaluation or test, DropoutOp is just like an IdentityOp,
-    transferring input to output without any changes.
-    Argument `ratio` is only used during training.
-  }];
-  let arguments = (ins
-    AnyTensor:$input,
-    F64Attr:$ratio
-  );
-  let results = (outs AnyTensor:$output);
-  let hasCanonicalizer = 1;
-}
-
 def Top_UpsampleOp : Top_Op<"Upsample", [SupportFuseRelu]> {
   let summary = "Upsample operation";
   let description = [{
