@@ -1,7 +1,7 @@
 GMEM分配
 ============
 
-1. 目的
+目的
 -------------------------
 为了节约global memory空间,最大程度复用内存空间,分配顺序:weight tensor、根据生命周期给全部global neuron tensor分配gmem,在分配过程中会复用已分配gmem
 
@@ -11,13 +11,13 @@ GMEM分配
     如果是layer Group,只有layer Group的input/output tensor
     属于global neuron tensor.
 
-2.原理
+原理
 -------------------------
-2.1. weight tensor分配gmem
+weight tensor分配gmem
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 遍历所有WeigthOp,依次分配,4K地址对齐,地址空间不断累加
 
-2.2. global neuron tensors分配gmem
+global neuron tensors分配gmem
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     最大可能的复用内存空间,根据生命周期给全部global neuron tensor分配,在分配过程中会复用已分配gmem.
 

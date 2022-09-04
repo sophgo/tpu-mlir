@@ -100,23 +100,25 @@ tpu-mlir实现的kld算法参考tensorRT的实现，本质上是将abs(fp32_tens
 
 .. code-block:: console
    :linenos:
+
    the pseudocode of computing int8 quantize threshold by kld:
        Prepare fp32 histogram H with 2048 bins
-       compute the absmax of fp32 value 
-       
+       compute the absmax of fp32 value
+
        for i in range(128,2048,128):
          Outliers_num=sum(bin[i], bin[i+1],…, bin[2047])
          Fp32_distribution=[bin[0], bin[1],…, bin[i-1]+Outliers_num]
          Fp32_distribution/= sum(Fp32_distribution)
-         
+
          int8_distribution = quantize [bin[0], bin[1],…, bin[i]] into 128 quant level
          expand int8_distribution to i bins
          int8_distribution /= sum(int8_distribution)
          kld[i] = KLD(Fp32_distribution, int8_distribution)
        end for
-       
+
        find i which kld[i] is minimal
        int8 quantize threshold = (i + 0.5)*fp32 absmax/2048
+
 
 auto-tune算法
 ~~~~~~~~~~~~~~~~

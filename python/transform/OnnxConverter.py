@@ -645,13 +645,7 @@ class OnnxConverter(BaseConverter):
     def convert_dropout_op(self, onnx_node):
         assert (onnx_node.op_type == "Dropout")
         op = self.getOperand(onnx_node.inputs[0])
-        p = {
-            'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
-            'ratio': onnx_node.attrs.get("ratio", 0.5)
-        }
-        output_shape = self.getShape(onnx_node.name)
-        new_op = self.mlir.create_dropout_op([op], output_shape, **p)
-        self.addOperand(onnx_node.name, new_op)
+        self.addOperand(onnx_node.name, op)
 
     def convert_relu_op(self, onnx_node):
         assert (onnx_node.op_type == "Relu")

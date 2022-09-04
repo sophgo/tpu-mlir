@@ -61,3 +61,4 @@ TPU-MLIR开发参考手册
    10_layergroup
    11_memassign
    12_codegen
+   13_mlir_define
