@@ -43,7 +43,7 @@ class CaffeConverter(BaseConverter):
         self.preprocess_args = preprocess_args
 
         self.caffeop_factory = {
-            #pls add the Op according to the Op's alphabetical order as below
+            #pls add the Op alphabetically
             'BatchNorm': lambda layer: self.convert_batchnorm_op(layer),
             'BN': lambda layer: self.convert_bn_op(layer),
             'Concat': lambda layer: self.convert_concat_op(layer),
