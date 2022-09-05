@@ -69,3 +69,31 @@ LogicalResult tpu::MulOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+LogicalResult tpu::MulOp::LocalGenSupport() {
+  // BackwardH and BackwardN can not handle more than one input right now.
+  // The same n_slice and h_slice value will propagate to each inputs.
+  // Thus, the local layer is only safe when we do not need to slice n and h
+  // dimensions.
+  auto out_shape = Module::getShape(output());
+  auto lhs_shape = Module::getShape(inputs()[0]);
+  auto rhs_shape = Module::getShape(inputs()[1]);
+  if (getOperand(1).getDefiningOp() &&
+      isa<top::WeightOp>(getOperand(1).getDefiningOp()))
+    return failure();
+  // left align
+  switch (out_shape.size()) {
+  case 2:
+    if (lhs_shape[0] != rhs_shape[0])
+      return failure();
+  case 3:
+  case 4:
+    if (lhs_shape[0] != rhs_shape[0])
+      return failure();
+    if (lhs_shape[2] != rhs_shape[2])
+      return failure();
+  default:
+    success();
+  }
+  return success();
+}

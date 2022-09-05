@@ -57,10 +57,10 @@ void tpu::MulOp::codegen_global_bm1684x() {
   param.binary_type = BINARY_MUL;
   param.if_relu = do_relu();
   param.relu_upper_limit = relu_limit().convertToDouble();
-  param.rshift_A = multiplier();
-  param.rshift_B = 1;
-  param.scale_A = rshift();
-  param.scale_B = 0;
+  param.rshift_A = rshift();
+  param.rshift_B = 0;
+  param.scale_A = multiplier();
+  param.scale_B = 1;
   auto op = getOperation();
   auto input_spec = BM1684x::get_input_spec(op);
   auto output_spec = BM1684x::get_output_spec(op);

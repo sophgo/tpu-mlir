@@ -35,6 +35,7 @@ class ONNX_IR_TESTER(object):
             "BroadcastMul": self.test_BroadcastMul,
             "Concat": self.test_Concat,
             "Conv1d": self.test_Conv1d,
+            "BroadcastMulConst": self.test_BroadcastMulConst,
             "Conv2d": self.test_Conv2d,
             "Conv3d": self.test_Conv3d,
             "ConvTranspose2D": self.test_ConvTranspose,
@@ -892,14 +893,56 @@ class ONNX_IR_TESTER(object):
         inputs = [
             helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
         ]
-        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
-        add_def = helper.make_node("Mul", inputs=list(input_shape.keys()), outputs=["output"])
-        graph_def = helper.make_graph([add_def], test_case, inputs, [output])
+        output = helper.make_tensor_value_info(
+            "output", TensorProto.FLOAT, output_shape
+        )
+        mul_def = helper.make_node(
+            "Mul", inputs=list(input_shape.keys()), outputs=["output"]
+        )
+        graph_def = helper.make_graph([mul_def], test_case, inputs, [output])
         self.onnx_and_test(
             input_data,
             graph_def,
             test_case,
         )
+
+    def test_BroadcastMulConst(self):
+        test_case = "BroadcastMulConst"
+        input_shape = [1, 127, 270, 28]
+        constant_shape = [2, 1, 1, 28]
+        output_shape = [2, 127, 270, 28]
+
+        input_data = {"input": np.random.randn(*input_shape).astype(np.float32)}
+        inputs = helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape)
+        constant = helper.make_tensor(
+            "constant",
+            TensorProto.FLOAT,
+            constant_shape,
+            np.random.randn(*constant_shape).astype(np.float32),
+
+        )
+        output = helper.make_tensor_value_info(
+            "output", TensorProto.FLOAT, output_shape
+        )
+        sigmoid_def = helper.make_node(
+            "Sigmoid",
+            inputs=['input'],
+            outputs=['sigmoid'],
+        )
+        mul_def = helper.make_node(
+            "Mul", inputs=["sigmoid", "constant"], outputs=["output"]
+        )
+
+        graph_def = helper.make_graph(
+            [sigmoid_def, mul_def], test_case, [inputs], [output], initializer=[constant]
+        )
+        self.onnx_and_test(
+            input_data,
+            graph_def,
+            test_case,
+        )
+
+
 
 if __name__ == "__main__":
     tester = ONNX_IR_TESTER()
