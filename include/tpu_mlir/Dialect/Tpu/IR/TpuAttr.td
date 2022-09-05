@@ -24,7 +24,8 @@ def Tpu_LayerGroupAttr :
     StructFieldAttr<"h_slice", I64ArrayAttr>,
     StructFieldAttr<"n_idx", I64ArrayAttr>,
     StructFieldAttr<"n_slice", I64ArrayAttr>,
-    StructFieldAttr<"timestep", I64Attr>,
+    StructFieldAttr<"id", I64Attr>,
+    StructFieldAttr<"stage", I64Attr>,
 ]> {
   let summary = "Structure of layer group parameters";
 }

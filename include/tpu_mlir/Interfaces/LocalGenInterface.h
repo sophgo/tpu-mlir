@@ -24,7 +24,8 @@ typedef struct {
   int64_t n_slice;
   int64_t h_idx;
   int64_t h_slice;
-  int64_t timestep;
+  int64_t id;
+  int64_t stage;
   bool eu_align;
   bool overstepped;
 } group_info_t;

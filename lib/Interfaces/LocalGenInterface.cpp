@@ -40,11 +40,12 @@ group_info_t LocalGenInterface::getGroupInfo(mlir::Operation *op,
   auto g_param = op->getAttr(LocalGenInterface::kLayerGroupAttrName)
                      .cast<tpu::LayerGroup>();
   group_info_t ginfo = {0};
+  ginfo.id = g_param.id().getInt();
+  ginfo.stage = g_param.stage().getInt();
   ginfo.out_addr = g_param.out_addr().getInt();
   ginfo.out_size = g_param.out_size().getInt();
   ginfo.buffer_addr = g_param.buffer_addr().getInt();
   ginfo.buffer_size = g_param.buffer_size().getInt();
-  ginfo.timestep = g_param.timestep().getInt();
   ginfo.eu_align = g_param.eu_align().getValue();
   auto n_idx_v = Module::getI64Array(g_param.n_idx());
   auto n_slice_v = Module::getI64Array(g_param.n_slice());
