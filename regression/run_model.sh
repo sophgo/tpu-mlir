@@ -153,7 +153,7 @@ model_deploy.py \
   --chip bm1684x \
   ${test_innpz_opt} \
   ${test_reference_opt} \
-  --tolerance 0.99,0.70 \
+  --tolerance 0.98,0.70 \
   --model ${model_name}_bm1684x_bf16.bmodel
 fi
 #########################
