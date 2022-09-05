@@ -11,23 +11,23 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
-#include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Builder/bmodel.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
+#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
+#include "mlir/Dialect/Quant/QuantTypes.h"
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/IR/PatternMatch.h"
-#include "mlir/Dialect/Quant/QuantTypes.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
-#include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Format.h"
+#include "llvm/Support/raw_ostream.h"
 
-#include <sstream>
 #include <fstream>
 #include <set>
+#include <sstream>
 
 using namespace llvm;
 using namespace mlir;
@@ -259,31 +259,93 @@ CodegenPass::CreateCmdGroupVector() {
 void CodegenPass::codegen_for_group(tpu::GroupOp gOp) {
   auto nsecs = gOp.nsecs();
   auto hsecs = gOp.hsecs();
+  auto swpipl_stage_num = gOp.swpipl_stage_num();
   auto &body = gOp.body().front();
+  auto flow = Module::getI64Array(gOp.flow());
+  // 1. restore timestep_table from flow
+  std::vector<std::vector<int64_t>> timestep_table;
+  std::vector<int64_t> ts_row;
+  int64_t max_id = 0;
+  for (size_t i = 1; i < flow->size(); ++i) {
+    if (flow->at(i) < 0) {
+      timestep_table.push_back(ts_row);
+      ts_row.clear();
+      continue;
+    }
+    ts_row.push_back(flow->at(i));
+    max_id = std::max(max_id, flow->at(i));
+  }
+  timestep_table.push_back(ts_row);
+  int timestep_num = timestep_table.size();
+  // 2. create a vector to map id to op
+  std::vector<Operation*> group_ops;
+  for (int64_t id = 0; id < max_id;) {
+    body.walk([&](Operation *op) {
+      if (auto lgOp = dyn_cast<LocalGenInterface>(op)) {
+        auto ginfo = lgOp.getGroupInfo((int64_t)0, (int64_t)0);
+        if (ginfo.id == id) {
+          group_ops.push_back(op);
+          id++;
+        }
+      }
+    });
+  }
+  // 3. codegen for group
   int64_t timestep = 0;
-  bm168x->divide_sync_id();
-  for (uint64_t nstep = 0; nstep < nsecs; nstep++) {
-    for (uint64_t hstep = 0; hstep < hsecs; hstep++) {
-      body.walk([&](LocalGenInterface lgOp) {
+  int64_t stage_idx = 0;
+  int64_t draining_idx = 0;
+  bool draining_period = false;
+  SoftwarePipeline timestep_swpipl;
+  for (uint64_t nstep = 0, hstep = 0; nstep < nsecs || draining_period;) {
+    /* add for software pipeline */
+    timestep_swpipl.write_swloop_buffer(nstep, hstep, swpipl_stage_num);
+    for (uint32_t ts = 0; ts < timestep_num; ++ts) {
+      bm168x->divide_sync_id();
+
+      auto cur_op_ids = timestep_table[ts];
+      for (auto id : cur_op_ids) {
+        auto lgOp = cast<LocalGenInterface>(group_ops[id]);
         auto ginfo = lgOp.getGroupInfo(nstep, hstep);
+        if ((!draining_period && ginfo.stage > stage_idx) ||
+            (draining_period &&
+             (ginfo.stage < draining_idx || ginfo.stage > stage_idx))) {
+          continue;
+        }
+        const tensor_step_t *tensor_step =
+            timestep_swpipl.read_swloop_buffer(ginfo.stage);
+        ginfo = lgOp.getGroupInfo(tensor_step->nstep, tensor_step->hstep);
         if (ginfo.overstepped == false) {
-          if (ginfo.timestep != timestep) {
-            bm168x->merge_sync_id();
-            bm168x->divide_sync_id();
-            timestep = ginfo.timestep;
-          }
           if (chip == Module::Chip::BM1684) {
-            lgOp.codegen_local_bm1684(nstep, hstep);
+            lgOp.codegen_local_bm1684(tensor_step->nstep, tensor_step->hstep);
           } else if (chip == Module::Chip::BM1684x) {
-            lgOp.codegen_local_bm1684x(nstep, hstep);
+            lgOp.codegen_local_bm1684x(tensor_step->nstep, tensor_step->hstep);
           } else {
             llvm_unreachable("chip not support");
           }
         }
-      });
+      } // ops, include Load/Store op
+
+      bm168x->merge_sync_id();
+    } // timestep
+
+    if (!draining_period) {
+      hstep++;
+      if (hstep >= hsecs) {
+        hstep = 0;
+        nstep++;
+        if (nstep >= nsecs) {
+          draining_period = true;
+        }
+      }
     }
+    if (draining_period) {
+      draining_idx++;
+      if (draining_idx >= swpipl_stage_num) {
+        draining_period = false;
+      }
+    }
+    stage_idx++;
   }
-  bm168x->merge_sync_id();
 }
 
 void CodegenPass::codegen(Operation *op) {
