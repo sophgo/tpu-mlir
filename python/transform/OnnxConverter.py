@@ -379,7 +379,11 @@ class OnnxConverter(BaseConverter):
                 self.addOperand(onnx_node.name, scale_op)
                 return
             else:
-                raise RuntimeError("To support adding with weight")
+                const_op = self.getWeightOp(onnx_node.inputs[1])
+                p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+                scale_op = self.mlir.create_add_op([op0, const_op], output_shape, **p)
+                self.addOperand(onnx_node.name, scale_op)
+                return
         op0 = self.getOperand(onnx_node.inputs[0])
         op1 = self.getOperand(onnx_node.inputs[1])
         p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
@@ -633,6 +637,11 @@ class OnnxConverter(BaseConverter):
                 scale_op = self.mlir.create_scale_op([op0, weight_op, offset_op], output_shape, **p)
                 self.addOperand(onnx_node.name, scale_op)
                 return
+            const_op = self.getWeightOp(onnx_node.inputs[1])
+            p = {'name': name}
+            scale_op = self.mlir.create_mul_op([op0, const_op], output_shape, **p)
+            self.addOperand(onnx_node.name, scale_op)
+            return
         else:
             op0 = self.getOperand(onnx_node.inputs[0])
             op1 = self.getOperand(onnx_node.inputs[1])

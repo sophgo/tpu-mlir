@@ -196,7 +196,7 @@ def Tpu_AvgPool3DOp:Tpu_PoolOp<"AvgPool3D"> {
 }
 
 def Tpu_AddOp: Tpu_Op<"Add", [SupportFuseRelu, InOutSameDim,
-  DeclareOpInterfaceMethods<LocalGenInterface>]> {
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
   let summary = "add operator";
 
   let description = [{
@@ -219,7 +219,7 @@ def Tpu_AddOp: Tpu_Op<"Add", [SupportFuseRelu, InOutSameDim,
 }
 
 def Tpu_MulOp: Tpu_Op<"Mul", [SupportFuseRelu, InOutSameDim,
-  DeclareOpInterfaceMethods<LocalGenInterface>]> {
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
   let summary = "mul operator";
 
   let description = [{
