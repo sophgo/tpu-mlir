@@ -116,7 +116,7 @@ model_transform.py \
 | **参数名**           | 必选？ | **说明**            |
 | ------------------- | ----- | ------------------- |
 | model_name          | 是    | 指定模型名称          |
-| model_def           | 是    | 指定输入文件用于验证，可以是图片或npy或npz；可以不指定，则不会正确性验证 |
+| model_def           | 是    | 指定模型文件("*.onnx, *.tflite") |
 | input_shapes        | 否    | 指定输入的shape，例如[[1,3,640,640]]；二维数组，可以支持多输入情况 |
 | resize_dims         | 否    | 原始图片需要resize之后的尺寸；如果不指定，则resize成模型的输入尺寸 |
 | keep_aspect_ratio   | 否    | 在Resize时是否保持长宽比，默认为false；设置时会对不足部分补0 |
