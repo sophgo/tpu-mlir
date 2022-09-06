@@ -17,7 +17,7 @@ Calibration
 文件来进行后续的int8量化，总体过程如(:ref:`cali_process_flow`)图
 
 .. _cali_process_flow:
-.. figure:: ../assets/cali_process.png
+.. figure:: ../assets/cali_process_cn.png
    :align: center
 
    量化总体过程
@@ -138,7 +138,7 @@ auto-tune算法
 根据实验证明，取最大值能兼顾两者；
 
 .. _auto_tune_flow:
-.. figure:: ../assets/auto_tune.png
+.. figure:: ../assets/auto_tune_cn.png
    :align: center
 
    auto-tune调优实现方案
