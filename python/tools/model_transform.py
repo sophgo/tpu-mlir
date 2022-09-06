@@ -133,7 +133,8 @@ class TFLiteTransformer(ModelTransformer):
 
     def origin_inference(self, inputs: dict):
         from tools.model_runner import tflite_inference
-        return tflite_inference(inputs, self.converter.tflite_file)
+        is_nchw = self.converter.preprocess_args['channel_format'] == 'nchw'
+        return tflite_inference(inputs, self.converter.tflite_file, input_is_nchw=is_nchw)
 
 
 def str2shape(v):
