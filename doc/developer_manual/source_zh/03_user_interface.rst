@@ -63,7 +63,7 @@ model_transform.py
 
 
 .. list-table:: model_transform 参数功能
-   :widths: 20 10 50
+   :widths: 20 12 50
    :header-rows: 1
 
    * - 参数名
@@ -123,7 +123,7 @@ run_calibration.py
 支持的参数如下：
 
 .. list-table:: run_calibration 参数功能
-   :widths: 20 10 50
+   :widths: 20 12 50
    :header-rows: 1
 
    * - 参数名
