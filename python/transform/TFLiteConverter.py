@@ -237,6 +237,8 @@ class TFLiteConverter(BaseConverter):
             self.__nhwc2nchw(x)
         for x in self.graph.outputs:
             self.__nhwc2nchw(x)
+        self.input_names = [x.name for x in self.graph.inputs]
+        self.output_names = [x.name for x in self.graph.outputs]
         self.input_shapes = [x.shape for x in self.graph.inputs]
         self.output_shapes = [x.shape for x in self.graph.outputs]
         self.mlir = MLIRImporter(

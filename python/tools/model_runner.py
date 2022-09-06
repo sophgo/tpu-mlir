@@ -36,7 +36,7 @@ def model_inference(inputs: dict, model_file: str) -> dict:
             raise ValueError("unknown type: form {inputs[i.name].dtype} to {i.data.dtype}")
     net.forward()
     for i in net.outputs:
-        if i.data.dtype == np.int8 and i.qscale != 0:
+        if (i.data.dtype == np.int8 or i.data.dtype == np.uint8) and i.qscale != 0:
             outputs[i.name] = np.array(i.data.astype(np.float32) * i.qscale, dtype=np.float32)
         else:
             outputs[i.name] = np.array(i.data)
@@ -49,7 +49,8 @@ def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True) -> dict:
     module.load(mlir_file)
     for name in module.input_names:
         assert (name in inputs)
-        module.set_tensor(name, inputs[name])
+        input = inputs[name].astype(np.float32)
+        module.set_tensor(name, input)
     module.invoke()
     tensors = module.get_all_tensor()
     if dump_all:
@@ -63,13 +64,15 @@ def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True) -> dict:
 def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
     import onnx
     import onnxruntime
+
     def generate_onnx_with_all(onnx_file: str):
         # for dump all activations
         # plz refre https://github.com/microsoft/onnxruntime/issues/1455
         output_keys = []
         model = onnx.load(onnx_file)
         no_list = [
-            "Cast", "Shape", "Unsqueeze", "Gather", "Split", "Constant", "GRU", "Sqrt", "ReduceMean", "Pow", "Sub", "Dropout", "Loop", "TopK"
+            "Cast", "Shape", "Unsqueeze", "Gather", "Split", "Constant", "GRU", "Sqrt",
+            "ReduceMean", "Pow", "Sub", "Dropout", "Loop", "TopK"
         ]
 
         # tested commited #c3cea486d https://github.com/microsoft/onnxruntime.git
@@ -85,6 +88,7 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
         dump_all_tensors_onnx = onnx_file.replace('.onnx', '_all.onnx', 1)
         onnx.save(model, dump_all_tensors_onnx)
         return output_keys, dump_all_tensors_onnx
+
     output_keys = []
     if dump_all:
         output_keys, onnx_file = generate_onnx_with_all(onnx_file)
@@ -112,10 +116,11 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
         os.remove(onnx_file)
         return dict(zip(output_keys, map(np.ndarray.flatten, outs)))
 
+
 def caffe_inference(inputs: dict, prototxt: str, caffemodel: str, dump_all: bool = True) -> dict:
     import caffe
     net = caffe.Net(prototxt, caffemodel, caffe.TEST)
-    for in_ in  net.inputs:
+    for in_ in net.inputs:
         if in_ not in inputs:
             raise RuntimeError("inputs have no name [{}]".format(in_))
         net.blobs[in_].reshape(*inputs[in_].shape)
@@ -182,7 +187,8 @@ def tflite_inference(
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True, help="input npz file")
-    parser.add_argument("--model", type=str, required=True, help="mlir/onnx/tflie/bmodel/prototxt file.")
+    parser.add_argument("--model", type=str, required=True,
+                        help="mlir/onnx/tflie/bmodel/prototxt file.")
     parser.add_argument("--weight", type=str, default="", help="caffemodel for caffe")
     parser.add_argument("--output", default='_output.npz', help="output npz file")
     parser.add_argument("--dump_all_tensors",

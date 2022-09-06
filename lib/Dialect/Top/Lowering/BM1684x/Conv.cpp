@@ -318,10 +318,10 @@ Value top::ConvOp::lowering_quant_bm1684x() {
   builder.setInsertionPointAfter(op);
   std::vector<Value> operands;
   operands.push_back(input());
-  // auto filter_stype = Module::getStorageType(filter());
-  // auto filter_new_type =
-  //     RankedTensorType::get(filter_type.getShape(), filter_stype);
-  // filter().setType(filter_new_type);
+  auto filter_stype = Module::getStorageType(filter());
+  auto filter_new_type =
+      RankedTensorType::get(filter_type.getShape(), filter_stype);
+  filter().setType(filter_new_type);
   operands.push_back(filter());
 
   std::vector<NamedAttribute> attrs;
@@ -376,6 +376,9 @@ Value top::ConvOp::lowering_quant_bm1684x() {
     with_bias = false;
     operands.push_back(bias());
   }
+  if (filter_zeroPoint)
+    attrs.push_back(
+        builder.getNamedAttr("kernel_zp", builder.getI64IntegerAttr(filter_zeroPoint)));
   attrs.push_back(
       builder.getNamedAttr("with_bias", builder.getBoolAttr(with_bias)));
   auto newType =
