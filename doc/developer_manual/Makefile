@@ -5,10 +5,10 @@ module_name := TPU-MLIR
 output_file_prefix := tpu-mlir_developer_manual
 
 SOURCEDIR_en     = source_en
-pdf_name_en      = TPU-MLIR Development Reference Manual.pdf
+pdf_name_en      = tpu-mlir_developer_manual_en.pdf
 
 SOURCEDIR_zh    = source_zh
-pdf_name_zh      = TPU-MLIR开发参考手册.pdf
+pdf_name_zh      = tpu-mlir_developer_manual_zh.pdf
 
 SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build

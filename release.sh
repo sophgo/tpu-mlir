@@ -30,8 +30,16 @@ pushd ${PROJECT_ROOT}/doc/developer_manual
 make clean
 make pdf
 popd
-cp -f ${PROJECT_ROOT}/doc/developer_manual/build/tpu-mlir_developer_manual_zh.pdf \
+cp -f ${PROJECT_ROOT}/doc/developer_manual/build_zh/tpu-mlir_developer_manual_zh.pdf \
    ${release_archive}/docs/"TPU-MLIR开发参考手册.pdf"
+
+pushd ${PROJECT_ROOT}/doc/developer_manual
+make clean
+make pdf
+popd
+cp -f ${PROJECT_ROOT}/doc/developer_manual/build_en/tpu-mlir_developer_manual_en.pdf \
+   ${release_archive}/docs/"TPU-MLIR Development Reference Manual.pdf"
+
 # ------------------------------------------------------------------------------
 
 # build a envsetup.sh
