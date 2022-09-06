@@ -114,7 +114,7 @@ html_static_path = ['../assets']
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = "TPU-MLIR Developer Manual"
+htmlhelp_basename = "TPU-MLIR Development Reference Manual"
 
 
 # 图片和表格自动编号

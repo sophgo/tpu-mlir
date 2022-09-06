@@ -63,7 +63,7 @@ Used to convert various neural network models into MLIR files, the supported par
 
 
 .. list-table:: Function of model_transform parameters
-   :widths: 20 10 50
+   :widths: 20 12 50
    :header-rows: 1
 
    * - Name
@@ -123,7 +123,7 @@ Use a small number of samples for calibration to get the quantization table of t
 Supported parameters:
 
 .. list-table:: Function of run_calibration parameters
-   :widths: 20 10 50
+   :widths: 20 12 50
    :header-rows: 1
 
    * - Name
@@ -160,7 +160,7 @@ Convert the mlir file into the corresponding model, the parameters are as follow
 
 
 .. list-table:: Function of model_deploy parameters
-   :widths: 18 10 50
+   :widths: 18 12 50
    :header-rows: 1
 
    * - Name
@@ -219,7 +219,7 @@ Example:
 Supported parameters:
 
 .. list-table:: Function of model_runner parameters
-   :widths: 18 10 50
+   :widths: 18 12 50
    :header-rows: 1
 
    * - Name
