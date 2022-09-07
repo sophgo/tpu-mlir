@@ -260,7 +260,7 @@ class SimpleTuner:
             refcount = self.ref_activations[i][input_op][1]
             if i == 0:
                 tmp += '\nits input:{}, refcount:{}'.format(input_op, refcount)
-            self.module.set_tensor(input_op, data)
+            self.module.set_tensor(input_op, data, False)
         if len(input_ops) > 0:
             value = self.module.invoke_at(op_name)
             count = self.module_parsered.get_user_count_by_op_name(op_name)
@@ -502,7 +502,7 @@ class ActivationCalibrator(BaseKldCalibrator):
             if data.lower().endswith('.npz'):
                 x = np.load(data)
                 for k, v in x.items():
-                    self.module.set_tensor(k, v)
+                    self.module.set_tensor(k, v, False)
                 self.module.invoke()
             elif data.lower().endswith('.jpg') or data.lower().endswith('.jpeg'):
                 inputs = data.split(',')
@@ -513,7 +513,7 @@ class ActivationCalibrator(BaseKldCalibrator):
                     batched_inputs[i] += '{},'.format(inputs[i])
                     if idx == self.batch_size:
                         x = self.ppa_list[i].run(batched_inputs[i][:-1])
-                        self.module.set_tensor(self.ppa_list[i].input_name, x)
+                        self.module.set_tensor(self.ppa_list[i].input_name, x, False)
                 if idx == self.batch_size:
                     self.module.invoke()
                     idx = 0
@@ -525,7 +525,7 @@ class ActivationCalibrator(BaseKldCalibrator):
                 for name, input in zip(self.module.input_names, inputs):
                     assert (input.lower().endswith('.npy'))
                     x = np.load(input)
-                    self.module.set_tensor(name, x)
+                    self.module.set_tensor(name, x, False)
                 self.module.invoke()
             activations = self.module.get_all_tensor()
             self.find_min_max_abs_per_input(activations)

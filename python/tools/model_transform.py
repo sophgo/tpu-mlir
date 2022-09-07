@@ -18,6 +18,7 @@ from utils.mlir_parser import *
 from utils.preprocess import get_preprocess_parser, preprocess
 import pymlir
 
+
 def show_fake_cmd(in_npz: str, model: str, out_npz: str):
     print("[CMD]: model_runner.py --input {} --model {} --output {}".format(in_npz, model, out_npz))
 
@@ -85,7 +86,9 @@ class ModelTransformer(object):
     def origin_inference(self, inputs: dict) -> dict:
         pass
 
+
 class OnnxTransformer(ModelTransformer):
+
     def __init__(self,
                  model_name,
                  model_def,
@@ -102,7 +105,9 @@ class OnnxTransformer(ModelTransformer):
         from tools.model_runner import onnx_inference
         return onnx_inference(inputs, self.converter.onnx_file)
 
+
 class CaffeTransformer(ModelTransformer):
+
     def __init__(self,
                  model_name,
                  model_def,
@@ -114,12 +119,13 @@ class CaffeTransformer(ModelTransformer):
         self.model_def = model_def
         self.model_data = model_data
         from transform.CaffeConverter import CaffeConverter
-        self.converter = CaffeConverter(self.model_name, self.model_def, model_data,
-                                        input_shapes, output_names, preprocessor)
+        self.converter = CaffeConverter(self.model_name, self.model_def, model_data, input_shapes,
+                                        output_names, preprocessor)
 
     def origin_inference(self, inputs: dict):
         from tools.model_runner import caffe_inference
         return caffe_inference(inputs, self.model_def, self.model_data)
+
 
 class TFLiteTransformer(ModelTransformer):
 
@@ -167,13 +173,13 @@ def get_model_transform(args):
     tool = None
     if args.model_def.endswith('.onnx'):
         tool = OnnxTransformer(args.model_name, args.model_def, args.input_shapes,
-                                      args.output_names, preprocessor.to_dict())
+                               args.output_names, preprocessor.to_dict())
     elif args.model_def.endswith('.prototxt') and args.model_data.endswith('.caffemodel'):
         tool = CaffeTransformer(args.model_name, args.model_def, args.model_data, args.input_shapes,
-                                      args.output_names, preprocessor.to_dict())
+                                args.output_names, preprocessor.to_dict())
     elif args.model_def.endswith('.tflite'):
         tool = TFLiteTransformer(args.model_name, args.model_def, args.input_shapes,
-                                        preprocessor.to_dict())
+                                 preprocessor.to_dict())
     else:
         # TODO: support more AI model types
         raise RuntimeError("unsupport model:{}".format(args.model_def))
@@ -183,31 +189,24 @@ def get_model_transform(args):
 if __name__ == '__main__':
     print("SOPHGO Toolchain {}".format(pymlir.module().version))
     parser = argparse.ArgumentParser()
+    # yapf: disable
     parser.add_argument("--model_name", required=True, help="model name")
     parser.add_argument("--model_def", required=True, help="model definition file.")
     parser.add_argument("--model_data", help="caffemodel, only for caffe model")
-    parser.add_argument("--input_shapes",
-                        type=str2shape,
-                        default=list(),
+    parser.add_argument("--input_shapes", type=str2shape, default=list(),
                         help="list of input shapes, like:[[2,3],[1,2]]")
-    parser.add_argument("--output_names",
-                        type=str2list,
-                        default=list(),
+    parser.add_argument("--output_names", type=str2list, default=list(),
                         help="if set, will find names in model and set as real outputs")
-    parser.add_argument("--test_input",
-                        default="",
-                        type=str2list,
+    parser.add_argument("--test_input", default="", type=str2list,
                         help="input jpg/npy/npz file for inference, "
                         "if has more than one input, join jpg or npy with semicolon")
-    parser.add_argument("--test_result",
-                        default="",
-                        type=str,
+    parser.add_argument("--test_result", default="", type=str,
                         help="if input is set, result is mlir inference result")
-    parser.add_argument("--tolerance",
-                        default='0.99,0.99',
+    parser.add_argument("--tolerance", default='0.99,0.99',
                         help="minimum similarity tolerance to model transform")
     parser.add_argument("--excepts", default='-', help="excepts")
     parser.add_argument("--mlir", type=str, required=True, help="output mlir model file")
+    # yapf: enable
     parser = get_preprocess_parser(existed_parser=parser)
     args = parser.parse_args()
     tool = get_model_transform(args)

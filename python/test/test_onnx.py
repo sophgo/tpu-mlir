@@ -893,12 +893,8 @@ class ONNX_IR_TESTER(object):
         inputs = [
             helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
         ]
-        output = helper.make_tensor_value_info(
-            "output", TensorProto.FLOAT, output_shape
-        )
-        mul_def = helper.make_node(
-            "Mul", inputs=list(input_shape.keys()), outputs=["output"]
-        )
+        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
+        mul_def = helper.make_node("Mul", inputs=list(input_shape.keys()), outputs=["output"])
         graph_def = helper.make_graph([mul_def], test_case, inputs, [output])
         self.onnx_and_test(
             input_data,
@@ -919,29 +915,23 @@ class ONNX_IR_TESTER(object):
             TensorProto.FLOAT,
             constant_shape,
             np.random.randn(*constant_shape).astype(np.float32),
-
         )
-        output = helper.make_tensor_value_info(
-            "output", TensorProto.FLOAT, output_shape
-        )
+        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
         sigmoid_def = helper.make_node(
             "Sigmoid",
             inputs=['input'],
             outputs=['sigmoid'],
         )
-        mul_def = helper.make_node(
-            "Mul", inputs=["sigmoid", "constant"], outputs=["output"]
-        )
+        mul_def = helper.make_node("Mul", inputs=["sigmoid", "constant"], outputs=["output"])
 
-        graph_def = helper.make_graph(
-            [sigmoid_def, mul_def], test_case, [inputs], [output], initializer=[constant]
-        )
+        graph_def = helper.make_graph([sigmoid_def, mul_def],
+                                      test_case, [inputs], [output],
+                                      initializer=[constant])
         self.onnx_and_test(
             input_data,
             graph_def,
             test_case,
         )
-
 
 
 if __name__ == "__main__":

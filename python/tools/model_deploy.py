@@ -123,41 +123,31 @@ class DeployTool:
 if __name__ == '__main__':
     print("SOPHGO Toolchain {}".format(pymlir.module().version))
     parser = argparse.ArgumentParser()
+    # yapf: disable
     parser.add_argument("--mlir", required=True, help="optimized mlir fp32 model")
     parser.add_argument("--calibration_table", help="calibration table for int8 quantization")
     parser.add_argument("--quantize_table", help="table of OPs that quantized to specific mode")
-    parser.add_argument("--quantize",
-                        default="F32",
-                        type=str,
-                        choices=['F32', 'BF16', 'F16', 'INT8'],
+    parser.add_argument("--quantize", default="F32", type=str, choices=['F32', 'BF16', 'F16', 'INT8'],
                         help="set default qauntization type: F32/BF16/F16/INT8")
-    parser.add_argument("--asymmetric",
-                        action='store_true',
-                        default=False,
+    parser.add_argument("--asymmetric", action='store_true', default=False,
                         help="for INT8 quantization")
     parser.add_argument("--excepts", default='-', help="excepts")
     parser.add_argument("--tolerance", default='0.8,0.5', help="tolerance")
     parser.add_argument("--correctness", default='0.99,0.90', help="correctness")
-    parser.add_argument("--chip",
-                        required=True,
-                        type=str,
+    parser.add_argument("--chip", required=True, type=str,
                         choices=['bm1684x', 'bm1684', 'cv183x', 'cv182x', 'mars'],
                         help="chip platform name")
-    parser.add_argument("--test_input",
-                        default="",
-                        type=str2list,
+    parser.add_argument("--test_input", default="", type=str2list,
                         help="input npy/npz file for inference, "
                         "if has more than one input, join npy with semicolon")
-    parser.add_argument("--test_reference",
-                        default="",
+    parser.add_argument("--test_reference", default="",
                         help="reference npz file; if none, will run inner")
     parser.add_argument("--model", required=True, help='output model')
-    parser.add_argument("--quant_input",
-                        action="store_true",
+    parser.add_argument("--quant_input", action="store_true",
                         help="strip input type cast in bmodel, need outside type conversion")
-    parser.add_argument("--quant_output",
-                        action="store_true",
+    parser.add_argument("--quant_output", action="store_true",
                         help="strip output type cast in bmodel, need outside type conversion")
+    # yapf: enable
     args = parser.parse_args()
     tool = DeployTool(args)
     # lowering to tpu
