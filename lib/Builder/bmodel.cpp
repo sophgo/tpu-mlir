@@ -190,6 +190,11 @@ bool ModelGen::IsTensorConflict(const Vector<Offset<Tensor>> *left,
                         << right_i->scale() << "]" << std::endl;
       return true;
     }
+    if (left_i->zero_point() != right_i->zero_point()) {
+      BMODEL_LOG(ERROR) << "tensor zero_point is not the same, [" << left_i->zero_point() << "] vs ["
+                        << right_i->zero_point() << "]" << std::endl;
+      return true;
+    }
     // if (left_i->gmem_stmode() != right_i->gmem_stmode()) {
     //  BMODEL_LOG(ERROR) << "tensor stmode is not the same, [" << left_i->gmem_stmode() << "] vs ["
     //  << right_i->gmem_stmode() << "]" << std::endl; return true;

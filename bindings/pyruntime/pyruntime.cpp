@@ -20,9 +20,10 @@ PYBIND11_DECLARE_HOLDER_TYPE(T, std::shared_ptr<T>);
 
 struct PythonTensor {
   PythonTensor(bm_data_type_t dtype_, const char *name_, float scale_,
-               bm_shape_t shape, void *data_) {
+               int zero_point_, bm_shape_t shape, void *data_) {
     name = std::string(name_);
     qscale = scale_;
+    qzero_point = zero_point_;
     dtype = dtype_;
     std::vector<size_t> s(shape.dims, shape.dims + shape.num_dims);
     data = py::array(getDtype(dtype), s, data_, py::cast(*this));
@@ -30,6 +31,7 @@ struct PythonTensor {
 
   std::string name;
   float qscale;
+  int qzero_point;
   py::array data;
 
 private:
@@ -78,7 +80,7 @@ struct PythonNet {
       void *data = malloc(size);
       assert(data != nullptr);
       inputs.push_back(std::make_shared<PythonTensor>(
-          dtype, info->input_names[i], info->input_scales[i], shape, data));
+          dtype, info->input_names[i], info->input_scales[i], info->input_zero_point[i], shape, data));
       input_datas.push_back(data);
     }
     for (int i = 0; i < num_output; i++) {
@@ -89,7 +91,7 @@ struct PythonNet {
       void *data = malloc(size);
       assert(data != nullptr);
       outputs.push_back(std::make_shared<PythonTensor>(
-          dtype, info->output_names[i], info->output_scales[i], shape, data));
+          dtype, info->output_names[i], info->output_scales[i], info->output_zero_point[i], shape, data));
       output_datas.push_back(data);
     }
   }
@@ -175,6 +177,7 @@ PYBIND11_MODULE(pyruntime, m) {
   py::class_<PythonTensor, std::shared_ptr<PythonTensor>>(m, "Tensor")
       .def_readonly("name", &PythonTensor::name)
       .def_readonly("qscale", &PythonTensor::qscale)
+      .def_readonly("qzero_point", &PythonTensor::qzero_point)
       .def_readwrite("data", &PythonTensor::data);
 
   py::class_<PythonNet, std::shared_ptr<PythonNet>>(m, "Net")
