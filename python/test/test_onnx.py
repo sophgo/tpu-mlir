@@ -43,7 +43,7 @@ class ONNX_IR_TESTER(object):
             "Div": self.test_Div,
             "LeakyRelu": self.test_LeakyRelu,
             "Log": self.test_Log,
-            "LSTM": self.test_LSTM,
+            #"LSTM": self.test_LSTM,
             "MaxPool1D": self.test_MaxPool1D,
             "MaxPool2D": self.test_MaxPool2D,
             "MaxPool3D": self.test_MaxPool3D,

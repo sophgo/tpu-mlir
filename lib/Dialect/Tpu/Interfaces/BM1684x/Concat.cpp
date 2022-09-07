@@ -20,28 +20,24 @@ using namespace tpu_mlir::backend;
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct {
-  unsigned long long *bottom_addrs;
-  unsigned long long top_addr;
-  int (*bottom_shapes)[MAX_SHAPE_DIMS];
-  int *top_shape;
-  int *is_st_concat_way;
-  int concat_axis;
-  int shape_dim;
-  int bottom_num;
-  DATA_TYPE_T dtype;
-} concat_global_param_t;
 
-typedef struct {
-  unsigned int *bottom_addrs;
-  unsigned int top_addr;
-  int **bottom_shapes;
-  int *top_shape;
-  int *is_st_concat_way;
+typedef struct concat_common_spec {
+  int input_num;
   int concat_axis;
-  int shape_dim;
-  int bottom_num;
-  DATA_TYPE_T dtype;
+} concat_common_spec_t;
+
+typedef struct concat_global_spec {
+  concat_common_spec_t common;
+  int *is_st_concat_way;
+} concat_global_spec_t;
+
+typedef struct concat_local_spec {
+  concat_common_spec_t common;
+  int *is_st_concat_way;
+} concat_local_spec_t;
+
+typedef struct concat_local_param {
+  concat_local_spec_t spec;
 } concat_local_param_t;
 
 #ifdef __cplusplus
@@ -53,33 +49,19 @@ typedef struct {
 // =========================================
 
 void tpu::ConcatOp::codegen_global_bm1684x() {
-  concat_global_param_t param = {0};
-  param.concat_axis = axis();
-  param.bottom_num = inputs().size();
-  param.shape_dim = Module::getShape(inputs()[0]).size();
-  param.dtype = BM168x::getDataType(inputs()[0]);
+  auto op = getOperation();
+  int num_input = inputs().size();
+  auto input_spec = BM1684x::get_input_spec(op);
+  auto output_spec = BM1684x::get_output_spec(op);
+  concat_global_spec_t spec = {0};
+  spec.common.input_num = num_input;
+  spec.common.concat_axis = axis();
+  SmallVector<int> is_st_concat_way(num_input, 0);
+  spec.is_st_concat_way = is_st_concat_way.data();
 
-  SmallVector<uint64_t> input_addr(inputs().size());
-  std::vector<int[MAX_SHAPE_DIMS]> input_shape(param.bottom_num);
-  for (auto v : llvm::enumerate(inputs())) {
-    input_addr[v.index()] = Module::getAddress(v.value());
-    for (auto dim : llvm::enumerate(Module::getShape(v.value())))
-      input_shape[v.index()][dim.index()] = dim.value();
-  }
-  SmallVector<int> output_shape(param.shape_dim);
-  for (auto v : llvm::enumerate(Module::getShape(output())))
-    output_shape[v.index()] = v.value();
-
-  SmallVector<int> is_st_concat_way(param.shape_dim, 0);
-  param.bottom_addrs = (unsigned long long *)input_addr.data();
-  param.top_addr = Module::getAddress(output());
-
-  param.bottom_shapes = input_shape.data();
-  param.top_shape = output_shape.data();
-  param.is_st_concat_way = is_st_concat_way.data();
-
-  BM1684x::instance().call_global_func("backend_api_concat_global", &param,
-                                       sizeof(param));
+  BM1684x::instance().call_global_func("backend_api_concat_global", &spec,
+                                       sizeof(spec), input_spec->data(),
+                                       output_spec->data());
 }
 
 // =========================================
@@ -93,40 +75,33 @@ int64_t tpu::ConcatOp::getBufferSize_bm1684x(
 }
 
 void tpu::ConcatOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
-  llvm::SmallVector<uint32_t, 16> input_addrs;
-  int num_inputs = inputs().size();
-  llvm::SmallVector<int, 16> is_st_concat_way(num_inputs, 0);
-  std::vector<int *> input_shapes;
   int64_t n, c, h, w;
-  for (auto in : inputs()) {
-    auto in_gi = LocalGenInterface::getGroupInfo(in, n_step, h_step);
-    input_addrs.push_back(in_gi.out_addr);
-    Module::getNCHW(in, n, c, h, w);
-    auto shape = new int[MAX_SHAPE_DIMS];
-    memset(shape, 0, sizeof(int) * MAX_SHAPE_DIMS);
-    shape[0] = (int)in_gi.n_slice;
-    shape[1] = (int)c;
-    shape[2] = (int)in_gi.h_slice;
-    shape[3] = (int)w;
-    input_shapes.push_back(shape);
-  }
+  auto in0_gi = LocalGenInterface::getGroupInfo(inputs()[0], n_step, h_step);
   Module::getNCHW(output(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
-  int output_shape[MAX_SHAPE_DIMS] = {(int)gi.n_slice, (int)c, (int)gi.h_slice,
-                                      (int)w};
-  concat_local_param_t param = {0};
-  param.bottom_addrs = input_addrs.data();
-  param.top_addr = gi.out_addr;
-  param.bottom_shapes = input_shapes.data();
-  param.top_shape = (int *)output_shape;
-  param.is_st_concat_way = is_st_concat_way.data();
-  param.concat_axis = axis();
-  param.shape_dim = 4;
-  param.bottom_num = num_inputs;
-  param.dtype = BM168x::getDataType(output());
-  BM1684x::instance().call_local_func("backend_api_concat_local", &param,
-                                      sizeof(param));
-  for (auto s : input_shapes) {
-    delete[] s;
-  }
+
+  auto op = getOperation();
+  auto input_spec = BM1684x::get_input_spec(op);
+  auto output_spec = BM1684x::get_output_spec(op);
+  int num_input = inputs().size();
+  SmallVector<int> is_st_concat_way(num_input, 0);
+  concat_local_spec_t spec = {0};
+  spec.is_st_concat_way = is_st_concat_way.data();
+  spec.common.input_num = num_input;
+  spec.common.concat_axis = axis();
+  local_sec_info_t sec_info{0};
+  sec_info.n_slice = gi.n_slice;
+  sec_info.h_slice = in0_gi.h_slice;
+  sec_info.w_slice = w;
+  sec_info.out_n_slice = gi.n_slice;
+  sec_info.is_h_split = !(gi.h_idx == 0 && gi.h_slice == h);
+  sec_info.h_idx = in0_gi.h_idx;
+
+  sec_info.out_h_idx = gi.h_idx;
+  sec_info.out_h_slice = gi.h_slice;
+  sec_info.is_w_split = false;
+  sec_info.out_w_slice = w;
+  BM1684x::instance().call_local_func("backend_api_concat_local", &spec,
+                                      sizeof(spec), &sec_info,
+                                      input_spec->data(), output_spec->data());
 }
