@@ -176,13 +176,16 @@ CodegenPass::CreateTensorVector(const std::vector<Value> &values) {
     tb.add_shape(stage_shape);
     tb.add_mem_type(MEM_TYPE_TPU);
     float scale = 1.0f;
+    int zero_point = 0;
     if (Quant::isUniformQuantized(v)) {
       auto qtype = Quant::getUniformQuantizedType(v);
       scale = qtype.getScale();
       if (isa<top::InputOp>(v.getDefiningOp())) {
         scale = 1 / scale;
       }
+      zero_point = qtype.getZeroPoint();
       tb.add_scale(scale);
+      tb.add_zero_point(zero_point);
     }
     tb.add_device_addr(Module::getAddress(v));
     tb.add_size(Module::getBytes(v));

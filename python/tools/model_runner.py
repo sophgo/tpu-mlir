@@ -29,17 +29,17 @@ def model_inference(inputs: dict, model_file: str) -> dict:
         if i.data.dtype == inputs[i.name].dtype:
             i.data[:] = inputs[i.name]
         elif i.data.dtype == np.int8 and inputs[i.name].dtype == np.float32:
-            data = round_away_from_zero(inputs[i.name] * i.qscale)
+            data = round_away_from_zero(inputs[i.name] * i.qscale + i.qzero_point)
             i.data[:] = np.clip(data, -128, 127).astype(np.int8)
         elif i.data.dtype == np.uint8 and inputs[i.name].dtype == np.float32:
-            data = round_away_from_zero(inputs[i.name] * i.qscale)
+            data = round_away_from_zero(inputs[i.name] * i.qscale + i.qzero_point)
             i.data[:] = np.clip(data, 0, 255).astype(np.uint8)
         else:
             raise ValueError("unknown type: form {inputs[i.name].dtype} to {i.data.dtype}")
     net.forward()
     for i in net.outputs:
         if (i.data.dtype == np.int8 or i.data.dtype == np.uint8) and i.qscale != 0:
-            outputs[i.name] = np.array(i.data.astype(np.float32) * i.qscale, dtype=np.float32)
+            outputs[i.name] = np.array((i.data.astype(np.float32) - i.qzero_point) * i.qscale, dtype=np.float32)
         else:
             outputs[i.name] = np.array(i.data)
     return outputs
