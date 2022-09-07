@@ -135,11 +135,14 @@ public:
     return getTensorDict(tensorMap_, shapeMap_, ordered_names);
   }
 
-  void set_tensor(
-      std::string name,
-      py::array_t<float, py::array::c_style | py::array::forcecast> data) {
-    interpreter_->setTensor(name, data.data(), data.size() * sizeof(float));
+  void
+  set_tensor(std::string name,
+             py::array_t<float, py::array::c_style | py::array::forcecast> data,
+             bool is_integer = false) {
+    interpreter_->setTensor(name, data.data(), data.size() * sizeof(float),
+                            is_integer);
   }
+
   py::array get_tensor(std::string name) {
     auto tensor = interpreter_->getTensor(name);
     std::vector<int64_t> shape = interpreter_->getTensorShape(name);

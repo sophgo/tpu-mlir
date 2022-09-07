@@ -45,7 +45,7 @@ def mlir_validate(val_loader, module, ppa_list, count=-1):
 
         assert(input_num == 1)
         x = ppa_list[0].run(path[0])
-        module.set_tensor(ppa_list[0].input_name, x)
+        module.set_tensor(ppa_list[0].input_name, x, False)
         module.invoke()
         tensors = module.get_all_tensor()
         assert(len(module.output_names) == 1)

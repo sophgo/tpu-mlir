@@ -65,11 +65,11 @@ class mlir_inference(object):
         ratio_list = None
         if 'not_use_preprocess' in self.debug_cmd:
             img = self.score.preproc(self.batched_imgs)
-            self.module.set_tensor(self.img_proc.input_name, img)
+            self.module.set_tensor(self.img_proc.input_name, img, False)
         else:
             x= self.img_proc.run(self.batched_imgs)
             ratio_list = self.img_proc.get_config('ratio')
-            self.module.set_tensor(self.img_proc.input_name, x)
+            self.module.set_tensor(self.img_proc.input_name, x, False)
         self.module.invoke()
         outputs = []
         for i in self.module.output_names:

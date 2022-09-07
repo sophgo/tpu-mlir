@@ -12,9 +12,11 @@ import numpy as np
 import argparse
 import os
 
-def round_away(x):
+
+def round_away_from_zero(x):
     a = np.floor(np.abs(x) + 0.5)
     return np.sign(x) * a
+
 
 def model_inference(inputs: dict, model_file: str) -> dict:
     import pyruntime
@@ -27,10 +29,10 @@ def model_inference(inputs: dict, model_file: str) -> dict:
         if i.data.dtype == inputs[i.name].dtype:
             i.data[:] = inputs[i.name]
         elif i.data.dtype == np.int8 and inputs[i.name].dtype == np.float32:
-            data = round_away(inputs[i.name] * i.qscale)
+            data = round_away_from_zero(inputs[i.name] * i.qscale)
             i.data[:] = np.clip(data, -128, 127).astype(np.int8)
         elif i.data.dtype == np.uint8 and inputs[i.name].dtype == np.float32:
-            data = round_away(inputs[i.name] * i.qscale)
+            data = round_away_from_zero(inputs[i.name] * i.qscale)
             i.data[:] = np.clip(data, 0, 255).astype(np.uint8)
         else:
             raise ValueError("unknown type: form {inputs[i.name].dtype} to {i.data.dtype}")
@@ -49,8 +51,12 @@ def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True) -> dict:
     module.load(mlir_file)
     for name in module.input_names:
         assert (name in inputs)
-        input = inputs[name].astype(np.float32)
-        module.set_tensor(name, input)
+        input = inputs[name]
+        is_int = False
+        if input.dtype == np.int8 or input.dtype == np.uint8:
+            is_int = True
+            input = input.astype(np.float32)
+        module.set_tensor(name, input, is_int)
     module.invoke()
     tensors = module.get_all_tensor()
     if dump_all:
@@ -141,6 +147,7 @@ def caffe_inference(inputs: dict, prototxt: str, caffemodel: str, dump_all: bool
     else:
         return out
 
+
 def tflite_inference(
         inputs: dict,
         tflite_file: str,
@@ -171,7 +178,17 @@ def tflite_inference(
     data = {}
     for input in session.inputs:
         name = input["name"]
-        data[name] = inputs[name].astype(input["dtype"])
+        t = input["dtype"]
+        is_quant = 'quantization' in input
+        assert (name in inputs)
+        d = inputs[name]
+        if d.dtype == t:
+            data[name] = d
+        elif d.dtype == np.float32 and is_quant:
+            scale, zp = input["quantization"]
+            data[name] = np.clip(round_away_from_zero(d / scale + zp), 0, 255).astype(t)
+        else:
+            raise RuntimeError("input type:{} not match model type:{}".format(d.dtype, t))
     outputs = session.run(input_is_nchw, **data)
 
     if dump_all:
@@ -186,14 +203,15 @@ def tflite_inference(
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    # yapf: disable
     parser.add_argument("--input", required=True, help="input npz file")
     parser.add_argument("--model", type=str, required=True,
                         help="mlir/onnx/tflie/bmodel/prototxt file.")
     parser.add_argument("--weight", type=str, default="", help="caffemodel for caffe")
     parser.add_argument("--output", default='_output.npz', help="output npz file")
-    parser.add_argument("--dump_all_tensors",
-                        action='store_true',
+    parser.add_argument("--dump_all_tensors",action='store_true',
                         help="dump all tensors to output file")
+    # yapf: enable
     args = parser.parse_args()
     data = np.load(args.input)
     output = dict()

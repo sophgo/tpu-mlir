@@ -116,7 +116,7 @@ void ModuleInterpreter::allocate_resources() {
 }
 
 void ModuleInterpreter::fake_quant_weight() {
-  llvm::errs() << "start fake_quant_weight" << "\n";
+  llvm::errs() << "start fake_quant_weight\n";
   std::vector<std::string> not_quant_weight_names;
   for (auto func : module.getOps<FuncOp>()) {
     func.walk([&](Operation *op) {
@@ -130,18 +130,20 @@ void ModuleInterpreter::fake_quant_weight() {
   }
 
   for (auto &name : all_weight_names) {
-    if (std::count(not_quant_weight_names.begin(), not_quant_weight_names.end(), name)) {
+    if (std::count(not_quant_weight_names.begin(), not_quant_weight_names.end(),
+                   name)) {
       continue;
     }
 
     auto mem = *mem_map.at(name);
-    auto max_value = std::max(std::abs(*std::max_element(mem.begin(), mem.end())), std::abs(*std::min_element(mem.begin(), mem.end())));
+    auto max_value =
+        std::max(std::abs(*std::max_element(mem.begin(), mem.end())),
+                 std::abs(*std::min_element(mem.begin(), mem.end())));
     for (auto &data : mem) {
-      data = std::round(data*127/max_value)*max_value/127;
+      data = std::round(data * 127 / max_value) * max_value / 127;
     }
   }
 }
-
 
 void ModuleInterpreter::invoke(bool express_type) {
   for (auto func : module.getOps<FuncOp>()) {
@@ -192,7 +194,7 @@ ModuleInterpreter::invoke_at(const std::string op_name) {
 }
 
 void ModuleInterpreter::setTensor(const std::string &name, const void *data,
-                                  size_t size) {
+                                  size_t size, bool is_integer) {
   auto it = mem_map.find(name);
   if (it == mem_map.end()) {
     llvm::errs() << "Can't find op name: " << name << "\n";
@@ -205,7 +207,17 @@ void ModuleInterpreter::setTensor(const std::string &name, const void *data,
                  << " , but set size: " << size << "\n";
     llvm_unreachable("Error, setTensor failed");
   }
-  memcpy(act->data(), data, size);
+  auto value = value_map.at(name);
+  if (is_integer == false && Quant::isUniformQuantized(value)) {
+    auto qtype = Quant::getUniformQuantizedType(value);
+    float *p = (float *)data;
+    for (uint32_t i = 0; i < act->size(); i++) {
+      auto d = p[i] / qtype.getScale() + qtype.getZeroPoint();
+      act->at(i) = qtype.isSigned() ? Quant::to_int8(d) : Quant::to_uint8(d);
+    }
+  } else {
+    memcpy(act->data(), data, size);
+  }
 }
 
 std::shared_ptr<std::vector<float>>
