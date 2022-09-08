@@ -15,7 +15,7 @@ TPU-MLIR的整体架构如下：
    TPU-MLIR整体架构
 
 
-目前直接支持的框架有tflite和onnx。其他框架的模型需要转换成onnx模型。如何将其他深
+目前直接支持的框架有onnx、caffe和tflite。其他框架的模型需要转换成onnx模型。如何将其他深
 度学习架构的网络模型转换成onnx，可以参考onnx官网:
 https://github.com/onnx/tutorials。
 

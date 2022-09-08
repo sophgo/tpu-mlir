@@ -116,7 +116,8 @@ model_transform.py \
 | **参数名**           | 必选？ | **说明**            |
 | ------------------- | ----- | ------------------- |
 | model_name          | 是    | 指定模型名称          |
-| model_def           | 是    | 指定模型文件("*.onnx, *.tflite") |
+| model_def           | 是    | 指定模型定义文件，比如`.onnx`或`.tflite`或`.prototxt`文件 |
+| model_data          | 否    | 指定模型权重文件，caffe模型需要，对应`.caffemodel`文件 |
 | input_shapes        | 否    | 指定输入的shape，例如[[1,3,640,640]]；二维数组，可以支持多输入情况 |
 | resize_dims         | 否    | 原始图片需要resize之后的尺寸；如果不指定，则resize成模型的输入尺寸 |
 | keep_aspect_ratio   | 否    | 在Resize时是否保持长宽比，默认为false；设置时会对不足部分补0 |

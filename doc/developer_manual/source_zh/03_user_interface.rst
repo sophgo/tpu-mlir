@@ -28,7 +28,7 @@
 
 
 
-也支持TFLite模型的转换，命令参考如下：
+支持TFLite模型的转换，命令参考如下：
 
 .. code-block:: console
 
@@ -54,6 +54,25 @@
        --model resnet50_tf_1684x.bmodel
 
 
+支持Caffe模型的转换，命令如下：
+
+.. code-block:: console
+
+    # Caffe转模型举例
+    $ model_transform.py \
+        --model_name resnet18_cf \
+        --model_def  ../resnet18.prototxt \
+        --model_data ../resnet18.caffemodel \
+        --input_shapes [[1,3,224,224]] \
+        --mean 104,117,123 \
+        --scale 1.0,1.0,1.0 \
+        --pixel_format bgr \
+        --test_input ../image/dog.jpg \
+        --test_result resnet50_cf_top_outputs.npz \
+        --mlir resnet50_cf.mlir
+    # model_deploy的调用与onnx一致
+    # ......
+
 .. _model_transform:
 
 model_transform.py
@@ -74,7 +93,10 @@ model_transform.py
      - 指定模型名称
    * - model_def
      - 是
-     - 模型定义文件
+     - 指定模型定义文件，比如`.onnx`或`.tflite`或`.prototxt`文件
+   * - model_data
+     - 否
+     - 指定模型权重文件，caffe模型需要，对应`.caffemodel`文件
    * - input_shapes
      - 否
      - 指定输入的shape，例如[[1,3,640,640]]；二维数组，可以支持多输入情况
