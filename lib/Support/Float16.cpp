@@ -9,7 +9,6 @@
 
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/MathUtils.h"
-
 #include "bitcasts.h"
 #include <math.h>
 
@@ -516,9 +515,42 @@ uint16_t fp16_alt_from_fp32_value(float f) {
                          (fp32_to_bits(base) & UINT32_C(0x00000FFF)));
 }
 
+/// Cast fp32 data to bf16 data
+/// The round mode is the same with default CPU standard
+/// Default round mode: round to nearest with tie to even
+/// The round mode can be change through fesetround()
+static inline bf16 fp32_to_bf16(fp32& single) {
+  bf16 res;
+  if (single.format.exp == 255) {
+    if (single.format.frac != 0) {
+      // NAN which had been checked with IC
+      res.bits = 0x7fff;
+    } else {
+      // INF
+      res.bits = (uint16_t)(single.bits >> 16);
+    }
+  } else if (single.format.exp == 0) {
+    // zero
+    res.bits = 0x0;
+    res.format.sign = single.format.sign;
+  } else {
+    const uint16_t sign_exp = (single.bits & UINT32_C(0xFF800000)) >> 16;
+    const uint32_t mantissa = single.bits & UINT32_C(0x7FFFFF);
+    // Use CPU FP32 add to do mantissa >> 16 and rounding
+    float base = fp32_from_bits(UINT32_C(0x48000000));
+    base = fp32_from_bits(UINT32_C(0x40000000) | mantissa) + base;
+    // Get new mantissa
+    uint16_t bf16_mantissa = fp32_to_bits(base) & UINT32_C(0x1FF);
+    bf16_mantissa = bf16_mantissa - UINT16_C(0x80);
+    // Get bf16 bits
+    res.bits = sign_exp + bf16_mantissa;
+  }
+  return res;
+}
+
 uint16_t float_to_bf16_uint16_simple(float x) {
-  uint16_t *p = (uint16_t *)&x;
-  return p[1];
+  bf16 ret = fp32_to_bf16(*(fp32*)&x);
+  return ret.bits;
 }
 
 float bf16_uint16_to_float_simple(uint16_t x) {
