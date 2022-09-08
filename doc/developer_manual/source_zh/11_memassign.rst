@@ -51,6 +51,9 @@ b. 流程介绍:
       如果yes,则把它从hold_edges中删除,并且把它的addr从in_using_addr中删除,意味着这个input tensor生命周期已结束,地址空间已释放。
 
 
+    .. image:: ../assets/gmem.png
+
+
   .. note::
 
     EOL定义: end of life.
