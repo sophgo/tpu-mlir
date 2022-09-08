@@ -1,14 +1,14 @@
 # You can set these variables from the command line.
 
 # module_name === project in conf.py, use \_ instead of _ if module name contains _
-module_name := TPU-MLIR
-output_file_prefix := tpu-mlir_developer_manual
+module_name = TPU-MLIR
+output_file_prefix = tpu-mlir_developer_manual
 
 SOURCEDIR_en     = source_en
-pdf_name_en      = tpu-mlir_developer_manual_en.pdf
+pdf_name_en      = $(output_file_prefix)_en.pdf
 
 SOURCEDIR_zh    = source_zh
-pdf_name_zh      = tpu-mlir_developer_manual_zh.pdf
+pdf_name_zh      = $(output_file_prefix)_zh.pdf
 
 SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
