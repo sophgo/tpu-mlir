@@ -286,7 +286,7 @@ class SimpleTuner:
                     print('error, calc_distance get tensor fail')
                     return None, None
                 value = import_quant_bias(value, threshold)
-                self.module_dq.set_tensor(input, value)
+                self.module_dq.set_tensor(input, value, False)
             target_activations = self.module_dq.invoke_at(evaled_op)
             target_fp32_activations = self.get_ref_tensor(idx, evaled_op)
             total_cosine_similarity += cosine_sim(target_activations, target_fp32_activations)
