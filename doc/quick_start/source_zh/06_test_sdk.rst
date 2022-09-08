@@ -41,6 +41,8 @@
 
 此过程会从 ``GitHub`` 上下载大量数据。由于具体网络环境的差异，此过程可能耗时较长。
 
+.. _get tpu-perf:
+
 获取 ``tpu-perf`` 工具
 ~~~~~~~~~~~~~~~~~~~~~~
 
@@ -139,6 +141,61 @@ wheel安装包。例如：tpu_perf-x.x.x-py3-none-any.whl 。并将 ``tpu-perf``
 测试模型性能
 ````````````
 
+配置SOC设备
++++++++++++
+
+注意：如果您的设备是 PCIE 板卡，可以直接跳过该节内容。
+
+性能测试只依赖于 ``libsophon`` 运行环境，所以在工具链编译环境编译完的模型连同
+``model-zoo`` 整个打包，就可以在 SOC 环境使用 ``tpu_perf`` 进行性能与精度测试。
+但是，SOC设备上存储有限，完整的 ``model-zoo`` 与编译输出内容可能无法完整拷贝到
+SOC 中。这里介绍一种通过 linux nfs 远程文件系统挂载来实现在 SOC 设备上运行测试的
+方法。
+
+首先，在工具链环境服务器『host 系统』安装 nfs 服务：
+
+.. code-block:: console
+
+   $ sudo apt install nfs-kernel-server
+
+在 ``/etc/exports`` 中添加以下内容（配置共享目录）：
+
+.. code ::
+
+   /path/to/model-zoo *(rw,sync,no_subtree_check,no_root_squash)
+
+``*`` 表示所有人都可以访问该共享目录，也可以配置成特定网段或 IP 可访问，如
+``192.168.43.0/24`` 。
+
+
+然后执行如下命令使配置生效：
+
+.. code-block:: console
+
+   $ sudo exportfs -a
+   $ sudo systemctl restart nfs-kernel-server
+
+另外，需要为 dataset 目录下的图片添加读取权限：
+
+.. code-block:: console
+
+   chmod -R +r path/to/sophon/model-zoo/dataset
+
+在 SOC 设备上安装客户端并挂载该共享目录：
+
+.. code-block:: console
+
+   $ mkdir sophon
+   $ sudo apt-get install -y nfs-common
+   $ sudo mount -t nfs <IP>:/path/to/model-zoo ./model-zoo
+
+这样便可以在 SOC 环境访问测试目录。SOC 测试其余的操作与 PCIE 基本一致，请参考下
+文进行操作；运行环境命令执行位置的差别，已经在执行处添加说明。
+
+
+运行测试
+++++++++
+
 运行测试需要在 Docker 外面的环境（此处假设您已经安装并配置好了1684X设备和
 驱动）中进行，可以退出 Docker 环境：
 
@@ -146,7 +203,7 @@ wheel安装包。例如：tpu_perf-x.x.x-py3-none-any.whl 。并将 ``tpu-perf``
 
    $ exit
 
-在Docker外环境下运行以下命令，测试生成的 ``bmodel`` 性能。
+1. PCIE 板卡下运行以下命令，测试生成的 ``bmodel`` 性能。
 
 .. code-block:: console
    :linenos:
@@ -154,6 +211,19 @@ wheel安装包。例如：tpu_perf-x.x.x-py3-none-any.whl 。并将 ``tpu-perf``
    $ pip3 install ./tpu_perf-*-py3-none-any.whl
    $ cd model-zoo
    $ python3 -m tpu_perf.run --mlir --full
+
+2. SOC 设备使用以下步骤，测试生成的 ``bmodel`` 性能。
+
+将 :ref:`获取tpu_perf <get tpu-perf>` 中提到的
+``tpu_perf-x.x.x-py3-none-any.whl`` 文件拷贝到SOC设备上并执行以下操作：
+
+.. code-block:: console
+   :linenos:
+
+   $ pip3 install ./tpu_perf-*-py3-none-any.whl
+   $ cd model-zoo
+   $ python3 -m tpu_perf.run --mlir --full
+
 
 运行结束后，性能数据在 ``output/stats.csv`` 中可以获得。该文件中记录了相关模型的
 运行时间、计算资源利用率和带宽利用率。
