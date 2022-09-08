@@ -120,6 +120,7 @@ class OnnxConverter(BaseConverter):
             "Div": lambda node: self.convert_div_op(node),
             "Dropout": lambda node: self.convert_skip_op(node),
             "Flatten": lambda node: self.convert_flatten_op(node),
+            "Gather": lambda node: self.convert_gather_op(node),
             "Gemm": lambda node: self.convert_gemm_op(node),
             "GlobalAveragePool": lambda node: self.convert_global_avgpool_op(node),
             "GlobalMaxPool": lambda node: self.convert_global_maxpool_op(node),
@@ -623,12 +624,7 @@ class OnnxConverter(BaseConverter):
             weight_num_elem = np.prod(self.getShape(onnx_node.inputs[1]))
             first_val = weight.flatten()[0]
             channel = output_shape[1]
-            if weight_num_elem == 1 or np.all(weight == first_val):
-                p = {'name': name, 'const_val': weight.flatten()[0]}
-                mul_const_op = self.mlir.create_mul_const_op([op0], output_shape, **p)
-                self.addOperand(onnx_node.name, mul_const_op)
-                return
-            elif weight_num_elem == channel:
+            if weight_num_elem == channel:
                 offset_data = np.zeros_like(weight)
                 self.addWeight(name + '_bias', offset_data)
                 weight_op = self.getWeightOp(onnx_node.inputs[1])
@@ -636,6 +632,11 @@ class OnnxConverter(BaseConverter):
                 p = {'name': name}
                 scale_op = self.mlir.create_scale_op([op0, weight_op, offset_op], output_shape, **p)
                 self.addOperand(onnx_node.name, scale_op)
+                return
+            elif weight_num_elem == 1 or np.all(weight == first_val):
+                p = {'name': name, 'const_val': weight.flatten()[0]}
+                mul_const_op = self.mlir.create_mul_const_op([op0], output_shape, **p)
+                self.addOperand(onnx_node.name, mul_const_op)
                 return
             const_op = self.getWeightOp(onnx_node.inputs[1])
             p = {'name': name}
@@ -1083,4 +1084,19 @@ class OnnxConverter(BaseConverter):
         num_direction = weight_shape[0]
         output_shape = [seq_length, num_direction, batch_size, hidden_size]
         new_op = self.mlir.create_lstm_op(operands, output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_gather_op(self, onnx_node):
+        assert(onnx_node.op_type == "Gather")
+        in0 = self.getOperand(onnx_node.inputs[0])
+        in1 = self.getWeight(onnx_node.inputs[1])
+        indices = self.getWeightOp(onnx_node.inputs[1])
+        output_shape = self.getShape(onnx_node.name)
+        axis = onnx_node.attrs.get('axis')
+        p = {
+            'name': '{}_{}'.format(onnx_node.name, onnx_node.op_type),
+            'axis': axis
+        }
+
+        new_op = self.mlir.create_gather_op([in0, indices], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
