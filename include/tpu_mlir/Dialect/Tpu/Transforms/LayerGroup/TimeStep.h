@@ -22,13 +22,7 @@ namespace tpu {
 
 struct value_compare {
   bool operator()(Value v0, Value v1) const {
-    auto op0 = v0.getDefiningOp();
-    auto op1 = v1.getDefiningOp();
-    if (op0 == nullptr && op1 != nullptr) {
-      return true;
-    } else if (op1 == nullptr) {
-      return false;
-    } else if (Module::getName(op0).str() < Module::getName(op1).str()) {
+    if (Module::getName(v0).str() < Module::getName(v1).str()) {
       return true;
     }
     return false;
@@ -37,12 +31,7 @@ struct value_compare {
 
 struct op_compare {
   bool operator()(Operation *op0, Operation *op1) const {
-    if ((op0 == nullptr && op1 != nullptr)) {
-      return true;
-    } else if (op1 == nullptr) {
-      return false;
-    }
-    if (Module::getName(op0).str() < Module::getName(op1).str()) {
+    if (op0 < op1) {
       return true;
     }
     return false;
@@ -67,7 +56,7 @@ public:
   void clear_all();
   void clear_swloop_buffer();
   void write_swloop_buffer(int64_t nstep, int64_t hstep, int stage_num);
-  const tensor_step_t* read_swloop_buffer(int stage);
+  const tensor_step_t *read_swloop_buffer(int stage);
 
   int software_pipeline_schedule(std::vector<TimestepRow> &timestep_table);
   int get_tensor_swpipl_stage(Value v);

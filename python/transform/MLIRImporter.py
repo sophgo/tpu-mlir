@@ -36,6 +36,7 @@ class Top:
     DeconvOp = 'top.Deconv'
     ScaleOp = 'top.Scale'
     LSTMOp = 'top.LSTM'
+    GatherOp = 'top.Gather'
 
 class State:
     TOP_F32 = 'TOP_F32'
@@ -486,6 +487,14 @@ class MLIRImporter(object):
             'batch_first': BoolAttr.get(kargs['batch_first']),
         }
         return self.buildOp(Top.LSTMOp, operands, [output_type], **param)
+
+    def create_gather_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': StringAttr.get(kargs['name']),
+            'axis': IntegerAttr.get(self.mlir_type['INT64'], kargs['axis']),
+        }
+        return self.buildOp(Top.GatherOp, operands, [output_type], **param)
 
     def print_module(self):
         mlir_format = self.mlir_module.operation.get_asm(enable_debug_info=True)

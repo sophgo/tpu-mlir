@@ -845,16 +845,12 @@ void GroupOps::assign_timestep(group_lmem_t &group_lmem) {
 
   // update timestep and stage of op/value in group_lmem
   for (auto &linfo : *group_lmem) {
-    if (linfo.type == LMEM_WEIGHT || linfo.is_input ||
-        (linfo.type == LMEM_ACTIVATION && !linfo.is_output)) {
+    if (linfo.type == LMEM_WEIGHT || linfo.type == LMEM_ACTIVATION) {
       linfo.stage = time_step->get_tensor_swpipl_stage(linfo.value);
       linfo.timestep = tensor_timestep[linfo.value];
       linfo.start_timestep = linfo.timestep;
-      auto users = linfo.value.getUsers();
-      for (auto op : users) {
-        if (op_timestep.find(op) != op_timestep.end()) {
-          linfo.end_timestep = std::max(op_timestep[op], linfo.end_timestep);
-        }
+      if (linfo.is_output) {
+        linfo.end_timestep = linfo.timestep;
       }
       if (linfo.type == LMEM_ACTIVATION && !linfo.is_input) {
         auto op = linfo.value.getDefiningOp();
@@ -862,14 +858,11 @@ void GroupOps::assign_timestep(group_lmem_t &group_lmem) {
           linfo.start_timestep = op_timestep[op];
         }
       }
-    }
-    if (linfo.is_output) {
-      linfo.stage = time_step->get_tensor_swpipl_stage(linfo.value);
-      linfo.timestep = tensor_timestep[linfo.value];
-      linfo.end_timestep = linfo.timestep;
-      auto op = linfo.value.getDefiningOp();
-      if (op_timestep.find(op) != op_timestep.end()) {
-        linfo.start_timestep = op_timestep[op];
+      auto users = linfo.value.getUsers();
+      for (auto op : users) {
+        if (op_timestep.find(op) != op_timestep.end()) {
+          linfo.end_timestep = std::max(op_timestep[op], linfo.end_timestep);
+        }
       }
     }
     if (linfo.type == LMEM_OPERATION) {
@@ -1050,7 +1043,8 @@ int64_t GroupOps::alloc_lmem(int64_t size) {
         allocated_lmems.insert(it, pair);
         return addr;
       }
-      int64_t addr_tmp = align_up(it->first + it->second, bm168x->get_eu_bytes());
+      int64_t addr_tmp =
+          align_up(it->first + it->second, bm168x->get_eu_bytes());
       if (align_bank) {
         auto bank0 = ceiling_func(addr_tmp, bm168x->get_lmem_bank_bytes());
         auto bank1 =

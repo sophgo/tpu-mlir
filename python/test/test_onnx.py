@@ -41,6 +41,7 @@ class ONNX_IR_TESTER(object):
             "ConvTranspose2D": self.test_ConvTranspose,
             "Clip": self.test_Clip,
             "Div": self.test_Div,
+            "Gather": self.test_Gather,
             "LeakyRelu": self.test_LeakyRelu,
             "Log": self.test_Log,
             #"LSTM": self.test_LSTM,
@@ -49,7 +50,7 @@ class ONNX_IR_TESTER(object):
             "MaxPool3D": self.test_MaxPool3D,
             "Mul": self.test_Mul,
             "MulConst": self.test_MulConst,
-            #"Pad": self.test_Pad,
+            "Pad": self.test_Pad,
             "Resize": self.test_Resize,
             "ReduceMean": self.test_ReduceMean,
             "SiLU": self.test_SiLU,
@@ -64,6 +65,7 @@ class ONNX_IR_TESTER(object):
             # Torch Test Case, Alphabetically
             #############################
             "LayerGroup": self.test_LayerGroup,
+            "Lg": self.test_Lg,
         }
         self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
         #self.quant_modes = ["f16", "bf16"]  # add later
@@ -927,6 +929,59 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([sigmoid_def, mul_def],
                                       test_case, [inputs], [output],
                                       initializer=[constant])
+        self.onnx_and_test(
+            input_data,
+            graph_def,
+            test_case,
+        )
+
+    def test_Lg(self):
+        test_case = "Lg"
+        input_shape = [1, 64, 4, 4]
+        constant_shape = [1, 64, 4, 4]
+        output_shape = [1, 64, 4, 4]
+
+        input_data = {"input": np.random.randn(*input_shape).astype(np.float32),
+                      "input1": np.random.randn(*input_shape).astype(np.float32)}
+        inputs = helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape)
+        inputs1 = helper.make_tensor_value_info("input1", TensorProto.FLOAT, constant_shape)
+
+        output = helper.make_tensor_value_info(
+            "output", TensorProto.FLOAT, output_shape
+        )
+        sigmoid = helper.make_tensor_value_info(
+            "sigmoid", TensorProto.FLOAT, output_shape
+        )
+        sigmoid_def = helper.make_node(
+            "Sigmoid",
+            inputs=['input'],
+            outputs=['sigmoid'],
+        )
+        mul_def = helper.make_node(
+            "Mul", inputs=["sigmoid", "input1"], outputs=["output"]
+        )
+        graph_def = helper.make_graph(
+            [sigmoid_def, mul_def], test_case, [inputs,inputs1], [sigmoid, output]
+        )
+        self.onnx_and_test(input_data, graph_def,test_case)
+
+    def test_Gather(self):
+        test_case = 'Gather'
+        input_shape = {"input": [1, 32, 27, 27], "indices": [5]}
+        output_shape = [1, 5, 27, 27]
+        input_data = {
+            "input": np.random.randn(*input_shape['input']).astype(np.float32)
+        }
+
+        inputs = [
+            helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape['input'])
+        ]
+        indices = helper.make_tensor("indices", TensorProto.INT64, input_shape['indices'], np.arange(2, 15, 3).astype(np.int64))
+        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
+
+        gather_def = helper.make_node(test_case, inputs=list(input_shape.keys()), outputs=["output"], axis=1)
+
+        graph_def = helper.make_graph([gather_def], test_case, inputs, [output], initializer=[indices])
         self.onnx_and_test(
             input_data,
             graph_def,
