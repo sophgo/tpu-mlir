@@ -372,7 +372,9 @@ StringRef Module::getName(Operation *op) {
 }
 
 StringRef Module::getName(Value v) {
-  if (auto op = v.getDefiningOp()) {
+  if (auto loc = v.getLoc().dyn_cast<mlir::NameLoc>()) {
+    return loc.getName();
+  } else if (auto op = v.getDefiningOp()) {
     return Module::getName(op);
   }
   v.dump();

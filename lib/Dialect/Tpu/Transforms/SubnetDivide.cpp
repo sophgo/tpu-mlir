@@ -89,8 +89,14 @@ void buildSubFunction(std::shared_ptr<SubFunction> sf, ModuleOp module) {
   getInputsOutputs(sf->ops, fnInputs, fnOutputs);
   std::vector<Type> argType;
   std::vector<Type> resType;
+  std::vector<Location> argLoc;
   for (auto input : fnInputs) {
     argType.push_back(input.getType());
+    if (auto op = input.getDefiningOp()) {
+      argLoc.push_back(op->getLoc());
+    } else {
+      argLoc.push_back(module.getLoc());
+    }
   }
   for (auto output : fnOutputs) {
     resType.push_back(output.getType());
@@ -138,6 +144,7 @@ void buildSubFunction(std::shared_ptr<SubFunction> sf, ModuleOp module) {
   module.push_back(fnOp);
   for (auto it : llvm::enumerate(fnInputs)) {
     auto arg = block->getArgument(it.index());
+    arg.setLoc(argLoc[it.index()]);
     it.value().replaceUsesWithIf(arg, [&](OpOperand &operand) {
       Operation *user = operand.getOwner();
       return find(sf->ops.begin(), sf->ops.end(), user) != sf->ops.end();
