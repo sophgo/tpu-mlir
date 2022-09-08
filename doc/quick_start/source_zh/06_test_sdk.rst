@@ -47,13 +47,13 @@
 ~~~~~~~~~~~~~~~~~~~~~~
 
 从 https://github.com/sophgo/tpu-perf/releases 地址下载最新的 ``tpu-perf``
-wheel安装包。例如：tpu_perf-x.x.x-py3-none-any.whl 。并将 ``tpu-perf`` 包放置到
-与 ``model-zoo`` 同一级目录下。此时的目录结构应该为如下形式：
+wheel安装包。例如：tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl 。并将
+``tpu-perf`` 包放置到与 ``model-zoo`` 同一级目录下。此时的目录结构应该为如下形式：
 
 
 ::
 
-   ├── tpu_perf-x.x.x-py3-none-any.whl
+   ├── tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
    ├── tpu-mlir_xxxx.tar.gz
    └── model-zoo
 
@@ -208,19 +208,20 @@ SOC 中。这里介绍一种通过 linux nfs 远程文件系统挂载来实现�
 .. code-block:: console
    :linenos:
 
-   $ pip3 install ./tpu_perf-*-py3-none-any.whl
+   $ pip3 install ./tpu_perf-*-py3-none-manylinux2014_x86_64.whl
    $ cd model-zoo
    $ python3 -m tpu_perf.run --mlir --full
 
 2. SOC 设备使用以下步骤，测试生成的 ``bmodel`` 性能。
 
-将 :ref:`获取tpu_perf <get tpu-perf>` 中提到的
-``tpu_perf-x.x.x-py3-none-any.whl`` 文件拷贝到SOC设备上并执行以下操作：
+从 https://github.com/sophgo/tpu-perf/releases 地址下载最新的 ``tpu-perf``
+``tpu_perf-x.x.x-py3-none-manylinux2014_aarch64.whl`` 文件到SOC设备上并执行
+以下操作：
 
 .. code-block:: console
    :linenos:
 
-   $ pip3 install ./tpu_perf-*-py3-none-any.whl
+   $ pip3 install ./tpu_perf-x.x.x-py3-none-manylinux2014_aarch64.whl
    $ cd model-zoo
    $ python3 -m tpu_perf.run --mlir --full
 
