@@ -250,6 +250,7 @@ class MLIRImporter(object):
             'strides': self.ArrayAttr(kargs['strides']),
             'pads': self.ArrayAttr(kargs['pads']),
             'do_relu': BoolAttr.get(kargs['do_relu']),
+            'count_include_pad': BoolAttr.get(kargs['count_include_pad']),
         }
         return self.buildOp(Top.AvgPoolOp, operands, [output_type], **param)
 

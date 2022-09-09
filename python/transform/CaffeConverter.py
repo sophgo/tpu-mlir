@@ -359,8 +359,7 @@ class CaffeConverter(BaseConverter):
                 strides[0] = p.stride_h
             if p.HasField('stride_w'):
                 strides[1] = p.stride_w
-            pads = [p.pad] * 4 if p.HasField('pad') else set_caffe_pad(
-                input_shape, output_shape, kernel_shape, strides)
+            pads = set_caffe_pad(input_shape, output_shape, kernel_shape, strides) # if not p.HasField('pad') else [p.pad] * 4
         else:
             pads = [0] * 4
             strides = [1] * 2

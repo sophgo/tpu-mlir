@@ -33,7 +33,7 @@ def set_caffe_pad(input_shape, output_shape, kernel_shape, strides):
     pad_t = padding_along_h // 2
     pad_l = padding_along_w // 2
     pad_b = padding_along_h - pad_t
-    pad_r = padding_along_h - pad_l
+    pad_r = padding_along_w - pad_l
     return [pad_t, pad_l, pad_b, pad_r]
 
 def get_TF_SAME_Padding(input_spatial_shape, kernel, stride):
