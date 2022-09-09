@@ -173,7 +173,7 @@ class CaffeConverter(BaseConverter):
             raise RuntimeError("{} Op not support now".format(layer.type))
 
         for layer in self.layers:
-            if not len(self.select_outputs):
+            if len(self.select_outputs) == len(self.output_names):
                 break
             is_test_phase = True
             if len(layer.include) != 0:
@@ -188,13 +188,13 @@ class CaffeConverter(BaseConverter):
             self.caffeop_factory.get(self.layerType(layer), lambda x: NoneAndRaise(x))(layer)
             for out in layer.top:
                 if out in self.select_outputs:
-                    self.select_outputs.remove(out)
                     self.output_names.append(out)
 
+        assert(len(self.select_outputs) == len(self.output_names))
         # add return op
         return_op = list()
         # Set output
-        for name in self.output_names:
+        for name in self.select_outputs:
             op = self.getOperand(name)
             return_op.append(op)
 
