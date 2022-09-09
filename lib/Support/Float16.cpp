@@ -6,9 +6,8 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
-#include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Float16.h"
 #include "bitcasts.h"
 #include <math.h>
 
@@ -548,8 +547,102 @@ static inline bf16 fp32_to_bf16(fp32& single) {
   return res;
 }
 
+static inline bf16 fp32_to_bf16_denorm(fp32 src, RoundingMode round_mode) {
+  bf16 dst;
+  if (((src.format.frac >> 16) & 0x7f) == 0x7f) {
+    if ((src.format.frac & 0xffff) == 0x0) { // 0x007f0000
+      dst.bits = 0x0;
+      dst.format.sign = src.format.sign;
+    } else if ((src.format.frac & 0x8000) != 0x8000) { // 0x007f0001-0x007f7fff
+      if ((round_mode == tpu_mlir::ROUNDING_HALF_TO_EVEN) ||
+          (round_mode == tpu_mlir::ROUNDING_HALF_AWAY_FROM_ZERO) ||
+          (round_mode == tpu_mlir::ROUNDING_TOWARDS_ZERO)) {
+        dst.bits = 0x0;
+      } else if (round_mode == tpu_mlir::ROUNDING_DOWN) {
+        if (src.format.sign == 0) {
+          dst.bits = 0x0;
+        } else {
+          dst.bits = 0x80;
+        }
+      } else { // ROUND_UP
+        if (src.format.sign == 0) {
+          dst.bits = 0x80;
+        } else {
+          dst.bits = 0x0;
+        }
+      }
+      dst.format.sign = src.format.sign;
+    } else { // 0x007f8000 - 0x007fffff
+      if ((round_mode == tpu_mlir::ROUNDING_HALF_TO_EVEN) ||
+          (round_mode == tpu_mlir::ROUNDING_HALF_AWAY_FROM_ZERO)) {
+        dst.bits = 0x80;
+      } else if (round_mode == tpu_mlir::ROUNDING_TOWARDS_ZERO) {
+        dst.bits = 0x0;
+      } else if (round_mode == tpu_mlir::ROUNDING_DOWN) {
+        if (src.format.sign == 0) {
+          dst.bits = 0x0;
+        } else {
+          dst.bits = 0x80;
+        }
+      } else { // ROUND_UP
+        if (src.format.sign == 0) {
+          dst.bits = 0x80;
+        } else {
+          dst.bits = 0x0;
+        }
+      }
+      dst.format.sign = src.format.sign;
+    }
+  } else {
+    dst.bits = 0x0;
+    dst.format.sign = src.format.sign;
+  }
+  return dst;
+}
+
+static inline bf16 fp32_to_bf16_all(fp32 src, RoundingMode round_mode) {
+  bf16 dst;
+  fp32 fp32val;
+  long long temp_r, temp_l;
+  if (src.format.exp > 0 && src.format.exp < 255) {
+    uint32_t mant = src.bits & 0xFFFF;
+    if (round_mode == tpu_mlir::ROUNDING_DOWN) {
+      if (src.format.sign == 0) {
+        temp_r = (src.bits >> 16);
+      } else {
+        temp_r = ((src.bits >> 16) + (mant != 0));
+      }
+    } else if (round_mode == tpu_mlir::ROUNDING_UP) {
+      if (src.format.sign == 0) {
+        temp_r = ((src.bits >> 16) + (mant != 0));
+      } else {
+        temp_r = (src.bits >> 16);
+      }
+    } else {
+      temp_r = RightShiftRound<long long>((long long)src.bits, 16, round_mode);
+    }
+    temp_l = temp_r << 16;
+    fp32val.bits = temp_l&0xFFFFFFFF;
+    dst = fp32_to_bf16(fp32val);
+  } else if (src.format.exp == 0xff && src.format.frac != 0) {
+    dst.bits = 0x7fff;
+  } else if (src.format.sign == 0 && src.format.exp == 0xff && src.format.frac == 0) {
+    dst.bits = 0x7f80;
+  } else if (src.format.sign == 1 && src.format.exp == 0xff && src.format.frac == 0) {
+    dst.bits = 0xff80;
+  } else if (src.format.sign == 0 && src.format.exp == 0 && src.format.frac == 0) {
+    dst.bits = 0x0000;
+  } else if (src.format.sign == 1 && src.format.exp == 0 && src.format.frac == 0) {
+    dst.bits = 0x8000;
+  } else {
+    // Denorm fp32, use fp32_to_bf16_denorm
+    dst = fp32_to_bf16_denorm(src, round_mode);
+  }
+  return dst;
+}
+
 uint16_t float_to_bf16_uint16_simple(float x) {
-  bf16 ret = fp32_to_bf16(*(fp32*)&x);
+  bf16 ret = fp32_to_bf16_all(*(fp32*)&x, tpu_mlir::ROUNDING_HALF_TO_EVEN);
   return ret.bits;
 }
 
