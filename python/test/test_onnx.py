@@ -41,7 +41,8 @@ class ONNX_IR_TESTER(object):
             "ConvTranspose2D": self.test_ConvTranspose,
             "Clip": self.test_Clip,
             "Div": self.test_Div,
-            "Gather": self.test_Gather,
+            #"Gather": self.test_Gather,
+            "GatherToSlice": self.test_GatherToSlice,
             "LeakyRelu": self.test_LeakyRelu,
             "Log": self.test_Log,
             #"LSTM": self.test_LSTM,
@@ -821,11 +822,7 @@ class ONNX_IR_TESTER(object):
         add_def = helper.make_node(test_case, inputs=list(input_shape.keys()), outputs=["output"])
 
         graph_def = helper.make_graph([add_def], test_case, inputs, [output])
-        self.onnx_and_test(
-            input_data,
-            graph_def,
-            test_case,
-        )
+        self.onnx_and_test(input_data, graph_def, test_case)
 
     def test_BroadcastAdd(self):
         test_case = "BroadcastAdd"
@@ -838,11 +835,7 @@ class ONNX_IR_TESTER(object):
         output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
         add_def = helper.make_node("Add", inputs=list(input_shape.keys()), outputs=["output"])
         graph_def = helper.make_graph([add_def], test_case, inputs, [output])
-        self.onnx_and_test(
-            input_data,
-            graph_def,
-            test_case,
-        )
+        self.onnx_and_test(input_data, graph_def, test_case)
 
     def test_LSTM(self):
         test_case = 'LSTM'
@@ -967,6 +960,44 @@ class ONNX_IR_TESTER(object):
 
     def test_Gather(self):
         test_case = 'Gather'
+        total_tokens = 60004
+        token_shape = [total_tokens, 256]
+        input_shape = [1, 13]
+        output_shape = [1, 13, 256]
+        input_data = {
+            "input": np.random.randint(0, total_tokens, input_shape).astype(np.int64)
+        }
+
+        input = helper.make_tensor_value_info(
+            'input', TensorProto.INT64, input_shape)
+        output = helper.make_tensor_value_info(
+            'output', TensorProto.FLOAT, output_shape)
+
+        token_data =onnx.helper.make_tensor(
+            name='tokens',
+            data_type=onnx.TensorProto.FLOAT,
+            dims=token_shape,
+            vals=np.random.randn(*token_shape).astype(np.float32).flatten(),
+        )
+
+        gather_node = helper.make_node(
+            'Gather',  # node name
+            ['tokens','input'],  # inputs
+            ['output'],  # outputs
+        )
+
+        graph_def = helper.make_graph(
+            [gather_node],
+            test_case,
+            [input],
+            [output],
+            initializer=[token_data]
+        )
+        self.onnx_and_test(input_data, graph_def, test_case)
+
+
+    def test_GatherToSlice(self):
+        test_case = 'GatherToSlice'
         input_shape = {"input": [1, 32, 27, 27], "indices": [5]}
         output_shape = [1, 5, 27, 27]
         input_data = {
@@ -979,14 +1010,10 @@ class ONNX_IR_TESTER(object):
         indices = helper.make_tensor("indices", TensorProto.INT64, input_shape['indices'], np.arange(2, 15, 3).astype(np.int64))
         output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
 
-        gather_def = helper.make_node(test_case, inputs=list(input_shape.keys()), outputs=["output"], axis=1)
+        gather_def = helper.make_node("Gather", inputs=list(input_shape.keys()), outputs=["output"], axis=1)
 
         graph_def = helper.make_graph([gather_def], test_case, inputs, [output], initializer=[indices])
-        self.onnx_and_test(
-            input_data,
-            graph_def,
-            test_case,
-        )
+        self.onnx_and_test(input_data, graph_def, test_case)
 
 
 if __name__ == "__main__":
