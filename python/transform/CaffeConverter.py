@@ -12,7 +12,7 @@ import numpy as np
 import caffe
 from caffe.proto import caffe_pb2
 from google.protobuf import text_format
-from utils.pad_setting import set_auto_pad
+from utils.pad_setting import set_caffe_pad
 
 
 class CaffeConverter(BaseConverter):
@@ -306,17 +306,28 @@ class CaffeConverter(BaseConverter):
         in_op = self.getOperand(layer.bottom[0])
         input_shape = self.getShape(layer.bottom[0])
         num_dims = len(input_shape)
+        output_shape = input_shape
+        attrs = {"name": layer.name}
         assert (num_dims == 4 or num_dims == 2)
         if num_dims == 2:
             raise RuntimeError("Not support now, shape {}".format(input_shape))
-        output_shape = input_shape
-        attrs = {"name": layer.name}
-        scale_op = self.blob_to_weight_op(layer, 0)
-        bias_op = self.mlir.none_op
-        if layer.scale_param.bias_term:
-            bias_op = self.blob_to_weight_op(layer, 1)
-        new_op = self.mlir.create_scale_op([in_op, scale_op, bias_op], output_shape, **attrs)
-        self.addOperand(layer.top[0], new_op)
+        if len(layer.bottom) == 2:
+            op1 = self.getOperand(layer.bottom[1])
+            input_shape1 = self.getShape(layer.bottom[1])
+            if len(input_shape1) < len(input_shape):
+                output_shape1 = list(input_shape1) + [1] * (len(input_shape) - len(input_shape1))
+                op1 = self.mlir.create_reshape_op([op1], output_shape1, **{'name': layer.bottom[1] + "_reshape"})
+            new_op = self.mlir.create_mul_op([in_op, op1], output_shape, **attrs)
+            self.addOperand(layer.top[0], new_op)
+        else:
+            scale_op = self.blob_to_weight_op(layer, 0)
+            if layer.scale_param.bias_term:
+                bias_op = self.blob_to_weight_op(layer, 1)
+            else:
+                bias_op = self.create_weight_op(
+                    layer.name + "_1", np.zeros(self.getShape(layer.bottom[1]), np.float32))
+            new_op = self.mlir.create_scale_op([in_op, scale_op, bias_op], output_shape, **attrs)
+            self.addOperand(layer.top[0], new_op)
 
     def convert_relu_op(self, layer):
         assert (layer.type == "ReLU")
@@ -330,6 +341,7 @@ class CaffeConverter(BaseConverter):
     def convert_pooling_op(self, layer):
         assert (layer.type == "Pooling")
         input_shape = self.getShape(layer.bottom[0])
+        output_shape = self.getShape(layer.top[0])
         op = self.getOperand(layer.bottom[0])
         p = layer.pooling_param
         method = p.pool
@@ -347,7 +359,8 @@ class CaffeConverter(BaseConverter):
                 strides[0] = p.stride_h
             if p.HasField('stride_w'):
                 strides[1] = p.stride_w
-            pads = set_auto_pad("SAME_UPPER", input_shape, kernel_shape, strides)
+            pads = [p.pad] * 4 if p.HasField('pad') else set_caffe_pad(
+                input_shape, output_shape, kernel_shape, strides)
         else:
             pads = [0] * 4
             strides = [1] * 2
@@ -359,7 +372,6 @@ class CaffeConverter(BaseConverter):
             'count_include_pad': True,
             'do_relu': False,
         }
-        output_shape = self.getShape(layer.top[0])
         if method == 0:  # MAX
             new_op = self.mlir.create_maxpool_op([op], output_shape, **attrs)
         elif method == 1:  # AVE
@@ -428,11 +440,61 @@ class CaffeConverter(BaseConverter):
 
     def convert_bn_op(self, layer):
         assert (self.layerType(layer) == 'BN')
-        raise RuntimeError("not implemented")
+        in_op = self.getOperand(layer.bottom[0])
+        input_shape = self.getShape(layer.bottom[0])
+        operands = list()
+        operands.append(in_op)
+
+        p = layer.bn_param
+        bn_mode = 0
+        if hasattr(p, 'bn_mode'):
+            bn_mode = p.bn_mode
+
+        attrs = {'variance_epsilon': 1e-5, 'frozen': False, 'name': layer.name}
+
+        if layer.HasField('bn_param'):
+            if layer.bn_param.HasField('eps'):
+                attrs['variance_epsilon'] = layer.bn_param.eps
+
+            if layer.bn_param.HasField('frozen'):
+                attrs['frozen'] = layer.bn_param.frozen
+                assert (attrs['frozen'] == True and "only support frozen = false now")
+
+        blobs = self.layer_dict[layer.name].blobs
+
+        for idx, blob in enumerate(blobs):
+            blob_op = self.blob_to_weight_op(layer, idx)
+            operands.append(blob_op)
+
+        output_shape = input_shape
+        if bn_mode == 1:
+            new_op = self.mlir.create_scale_op(operands, output_shape, **attrs)
+            self.addOperand(layer.top[0], new_op)
+        else:
+            new_op = self.mlir.create_batchnorm_op(operands, output_shape, **attrs)
+            self.addOperand(layer.top[0], new_op)
 
     def convert_concat_op(self, layer):
         assert (self.layerType(layer) == 'Concat')
-        raise RuntimeError("not implemented")
+        in_op = self.getOperand(layer.bottom[0])
+        if len(layer.bottom) == 1:
+            return self.addOperand(layer.top[0], in_op)
+        axis = layer.concat_param.axis
+        input_shape = self.getShape(layer.bottom[0])
+        assert (axis < len(input_shape))
+        concat_axis_dim = 0
+        operands = list()
+        for bottom in layer.bottom:
+            bottom_op = self.getOperand(bottom)
+            shape = self.getShape(bottom)
+            assert (len(shape) == len(input_shape))
+            concat_axis_dim += shape[axis]
+            operands.append(bottom_op)
+        output_shape = list(input_shape)
+        output_shape[axis] = concat_axis_dim
+        attrs = {'axis': axis, 'name': layer.name}
+        new_op = self.mlir.create_concat_op(operands, output_shape, **attrs)
+        self.addOperand(layer.top[0], new_op)
 
     def convert_continuation_indicator_op(self, layer):
         assert (self.layerType(layer) == 'ContinuationIndicator')
@@ -533,7 +595,20 @@ class CaffeConverter(BaseConverter):
 
     def convert_reorg_op(self, layer):
         assert (self.layerType(layer) == 'Reorg')
-        raise RuntimeError("not implemented")
+        in_op = self.getOperand(layer.bottom[0])
+        input_shape = self.getShape(layer.bottom[0])
+        assert (len(input_shape) == 4)
+        reverse = layer.reorg_param.reverse
+        assert (reverse == False)
+        stride = layer.reorg_param.stride
+        output_shape = list(input_shape)
+        output_shape[0] = input_shape[0]
+        output_shape[1] = int(input_shape[1] * stride * stride)
+        output_shape[2] = int(input_shape[2] / stride)
+        output_shape[3] = int(input_shape[3] / stride)
+        attrs = {'name': layer.name}
+        new_op = self.mlir.create_reshape_op([in_op], output_shape, **attrs)
+        self.addOperand(layer.top[0], new_op)
 
     def convert_reshape_op(self, layer):
         assert (self.layerType(layer) == 'Reshape')
@@ -557,7 +632,12 @@ class CaffeConverter(BaseConverter):
 
     def convert_sigmoid_op(self, layer):
         assert (self.layerType(layer) == 'Sigmoid')
-        raise RuntimeError("not implemented")
+        in_op = self.getOperand(layer.bottom[0])
+        input_shape = self.getShape(layer.bottom[0])
+        output_shape = input_shape
+        attrs = {'scale': 1, 'bias': 0, 'name': layer.name}
+        new_op = self.mlir.create_sigmoid_op([in_op], output_shape, **attrs)
+        self.addOperand(layer.top[0], new_op)
 
     def convert_silence_op(self, layer):
         assert (self.layerType(layer) == 'Silence')
@@ -581,7 +661,22 @@ class CaffeConverter(BaseConverter):
 
     def convert_upsample_op(self, layer):
         assert (self.layerType(layer) == 'Upsample')
-        raise RuntimeError("not implemented")
+        in_op = self.getOperand(layer.bottom[0])
+        input_shape = self.getShape(layer.bottom[0])
+        assert (len(input_shape) == 4)
+        p = layer.upsample_param
+        scale = p.scale
+        output_shape = [
+            input_shape[0], input_shape[1], scale * input_shape[2], scale * input_shape[3]
+        ]
+        if p.HasField('upsample_w'):
+            output_shape[3] = p.upsample_w
+        if p.HasField('upsample_h'):
+            output_shape[2] = p.upsample_h
+        attrs = {'scale_h': scale, 'scale_w': scale, 'name': layer.name}
+
+        new_op = self.mlir.create_upsample_op([in_op], output_shape, **attrs)
+        self.addOperand(layer.top[0], new_op)
 
     def convert_yolo_detection_op(self, layer):
         assert (self.layerType(layer) == 'YoloDetection')
