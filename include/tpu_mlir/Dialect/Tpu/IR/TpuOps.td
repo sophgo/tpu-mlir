@@ -39,7 +39,7 @@ class Tpu_BaseOp<string mnemonic, list<Trait> traits = []> :
 
 class Tpu_Op<string mnemonic, list<Trait> traits = []> :
     Op<Tpu_Dialect, mnemonic, !listconcat(traits,
-       [NoSideEffect, HasCommonAttributes, TpuTypeRestrict,
+       [NoSideEffect, TpuTypeRestrict,
        DeclareOpInterfaceMethods<GlobalGenInterface>,
        DeclareOpInterfaceMethods<InferenceInterface>])> ;
 

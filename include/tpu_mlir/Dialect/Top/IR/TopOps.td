@@ -33,8 +33,7 @@ class Top_BaseOp<string mnemonic, list<Trait> traits = []> :
 
 class Top_Op<string mnemonic, list<Trait> traits = []> :
     Top_BaseOp<mnemonic, !listconcat(traits,
-       [HasCommonAttributes,
-        DeclareOpInterfaceMethods<InferenceInterface>,
+       [DeclareOpInterfaceMethods<InferenceInterface>,
         DeclareOpInterfaceMethods<LoweringInterface>,
         DeclareOpInterfaceMethods<FlopsInterface>])> ;
 
