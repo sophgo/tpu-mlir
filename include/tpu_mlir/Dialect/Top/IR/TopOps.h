@@ -23,5 +23,6 @@
 #include "tpu_mlir/Traits/Traits.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOpsDialect.h.inc"
 #include "tpu_mlir/Dialect/Top/IR/TopAttr.h.inc"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuTypes.h"
 #define GET_OP_CLASSES
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h.inc"

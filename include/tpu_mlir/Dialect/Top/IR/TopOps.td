@@ -23,6 +23,7 @@ include "tpu_mlir/Interfaces/InferenceInterface.td"
 include "tpu_mlir/Interfaces/LoweringInterface.td"
 include "tpu_mlir/Interfaces/FlopsInterface.td"
 include "tpu_mlir/Traits/Traits.td"
+include "tpu_mlir/Dialect/Tpu/IR/TpuAttr.td"
 
 
 def AnyTenor: AnyTypeOf<[AnyRankedTensor]>;

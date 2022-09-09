@@ -92,7 +92,7 @@ wheel安装包。例如：tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl 。�
 
 .. code-block:: console
 
-   $ pip3 install ../tpu_perf-*-py3-none-any.whl
+   $ pip3 install ../tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
 
 
 .. _test_main:

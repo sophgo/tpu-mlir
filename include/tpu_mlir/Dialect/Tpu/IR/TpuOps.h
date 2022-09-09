@@ -24,11 +24,9 @@
 #include "tpu_mlir/Traits/Traits.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOpsDialect.h.inc"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/TimeStep.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuTypes.h"
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuEnum.h.inc"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuStruct.h.inc"
-#define GET_ATTRDEF_CLASSES
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuAttr.h.inc"
 #define GET_OP_CLASSES
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h.inc"
