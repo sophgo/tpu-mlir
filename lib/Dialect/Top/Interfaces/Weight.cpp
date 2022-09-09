@@ -47,14 +47,14 @@ std::shared_ptr<std::vector<float>> WeightOp::read_as_float() {
     auto data_u16 = read<uint16_t>();
     auto data_f32 = std::make_shared<std::vector<float>>(data_u16->size());
     for (uint64_t i = 0; i < data_u16->size(); i++) {
-      data_f32->data()[i] = fp16_alt_to_fp32_value(data_u16->data()[i]);
+      data_f32->data()[i] = f16_to_f32(data_u16->data()[i]);
     }
     return data_f32;
   } else if (dtype.isBF16()) {
     auto data_u16 = read<uint16_t>();
     auto data_f32 = std::make_shared<std::vector<float>>(data_u16->size());
     for (uint64_t i = 0; i < data_u16->size(); i++) {
-      data_f32->data()[i] = bf16_uint16_to_float_simple(data_u16->data()[i]);
+      data_f32->data()[i] = bf16_to_f32(data_u16->data()[i]);
     }
     return data_f32;
   } else if (dtype.isUnsignedInteger(16)) {
@@ -167,8 +167,9 @@ mlir::Value WeightOp::clone_bf16(Operation *OwnerOp) {
   auto data = read<float>();
   auto count = data->size();
   auto data_bf16 = std::make_shared<std::vector<uint16_t>>(count);
+
   for (uint32_t i = 0; i < count; i++) {
-    data_bf16->at(i) = float_to_bf16_uint16_simple(data->at(i));
+    data_bf16->at(i) = f32_to_bf16(data->at(i));
   }
   auto ctx = OwnerOp->getContext();
   OpBuilder builder(ctx);
@@ -195,7 +196,7 @@ mlir::Value WeightOp::clone_f16(Operation *OwnerOp) {
   auto count = data->size();
   auto data_f16 = std::make_shared<std::vector<uint16_t>>(count);
   for (uint32_t i = 0; i < count; i++) {
-    data_f16->at(i) = fp16_alt_from_fp32_value(data->at(i));
+    data_f16->at(i) = f32_to_f16( data->at(i) );
   }
   auto ctx = OwnerOp->getContext();
   OpBuilder builder(ctx);
