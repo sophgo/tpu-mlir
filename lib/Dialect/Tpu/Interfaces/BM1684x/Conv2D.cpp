@@ -200,9 +200,8 @@ void tpu::Conv2DOp::weight_reorder_bf16_bm1684x() {
 
     bool isF16 = filter_type.isF16();
     for (uint32_t i = 0; i < count; i++) {
-      data_u16->at(i) = isF16 ?
-                        fp16_alt_from_fp32_value(data_fp32->at(i)) :
-                        float_to_bf16_uint16_simple(data_fp32->at(i));
+      data_u16->at(i) = isF16 ? f32_to_f16(data_fp32->at(i)) :
+                        f32_to_bf16(data_fp32->at(i));
     }
     int64_t bias_shape[4] = {1, attr.oc, 1, 1};
     auto new_bias_type = RankedTensorType::get(bias_shape, filter_type);
