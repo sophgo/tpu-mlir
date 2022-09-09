@@ -17,7 +17,6 @@ class TPUMLIROpTrait<string name> : NativeOpTrait<name> {
 }
 
 def SupportFuseRelu : TPUMLIROpTrait<"SupportFuseRelu">;
-def HasCommonAttributes : TPUMLIROpTrait<"HasCommonAttributes">;
 def TpuTypeRestrict: TPUMLIROpTrait<"TpuTypeRestrict">;
 def InOutSameShape: TPUMLIROpTrait<"InOutSameShape">;
 def InOutSameDim: TPUMLIROpTrait<"InOutSameDim">;
