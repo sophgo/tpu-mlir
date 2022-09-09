@@ -300,6 +300,9 @@ T RightShiftRound(T src, int shift_num, RoundingMode round_mode) {
   return res;
 }
 
+template long long RightShiftRound(long long src, int shift_num, RoundingMode round_mode);
+template int64_t RightShiftRound(int64_t src, int shift_num, RoundingMode round_mode);
+
 // to compilable with tflite
 // tensorflow/lite/kernels/internal/common.h:MultiplyByQuantizedMultiplier()
 int32_t MultiplyByQuantizedMultiplier(int32_t x, int32_t multiplier,

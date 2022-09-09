@@ -166,7 +166,6 @@ void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
     spec.common.round_mode = ROUND_INF;
 
     local_sec_info_t sec_info = {0};
-    sec_info.group_type =
     sec_info.n_slice = in_gi.n_slice;
     sec_info.d_slice = 1;
     sec_info.h_slice = in_gi.h_slice;
