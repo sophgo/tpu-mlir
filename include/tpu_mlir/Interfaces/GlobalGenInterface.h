@@ -9,9 +9,7 @@
 
 #pragma once
 
-#include "mlir/IR/Builders.h"
-#include "mlir/IR/BuiltinTypes.h"
-#include "mlir/IR/Operation.h"
+#include "mlir/IR/OpDefinition.h"
 
 #include "tpu_mlir/Support/Helper/Module.h"
 using namespace tpu_mlir::helper;

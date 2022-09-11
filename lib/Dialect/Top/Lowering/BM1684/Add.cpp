@@ -27,9 +27,9 @@ Value top::AddOp::lowering_int8_bm1684() {
   std::vector<double> coeff_v(nInputs, 1.0);
   auto th_output = Quant::getThreshold(output());
 
-  if (coeff().hasValue()) {
+  if (coeff().has_value()) {
     int idx = 0;
-    for (auto v : coeff().getValue()) {
+    for (auto v : coeff().value()) {
       coeff_v[idx++] = v.cast<FloatAttr>().getValueAsDouble();
     }
   }

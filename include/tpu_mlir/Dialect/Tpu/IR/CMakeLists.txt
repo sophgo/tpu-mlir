@@ -2,8 +2,6 @@ add_mlir_dialect(TpuOps tpu)
 add_mlir_doc(TpuOps TpuOps ./ -gen-op-doc)
 
 set(LLVM_TARGET_DEFINITIONS TpuOps.td)
-mlir_tablegen(TpuStruct.h.inc -gen-struct-attr-decls)
-mlir_tablegen(TpuStruct.cpp.inc -gen-struct-attr-defs)
 mlir_tablegen(TpuEnum.h.inc -gen-enum-decls)
 mlir_tablegen(TpuEnum.cpp.inc -gen-enum-defs)
 mlir_tablegen(TpuAttr.h.inc -gen-attrdef-decls)

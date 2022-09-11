@@ -47,8 +47,8 @@ LogicalResult tpu::LeakyReluOp::inference(InferenceParameter &p) {
       f32_to_bf16(dst, dst, num_elements);
     }
   } else if (asym == false) {
-    int64_t scalei = multiplier().getValue();
-    int64_t shifti = rshift().getValue();
+    int64_t scalei = multiplier().value();
+    int64_t shifti = rshift().value();
 
 #pragma omp parallel for schedule(static, omp_schedule(num_elements))
     for (int64_t i = 0; i < num_elements; ++i) {

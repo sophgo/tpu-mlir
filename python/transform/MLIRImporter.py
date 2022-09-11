@@ -160,30 +160,26 @@ class MLIRImporter(object):
         pad_value = kargs.get('pad_value', 0)
         pad_type = kargs.get('pad_type', 'center')
         resize_dims = kargs.get('resize_dims', shape[-2:])
-
-        preprocess_param = {
-            'mean':
-            ArrayAttr.get([FloatAttr.get_f64(x) for x in mean]),
-            'scale':
-            ArrayAttr.get([FloatAttr.get_f64(x) for x in scale]),
-            'keep_aspect_ratio':
-            BoolAttr.get(keep_aspect_ratio),
-            'pad_value':
-            IntegerAttr.get(self.mlir_type['INT64'], pad_value),
-            'resize_dims':
-            ArrayAttr.get([IntegerAttr.get(self.mlir_type['INT64'], x) for x in resize_dims]),
-            'pixel_format':
-            StringAttr.get(pixel_format),
-            'channel_format':
-            StringAttr.get(channel_format),
-            'pad_type':
-            StringAttr.get(pad_type)
-        }
-
         param = {}
-
         if len(kargs) > 0:
-            param["preprocess"] = DictAttr.get(preprocess_param)
+            param = {
+                'mean':
+                ArrayAttr.get([FloatAttr.get_f64(x) for x in mean]),
+                'scale':
+                ArrayAttr.get([FloatAttr.get_f64(x) for x in scale]),
+                'keep_aspect_ratio':
+                BoolAttr.get(keep_aspect_ratio),
+                'pad_value':
+                IntegerAttr.get(self.mlir_type['INT64'], pad_value),
+                'resize_dims':
+                ArrayAttr.get([IntegerAttr.get(self.mlir_type['INT64'], x) for x in resize_dims]),
+                'pixel_format':
+                StringAttr.get(pixel_format),
+                'channel_format':
+                StringAttr.get(channel_format),
+                'pad_type':
+                StringAttr.get(pad_type)
+            }
 
         op = Operation.create(Top.InputOp,
                               results=[self.input_types[index]],

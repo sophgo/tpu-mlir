@@ -9,9 +9,7 @@
 
 #pragma once
 
-#include "mlir/IR/BuiltinTypes.h"
-#include "mlir/IR/Builders.h"
-#include "mlir/IR/BuiltinOps.h"
+#include "mlir/IR/OpDefinition.h"
 #include "mlir/Dialect/Quant/QuantTypes.h"
 
 using namespace mlir;
