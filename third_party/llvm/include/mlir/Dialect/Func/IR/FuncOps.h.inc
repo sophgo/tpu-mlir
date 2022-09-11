@@ -85,7 +85,7 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value getCallee();
+  ::mlir::TypedValue<::mlir::FunctionType> getCallee();
   ::mlir::Operation::operand_range getCalleeOperands();
   ::mlir::MutableOperandRange getCalleeMutable();
   ::mlir::MutableOperandRange getCalleeOperandsMutable();

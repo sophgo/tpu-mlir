@@ -21,6 +21,7 @@ class MMAFragAttr;
 class MMAIntOverflowAttr;
 class MMALayoutAttr;
 class MMATypesAttr;
+class MMAShapeAttr;
 class ShflKindAttr;
 namespace detail {
 struct MMAB1OpAttrStorage;
@@ -103,6 +104,24 @@ public:
   ::mlir::NVVM::MMATypes getValue() const;
 };
 namespace detail {
+struct MMAShapeAttrStorage;
+} // namespace detail
+class MMAShapeAttr : public ::mlir::Attribute::AttrBase<MMAShapeAttr, ::mlir::Attribute, detail::MMAShapeAttrStorage> {
+public:
+  using Base::Base;
+public:
+  static MMAShapeAttr get(::mlir::MLIRContext *context, int m, int n, int k);
+  static constexpr ::llvm::StringLiteral getMnemonic() {
+    return {"shape"};
+  }
+
+  static ::mlir::Attribute parse(::mlir::AsmParser &odsParser, ::mlir::Type odsType);
+  void print(::mlir::AsmPrinter &odsPrinter) const;
+  int getM() const;
+  int getN() const;
+  int getK() const;
+};
+namespace detail {
 struct ShflKindAttrStorage;
 } // namespace detail
 class ShflKindAttr : public ::mlir::Attribute::AttrBase<ShflKindAttr, ::mlir::Attribute, detail::ShflKindAttrStorage> {
@@ -125,6 +144,7 @@ MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::MMAFragAttr)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::MMAIntOverflowAttr)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::MMALayoutAttr)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::MMATypesAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::MMAShapeAttr)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::ShflKindAttr)
 
 #endif  // GET_ATTRDEF_CLASSES

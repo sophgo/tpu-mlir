@@ -17,19 +17,21 @@ class AsmPrinter;
 namespace mlir {
 class AffineMapAttr;
 class ArrayAttr;
+class DenseArrayAttr;
 class DenseIntOrFPElementsAttr;
+class DenseResourceElementsAttr;
 class DenseStringElementsAttr;
 class DictionaryAttr;
 class FloatAttr;
 class IntegerAttr;
 class IntegerSetAttr;
 class OpaqueAttr;
-class OpaqueElementsAttr;
 class SparseElementsAttr;
 class StringAttr;
 class SymbolRefAttr;
 class TypeAttr;
 class UnitAttr;
+class StridedLayoutAttr;
 namespace detail {
 struct AffineMapAttrStorage;
 } // namespace detail
@@ -93,12 +95,50 @@ public:
   static ArrayAttr get(::mlir::MLIRContext *context, ::llvm::ArrayRef<Attribute> value);
   ::llvm::ArrayRef<Attribute> getValue() const;
   void walkImmediateSubElements(llvm::function_ref<void(mlir::Attribute)> walkAttrsFn, llvm::function_ref<void(mlir::Type)> walkTypesFn) const;
-  ::mlir::SubElementAttrInterface replaceImmediateSubAttribute(::llvm::ArrayRef<std::pair<size_t, ::mlir::Attribute>> replacements) const;
+  ::mlir::Attribute replaceImmediateSubElements(::llvm::ArrayRef<::mlir::Attribute> replAttrs, ::llvm::ArrayRef<::mlir::Type> replTypes) const;
+};
+namespace detail {
+struct DenseArrayAttrStorage;
+} // namespace detail
+class DenseArrayAttr : public ::mlir::Attribute::AttrBase<DenseArrayAttr, ::mlir::Attribute, detail::DenseArrayAttrStorage, ::mlir::ElementsAttr::Trait, ::mlir::TypedAttr::Trait> {
+public:
+  using Base::Base;
+  /// Allow implicit conversion to ElementsAttr.
+  operator ElementsAttr() const {
+    return *this ? cast<ElementsAttr>() : nullptr;
+  }
+
+  /// ElementsAttr implementation.
+  using ContiguousIterableTypesT =
+      std::tuple<bool, int8_t, int16_t, int32_t, int64_t, float, double>;
+  FailureOr<const bool *>
+  try_value_begin_impl(OverloadToken<bool>) const;
+  FailureOr<const int8_t *>
+  try_value_begin_impl(OverloadToken<int8_t>) const;
+  FailureOr<const int16_t *>
+  try_value_begin_impl(OverloadToken<int16_t>) const;
+  FailureOr<const int32_t *>
+  try_value_begin_impl(OverloadToken<int32_t>) const;
+  FailureOr<const int64_t *>
+  try_value_begin_impl(OverloadToken<int64_t>) const;
+  FailureOr<const float *>
+  try_value_begin_impl(OverloadToken<float>) const;
+  FailureOr<const double *>
+  try_value_begin_impl(OverloadToken<double>) const;
+  using Base::getChecked;
+public:
+  static DenseArrayAttr get(::mlir::MLIRContext *context, RankedTensorType type, ::llvm::ArrayRef<char> rawData);
+  static DenseArrayAttr getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, ::mlir::MLIRContext *context, RankedTensorType type, ::llvm::ArrayRef<char> rawData);
+  static DenseArrayAttr get(RankedTensorType type, ArrayRef<char> rawData);
+  static DenseArrayAttr getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, RankedTensorType type, ArrayRef<char> rawData);
+  static ::mlir::LogicalResult verify(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, RankedTensorType type, ::llvm::ArrayRef<char> rawData);
+  RankedTensorType getType() const;
+  ::llvm::ArrayRef<char> getRawData() const;
 };
 namespace detail {
 struct DenseIntOrFPElementsAttrStorage;
 } // namespace detail
-class DenseIntOrFPElementsAttr : public ::mlir::Attribute::AttrBase<DenseIntOrFPElementsAttr, DenseElementsAttr, detail::DenseIntOrFPElementsAttrStorage, ::mlir::ElementsAttr::Trait> {
+class DenseIntOrFPElementsAttr : public ::mlir::Attribute::AttrBase<DenseIntOrFPElementsAttr, DenseElementsAttr, detail::DenseIntOrFPElementsAttrStorage, ::mlir::ElementsAttr::Trait, ::mlir::TypedAttr::Trait> {
 public:
   using Base::Base;
     using DenseElementsAttr::empty;
@@ -130,10 +170,11 @@ public:
       APFloat, std::complex<APFloat>
     >;
 
-    /// Provide a `value_begin_impl` to enable iteration within ElementsAttr.
+    /// Provide a `try_value_begin_impl` to enable iteration within
+    /// ElementsAttr.
     template <typename T>
-    auto value_begin_impl(OverloadToken<T>) const {
-      return value_begin<T>();
+    auto try_value_begin_impl(OverloadToken<T>) const {
+      return try_value_begin<T>();
     }
 
     /// Convert endianess of input ArrayRef for big-endian(BE) machines. All of
@@ -201,9 +242,31 @@ public:
   public:
 };
 namespace detail {
+struct DenseResourceElementsAttrStorage;
+} // namespace detail
+class DenseResourceElementsAttr : public ::mlir::Attribute::AttrBase<DenseResourceElementsAttr, ::mlir::Attribute, detail::DenseResourceElementsAttrStorage, ::mlir::ElementsAttr::Trait, ::mlir::TypedAttr::Trait> {
+public:
+  using Base::Base;
+  protected:
+    /// A builder that inserts a new resource into the builtin dialect's blob
+    /// manager using the provided blob. The handle of the inserted blob is used
+    /// when building the attribute. The provided `blobName` is used as a hint
+    /// for the key of the new handle for the `blob` resource, but may be
+    /// changed if necessary to ensure uniqueness during insertion.
+    static DenseResourceElementsAttr get(
+      ShapedType type, StringRef blobName, AsmResourceBlob blob
+    );
+
+  public:
+public:
+  static DenseResourceElementsAttr get(ShapedType type, DenseResourceElementsHandle handle);
+  ShapedType getType() const;
+  DenseResourceElementsHandle getRawHandle() const;
+};
+namespace detail {
 struct DenseStringElementsAttrStorage;
 } // namespace detail
-class DenseStringElementsAttr : public ::mlir::Attribute::AttrBase<DenseStringElementsAttr, DenseElementsAttr, detail::DenseStringElementsAttrStorage, ::mlir::ElementsAttr::Trait> {
+class DenseStringElementsAttr : public ::mlir::Attribute::AttrBase<DenseStringElementsAttr, DenseElementsAttr, detail::DenseStringElementsAttrStorage, ::mlir::ElementsAttr::Trait, ::mlir::TypedAttr::Trait> {
 public:
   using Base::Base;
     using DenseElementsAttr::empty;
@@ -218,10 +281,11 @@ public:
     using ContiguousIterableTypesT = std::tuple<StringRef>;
     using NonContiguousIterableTypesT = std::tuple<Attribute>;
 
-    /// Provide a `value_begin_impl` to enable iteration within ElementsAttr.
+    /// Provide a `try_value_begin_impl` to enable iteration within
+    /// ElementsAttr.
     template <typename T>
-    auto value_begin_impl(OverloadToken<T>) const {
-      return value_begin<T>();
+    auto try_value_begin_impl(OverloadToken<T>) const {
+      return try_value_begin<T>();
     }
 
   protected:
@@ -305,12 +369,12 @@ public:
   static DictionaryAttr get(::mlir::MLIRContext *context, ArrayRef<NamedAttribute> value = llvm::None);
   ::llvm::ArrayRef<NamedAttribute> getValue() const;
   void walkImmediateSubElements(llvm::function_ref<void(mlir::Attribute)> walkAttrsFn, llvm::function_ref<void(mlir::Type)> walkTypesFn) const;
-  ::mlir::SubElementAttrInterface replaceImmediateSubAttribute(::llvm::ArrayRef<std::pair<size_t, ::mlir::Attribute>> replacements) const;
+  ::mlir::Attribute replaceImmediateSubElements(::llvm::ArrayRef<::mlir::Attribute> replAttrs, ::llvm::ArrayRef<::mlir::Type> replTypes) const;
 };
 namespace detail {
 struct FloatAttrStorage;
 } // namespace detail
-class FloatAttr : public ::mlir::Attribute::AttrBase<FloatAttr, ::mlir::Attribute, detail::FloatAttrStorage> {
+class FloatAttr : public ::mlir::Attribute::AttrBase<FloatAttr, ::mlir::Attribute, detail::FloatAttrStorage, ::mlir::TypedAttr::Trait> {
 public:
   using Base::Base;
   using ValueType = APFloat;
@@ -332,7 +396,7 @@ public:
 namespace detail {
 struct IntegerAttrStorage;
 } // namespace detail
-class IntegerAttr : public ::mlir::Attribute::AttrBase<IntegerAttr, ::mlir::Attribute, detail::IntegerAttrStorage> {
+class IntegerAttr : public ::mlir::Attribute::AttrBase<IntegerAttr, ::mlir::Attribute, detail::IntegerAttrStorage, ::mlir::TypedAttr::Trait> {
 public:
   using Base::Base;
     using ValueType = APInt;
@@ -387,7 +451,7 @@ public:
 namespace detail {
 struct OpaqueAttrStorage;
 } // namespace detail
-class OpaqueAttr : public ::mlir::Attribute::AttrBase<OpaqueAttr, ::mlir::Attribute, detail::OpaqueAttrStorage> {
+class OpaqueAttr : public ::mlir::Attribute::AttrBase<OpaqueAttr, ::mlir::Attribute, detail::OpaqueAttrStorage, ::mlir::TypedAttr::Trait> {
 public:
   using Base::Base;
   using Base::getChecked;
@@ -400,32 +464,9 @@ public:
   ::mlir::Type getType() const;
 };
 namespace detail {
-struct OpaqueElementsAttrStorage;
-} // namespace detail
-class OpaqueElementsAttr : public ::mlir::Attribute::AttrBase<OpaqueElementsAttr, ::mlir::Attribute, detail::OpaqueElementsAttrStorage, ::mlir::ElementsAttr::Trait> {
-public:
-  using Base::Base;
-  using ValueType = StringRef;
-
-  /// Decodes the attribute value using dialect-specific decoding hook.
-  /// Returns false if decoding is successful. If not, returns true and leaves
-  /// 'result' argument unspecified.
-  bool decode(ElementsAttr &result);
-  using Base::getChecked;
-public:
-  static OpaqueElementsAttr get(StringAttr dialect, ShapedType type, StringRef value);
-  static OpaqueElementsAttr getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, StringAttr dialect, ShapedType type, StringRef value);
-  static OpaqueElementsAttr get(Dialect *dialect, ShapedType type, StringRef value);
-  static OpaqueElementsAttr getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, Dialect *dialect, ShapedType type, StringRef value);
-  static ::mlir::LogicalResult verify(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, StringAttr dialect, ::llvm::StringRef value, ShapedType type);
-  StringAttr getDialect() const;
-  ::llvm::StringRef getValue() const;
-  ShapedType getType() const;
-};
-namespace detail {
 struct SparseElementsAttrStorage;
 } // namespace detail
-class SparseElementsAttr : public ::mlir::Attribute::AttrBase<SparseElementsAttr, ::mlir::Attribute, detail::SparseElementsAttrStorage, ::mlir::ElementsAttr::Trait> {
+class SparseElementsAttr : public ::mlir::Attribute::AttrBase<SparseElementsAttr, ::mlir::Attribute, detail::SparseElementsAttrStorage, ::mlir::ElementsAttr::Trait, ::mlir::TypedAttr::Trait> {
 public:
   using Base::Base;
     /// The set of data types that can be iterated by this attribute.
@@ -449,22 +490,17 @@ public:
       StringRef
     >;
     using ElementsAttr::Trait<SparseElementsAttr>::getValues;
-
-    /// Provide a `value_begin_impl` to enable iteration within ElementsAttr.
-    template <typename T>
-    auto value_begin_impl(OverloadToken<T>) const {
-      return value_begin<T>();
-    }
+    using ElementsAttr::Trait<SparseElementsAttr>::value_begin;
 
     template <typename T>
     using iterator =
         llvm::mapped_iterator<typename decltype(llvm::seq<ptrdiff_t>(0, 0))::iterator,
                               std::function<T(ptrdiff_t)>>;
 
-    /// Return the values of this attribute in the form of the given type 'T'.
-    /// 'T'  may be any of Attribute, APInt, APFloat, c++ integer/float types,
-    /// etc.
-    template <typename T> iterator<T> value_begin() const;
+    /// Provide a `try_value_begin_impl` to enable iteration within
+    /// ElementsAttr.
+    template <typename T>
+    FailureOr<iterator<T>> try_value_begin_impl(OverloadToken<T>) const;
 
   private:
     /// Get a zero APFloat for the given sparse attribute.
@@ -480,32 +516,30 @@ public:
     /// by the 'iterator' class.
     /// Get a zero for a given attribute type.
     template <typename T>
-    typename std::enable_if<std::is_base_of<Attribute, T>::value, T>::type
+    std::enable_if_t<std::is_base_of<Attribute, T>::value, T>
     getZeroValue() const {
       return getZeroAttr().template cast<T>();
     }
     /// Get a zero for an APInt.
     template <typename T>
-    typename std::enable_if<std::is_same<APInt, T>::value, T>::type
+    std::enable_if_t<std::is_same<APInt, T>::value, T>
     getZeroValue() const {
       return getZeroAPInt();
     }
     template <typename T>
-    typename std::enable_if<std::is_same<std::complex<APInt>, T>::value,
-                            T>::type
+    std::enable_if_t<std::is_same<std::complex<APInt>, T>::value, T>
     getZeroValue() const {
       APInt intZero = getZeroAPInt();
       return {intZero, intZero};
     }
     /// Get a zero for an APFloat.
     template <typename T>
-    typename std::enable_if<std::is_same<APFloat, T>::value, T>::type
+    std::enable_if_t<std::is_same<APFloat, T>::value, T>
     getZeroValue() const {
       return getZeroAPFloat();
     }
     template <typename T>
-    typename std::enable_if<std::is_same<std::complex<APFloat>, T>::value,
-                            T>::type
+    std::enable_if_t<std::is_same<std::complex<APFloat>, T>::value, T>
     getZeroValue() const {
       APFloat floatZero = getZeroAPFloat();
       return {floatZero, floatZero};
@@ -513,14 +547,13 @@ public:
 
     /// Get a zero for an C++ integer, float, StringRef, or complex type.
     template <typename T>
-    typename std::enable_if<
-        std::numeric_limits<T>::is_integer ||
-            DenseElementsAttr::is_valid_cpp_fp_type<T>::value ||
-            std::is_same<T, StringRef>::value ||
-            (detail::is_complex_t<T>::value &&
-             !llvm::is_one_of<T, std::complex<APInt>,
-                              std::complex<APFloat>>::value),
-        T>::type
+    std::enable_if_t<std::numeric_limits<T>::is_integer ||
+                         DenseElementsAttr::is_valid_cpp_fp_type<T>::value ||
+                         std::is_same<T, StringRef>::value ||
+                         (detail::is_complex_t<T>::value &&
+                          !llvm::is_one_of<T, std::complex<APInt>,
+                                           std::complex<APFloat>>::value),
+                     T>
     getZeroValue() const {
       return T();
     }
@@ -542,7 +575,7 @@ public:
 namespace detail {
 struct StringAttrStorage;
 } // namespace detail
-class StringAttr : public ::mlir::Attribute::AttrBase<StringAttr, ::mlir::Attribute, detail::StringAttrStorage> {
+class StringAttr : public ::mlir::Attribute::AttrBase<StringAttr, ::mlir::Attribute, detail::StringAttrStorage, ::mlir::TypedAttr::Trait> {
 public:
   using Base::Base;
     using ValueType = StringRef;
@@ -596,7 +629,7 @@ public:
 namespace detail {
 struct SymbolRefAttrStorage;
 } // namespace detail
-class SymbolRefAttr : public ::mlir::Attribute::AttrBase<SymbolRefAttr, ::mlir::Attribute, detail::SymbolRefAttrStorage> {
+class SymbolRefAttr : public ::mlir::Attribute::AttrBase<SymbolRefAttr, ::mlir::Attribute, detail::SymbolRefAttrStorage, ::mlir::SubElementAttrInterface::Trait> {
 public:
   using Base::Base;
   static SymbolRefAttr get(MLIRContext *ctx, StringRef value,
@@ -617,6 +650,8 @@ public:
   static SymbolRefAttr get(StringAttr rootReference, ArrayRef<FlatSymbolRefAttr> nestedReferences);
   StringAttr getRootReference() const;
   ::llvm::ArrayRef<FlatSymbolRefAttr> getNestedReferences() const;
+  void walkImmediateSubElements(llvm::function_ref<void(mlir::Attribute)> walkAttrsFn, llvm::function_ref<void(mlir::Type)> walkTypesFn) const;
+  ::mlir::Attribute replaceImmediateSubElements(::llvm::ArrayRef<::mlir::Attribute> replAttrs, ::llvm::ArrayRef<::mlir::Type> replTypes) const;
 };
 namespace detail {
 struct TypeAttrStorage;
@@ -628,28 +663,49 @@ public:
   static TypeAttr get(Type type);
   Type getValue() const;
   void walkImmediateSubElements(llvm::function_ref<void(mlir::Attribute)> walkAttrsFn, llvm::function_ref<void(mlir::Type)> walkTypesFn) const;
+  ::mlir::Attribute replaceImmediateSubElements(::llvm::ArrayRef<::mlir::Attribute> replAttrs, ::llvm::ArrayRef<::mlir::Type> replTypes) const;
 };
 class UnitAttr : public ::mlir::Attribute::AttrBase<UnitAttr, ::mlir::Attribute, ::mlir::AttributeStorage> {
 public:
   using Base::Base;
   static UnitAttr get(MLIRContext *context);
 };
+namespace detail {
+struct StridedLayoutAttrStorage;
+} // namespace detail
+class StridedLayoutAttr : public ::mlir::Attribute::AttrBase<StridedLayoutAttr, ::mlir::Attribute, detail::StridedLayoutAttrStorage, ::mlir::MemRefLayoutAttrInterface::Trait> {
+public:
+  using Base::Base;
+  /// Print the attribute to the given output stream.
+  void print(raw_ostream &os) const;
+  using Base::getChecked;
+public:
+  static StridedLayoutAttr get(::mlir::MLIRContext *context, int64_t offset, ::llvm::ArrayRef<int64_t> strides);
+  static StridedLayoutAttr getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, ::mlir::MLIRContext *context, int64_t offset, ::llvm::ArrayRef<int64_t> strides);
+  static ::mlir::LogicalResult verify(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, int64_t offset, ::llvm::ArrayRef<int64_t> strides);
+  int64_t getOffset() const;
+  ::llvm::ArrayRef<int64_t> getStrides() const;
+  ::mlir::AffineMap getAffineMap() const;
+  ::mlir::LogicalResult verifyLayout(::llvm::ArrayRef<int64_t> shape, ::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError) const;
+};
 } // namespace mlir
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::AffineMapAttr)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ArrayAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::DenseArrayAttr)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::DenseIntOrFPElementsAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::DenseResourceElementsAttr)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::DenseStringElementsAttr)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::DictionaryAttr)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::FloatAttr)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::IntegerAttr)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::IntegerSetAttr)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::OpaqueAttr)
-MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::OpaqueElementsAttr)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::SparseElementsAttr)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::StringAttr)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::SymbolRefAttr)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::TypeAttr)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::UnitAttr)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::StridedLayoutAttr)
 
 #endif  // GET_ATTRDEF_CLASSES
 

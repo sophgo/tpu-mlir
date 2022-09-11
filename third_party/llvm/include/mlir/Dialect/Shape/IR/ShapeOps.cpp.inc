@@ -23,6 +23,7 @@
 ::mlir::shape::CstrEqOp,
 ::mlir::shape::CstrRequireOp,
 ::mlir::shape::DebugPrintOp,
+::mlir::shape::DimOp,
 ::mlir::shape::DivOp,
 ::mlir::shape::FromExtentTensorOp,
 ::mlir::shape::FromExtentsOp,
@@ -45,6 +46,7 @@
 ::mlir::shape::SplitAtOp,
 ::mlir::shape::ToExtentTensorOp,
 ::mlir::shape::ValueAsShapeOp,
+::mlir::shape::ValueOfOp,
 ::mlir::shape::WithOp,
 ::mlir::shape::YieldOp
 #endif  // GET_OP_LIST
@@ -73,8 +75,8 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_ShapeOps0(
 static ::mlir::LogicalResult __mlir_ods_local_type_constraint_ShapeOps1(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
-  if (!(((type.isa<::mlir::shape::ShapeType>())) || ((((type.isa<::mlir::TensorType>())) && ([](::mlir::Type elementType) { return (elementType.isa<::mlir::IndexType>()); }(type.cast<::mlir::ShapedType>().getElementType()))) && (((type.cast<::mlir::ShapedType>().hasRank())) && ((type.cast<::mlir::ShapedType>().getRank()
-                         == 1)))))) {
+  if (!(((type.isa<::mlir::shape::ShapeType>())) || ((((type.isa<::mlir::TensorType>())) && (((type.cast<::mlir::ShapedType>().hasRank())) && ((type.cast<::mlir::ShapedType>().getRank()
+                         == 1)))) && ([](::mlir::Type elementType) { return (elementType.isa<::mlir::IndexType>()); }(type.cast<::mlir::ShapedType>().getElementType()))))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
         << " must be shape or extent tensor, but got " << type;
   }
@@ -86,7 +88,7 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_ShapeOps2(
     unsigned valueIndex) {
   if (!((type.isa<::mlir::shape::WitnessType>()))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
-        << " must be witness, but got " << type;
+        << " must be , but got " << type;
   }
   return ::mlir::success();
 }
@@ -104,24 +106,14 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_ShapeOps3(
 static ::mlir::LogicalResult __mlir_ods_local_type_constraint_ShapeOps4(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
-  if (!((type.isa<::mlir::shape::ShapeType>()))) {
+  if (!((type.isa<::mlir::shape::SizeType>()))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
-        << " must be shape, but got " << type;
+        << " must be , but got " << type;
   }
   return ::mlir::success();
 }
 
 static ::mlir::LogicalResult __mlir_ods_local_type_constraint_ShapeOps5(
-    ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
-    unsigned valueIndex) {
-  if (!((type.isa<::mlir::shape::SizeType>()))) {
-    return op->emitOpError(valueKind) << " #" << valueIndex
-        << " must be size, but got " << type;
-  }
-  return ::mlir::success();
-}
-
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_ShapeOps6(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
   if (!((type.isSignlessInteger(1)))) {
@@ -131,7 +123,7 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_ShapeOps6(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_ShapeOps7(
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_ShapeOps6(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
   if (!(((type.isa<::mlir::shape::SizeType>())) || ((type.isa<::mlir::shape::ShapeType>())))) {
@@ -141,11 +133,21 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_ShapeOps7(
   return ::mlir::success();
 }
 
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_ShapeOps7(
+    ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
+    unsigned valueIndex) {
+  if (!(((type.isa<::mlir::ShapedType>())) && ([](::mlir::Type elementType) { return (true); }(type.cast<::mlir::ShapedType>().getElementType())))) {
+    return op->emitOpError(valueKind) << " #" << valueIndex
+        << " must be shaped of any type values, but got " << type;
+  }
+  return ::mlir::success();
+}
+
 static ::mlir::LogicalResult __mlir_ods_local_type_constraint_ShapeOps8(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
-  if (!((((type.isa<::mlir::TensorType>())) && ([](::mlir::Type elementType) { return (elementType.isa<::mlir::IndexType>()); }(type.cast<::mlir::ShapedType>().getElementType()))) && (((type.cast<::mlir::ShapedType>().hasRank())) && ((type.cast<::mlir::ShapedType>().getRank()
-                         == 1))))) {
+  if (!((((type.isa<::mlir::TensorType>())) && (((type.cast<::mlir::ShapedType>().hasRank())) && ((type.cast<::mlir::ShapedType>().getRank()
+                         == 1)))) && ([](::mlir::Type elementType) { return (elementType.isa<::mlir::IndexType>()); }(type.cast<::mlir::ShapedType>().getElementType())))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
         << " must be 1D tensor of index values, but got " << type;
   }
@@ -155,9 +157,9 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_ShapeOps8(
 static ::mlir::LogicalResult __mlir_ods_local_type_constraint_ShapeOps9(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
-  if (!((type.isa<::mlir::IndexType>()))) {
+  if (!((type.isa<::mlir::shape::ShapeType>()))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
-        << " must be index, but got " << type;
+        << " must be , but got " << type;
   }
   return ::mlir::success();
 }
@@ -165,14 +167,35 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_ShapeOps9(
 static ::mlir::LogicalResult __mlir_ods_local_type_constraint_ShapeOps10(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
-  if (!((((type.isa<::mlir::ShapedType>())) && ([](::mlir::Type elementType) { return (true); }(type.cast<::mlir::ShapedType>().getElementType()))) || ((type.isa<::mlir::shape::ValueShapeType>())))) {
+  if (!((type.isa<::mlir::IndexType>()))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
-        << " must be shaped of any type values or value shape, but got " << type;
+        << " must be index, but got " << type;
   }
   return ::mlir::success();
 }
 
 static ::mlir::LogicalResult __mlir_ods_local_type_constraint_ShapeOps11(
+    ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
+    unsigned valueIndex) {
+  if (!((((type.isa<::mlir::shape::SizeType>())) || ((type.isa<::mlir::IndexType>()))) || (((type.isa<::mlir::shape::ShapeType>())) || ((((type.isa<::mlir::TensorType>())) && (((type.cast<::mlir::ShapedType>().hasRank())) && ((type.cast<::mlir::ShapedType>().getRank()
+                         == 1)))) && ([](::mlir::Type elementType) { return (elementType.isa<::mlir::IndexType>()); }(type.cast<::mlir::ShapedType>().getElementType())))))) {
+    return op->emitOpError(valueKind) << " #" << valueIndex
+        << " must be any shape or size, but got " << type;
+  }
+  return ::mlir::success();
+}
+
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_ShapeOps12(
+    ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
+    unsigned valueIndex) {
+  if (!((((type.isa<::mlir::ShapedType>())) && ([](::mlir::Type elementType) { return (true); }(type.cast<::mlir::ShapedType>().getElementType()))) || ((type.isa<::mlir::shape::ValueShapeType>())))) {
+    return op->emitOpError(valueKind) << " #" << valueIndex
+        << " must be shaped of any type values or , but got " << type;
+  }
+  return ::mlir::success();
+}
+
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_ShapeOps13(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
   if (!(((type.isa<::mlir::TensorType>())) && ([](::mlir::Type elementType) { return (elementType.isa<::mlir::IndexType>()); }(type.cast<::mlir::ShapedType>().getElementType())))) {
@@ -182,23 +205,23 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_ShapeOps11(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_ShapeOps12(
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_ShapeOps14(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
-  if (!(((((type.isa<::mlir::TensorType>())) && ([](::mlir::Type elementType) { return ((elementType.isa<::mlir::IntegerType>())) || ((elementType.isa<::mlir::IndexType>())); }(type.cast<::mlir::ShapedType>().getElementType()))) && (((type.cast<::mlir::ShapedType>().hasRank())) && ((type.cast<::mlir::ShapedType>().getRank()
-                         == 1)))) || ((type.isa<::mlir::shape::ValueShapeType>())))) {
+  if (!(((((type.isa<::mlir::TensorType>())) && (((type.cast<::mlir::ShapedType>().hasRank())) && ((type.cast<::mlir::ShapedType>().getRank()
+                         == 1)))) && ([](::mlir::Type elementType) { return ((elementType.isa<::mlir::IntegerType>())) || ((elementType.isa<::mlir::IndexType>())); }(type.cast<::mlir::ShapedType>().getElementType()))) || ((type.isa<::mlir::shape::ValueShapeType>())))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
-        << " must be 1D tensor of integer or index values or value shape, but got " << type;
+        << " must be 1D tensor of integer or index values or , but got " << type;
   }
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_type_constraint_ShapeOps13(
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_ShapeOps15(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
   if (!((type.isa<::mlir::shape::ValueShapeType>()))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
-        << " must be value shape, but got " << type;
+        << " must be , but got " << type;
   }
   return ::mlir::success();
 }
@@ -853,7 +876,7 @@ std::pair<unsigned, unsigned> AssumingAllOp::getODSResultIndexAndLength(unsigned
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AssumingAllOp::getResult() {
+::mlir::TypedValue<::mlir::shape::WitnessType> AssumingAllOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -933,7 +956,7 @@ void AssumingAllOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState 
     return ::mlir::failure();
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getType<::mlir::shape::WitnessType>();
   result.addTypes(odsBuildableType0);
-  if (parser.resolveOperands(inputsOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(inputsOperands, odsBuildableType0, inputsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -1008,7 +1031,7 @@ std::pair<unsigned, unsigned> AssumingOp::getODSOperandIndexAndLength(unsigned i
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AssumingOp::getWitness() {
+::mlir::TypedValue<::mlir::shape::WitnessType> AssumingOp::getWitness() {
   return *getODSOperands(0).begin();
 }
 
@@ -1324,7 +1347,7 @@ std::pair<unsigned, unsigned> BroadcastOpAdaptor::getODSOperandIndexAndLength(un
 ::mlir::StringAttr BroadcastOpAdaptor::getErrorAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, BroadcastOp::getErrorAttrName(*odsOpName)).dyn_cast_or_null<::mlir::StringAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional< ::llvm::StringRef > BroadcastOpAdaptor::getError() {
@@ -1639,20 +1662,6 @@ void ConcatOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
   odsState.addTypes(result);
 }
 
-void ConcatOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value lhs, ::mlir::Value rhs) {
-  odsState.addOperands(lhs);
-  odsState.addOperands(rhs);
-
-        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
-        if (::mlir::succeeded(ConcatOp::inferReturnTypes(odsBuilder.getContext(),
-                      odsState.location, odsState.operands,
-                      odsState.attributes.getDictionary(odsState.getContext()),
-                      /*regions=*/{}, inferredReturnTypes)))
-          odsState.addTypes(inferredReturnTypes);
-        else
-          ::llvm::report_fatal_error("Failed to infer result type(s).");
-}
-
 void ConcatOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs) {
   odsState.addOperands(lhs);
   odsState.addOperands(rhs);
@@ -1668,36 +1677,19 @@ void ConcatOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   odsState.addTypes(resultTypes);
 }
 
-void ConcatOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
-  assert(operands.size() == 2u && "mismatched number of parameters");
-  odsState.addOperands(operands);
-  odsState.addAttributes(attributes);
-
-  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
-  if (::mlir::succeeded(ConcatOp::inferReturnTypes(odsBuilder.getContext(),
-          odsState.location, operands,
-          odsState.attributes.getDictionary(odsState.getContext()),
-          odsState.regions, inferredReturnTypes))) {
-    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
-    odsState.addTypes(inferredReturnTypes);
-  } else {
-    ::llvm::report_fatal_error("Failed to infer result type(s).");
-  }
-}
-
 ::mlir::LogicalResult ConcatOp::verifyInvariantsImpl() {
   {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps1(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps1(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -1706,7 +1698,7 @@ void ConcatOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps4(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps1(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -1717,14 +1709,6 @@ void ConcatOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
   return verifyInvariantsImpl();
 }
 
-::mlir::LogicalResult ConcatOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
-  inferredReturnTypes.resize(1);
-  ::mlir::Builder odsBuilder(context);
-  ::mlir::Type odsInferredType0 = odsBuilder.getType<::mlir::shape::ShapeType>();
-  inferredReturnTypes[0] = odsInferredType0;
-  return ::mlir::success();
-}
-
 ::mlir::ParseResult ConcatOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
   ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
@@ -1732,6 +1716,12 @@ void ConcatOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
   ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
   ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
   (void)rhsOperandsLoc;
+  ::mlir::Type lhsRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> lhsTypes(lhsRawTypes);
+  ::mlir::Type rhsRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> rhsTypes(rhsRawTypes);
+  ::mlir::Type resultRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
 
   lhsOperandsLoc = parser.getCurrentLocation();
   if (parser.parseOperand(lhsRawOperands[0]))
@@ -1744,11 +1734,37 @@ void ConcatOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
     return ::mlir::failure();
   if (parser.parseOptionalAttrDict(result.attributes))
     return ::mlir::failure();
-  ::mlir::Type odsBuildableType0 = parser.getBuilder().getType<::mlir::shape::ShapeType>();
-  result.addTypes(odsBuildableType0);
-  if (parser.resolveOperands(lhsOperands, odsBuildableType0, result.operands))
+  if (parser.parseColon())
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, odsBuildableType0, result.operands))
+
+  {
+    ::mlir::Type type;
+    if (parser.parseCustomTypeWithFallback(type))
+      return ::mlir::failure();
+    lhsRawTypes[0] = type;
+  }
+  if (parser.parseComma())
+    return ::mlir::failure();
+
+  {
+    ::mlir::Type type;
+    if (parser.parseCustomTypeWithFallback(type))
+      return ::mlir::failure();
+    rhsRawTypes[0] = type;
+  }
+  if (parser.parseArrow())
+    return ::mlir::failure();
+
+  {
+    ::mlir::Type type;
+    if (parser.parseCustomTypeWithFallback(type))
+      return ::mlir::failure();
+    resultRawTypes[0] = type;
+  }
+  result.addTypes(resultTypes);
+  if (parser.resolveOperands(lhsOperands, lhsTypes, lhsOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(rhsOperands, rhsTypes, rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -1760,6 +1776,33 @@ void ConcatOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
   _odsPrinter << getRhs();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  {
+    auto type = getLhs().getType();
+    if (auto validType = type.dyn_cast<::mlir::Type>())
+      _odsPrinter.printStrippedAttrOrType(validType);
+   else
+     _odsPrinter << type;
+  }
+  _odsPrinter << ",";
+  _odsPrinter << ' ';
+  {
+    auto type = getRhs().getType();
+    if (auto validType = type.dyn_cast<::mlir::Type>())
+      _odsPrinter.printStrippedAttrOrType(validType);
+   else
+     _odsPrinter << type;
+  }
+  _odsPrinter << ' ' << "->";
+  _odsPrinter << ' ';
+  {
+    auto type = getResult().getType();
+    if (auto validType = type.dyn_cast<::mlir::Type>())
+      _odsPrinter.printStrippedAttrOrType(validType);
+   else
+     _odsPrinter << type;
+  }
 }
 
 void ConcatOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
@@ -1803,7 +1846,7 @@ std::pair<unsigned, unsigned> ConstShapeOpAdaptor::getODSOperandIndexAndLength(u
 ::mlir::DenseIntElementsAttr ConstShapeOpAdaptor::getShapeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ConstShapeOp::getShapeAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
-    return attr;
+  return attr;
 }
 
 ::mlir::DenseIntElementsAttr ConstShapeOpAdaptor::getShape() {
@@ -1992,7 +2035,7 @@ std::pair<unsigned, unsigned> ConstSizeOpAdaptor::getODSOperandIndexAndLength(un
 ::mlir::IntegerAttr ConstSizeOpAdaptor::getValueAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ConstSizeOp::getValueAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::APInt ConstSizeOpAdaptor::getValue() {
@@ -2039,7 +2082,7 @@ std::pair<unsigned, unsigned> ConstSizeOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ConstSizeOp::getResult() {
+::mlir::TypedValue<::mlir::shape::SizeType> ConstSizeOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -2150,7 +2193,7 @@ void ConstSizeOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps5(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps4(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -2230,7 +2273,7 @@ std::pair<unsigned, unsigned> ConstWitnessOpAdaptor::getODSOperandIndexAndLength
 ::mlir::BoolAttr ConstWitnessOpAdaptor::getPassingAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ConstWitnessOp::getPassingAttrName(*odsOpName)).cast<::mlir::BoolAttr>();
-    return attr;
+  return attr;
 }
 
 bool ConstWitnessOpAdaptor::getPassing() {
@@ -2277,7 +2320,7 @@ std::pair<unsigned, unsigned> ConstWitnessOp::getODSResultIndexAndLength(unsigne
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ConstWitnessOp::getResult() {
+::mlir::TypedValue<::mlir::shape::WitnessType> ConstWitnessOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -2531,7 +2574,7 @@ std::pair<unsigned, unsigned> CstrBroadcastableOp::getODSResultIndexAndLength(un
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value CstrBroadcastableOp::getResult() {
+::mlir::TypedValue<::mlir::shape::WitnessType> CstrBroadcastableOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -2736,7 +2779,7 @@ std::pair<unsigned, unsigned> CstrEqOp::getODSResultIndexAndLength(unsigned inde
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value CstrEqOp::getResult() {
+::mlir::TypedValue<::mlir::shape::WitnessType> CstrEqOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -2876,7 +2919,7 @@ std::pair<unsigned, unsigned> CstrRequireOpAdaptor::getODSOperandIndexAndLength(
 ::mlir::StringAttr CstrRequireOpAdaptor::getMsgAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, CstrRequireOp::getMsgAttrName(*odsOpName)).cast<::mlir::StringAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::StringRef CstrRequireOpAdaptor::getMsg() {
@@ -2913,7 +2956,7 @@ std::pair<unsigned, unsigned> CstrRequireOp::getODSOperandIndexAndLength(unsigne
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value CstrRequireOp::getPred() {
+::mlir::TypedValue<::mlir::IntegerType> CstrRequireOp::getPred() {
   return *getODSOperands(0).begin();
 }
 
@@ -2933,7 +2976,7 @@ std::pair<unsigned, unsigned> CstrRequireOp::getODSResultIndexAndLength(unsigned
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value CstrRequireOp::getResult() {
+::mlir::TypedValue<::mlir::shape::WitnessType> CstrRequireOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -3050,7 +3093,7 @@ void CstrRequireOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState 
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps6(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps5(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -3099,7 +3142,7 @@ void CstrRequireOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState 
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getType<::mlir::shape::WitnessType>();
   ::mlir::Type odsBuildableType1 = parser.getBuilder().getIntegerType(1);
   result.addTypes(odsBuildableType0);
-  if (parser.resolveOperands(predOperands, odsBuildableType1, result.operands))
+  if (parser.resolveOperands(predOperands, odsBuildableType1, predOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -3215,7 +3258,7 @@ void DebugPrintOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps7(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps6(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -3224,7 +3267,7 @@ void DebugPrintOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps7(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps6(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -3238,6 +3281,282 @@ void DebugPrintOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
 } // namespace shape
 } // namespace mlir
 MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::DebugPrintOp)
+
+namespace mlir {
+namespace shape {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::shape::DimOp definitions
+//===----------------------------------------------------------------------===//
+
+DimOpAdaptor::DimOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("shape.dim", odsAttrs.getContext());
+}
+
+DimOpAdaptor::DimOpAdaptor(DimOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange DimOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> DimOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange DimOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value DimOpAdaptor::getValue() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value DimOpAdaptor::getIndex() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::DictionaryAttr DimOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult DimOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> DimOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range DimOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::TypedValue<::mlir::ShapedType> DimOp::getValue() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value DimOp::getIndex() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::MutableOperandRange DimOp::getValueMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange DimOp::getIndexMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> DimOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range DimOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value DimOp::getExtent() {
+  return *getODSResults(0).begin();
+}
+
+void DimOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type extent, ::mlir::Value value, ::mlir::Value index) {
+  odsState.addOperands(value);
+  odsState.addOperands(index);
+  odsState.addTypes(extent);
+}
+
+void DimOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value value, ::mlir::Value index) {
+  odsState.addOperands(value);
+  odsState.addOperands(index);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(DimOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
+void DimOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value value, ::mlir::Value index) {
+  odsState.addOperands(value);
+  odsState.addOperands(index);
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void DimOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+void DimOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(DimOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
+}
+
+::mlir::LogicalResult DimOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps7(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps0(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult DimOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
+}
+
+::mlir::ParseResult DimOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::mlir::OpAsmParser::UnresolvedOperand valueRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
+  (void)valueOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand indexRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> indexOperands(indexRawOperands);  ::llvm::SMLoc indexOperandsLoc;
+  (void)indexOperandsLoc;
+  ::mlir::Type valueRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> valueTypes(valueRawTypes);
+  ::mlir::Type indexRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> indexTypes(indexRawTypes);
+  ::mlir::Type extentRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> extentTypes(extentRawTypes);
+
+  valueOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperand(valueRawOperands[0]))
+    return ::mlir::failure();
+  if (parser.parseComma())
+    return ::mlir::failure();
+
+  indexOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperand(indexRawOperands[0]))
+    return ::mlir::failure();
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  {
+    ::mlir::ShapedType type;
+    if (parser.parseCustomTypeWithFallback(type))
+      return ::mlir::failure();
+    valueRawTypes[0] = type;
+  }
+  if (parser.parseComma())
+    return ::mlir::failure();
+
+  {
+    ::mlir::Type type;
+    if (parser.parseCustomTypeWithFallback(type))
+      return ::mlir::failure();
+    indexRawTypes[0] = type;
+  }
+  if (parser.parseArrow())
+    return ::mlir::failure();
+
+  {
+    ::mlir::Type type;
+    if (parser.parseCustomTypeWithFallback(type))
+      return ::mlir::failure();
+    extentRawTypes[0] = type;
+  }
+  result.addTypes(extentTypes);
+  if (parser.resolveOperands(valueOperands, valueTypes, valueOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(indexOperands, indexTypes, indexOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void DimOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ';
+  _odsPrinter << getValue();
+  _odsPrinter << ",";
+  _odsPrinter << ' ';
+  _odsPrinter << getIndex();
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  {
+    auto type = getValue().getType();
+    if (auto validType = type.dyn_cast<::mlir::ShapedType>())
+      _odsPrinter.printStrippedAttrOrType(validType);
+   else
+     _odsPrinter << type;
+  }
+  _odsPrinter << ",";
+  _odsPrinter << ' ';
+  {
+    auto type = getIndex().getType();
+    if (auto validType = type.dyn_cast<::mlir::Type>())
+      _odsPrinter.printStrippedAttrOrType(validType);
+   else
+     _odsPrinter << type;
+  }
+  _odsPrinter << ' ' << "->";
+  _odsPrinter << ' ';
+  {
+    auto type = getExtent().getType();
+    if (auto validType = type.dyn_cast<::mlir::Type>())
+      _odsPrinter.printStrippedAttrOrType(validType);
+   else
+     _odsPrinter << type;
+  }
+}
+
+void DimOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace shape
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::DimOp)
 
 namespace mlir {
 namespace shape {
@@ -3564,7 +3883,7 @@ std::pair<unsigned, unsigned> FromExtentTensorOp::getODSOperandIndexAndLength(un
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value FromExtentTensorOp::getInput() {
+::mlir::TypedValue<::mlir::TensorType> FromExtentTensorOp::getInput() {
   return *getODSOperands(0).begin();
 }
 
@@ -3584,7 +3903,7 @@ std::pair<unsigned, unsigned> FromExtentTensorOp::getODSResultIndexAndLength(uns
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value FromExtentTensorOp::getResult() {
+::mlir::TypedValue<::mlir::shape::ShapeType> FromExtentTensorOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -3652,7 +3971,7 @@ void FromExtentTensorOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationS
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps4(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps9(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -3818,7 +4137,7 @@ std::pair<unsigned, unsigned> FromExtentsOp::getODSResultIndexAndLength(unsigned
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value FromExtentsOp::getShape() {
+::mlir::TypedValue<::mlir::shape::ShapeType> FromExtentsOp::getShape() {
   return *getODSResults(0).begin();
 }
 
@@ -3865,7 +4184,7 @@ void FromExtentsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState 
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps4(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps9(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -3957,7 +4276,7 @@ std::pair<unsigned, unsigned> FuncOpAdaptor::getODSOperandIndexAndLength(unsigne
 ::mlir::StringAttr FuncOpAdaptor::getSymNameAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, FuncOp::getSymNameAttrName(*odsOpName)).cast<::mlir::StringAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::StringRef FuncOpAdaptor::getSymName() {
@@ -3968,7 +4287,7 @@ std::pair<unsigned, unsigned> FuncOpAdaptor::getODSOperandIndexAndLength(unsigne
 ::mlir::TypeAttr FuncOpAdaptor::getFunctionTypeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, FuncOp::getFunctionTypeAttrName(*odsOpName)).cast<::mlir::TypeAttr>();
-    return attr;
+  return attr;
 }
 
 ::mlir::FunctionType FuncOpAdaptor::getFunctionType() {
@@ -3979,7 +4298,7 @@ std::pair<unsigned, unsigned> FuncOpAdaptor::getODSOperandIndexAndLength(unsigne
 ::mlir::StringAttr FuncOpAdaptor::getSymVisibilityAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 0, FuncOp::getSymVisibilityAttrName(*odsOpName)).dyn_cast_or_null<::mlir::StringAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional< ::llvm::StringRef > FuncOpAdaptor::getSymVisibility() {
@@ -4251,7 +4570,7 @@ std::pair<unsigned, unsigned> FunctionLibraryOpAdaptor::getODSOperandIndexAndLen
 ::mlir::DictionaryAttr FunctionLibraryOpAdaptor::getMappingAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, FunctionLibraryOp::getMappingAttrName(*odsOpName)).cast<::mlir::DictionaryAttr>();
-    return attr;
+  return attr;
 }
 
 ::mlir::DictionaryAttr FunctionLibraryOpAdaptor::getMapping() {
@@ -4682,7 +5001,7 @@ std::pair<unsigned, unsigned> IndexToSizeOp::getODSOperandIndexAndLength(unsigne
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value IndexToSizeOp::getArg() {
+::mlir::TypedValue<::mlir::IndexType> IndexToSizeOp::getArg() {
   return *getODSOperands(0).begin();
 }
 
@@ -4702,7 +5021,7 @@ std::pair<unsigned, unsigned> IndexToSizeOp::getODSResultIndexAndLength(unsigned
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value IndexToSizeOp::getResult() {
+::mlir::TypedValue<::mlir::shape::SizeType> IndexToSizeOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -4761,7 +5080,7 @@ void IndexToSizeOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState 
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps9(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps10(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -4770,7 +5089,7 @@ void IndexToSizeOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState 
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps5(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps4(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -4802,7 +5121,7 @@ void IndexToSizeOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState 
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getType<::mlir::shape::SizeType>();
   ::mlir::Type odsBuildableType1 = parser.getBuilder().getIndexType();
   result.addTypes(odsBuildableType0);
-  if (parser.resolveOperands(argOperands, odsBuildableType1, result.operands))
+  if (parser.resolveOperands(argOperands, odsBuildableType1, argOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -4917,7 +5236,7 @@ std::pair<unsigned, unsigned> IsBroadcastableOp::getODSResultIndexAndLength(unsi
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value IsBroadcastableOp::getResult() {
+::mlir::TypedValue<::mlir::IntegerType> IsBroadcastableOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -4968,7 +5287,7 @@ void IsBroadcastableOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationSt
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps6(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -5168,13 +5487,13 @@ void MaxOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps7(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps6(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps7(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps6(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -5183,7 +5502,7 @@ void MaxOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps7(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps6(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -5339,7 +5658,7 @@ std::pair<unsigned, unsigned> MeetOpAdaptor::getODSOperandIndexAndLength(unsigne
 ::mlir::StringAttr MeetOpAdaptor::getErrorAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, MeetOp::getErrorAttrName(*odsOpName)).dyn_cast_or_null<::mlir::StringAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional< ::llvm::StringRef > MeetOpAdaptor::getError() {
@@ -5509,13 +5828,13 @@ void MeetOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps7(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps11(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps7(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps11(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -5524,7 +5843,7 @@ void MeetOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps7(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps11(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -5799,13 +6118,13 @@ void MinOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps7(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps6(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps7(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps6(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -5814,7 +6133,7 @@ void MinOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps7(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps6(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -7107,7 +7426,7 @@ std::pair<unsigned, unsigned> ShapeEqOp::getODSResultIndexAndLength(unsigned ind
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ShapeEqOp::getResult() {
+::mlir::TypedValue<::mlir::IntegerType> ShapeEqOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -7158,7 +7477,7 @@ void ShapeEqOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps6(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps5(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -7344,7 +7663,7 @@ void ShapeOfOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps10(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps12(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -7504,7 +7823,7 @@ std::pair<unsigned, unsigned> SizeToIndexOp::getODSResultIndexAndLength(unsigned
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value SizeToIndexOp::getResult() {
+::mlir::TypedValue<::mlir::IndexType> SizeToIndexOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -7572,7 +7891,7 @@ void SizeToIndexOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState 
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps9(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps10(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -7877,7 +8196,7 @@ std::pair<unsigned, unsigned> ToExtentTensorOp::getODSResultIndexAndLength(unsig
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ToExtentTensorOp::getResult() {
+::mlir::TypedValue<::mlir::TensorType> ToExtentTensorOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -7915,7 +8234,7 @@ void ToExtentTensorOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps11(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps13(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -8093,7 +8412,7 @@ void ValueAsShapeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps12(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps14(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -8186,6 +8505,174 @@ namespace mlir {
 namespace shape {
 
 //===----------------------------------------------------------------------===//
+// ::mlir::shape::ValueOfOp definitions
+//===----------------------------------------------------------------------===//
+
+ValueOfOpAdaptor::ValueOfOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("shape.value_of", odsAttrs.getContext());
+}
+
+ValueOfOpAdaptor::ValueOfOpAdaptor(ValueOfOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange ValueOfOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> ValueOfOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange ValueOfOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value ValueOfOpAdaptor::getArg() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::DictionaryAttr ValueOfOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult ValueOfOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> ValueOfOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range ValueOfOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::TypedValue<::mlir::shape::ValueShapeType> ValueOfOp::getArg() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::MutableOperandRange ValueOfOp::getArgMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> ValueOfOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range ValueOfOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::TypedValue<::mlir::ShapedType> ValueOfOp::getResult() {
+  return *getODSResults(0).begin();
+}
+
+void ValueOfOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value arg) {
+  odsState.addOperands(arg);
+  odsState.addTypes(result);
+}
+
+void ValueOfOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value arg) {
+  odsState.addOperands(arg);
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void ValueOfOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 1u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult ValueOfOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps15(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps7(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult ValueOfOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+::mlir::ParseResult ValueOfOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::mlir::OpAsmParser::UnresolvedOperand argRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
+  (void)argOperandsLoc;
+  ::mlir::Type resultRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
+
+  argOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperand(argRawOperands[0]))
+    return ::mlir::failure();
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  {
+    ::mlir::ShapedType type;
+    if (parser.parseCustomTypeWithFallback(type))
+      return ::mlir::failure();
+    resultRawTypes[0] = type;
+  }
+  ::mlir::Type odsBuildableType0 = parser.getBuilder().getType<::mlir::shape::ValueShapeType>();
+  result.addTypes(resultTypes);
+  if (parser.resolveOperands(argOperands, odsBuildableType0, argOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void ValueOfOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ';
+  _odsPrinter << getArg();
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  {
+    auto type = getResult().getType();
+    if (auto validType = type.dyn_cast<::mlir::ShapedType>())
+      _odsPrinter.printStrippedAttrOrType(validType);
+   else
+     _odsPrinter << type;
+  }
+}
+
+void ValueOfOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace shape
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::shape::ValueOfOp)
+
+namespace mlir {
+namespace shape {
+
+//===----------------------------------------------------------------------===//
 // ::mlir::shape::WithOp definitions
 //===----------------------------------------------------------------------===//
 
@@ -8265,7 +8752,7 @@ std::pair<unsigned, unsigned> WithOp::getODSResultIndexAndLength(unsigned index)
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value WithOp::getResult() {
+::mlir::TypedValue<::mlir::shape::ValueShapeType> WithOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -8327,13 +8814,13 @@ void WithOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps10(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps12(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps4(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps1(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -8342,7 +8829,7 @@ void WithOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps13(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ShapeOps15(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -8356,7 +8843,7 @@ void WithOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
 ::mlir::LogicalResult WithOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  ::mlir::Type odsInferredType0 = ::mlir::shape::ValueShapeType::get(odsBuilder.getContext());
+  ::mlir::Type odsInferredType0 = odsBuilder.getType<::mlir::shape::ValueShapeType>();
   inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
@@ -8390,7 +8877,7 @@ void WithOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
       return ::mlir::failure();
     shapeRawTypes[0] = type;
   }
-  ::mlir::Type odsBuildableType0 = ::mlir::shape::ValueShapeType::get(parser.getBuilder().getContext());
+  ::mlir::Type odsBuildableType0 = parser.getBuilder().getType<::mlir::shape::ValueShapeType>();
   result.addTypes(odsBuildableType0);
   if (parser.resolveOperands(allOperands, ::llvm::concat<const ::mlir::Type>(::llvm::ArrayRef<::mlir::Type>(operandTypes), ::llvm::ArrayRef<::mlir::Type>(shapeTypes)), allOperandLoc, result.operands))
     return ::mlir::failure();

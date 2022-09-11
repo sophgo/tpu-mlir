@@ -137,8 +137,6 @@
     experimental_patchpoint_void,              // llvm.experimental.patchpoint.void
     experimental_stackmap,                     // llvm.experimental.stackmap
     experimental_stepvector,                   // llvm.experimental.stepvector
-    experimental_vector_extract,               // llvm.experimental.vector.extract
-    experimental_vector_insert,                // llvm.experimental.vector.insert
     experimental_vector_reverse,               // llvm.experimental.vector.reverse
     experimental_vector_splice,                // llvm.experimental.vector.splice
     experimental_vp_splice,                    // llvm.experimental.vp.splice
@@ -208,6 +206,7 @@
     memmove_element_unordered_atomic,          // llvm.memmove.element.unordered.atomic
     memset,                                    // llvm.memset
     memset_element_unordered_atomic,           // llvm.memset.element.unordered.atomic
+    memset_inline,                             // llvm.memset.inline
     minimum,                                   // llvm.minimum
     minnum,                                    // llvm.minnum
     nearbyint,                                 // llvm.nearbyint
@@ -259,6 +258,7 @@
     ptrauth_sign_generic,                      // llvm.ptrauth.sign.generic
     ptrauth_strip,                             // llvm.ptrauth.strip
     ptrmask,                                   // llvm.ptrmask
+    public_type_test,                          // llvm.public.type.test
     read_register,                             // llvm.read_register
     read_volatile_register,                    // llvm.read_volatile_register
     readcyclecounter,                          // llvm.readcyclecounter
@@ -299,6 +299,7 @@
     test_set_loop_iterations,                  // llvm.test.set.loop.iterations
     test_start_loop_iterations,                // llvm.test.start.loop.iterations
     thread_pointer,                            // llvm.thread.pointer
+    threadlocal_address,                       // llvm.threadlocal.address
     trap,                                      // llvm.trap
     trunc,                                     // llvm.trunc
     type_checked_load,                         // llvm.type.checked.load
@@ -320,6 +321,8 @@
     vaend,                                     // llvm.va_end
     vastart,                                   // llvm.va_start
     var_annotation,                            // llvm.var.annotation
+    vector_extract,                            // llvm.vector.extract
+    vector_insert,                             // llvm.vector.insert
     vector_reduce_add,                         // llvm.vector.reduce.add
     vector_reduce_and,                         // llvm.vector.reduce.and
     vector_reduce_fadd,                        // llvm.vector.reduce.fadd
@@ -336,6 +339,7 @@
     vp_add,                                    // llvm.vp.add
     vp_and,                                    // llvm.vp.and
     vp_ashr,                                   // llvm.vp.ashr
+    vp_fabs,                                   // llvm.vp.fabs
     vp_fadd,                                   // llvm.vp.fadd
     vp_fcmp,                                   // llvm.vp.fcmp
     vp_fdiv,                                   // llvm.vp.fdiv
@@ -389,4 +393,4 @@
     write_register,                            // llvm.write_register
     xray_customevent,                          // llvm.xray.customevent
     xray_typedevent,                           // llvm.xray.typedevent
-    num_intrinsics = 10960
+    num_intrinsics = 11086

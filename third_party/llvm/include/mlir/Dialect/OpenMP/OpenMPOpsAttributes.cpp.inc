@@ -22,36 +22,40 @@
 #ifdef GET_ATTRDEF_CLASSES
 #undef GET_ATTRDEF_CLASSES
 
-static ::mlir::OptionalParseResult generatedAttributeParser(::mlir::AsmParser &parser, ::llvm::StringRef mnemonic, ::mlir::Type type, ::mlir::Attribute &value) {
-  if (mnemonic == ::mlir::omp::ClauseCancellationConstructTypeAttr::getMnemonic()) {
-    value = ::mlir::omp::ClauseCancellationConstructTypeAttr::parse(parser, type);
-    return ::mlir::success(!!value);
-  }
-  if (mnemonic == ::mlir::omp::ClauseDependAttr::getMnemonic()) {
-    value = ::mlir::omp::ClauseDependAttr::parse(parser, type);
-    return ::mlir::success(!!value);
-  }
-  if (mnemonic == ::mlir::omp::ClauseMemoryOrderKindAttr::getMnemonic()) {
-    value = ::mlir::omp::ClauseMemoryOrderKindAttr::parse(parser, type);
-    return ::mlir::success(!!value);
-  }
-  if (mnemonic == ::mlir::omp::ClauseOrderKindAttr::getMnemonic()) {
-    value = ::mlir::omp::ClauseOrderKindAttr::parse(parser, type);
-    return ::mlir::success(!!value);
-  }
-  if (mnemonic == ::mlir::omp::ClauseProcBindKindAttr::getMnemonic()) {
-    value = ::mlir::omp::ClauseProcBindKindAttr::parse(parser, type);
-    return ::mlir::success(!!value);
-  }
-  if (mnemonic == ::mlir::omp::ClauseScheduleKindAttr::getMnemonic()) {
-    value = ::mlir::omp::ClauseScheduleKindAttr::parse(parser, type);
-    return ::mlir::success(!!value);
-  }
-  if (mnemonic == ::mlir::omp::ScheduleModifierAttr::getMnemonic()) {
-    value = ::mlir::omp::ScheduleModifierAttr::parse(parser, type);
-    return ::mlir::success(!!value);
-  }
-  return {};
+static ::mlir::OptionalParseResult generatedAttributeParser(::mlir::AsmParser &parser, ::llvm::StringRef *mnemonic, ::mlir::Type type, ::mlir::Attribute &value) {
+  return ::mlir::AsmParser::KeywordSwitch<::mlir::OptionalParseResult>(parser)
+    .Case(::mlir::omp::ClauseCancellationConstructTypeAttr::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::omp::ClauseCancellationConstructTypeAttr::parse(parser, type);
+      return ::mlir::success(!!value);
+    })
+    .Case(::mlir::omp::ClauseDependAttr::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::omp::ClauseDependAttr::parse(parser, type);
+      return ::mlir::success(!!value);
+    })
+    .Case(::mlir::omp::ClauseMemoryOrderKindAttr::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::omp::ClauseMemoryOrderKindAttr::parse(parser, type);
+      return ::mlir::success(!!value);
+    })
+    .Case(::mlir::omp::ClauseOrderKindAttr::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::omp::ClauseOrderKindAttr::parse(parser, type);
+      return ::mlir::success(!!value);
+    })
+    .Case(::mlir::omp::ClauseProcBindKindAttr::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::omp::ClauseProcBindKindAttr::parse(parser, type);
+      return ::mlir::success(!!value);
+    })
+    .Case(::mlir::omp::ClauseScheduleKindAttr::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::omp::ClauseScheduleKindAttr::parse(parser, type);
+      return ::mlir::success(!!value);
+    })
+    .Case(::mlir::omp::ScheduleModifierAttr::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::omp::ScheduleModifierAttr::parse(parser, type);
+      return ::mlir::success(!!value);
+    })
+    .Default([&](llvm::StringRef keyword, llvm::SMLoc) {
+      *mnemonic = keyword;
+      return llvm::None;
+    });
 }
 
 static ::mlir::LogicalResult generatedAttributePrinter(::mlir::Attribute def, ::mlir::AsmPrinter &printer) {
@@ -98,7 +102,7 @@ namespace omp {
 namespace detail {
 struct ClauseCancellationConstructTypeAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<::mlir::omp::ClauseCancellationConstructType>;
-  ClauseCancellationConstructTypeAttrStorage(::mlir::omp::ClauseCancellationConstructType value) : ::mlir::AttributeStorage(), value(value) {}
+  ClauseCancellationConstructTypeAttrStorage(::mlir::omp::ClauseCancellationConstructType value) : value(value) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (value == std::get<0>(tblgenKey));
@@ -121,6 +125,7 @@ ClauseCancellationConstructTypeAttr ClauseCancellationConstructTypeAttr::get(::m
 }
 
 ::mlir::Attribute ClauseCancellationConstructTypeAttr::parse(::mlir::AsmParser &odsParser, ::mlir::Type odsType) {
+  ::mlir::Builder odsBuilder(odsParser.getContext());
   ::mlir::FailureOr<::mlir::omp::ClauseCancellationConstructType> _result_value;
   ::llvm::SMLoc odsLoc = odsParser.getCurrentLocation();
   (void) odsLoc;
@@ -142,10 +147,11 @@ ClauseCancellationConstructTypeAttr ClauseCancellationConstructTypeAttr::get(::m
   }
   assert(::mlir::succeeded(_result_value));
   return ClauseCancellationConstructTypeAttr::get(odsParser.getContext(),
-      *_result_value);
+      ::mlir::omp::ClauseCancellationConstructType((*_result_value)));
 }
 
 void ClauseCancellationConstructTypeAttr::print(::mlir::AsmPrinter &odsPrinter) const {
+  ::mlir::Builder odsBuilder(getContext());
   odsPrinter << ' ';
   odsPrinter << stringifyClauseCancellationConstructType(getValue());
 }
@@ -162,7 +168,7 @@ namespace omp {
 namespace detail {
 struct ClauseDependAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<::mlir::omp::ClauseDepend>;
-  ClauseDependAttrStorage(::mlir::omp::ClauseDepend value) : ::mlir::AttributeStorage(), value(value) {}
+  ClauseDependAttrStorage(::mlir::omp::ClauseDepend value) : value(value) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (value == std::get<0>(tblgenKey));
@@ -185,6 +191,7 @@ ClauseDependAttr ClauseDependAttr::get(::mlir::MLIRContext *context, ::mlir::omp
 }
 
 ::mlir::Attribute ClauseDependAttr::parse(::mlir::AsmParser &odsParser, ::mlir::Type odsType) {
+  ::mlir::Builder odsBuilder(odsParser.getContext());
   ::mlir::FailureOr<::mlir::omp::ClauseDepend> _result_value;
   ::llvm::SMLoc odsLoc = odsParser.getCurrentLocation();
   (void) odsLoc;
@@ -210,10 +217,11 @@ ClauseDependAttr ClauseDependAttr::get(::mlir::MLIRContext *context, ::mlir::omp
   if (odsParser.parseRParen()) return {};
   assert(::mlir::succeeded(_result_value));
   return ClauseDependAttr::get(odsParser.getContext(),
-      *_result_value);
+      ::mlir::omp::ClauseDepend((*_result_value)));
 }
 
 void ClauseDependAttr::print(::mlir::AsmPrinter &odsPrinter) const {
+  ::mlir::Builder odsBuilder(getContext());
   odsPrinter << "(";
   odsPrinter << stringifyClauseDepend(getValue());
   odsPrinter << ")";
@@ -231,7 +239,7 @@ namespace omp {
 namespace detail {
 struct ClauseMemoryOrderKindAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<::mlir::omp::ClauseMemoryOrderKind>;
-  ClauseMemoryOrderKindAttrStorage(::mlir::omp::ClauseMemoryOrderKind value) : ::mlir::AttributeStorage(), value(value) {}
+  ClauseMemoryOrderKindAttrStorage(::mlir::omp::ClauseMemoryOrderKind value) : value(value) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (value == std::get<0>(tblgenKey));
@@ -254,6 +262,7 @@ ClauseMemoryOrderKindAttr ClauseMemoryOrderKindAttr::get(::mlir::MLIRContext *co
 }
 
 ::mlir::Attribute ClauseMemoryOrderKindAttr::parse(::mlir::AsmParser &odsParser, ::mlir::Type odsType) {
+  ::mlir::Builder odsBuilder(odsParser.getContext());
   ::mlir::FailureOr<::mlir::omp::ClauseMemoryOrderKind> _result_value;
   ::llvm::SMLoc odsLoc = odsParser.getCurrentLocation();
   (void) odsLoc;
@@ -275,10 +284,11 @@ ClauseMemoryOrderKindAttr ClauseMemoryOrderKindAttr::get(::mlir::MLIRContext *co
   }
   assert(::mlir::succeeded(_result_value));
   return ClauseMemoryOrderKindAttr::get(odsParser.getContext(),
-      *_result_value);
+      ::mlir::omp::ClauseMemoryOrderKind((*_result_value)));
 }
 
 void ClauseMemoryOrderKindAttr::print(::mlir::AsmPrinter &odsPrinter) const {
+  ::mlir::Builder odsBuilder(getContext());
   odsPrinter << ' ';
   odsPrinter << stringifyClauseMemoryOrderKind(getValue());
 }
@@ -295,7 +305,7 @@ namespace omp {
 namespace detail {
 struct ClauseOrderKindAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<::mlir::omp::ClauseOrderKind>;
-  ClauseOrderKindAttrStorage(::mlir::omp::ClauseOrderKind value) : ::mlir::AttributeStorage(), value(value) {}
+  ClauseOrderKindAttrStorage(::mlir::omp::ClauseOrderKind value) : value(value) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (value == std::get<0>(tblgenKey));
@@ -318,6 +328,7 @@ ClauseOrderKindAttr ClauseOrderKindAttr::get(::mlir::MLIRContext *context, ::mli
 }
 
 ::mlir::Attribute ClauseOrderKindAttr::parse(::mlir::AsmParser &odsParser, ::mlir::Type odsType) {
+  ::mlir::Builder odsBuilder(odsParser.getContext());
   ::mlir::FailureOr<::mlir::omp::ClauseOrderKind> _result_value;
   ::llvm::SMLoc odsLoc = odsParser.getCurrentLocation();
   (void) odsLoc;
@@ -339,10 +350,11 @@ ClauseOrderKindAttr ClauseOrderKindAttr::get(::mlir::MLIRContext *context, ::mli
   }
   assert(::mlir::succeeded(_result_value));
   return ClauseOrderKindAttr::get(odsParser.getContext(),
-      *_result_value);
+      ::mlir::omp::ClauseOrderKind((*_result_value)));
 }
 
 void ClauseOrderKindAttr::print(::mlir::AsmPrinter &odsPrinter) const {
+  ::mlir::Builder odsBuilder(getContext());
   odsPrinter << ' ';
   odsPrinter << stringifyClauseOrderKind(getValue());
 }
@@ -359,7 +371,7 @@ namespace omp {
 namespace detail {
 struct ClauseProcBindKindAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<::mlir::omp::ClauseProcBindKind>;
-  ClauseProcBindKindAttrStorage(::mlir::omp::ClauseProcBindKind value) : ::mlir::AttributeStorage(), value(value) {}
+  ClauseProcBindKindAttrStorage(::mlir::omp::ClauseProcBindKind value) : value(value) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (value == std::get<0>(tblgenKey));
@@ -382,6 +394,7 @@ ClauseProcBindKindAttr ClauseProcBindKindAttr::get(::mlir::MLIRContext *context,
 }
 
 ::mlir::Attribute ClauseProcBindKindAttr::parse(::mlir::AsmParser &odsParser, ::mlir::Type odsType) {
+  ::mlir::Builder odsBuilder(odsParser.getContext());
   ::mlir::FailureOr<::mlir::omp::ClauseProcBindKind> _result_value;
   ::llvm::SMLoc odsLoc = odsParser.getCurrentLocation();
   (void) odsLoc;
@@ -403,10 +416,11 @@ ClauseProcBindKindAttr ClauseProcBindKindAttr::get(::mlir::MLIRContext *context,
   }
   assert(::mlir::succeeded(_result_value));
   return ClauseProcBindKindAttr::get(odsParser.getContext(),
-      *_result_value);
+      ::mlir::omp::ClauseProcBindKind((*_result_value)));
 }
 
 void ClauseProcBindKindAttr::print(::mlir::AsmPrinter &odsPrinter) const {
+  ::mlir::Builder odsBuilder(getContext());
   odsPrinter << ' ';
   odsPrinter << stringifyClauseProcBindKind(getValue());
 }
@@ -423,7 +437,7 @@ namespace omp {
 namespace detail {
 struct ClauseScheduleKindAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<::mlir::omp::ClauseScheduleKind>;
-  ClauseScheduleKindAttrStorage(::mlir::omp::ClauseScheduleKind value) : ::mlir::AttributeStorage(), value(value) {}
+  ClauseScheduleKindAttrStorage(::mlir::omp::ClauseScheduleKind value) : value(value) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (value == std::get<0>(tblgenKey));
@@ -446,6 +460,7 @@ ClauseScheduleKindAttr ClauseScheduleKindAttr::get(::mlir::MLIRContext *context,
 }
 
 ::mlir::Attribute ClauseScheduleKindAttr::parse(::mlir::AsmParser &odsParser, ::mlir::Type odsType) {
+  ::mlir::Builder odsBuilder(odsParser.getContext());
   ::mlir::FailureOr<::mlir::omp::ClauseScheduleKind> _result_value;
   ::llvm::SMLoc odsLoc = odsParser.getCurrentLocation();
   (void) odsLoc;
@@ -467,10 +482,11 @@ ClauseScheduleKindAttr ClauseScheduleKindAttr::get(::mlir::MLIRContext *context,
   }
   assert(::mlir::succeeded(_result_value));
   return ClauseScheduleKindAttr::get(odsParser.getContext(),
-      *_result_value);
+      ::mlir::omp::ClauseScheduleKind((*_result_value)));
 }
 
 void ClauseScheduleKindAttr::print(::mlir::AsmPrinter &odsPrinter) const {
+  ::mlir::Builder odsBuilder(getContext());
   odsPrinter << ' ';
   odsPrinter << stringifyClauseScheduleKind(getValue());
 }
@@ -487,7 +503,7 @@ namespace omp {
 namespace detail {
 struct ScheduleModifierAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<::mlir::omp::ScheduleModifier>;
-  ScheduleModifierAttrStorage(::mlir::omp::ScheduleModifier value) : ::mlir::AttributeStorage(), value(value) {}
+  ScheduleModifierAttrStorage(::mlir::omp::ScheduleModifier value) : value(value) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (value == std::get<0>(tblgenKey));
@@ -510,6 +526,7 @@ ScheduleModifierAttr ScheduleModifierAttr::get(::mlir::MLIRContext *context, ::m
 }
 
 ::mlir::Attribute ScheduleModifierAttr::parse(::mlir::AsmParser &odsParser, ::mlir::Type odsType) {
+  ::mlir::Builder odsBuilder(odsParser.getContext());
   ::mlir::FailureOr<::mlir::omp::ScheduleModifier> _result_value;
   ::llvm::SMLoc odsLoc = odsParser.getCurrentLocation();
   (void) odsLoc;
@@ -531,10 +548,11 @@ ScheduleModifierAttr ScheduleModifierAttr::get(::mlir::MLIRContext *context, ::m
   }
   assert(::mlir::succeeded(_result_value));
   return ScheduleModifierAttr::get(odsParser.getContext(),
-      *_result_value);
+      ::mlir::omp::ScheduleModifier((*_result_value)));
 }
 
 void ScheduleModifierAttr::print(::mlir::AsmPrinter &odsPrinter) const {
+  ::mlir::Builder odsBuilder(getContext());
   odsPrinter << ' ';
   odsPrinter << stringifyScheduleModifier(getValue());
 }
@@ -554,12 +572,10 @@ namespace omp {
                                       ::mlir::Type type) const {
   ::llvm::SMLoc typeLoc = parser.getCurrentLocation();
   ::llvm::StringRef attrTag;
-  if (::mlir::failed(parser.parseKeyword(&attrTag)))
-    return {};
   {
     ::mlir::Attribute attr;
-    auto parseResult = generatedAttributeParser(parser, attrTag, type, attr);
-    if (parseResult.hasValue())
+    auto parseResult = generatedAttributeParser(parser, &attrTag, type, attr);
+    if (parseResult.has_value())
       return attr;
   }
   

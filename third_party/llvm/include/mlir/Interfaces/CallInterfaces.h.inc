@@ -35,6 +35,7 @@ struct CallOpInterfaceInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteOp;
   };
 };template <typename ConcreteOp>
 struct CallOpInterfaceTrait;
@@ -45,7 +46,13 @@ public:
   using ::mlir::OpInterface<CallOpInterface, detail::CallOpInterfaceInterfaceTraits>::OpInterface;
   template <typename ConcreteOp>
   struct Trait : public detail::CallOpInterfaceTrait<ConcreteOp> {};
+  /// Returns the callee of this call-like operation. A `callee` is either a
+  /// reference to a symbol, via SymbolRefAttr, or a reference to a defined
+  /// SSA value. If the reference is an SSA value, the SSA value corresponds
+  /// to a region of a lambda-like operation.
   ::mlir::CallInterfaceCallable getCallableForCallee();
+  /// Returns the operands within this call that are used as arguments to the
+  /// callee.
   ::mlir::Operation::operand_range getArgOperands();
 
     /// Resolve the callable operation for given callee to a
@@ -84,7 +91,7 @@ namespace detail {
 struct CallableOpInterfaceInterfaceTraits {
   struct Concept {
     ::mlir::Region *(*getCallableRegion)(const Concept *impl, ::mlir::Operation *);
-    ::mlir::ArrayRef<::mlir::Type> (*getCallableResults)(const Concept *impl, ::mlir::Operation *);
+    ::llvm::ArrayRef<::mlir::Type> (*getCallableResults)(const Concept *impl, ::mlir::Operation *);
   };
   template<typename ConcreteOp>
   class Model : public Concept {
@@ -93,7 +100,7 @@ struct CallableOpInterfaceInterfaceTraits {
     Model() : Concept{getCallableRegion, getCallableResults} {}
 
     static inline ::mlir::Region *getCallableRegion(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline ::mlir::ArrayRef<::mlir::Type> getCallableResults(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ::llvm::ArrayRef<::mlir::Type> getCallableResults(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
   };
   template<typename ConcreteOp>
   class FallbackModel : public Concept {
@@ -102,11 +109,12 @@ struct CallableOpInterfaceInterfaceTraits {
     FallbackModel() : Concept{getCallableRegion, getCallableResults} {}
 
     static inline ::mlir::Region *getCallableRegion(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline ::mlir::ArrayRef<::mlir::Type> getCallableResults(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ::llvm::ArrayRef<::mlir::Type> getCallableResults(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
   };
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteOp;
   };
 };template <typename ConcreteOp>
 struct CallableOpInterfaceTrait;
@@ -117,8 +125,13 @@ public:
   using ::mlir::OpInterface<CallableOpInterface, detail::CallableOpInterfaceInterfaceTraits>::OpInterface;
   template <typename ConcreteOp>
   struct Trait : public detail::CallableOpInterfaceTrait<ConcreteOp> {};
+  /// Returns the region on the current operation that is callable. This may
+  /// return null in the case of an external callable object, e.g. an external
+  /// function.
   ::mlir::Region *getCallableRegion();
-  ::mlir::ArrayRef<::mlir::Type> getCallableResults();
+  /// Returns the results types that the callable region produces when
+  /// executed.
+  ::llvm::ArrayRef<::mlir::Type> getCallableResults();
 };
 namespace detail {
   template <typename ConcreteOp>
@@ -130,7 +143,7 @@ template<typename ConcreteOp>
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getCallableRegion();
 }
 template<typename ConcreteOp>
-::mlir::ArrayRef<::mlir::Type> detail::CallableOpInterfaceInterfaceTraits::Model<ConcreteOp>::getCallableResults(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+::llvm::ArrayRef<::mlir::Type> detail::CallableOpInterfaceInterfaceTraits::Model<ConcreteOp>::getCallableResults(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getCallableResults();
 }
 template<typename ConcreteOp>
@@ -138,7 +151,7 @@ template<typename ConcreteOp>
   return static_cast<const ConcreteOp *>(impl)->getCallableRegion(tablegen_opaque_val);
 }
 template<typename ConcreteOp>
-::mlir::ArrayRef<::mlir::Type> detail::CallableOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getCallableResults(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+::llvm::ArrayRef<::mlir::Type> detail::CallableOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getCallableResults(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return static_cast<const ConcreteOp *>(impl)->getCallableResults(tablegen_opaque_val);
 }
 } // namespace mlir

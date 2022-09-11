@@ -86,7 +86,7 @@ std::pair<unsigned, unsigned> ModuleOpAdaptor::getODSOperandIndexAndLength(unsig
 ::mlir::StringAttr ModuleOpAdaptor::getSymNameAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ModuleOp::getSymNameAttrName(*odsOpName)).dyn_cast_or_null<::mlir::StringAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional< ::llvm::StringRef > ModuleOpAdaptor::getSymName() {
@@ -97,7 +97,7 @@ std::pair<unsigned, unsigned> ModuleOpAdaptor::getODSOperandIndexAndLength(unsig
 ::mlir::StringAttr ModuleOpAdaptor::getSymVisibilityAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ModuleOp::getSymVisibilityAttrName(*odsOpName)).dyn_cast_or_null<::mlir::StringAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional< ::llvm::StringRef > ModuleOpAdaptor::getSymVisibility() {

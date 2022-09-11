@@ -227,15 +227,15 @@ std::pair<unsigned, unsigned> DotIntrOpAdaptor::getODSOperandIndexAndLength(unsi
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value DotIntrOpAdaptor::a() {
+::mlir::Value DotIntrOpAdaptor::getA() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value DotIntrOpAdaptor::b() {
+::mlir::Value DotIntrOpAdaptor::getB() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value DotIntrOpAdaptor::c() {
+::mlir::Value DotIntrOpAdaptor::getC() {
   return *getODSOperands(2).begin();
 }
 
@@ -257,31 +257,31 @@ std::pair<unsigned, unsigned> DotIntrOp::getODSOperandIndexAndLength(unsigned in
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value DotIntrOp::a() {
+::mlir::TypedValue<::mlir::VectorType> DotIntrOp::getA() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value DotIntrOp::b() {
+::mlir::TypedValue<::mlir::VectorType> DotIntrOp::getB() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value DotIntrOp::c() {
+::mlir::TypedValue<::mlir::IntegerType> DotIntrOp::getC() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::MutableOperandRange DotIntrOp::aMutable() {
+::mlir::MutableOperandRange DotIntrOp::getAMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange DotIntrOp::bMutable() {
+::mlir::MutableOperandRange DotIntrOp::getBMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange DotIntrOp::cMutable() {
+::mlir::MutableOperandRange DotIntrOp::getCMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -297,7 +297,7 @@ std::pair<unsigned, unsigned> DotIntrOp::getODSResultIndexAndLength(unsigned ind
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value DotIntrOp::res() {
+::mlir::TypedValue<::mlir::VectorType> DotIntrOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -387,7 +387,7 @@ void DotIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
         return ::mlir::failure();
     }
   }
-  if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(0).begin()).getType(), (*this->getODSOperands(1).begin()).getType(), (*this->getODSResults(0).begin()).getType()})))))
+  if (!((((*this->getODSOperands(0).begin()).getType()) == ((*this->getODSOperands(1).begin()).getType()) && ((*this->getODSOperands(1).begin()).getType()) == ((*this->getODSResults(0).begin()).getType()) && ((*this->getODSResults(0).begin()).getType()) == ((*this->getODSOperands(0).begin()).getType()))))
     return emitOpError("failed to verify that all of {a, b, res} have same type");
   return ::mlir::success();
 }
@@ -438,11 +438,11 @@ std::pair<unsigned, unsigned> DotOpAdaptor::getODSOperandIndexAndLength(unsigned
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value DotOpAdaptor::a() {
+::mlir::Value DotOpAdaptor::getA() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value DotOpAdaptor::b() {
+::mlir::Value DotOpAdaptor::getB() {
   return *getODSOperands(1).begin();
 }
 
@@ -464,21 +464,21 @@ std::pair<unsigned, unsigned> DotOp::getODSOperandIndexAndLength(unsigned index)
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value DotOp::a() {
+::mlir::TypedValue<::mlir::VectorType> DotOp::getA() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value DotOp::b() {
+::mlir::TypedValue<::mlir::VectorType> DotOp::getB() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::MutableOperandRange DotOp::aMutable() {
+::mlir::MutableOperandRange DotOp::getAMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange DotOp::bMutable() {
+::mlir::MutableOperandRange DotOp::getBMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -494,7 +494,7 @@ std::pair<unsigned, unsigned> DotOp::getODSResultIndexAndLength(unsigned index) 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value DotOp::res() {
+::mlir::TypedValue<::mlir::VectorType> DotOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -621,24 +621,24 @@ void DotOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
     resRawTypes[0] = type;
   }
   result.addTypes(resTypes);
-  if (parser.resolveOperands(aOperands, resTypes[0], result.operands))
+  if (parser.resolveOperands(aOperands, resTypes[0], aOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(bOperands, resTypes[0], result.operands))
+  if (parser.resolveOperands(bOperands, resTypes[0], bOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
 
 void DotOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << a();
+  _odsPrinter << getA();
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  _odsPrinter << b();
+  _odsPrinter << getB();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::VectorType>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -680,15 +680,15 @@ std::pair<unsigned, unsigned> MaskCompressIntrOpAdaptor::getODSOperandIndexAndLe
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MaskCompressIntrOpAdaptor::a() {
+::mlir::Value MaskCompressIntrOpAdaptor::getA() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value MaskCompressIntrOpAdaptor::src() {
+::mlir::Value MaskCompressIntrOpAdaptor::getSrc() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value MaskCompressIntrOpAdaptor::k() {
+::mlir::Value MaskCompressIntrOpAdaptor::getK() {
   return *getODSOperands(2).begin();
 }
 
@@ -710,31 +710,31 @@ std::pair<unsigned, unsigned> MaskCompressIntrOp::getODSOperandIndexAndLength(un
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MaskCompressIntrOp::a() {
+::mlir::TypedValue<::mlir::VectorType> MaskCompressIntrOp::getA() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value MaskCompressIntrOp::src() {
+::mlir::TypedValue<::mlir::VectorType> MaskCompressIntrOp::getSrc() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value MaskCompressIntrOp::k() {
+::mlir::TypedValue<::mlir::VectorType> MaskCompressIntrOp::getK() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::MutableOperandRange MaskCompressIntrOp::aMutable() {
+::mlir::MutableOperandRange MaskCompressIntrOp::getAMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MaskCompressIntrOp::srcMutable() {
+::mlir::MutableOperandRange MaskCompressIntrOp::getSrcMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MaskCompressIntrOp::kMutable() {
+::mlir::MutableOperandRange MaskCompressIntrOp::getKMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -750,7 +750,7 @@ std::pair<unsigned, unsigned> MaskCompressIntrOp::getODSResultIndexAndLength(uns
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MaskCompressIntrOp::res() {
+::mlir::Value MaskCompressIntrOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -840,7 +840,7 @@ void MaskCompressIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationS
         return ::mlir::failure();
     }
   }
-  if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(0).begin()).getType(), (*this->getODSOperands(1).begin()).getType(), (*this->getODSResults(0).begin()).getType()})))))
+  if (!((((*this->getODSOperands(0).begin()).getType()) == ((*this->getODSOperands(1).begin()).getType()) && ((*this->getODSOperands(1).begin()).getType()) == ((*this->getODSResults(0).begin()).getType()) && ((*this->getODSResults(0).begin()).getType()) == ((*this->getODSOperands(0).begin()).getType()))))
     return emitOpError("failed to verify that all of {a, src, res} have same type");
   if (!((std::equal_to<>()(VectorType::get({(*this->getODSResults(0).begin()).getType().cast<VectorType>().getShape()[0]}, IntegerType::get((*this->getODSResults(0).begin()).getType().getContext(), 1)), (*this->getODSOperands(2).begin()).getType()))))
     return emitOpError("failed to verify that `k` has the same number of bits as elements in `res`");
@@ -907,15 +907,15 @@ std::pair<unsigned, unsigned> MaskCompressOpAdaptor::getODSOperandIndexAndLength
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MaskCompressOpAdaptor::k() {
+::mlir::Value MaskCompressOpAdaptor::getK() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value MaskCompressOpAdaptor::a() {
+::mlir::Value MaskCompressOpAdaptor::getA() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value MaskCompressOpAdaptor::src() {
+::mlir::Value MaskCompressOpAdaptor::getSrc() {
   auto operands = getODSOperands(2);
   return operands.empty() ? ::mlir::Value() : *operands.begin();
 }
@@ -924,14 +924,14 @@ std::pair<unsigned, unsigned> MaskCompressOpAdaptor::getODSOperandIndexAndLength
   return odsAttrs;
 }
 
-::mlir::ElementsAttr MaskCompressOpAdaptor::constant_srcAttr() {
+::mlir::ElementsAttr MaskCompressOpAdaptor::getConstantSrcAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, MaskCompressOp::constant_srcAttrName(*odsOpName)).dyn_cast_or_null<::mlir::ElementsAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, MaskCompressOp::getConstantSrcAttrName(*odsOpName)).dyn_cast_or_null<::mlir::ElementsAttr>();
+  return attr;
 }
 
-::llvm::Optional< ::mlir::ElementsAttr > MaskCompressOpAdaptor::constant_src() {
-  auto attr = constant_srcAttr();
+::llvm::Optional< ::mlir::ElementsAttr > MaskCompressOpAdaptor::getConstantSrc() {
+  auto attr = getConstantSrcAttr();
   return attr ? ::llvm::Optional< ::mlir::ElementsAttr >(attr) : (::llvm::None);
 }
 
@@ -943,7 +943,7 @@ std::pair<unsigned, unsigned> MaskCompressOpAdaptor::getODSOperandIndexAndLength
     if (namedAttrIt == namedAttrRange.end()) {
       break;
     }
-    else if (namedAttrIt->getName() == MaskCompressOp::constant_srcAttrName(*odsOpName)) {
+    else if (namedAttrIt->getName() == MaskCompressOp::getConstantSrcAttrName(*odsOpName)) {
       tblgen_constant_src = namedAttrIt->getValue();
     }
     ++namedAttrIt;
@@ -978,32 +978,32 @@ std::pair<unsigned, unsigned> MaskCompressOp::getODSOperandIndexAndLength(unsign
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MaskCompressOp::k() {
+::mlir::TypedValue<::mlir::VectorType> MaskCompressOp::getK() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value MaskCompressOp::a() {
+::mlir::TypedValue<::mlir::VectorType> MaskCompressOp::getA() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value MaskCompressOp::src() {
+::mlir::TypedValue<::mlir::VectorType> MaskCompressOp::getSrc() {
   auto operands = getODSOperands(2);
   return operands.empty() ? ::mlir::Value() : *operands.begin();
 }
 
-::mlir::MutableOperandRange MaskCompressOp::kMutable() {
+::mlir::MutableOperandRange MaskCompressOp::getKMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MaskCompressOp::aMutable() {
+::mlir::MutableOperandRange MaskCompressOp::getAMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MaskCompressOp::srcMutable() {
+::mlir::MutableOperandRange MaskCompressOp::getSrcMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -1019,25 +1019,25 @@ std::pair<unsigned, unsigned> MaskCompressOp::getODSResultIndexAndLength(unsigne
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MaskCompressOp::dst() {
+::mlir::TypedValue<::mlir::VectorType> MaskCompressOp::getDst() {
   return *getODSResults(0).begin();
 }
 
-::mlir::ElementsAttr MaskCompressOp::constant_srcAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, constant_srcAttrName()).dyn_cast_or_null<::mlir::ElementsAttr>();
+::mlir::ElementsAttr MaskCompressOp::getConstantSrcAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getConstantSrcAttrName()).dyn_cast_or_null<::mlir::ElementsAttr>();
 }
 
-::llvm::Optional< ::mlir::ElementsAttr > MaskCompressOp::constant_src() {
-  auto attr = constant_srcAttr();
+::llvm::Optional< ::mlir::ElementsAttr > MaskCompressOp::getConstantSrc() {
+  auto attr = getConstantSrcAttr();
   return attr ? ::llvm::Optional< ::mlir::ElementsAttr >(attr) : (::llvm::None);
 }
 
-void MaskCompressOp::constant_srcAttr(::mlir::ElementsAttr attr) {
-  (*this)->setAttr(constant_srcAttrName(), attr);
+void MaskCompressOp::setConstantSrcAttr(::mlir::ElementsAttr attr) {
+  (*this)->setAttr(getConstantSrcAttrName(), attr);
 }
 
 ::mlir::Attribute MaskCompressOp::removeConstant_srcAttr() {
-  return (*this)->removeAttr(constant_srcAttrName());
+  return (*this)->removeAttr(getConstantSrcAttrName());
 }
 
 void MaskCompressOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type dst, ::mlir::Value k, ::mlir::Value a, /*optional*/::mlir::Value src, /*optional*/::mlir::ElementsAttr constant_src) {
@@ -1046,7 +1046,7 @@ void MaskCompressOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
   if (src)
     odsState.addOperands(src);
   if (constant_src) {
-  odsState.addAttribute(constant_srcAttrName(odsState.name), constant_src);
+  odsState.addAttribute(getConstantSrcAttrName(odsState.name), constant_src);
   }
   odsState.addTypes(dst);
 }
@@ -1057,7 +1057,7 @@ void MaskCompressOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
   if (src)
     odsState.addOperands(src);
   if (constant_src) {
-  odsState.addAttribute(constant_srcAttrName(odsState.name), constant_src);
+  odsState.addAttribute(getConstantSrcAttrName(odsState.name), constant_src);
   }
 
         ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
@@ -1076,7 +1076,7 @@ void MaskCompressOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
   if (src)
     odsState.addOperands(src);
   if (constant_src) {
-  odsState.addAttribute(constant_srcAttrName(odsState.name), constant_src);
+  odsState.addAttribute(getConstantSrcAttrName(odsState.name), constant_src);
   }
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
@@ -1115,7 +1115,7 @@ void MaskCompressOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
     if (namedAttrIt == namedAttrRange.end()) {
       break;
     }
-    else if (namedAttrIt->getName() == constant_srcAttrName()) {
+    else if (namedAttrIt->getName() == getConstantSrcAttrName()) {
       tblgen_constant_src = namedAttrIt->getValue();
     }
     ++namedAttrIt;
@@ -1158,7 +1158,7 @@ void MaskCompressOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
         return ::mlir::failure();
     }
   }
-  if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(1).begin()).getType(), (*this->getODSResults(0).begin()).getType()})))))
+  if (!((((*this->getODSOperands(1).begin()).getType()) == ((*this->getODSResults(0).begin()).getType()) && ((*this->getODSResults(0).begin()).getType()) == ((*this->getODSOperands(1).begin()).getType()))))
     return emitOpError("failed to verify that all of {a, dst} have same type");
   if (!((std::equal_to<>()(VectorType::get({(*this->getODSResults(0).begin()).getType().cast<VectorType>().getShape()[0]}, IntegerType::get((*this->getODSResults(0).begin()).getType().getContext(), 1)), (*this->getODSOperands(0).begin()).getType()))))
     return emitOpError("failed to verify that `k` has the same number of bits as elements in `dst`");
@@ -1209,7 +1209,7 @@ void MaskCompressOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       srcOperands.push_back(operand);
@@ -1233,7 +1233,7 @@ void MaskCompressOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
     ::mlir::Type optionalType;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalType(optionalType);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       srcTypes.push_back(optionalType);
@@ -1251,7 +1251,7 @@ void MaskCompressOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
   result.addTypes(dstTypes);
   if (parser.resolveOperands(kOperands, VectorType::get({dstTypes[0].cast<VectorType>().getShape()[0]}, IntegerType::get(dstTypes[0].getContext(), 1)), kOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(aOperands, dstTypes[0], result.operands))
+  if (parser.resolveOperands(aOperands, dstTypes[0], aOperandsLoc, result.operands))
     return ::mlir::failure();
   if (parser.resolveOperands(srcOperands, srcTypes, srcOperandsLoc, result.operands))
     return ::mlir::failure();
@@ -1260,30 +1260,30 @@ void MaskCompressOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
 
 void MaskCompressOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << k();
+  _odsPrinter << getK();
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  _odsPrinter << a();
-  if (src()) {
+  _odsPrinter << getA();
+  if (getSrc()) {
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  if (::mlir::Value value = src())
+  if (::mlir::Value value = getSrc())
     _odsPrinter << value;
   }
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = dst().getType();
+    auto type = getDst().getType();
     if (auto validType = type.dyn_cast<::mlir::VectorType>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
      _odsPrinter << type;
   }
-  if (src()) {
+  if (getSrc()) {
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  _odsPrinter << (src() ? ::llvm::ArrayRef<::mlir::Type>(src().getType()) : ::llvm::ArrayRef<::mlir::Type>());
+  _odsPrinter << (getSrc() ? ::llvm::ArrayRef<::mlir::Type>(getSrc().getType()) : ::llvm::ArrayRef<::mlir::Type>());
   }
 }
 
@@ -1321,23 +1321,23 @@ std::pair<unsigned, unsigned> MaskRndScaleOpAdaptor::getODSOperandIndexAndLength
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MaskRndScaleOpAdaptor::src() {
+::mlir::Value MaskRndScaleOpAdaptor::getSrc() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value MaskRndScaleOpAdaptor::k() {
+::mlir::Value MaskRndScaleOpAdaptor::getK() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value MaskRndScaleOpAdaptor::a() {
+::mlir::Value MaskRndScaleOpAdaptor::getA() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::Value MaskRndScaleOpAdaptor::imm() {
+::mlir::Value MaskRndScaleOpAdaptor::getImm() {
   return *getODSOperands(3).begin();
 }
 
-::mlir::Value MaskRndScaleOpAdaptor::rounding() {
+::mlir::Value MaskRndScaleOpAdaptor::getRounding() {
   return *getODSOperands(4).begin();
 }
 
@@ -1359,51 +1359,51 @@ std::pair<unsigned, unsigned> MaskRndScaleOp::getODSOperandIndexAndLength(unsign
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MaskRndScaleOp::src() {
+::mlir::TypedValue<::mlir::VectorType> MaskRndScaleOp::getSrc() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value MaskRndScaleOp::k() {
+::mlir::TypedValue<::mlir::IntegerType> MaskRndScaleOp::getK() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value MaskRndScaleOp::a() {
+::mlir::TypedValue<::mlir::VectorType> MaskRndScaleOp::getA() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::Value MaskRndScaleOp::imm() {
+::mlir::Value MaskRndScaleOp::getImm() {
   return *getODSOperands(3).begin();
 }
 
-::mlir::Value MaskRndScaleOp::rounding() {
+::mlir::TypedValue<::mlir::IntegerType> MaskRndScaleOp::getRounding() {
   return *getODSOperands(4).begin();
 }
 
-::mlir::MutableOperandRange MaskRndScaleOp::srcMutable() {
+::mlir::MutableOperandRange MaskRndScaleOp::getSrcMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MaskRndScaleOp::kMutable() {
+::mlir::MutableOperandRange MaskRndScaleOp::getKMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MaskRndScaleOp::aMutable() {
+::mlir::MutableOperandRange MaskRndScaleOp::getAMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MaskRndScaleOp::immMutable() {
+::mlir::MutableOperandRange MaskRndScaleOp::getImmMutable() {
   auto range = getODSOperandIndexAndLength(3);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MaskRndScaleOp::roundingMutable() {
+::mlir::MutableOperandRange MaskRndScaleOp::getRoundingMutable() {
   auto range = getODSOperandIndexAndLength(4);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -1419,7 +1419,7 @@ std::pair<unsigned, unsigned> MaskRndScaleOp::getODSResultIndexAndLength(unsigne
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MaskRndScaleOp::dst() {
+::mlir::TypedValue<::mlir::VectorType> MaskRndScaleOp::getDst() {
   return *getODSResults(0).begin();
 }
 
@@ -1527,7 +1527,7 @@ void MaskRndScaleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
         return ::mlir::failure();
     }
   }
-  if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(0).begin()).getType(), (*this->getODSOperands(2).begin()).getType(), (*this->getODSResults(0).begin()).getType()})))))
+  if (!((((*this->getODSOperands(0).begin()).getType()) == ((*this->getODSOperands(2).begin()).getType()) && ((*this->getODSOperands(2).begin()).getType()) == ((*this->getODSResults(0).begin()).getType()) && ((*this->getODSResults(0).begin()).getType()) == ((*this->getODSOperands(0).begin()).getType()))))
     return emitOpError("failed to verify that all of {src, a, dst} have same type");
   if (!((std::equal_to<>()(IntegerType::get((*this->getODSResults(0).begin()).getType().getContext(), ((*this->getODSResults(0).begin()).getType().cast<VectorType>().getShape()[0])), (*this->getODSOperands(3).begin()).getType()))))
     return emitOpError("failed to verify that imm has the same number of bits as elements in dst");
@@ -1613,39 +1613,39 @@ void MaskRndScaleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
   }
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getIntegerType(32);
   result.addTypes(dstTypes);
-  if (parser.resolveOperands(srcOperands, dstTypes[0], result.operands))
+  if (parser.resolveOperands(srcOperands, dstTypes[0], srcOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(kOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(kOperands, odsBuildableType0, kOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(aOperands, dstTypes[0], result.operands))
+  if (parser.resolveOperands(aOperands, dstTypes[0], aOperandsLoc, result.operands))
     return ::mlir::failure();
   if (parser.resolveOperands(immOperands, IntegerType::get(dstTypes[0].getContext(), (dstTypes[0].cast<VectorType>().getShape()[0])), immOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(roundingOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(roundingOperands, odsBuildableType0, roundingOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
 
 void MaskRndScaleOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << src();
+  _odsPrinter << getSrc();
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  _odsPrinter << k();
+  _odsPrinter << getK();
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  _odsPrinter << a();
+  _odsPrinter << getA();
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  _odsPrinter << imm();
+  _odsPrinter << getImm();
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  _odsPrinter << rounding();
+  _odsPrinter << getRounding();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = dst().getType();
+    auto type = getDst().getType();
     if (auto validType = type.dyn_cast<::mlir::VectorType>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -1687,23 +1687,23 @@ std::pair<unsigned, unsigned> MaskRndScalePDIntrOpAdaptor::getODSOperandIndexAnd
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MaskRndScalePDIntrOpAdaptor::src() {
+::mlir::Value MaskRndScalePDIntrOpAdaptor::getSrc() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value MaskRndScalePDIntrOpAdaptor::k() {
+::mlir::Value MaskRndScalePDIntrOpAdaptor::getK() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value MaskRndScalePDIntrOpAdaptor::a() {
+::mlir::Value MaskRndScalePDIntrOpAdaptor::getA() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::Value MaskRndScalePDIntrOpAdaptor::imm() {
+::mlir::Value MaskRndScalePDIntrOpAdaptor::getImm() {
   return *getODSOperands(3).begin();
 }
 
-::mlir::Value MaskRndScalePDIntrOpAdaptor::rounding() {
+::mlir::Value MaskRndScalePDIntrOpAdaptor::getRounding() {
   return *getODSOperands(4).begin();
 }
 
@@ -1725,51 +1725,51 @@ std::pair<unsigned, unsigned> MaskRndScalePDIntrOp::getODSOperandIndexAndLength(
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MaskRndScalePDIntrOp::src() {
+::mlir::TypedValue<::mlir::VectorType> MaskRndScalePDIntrOp::getSrc() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value MaskRndScalePDIntrOp::k() {
+::mlir::TypedValue<::mlir::IntegerType> MaskRndScalePDIntrOp::getK() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value MaskRndScalePDIntrOp::a() {
+::mlir::TypedValue<::mlir::VectorType> MaskRndScalePDIntrOp::getA() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::Value MaskRndScalePDIntrOp::imm() {
+::mlir::TypedValue<::mlir::IntegerType> MaskRndScalePDIntrOp::getImm() {
   return *getODSOperands(3).begin();
 }
 
-::mlir::Value MaskRndScalePDIntrOp::rounding() {
+::mlir::Value MaskRndScalePDIntrOp::getRounding() {
   return *getODSOperands(4).begin();
 }
 
-::mlir::MutableOperandRange MaskRndScalePDIntrOp::srcMutable() {
+::mlir::MutableOperandRange MaskRndScalePDIntrOp::getSrcMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MaskRndScalePDIntrOp::kMutable() {
+::mlir::MutableOperandRange MaskRndScalePDIntrOp::getKMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MaskRndScalePDIntrOp::aMutable() {
+::mlir::MutableOperandRange MaskRndScalePDIntrOp::getAMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MaskRndScalePDIntrOp::immMutable() {
+::mlir::MutableOperandRange MaskRndScalePDIntrOp::getImmMutable() {
   auto range = getODSOperandIndexAndLength(3);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MaskRndScalePDIntrOp::roundingMutable() {
+::mlir::MutableOperandRange MaskRndScalePDIntrOp::getRoundingMutable() {
   auto range = getODSOperandIndexAndLength(4);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -1785,7 +1785,7 @@ std::pair<unsigned, unsigned> MaskRndScalePDIntrOp::getODSResultIndexAndLength(u
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MaskRndScalePDIntrOp::res() {
+::mlir::Value MaskRndScalePDIntrOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -1893,7 +1893,7 @@ void MaskRndScalePDIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operatio
         return ::mlir::failure();
     }
   }
-  if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(0).begin()).getType(), (*this->getODSOperands(2).begin()).getType(), (*this->getODSResults(0).begin()).getType()})))))
+  if (!((((*this->getODSOperands(0).begin()).getType()) == ((*this->getODSOperands(2).begin()).getType()) && ((*this->getODSOperands(2).begin()).getType()) == ((*this->getODSResults(0).begin()).getType()) && ((*this->getODSResults(0).begin()).getType()) == ((*this->getODSOperands(0).begin()).getType()))))
     return emitOpError("failed to verify that all of {src, a, res} have same type");
   return ::mlir::success();
 }
@@ -1944,23 +1944,23 @@ std::pair<unsigned, unsigned> MaskRndScalePSIntrOpAdaptor::getODSOperandIndexAnd
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MaskRndScalePSIntrOpAdaptor::src() {
+::mlir::Value MaskRndScalePSIntrOpAdaptor::getSrc() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value MaskRndScalePSIntrOpAdaptor::k() {
+::mlir::Value MaskRndScalePSIntrOpAdaptor::getK() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value MaskRndScalePSIntrOpAdaptor::a() {
+::mlir::Value MaskRndScalePSIntrOpAdaptor::getA() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::Value MaskRndScalePSIntrOpAdaptor::imm() {
+::mlir::Value MaskRndScalePSIntrOpAdaptor::getImm() {
   return *getODSOperands(3).begin();
 }
 
-::mlir::Value MaskRndScalePSIntrOpAdaptor::rounding() {
+::mlir::Value MaskRndScalePSIntrOpAdaptor::getRounding() {
   return *getODSOperands(4).begin();
 }
 
@@ -1982,51 +1982,51 @@ std::pair<unsigned, unsigned> MaskRndScalePSIntrOp::getODSOperandIndexAndLength(
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MaskRndScalePSIntrOp::src() {
+::mlir::TypedValue<::mlir::VectorType> MaskRndScalePSIntrOp::getSrc() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value MaskRndScalePSIntrOp::k() {
+::mlir::TypedValue<::mlir::IntegerType> MaskRndScalePSIntrOp::getK() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value MaskRndScalePSIntrOp::a() {
+::mlir::TypedValue<::mlir::VectorType> MaskRndScalePSIntrOp::getA() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::Value MaskRndScalePSIntrOp::imm() {
+::mlir::TypedValue<::mlir::IntegerType> MaskRndScalePSIntrOp::getImm() {
   return *getODSOperands(3).begin();
 }
 
-::mlir::Value MaskRndScalePSIntrOp::rounding() {
+::mlir::Value MaskRndScalePSIntrOp::getRounding() {
   return *getODSOperands(4).begin();
 }
 
-::mlir::MutableOperandRange MaskRndScalePSIntrOp::srcMutable() {
+::mlir::MutableOperandRange MaskRndScalePSIntrOp::getSrcMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MaskRndScalePSIntrOp::kMutable() {
+::mlir::MutableOperandRange MaskRndScalePSIntrOp::getKMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MaskRndScalePSIntrOp::aMutable() {
+::mlir::MutableOperandRange MaskRndScalePSIntrOp::getAMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MaskRndScalePSIntrOp::immMutable() {
+::mlir::MutableOperandRange MaskRndScalePSIntrOp::getImmMutable() {
   auto range = getODSOperandIndexAndLength(3);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MaskRndScalePSIntrOp::roundingMutable() {
+::mlir::MutableOperandRange MaskRndScalePSIntrOp::getRoundingMutable() {
   auto range = getODSOperandIndexAndLength(4);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -2042,7 +2042,7 @@ std::pair<unsigned, unsigned> MaskRndScalePSIntrOp::getODSResultIndexAndLength(u
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MaskRndScalePSIntrOp::res() {
+::mlir::Value MaskRndScalePSIntrOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -2150,7 +2150,7 @@ void MaskRndScalePSIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operatio
         return ::mlir::failure();
     }
   }
-  if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(0).begin()).getType(), (*this->getODSOperands(2).begin()).getType(), (*this->getODSResults(0).begin()).getType()})))))
+  if (!((((*this->getODSOperands(0).begin()).getType()) == ((*this->getODSOperands(2).begin()).getType()) && ((*this->getODSOperands(2).begin()).getType()) == ((*this->getODSResults(0).begin()).getType()) && ((*this->getODSResults(0).begin()).getType()) == ((*this->getODSOperands(0).begin()).getType()))))
     return emitOpError("failed to verify that all of {src, a, res} have same type");
   return ::mlir::success();
 }
@@ -2201,23 +2201,23 @@ std::pair<unsigned, unsigned> MaskScaleFOpAdaptor::getODSOperandIndexAndLength(u
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MaskScaleFOpAdaptor::src() {
+::mlir::Value MaskScaleFOpAdaptor::getSrc() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value MaskScaleFOpAdaptor::a() {
+::mlir::Value MaskScaleFOpAdaptor::getA() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value MaskScaleFOpAdaptor::b() {
+::mlir::Value MaskScaleFOpAdaptor::getB() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::Value MaskScaleFOpAdaptor::k() {
+::mlir::Value MaskScaleFOpAdaptor::getK() {
   return *getODSOperands(3).begin();
 }
 
-::mlir::Value MaskScaleFOpAdaptor::rounding() {
+::mlir::Value MaskScaleFOpAdaptor::getRounding() {
   return *getODSOperands(4).begin();
 }
 
@@ -2239,51 +2239,51 @@ std::pair<unsigned, unsigned> MaskScaleFOp::getODSOperandIndexAndLength(unsigned
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MaskScaleFOp::src() {
+::mlir::TypedValue<::mlir::VectorType> MaskScaleFOp::getSrc() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value MaskScaleFOp::a() {
+::mlir::TypedValue<::mlir::VectorType> MaskScaleFOp::getA() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value MaskScaleFOp::b() {
+::mlir::TypedValue<::mlir::VectorType> MaskScaleFOp::getB() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::Value MaskScaleFOp::k() {
+::mlir::Value MaskScaleFOp::getK() {
   return *getODSOperands(3).begin();
 }
 
-::mlir::Value MaskScaleFOp::rounding() {
+::mlir::TypedValue<::mlir::IntegerType> MaskScaleFOp::getRounding() {
   return *getODSOperands(4).begin();
 }
 
-::mlir::MutableOperandRange MaskScaleFOp::srcMutable() {
+::mlir::MutableOperandRange MaskScaleFOp::getSrcMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MaskScaleFOp::aMutable() {
+::mlir::MutableOperandRange MaskScaleFOp::getAMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MaskScaleFOp::bMutable() {
+::mlir::MutableOperandRange MaskScaleFOp::getBMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MaskScaleFOp::kMutable() {
+::mlir::MutableOperandRange MaskScaleFOp::getKMutable() {
   auto range = getODSOperandIndexAndLength(3);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MaskScaleFOp::roundingMutable() {
+::mlir::MutableOperandRange MaskScaleFOp::getRoundingMutable() {
   auto range = getODSOperandIndexAndLength(4);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -2299,7 +2299,7 @@ std::pair<unsigned, unsigned> MaskScaleFOp::getODSResultIndexAndLength(unsigned 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MaskScaleFOp::dst() {
+::mlir::TypedValue<::mlir::VectorType> MaskScaleFOp::getDst() {
   return *getODSResults(0).begin();
 }
 
@@ -2407,7 +2407,7 @@ void MaskScaleFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
         return ::mlir::failure();
     }
   }
-  if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(0).begin()).getType(), (*this->getODSOperands(1).begin()).getType(), (*this->getODSOperands(2).begin()).getType(), (*this->getODSResults(0).begin()).getType()})))))
+  if (!((((*this->getODSOperands(0).begin()).getType()) == ((*this->getODSOperands(1).begin()).getType()) && ((*this->getODSOperands(1).begin()).getType()) == ((*this->getODSOperands(2).begin()).getType()) && ((*this->getODSOperands(2).begin()).getType()) == ((*this->getODSResults(0).begin()).getType()) && ((*this->getODSResults(0).begin()).getType()) == ((*this->getODSOperands(0).begin()).getType()))))
     return emitOpError("failed to verify that all of {src, a, b, dst} have same type");
   if (!((std::equal_to<>()(IntegerType::get((*this->getODSResults(0).begin()).getType().getContext(), ((*this->getODSResults(0).begin()).getType().cast<VectorType>().getShape()[0])), (*this->getODSOperands(3).begin()).getType()))))
     return emitOpError("failed to verify that k has the same number of bits as elements in dst");
@@ -2493,39 +2493,39 @@ void MaskScaleFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
   }
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getIntegerType(32);
   result.addTypes(dstTypes);
-  if (parser.resolveOperands(srcOperands, dstTypes[0], result.operands))
+  if (parser.resolveOperands(srcOperands, dstTypes[0], srcOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(aOperands, dstTypes[0], result.operands))
+  if (parser.resolveOperands(aOperands, dstTypes[0], aOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(bOperands, dstTypes[0], result.operands))
+  if (parser.resolveOperands(bOperands, dstTypes[0], bOperandsLoc, result.operands))
     return ::mlir::failure();
   if (parser.resolveOperands(kOperands, IntegerType::get(dstTypes[0].getContext(), (dstTypes[0].cast<VectorType>().getShape()[0])), kOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(roundingOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(roundingOperands, odsBuildableType0, roundingOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
 
 void MaskScaleFOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << src();
+  _odsPrinter << getSrc();
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  _odsPrinter << a();
+  _odsPrinter << getA();
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  _odsPrinter << b();
+  _odsPrinter << getB();
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  _odsPrinter << k();
+  _odsPrinter << getK();
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  _odsPrinter << rounding();
+  _odsPrinter << getRounding();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = dst().getType();
+    auto type = getDst().getType();
     if (auto validType = type.dyn_cast<::mlir::VectorType>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -2567,23 +2567,23 @@ std::pair<unsigned, unsigned> MaskScaleFPDIntrOpAdaptor::getODSOperandIndexAndLe
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MaskScaleFPDIntrOpAdaptor::src() {
+::mlir::Value MaskScaleFPDIntrOpAdaptor::getSrc() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value MaskScaleFPDIntrOpAdaptor::a() {
+::mlir::Value MaskScaleFPDIntrOpAdaptor::getA() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value MaskScaleFPDIntrOpAdaptor::b() {
+::mlir::Value MaskScaleFPDIntrOpAdaptor::getB() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::Value MaskScaleFPDIntrOpAdaptor::k() {
+::mlir::Value MaskScaleFPDIntrOpAdaptor::getK() {
   return *getODSOperands(3).begin();
 }
 
-::mlir::Value MaskScaleFPDIntrOpAdaptor::rounding() {
+::mlir::Value MaskScaleFPDIntrOpAdaptor::getRounding() {
   return *getODSOperands(4).begin();
 }
 
@@ -2605,51 +2605,51 @@ std::pair<unsigned, unsigned> MaskScaleFPDIntrOp::getODSOperandIndexAndLength(un
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MaskScaleFPDIntrOp::src() {
+::mlir::TypedValue<::mlir::VectorType> MaskScaleFPDIntrOp::getSrc() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value MaskScaleFPDIntrOp::a() {
+::mlir::TypedValue<::mlir::VectorType> MaskScaleFPDIntrOp::getA() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value MaskScaleFPDIntrOp::b() {
+::mlir::TypedValue<::mlir::VectorType> MaskScaleFPDIntrOp::getB() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::Value MaskScaleFPDIntrOp::k() {
+::mlir::TypedValue<::mlir::IntegerType> MaskScaleFPDIntrOp::getK() {
   return *getODSOperands(3).begin();
 }
 
-::mlir::Value MaskScaleFPDIntrOp::rounding() {
+::mlir::Value MaskScaleFPDIntrOp::getRounding() {
   return *getODSOperands(4).begin();
 }
 
-::mlir::MutableOperandRange MaskScaleFPDIntrOp::srcMutable() {
+::mlir::MutableOperandRange MaskScaleFPDIntrOp::getSrcMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MaskScaleFPDIntrOp::aMutable() {
+::mlir::MutableOperandRange MaskScaleFPDIntrOp::getAMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MaskScaleFPDIntrOp::bMutable() {
+::mlir::MutableOperandRange MaskScaleFPDIntrOp::getBMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MaskScaleFPDIntrOp::kMutable() {
+::mlir::MutableOperandRange MaskScaleFPDIntrOp::getKMutable() {
   auto range = getODSOperandIndexAndLength(3);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MaskScaleFPDIntrOp::roundingMutable() {
+::mlir::MutableOperandRange MaskScaleFPDIntrOp::getRoundingMutable() {
   auto range = getODSOperandIndexAndLength(4);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -2665,7 +2665,7 @@ std::pair<unsigned, unsigned> MaskScaleFPDIntrOp::getODSResultIndexAndLength(uns
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MaskScaleFPDIntrOp::res() {
+::mlir::Value MaskScaleFPDIntrOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -2773,7 +2773,7 @@ void MaskScaleFPDIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationS
         return ::mlir::failure();
     }
   }
-  if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(0).begin()).getType(), (*this->getODSOperands(1).begin()).getType(), (*this->getODSOperands(2).begin()).getType(), (*this->getODSResults(0).begin()).getType()})))))
+  if (!((((*this->getODSOperands(0).begin()).getType()) == ((*this->getODSOperands(1).begin()).getType()) && ((*this->getODSOperands(1).begin()).getType()) == ((*this->getODSOperands(2).begin()).getType()) && ((*this->getODSOperands(2).begin()).getType()) == ((*this->getODSResults(0).begin()).getType()) && ((*this->getODSResults(0).begin()).getType()) == ((*this->getODSOperands(0).begin()).getType()))))
     return emitOpError("failed to verify that all of {src, a, b, res} have same type");
   return ::mlir::success();
 }
@@ -2824,23 +2824,23 @@ std::pair<unsigned, unsigned> MaskScaleFPSIntrOpAdaptor::getODSOperandIndexAndLe
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MaskScaleFPSIntrOpAdaptor::src() {
+::mlir::Value MaskScaleFPSIntrOpAdaptor::getSrc() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value MaskScaleFPSIntrOpAdaptor::a() {
+::mlir::Value MaskScaleFPSIntrOpAdaptor::getA() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value MaskScaleFPSIntrOpAdaptor::b() {
+::mlir::Value MaskScaleFPSIntrOpAdaptor::getB() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::Value MaskScaleFPSIntrOpAdaptor::k() {
+::mlir::Value MaskScaleFPSIntrOpAdaptor::getK() {
   return *getODSOperands(3).begin();
 }
 
-::mlir::Value MaskScaleFPSIntrOpAdaptor::rounding() {
+::mlir::Value MaskScaleFPSIntrOpAdaptor::getRounding() {
   return *getODSOperands(4).begin();
 }
 
@@ -2862,51 +2862,51 @@ std::pair<unsigned, unsigned> MaskScaleFPSIntrOp::getODSOperandIndexAndLength(un
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MaskScaleFPSIntrOp::src() {
+::mlir::TypedValue<::mlir::VectorType> MaskScaleFPSIntrOp::getSrc() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value MaskScaleFPSIntrOp::a() {
+::mlir::TypedValue<::mlir::VectorType> MaskScaleFPSIntrOp::getA() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value MaskScaleFPSIntrOp::b() {
+::mlir::TypedValue<::mlir::VectorType> MaskScaleFPSIntrOp::getB() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::Value MaskScaleFPSIntrOp::k() {
+::mlir::TypedValue<::mlir::IntegerType> MaskScaleFPSIntrOp::getK() {
   return *getODSOperands(3).begin();
 }
 
-::mlir::Value MaskScaleFPSIntrOp::rounding() {
+::mlir::Value MaskScaleFPSIntrOp::getRounding() {
   return *getODSOperands(4).begin();
 }
 
-::mlir::MutableOperandRange MaskScaleFPSIntrOp::srcMutable() {
+::mlir::MutableOperandRange MaskScaleFPSIntrOp::getSrcMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MaskScaleFPSIntrOp::aMutable() {
+::mlir::MutableOperandRange MaskScaleFPSIntrOp::getAMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MaskScaleFPSIntrOp::bMutable() {
+::mlir::MutableOperandRange MaskScaleFPSIntrOp::getBMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MaskScaleFPSIntrOp::kMutable() {
+::mlir::MutableOperandRange MaskScaleFPSIntrOp::getKMutable() {
   auto range = getODSOperandIndexAndLength(3);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MaskScaleFPSIntrOp::roundingMutable() {
+::mlir::MutableOperandRange MaskScaleFPSIntrOp::getRoundingMutable() {
   auto range = getODSOperandIndexAndLength(4);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -2922,7 +2922,7 @@ std::pair<unsigned, unsigned> MaskScaleFPSIntrOp::getODSResultIndexAndLength(uns
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MaskScaleFPSIntrOp::res() {
+::mlir::Value MaskScaleFPSIntrOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -3030,7 +3030,7 @@ void MaskScaleFPSIntrOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationS
         return ::mlir::failure();
     }
   }
-  if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(0).begin()).getType(), (*this->getODSOperands(1).begin()).getType(), (*this->getODSOperands(2).begin()).getType(), (*this->getODSResults(0).begin()).getType()})))))
+  if (!((((*this->getODSOperands(0).begin()).getType()) == ((*this->getODSOperands(1).begin()).getType()) && ((*this->getODSOperands(1).begin()).getType()) == ((*this->getODSOperands(2).begin()).getType()) && ((*this->getODSOperands(2).begin()).getType()) == ((*this->getODSResults(0).begin()).getType()) && ((*this->getODSResults(0).begin()).getType()) == ((*this->getODSOperands(0).begin()).getType()))))
     return emitOpError("failed to verify that all of {src, a, b, res} have same type");
   return ::mlir::success();
 }
@@ -3081,7 +3081,7 @@ std::pair<unsigned, unsigned> RsqrtIntrOpAdaptor::getODSOperandIndexAndLength(un
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value RsqrtIntrOpAdaptor::a() {
+::mlir::Value RsqrtIntrOpAdaptor::getA() {
   return *getODSOperands(0).begin();
 }
 
@@ -3103,11 +3103,11 @@ std::pair<unsigned, unsigned> RsqrtIntrOp::getODSOperandIndexAndLength(unsigned 
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value RsqrtIntrOp::a() {
+::mlir::TypedValue<::mlir::VectorType> RsqrtIntrOp::getA() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange RsqrtIntrOp::aMutable() {
+::mlir::MutableOperandRange RsqrtIntrOp::getAMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -3123,7 +3123,7 @@ std::pair<unsigned, unsigned> RsqrtIntrOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value RsqrtIntrOp::res() {
+::mlir::Value RsqrtIntrOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -3244,7 +3244,7 @@ std::pair<unsigned, unsigned> RsqrtOpAdaptor::getODSOperandIndexAndLength(unsign
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value RsqrtOpAdaptor::a() {
+::mlir::Value RsqrtOpAdaptor::getA() {
   return *getODSOperands(0).begin();
 }
 
@@ -3266,11 +3266,11 @@ std::pair<unsigned, unsigned> RsqrtOp::getODSOperandIndexAndLength(unsigned inde
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value RsqrtOp::a() {
+::mlir::TypedValue<::mlir::VectorType> RsqrtOp::getA() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange RsqrtOp::aMutable() {
+::mlir::MutableOperandRange RsqrtOp::getAMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -3286,7 +3286,7 @@ std::pair<unsigned, unsigned> RsqrtOp::getODSResultIndexAndLength(unsigned index
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value RsqrtOp::b() {
+::mlir::TypedValue<::mlir::VectorType> RsqrtOp::getB() {
   return *getODSResults(0).begin();
 }
 
@@ -3394,7 +3394,7 @@ void RsqrtOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
       return ::mlir::failure();
     aRawTypes[0] = type;
   }
-  result.addTypes(aTypes);
+  result.addTypes(aTypes[0]);
   if (parser.resolveOperands(aOperands, aTypes, aOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
@@ -3402,12 +3402,12 @@ void RsqrtOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
 
 void RsqrtOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << a();
+  _odsPrinter << getA();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = a().getType();
+    auto type = getA().getType();
     if (auto validType = type.dyn_cast<::mlir::VectorType>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -3449,11 +3449,11 @@ std::pair<unsigned, unsigned> Vp2IntersectDIntrOpAdaptor::getODSOperandIndexAndL
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value Vp2IntersectDIntrOpAdaptor::a() {
+::mlir::Value Vp2IntersectDIntrOpAdaptor::getA() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value Vp2IntersectDIntrOpAdaptor::b() {
+::mlir::Value Vp2IntersectDIntrOpAdaptor::getB() {
   return *getODSOperands(1).begin();
 }
 
@@ -3475,21 +3475,21 @@ std::pair<unsigned, unsigned> Vp2IntersectDIntrOp::getODSOperandIndexAndLength(u
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value Vp2IntersectDIntrOp::a() {
+::mlir::TypedValue<::mlir::VectorType> Vp2IntersectDIntrOp::getA() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value Vp2IntersectDIntrOp::b() {
+::mlir::TypedValue<::mlir::VectorType> Vp2IntersectDIntrOp::getB() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::MutableOperandRange Vp2IntersectDIntrOp::aMutable() {
+::mlir::MutableOperandRange Vp2IntersectDIntrOp::getAMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange Vp2IntersectDIntrOp::bMutable() {
+::mlir::MutableOperandRange Vp2IntersectDIntrOp::getBMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -3505,7 +3505,7 @@ std::pair<unsigned, unsigned> Vp2IntersectDIntrOp::getODSResultIndexAndLength(un
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value Vp2IntersectDIntrOp::res() {
+::mlir::Value Vp2IntersectDIntrOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -3596,11 +3596,11 @@ std::pair<unsigned, unsigned> Vp2IntersectOpAdaptor::getODSOperandIndexAndLength
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value Vp2IntersectOpAdaptor::a() {
+::mlir::Value Vp2IntersectOpAdaptor::getA() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value Vp2IntersectOpAdaptor::b() {
+::mlir::Value Vp2IntersectOpAdaptor::getB() {
   return *getODSOperands(1).begin();
 }
 
@@ -3631,21 +3631,21 @@ std::pair<unsigned, unsigned> Vp2IntersectOp::getODSOperandIndexAndLength(unsign
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value Vp2IntersectOp::a() {
+::mlir::TypedValue<::mlir::VectorType> Vp2IntersectOp::getA() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value Vp2IntersectOp::b() {
+::mlir::TypedValue<::mlir::VectorType> Vp2IntersectOp::getB() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::MutableOperandRange Vp2IntersectOp::aMutable() {
+::mlir::MutableOperandRange Vp2IntersectOp::getAMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange Vp2IntersectOp::bMutable() {
+::mlir::MutableOperandRange Vp2IntersectOp::getBMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -3661,11 +3661,11 @@ std::pair<unsigned, unsigned> Vp2IntersectOp::getODSResultIndexAndLength(unsigne
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value Vp2IntersectOp::k1() {
+::mlir::TypedValue<::mlir::VectorType> Vp2IntersectOp::getK1() {
   return *getODSResults(0).begin();
 }
 
-::mlir::Value Vp2IntersectOp::k2() {
+::mlir::TypedValue<::mlir::VectorType> Vp2IntersectOp::getK2() {
   return *getODSResults(1).begin();
 }
 
@@ -3722,7 +3722,7 @@ void Vp2IntersectOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
         return ::mlir::failure();
     }
   }
-  if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(0).begin()).getType(), (*this->getODSOperands(1).begin()).getType()})))))
+  if (!((((*this->getODSOperands(0).begin()).getType()) == ((*this->getODSOperands(1).begin()).getType()) && ((*this->getODSOperands(1).begin()).getType()) == ((*this->getODSOperands(0).begin()).getType()))))
     return emitOpError("failed to verify that all of {a, b} have same type");
   if (!((std::equal_to<>()(VectorType::get({(*this->getODSOperands(0).begin()).getType().cast<VectorType>().getShape()[0]}, IntegerType::get((*this->getODSOperands(0).begin()).getType().getContext(), 1)), (*this->getODSResults(0).begin()).getType()))))
     return emitOpError("failed to verify that k1 has the same number of bits as elements in a");
@@ -3777,22 +3777,22 @@ void Vp2IntersectOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
   result.addTypes(VectorType::get({aTypes[0].cast<VectorType>().getShape()[0]}, IntegerType::get(aTypes[0].getContext(), 1)));
   if (parser.resolveOperands(aOperands, aTypes, aOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(bOperands, aTypes[0], result.operands))
+  if (parser.resolveOperands(bOperands, aTypes[0], bOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
 
 void Vp2IntersectOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << a();
+  _odsPrinter << getA();
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  _odsPrinter << b();
+  _odsPrinter << getB();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = a().getType();
+    auto type = getA().getType();
     if (auto validType = type.dyn_cast<::mlir::VectorType>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -3834,11 +3834,11 @@ std::pair<unsigned, unsigned> Vp2IntersectQIntrOpAdaptor::getODSOperandIndexAndL
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value Vp2IntersectQIntrOpAdaptor::a() {
+::mlir::Value Vp2IntersectQIntrOpAdaptor::getA() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value Vp2IntersectQIntrOpAdaptor::b() {
+::mlir::Value Vp2IntersectQIntrOpAdaptor::getB() {
   return *getODSOperands(1).begin();
 }
 
@@ -3860,21 +3860,21 @@ std::pair<unsigned, unsigned> Vp2IntersectQIntrOp::getODSOperandIndexAndLength(u
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value Vp2IntersectQIntrOp::a() {
+::mlir::TypedValue<::mlir::VectorType> Vp2IntersectQIntrOp::getA() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value Vp2IntersectQIntrOp::b() {
+::mlir::TypedValue<::mlir::VectorType> Vp2IntersectQIntrOp::getB() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::MutableOperandRange Vp2IntersectQIntrOp::aMutable() {
+::mlir::MutableOperandRange Vp2IntersectQIntrOp::getAMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange Vp2IntersectQIntrOp::bMutable() {
+::mlir::MutableOperandRange Vp2IntersectQIntrOp::getBMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -3890,7 +3890,7 @@ std::pair<unsigned, unsigned> Vp2IntersectQIntrOp::getODSResultIndexAndLength(un
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value Vp2IntersectQIntrOp::res() {
+::mlir::Value Vp2IntersectQIntrOp::getRes() {
   return *getODSResults(0).begin();
 }
 

@@ -14,6 +14,7 @@
 ::mlir::NVVM::MMAIntOverflowAttr,
 ::mlir::NVVM::MMALayoutAttr,
 ::mlir::NVVM::MMATypesAttr,
+::mlir::NVVM::MMAShapeAttr,
 ::mlir::NVVM::ShflKindAttr
 
 #endif  // GET_ATTRDEF_LIST
@@ -21,32 +22,40 @@
 #ifdef GET_ATTRDEF_CLASSES
 #undef GET_ATTRDEF_CLASSES
 
-static ::mlir::OptionalParseResult generatedAttributeParser(::mlir::AsmParser &parser, ::llvm::StringRef mnemonic, ::mlir::Type type, ::mlir::Attribute &value) {
-  if (mnemonic == ::mlir::NVVM::MMAB1OpAttr::getMnemonic()) {
-    value = ::mlir::NVVM::MMAB1OpAttr::parse(parser, type);
-    return ::mlir::success(!!value);
-  }
-  if (mnemonic == ::mlir::NVVM::MMAFragAttr::getMnemonic()) {
-    value = ::mlir::NVVM::MMAFragAttr::parse(parser, type);
-    return ::mlir::success(!!value);
-  }
-  if (mnemonic == ::mlir::NVVM::MMAIntOverflowAttr::getMnemonic()) {
-    value = ::mlir::NVVM::MMAIntOverflowAttr::parse(parser, type);
-    return ::mlir::success(!!value);
-  }
-  if (mnemonic == ::mlir::NVVM::MMALayoutAttr::getMnemonic()) {
-    value = ::mlir::NVVM::MMALayoutAttr::parse(parser, type);
-    return ::mlir::success(!!value);
-  }
-  if (mnemonic == ::mlir::NVVM::MMATypesAttr::getMnemonic()) {
-    value = ::mlir::NVVM::MMATypesAttr::parse(parser, type);
-    return ::mlir::success(!!value);
-  }
-  if (mnemonic == ::mlir::NVVM::ShflKindAttr::getMnemonic()) {
-    value = ::mlir::NVVM::ShflKindAttr::parse(parser, type);
-    return ::mlir::success(!!value);
-  }
-  return {};
+static ::mlir::OptionalParseResult generatedAttributeParser(::mlir::AsmParser &parser, ::llvm::StringRef *mnemonic, ::mlir::Type type, ::mlir::Attribute &value) {
+  return ::mlir::AsmParser::KeywordSwitch<::mlir::OptionalParseResult>(parser)
+    .Case(::mlir::NVVM::MMAB1OpAttr::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::NVVM::MMAB1OpAttr::parse(parser, type);
+      return ::mlir::success(!!value);
+    })
+    .Case(::mlir::NVVM::MMAFragAttr::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::NVVM::MMAFragAttr::parse(parser, type);
+      return ::mlir::success(!!value);
+    })
+    .Case(::mlir::NVVM::MMAIntOverflowAttr::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::NVVM::MMAIntOverflowAttr::parse(parser, type);
+      return ::mlir::success(!!value);
+    })
+    .Case(::mlir::NVVM::MMALayoutAttr::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::NVVM::MMALayoutAttr::parse(parser, type);
+      return ::mlir::success(!!value);
+    })
+    .Case(::mlir::NVVM::MMATypesAttr::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::NVVM::MMATypesAttr::parse(parser, type);
+      return ::mlir::success(!!value);
+    })
+    .Case(::mlir::NVVM::MMAShapeAttr::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::NVVM::MMAShapeAttr::parse(parser, type);
+      return ::mlir::success(!!value);
+    })
+    .Case(::mlir::NVVM::ShflKindAttr::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::NVVM::ShflKindAttr::parse(parser, type);
+      return ::mlir::success(!!value);
+    })
+    .Default([&](llvm::StringRef keyword, llvm::SMLoc) {
+      *mnemonic = keyword;
+      return llvm::None;
+    });
 }
 
 static ::mlir::LogicalResult generatedAttributePrinter(::mlir::Attribute def, ::mlir::AsmPrinter &printer) {
@@ -75,6 +84,11 @@ t.print(printer);
 t.print(printer);
       return ::mlir::success();
     })
+    .Case<::mlir::NVVM::MMAShapeAttr>([&](auto t) {
+      printer << ::mlir::NVVM::MMAShapeAttr::getMnemonic();
+t.print(printer);
+      return ::mlir::success();
+    })
     .Case<::mlir::NVVM::ShflKindAttr>([&](auto t) {
       printer << ::mlir::NVVM::ShflKindAttr::getMnemonic();
 t.print(printer);
@@ -88,7 +102,7 @@ namespace NVVM {
 namespace detail {
 struct MMAB1OpAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<::mlir::NVVM::MMAB1Op>;
-  MMAB1OpAttrStorage(::mlir::NVVM::MMAB1Op value) : ::mlir::AttributeStorage(), value(value) {}
+  MMAB1OpAttrStorage(::mlir::NVVM::MMAB1Op value) : value(value) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (value == std::get<0>(tblgenKey));
@@ -111,6 +125,7 @@ MMAB1OpAttr MMAB1OpAttr::get(::mlir::MLIRContext *context, ::mlir::NVVM::MMAB1Op
 }
 
 ::mlir::Attribute MMAB1OpAttr::parse(::mlir::AsmParser &odsParser, ::mlir::Type odsType) {
+  ::mlir::Builder odsBuilder(odsParser.getContext());
   ::mlir::FailureOr<::mlir::NVVM::MMAB1Op> _result_value;
   ::llvm::SMLoc odsLoc = odsParser.getCurrentLocation();
   (void) odsLoc;
@@ -136,10 +151,11 @@ MMAB1OpAttr MMAB1OpAttr::get(::mlir::MLIRContext *context, ::mlir::NVVM::MMAB1Op
   if (odsParser.parseGreater()) return {};
   assert(::mlir::succeeded(_result_value));
   return MMAB1OpAttr::get(odsParser.getContext(),
-      *_result_value);
+      ::mlir::NVVM::MMAB1Op((*_result_value)));
 }
 
 void MMAB1OpAttr::print(::mlir::AsmPrinter &odsPrinter) const {
+  ::mlir::Builder odsBuilder(getContext());
   odsPrinter << "<";
   odsPrinter << stringifyMMAB1Op(getValue());
   odsPrinter << ">";
@@ -157,7 +173,7 @@ namespace NVVM {
 namespace detail {
 struct MMAFragAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<::mlir::NVVM::MMAFrag>;
-  MMAFragAttrStorage(::mlir::NVVM::MMAFrag value) : ::mlir::AttributeStorage(), value(value) {}
+  MMAFragAttrStorage(::mlir::NVVM::MMAFrag value) : value(value) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (value == std::get<0>(tblgenKey));
@@ -180,6 +196,7 @@ MMAFragAttr MMAFragAttr::get(::mlir::MLIRContext *context, ::mlir::NVVM::MMAFrag
 }
 
 ::mlir::Attribute MMAFragAttr::parse(::mlir::AsmParser &odsParser, ::mlir::Type odsType) {
+  ::mlir::Builder odsBuilder(odsParser.getContext());
   ::mlir::FailureOr<::mlir::NVVM::MMAFrag> _result_value;
   ::llvm::SMLoc odsLoc = odsParser.getCurrentLocation();
   (void) odsLoc;
@@ -205,10 +222,11 @@ MMAFragAttr MMAFragAttr::get(::mlir::MLIRContext *context, ::mlir::NVVM::MMAFrag
   if (odsParser.parseGreater()) return {};
   assert(::mlir::succeeded(_result_value));
   return MMAFragAttr::get(odsParser.getContext(),
-      *_result_value);
+      ::mlir::NVVM::MMAFrag((*_result_value)));
 }
 
 void MMAFragAttr::print(::mlir::AsmPrinter &odsPrinter) const {
+  ::mlir::Builder odsBuilder(getContext());
   odsPrinter << "<";
   odsPrinter << stringifyMMAFrag(getValue());
   odsPrinter << ">";
@@ -226,7 +244,7 @@ namespace NVVM {
 namespace detail {
 struct MMAIntOverflowAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<::mlir::NVVM::MMAIntOverflow>;
-  MMAIntOverflowAttrStorage(::mlir::NVVM::MMAIntOverflow value) : ::mlir::AttributeStorage(), value(value) {}
+  MMAIntOverflowAttrStorage(::mlir::NVVM::MMAIntOverflow value) : value(value) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (value == std::get<0>(tblgenKey));
@@ -249,6 +267,7 @@ MMAIntOverflowAttr MMAIntOverflowAttr::get(::mlir::MLIRContext *context, ::mlir:
 }
 
 ::mlir::Attribute MMAIntOverflowAttr::parse(::mlir::AsmParser &odsParser, ::mlir::Type odsType) {
+  ::mlir::Builder odsBuilder(odsParser.getContext());
   ::mlir::FailureOr<::mlir::NVVM::MMAIntOverflow> _result_value;
   ::llvm::SMLoc odsLoc = odsParser.getCurrentLocation();
   (void) odsLoc;
@@ -274,10 +293,11 @@ MMAIntOverflowAttr MMAIntOverflowAttr::get(::mlir::MLIRContext *context, ::mlir:
   if (odsParser.parseGreater()) return {};
   assert(::mlir::succeeded(_result_value));
   return MMAIntOverflowAttr::get(odsParser.getContext(),
-      *_result_value);
+      ::mlir::NVVM::MMAIntOverflow((*_result_value)));
 }
 
 void MMAIntOverflowAttr::print(::mlir::AsmPrinter &odsPrinter) const {
+  ::mlir::Builder odsBuilder(getContext());
   odsPrinter << "<";
   odsPrinter << stringifyMMAIntOverflow(getValue());
   odsPrinter << ">";
@@ -295,7 +315,7 @@ namespace NVVM {
 namespace detail {
 struct MMALayoutAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<::mlir::NVVM::MMALayout>;
-  MMALayoutAttrStorage(::mlir::NVVM::MMALayout value) : ::mlir::AttributeStorage(), value(value) {}
+  MMALayoutAttrStorage(::mlir::NVVM::MMALayout value) : value(value) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (value == std::get<0>(tblgenKey));
@@ -318,6 +338,7 @@ MMALayoutAttr MMALayoutAttr::get(::mlir::MLIRContext *context, ::mlir::NVVM::MMA
 }
 
 ::mlir::Attribute MMALayoutAttr::parse(::mlir::AsmParser &odsParser, ::mlir::Type odsType) {
+  ::mlir::Builder odsBuilder(odsParser.getContext());
   ::mlir::FailureOr<::mlir::NVVM::MMALayout> _result_value;
   ::llvm::SMLoc odsLoc = odsParser.getCurrentLocation();
   (void) odsLoc;
@@ -343,10 +364,11 @@ MMALayoutAttr MMALayoutAttr::get(::mlir::MLIRContext *context, ::mlir::NVVM::MMA
   if (odsParser.parseGreater()) return {};
   assert(::mlir::succeeded(_result_value));
   return MMALayoutAttr::get(odsParser.getContext(),
-      *_result_value);
+      ::mlir::NVVM::MMALayout((*_result_value)));
 }
 
 void MMALayoutAttr::print(::mlir::AsmPrinter &odsPrinter) const {
+  ::mlir::Builder odsBuilder(getContext());
   odsPrinter << "<";
   odsPrinter << stringifyMMALayout(getValue());
   odsPrinter << ">";
@@ -364,7 +386,7 @@ namespace NVVM {
 namespace detail {
 struct MMATypesAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<::mlir::NVVM::MMATypes>;
-  MMATypesAttrStorage(::mlir::NVVM::MMATypes value) : ::mlir::AttributeStorage(), value(value) {}
+  MMATypesAttrStorage(::mlir::NVVM::MMATypes value) : value(value) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (value == std::get<0>(tblgenKey));
@@ -387,6 +409,7 @@ MMATypesAttr MMATypesAttr::get(::mlir::MLIRContext *context, ::mlir::NVVM::MMATy
 }
 
 ::mlir::Attribute MMATypesAttr::parse(::mlir::AsmParser &odsParser, ::mlir::Type odsType) {
+  ::mlir::Builder odsBuilder(odsParser.getContext());
   ::mlir::FailureOr<::mlir::NVVM::MMATypes> _result_value;
   ::llvm::SMLoc odsLoc = odsParser.getCurrentLocation();
   (void) odsLoc;
@@ -412,10 +435,11 @@ MMATypesAttr MMATypesAttr::get(::mlir::MLIRContext *context, ::mlir::NVVM::MMATy
   if (odsParser.parseGreater()) return {};
   assert(::mlir::succeeded(_result_value));
   return MMATypesAttr::get(odsParser.getContext(),
-      *_result_value);
+      ::mlir::NVVM::MMATypes((*_result_value)));
 }
 
 void MMATypesAttr::print(::mlir::AsmPrinter &odsPrinter) const {
+  ::mlir::Builder odsBuilder(getContext());
   odsPrinter << "<";
   odsPrinter << stringifyMMATypes(getValue());
   odsPrinter << ">";
@@ -431,9 +455,149 @@ MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::NVVM::MMATypesAttr)
 namespace mlir {
 namespace NVVM {
 namespace detail {
+struct MMAShapeAttrStorage : public ::mlir::AttributeStorage {
+  using KeyTy = std::tuple<int, int, int>;
+  MMAShapeAttrStorage(int m, int n, int k) : m(m), n(n), k(k) {}
+
+  bool operator==(const KeyTy &tblgenKey) const {
+    return (m == std::get<0>(tblgenKey)) && (n == std::get<1>(tblgenKey)) && (k == std::get<2>(tblgenKey));
+  }
+
+  static ::llvm::hash_code hashKey(const KeyTy &tblgenKey) {
+    return ::llvm::hash_combine(std::get<0>(tblgenKey), std::get<1>(tblgenKey), std::get<2>(tblgenKey));
+  }
+
+  static MMAShapeAttrStorage *construct(::mlir::AttributeStorageAllocator &allocator, const KeyTy &tblgenKey) {
+    auto m = std::get<0>(tblgenKey);
+    auto n = std::get<1>(tblgenKey);
+    auto k = std::get<2>(tblgenKey);
+    return new (allocator.allocate<MMAShapeAttrStorage>()) MMAShapeAttrStorage(m, n, k);
+  }
+
+  int m;
+  int n;
+  int k;
+};
+} // namespace detail
+MMAShapeAttr MMAShapeAttr::get(::mlir::MLIRContext *context, int m, int n, int k) {
+  return Base::get(context, m, n, k);
+}
+
+::mlir::Attribute MMAShapeAttr::parse(::mlir::AsmParser &odsParser, ::mlir::Type odsType) {
+  ::mlir::Builder odsBuilder(odsParser.getContext());
+  ::mlir::FailureOr<int> _result_m;
+  ::mlir::FailureOr<int> _result_n;
+  ::mlir::FailureOr<int> _result_k;
+  ::llvm::SMLoc odsLoc = odsParser.getCurrentLocation();
+  (void) odsLoc;
+  // Parse literal '<'
+  if (odsParser.parseLess()) return {};
+  // Parse parameter struct
+  bool _seen_m = false;
+  bool _seen_n = false;
+  bool _seen_k = false;
+  {
+    const auto _loop_body = [&](::llvm::StringRef _paramKey) -> bool {
+      // Parse literal '='
+      if (odsParser.parseEqual()) return {};
+      if (!_seen_m && _paramKey == "m") {
+        _seen_m = true;
+
+        // Parse variable 'm'
+        _result_m = ::mlir::FieldParser<int>::parse(odsParser);
+        if (::mlir::failed(_result_m)) {
+          odsParser.emitError(odsParser.getCurrentLocation(), "failed to parse NVVM_MMAShapeAttr parameter 'm' which is to be a `int`");
+          return {};
+        }
+      } else if (!_seen_n && _paramKey == "n") {
+        _seen_n = true;
+
+        // Parse variable 'n'
+        _result_n = ::mlir::FieldParser<int>::parse(odsParser);
+        if (::mlir::failed(_result_n)) {
+          odsParser.emitError(odsParser.getCurrentLocation(), "failed to parse NVVM_MMAShapeAttr parameter 'n' which is to be a `int`");
+          return {};
+        }
+      } else if (!_seen_k && _paramKey == "k") {
+        _seen_k = true;
+
+        // Parse variable 'k'
+        _result_k = ::mlir::FieldParser<int>::parse(odsParser);
+        if (::mlir::failed(_result_k)) {
+          odsParser.emitError(odsParser.getCurrentLocation(), "failed to parse NVVM_MMAShapeAttr parameter 'k' which is to be a `int`");
+          return {};
+        }
+      } else {
+        odsParser.emitError(odsParser.getCurrentLocation(), "duplicate or unknown struct parameter name: ") << _paramKey;
+        return {};
+      }
+      return true;
+    };
+    for (unsigned odsStructIndex = 0; odsStructIndex < 3; ++odsStructIndex) {
+      ::llvm::StringRef _paramKey;
+      if (odsParser.parseKeyword(&_paramKey)) {
+        odsParser.emitError(odsParser.getCurrentLocation(),
+                           "expected a parameter name in struct");
+        return {};
+      }
+      if (!_loop_body(_paramKey)) return {};
+      if ((odsStructIndex != 3 - 1) && odsParser.parseComma())
+        return {};
+    }
+  }
+  // Parse literal '>'
+  if (odsParser.parseGreater()) return {};
+  assert(::mlir::succeeded(_result_m));
+  assert(::mlir::succeeded(_result_n));
+  assert(::mlir::succeeded(_result_k));
+  return MMAShapeAttr::get(odsParser.getContext(),
+      int((*_result_m)),
+      int((*_result_n)),
+      int((*_result_k)));
+}
+
+void MMAShapeAttr::print(::mlir::AsmPrinter &odsPrinter) const {
+  ::mlir::Builder odsBuilder(getContext());
+  odsPrinter << "<";
+  {
+    bool _firstPrinted = true;
+    if (!_firstPrinted) odsPrinter << ", ";
+    _firstPrinted = false;
+    odsPrinter << "m = ";
+    odsPrinter.printStrippedAttrOrType(getM());
+    if (!_firstPrinted) odsPrinter << ", ";
+    _firstPrinted = false;
+    odsPrinter << "n = ";
+    odsPrinter.printStrippedAttrOrType(getN());
+    if (!_firstPrinted) odsPrinter << ", ";
+    _firstPrinted = false;
+    odsPrinter << "k = ";
+    odsPrinter.printStrippedAttrOrType(getK());
+  }
+  odsPrinter << ">";
+}
+
+int MMAShapeAttr::getM() const {
+  return getImpl()->m;
+}
+
+int MMAShapeAttr::getN() const {
+  return getImpl()->n;
+}
+
+int MMAShapeAttr::getK() const {
+  return getImpl()->k;
+}
+
+} // namespace NVVM
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::NVVM::MMAShapeAttr)
+namespace mlir {
+namespace NVVM {
+namespace detail {
 struct ShflKindAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<::mlir::NVVM::ShflKind>;
-  ShflKindAttrStorage(::mlir::NVVM::ShflKind value) : ::mlir::AttributeStorage(), value(value) {}
+  ShflKindAttrStorage(::mlir::NVVM::ShflKind value) : value(value) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (value == std::get<0>(tblgenKey));
@@ -456,6 +620,7 @@ ShflKindAttr ShflKindAttr::get(::mlir::MLIRContext *context, ::mlir::NVVM::ShflK
 }
 
 ::mlir::Attribute ShflKindAttr::parse(::mlir::AsmParser &odsParser, ::mlir::Type odsType) {
+  ::mlir::Builder odsBuilder(odsParser.getContext());
   ::mlir::FailureOr<::mlir::NVVM::ShflKind> _result_value;
   ::llvm::SMLoc odsLoc = odsParser.getCurrentLocation();
   (void) odsLoc;
@@ -477,10 +642,11 @@ ShflKindAttr ShflKindAttr::get(::mlir::MLIRContext *context, ::mlir::NVVM::ShflK
   }
   assert(::mlir::succeeded(_result_value));
   return ShflKindAttr::get(odsParser.getContext(),
-      *_result_value);
+      ::mlir::NVVM::ShflKind((*_result_value)));
 }
 
 void ShflKindAttr::print(::mlir::AsmPrinter &odsPrinter) const {
+  ::mlir::Builder odsBuilder(getContext());
   odsPrinter << ' ';
   odsPrinter << stringifyShflKind(getValue());
 }
@@ -500,12 +666,10 @@ namespace NVVM {
                                       ::mlir::Type type) const {
   ::llvm::SMLoc typeLoc = parser.getCurrentLocation();
   ::llvm::StringRef attrTag;
-  if (::mlir::failed(parser.parseKeyword(&attrTag)))
-    return {};
   {
     ::mlir::Attribute attr;
-    auto parseResult = generatedAttributeParser(parser, attrTag, type, attr);
-    if (parseResult.hasValue())
+    auto parseResult = generatedAttributeParser(parser, &attrTag, type, attr);
+    if (parseResult.has_value())
       return attr;
   }
   

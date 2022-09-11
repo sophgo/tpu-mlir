@@ -13,7 +13,7 @@ namespace llvm {
 namespace Intrinsic {
 enum AMDGCNIntrinsics : unsigned {
 // Enum values for intrinsics
-    amdgcn_alignbyte = 1263,                          // llvm.amdgcn.alignbyte
+    amdgcn_alignbyte = 1323,                          // llvm.amdgcn.alignbyte
     amdgcn_atomic_dec,                         // llvm.amdgcn.atomic.dec
     amdgcn_atomic_inc,                         // llvm.amdgcn.atomic.inc
     amdgcn_ballot,                             // llvm.amdgcn.ballot
@@ -43,17 +43,26 @@ enum AMDGCNIntrinsics : unsigned {
     amdgcn_cubema,                             // llvm.amdgcn.cubema
     amdgcn_cubesc,                             // llvm.amdgcn.cubesc
     amdgcn_cubetc,                             // llvm.amdgcn.cubetc
+    amdgcn_cvt_f32_bf8,                        // llvm.amdgcn.cvt.f32.bf8
+    amdgcn_cvt_f32_fp8,                        // llvm.amdgcn.cvt.f32.fp8
+    amdgcn_cvt_pk_bf8_f32,                     // llvm.amdgcn.cvt.pk.bf8.f32
+    amdgcn_cvt_pk_f32_bf8,                     // llvm.amdgcn.cvt.pk.f32.bf8
+    amdgcn_cvt_pk_f32_fp8,                     // llvm.amdgcn.cvt.pk.f32.fp8
+    amdgcn_cvt_pk_fp8_f32,                     // llvm.amdgcn.cvt.pk.fp8.f32
     amdgcn_cvt_pk_i16,                         // llvm.amdgcn.cvt.pk.i16
     amdgcn_cvt_pk_u16,                         // llvm.amdgcn.cvt.pk.u16
     amdgcn_cvt_pk_u8_f32,                      // llvm.amdgcn.cvt.pk.u8.f32
     amdgcn_cvt_pknorm_i16,                     // llvm.amdgcn.cvt.pknorm.i16
     amdgcn_cvt_pknorm_u16,                     // llvm.amdgcn.cvt.pknorm.u16
     amdgcn_cvt_pkrtz,                          // llvm.amdgcn.cvt.pkrtz
+    amdgcn_cvt_sr_bf8_f32,                     // llvm.amdgcn.cvt.sr.bf8.f32
+    amdgcn_cvt_sr_fp8_f32,                     // llvm.amdgcn.cvt.sr.fp8.f32
     amdgcn_dispatch_id,                        // llvm.amdgcn.dispatch.id
     amdgcn_dispatch_ptr,                       // llvm.amdgcn.dispatch.ptr
     amdgcn_div_fixup,                          // llvm.amdgcn.div.fixup
     amdgcn_div_fmas,                           // llvm.amdgcn.div.fmas
     amdgcn_div_scale,                          // llvm.amdgcn.div.scale
+    amdgcn_ds_add_gs_reg_rtn,                  // llvm.amdgcn.ds.add.gs.reg.rtn
     amdgcn_ds_append,                          // llvm.amdgcn.ds.append
     amdgcn_ds_bpermute,                        // llvm.amdgcn.ds.bpermute
     amdgcn_ds_consume,                         // llvm.amdgcn.ds.consume
@@ -70,15 +79,20 @@ enum AMDGCNIntrinsics : unsigned {
     amdgcn_ds_ordered_add,                     // llvm.amdgcn.ds.ordered.add
     amdgcn_ds_ordered_swap,                    // llvm.amdgcn.ds.ordered.swap
     amdgcn_ds_permute,                         // llvm.amdgcn.ds.permute
+    amdgcn_ds_sub_gs_reg_rtn,                  // llvm.amdgcn.ds.sub.gs.reg.rtn
     amdgcn_ds_swizzle,                         // llvm.amdgcn.ds.swizzle
     amdgcn_else,                               // llvm.amdgcn.else
     amdgcn_end_cf,                             // llvm.amdgcn.end.cf
     amdgcn_endpgm,                             // llvm.amdgcn.endpgm
     amdgcn_exp,                                // llvm.amdgcn.exp
     amdgcn_exp_compr,                          // llvm.amdgcn.exp.compr
+    amdgcn_exp_row,                            // llvm.amdgcn.exp.row
     amdgcn_fcmp,                               // llvm.amdgcn.fcmp
     amdgcn_fdiv_fast,                          // llvm.amdgcn.fdiv.fast
     amdgcn_fdot2,                              // llvm.amdgcn.fdot2
+    amdgcn_fdot2_bf16_bf16,                    // llvm.amdgcn.fdot2.bf16.bf16
+    amdgcn_fdot2_f16_f16,                      // llvm.amdgcn.fdot2.f16.f16
+    amdgcn_fdot2_f32_bf16,                     // llvm.amdgcn.fdot2.f32.bf16
     amdgcn_flat_atomic_fadd,                   // llvm.amdgcn.flat.atomic.fadd
     amdgcn_flat_atomic_fadd_v2bf16,            // llvm.amdgcn.flat.atomic.fadd.v2bf16
     amdgcn_flat_atomic_fmax,                   // llvm.amdgcn.flat.atomic.fmax
@@ -100,6 +114,7 @@ enum AMDGCNIntrinsics : unsigned {
     amdgcn_icmp,                               // llvm.amdgcn.icmp
     amdgcn_if,                                 // llvm.amdgcn.if
     amdgcn_if_break,                           // llvm.amdgcn.if.break
+    amdgcn_iglp_opt,                           // llvm.amdgcn.iglp.opt
     amdgcn_image_atomic_add_1d,                // llvm.amdgcn.image.atomic.add.1d
     amdgcn_image_atomic_add_1darray,           // llvm.amdgcn.image.atomic.add.1darray
     amdgcn_image_atomic_add_2d,                // llvm.amdgcn.image.atomic.add.2d
@@ -321,6 +336,8 @@ enum AMDGCNIntrinsics : unsigned {
     amdgcn_image_load_mip_2darray,             // llvm.amdgcn.image.load.mip.2darray
     amdgcn_image_load_mip_3d,                  // llvm.amdgcn.image.load.mip.3d
     amdgcn_image_load_mip_cube,                // llvm.amdgcn.image.load.mip.cube
+    amdgcn_image_msaa_load_2darraymsaa,        // llvm.amdgcn.image.msaa.load.2darraymsaa
+    amdgcn_image_msaa_load_2dmsaa,             // llvm.amdgcn.image.msaa.load.2dmsaa
     amdgcn_image_msaa_load_x_2darraymsaa,      // llvm.amdgcn.image.msaa.load.x.2darraymsaa
     amdgcn_image_msaa_load_x_2dmsaa,           // llvm.amdgcn.image.msaa.load.x.2dmsaa
     amdgcn_image_sample_1d,                    // llvm.amdgcn.image.sample.1d
@@ -581,6 +598,10 @@ enum AMDGCNIntrinsics : unsigned {
     amdgcn_implicitarg_ptr,                    // llvm.amdgcn.implicitarg.ptr
     amdgcn_init_exec,                          // llvm.amdgcn.init.exec
     amdgcn_init_exec_from_input,               // llvm.amdgcn.init.exec.from.input
+    amdgcn_interp_inreg_p10,                   // llvm.amdgcn.interp.inreg.p10
+    amdgcn_interp_inreg_p10_f16,               // llvm.amdgcn.interp.inreg.p10.f16
+    amdgcn_interp_inreg_p2,                    // llvm.amdgcn.interp.inreg.p2
+    amdgcn_interp_inreg_p2_f16,                // llvm.amdgcn.interp.inreg.p2.f16
     amdgcn_interp_mov,                         // llvm.amdgcn.interp.mov
     amdgcn_interp_p1,                          // llvm.amdgcn.interp.p1
     amdgcn_interp_p1_f16,                      // llvm.amdgcn.interp.p1.f16
@@ -591,6 +612,9 @@ enum AMDGCNIntrinsics : unsigned {
     amdgcn_kernarg_segment_ptr,                // llvm.amdgcn.kernarg.segment.ptr
     amdgcn_kill,                               // llvm.amdgcn.kill
     amdgcn_ldexp,                              // llvm.amdgcn.ldexp
+    amdgcn_lds_direct_load,                    // llvm.amdgcn.lds.direct.load
+    amdgcn_lds_kernel_id,                      // llvm.amdgcn.lds.kernel.id
+    amdgcn_lds_param_load,                     // llvm.amdgcn.lds.param.load
     amdgcn_lerp,                               // llvm.amdgcn.lerp
     amdgcn_live_mask,                          // llvm.amdgcn.live.mask
     amdgcn_log_clamp,                          // llvm.amdgcn.log.clamp
@@ -601,11 +625,19 @@ enum AMDGCNIntrinsics : unsigned {
     amdgcn_mfma_f32_16x16x16f16,               // llvm.amdgcn.mfma.f32.16x16x16f16
     amdgcn_mfma_f32_16x16x1f32,                // llvm.amdgcn.mfma.f32.16x16x1f32
     amdgcn_mfma_f32_16x16x2bf16,               // llvm.amdgcn.mfma.f32.16x16x2bf16
+    amdgcn_mfma_f32_16x16x32_bf8_bf8,          // llvm.amdgcn.mfma.f32.16x16x32.bf8.bf8
+    amdgcn_mfma_f32_16x16x32_bf8_fp8,          // llvm.amdgcn.mfma.f32.16x16x32.bf8.fp8
+    amdgcn_mfma_f32_16x16x32_fp8_bf8,          // llvm.amdgcn.mfma.f32.16x16x32.fp8.bf8
+    amdgcn_mfma_f32_16x16x32_fp8_fp8,          // llvm.amdgcn.mfma.f32.16x16x32.fp8.fp8
     amdgcn_mfma_f32_16x16x4bf16_1k,            // llvm.amdgcn.mfma.f32.16x16x4bf16.1k
     amdgcn_mfma_f32_16x16x4f16,                // llvm.amdgcn.mfma.f32.16x16x4f16
     amdgcn_mfma_f32_16x16x4f32,                // llvm.amdgcn.mfma.f32.16x16x4f32
     amdgcn_mfma_f32_16x16x8_xf32,              // llvm.amdgcn.mfma.f32.16x16x8.xf32
     amdgcn_mfma_f32_16x16x8bf16,               // llvm.amdgcn.mfma.f32.16x16x8bf16
+    amdgcn_mfma_f32_32x32x16_bf8_bf8,          // llvm.amdgcn.mfma.f32.32x32x16.bf8.bf8
+    amdgcn_mfma_f32_32x32x16_bf8_fp8,          // llvm.amdgcn.mfma.f32.32x32x16.bf8.fp8
+    amdgcn_mfma_f32_32x32x16_fp8_bf8,          // llvm.amdgcn.mfma.f32.32x32x16.fp8.bf8
+    amdgcn_mfma_f32_32x32x16_fp8_fp8,          // llvm.amdgcn.mfma.f32.32x32x16.fp8.fp8
     amdgcn_mfma_f32_32x32x1f32,                // llvm.amdgcn.mfma.f32.32x32x1f32
     amdgcn_mfma_f32_32x32x2bf16,               // llvm.amdgcn.mfma.f32.32x32x2bf16
     amdgcn_mfma_f32_32x32x2f32,                // llvm.amdgcn.mfma.f32.32x32x2f32
@@ -639,6 +671,7 @@ enum AMDGCNIntrinsics : unsigned {
     amdgcn_mulhi_u24,                          // llvm.amdgcn.mulhi.u24
     amdgcn_perm,                               // llvm.amdgcn.perm
     amdgcn_permlane16,                         // llvm.amdgcn.permlane16
+    amdgcn_permlane64,                         // llvm.amdgcn.permlane64
     amdgcn_permlanex16,                        // llvm.amdgcn.permlanex16
     amdgcn_ps_live,                            // llvm.amdgcn.ps.live
     amdgcn_qsad_pk_u16_u8,                     // llvm.amdgcn.qsad.pk.u16.u8
@@ -688,6 +721,7 @@ enum AMDGCNIntrinsics : unsigned {
     amdgcn_s_memrealtime,                      // llvm.amdgcn.s.memrealtime
     amdgcn_s_memtime,                          // llvm.amdgcn.s.memtime
     amdgcn_s_sendmsg,                          // llvm.amdgcn.s.sendmsg
+    amdgcn_s_sendmsg_rtn,                      // llvm.amdgcn.s.sendmsg.rtn
     amdgcn_s_sendmsghalt,                      // llvm.amdgcn.s.sendmsghalt
     amdgcn_s_sethalt,                          // llvm.amdgcn.s.sethalt
     amdgcn_s_setprio,                          // llvm.amdgcn.s.setprio
@@ -699,6 +733,7 @@ enum AMDGCNIntrinsics : unsigned {
     amdgcn_sad_u8,                             // llvm.amdgcn.sad.u8
     amdgcn_sbfe,                               // llvm.amdgcn.sbfe
     amdgcn_sched_barrier,                      // llvm.amdgcn.sched.barrier
+    amdgcn_sched_group_barrier,                // llvm.amdgcn.sched.group.barrier
     amdgcn_sdot2,                              // llvm.amdgcn.sdot2
     amdgcn_sdot4,                              // llvm.amdgcn.sdot4
     amdgcn_sdot8,                              // llvm.amdgcn.sdot8
@@ -707,8 +742,16 @@ enum AMDGCNIntrinsics : unsigned {
     amdgcn_sin,                                // llvm.amdgcn.sin
     amdgcn_smfmac_f32_16x16x32_bf16,           // llvm.amdgcn.smfmac.f32.16x16x32.bf16
     amdgcn_smfmac_f32_16x16x32_f16,            // llvm.amdgcn.smfmac.f32.16x16x32.f16
+    amdgcn_smfmac_f32_16x16x64_bf8_bf8,        // llvm.amdgcn.smfmac.f32.16x16x64.bf8.bf8
+    amdgcn_smfmac_f32_16x16x64_bf8_fp8,        // llvm.amdgcn.smfmac.f32.16x16x64.bf8.fp8
+    amdgcn_smfmac_f32_16x16x64_fp8_bf8,        // llvm.amdgcn.smfmac.f32.16x16x64.fp8.bf8
+    amdgcn_smfmac_f32_16x16x64_fp8_fp8,        // llvm.amdgcn.smfmac.f32.16x16x64.fp8.fp8
     amdgcn_smfmac_f32_32x32x16_bf16,           // llvm.amdgcn.smfmac.f32.32x32x16.bf16
     amdgcn_smfmac_f32_32x32x16_f16,            // llvm.amdgcn.smfmac.f32.32x32x16.f16
+    amdgcn_smfmac_f32_32x32x32_bf8_bf8,        // llvm.amdgcn.smfmac.f32.32x32x32.bf8.bf8
+    amdgcn_smfmac_f32_32x32x32_bf8_fp8,        // llvm.amdgcn.smfmac.f32.32x32x32.bf8.fp8
+    amdgcn_smfmac_f32_32x32x32_fp8_bf8,        // llvm.amdgcn.smfmac.f32.32x32x32.fp8.bf8
+    amdgcn_smfmac_f32_32x32x32_fp8_fp8,        // llvm.amdgcn.smfmac.f32.32x32x32.fp8.fp8
     amdgcn_smfmac_i32_16x16x64_i8,             // llvm.amdgcn.smfmac.i32.16x16x64.i8
     amdgcn_smfmac_i32_32x32x32_i8,             // llvm.amdgcn.smfmac.i32.32x32x32.i8
     amdgcn_softwqm,                            // llvm.amdgcn.softwqm
@@ -738,6 +781,8 @@ enum AMDGCNIntrinsics : unsigned {
     amdgcn_struct_buffer_store_format,         // llvm.amdgcn.struct.buffer.store.format
     amdgcn_struct_tbuffer_load,                // llvm.amdgcn.struct.tbuffer.load
     amdgcn_struct_tbuffer_store,               // llvm.amdgcn.struct.tbuffer.store
+    amdgcn_sudot4,                             // llvm.amdgcn.sudot4
+    amdgcn_sudot8,                             // llvm.amdgcn.sudot8
     amdgcn_tbuffer_load,                       // llvm.amdgcn.tbuffer.load
     amdgcn_tbuffer_store,                      // llvm.amdgcn.tbuffer.store
     amdgcn_trig_preop,                         // llvm.amdgcn.trig.preop
@@ -749,6 +794,12 @@ enum AMDGCNIntrinsics : unsigned {
     amdgcn_update_dpp,                         // llvm.amdgcn.update.dpp
     amdgcn_wave_barrier,                       // llvm.amdgcn.wave.barrier
     amdgcn_wavefrontsize,                      // llvm.amdgcn.wavefrontsize
+    amdgcn_wmma_bf16_16x16x16_bf16,            // llvm.amdgcn.wmma.bf16.16x16x16.bf16
+    amdgcn_wmma_f16_16x16x16_f16,              // llvm.amdgcn.wmma.f16.16x16x16.f16
+    amdgcn_wmma_f32_16x16x16_bf16,             // llvm.amdgcn.wmma.f32.16x16x16.bf16
+    amdgcn_wmma_f32_16x16x16_f16,              // llvm.amdgcn.wmma.f32.16x16x16.f16
+    amdgcn_wmma_i32_16x16x16_iu4,              // llvm.amdgcn.wmma.i32.16x16x16.iu4
+    amdgcn_wmma_i32_16x16x16_iu8,              // llvm.amdgcn.wmma.i32.16x16x16.iu8
     amdgcn_workgroup_id_x,                     // llvm.amdgcn.workgroup.id.x
     amdgcn_workgroup_id_y,                     // llvm.amdgcn.workgroup.id.y
     amdgcn_workgroup_id_z,                     // llvm.amdgcn.workgroup.id.z

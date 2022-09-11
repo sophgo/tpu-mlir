@@ -33,6 +33,7 @@ struct FastmathFlagsInterfaceInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteOp;
   };
 };template <typename ConcreteOp>
 struct FastmathFlagsInterfaceTrait;
@@ -43,6 +44,7 @@ public:
   using ::mlir::OpInterface<FastmathFlagsInterface, detail::FastmathFlagsInterfaceInterfaceTraits>::OpInterface;
   template <typename ConcreteOp>
   struct Trait : public detail::FastmathFlagsInterfaceTrait<ConcreteOp> {};
+  /// Get fastmath flags
   ::mlir::LLVM::FastmathFlags getFastmathFlags();
 };
 namespace detail {

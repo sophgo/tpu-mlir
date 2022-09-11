@@ -33,7 +33,8 @@ ArrayRef<spirv::Capability> spirv::getDirectImpliedCapabilities(spirv::Capabilit
   case spirv::Capability::UniformTexelBufferArrayDynamicIndexing: {static const spirv::Capability implies[1] = {spirv::Capability::SampledBuffer}; return ArrayRef<spirv::Capability>(implies, 1); }
   case spirv::Capability::VectorComputeINTEL: {static const spirv::Capability implies[1] = {spirv::Capability::VectorAnyINTEL}; return ArrayRef<spirv::Capability>(implies, 1); }
   case spirv::Capability::FPFastMathModeINTEL: {static const spirv::Capability implies[1] = {spirv::Capability::Kernel}; return ArrayRef<spirv::Capability>(implies, 1); }
-  case spirv::Capability::DotProductInput4x8BitKHR: {static const spirv::Capability implies[1] = {spirv::Capability::Int8}; return ArrayRef<spirv::Capability>(implies, 1); }
+  case spirv::Capability::DotProductInput4x8Bit: {static const spirv::Capability implies[1] = {spirv::Capability::Int8}; return ArrayRef<spirv::Capability>(implies, 1); }
+  case spirv::Capability::GroupNonUniformRotateKHR: {static const spirv::Capability implies[1] = {spirv::Capability::GroupNonUniform}; return ArrayRef<spirv::Capability>(implies, 1); }
   case spirv::Capability::Geometry: {static const spirv::Capability implies[1] = {spirv::Capability::Shader}; return ArrayRef<spirv::Capability>(implies, 1); }
   case spirv::Capability::Tessellation: {static const spirv::Capability implies[1] = {spirv::Capability::Shader}; return ArrayRef<spirv::Capability>(implies, 1); }
   case spirv::Capability::ImageReadWrite: {static const spirv::Capability implies[1] = {spirv::Capability::ImageBasic}; return ArrayRef<spirv::Capability>(implies, 1); }
@@ -94,7 +95,7 @@ ArrayRef<spirv::Capability> spirv::getDirectImpliedCapabilities(spirv::Capabilit
   case spirv::Capability::FragmentShaderShadingRateInterlockEXT: {static const spirv::Capability implies[1] = {spirv::Capability::Shader}; return ArrayRef<spirv::Capability>(implies, 1); }
   case spirv::Capability::ShaderSMBuiltinsNV: {static const spirv::Capability implies[1] = {spirv::Capability::Shader}; return ArrayRef<spirv::Capability>(implies, 1); }
   case spirv::Capability::FragmentShaderPixelInterlockEXT: {static const spirv::Capability implies[1] = {spirv::Capability::Shader}; return ArrayRef<spirv::Capability>(implies, 1); }
-  case spirv::Capability::DemoteToHelperInvocationEXT: {static const spirv::Capability implies[1] = {spirv::Capability::Shader}; return ArrayRef<spirv::Capability>(implies, 1); }
+  case spirv::Capability::DemoteToHelperInvocation: {static const spirv::Capability implies[1] = {spirv::Capability::Shader}; return ArrayRef<spirv::Capability>(implies, 1); }
   case spirv::Capability::IntegerFunctions2INTEL: {static const spirv::Capability implies[1] = {spirv::Capability::Shader}; return ArrayRef<spirv::Capability>(implies, 1); }
   case spirv::Capability::TessellationPointSize: {static const spirv::Capability implies[1] = {spirv::Capability::Tessellation}; return ArrayRef<spirv::Capability>(implies, 1); }
   case spirv::Capability::GeometryPointSize: {static const spirv::Capability implies[1] = {spirv::Capability::Geometry}; return ArrayRef<spirv::Capability>(implies, 1); }

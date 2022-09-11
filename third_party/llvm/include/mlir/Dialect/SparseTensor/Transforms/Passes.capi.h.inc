@@ -12,13 +12,18 @@ MLIR_CAPI_EXPORTED void mlirRegisterSparseTensorPasses();
 
 
 /* Create SparseTensor Pass. */
-MLIR_CAPI_EXPORTED MlirPass mlirCreateSparseTensorSparseTensorConversion();
-MLIR_CAPI_EXPORTED void mlirRegisterSparseTensorSparseTensorConversion();
+MLIR_CAPI_EXPORTED MlirPass mlirCreateSparseTensorSparseTensorCodegen();
+MLIR_CAPI_EXPORTED void mlirRegisterSparseTensorSparseTensorCodegen();
 
 
 /* Create SparseTensor Pass. */
-MLIR_CAPI_EXPORTED MlirPass mlirCreateSparseTensorSparsification();
-MLIR_CAPI_EXPORTED void mlirRegisterSparseTensorSparsification();
+MLIR_CAPI_EXPORTED MlirPass mlirCreateSparseTensorSparseTensorConversionPass();
+MLIR_CAPI_EXPORTED void mlirRegisterSparseTensorSparseTensorConversionPass();
+
+
+/* Create SparseTensor Pass. */
+MLIR_CAPI_EXPORTED MlirPass mlirCreateSparseTensorSparsificationPass();
+MLIR_CAPI_EXPORTED void mlirRegisterSparseTensorSparsificationPass();
 
 
 

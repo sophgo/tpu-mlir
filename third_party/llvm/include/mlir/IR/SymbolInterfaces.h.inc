@@ -12,7 +12,7 @@ namespace detail {
 struct SymbolOpInterfaceInterfaceTraits {
   struct Concept {
     StringAttr (*getNameAttr)(const Concept *impl, ::mlir::Operation *);
-    void (*setName)(const Concept *impl, ::mlir::Operation *, StringAttr);
+    void (*setName)(const Concept *impl, ::mlir::Operation *, ::mlir::StringAttr);
     mlir::SymbolTable::Visibility (*getVisibility)(const Concept *impl, ::mlir::Operation *);
     bool (*isNested)(const Concept *impl, ::mlir::Operation *);
     bool (*isPrivate)(const Concept *impl, ::mlir::Operation *);
@@ -21,9 +21,9 @@ struct SymbolOpInterfaceInterfaceTraits {
     void (*setNested)(const Concept *impl, ::mlir::Operation *);
     void (*setPrivate)(const Concept *impl, ::mlir::Operation *);
     void (*setPublic)(const Concept *impl, ::mlir::Operation *);
-    Optional<::mlir::SymbolTable::UseRange> (*getSymbolUses)(const Concept *impl, ::mlir::Operation *, Operation *);
-    bool (*symbolKnownUseEmpty)(const Concept *impl, ::mlir::Operation *, Operation *);
-    LogicalResult (*replaceAllSymbolUses)(const Concept *impl, ::mlir::Operation *, StringAttr, Operation *);
+    ::llvm::Optional<::mlir::SymbolTable::UseRange> (*getSymbolUses)(const Concept *impl, ::mlir::Operation *, ::mlir::Operation *);
+    bool (*symbolKnownUseEmpty)(const Concept *impl, ::mlir::Operation *, ::mlir::Operation *);
+    ::mlir::LogicalResult (*replaceAllSymbolUses)(const Concept *impl, ::mlir::Operation *, ::mlir::StringAttr, ::mlir::Operation *);
     bool (*isOptionalSymbol)(const Concept *impl, ::mlir::Operation *);
     bool (*canDiscardOnUseEmpty)(const Concept *impl, ::mlir::Operation *);
     bool (*isDeclaration)(const Concept *impl, ::mlir::Operation *);
@@ -35,7 +35,7 @@ struct SymbolOpInterfaceInterfaceTraits {
     Model() : Concept{getNameAttr, setName, getVisibility, isNested, isPrivate, isPublic, setVisibility, setNested, setPrivate, setPublic, getSymbolUses, symbolKnownUseEmpty, replaceAllSymbolUses, isOptionalSymbol, canDiscardOnUseEmpty, isDeclaration} {}
 
     static inline StringAttr getNameAttr(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline void setName(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, StringAttr name);
+    static inline void setName(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::StringAttr name);
     static inline mlir::SymbolTable::Visibility getVisibility(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline bool isNested(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline bool isPrivate(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
@@ -44,9 +44,9 @@ struct SymbolOpInterfaceInterfaceTraits {
     static inline void setNested(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline void setPrivate(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline void setPublic(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline Optional<::mlir::SymbolTable::UseRange> getSymbolUses(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, Operation * from);
-    static inline bool symbolKnownUseEmpty(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, Operation * from);
-    static inline LogicalResult replaceAllSymbolUses(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, StringAttr newSymbol, Operation * from);
+    static inline ::llvm::Optional<::mlir::SymbolTable::UseRange> getSymbolUses(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Operation * from);
+    static inline bool symbolKnownUseEmpty(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Operation * from);
+    static inline ::mlir::LogicalResult replaceAllSymbolUses(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::StringAttr newSymbol, ::mlir::Operation * from);
     static inline bool isOptionalSymbol(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline bool canDiscardOnUseEmpty(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline bool isDeclaration(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
@@ -58,7 +58,7 @@ struct SymbolOpInterfaceInterfaceTraits {
     FallbackModel() : Concept{getNameAttr, setName, getVisibility, isNested, isPrivate, isPublic, setVisibility, setNested, setPrivate, setPublic, getSymbolUses, symbolKnownUseEmpty, replaceAllSymbolUses, isOptionalSymbol, canDiscardOnUseEmpty, isDeclaration} {}
 
     static inline StringAttr getNameAttr(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline void setName(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, StringAttr name);
+    static inline void setName(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::StringAttr name);
     static inline mlir::SymbolTable::Visibility getVisibility(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline bool isNested(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline bool isPrivate(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
@@ -67,9 +67,9 @@ struct SymbolOpInterfaceInterfaceTraits {
     static inline void setNested(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline void setPrivate(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline void setPublic(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline Optional<::mlir::SymbolTable::UseRange> getSymbolUses(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, Operation * from);
-    static inline bool symbolKnownUseEmpty(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, Operation * from);
-    static inline LogicalResult replaceAllSymbolUses(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, StringAttr newSymbol, Operation * from);
+    static inline ::llvm::Optional<::mlir::SymbolTable::UseRange> getSymbolUses(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Operation * from);
+    static inline bool symbolKnownUseEmpty(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Operation * from);
+    static inline ::mlir::LogicalResult replaceAllSymbolUses(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::StringAttr newSymbol, ::mlir::Operation * from);
     static inline bool isOptionalSymbol(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline bool canDiscardOnUseEmpty(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline bool isDeclaration(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
@@ -77,8 +77,9 @@ struct SymbolOpInterfaceInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteOp;
     StringAttr getNameAttr(::mlir::Operation *tablegen_opaque_val) const;
-    void setName(::mlir::Operation *tablegen_opaque_val, StringAttr name) const;
+    void setName(::mlir::Operation *tablegen_opaque_val, ::mlir::StringAttr name) const;
     mlir::SymbolTable::Visibility getVisibility(::mlir::Operation *tablegen_opaque_val) const;
     bool isNested(::mlir::Operation *tablegen_opaque_val) const;
     bool isPrivate(::mlir::Operation *tablegen_opaque_val) const;
@@ -87,9 +88,9 @@ struct SymbolOpInterfaceInterfaceTraits {
     void setNested(::mlir::Operation *tablegen_opaque_val) const;
     void setPrivate(::mlir::Operation *tablegen_opaque_val) const;
     void setPublic(::mlir::Operation *tablegen_opaque_val) const;
-    Optional<::mlir::SymbolTable::UseRange> getSymbolUses(::mlir::Operation *tablegen_opaque_val, Operation *from) const;
-    bool symbolKnownUseEmpty(::mlir::Operation *tablegen_opaque_val, Operation *from) const;
-    LogicalResult replaceAllSymbolUses(::mlir::Operation *tablegen_opaque_val, StringAttr newSymbol, Operation *from) const;
+    ::llvm::Optional<::mlir::SymbolTable::UseRange> getSymbolUses(::mlir::Operation *tablegen_opaque_val, ::mlir::Operation *from) const;
+    bool symbolKnownUseEmpty(::mlir::Operation *tablegen_opaque_val, ::mlir::Operation *from) const;
+    ::mlir::LogicalResult replaceAllSymbolUses(::mlir::Operation *tablegen_opaque_val, ::mlir::StringAttr newSymbol, ::mlir::Operation *from) const;
     bool isOptionalSymbol(::mlir::Operation *tablegen_opaque_val) const;
     bool canDiscardOnUseEmpty(::mlir::Operation *tablegen_opaque_val) const;
     bool isDeclaration(::mlir::Operation *tablegen_opaque_val) const;
@@ -103,21 +104,46 @@ public:
   using ::mlir::OpInterface<SymbolOpInterface, detail::SymbolOpInterfaceInterfaceTraits>::OpInterface;
   template <typename ConcreteOp>
   struct Trait : public detail::SymbolOpInterfaceTrait<ConcreteOp> {};
+  /// Returns the name of this symbol.
   StringAttr getNameAttr();
-  void setName(StringAttr name);
+  /// Sets the name of this symbol.
+  void setName(::mlir::StringAttr name);
+  /// Gets the visibility of this symbol.
   mlir::SymbolTable::Visibility getVisibility();
+  /// Returns true if this symbol has nested visibility.
   bool isNested();
+  /// Returns true if this symbol has private visibility.
   bool isPrivate();
+  /// Returns true if this symbol has public visibility.
   bool isPublic();
+  /// Sets the visibility of this symbol.
   void setVisibility(mlir::SymbolTable::Visibility vis);
+  /// Sets the visibility of this symbol to be nested.
   void setNested();
+  /// Sets the visibility of this symbol to be private.
   void setPrivate();
+  /// Sets the visibility of this symbol to be public.
   void setPublic();
-  Optional<::mlir::SymbolTable::UseRange> getSymbolUses(Operation * from);
-  bool symbolKnownUseEmpty(Operation * from);
-  LogicalResult replaceAllSymbolUses(StringAttr newSymbol, Operation * from);
+  /// Get all of the uses of the current symbol that are nested within the
+  /// given operation 'from'.
+  /// Note: See mlir::SymbolTable::getSymbolUses for more details.
+  ::llvm::Optional<::mlir::SymbolTable::UseRange> getSymbolUses(::mlir::Operation * from);
+  /// Return if the current symbol is known to have no uses that are nested
+  /// within the given operation 'from'.
+  /// Note: See mlir::SymbolTable::symbolKnownUseEmpty for more details.
+  bool symbolKnownUseEmpty(::mlir::Operation * from);
+  /// Attempt to replace all uses of the current symbol with the provided
+  /// symbol 'newSymbol' that are nested within the given operation 'from'.
+  /// Note: See mlir::SymbolTable::replaceAllSymbolUses for more details.
+  ::mlir::LogicalResult replaceAllSymbolUses(::mlir::StringAttr newSymbol, ::mlir::Operation * from);
+  /// Returns true if this operation optionally defines a symbol based on the
+  /// presence of the symbol name.
   bool isOptionalSymbol();
+  /// Returns true if this operation can be discarded if it has no remaining
+  /// symbol uses.
   bool canDiscardOnUseEmpty();
+  /// Returns true if this operation is a declaration of a symbol (as opposed
+  /// to a definition).
   bool isDeclaration();
 
     /// Convenience version of `getNameAttr` that returns a StringRef.
@@ -143,57 +169,82 @@ public:
 namespace detail {
   template <typename ConcreteOp>
   struct SymbolOpInterfaceTrait : public ::mlir::OpInterface<SymbolOpInterface, detail::SymbolOpInterfaceInterfaceTraits>::Trait<ConcreteOp> {
+    /// Returns the name of this symbol.
     StringAttr getNameAttr() {
       return mlir::SymbolTable::getSymbolName(this->getOperation());
     }
-    void setName(StringAttr name) {
+    /// Sets the name of this symbol.
+    void setName(::mlir::StringAttr name) {
       this->getOperation()->setAttr(
             mlir::SymbolTable::getSymbolAttrName(), name);
     }
+    /// Gets the visibility of this symbol.
     mlir::SymbolTable::Visibility getVisibility() {
       return mlir::SymbolTable::getSymbolVisibility(this->getOperation());
     }
+    /// Returns true if this symbol has nested visibility.
     bool isNested() {
       return getVisibility() == mlir::SymbolTable::Visibility::Nested;
     }
+    /// Returns true if this symbol has private visibility.
     bool isPrivate() {
       return getVisibility() == mlir::SymbolTable::Visibility::Private;
     }
+    /// Returns true if this symbol has public visibility.
     bool isPublic() {
       return getVisibility() == mlir::SymbolTable::Visibility::Public;
     }
+    /// Sets the visibility of this symbol.
     void setVisibility(mlir::SymbolTable::Visibility vis) {
       mlir::SymbolTable::setSymbolVisibility(this->getOperation(), vis);
     }
+    /// Sets the visibility of this symbol to be nested.
     void setNested() {
       setVisibility(mlir::SymbolTable::Visibility::Nested);
     }
+    /// Sets the visibility of this symbol to be private.
     void setPrivate() {
       setVisibility(mlir::SymbolTable::Visibility::Private);
     }
+    /// Sets the visibility of this symbol to be public.
     void setPublic() {
       setVisibility(mlir::SymbolTable::Visibility::Public);
     }
-    Optional<::mlir::SymbolTable::UseRange> getSymbolUses(Operation * from) {
+    /// Get all of the uses of the current symbol that are nested within the
+    /// given operation 'from'.
+    /// Note: See mlir::SymbolTable::getSymbolUses for more details.
+    ::llvm::Optional<::mlir::SymbolTable::UseRange> getSymbolUses(::mlir::Operation * from) {
       return ::mlir::SymbolTable::getSymbolUses(this->getOperation(), from);
     }
-    bool symbolKnownUseEmpty(Operation * from) {
+    /// Return if the current symbol is known to have no uses that are nested
+    /// within the given operation 'from'.
+    /// Note: See mlir::SymbolTable::symbolKnownUseEmpty for more details.
+    bool symbolKnownUseEmpty(::mlir::Operation * from) {
       return ::mlir::SymbolTable::symbolKnownUseEmpty(this->getOperation(),
                                                         from);
     }
-    LogicalResult replaceAllSymbolUses(StringAttr newSymbol, Operation * from) {
+    /// Attempt to replace all uses of the current symbol with the provided
+    /// symbol 'newSymbol' that are nested within the given operation 'from'.
+    /// Note: See mlir::SymbolTable::replaceAllSymbolUses for more details.
+    ::mlir::LogicalResult replaceAllSymbolUses(::mlir::StringAttr newSymbol, ::mlir::Operation * from) {
       return ::mlir::SymbolTable::replaceAllSymbolUses(this->getOperation(),
                                                          newSymbol, from);
     }
+    /// Returns true if this operation optionally defines a symbol based on the
+    /// presence of the symbol name.
     bool isOptionalSymbol() {
       return false;
     }
+    /// Returns true if this operation can be discarded if it has no remaining
+    /// symbol uses.
     bool canDiscardOnUseEmpty() {
       // By default, base this on the visibility alone. A symbol can be
         // discarded as long as it is not public. Only public symbols may be
         // visible from outside of the IR.
         return getVisibility() != ::mlir::SymbolTable::Visibility::Public;
     }
+    /// Returns true if this operation is a declaration of a symbol (as opposed
+    /// to a definition).
     bool isDeclaration() {
       // By default, assume that the operation defines a symbol.
         return false;
@@ -234,7 +285,7 @@ StringAttr detail::SymbolOpInterfaceInterfaceTraits::Model<ConcreteOp>::getNameA
         return mlir::SymbolTable::getSymbolName((llvm::cast<ConcreteOp>(tablegen_opaque_val)));
 }
 template<typename ConcreteOp>
-void detail::SymbolOpInterfaceInterfaceTraits::Model<ConcreteOp>::setName(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, StringAttr name) {
+void detail::SymbolOpInterfaceInterfaceTraits::Model<ConcreteOp>::setName(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::StringAttr name) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).setName(name);
 }
 template<typename ConcreteOp>
@@ -270,15 +321,15 @@ void detail::SymbolOpInterfaceInterfaceTraits::Model<ConcreteOp>::setPublic(cons
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).setPublic();
 }
 template<typename ConcreteOp>
-Optional<::mlir::SymbolTable::UseRange> detail::SymbolOpInterfaceInterfaceTraits::Model<ConcreteOp>::getSymbolUses(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, Operation * from) {
+::llvm::Optional<::mlir::SymbolTable::UseRange> detail::SymbolOpInterfaceInterfaceTraits::Model<ConcreteOp>::getSymbolUses(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Operation * from) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getSymbolUses(from);
 }
 template<typename ConcreteOp>
-bool detail::SymbolOpInterfaceInterfaceTraits::Model<ConcreteOp>::symbolKnownUseEmpty(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, Operation * from) {
+bool detail::SymbolOpInterfaceInterfaceTraits::Model<ConcreteOp>::symbolKnownUseEmpty(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Operation * from) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).symbolKnownUseEmpty(from);
 }
 template<typename ConcreteOp>
-LogicalResult detail::SymbolOpInterfaceInterfaceTraits::Model<ConcreteOp>::replaceAllSymbolUses(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, StringAttr newSymbol, Operation * from) {
+::mlir::LogicalResult detail::SymbolOpInterfaceInterfaceTraits::Model<ConcreteOp>::replaceAllSymbolUses(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::StringAttr newSymbol, ::mlir::Operation * from) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).replaceAllSymbolUses(newSymbol, from);
 }
 template<typename ConcreteOp>
@@ -298,7 +349,7 @@ StringAttr detail::SymbolOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::
   return static_cast<const ConcreteOp *>(impl)->getNameAttr(tablegen_opaque_val);
 }
 template<typename ConcreteOp>
-void detail::SymbolOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::setName(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, StringAttr name) {
+void detail::SymbolOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::setName(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::StringAttr name) {
   return static_cast<const ConcreteOp *>(impl)->setName(tablegen_opaque_val, name);
 }
 template<typename ConcreteOp>
@@ -334,15 +385,15 @@ void detail::SymbolOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::setPub
   return static_cast<const ConcreteOp *>(impl)->setPublic(tablegen_opaque_val);
 }
 template<typename ConcreteOp>
-Optional<::mlir::SymbolTable::UseRange> detail::SymbolOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getSymbolUses(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, Operation * from) {
+::llvm::Optional<::mlir::SymbolTable::UseRange> detail::SymbolOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getSymbolUses(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Operation * from) {
   return static_cast<const ConcreteOp *>(impl)->getSymbolUses(tablegen_opaque_val, from);
 }
 template<typename ConcreteOp>
-bool detail::SymbolOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::symbolKnownUseEmpty(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, Operation * from) {
+bool detail::SymbolOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::symbolKnownUseEmpty(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Operation * from) {
   return static_cast<const ConcreteOp *>(impl)->symbolKnownUseEmpty(tablegen_opaque_val, from);
 }
 template<typename ConcreteOp>
-LogicalResult detail::SymbolOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::replaceAllSymbolUses(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, StringAttr newSymbol, Operation * from) {
+::mlir::LogicalResult detail::SymbolOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::replaceAllSymbolUses(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::StringAttr newSymbol, ::mlir::Operation * from) {
   return static_cast<const ConcreteOp *>(impl)->replaceAllSymbolUses(tablegen_opaque_val, newSymbol, from);
 }
 template<typename ConcreteOp>
@@ -362,7 +413,7 @@ StringAttr detail::SymbolOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel
 return mlir::SymbolTable::getSymbolName(this->getOperation());
 }
 template<typename ConcreteModel, typename ConcreteOp>
-void detail::SymbolOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::setName(::mlir::Operation *tablegen_opaque_val, StringAttr name) const {
+void detail::SymbolOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::setName(::mlir::Operation *tablegen_opaque_val, ::mlir::StringAttr name) const {
 this->getOperation()->setAttr(
             mlir::SymbolTable::getSymbolAttrName(), name);
 }
@@ -399,16 +450,16 @@ void detail::SymbolOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, Conc
 setVisibility(mlir::SymbolTable::Visibility::Public);
 }
 template<typename ConcreteModel, typename ConcreteOp>
-Optional<::mlir::SymbolTable::UseRange> detail::SymbolOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getSymbolUses(::mlir::Operation *tablegen_opaque_val, Operation *from) const {
+::llvm::Optional<::mlir::SymbolTable::UseRange> detail::SymbolOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getSymbolUses(::mlir::Operation *tablegen_opaque_val, ::mlir::Operation *from) const {
 return ::mlir::SymbolTable::getSymbolUses(this->getOperation(), from);
 }
 template<typename ConcreteModel, typename ConcreteOp>
-bool detail::SymbolOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::symbolKnownUseEmpty(::mlir::Operation *tablegen_opaque_val, Operation *from) const {
+bool detail::SymbolOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::symbolKnownUseEmpty(::mlir::Operation *tablegen_opaque_val, ::mlir::Operation *from) const {
 return ::mlir::SymbolTable::symbolKnownUseEmpty(this->getOperation(),
                                                         from);
 }
 template<typename ConcreteModel, typename ConcreteOp>
-LogicalResult detail::SymbolOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::replaceAllSymbolUses(::mlir::Operation *tablegen_opaque_val, StringAttr newSymbol, Operation *from) const {
+::mlir::LogicalResult detail::SymbolOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::replaceAllSymbolUses(::mlir::Operation *tablegen_opaque_val, ::mlir::StringAttr newSymbol, ::mlir::Operation *from) const {
 return ::mlir::SymbolTable::replaceAllSymbolUses(this->getOperation(),
                                                          newSymbol, from);
 }
@@ -455,6 +506,7 @@ struct SymbolUserOpInterfaceInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteOp;
   };
 };template <typename ConcreteOp>
 struct SymbolUserOpInterfaceTrait;
@@ -465,6 +517,7 @@ public:
   using ::mlir::OpInterface<SymbolUserOpInterface, detail::SymbolUserOpInterfaceInterfaceTraits>::OpInterface;
   template <typename ConcreteOp>
   struct Trait : public detail::SymbolUserOpInterfaceTrait<ConcreteOp> {};
+  /// Verify the symbol uses held by this operation.
   ::mlir::LogicalResult verifySymbolUses(::mlir::SymbolTableCollection & symbolTable);
 };
 namespace detail {

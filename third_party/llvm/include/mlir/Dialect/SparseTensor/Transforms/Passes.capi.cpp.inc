@@ -7,18 +7,26 @@ void mlirRegisterSparseTensorPasses() {
   registerSparseTensorPasses();
 }
 
-MlirPass mlirCreateSparseTensorSparseTensorConversion() {
+MlirPass mlirCreateSparseTensorSparseTensorCodegen() {
+  return wrap(mlir::createSparseTensorCodegenPass().release());
+}
+void mlirRegisterSparseTensorSparseTensorCodegen() {
+  registerSparseTensorCodegen();
+}
+
+
+MlirPass mlirCreateSparseTensorSparseTensorConversionPass() {
   return wrap(mlir::createSparseTensorConversionPass().release());
 }
-void mlirRegisterSparseTensorSparseTensorConversion() {
+void mlirRegisterSparseTensorSparseTensorConversionPass() {
   registerSparseTensorConversionPass();
 }
 
 
-MlirPass mlirCreateSparseTensorSparsification() {
+MlirPass mlirCreateSparseTensorSparsificationPass() {
   return wrap(mlir::createSparsificationPass().release());
 }
-void mlirRegisterSparseTensorSparsification() {
+void mlirRegisterSparseTensorSparsificationPass() {
   registerSparsificationPass();
 }
 

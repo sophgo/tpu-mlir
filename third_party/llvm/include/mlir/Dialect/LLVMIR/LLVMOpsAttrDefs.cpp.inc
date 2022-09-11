@@ -19,24 +19,28 @@
 #ifdef GET_ATTRDEF_CLASSES
 #undef GET_ATTRDEF_CLASSES
 
-static ::mlir::OptionalParseResult generatedAttributeParser(::mlir::AsmParser &parser, ::llvm::StringRef mnemonic, ::mlir::Type type, ::mlir::Attribute &value) {
-  if (mnemonic == ::mlir::LLVM::CConvAttr::getMnemonic()) {
-    value = ::mlir::LLVM::CConvAttr::parse(parser, type);
-    return ::mlir::success(!!value);
-  }
-  if (mnemonic == ::mlir::LLVM::FMFAttr::getMnemonic()) {
-    value = ::mlir::LLVM::FMFAttr::parse(parser, type);
-    return ::mlir::success(!!value);
-  }
-  if (mnemonic == ::mlir::LLVM::LinkageAttr::getMnemonic()) {
-    value = ::mlir::LLVM::LinkageAttr::parse(parser, type);
-    return ::mlir::success(!!value);
-  }
-  if (mnemonic == ::mlir::LLVM::LoopOptionsAttr::getMnemonic()) {
-    value = ::mlir::LLVM::LoopOptionsAttr::parse(parser, type);
-    return ::mlir::success(!!value);
-  }
-  return {};
+static ::mlir::OptionalParseResult generatedAttributeParser(::mlir::AsmParser &parser, ::llvm::StringRef *mnemonic, ::mlir::Type type, ::mlir::Attribute &value) {
+  return ::mlir::AsmParser::KeywordSwitch<::mlir::OptionalParseResult>(parser)
+    .Case(::mlir::LLVM::CConvAttr::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::LLVM::CConvAttr::parse(parser, type);
+      return ::mlir::success(!!value);
+    })
+    .Case(::mlir::LLVM::FMFAttr::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::LLVM::FMFAttr::parse(parser, type);
+      return ::mlir::success(!!value);
+    })
+    .Case(::mlir::LLVM::LinkageAttr::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::LLVM::LinkageAttr::parse(parser, type);
+      return ::mlir::success(!!value);
+    })
+    .Case(::mlir::LLVM::LoopOptionsAttr::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::LLVM::LoopOptionsAttr::parse(parser, type);
+      return ::mlir::success(!!value);
+    })
+    .Default([&](llvm::StringRef keyword, llvm::SMLoc) {
+      *mnemonic = keyword;
+      return llvm::None;
+    });
 }
 
 static ::mlir::LogicalResult generatedAttributePrinter(::mlir::Attribute def, ::mlir::AsmPrinter &printer) {
@@ -68,7 +72,7 @@ namespace LLVM {
 namespace detail {
 struct CConvAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<CConv>;
-  CConvAttrStorage(CConv CallingConv) : ::mlir::AttributeStorage(), CallingConv(CallingConv) {}
+  CConvAttrStorage(CConv CallingConv) : CallingConv(CallingConv) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (CallingConv == std::get<0>(tblgenKey));
@@ -102,7 +106,7 @@ namespace LLVM {
 namespace detail {
 struct FMFAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<FastmathFlags>;
-  FMFAttrStorage(FastmathFlags flags) : ::mlir::AttributeStorage(), flags(flags) {}
+  FMFAttrStorage(FastmathFlags flags) : flags(flags) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (flags == std::get<0>(tblgenKey));
@@ -136,7 +140,7 @@ namespace LLVM {
 namespace detail {
 struct LinkageAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<linkage::Linkage>;
-  LinkageAttrStorage(linkage::Linkage linkage) : ::mlir::AttributeStorage(), linkage(linkage) {}
+  LinkageAttrStorage(linkage::Linkage linkage) : linkage(linkage) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (linkage == std::get<0>(tblgenKey));
@@ -170,7 +174,7 @@ namespace LLVM {
 namespace detail {
 struct LoopOptionsAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<::llvm::ArrayRef<std::pair<LoopOptionCase, int64_t>>>;
-  LoopOptionsAttrStorage(::llvm::ArrayRef<std::pair<LoopOptionCase, int64_t>> options) : ::mlir::AttributeStorage(), options(options) {}
+  LoopOptionsAttrStorage(::llvm::ArrayRef<std::pair<LoopOptionCase, int64_t>> options) : options(options) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (options == std::get<0>(tblgenKey));
@@ -204,12 +208,10 @@ namespace LLVM {
                                       ::mlir::Type type) const {
   ::llvm::SMLoc typeLoc = parser.getCurrentLocation();
   ::llvm::StringRef attrTag;
-  if (::mlir::failed(parser.parseKeyword(&attrTag)))
-    return {};
   {
     ::mlir::Attribute attr;
-    auto parseResult = generatedAttributeParser(parser, attrTag, type, attr);
-    if (parseResult.hasValue())
+    auto parseResult = generatedAttributeParser(parser, &attrTag, type, attr);
+    if (parseResult.has_value())
       return attr;
   }
   

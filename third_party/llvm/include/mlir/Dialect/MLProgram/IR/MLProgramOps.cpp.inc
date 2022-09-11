@@ -11,8 +11,10 @@
 
 ::mlir::ml_program::FuncOp,
 ::mlir::ml_program::GlobalLoadConstOp,
+::mlir::ml_program::GlobalLoadGraphOp,
 ::mlir::ml_program::GlobalLoadOp,
 ::mlir::ml_program::GlobalOp,
+::mlir::ml_program::GlobalStoreGraphOp,
 ::mlir::ml_program::GlobalStoreOp,
 ::mlir::ml_program::OutputOp,
 ::mlir::ml_program::ReturnOp,
@@ -151,7 +153,7 @@ std::pair<unsigned, unsigned> FuncOpAdaptor::getODSOperandIndexAndLength(unsigne
 ::mlir::StringAttr FuncOpAdaptor::getSymNameAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, FuncOp::getSymNameAttrName(*odsOpName)).cast<::mlir::StringAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::StringRef FuncOpAdaptor::getSymName() {
@@ -162,7 +164,7 @@ std::pair<unsigned, unsigned> FuncOpAdaptor::getODSOperandIndexAndLength(unsigne
 ::mlir::TypeAttr FuncOpAdaptor::getFunctionTypeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, FuncOp::getFunctionTypeAttrName(*odsOpName)).cast<::mlir::TypeAttr>();
-    return attr;
+  return attr;
 }
 
 ::mlir::FunctionType FuncOpAdaptor::getFunctionType() {
@@ -173,7 +175,7 @@ std::pair<unsigned, unsigned> FuncOpAdaptor::getODSOperandIndexAndLength(unsigne
 ::mlir::StringAttr FuncOpAdaptor::getSymVisibilityAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 0, FuncOp::getSymVisibilityAttrName(*odsOpName)).dyn_cast_or_null<::mlir::StringAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional< ::llvm::StringRef > FuncOpAdaptor::getSymVisibility() {
@@ -445,7 +447,7 @@ std::pair<unsigned, unsigned> GlobalLoadConstOpAdaptor::getODSOperandIndexAndLen
 ::mlir::SymbolRefAttr GlobalLoadConstOpAdaptor::getGlobalAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, GlobalLoadConstOp::getGlobalAttrName(*odsOpName)).cast<::mlir::SymbolRefAttr>();
-    return attr;
+  return attr;
 }
 
 ::mlir::SymbolRefAttr GlobalLoadConstOpAdaptor::getGlobal() {
@@ -610,20 +612,20 @@ namespace mlir {
 namespace ml_program {
 
 //===----------------------------------------------------------------------===//
-// ::mlir::ml_program::GlobalLoadOp definitions
+// ::mlir::ml_program::GlobalLoadGraphOp definitions
 //===----------------------------------------------------------------------===//
 
-GlobalLoadOpAdaptor::GlobalLoadOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
-    odsOpName.emplace("ml_program.global_load", odsAttrs.getContext());
+GlobalLoadGraphOpAdaptor::GlobalLoadGraphOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("ml_program.global_load_graph", odsAttrs.getContext());
 }
 
-GlobalLoadOpAdaptor::GlobalLoadOpAdaptor(GlobalLoadOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+GlobalLoadGraphOpAdaptor::GlobalLoadGraphOpAdaptor(GlobalLoadGraphOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
-::mlir::ValueRange GlobalLoadOpAdaptor::getOperands() {
+::mlir::ValueRange GlobalLoadGraphOpAdaptor::getOperands() {
   return odsOperands;
 }
 
-std::pair<unsigned, unsigned> GlobalLoadOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+std::pair<unsigned, unsigned> GlobalLoadGraphOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   bool isVariadic[] = {true};
   int prevVariadicCount = 0;
   for (unsigned i = 0; i < index; ++i)
@@ -641,39 +643,39 @@ std::pair<unsigned, unsigned> GlobalLoadOpAdaptor::getODSOperandIndexAndLength(u
   return {start, size};
 }
 
-::mlir::ValueRange GlobalLoadOpAdaptor::getODSOperands(unsigned index) {
+::mlir::ValueRange GlobalLoadGraphOpAdaptor::getODSOperands(unsigned index) {
   auto valueRange = getODSOperandIndexAndLength(index);
   return {std::next(odsOperands.begin(), valueRange.first),
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::ValueRange GlobalLoadOpAdaptor::getConsumeTokens() {
+::mlir::ValueRange GlobalLoadGraphOpAdaptor::getConsumeTokens() {
   return getODSOperands(0);
 }
 
-::mlir::DictionaryAttr GlobalLoadOpAdaptor::getAttributes() {
+::mlir::DictionaryAttr GlobalLoadGraphOpAdaptor::getAttributes() {
   return odsAttrs;
 }
 
-::mlir::SymbolRefAttr GlobalLoadOpAdaptor::getGlobalAttr() {
+::mlir::SymbolRefAttr GlobalLoadGraphOpAdaptor::getGlobalAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, GlobalLoadOp::getGlobalAttrName(*odsOpName)).cast<::mlir::SymbolRefAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, GlobalLoadGraphOp::getGlobalAttrName(*odsOpName)).cast<::mlir::SymbolRefAttr>();
+  return attr;
 }
 
-::mlir::SymbolRefAttr GlobalLoadOpAdaptor::getGlobal() {
+::mlir::SymbolRefAttr GlobalLoadGraphOpAdaptor::getGlobal() {
   auto attr = getGlobalAttr();
   return attr;
 }
 
-::mlir::LogicalResult GlobalLoadOpAdaptor::verify(::mlir::Location loc) {
+::mlir::LogicalResult GlobalLoadGraphOpAdaptor::verify(::mlir::Location loc) {
   auto namedAttrRange = odsAttrs;
   auto namedAttrIt = namedAttrRange.begin();
   ::mlir::Attribute tblgen_global;
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
-      return emitError(loc, "'ml_program.global_load' op ""requires attribute 'global'");
-    if (namedAttrIt->getName() == GlobalLoadOp::getGlobalAttrName(*odsOpName)) {
+      return emitError(loc, "'ml_program.global_load_graph' op ""requires attribute 'global'");
+    if (namedAttrIt->getName() == GlobalLoadGraphOp::getGlobalAttrName(*odsOpName)) {
       tblgen_global = namedAttrIt->getValue();
       break;
     }
@@ -681,11 +683,11 @@ std::pair<unsigned, unsigned> GlobalLoadOpAdaptor::getODSOperandIndexAndLength(u
   }
 
   if (tblgen_global && !((tblgen_global.isa<::mlir::SymbolRefAttr>())))
-    return emitError(loc, "'ml_program.global_load' op ""attribute 'global' failed to satisfy constraint: symbol reference attribute");
+    return emitError(loc, "'ml_program.global_load_graph' op ""attribute 'global' failed to satisfy constraint: symbol reference attribute");
   return ::mlir::success();
 }
 
-void GlobalLoadOp::getAsmResultNames(::mlir::OpAsmSetValueNameFn setNameFn) {
+void GlobalLoadGraphOp::getAsmResultNames(::mlir::OpAsmSetValueNameFn setNameFn) {
   auto resultGroup0 = getODSResults(0);
   if (!llvm::empty(resultGroup0))
     setNameFn(*resultGroup0.begin(), "result");
@@ -694,7 +696,7 @@ void GlobalLoadOp::getAsmResultNames(::mlir::OpAsmSetValueNameFn setNameFn) {
     setNameFn(*resultGroup1.begin(), "produceToken");
 }
 
-std::pair<unsigned, unsigned> GlobalLoadOp::getODSOperandIndexAndLength(unsigned index) {
+std::pair<unsigned, unsigned> GlobalLoadGraphOp::getODSOperandIndexAndLength(unsigned index) {
   bool isVariadic[] = {true};
   int prevVariadicCount = 0;
   for (unsigned i = 0; i < index; ++i)
@@ -712,91 +714,75 @@ std::pair<unsigned, unsigned> GlobalLoadOp::getODSOperandIndexAndLength(unsigned
   return {start, size};
 }
 
-::mlir::Operation::operand_range GlobalLoadOp::getODSOperands(unsigned index) {
+::mlir::Operation::operand_range GlobalLoadGraphOp::getODSOperands(unsigned index) {
   auto valueRange = getODSOperandIndexAndLength(index);
   return {std::next(getOperation()->operand_begin(), valueRange.first),
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::operand_range GlobalLoadOp::getConsumeTokens() {
+::mlir::Operation::operand_range GlobalLoadGraphOp::getConsumeTokens() {
   return getODSOperands(0);
 }
 
-::mlir::MutableOperandRange GlobalLoadOp::getConsumeTokensMutable() {
+::mlir::MutableOperandRange GlobalLoadGraphOp::getConsumeTokensMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-std::pair<unsigned, unsigned> GlobalLoadOp::getODSResultIndexAndLength(unsigned index) {
-  bool isVariadic[] = {false, true};
-  int prevVariadicCount = 0;
-  for (unsigned i = 0; i < index; ++i)
-    if (isVariadic[i]) ++prevVariadicCount;
-
-  // Calculate how many dynamic values a static variadic operand corresponds to.
-  // This assumes all static variadic operands have the same dynamic value count.
-  int variadicSize = (getOperation()->getNumResults() - 1) / 1;
-  // `index` passed in as the parameter is the static index which counts each
-  // operand (variadic or not) as size 1. So here for each previous static variadic
-  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
-  // value pack for this static operand starts.
-  int start = index + (variadicSize - 1) * prevVariadicCount;
-  int size = isVariadic[index] ? variadicSize : 1;
-  return {start, size};
+std::pair<unsigned, unsigned> GlobalLoadGraphOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
 }
 
-::mlir::Operation::result_range GlobalLoadOp::getODSResults(unsigned index) {
+::mlir::Operation::result_range GlobalLoadGraphOp::getODSResults(unsigned index) {
   auto valueRange = getODSResultIndexAndLength(index);
   return {std::next(getOperation()->result_begin(), valueRange.first),
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value GlobalLoadOp::getResult() {
+::mlir::Value GlobalLoadGraphOp::getResult() {
   return *getODSResults(0).begin();
 }
 
-::mlir::Value GlobalLoadOp::getProduceToken() {
-  auto results = getODSResults(1);
-  return results.empty() ? ::mlir::Value() : *results.begin();
+::mlir::TypedValue<::mlir::ml_program::TokenType> GlobalLoadGraphOp::getProduceToken() {
+  return *getODSResults(1).begin();
 }
 
-::mlir::SymbolRefAttr GlobalLoadOp::getGlobalAttr() {
+::mlir::SymbolRefAttr GlobalLoadGraphOp::getGlobalAttr() {
   return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getGlobalAttrName()).cast<::mlir::SymbolRefAttr>();
 }
 
-::mlir::SymbolRefAttr GlobalLoadOp::getGlobal() {
+::mlir::SymbolRefAttr GlobalLoadGraphOp::getGlobal() {
   auto attr = getGlobalAttr();
   return attr;
 }
 
-void GlobalLoadOp::setGlobalAttr(::mlir::SymbolRefAttr attr) {
+void GlobalLoadGraphOp::setGlobalAttr(::mlir::SymbolRefAttr attr) {
   (*this)->setAttr(getGlobalAttrName(), attr);
 }
 
-void GlobalLoadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, /*optional*/::mlir::Type produceToken, ::mlir::SymbolRefAttr global, ::mlir::ValueRange consumeTokens) {
+void GlobalLoadGraphOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Type produceToken, ::mlir::SymbolRefAttr global, ::mlir::ValueRange consumeTokens) {
   odsState.addOperands(consumeTokens);
   odsState.addAttribute(getGlobalAttrName(odsState.name), global);
   odsState.addTypes(result);
-  if (produceToken)
-    odsState.addTypes(produceToken);
+  odsState.addTypes(produceToken);
 }
 
-void GlobalLoadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::SymbolRefAttr global, ::mlir::ValueRange consumeTokens) {
+void GlobalLoadGraphOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::SymbolRefAttr global, ::mlir::ValueRange consumeTokens) {
   odsState.addOperands(consumeTokens);
   odsState.addAttribute(getGlobalAttrName(odsState.name), global);
-  assert(resultTypes.size() >= 1u && "mismatched number of results");
+  assert(resultTypes.size() == 2u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
 
-void GlobalLoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+void GlobalLoadGraphOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-  assert(resultTypes.size() >= 1u && "mismatched number of return types");
+  assert(resultTypes.size() == 2u && "mismatched number of return types");
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult GlobalLoadOp::verifyInvariantsImpl() {
+::mlir::LogicalResult GlobalLoadGraphOp::verifyInvariantsImpl() {
   auto namedAttrRange = (*this)->getAttrs();
   auto namedAttrIt = namedAttrRange.begin();
   ::mlir::Attribute tblgen_global;
@@ -831,11 +817,6 @@ void GlobalLoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
     }
     auto valueGroup1 = getODSResults(1);
 
-    if (valueGroup1.size() > 1) {
-      return emitOpError("result group starting at #") << index
-          << " requires 0 or 1 element, but found " << valueGroup1.size();
-    }
-
     for (auto v : valueGroup1) {
       if (::mlir::failed(__mlir_ods_local_type_constraint_MLProgramOps1(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
@@ -844,16 +825,17 @@ void GlobalLoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
   return ::mlir::success();
 }
 
-::mlir::LogicalResult GlobalLoadOp::verifyInvariants() {
+::mlir::LogicalResult GlobalLoadGraphOp::verifyInvariants() {
   return verifyInvariantsImpl();
 }
 
-::mlir::ParseResult GlobalLoadOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+::mlir::ParseResult GlobalLoadGraphOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::SymbolRefAttr globalAttr;
   ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> consumeTokensOperands;
   ::llvm::SMLoc consumeTokensOperandsLoc;
   (void)consumeTokensOperandsLoc;
-  ::llvm::SmallVector<::mlir::Type, 1> produceTokenTypes;
+  ::mlir::Type produceTokenRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> produceTokenTypes(produceTokenRawTypes);
   ::mlir::Type resultRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
 
@@ -863,11 +845,8 @@ void GlobalLoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
   }
   {
     consumeTokensOperandsLoc = parser.getCurrentLocation();
-    ::mlir::Type produceTokenType;
-    if (parseTokenOrdering(parser, consumeTokensOperands, produceTokenType))
+    if (parseTokenOrdering(parser, consumeTokensOperands, produceTokenRawTypes[0]))
       return ::mlir::failure();
-    if (produceTokenType)
-      produceTokenTypes.push_back(produceTokenType);
   }
   if (parser.parseColon())
     return ::mlir::failure();
@@ -883,15 +862,211 @@ void GlobalLoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getType<::mlir::ml_program::TokenType>();
   result.addTypes(resultTypes);
   result.addTypes(produceTokenTypes);
-  if (parser.resolveOperands(consumeTokensOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(consumeTokensOperands, odsBuildableType0, consumeTokensOperandsLoc, result.operands))
     return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void GlobalLoadGraphOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ';
+  _odsPrinter.printAttributeWithoutType(getGlobalAttr());
+  printTokenOrdering(_odsPrinter, *this, getConsumeTokens(), getProduceToken().getType());
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  {
+    auto type = getResult().getType();
+    if (auto validType = type.dyn_cast<::mlir::Type>())
+      _odsPrinter.printStrippedAttrOrType(validType);
+   else
+     _odsPrinter << type;
+  }
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"global"});
+}
+
+void GlobalLoadGraphOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+  effects.emplace_back(::mlir::MemoryEffects::Read::get(), getGlobalAttr(), ::mlir::SideEffects::DefaultResource::get());
+}
+
+} // namespace ml_program
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::ml_program::GlobalLoadGraphOp)
+
+namespace mlir {
+namespace ml_program {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::ml_program::GlobalLoadOp definitions
+//===----------------------------------------------------------------------===//
+
+GlobalLoadOpAdaptor::GlobalLoadOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("ml_program.global_load", odsAttrs.getContext());
+}
+
+GlobalLoadOpAdaptor::GlobalLoadOpAdaptor(GlobalLoadOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange GlobalLoadOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> GlobalLoadOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange GlobalLoadOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::DictionaryAttr GlobalLoadOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::SymbolRefAttr GlobalLoadOpAdaptor::getGlobalAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, GlobalLoadOp::getGlobalAttrName(*odsOpName)).cast<::mlir::SymbolRefAttr>();
+  return attr;
+}
+
+::mlir::SymbolRefAttr GlobalLoadOpAdaptor::getGlobal() {
+  auto attr = getGlobalAttr();
+  return attr;
+}
+
+::mlir::LogicalResult GlobalLoadOpAdaptor::verify(::mlir::Location loc) {
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_global;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'ml_program.global_load' op ""requires attribute 'global'");
+    if (namedAttrIt->getName() == GlobalLoadOp::getGlobalAttrName(*odsOpName)) {
+      tblgen_global = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
+  if (tblgen_global && !((tblgen_global.isa<::mlir::SymbolRefAttr>())))
+    return emitError(loc, "'ml_program.global_load' op ""attribute 'global' failed to satisfy constraint: symbol reference attribute");
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> GlobalLoadOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range GlobalLoadOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+std::pair<unsigned, unsigned> GlobalLoadOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range GlobalLoadOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value GlobalLoadOp::getResult() {
+  return *getODSResults(0).begin();
+}
+
+::mlir::SymbolRefAttr GlobalLoadOp::getGlobalAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getGlobalAttrName()).cast<::mlir::SymbolRefAttr>();
+}
+
+::mlir::SymbolRefAttr GlobalLoadOp::getGlobal() {
+  auto attr = getGlobalAttr();
+  return attr;
+}
+
+void GlobalLoadOp::setGlobalAttr(::mlir::SymbolRefAttr attr) {
+  (*this)->setAttr(getGlobalAttrName(), attr);
+}
+
+void GlobalLoadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::SymbolRefAttr global) {
+  odsState.addAttribute(getGlobalAttrName(odsState.name), global);
+  odsState.addTypes(result);
+}
+
+void GlobalLoadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::SymbolRefAttr global) {
+  odsState.addAttribute(getGlobalAttrName(odsState.name), global);
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void GlobalLoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 0u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult GlobalLoadOp::verifyInvariantsImpl() {
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_global;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'global'");
+    if (namedAttrIt->getName() == getGlobalAttrName()) {
+      tblgen_global = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_MLProgramOps2(*this, tblgen_global, "global")))
+    return ::mlir::failure();
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_MLProgramOps0(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult GlobalLoadOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+::mlir::ParseResult GlobalLoadOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::mlir::SymbolRefAttr globalAttr;
+  ::mlir::Type resultRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
+
+  if (parser.parseCustomAttributeWithFallback(globalAttr, parser.getBuilder().getType<::mlir::NoneType>(), "global",
+          result.attributes)) {
+    return ::mlir::failure();
+  }
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  {
+    ::mlir::Type type;
+    if (parser.parseCustomTypeWithFallback(type))
+      return ::mlir::failure();
+    resultRawTypes[0] = type;
+  }
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  result.addTypes(resultTypes);
   return ::mlir::success();
 }
 
 void GlobalLoadOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
   _odsPrinter.printAttributeWithoutType(getGlobalAttr());
-  printTokenOrdering(_odsPrinter, *this, getConsumeTokens(), (getProduceToken() ? getProduceToken().getType() : Type()));
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
@@ -946,7 +1121,7 @@ std::pair<unsigned, unsigned> GlobalOpAdaptor::getODSOperandIndexAndLength(unsig
 ::mlir::StringAttr GlobalOpAdaptor::getSymNameAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, GlobalOp::getSymNameAttrName(*odsOpName)).cast<::mlir::StringAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::StringRef GlobalOpAdaptor::getSymName() {
@@ -957,7 +1132,7 @@ std::pair<unsigned, unsigned> GlobalOpAdaptor::getODSOperandIndexAndLength(unsig
 ::mlir::TypeAttr GlobalOpAdaptor::getTypeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, GlobalOp::getTypeAttrName(*odsOpName)).cast<::mlir::TypeAttr>();
-    return attr;
+  return attr;
 }
 
 ::mlir::Type GlobalOpAdaptor::getType() {
@@ -968,7 +1143,7 @@ std::pair<unsigned, unsigned> GlobalOpAdaptor::getODSOperandIndexAndLength(unsig
 ::mlir::UnitAttr GlobalOpAdaptor::getIsMutableAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 2, GlobalOp::getIsMutableAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
-    return attr;
+  return attr;
 }
 
 bool GlobalOpAdaptor::getIsMutable() {
@@ -979,7 +1154,7 @@ bool GlobalOpAdaptor::getIsMutable() {
 ::mlir::Attribute GlobalOpAdaptor::getValueAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 0, GlobalOp::getValueAttrName(*odsOpName)).dyn_cast_or_null<::mlir::Attribute>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional<::mlir::Attribute> GlobalOpAdaptor::getValue() {
@@ -990,7 +1165,7 @@ bool GlobalOpAdaptor::getIsMutable() {
 ::mlir::StringAttr GlobalOpAdaptor::getSymVisibilityAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 1, GlobalOp::getSymVisibilityAttrName(*odsOpName)).dyn_cast_or_null<::mlir::StringAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional< ::llvm::StringRef > GlobalOpAdaptor::getSymVisibility() {
@@ -1336,20 +1511,20 @@ namespace mlir {
 namespace ml_program {
 
 //===----------------------------------------------------------------------===//
-// ::mlir::ml_program::GlobalStoreOp definitions
+// ::mlir::ml_program::GlobalStoreGraphOp definitions
 //===----------------------------------------------------------------------===//
 
-GlobalStoreOpAdaptor::GlobalStoreOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
-    odsOpName.emplace("ml_program.global_store", odsAttrs.getContext());
+GlobalStoreGraphOpAdaptor::GlobalStoreGraphOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("ml_program.global_store_graph", odsAttrs.getContext());
 }
 
-GlobalStoreOpAdaptor::GlobalStoreOpAdaptor(GlobalStoreOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+GlobalStoreGraphOpAdaptor::GlobalStoreGraphOpAdaptor(GlobalStoreGraphOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
-::mlir::ValueRange GlobalStoreOpAdaptor::getOperands() {
+::mlir::ValueRange GlobalStoreGraphOpAdaptor::getOperands() {
   return odsOperands;
 }
 
-std::pair<unsigned, unsigned> GlobalStoreOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+std::pair<unsigned, unsigned> GlobalStoreGraphOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   bool isVariadic[] = {false, true};
   int prevVariadicCount = 0;
   for (unsigned i = 0; i < index; ++i)
@@ -1367,43 +1542,43 @@ std::pair<unsigned, unsigned> GlobalStoreOpAdaptor::getODSOperandIndexAndLength(
   return {start, size};
 }
 
-::mlir::ValueRange GlobalStoreOpAdaptor::getODSOperands(unsigned index) {
+::mlir::ValueRange GlobalStoreGraphOpAdaptor::getODSOperands(unsigned index) {
   auto valueRange = getODSOperandIndexAndLength(index);
   return {std::next(odsOperands.begin(), valueRange.first),
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value GlobalStoreOpAdaptor::getValue() {
+::mlir::Value GlobalStoreGraphOpAdaptor::getValue() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::ValueRange GlobalStoreOpAdaptor::getConsumeTokens() {
+::mlir::ValueRange GlobalStoreGraphOpAdaptor::getConsumeTokens() {
   return getODSOperands(1);
 }
 
-::mlir::DictionaryAttr GlobalStoreOpAdaptor::getAttributes() {
+::mlir::DictionaryAttr GlobalStoreGraphOpAdaptor::getAttributes() {
   return odsAttrs;
 }
 
-::mlir::SymbolRefAttr GlobalStoreOpAdaptor::getGlobalAttr() {
+::mlir::SymbolRefAttr GlobalStoreGraphOpAdaptor::getGlobalAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, GlobalStoreOp::getGlobalAttrName(*odsOpName)).cast<::mlir::SymbolRefAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, GlobalStoreGraphOp::getGlobalAttrName(*odsOpName)).cast<::mlir::SymbolRefAttr>();
+  return attr;
 }
 
-::mlir::SymbolRefAttr GlobalStoreOpAdaptor::getGlobal() {
+::mlir::SymbolRefAttr GlobalStoreGraphOpAdaptor::getGlobal() {
   auto attr = getGlobalAttr();
   return attr;
 }
 
-::mlir::LogicalResult GlobalStoreOpAdaptor::verify(::mlir::Location loc) {
+::mlir::LogicalResult GlobalStoreGraphOpAdaptor::verify(::mlir::Location loc) {
   auto namedAttrRange = odsAttrs;
   auto namedAttrIt = namedAttrRange.begin();
   ::mlir::Attribute tblgen_global;
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
-      return emitError(loc, "'ml_program.global_store' op ""requires attribute 'global'");
-    if (namedAttrIt->getName() == GlobalStoreOp::getGlobalAttrName(*odsOpName)) {
+      return emitError(loc, "'ml_program.global_store_graph' op ""requires attribute 'global'");
+    if (namedAttrIt->getName() == GlobalStoreGraphOp::getGlobalAttrName(*odsOpName)) {
       tblgen_global = namedAttrIt->getValue();
       break;
     }
@@ -1411,11 +1586,11 @@ std::pair<unsigned, unsigned> GlobalStoreOpAdaptor::getODSOperandIndexAndLength(
   }
 
   if (tblgen_global && !((tblgen_global.isa<::mlir::SymbolRefAttr>())))
-    return emitError(loc, "'ml_program.global_store' op ""attribute 'global' failed to satisfy constraint: symbol reference attribute");
+    return emitError(loc, "'ml_program.global_store_graph' op ""attribute 'global' failed to satisfy constraint: symbol reference attribute");
   return ::mlir::success();
 }
 
-std::pair<unsigned, unsigned> GlobalStoreOp::getODSOperandIndexAndLength(unsigned index) {
+std::pair<unsigned, unsigned> GlobalStoreGraphOp::getODSOperandIndexAndLength(unsigned index) {
   bool isVariadic[] = {false, true};
   int prevVariadicCount = 0;
   for (unsigned i = 0; i < index; ++i)
@@ -1433,97 +1608,83 @@ std::pair<unsigned, unsigned> GlobalStoreOp::getODSOperandIndexAndLength(unsigne
   return {start, size};
 }
 
-::mlir::Operation::operand_range GlobalStoreOp::getODSOperands(unsigned index) {
+::mlir::Operation::operand_range GlobalStoreGraphOp::getODSOperands(unsigned index) {
   auto valueRange = getODSOperandIndexAndLength(index);
   return {std::next(getOperation()->operand_begin(), valueRange.first),
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value GlobalStoreOp::getValue() {
+::mlir::Value GlobalStoreGraphOp::getValue() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Operation::operand_range GlobalStoreOp::getConsumeTokens() {
+::mlir::Operation::operand_range GlobalStoreGraphOp::getConsumeTokens() {
   return getODSOperands(1);
 }
 
-::mlir::MutableOperandRange GlobalStoreOp::getValueMutable() {
+::mlir::MutableOperandRange GlobalStoreGraphOp::getValueMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange GlobalStoreOp::getConsumeTokensMutable() {
+::mlir::MutableOperandRange GlobalStoreGraphOp::getConsumeTokensMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-std::pair<unsigned, unsigned> GlobalStoreOp::getODSResultIndexAndLength(unsigned index) {
-  bool isVariadic[] = {true};
-  int prevVariadicCount = 0;
-  for (unsigned i = 0; i < index; ++i)
-    if (isVariadic[i]) ++prevVariadicCount;
-
-  // Calculate how many dynamic values a static variadic operand corresponds to.
-  // This assumes all static variadic operands have the same dynamic value count.
-  int variadicSize = (getOperation()->getNumResults() - 0) / 1;
-  // `index` passed in as the parameter is the static index which counts each
-  // operand (variadic or not) as size 1. So here for each previous static variadic
-  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
-  // value pack for this static operand starts.
-  int start = index + (variadicSize - 1) * prevVariadicCount;
-  int size = isVariadic[index] ? variadicSize : 1;
-  return {start, size};
+std::pair<unsigned, unsigned> GlobalStoreGraphOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
 }
 
-::mlir::Operation::result_range GlobalStoreOp::getODSResults(unsigned index) {
+::mlir::Operation::result_range GlobalStoreGraphOp::getODSResults(unsigned index) {
   auto valueRange = getODSResultIndexAndLength(index);
   return {std::next(getOperation()->result_begin(), valueRange.first),
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value GlobalStoreOp::getProduceToken() {
-  auto results = getODSResults(0);
-  return results.empty() ? ::mlir::Value() : *results.begin();
+::mlir::TypedValue<::mlir::ml_program::TokenType> GlobalStoreGraphOp::getProduceToken() {
+  return *getODSResults(0).begin();
 }
 
-::mlir::SymbolRefAttr GlobalStoreOp::getGlobalAttr() {
+::mlir::SymbolRefAttr GlobalStoreGraphOp::getGlobalAttr() {
   return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getGlobalAttrName()).cast<::mlir::SymbolRefAttr>();
 }
 
-::mlir::SymbolRefAttr GlobalStoreOp::getGlobal() {
+::mlir::SymbolRefAttr GlobalStoreGraphOp::getGlobal() {
   auto attr = getGlobalAttr();
   return attr;
 }
 
-void GlobalStoreOp::setGlobalAttr(::mlir::SymbolRefAttr attr) {
+void GlobalStoreGraphOp::setGlobalAttr(::mlir::SymbolRefAttr attr) {
   (*this)->setAttr(getGlobalAttrName(), attr);
 }
 
-void GlobalStoreOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, /*optional*/::mlir::Type produceToken, ::mlir::SymbolRefAttr global, ::mlir::Value value, ::mlir::ValueRange consumeTokens) {
+void GlobalStoreGraphOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type produceToken, ::mlir::SymbolRefAttr global, ::mlir::Value value, ::mlir::ValueRange consumeTokens) {
   odsState.addOperands(value);
   odsState.addOperands(consumeTokens);
   odsState.addAttribute(getGlobalAttrName(odsState.name), global);
-  if (produceToken)
-    odsState.addTypes(produceToken);
+  odsState.addTypes(produceToken);
 }
 
-void GlobalStoreOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::SymbolRefAttr global, ::mlir::Value value, ::mlir::ValueRange consumeTokens) {
+void GlobalStoreGraphOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::SymbolRefAttr global, ::mlir::Value value, ::mlir::ValueRange consumeTokens) {
   odsState.addOperands(value);
   odsState.addOperands(consumeTokens);
   odsState.addAttribute(getGlobalAttrName(odsState.name), global);
+  assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
 
-void GlobalStoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+void GlobalStoreGraphOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
   assert(operands.size() >= 1u && "mismatched number of parameters");
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
   odsState.addTypes(resultTypes);
 }
 
-::mlir::LogicalResult GlobalStoreOp::verifyInvariantsImpl() {
+::mlir::LogicalResult GlobalStoreGraphOp::verifyInvariantsImpl() {
   auto namedAttrRange = (*this)->getAttrs();
   auto namedAttrIt = namedAttrRange.begin();
   ::mlir::Attribute tblgen_global;
@@ -1558,11 +1719,6 @@ void GlobalStoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSResults(0);
 
-    if (valueGroup0.size() > 1) {
-      return emitOpError("result group starting at #") << index
-          << " requires 0 or 1 element, but found " << valueGroup0.size();
-    }
-
     for (auto v : valueGroup0) {
       if (::mlir::failed(__mlir_ods_local_type_constraint_MLProgramOps1(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
@@ -1571,11 +1727,11 @@ void GlobalStoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
   return ::mlir::success();
 }
 
-::mlir::LogicalResult GlobalStoreOp::verifyInvariants() {
+::mlir::LogicalResult GlobalStoreGraphOp::verifyInvariants() {
   return verifyInvariantsImpl();
 }
 
-::mlir::ParseResult GlobalStoreOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+::mlir::ParseResult GlobalStoreGraphOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::SymbolRefAttr globalAttr;
   ::mlir::OpAsmParser::UnresolvedOperand valueRawOperands[1];
   ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
@@ -1583,7 +1739,8 @@ void GlobalStoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
   ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> consumeTokensOperands;
   ::llvm::SMLoc consumeTokensOperandsLoc;
   (void)consumeTokensOperandsLoc;
-  ::llvm::SmallVector<::mlir::Type, 1> produceTokenTypes;
+  ::mlir::Type produceTokenRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> produceTokenTypes(produceTokenRawTypes);
   ::mlir::Type valueRawTypes[1];
   ::llvm::ArrayRef<::mlir::Type> valueTypes(valueRawTypes);
 
@@ -1599,11 +1756,8 @@ void GlobalStoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
     return ::mlir::failure();
   {
     consumeTokensOperandsLoc = parser.getCurrentLocation();
-    ::mlir::Type produceTokenType;
-    if (parseTokenOrdering(parser, consumeTokensOperands, produceTokenType))
+    if (parseTokenOrdering(parser, consumeTokensOperands, produceTokenRawTypes[0]))
       return ::mlir::failure();
-    if (produceTokenType)
-      produceTokenTypes.push_back(produceTokenType);
   }
   if (parser.parseColon())
     return ::mlir::failure();
@@ -1620,7 +1774,228 @@ void GlobalStoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
   result.addTypes(produceTokenTypes);
   if (parser.resolveOperands(valueOperands, valueTypes, valueOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(consumeTokensOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(consumeTokensOperands, odsBuildableType0, consumeTokensOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void GlobalStoreGraphOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ';
+  _odsPrinter.printAttributeWithoutType(getGlobalAttr());
+  _odsPrinter << ' ' << "=";
+  _odsPrinter << ' ';
+  _odsPrinter << getValue();
+  printTokenOrdering(_odsPrinter, *this, getConsumeTokens(), getProduceToken().getType());
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  {
+    auto type = getValue().getType();
+    if (auto validType = type.dyn_cast<::mlir::Type>())
+      _odsPrinter.printStrippedAttrOrType(validType);
+   else
+     _odsPrinter << type;
+  }
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"global"});
+}
+
+void GlobalStoreGraphOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+  effects.emplace_back(::mlir::MemoryEffects::Read::get(), getGlobalAttr(), ::mlir::SideEffects::DefaultResource::get());
+}
+
+} // namespace ml_program
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::ml_program::GlobalStoreGraphOp)
+
+namespace mlir {
+namespace ml_program {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::ml_program::GlobalStoreOp definitions
+//===----------------------------------------------------------------------===//
+
+GlobalStoreOpAdaptor::GlobalStoreOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("ml_program.global_store", odsAttrs.getContext());
+}
+
+GlobalStoreOpAdaptor::GlobalStoreOpAdaptor(GlobalStoreOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange GlobalStoreOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> GlobalStoreOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange GlobalStoreOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value GlobalStoreOpAdaptor::getValue() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::DictionaryAttr GlobalStoreOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::SymbolRefAttr GlobalStoreOpAdaptor::getGlobalAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, GlobalStoreOp::getGlobalAttrName(*odsOpName)).cast<::mlir::SymbolRefAttr>();
+  return attr;
+}
+
+::mlir::SymbolRefAttr GlobalStoreOpAdaptor::getGlobal() {
+  auto attr = getGlobalAttr();
+  return attr;
+}
+
+::mlir::LogicalResult GlobalStoreOpAdaptor::verify(::mlir::Location loc) {
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_global;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'ml_program.global_store' op ""requires attribute 'global'");
+    if (namedAttrIt->getName() == GlobalStoreOp::getGlobalAttrName(*odsOpName)) {
+      tblgen_global = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
+  if (tblgen_global && !((tblgen_global.isa<::mlir::SymbolRefAttr>())))
+    return emitError(loc, "'ml_program.global_store' op ""attribute 'global' failed to satisfy constraint: symbol reference attribute");
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> GlobalStoreOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range GlobalStoreOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value GlobalStoreOp::getValue() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::MutableOperandRange GlobalStoreOp::getValueMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> GlobalStoreOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range GlobalStoreOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::SymbolRefAttr GlobalStoreOp::getGlobalAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getGlobalAttrName()).cast<::mlir::SymbolRefAttr>();
+}
+
+::mlir::SymbolRefAttr GlobalStoreOp::getGlobal() {
+  auto attr = getGlobalAttr();
+  return attr;
+}
+
+void GlobalStoreOp::setGlobalAttr(::mlir::SymbolRefAttr attr) {
+  (*this)->setAttr(getGlobalAttrName(), attr);
+}
+
+void GlobalStoreOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::SymbolRefAttr global, ::mlir::Value value) {
+  odsState.addOperands(value);
+  odsState.addAttribute(getGlobalAttrName(odsState.name), global);
+}
+
+void GlobalStoreOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::SymbolRefAttr global, ::mlir::Value value) {
+  odsState.addOperands(value);
+  odsState.addAttribute(getGlobalAttrName(odsState.name), global);
+  assert(resultTypes.size() == 0u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void GlobalStoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 1u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 0u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult GlobalStoreOp::verifyInvariantsImpl() {
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_global;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'global'");
+    if (namedAttrIt->getName() == getGlobalAttrName()) {
+      tblgen_global = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_MLProgramOps2(*this, tblgen_global, "global")))
+    return ::mlir::failure();
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_MLProgramOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult GlobalStoreOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+::mlir::ParseResult GlobalStoreOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::mlir::SymbolRefAttr globalAttr;
+  ::mlir::OpAsmParser::UnresolvedOperand valueRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> valueOperands(valueRawOperands);  ::llvm::SMLoc valueOperandsLoc;
+  (void)valueOperandsLoc;
+  ::mlir::Type valueRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> valueTypes(valueRawTypes);
+
+  if (parser.parseCustomAttributeWithFallback(globalAttr, parser.getBuilder().getType<::mlir::NoneType>(), "global",
+          result.attributes)) {
+    return ::mlir::failure();
+  }
+  if (parser.parseEqual())
+    return ::mlir::failure();
+
+  valueOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperand(valueRawOperands[0]))
+    return ::mlir::failure();
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  {
+    ::mlir::Type type;
+    if (parser.parseCustomTypeWithFallback(type))
+      return ::mlir::failure();
+    valueRawTypes[0] = type;
+  }
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  if (parser.resolveOperands(valueOperands, valueTypes, valueOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -1631,7 +2006,6 @@ void GlobalStoreOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << "=";
   _odsPrinter << ' ';
   _odsPrinter << getValue();
-  printTokenOrdering(_odsPrinter, *this, getConsumeTokens(), (getProduceToken() ? getProduceToken().getType() : Type()));
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
@@ -2032,7 +2406,7 @@ std::pair<unsigned, unsigned> SubgraphOpAdaptor::getODSOperandIndexAndLength(uns
 ::mlir::StringAttr SubgraphOpAdaptor::getSymNameAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, SubgraphOp::getSymNameAttrName(*odsOpName)).cast<::mlir::StringAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::StringRef SubgraphOpAdaptor::getSymName() {
@@ -2043,7 +2417,7 @@ std::pair<unsigned, unsigned> SubgraphOpAdaptor::getODSOperandIndexAndLength(uns
 ::mlir::TypeAttr SubgraphOpAdaptor::getFunctionTypeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, SubgraphOp::getFunctionTypeAttrName(*odsOpName)).cast<::mlir::TypeAttr>();
-    return attr;
+  return attr;
 }
 
 ::mlir::FunctionType SubgraphOpAdaptor::getFunctionType() {
@@ -2054,7 +2428,7 @@ std::pair<unsigned, unsigned> SubgraphOpAdaptor::getODSOperandIndexAndLength(uns
 ::mlir::StringAttr SubgraphOpAdaptor::getSymVisibilityAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 0, SubgraphOp::getSymVisibilityAttrName(*odsOpName)).dyn_cast_or_null<::mlir::StringAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional< ::llvm::StringRef > SubgraphOpAdaptor::getSymVisibility() {
@@ -2347,7 +2721,7 @@ std::pair<unsigned, unsigned> TokenOp::getODSResultIndexAndLength(unsigned index
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TokenOp::getToken() {
+::mlir::TypedValue<::mlir::ml_program::TokenType> TokenOp::getToken() {
   return *getODSResults(0).begin();
 }
 

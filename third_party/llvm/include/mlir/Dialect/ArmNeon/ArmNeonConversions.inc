@@ -8,7 +8,7 @@ if (auto op = dyn_cast<::mlir::arm_neon::SMullOp>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::arm_neon::SdotOp>(opInst)) {
@@ -21,6 +21,6 @@ if (auto op = dyn_cast<::mlir::arm_neon::SdotOp>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }

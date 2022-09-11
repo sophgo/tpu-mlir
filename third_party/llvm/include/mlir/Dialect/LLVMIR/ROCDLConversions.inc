@@ -10,94 +10,107 @@ if (auto op = dyn_cast<::mlir::ROCDL::BarrierOp>(opInst)) {
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::BlockDimXOp>(opInst)) {
-moduleTranslation.mapValue(op.res()) = createDeviceFunctionCall(builder, "__ockl_get_local_size", 0);
+moduleTranslation.mapValue(op.getRes()) = createDeviceFunctionCall(builder, "__ockl_get_local_size", 0);
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::BlockDimYOp>(opInst)) {
-moduleTranslation.mapValue(op.res()) = createDeviceFunctionCall(builder, "__ockl_get_local_size", 1);
+moduleTranslation.mapValue(op.getRes()) = createDeviceFunctionCall(builder, "__ockl_get_local_size", 1);
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::BlockDimZOp>(opInst)) {
-moduleTranslation.mapValue(op.res()) = createDeviceFunctionCall(builder, "__ockl_get_local_size", 2);
+moduleTranslation.mapValue(op.getRes()) = createDeviceFunctionCall(builder, "__ockl_get_local_size", 2);
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::BlockIdXOp>(opInst)) {
-moduleTranslation.mapValue(op.res()) = createIntrinsicCall(builder,llvm::Intrinsic::amdgcn_workgroup_id_x);
+moduleTranslation.mapValue(op.getRes()) = createIntrinsicCall(builder,llvm::Intrinsic::amdgcn_workgroup_id_x);
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::BlockIdYOp>(opInst)) {
-moduleTranslation.mapValue(op.res()) = createIntrinsicCall(builder,llvm::Intrinsic::amdgcn_workgroup_id_y);
+moduleTranslation.mapValue(op.getRes()) = createIntrinsicCall(builder,llvm::Intrinsic::amdgcn_workgroup_id_y);
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::BlockIdZOp>(opInst)) {
-moduleTranslation.mapValue(op.res()) = createIntrinsicCall(builder,llvm::Intrinsic::amdgcn_workgroup_id_z);
+moduleTranslation.mapValue(op.getRes()) = createIntrinsicCall(builder,llvm::Intrinsic::amdgcn_workgroup_id_z);
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::GridDimXOp>(opInst)) {
-moduleTranslation.mapValue(op.res()) = createDeviceFunctionCall(builder, "__ockl_get_global_size", 0);
+moduleTranslation.mapValue(op.getRes()) = createDeviceFunctionCall(builder, "__ockl_get_global_size", 0);
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::GridDimYOp>(opInst)) {
-moduleTranslation.mapValue(op.res()) = createDeviceFunctionCall(builder, "__ockl_get_global_size", 1);
+moduleTranslation.mapValue(op.getRes()) = createDeviceFunctionCall(builder, "__ockl_get_global_size", 1);
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::GridDimZOp>(opInst)) {
-moduleTranslation.mapValue(op.res()) = createDeviceFunctionCall(builder, "__ockl_get_global_size", 2);
+moduleTranslation.mapValue(op.getRes()) = createDeviceFunctionCall(builder, "__ockl_get_global_size", 2);
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::MubufLoadOp>(opInst)) {
 
-      moduleTranslation.mapValue(op.res()) = createIntrinsicCall(builder,
-          llvm::Intrinsic::amdgcn_buffer_load, {moduleTranslation.lookupValue(op.rsrc()), moduleTranslation.lookupValue(op.vindex()), moduleTranslation.lookupValue(op.offset()), moduleTranslation.lookupValue(op.glc()),
-          moduleTranslation.lookupValue(op.slc())}, {moduleTranslation.convertType(op.getResult().getType())});
+      moduleTranslation.mapValue(op.getRes()) = createIntrinsicCall(builder,
+          llvm::Intrinsic::amdgcn_buffer_load, {moduleTranslation.lookupValue(op.getRsrc()), moduleTranslation.lookupValue(op.getVindex()), moduleTranslation.lookupValue(op.getOffset()), moduleTranslation.lookupValue(op.getGlc()),
+          moduleTranslation.lookupValue(op.getSlc())}, {moduleTranslation.convertType(op.getResult().getType())});
   
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::MubufStoreOp>(opInst)) {
 
-    auto vdataType = moduleTranslation.convertType(op.vdata().getType());
+    auto vdataType = moduleTranslation.convertType(op.getVdata().getType());
     createIntrinsicCall(builder,
-          llvm::Intrinsic::amdgcn_buffer_store, {moduleTranslation.lookupValue(op.vdata()), moduleTranslation.lookupValue(op.rsrc()), moduleTranslation.lookupValue(op.vindex()),
-          moduleTranslation.lookupValue(op.offset()), moduleTranslation.lookupValue(op.glc()), moduleTranslation.lookupValue(op.slc())}, {vdataType});
+          llvm::Intrinsic::amdgcn_buffer_store, {moduleTranslation.lookupValue(op.getVdata()), moduleTranslation.lookupValue(op.getRsrc()), moduleTranslation.lookupValue(op.getVindex()),
+          moduleTranslation.lookupValue(op.getOffset()), moduleTranslation.lookupValue(op.getGlc()), moduleTranslation.lookupValue(op.getSlc())}, {vdataType});
   
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::RawBufferAtomicFAddOp>(opInst)) {
 
-      auto vdataType = moduleTranslation.convertType(op.vdata().getType());
+      auto vdataType = moduleTranslation.convertType(op.getVdata().getType());
       createIntrinsicCall(builder,
-          llvm::Intrinsic::amdgcn_raw_buffer_atomic_fadd, {moduleTranslation.lookupValue(op.vdata()), moduleTranslation.lookupValue(op.rsrc()),
-            moduleTranslation.lookupValue(op.offset()), moduleTranslation.lookupValue(op.soffset()), moduleTranslation.lookupValue(op.aux())}, {vdataType});
+          llvm::Intrinsic::amdgcn_raw_buffer_atomic_fadd, {moduleTranslation.lookupValue(op.getVdata()), moduleTranslation.lookupValue(op.getRsrc()),
+            moduleTranslation.lookupValue(op.getOffset()), moduleTranslation.lookupValue(op.getSoffset()), moduleTranslation.lookupValue(op.getAux())}, {vdataType});
   
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::RawBufferLoadOp>(opInst)) {
 
-      moduleTranslation.mapValue(op.res()) = createIntrinsicCall(builder,
-          llvm::Intrinsic::amdgcn_raw_buffer_load, {moduleTranslation.lookupValue(op.rsrc()), moduleTranslation.lookupValue(op.offset()),
-          moduleTranslation.lookupValue(op.soffset()), moduleTranslation.lookupValue(op.aux())}, {moduleTranslation.convertType(op.getResult().getType())});
+      moduleTranslation.mapValue(op.getRes()) = createIntrinsicCall(builder,
+          llvm::Intrinsic::amdgcn_raw_buffer_load, {moduleTranslation.lookupValue(op.getRsrc()), moduleTranslation.lookupValue(op.getOffset()),
+          moduleTranslation.lookupValue(op.getSoffset()), moduleTranslation.lookupValue(op.getAux())}, {moduleTranslation.convertType(op.getResult().getType())});
   
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::RawBufferStoreOp>(opInst)) {
 
-    auto vdataType = moduleTranslation.convertType(op.vdata().getType());
+    auto vdataType = moduleTranslation.convertType(op.getVdata().getType());
     createIntrinsicCall(builder,
-          llvm::Intrinsic::amdgcn_raw_buffer_store, {moduleTranslation.lookupValue(op.vdata()), moduleTranslation.lookupValue(op.rsrc()),
-          moduleTranslation.lookupValue(op.offset()), moduleTranslation.lookupValue(op.soffset()), moduleTranslation.lookupValue(op.aux())}, {vdataType});
+          llvm::Intrinsic::amdgcn_raw_buffer_store, {moduleTranslation.lookupValue(op.getVdata()), moduleTranslation.lookupValue(op.getRsrc()),
+          moduleTranslation.lookupValue(op.getOffset()), moduleTranslation.lookupValue(op.getSoffset()), moduleTranslation.lookupValue(op.getAux())}, {vdataType});
   
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::ThreadIdXOp>(opInst)) {
-moduleTranslation.mapValue(op.res()) = createIntrinsicCall(builder,llvm::Intrinsic::amdgcn_workitem_id_x);
+moduleTranslation.mapValue(op.getRes()) = createIntrinsicCall(builder,llvm::Intrinsic::amdgcn_workitem_id_x);
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::ThreadIdYOp>(opInst)) {
-moduleTranslation.mapValue(op.res()) = createIntrinsicCall(builder,llvm::Intrinsic::amdgcn_workitem_id_y);
+moduleTranslation.mapValue(op.getRes()) = createIntrinsicCall(builder,llvm::Intrinsic::amdgcn_workitem_id_y);
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::ThreadIdZOp>(opInst)) {
-moduleTranslation.mapValue(op.res()) = createIntrinsicCall(builder,llvm::Intrinsic::amdgcn_workitem_id_z);
+moduleTranslation.mapValue(op.getRes()) = createIntrinsicCall(builder,llvm::Intrinsic::amdgcn_workitem_id_z);
+  return success();
+}
+if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_16x16x16bf16_1k>(opInst)) {
+
+    llvm::Module *module = builder.GetInsertBlock()->getModule();
+    llvm::Function *fn = llvm::Intrinsic::getDeclaration(
+        module,
+        llvm::Intrinsic::amdgcn_mfma_f32_16x16x16bf16_1k,
+        { 
+        });
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    auto *inst = builder.CreateCall(fn, operands);
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_16x16x16f16>(opInst)) {
@@ -110,7 +123,7 @@ if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_16x16x16f16>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_16x16x1f32>(opInst)) {
@@ -123,7 +136,7 @@ if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_16x16x1f32>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_16x16x2bf16>(opInst)) {
@@ -136,7 +149,20 @@ if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_16x16x2bf16>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
+  return success();
+}
+if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_16x16x4bf16_1k>(opInst)) {
+
+    llvm::Module *module = builder.GetInsertBlock()->getModule();
+    llvm::Function *fn = llvm::Intrinsic::getDeclaration(
+        module,
+        llvm::Intrinsic::amdgcn_mfma_f32_16x16x4bf16_1k,
+        { 
+        });
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    auto *inst = builder.CreateCall(fn, operands);
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_16x16x4f16>(opInst)) {
@@ -149,7 +175,7 @@ if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_16x16x4f16>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_16x16x4f32>(opInst)) {
@@ -162,7 +188,20 @@ if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_16x16x4f32>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
+  return success();
+}
+if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_16x16x8_xf32>(opInst)) {
+
+    llvm::Module *module = builder.GetInsertBlock()->getModule();
+    llvm::Function *fn = llvm::Intrinsic::getDeclaration(
+        module,
+        llvm::Intrinsic::amdgcn_mfma_f32_16x16x8_xf32,
+        { 
+        });
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    auto *inst = builder.CreateCall(fn, operands);
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_16x16x8bf16>(opInst)) {
@@ -175,7 +214,7 @@ if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_16x16x8bf16>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_32x32x1f32>(opInst)) {
@@ -188,7 +227,7 @@ if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_32x32x1f32>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_32x32x2bf16>(opInst)) {
@@ -201,7 +240,7 @@ if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_32x32x2bf16>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_32x32x2f32>(opInst)) {
@@ -214,7 +253,20 @@ if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_32x32x2f32>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
+  return success();
+}
+if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_32x32x4_xf32>(opInst)) {
+
+    llvm::Module *module = builder.GetInsertBlock()->getModule();
+    llvm::Function *fn = llvm::Intrinsic::getDeclaration(
+        module,
+        llvm::Intrinsic::amdgcn_mfma_f32_32x32x4_xf32,
+        { 
+        });
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    auto *inst = builder.CreateCall(fn, operands);
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_32x32x4bf16>(opInst)) {
@@ -227,7 +279,20 @@ if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_32x32x4bf16>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
+  return success();
+}
+if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_32x32x4bf16_1k>(opInst)) {
+
+    llvm::Module *module = builder.GetInsertBlock()->getModule();
+    llvm::Function *fn = llvm::Intrinsic::getDeclaration(
+        module,
+        llvm::Intrinsic::amdgcn_mfma_f32_32x32x4bf16_1k,
+        { 
+        });
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    auto *inst = builder.CreateCall(fn, operands);
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_32x32x4f16>(opInst)) {
@@ -240,7 +305,20 @@ if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_32x32x4f16>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
+  return success();
+}
+if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_32x32x8bf16_1k>(opInst)) {
+
+    llvm::Module *module = builder.GetInsertBlock()->getModule();
+    llvm::Function *fn = llvm::Intrinsic::getDeclaration(
+        module,
+        llvm::Intrinsic::amdgcn_mfma_f32_32x32x8bf16_1k,
+        { 
+        });
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    auto *inst = builder.CreateCall(fn, operands);
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_32x32x8f16>(opInst)) {
@@ -253,7 +331,7 @@ if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_32x32x8f16>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_4x4x1f32>(opInst)) {
@@ -266,7 +344,7 @@ if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_4x4x1f32>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_4x4x2bf16>(opInst)) {
@@ -279,7 +357,20 @@ if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_4x4x2bf16>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
+  return success();
+}
+if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_4x4x4bf16_1k>(opInst)) {
+
+    llvm::Module *module = builder.GetInsertBlock()->getModule();
+    llvm::Function *fn = llvm::Intrinsic::getDeclaration(
+        module,
+        llvm::Intrinsic::amdgcn_mfma_f32_4x4x4bf16_1k,
+        { 
+        });
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    auto *inst = builder.CreateCall(fn, operands);
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_4x4x4f16>(opInst)) {
@@ -292,7 +383,33 @@ if (auto op = dyn_cast<::mlir::ROCDL::mfma_f32_4x4x4f16>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
+  return success();
+}
+if (auto op = dyn_cast<::mlir::ROCDL::mfma_f64_16x16x4f64>(opInst)) {
+
+    llvm::Module *module = builder.GetInsertBlock()->getModule();
+    llvm::Function *fn = llvm::Intrinsic::getDeclaration(
+        module,
+        llvm::Intrinsic::amdgcn_mfma_f64_16x16x4f64,
+        { 
+        });
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    auto *inst = builder.CreateCall(fn, operands);
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
+  return success();
+}
+if (auto op = dyn_cast<::mlir::ROCDL::mfma_f64_4x4x4f64>(opInst)) {
+
+    llvm::Module *module = builder.GetInsertBlock()->getModule();
+    llvm::Function *fn = llvm::Intrinsic::getDeclaration(
+        module,
+        llvm::Intrinsic::amdgcn_mfma_f64_4x4x4f64,
+        { 
+        });
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    auto *inst = builder.CreateCall(fn, operands);
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::mfma_i32_16x16x16i8>(opInst)) {
@@ -305,7 +422,20 @@ if (auto op = dyn_cast<::mlir::ROCDL::mfma_i32_16x16x16i8>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
+  return success();
+}
+if (auto op = dyn_cast<::mlir::ROCDL::mfma_i32_16x16x32_i8>(opInst)) {
+
+    llvm::Module *module = builder.GetInsertBlock()->getModule();
+    llvm::Function *fn = llvm::Intrinsic::getDeclaration(
+        module,
+        llvm::Intrinsic::amdgcn_mfma_i32_16x16x32_i8,
+        { 
+        });
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    auto *inst = builder.CreateCall(fn, operands);
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::mfma_i32_16x16x4i8>(opInst)) {
@@ -318,7 +448,20 @@ if (auto op = dyn_cast<::mlir::ROCDL::mfma_i32_16x16x4i8>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
+  return success();
+}
+if (auto op = dyn_cast<::mlir::ROCDL::mfma_i32_32x32x16_i8>(opInst)) {
+
+    llvm::Module *module = builder.GetInsertBlock()->getModule();
+    llvm::Function *fn = llvm::Intrinsic::getDeclaration(
+        module,
+        llvm::Intrinsic::amdgcn_mfma_i32_32x32x16_i8,
+        { 
+        });
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    auto *inst = builder.CreateCall(fn, operands);
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::mfma_i32_32x32x4i8>(opInst)) {
@@ -331,7 +474,7 @@ if (auto op = dyn_cast<::mlir::ROCDL::mfma_i32_32x32x4i8>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::mfma_i32_32x32x8i8>(opInst)) {
@@ -344,7 +487,7 @@ if (auto op = dyn_cast<::mlir::ROCDL::mfma_i32_32x32x8i8>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::ROCDL::mfma_i32_4x4x4i8>(opInst)) {
@@ -357,6 +500,6 @@ if (auto op = dyn_cast<::mlir::ROCDL::mfma_i32_4x4x4i8>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }

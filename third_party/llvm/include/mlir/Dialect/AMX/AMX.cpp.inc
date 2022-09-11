@@ -183,7 +183,7 @@ std::pair<unsigned, unsigned> x86_amx_tdpbf16ps::getODSResultIndexAndLength(unsi
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value x86_amx_tdpbf16ps::res() {
+::mlir::Value x86_amx_tdpbf16ps::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -331,7 +331,7 @@ std::pair<unsigned, unsigned> x86_amx_tdpbssd::getODSResultIndexAndLength(unsign
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value x86_amx_tdpbssd::res() {
+::mlir::Value x86_amx_tdpbssd::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -479,7 +479,7 @@ std::pair<unsigned, unsigned> x86_amx_tdpbsud::getODSResultIndexAndLength(unsign
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value x86_amx_tdpbsud::res() {
+::mlir::Value x86_amx_tdpbsud::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -627,7 +627,7 @@ std::pair<unsigned, unsigned> x86_amx_tdpbusd::getODSResultIndexAndLength(unsign
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value x86_amx_tdpbusd::res() {
+::mlir::Value x86_amx_tdpbusd::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -775,7 +775,7 @@ std::pair<unsigned, unsigned> x86_amx_tdpbuud::getODSResultIndexAndLength(unsign
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value x86_amx_tdpbuud::res() {
+::mlir::Value x86_amx_tdpbuud::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -923,7 +923,7 @@ std::pair<unsigned, unsigned> x86_amx_tileloadd64::getODSResultIndexAndLength(un
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value x86_amx_tileloadd64::res() {
+::mlir::Value x86_amx_tileloadd64::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -1181,7 +1181,7 @@ std::pair<unsigned, unsigned> x86_amx_tilezero::getODSResultIndexAndLength(unsig
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value x86_amx_tilezero::res() {
+::mlir::Value x86_amx_tilezero::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -1283,11 +1283,11 @@ std::pair<unsigned, unsigned> TileLoadOpAdaptor::getODSOperandIndexAndLength(uns
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TileLoadOpAdaptor::base() {
+::mlir::Value TileLoadOpAdaptor::getBase() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::ValueRange TileLoadOpAdaptor::indices() {
+::mlir::ValueRange TileLoadOpAdaptor::getIndices() {
   return getODSOperands(1);
 }
 
@@ -1323,21 +1323,21 @@ std::pair<unsigned, unsigned> TileLoadOp::getODSOperandIndexAndLength(unsigned i
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TileLoadOp::base() {
+::mlir::TypedValue<::mlir::MemRefType> TileLoadOp::getBase() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Operation::operand_range TileLoadOp::indices() {
+::mlir::Operation::operand_range TileLoadOp::getIndices() {
   return getODSOperands(1);
 }
 
-::mlir::MutableOperandRange TileLoadOp::baseMutable() {
+::mlir::MutableOperandRange TileLoadOp::getBaseMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange TileLoadOp::indicesMutable() {
+::mlir::MutableOperandRange TileLoadOp::getIndicesMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -1353,7 +1353,7 @@ std::pair<unsigned, unsigned> TileLoadOp::getODSResultIndexAndLength(unsigned in
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TileLoadOp::res() {
+::mlir::TypedValue<::mlir::VectorType> TileLoadOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -1459,22 +1459,22 @@ void TileLoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   result.addTypes(resTypes);
   if (parser.resolveOperands(baseOperands, baseTypes, baseOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(indicesOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(indicesOperands, odsBuildableType0, indicesOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
 
 void TileLoadOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << base();
+  _odsPrinter << getBase();
   _odsPrinter << "[";
-  _odsPrinter << indices();
+  _odsPrinter << getIndices();
   _odsPrinter << "]";
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = base().getType();
+    auto type = getBase().getType();
     if (auto validType = type.dyn_cast<::mlir::MemRefType>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -1483,7 +1483,7 @@ void TileLoadOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << "into";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::VectorType>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -1527,15 +1527,15 @@ std::pair<unsigned, unsigned> TileMulFOpAdaptor::getODSOperandIndexAndLength(uns
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TileMulFOpAdaptor::lhs() {
+::mlir::Value TileMulFOpAdaptor::getLhs() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value TileMulFOpAdaptor::rhs() {
+::mlir::Value TileMulFOpAdaptor::getRhs() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value TileMulFOpAdaptor::acc() {
+::mlir::Value TileMulFOpAdaptor::getAcc() {
   return *getODSOperands(2).begin();
 }
 
@@ -1557,31 +1557,31 @@ std::pair<unsigned, unsigned> TileMulFOp::getODSOperandIndexAndLength(unsigned i
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TileMulFOp::lhs() {
+::mlir::TypedValue<::mlir::VectorType> TileMulFOp::getLhs() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value TileMulFOp::rhs() {
+::mlir::TypedValue<::mlir::VectorType> TileMulFOp::getRhs() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value TileMulFOp::acc() {
+::mlir::TypedValue<::mlir::VectorType> TileMulFOp::getAcc() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::MutableOperandRange TileMulFOp::lhsMutable() {
+::mlir::MutableOperandRange TileMulFOp::getLhsMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange TileMulFOp::rhsMutable() {
+::mlir::MutableOperandRange TileMulFOp::getRhsMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange TileMulFOp::accMutable() {
+::mlir::MutableOperandRange TileMulFOp::getAccMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -1597,7 +1597,7 @@ std::pair<unsigned, unsigned> TileMulFOp::getODSResultIndexAndLength(unsigned in
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TileMulFOp::res() {
+::mlir::TypedValue<::mlir::VectorType> TileMulFOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -1655,7 +1655,7 @@ void TileMulFOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
         return ::mlir::failure();
     }
   }
-  if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(2).begin()).getType(), (*this->getODSResults(0).begin()).getType()})))))
+  if (!((((*this->getODSOperands(2).begin()).getType()) == ((*this->getODSResults(0).begin()).getType()) && ((*this->getODSResults(0).begin()).getType()) == ((*this->getODSOperands(2).begin()).getType()))))
     return emitOpError("failed to verify that all of {acc, res} have same type");
   return ::mlir::success();
 }
@@ -1727,7 +1727,7 @@ void TileMulFOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
       return ::mlir::failure();
     accRawTypes[0] = type;
   }
-  result.addTypes(accTypes);
+  result.addTypes(accTypes[0]);
   if (parser.resolveOperands(lhsOperands, lhsTypes, lhsOperandsLoc, result.operands))
     return ::mlir::failure();
   if (parser.resolveOperands(rhsOperands, rhsTypes, rhsOperandsLoc, result.operands))
@@ -1739,18 +1739,18 @@ void TileMulFOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 
 void TileMulFOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << lhs();
+  _odsPrinter << getLhs();
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  _odsPrinter << rhs();
+  _odsPrinter << getRhs();
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  _odsPrinter << acc();
+  _odsPrinter << getAcc();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = lhs().getType();
+    auto type = getLhs().getType();
     if (auto validType = type.dyn_cast<::mlir::VectorType>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -1759,7 +1759,7 @@ void TileMulFOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ",";
   _odsPrinter << ' ';
   {
-    auto type = rhs().getType();
+    auto type = getRhs().getType();
     if (auto validType = type.dyn_cast<::mlir::VectorType>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -1768,7 +1768,7 @@ void TileMulFOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ",";
   _odsPrinter << ' ';
   {
-    auto type = acc().getType();
+    auto type = getAcc().getType();
     if (auto validType = type.dyn_cast<::mlir::VectorType>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -1810,15 +1810,15 @@ std::pair<unsigned, unsigned> TileMulIOpAdaptor::getODSOperandIndexAndLength(uns
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TileMulIOpAdaptor::lhs() {
+::mlir::Value TileMulIOpAdaptor::getLhs() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value TileMulIOpAdaptor::rhs() {
+::mlir::Value TileMulIOpAdaptor::getRhs() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value TileMulIOpAdaptor::acc() {
+::mlir::Value TileMulIOpAdaptor::getAcc() {
   return *getODSOperands(2).begin();
 }
 
@@ -1826,25 +1826,25 @@ std::pair<unsigned, unsigned> TileMulIOpAdaptor::getODSOperandIndexAndLength(uns
   return odsAttrs;
 }
 
-::mlir::UnitAttr TileMulIOpAdaptor::isZextLhsAttr() {
+::mlir::UnitAttr TileMulIOpAdaptor::getIsZextLhsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, TileMulIOp::isZextLhsAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, TileMulIOp::getIsZextLhsAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
+  return attr;
 }
 
-bool TileMulIOpAdaptor::isZextLhs() {
-  auto attr = isZextLhsAttr();
+bool TileMulIOpAdaptor::getIsZextLhs() {
+  auto attr = getIsZextLhsAttr();
   return attr != nullptr;
 }
 
-::mlir::UnitAttr TileMulIOpAdaptor::isZextRhsAttr() {
+::mlir::UnitAttr TileMulIOpAdaptor::getIsZextRhsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, TileMulIOp::isZextRhsAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, TileMulIOp::getIsZextRhsAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
+  return attr;
 }
 
-bool TileMulIOpAdaptor::isZextRhs() {
-  auto attr = isZextRhsAttr();
+bool TileMulIOpAdaptor::getIsZextRhs() {
+  auto attr = getIsZextRhsAttr();
   return attr != nullptr;
 }
 
@@ -1857,10 +1857,10 @@ bool TileMulIOpAdaptor::isZextRhs() {
     if (namedAttrIt == namedAttrRange.end()) {
       break;
     }
-    else if (namedAttrIt->getName() == TileMulIOp::isZextLhsAttrName(*odsOpName)) {
+    else if (namedAttrIt->getName() == TileMulIOp::getIsZextLhsAttrName(*odsOpName)) {
       tblgen_isZextLhs = namedAttrIt->getValue();
     }
-    else if (namedAttrIt->getName() == TileMulIOp::isZextRhsAttrName(*odsOpName)) {
+    else if (namedAttrIt->getName() == TileMulIOp::getIsZextRhsAttrName(*odsOpName)) {
       tblgen_isZextRhs = namedAttrIt->getValue();
     }
     ++namedAttrIt;
@@ -1884,31 +1884,31 @@ std::pair<unsigned, unsigned> TileMulIOp::getODSOperandIndexAndLength(unsigned i
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TileMulIOp::lhs() {
+::mlir::TypedValue<::mlir::VectorType> TileMulIOp::getLhs() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value TileMulIOp::rhs() {
+::mlir::TypedValue<::mlir::VectorType> TileMulIOp::getRhs() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value TileMulIOp::acc() {
+::mlir::TypedValue<::mlir::VectorType> TileMulIOp::getAcc() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::MutableOperandRange TileMulIOp::lhsMutable() {
+::mlir::MutableOperandRange TileMulIOp::getLhsMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange TileMulIOp::rhsMutable() {
+::mlir::MutableOperandRange TileMulIOp::getRhsMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange TileMulIOp::accMutable() {
+::mlir::MutableOperandRange TileMulIOp::getAccMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -1924,42 +1924,42 @@ std::pair<unsigned, unsigned> TileMulIOp::getODSResultIndexAndLength(unsigned in
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TileMulIOp::res() {
+::mlir::TypedValue<::mlir::VectorType> TileMulIOp::getRes() {
   return *getODSResults(0).begin();
 }
 
-::mlir::UnitAttr TileMulIOp::isZextLhsAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, isZextLhsAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+::mlir::UnitAttr TileMulIOp::getIsZextLhsAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getIsZextLhsAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
 }
 
-bool TileMulIOp::isZextLhs() {
-  auto attr = isZextLhsAttr();
+bool TileMulIOp::getIsZextLhs() {
+  auto attr = getIsZextLhsAttr();
   return attr != nullptr;
 }
 
-::mlir::UnitAttr TileMulIOp::isZextRhsAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, isZextRhsAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+::mlir::UnitAttr TileMulIOp::getIsZextRhsAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getIsZextRhsAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
 }
 
-bool TileMulIOp::isZextRhs() {
-  auto attr = isZextRhsAttr();
+bool TileMulIOp::getIsZextRhs() {
+  auto attr = getIsZextRhsAttr();
   return attr != nullptr;
 }
 
-void TileMulIOp::isZextLhsAttr(::mlir::UnitAttr attr) {
-  (*this)->setAttr(isZextLhsAttrName(), attr);
+void TileMulIOp::setIsZextLhsAttr(::mlir::UnitAttr attr) {
+  (*this)->setAttr(getIsZextLhsAttrName(), attr);
 }
 
-void TileMulIOp::isZextRhsAttr(::mlir::UnitAttr attr) {
-  (*this)->setAttr(isZextRhsAttrName(), attr);
+void TileMulIOp::setIsZextRhsAttr(::mlir::UnitAttr attr) {
+  (*this)->setAttr(getIsZextRhsAttrName(), attr);
 }
 
 ::mlir::Attribute TileMulIOp::removeIsZextLhsAttr() {
-  return (*this)->removeAttr(isZextLhsAttrName());
+  return (*this)->removeAttr(getIsZextLhsAttrName());
 }
 
 ::mlir::Attribute TileMulIOp::removeIsZextRhsAttr() {
-  return (*this)->removeAttr(isZextRhsAttrName());
+  return (*this)->removeAttr(getIsZextRhsAttrName());
 }
 
 void TileMulIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value lhs, ::mlir::Value rhs, ::mlir::Value acc, /*optional*/::mlir::UnitAttr isZextLhs, /*optional*/::mlir::UnitAttr isZextRhs) {
@@ -1967,10 +1967,10 @@ void TileMulIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
   odsState.addOperands(rhs);
   odsState.addOperands(acc);
   if (isZextLhs) {
-  odsState.addAttribute(isZextLhsAttrName(odsState.name), isZextLhs);
+  odsState.addAttribute(getIsZextLhsAttrName(odsState.name), isZextLhs);
   }
   if (isZextRhs) {
-  odsState.addAttribute(isZextRhsAttrName(odsState.name), isZextRhs);
+  odsState.addAttribute(getIsZextRhsAttrName(odsState.name), isZextRhs);
   }
   odsState.addTypes(res);
 }
@@ -1980,10 +1980,10 @@ void TileMulIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
   odsState.addOperands(rhs);
   odsState.addOperands(acc);
   if (isZextLhs) {
-  odsState.addAttribute(isZextLhsAttrName(odsState.name), isZextLhs);
+  odsState.addAttribute(getIsZextLhsAttrName(odsState.name), isZextLhs);
   }
   if (isZextRhs) {
-  odsState.addAttribute(isZextRhsAttrName(odsState.name), isZextRhs);
+  odsState.addAttribute(getIsZextRhsAttrName(odsState.name), isZextRhs);
   }
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
@@ -1994,10 +1994,10 @@ void TileMulIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
   odsState.addOperands(rhs);
   odsState.addOperands(acc);
   if (isZextLhs) {
-  odsState.addAttribute(isZextLhsAttrName(odsState.name), odsBuilder.getUnitAttr());
+  odsState.addAttribute(getIsZextLhsAttrName(odsState.name), odsBuilder.getUnitAttr());
   }
   if (isZextRhs) {
-  odsState.addAttribute(isZextRhsAttrName(odsState.name), odsBuilder.getUnitAttr());
+  odsState.addAttribute(getIsZextRhsAttrName(odsState.name), odsBuilder.getUnitAttr());
   }
   odsState.addTypes(res);
 }
@@ -2007,10 +2007,10 @@ void TileMulIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
   odsState.addOperands(rhs);
   odsState.addOperands(acc);
   if (isZextLhs) {
-  odsState.addAttribute(isZextLhsAttrName(odsState.name), odsBuilder.getUnitAttr());
+  odsState.addAttribute(getIsZextLhsAttrName(odsState.name), odsBuilder.getUnitAttr());
   }
   if (isZextRhs) {
-  odsState.addAttribute(isZextRhsAttrName(odsState.name), odsBuilder.getUnitAttr());
+  odsState.addAttribute(getIsZextRhsAttrName(odsState.name), odsBuilder.getUnitAttr());
   }
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
@@ -2033,10 +2033,10 @@ void TileMulIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
     if (namedAttrIt == namedAttrRange.end()) {
       break;
     }
-    else if (namedAttrIt->getName() == isZextLhsAttrName()) {
+    else if (namedAttrIt->getName() == getIsZextLhsAttrName()) {
       tblgen_isZextLhs = namedAttrIt->getValue();
     }
-    else if (namedAttrIt->getName() == isZextRhsAttrName()) {
+    else if (namedAttrIt->getName() == getIsZextRhsAttrName()) {
       tblgen_isZextRhs = namedAttrIt->getValue();
     }
     ++namedAttrIt;
@@ -2077,7 +2077,7 @@ void TileMulIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
         return ::mlir::failure();
     }
   }
-  if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(2).begin()).getType(), (*this->getODSResults(0).begin()).getType()})))))
+  if (!((((*this->getODSOperands(2).begin()).getType()) == ((*this->getODSResults(0).begin()).getType()) && ((*this->getODSResults(0).begin()).getType()) == ((*this->getODSOperands(2).begin()).getType()))))
     return emitOpError("failed to verify that all of {acc, res} have same type");
   return ::mlir::success();
 }
@@ -2155,7 +2155,7 @@ void TileMulIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
       return ::mlir::failure();
     accRawTypes[0] = type;
   }
-  result.addTypes(accTypes);
+  result.addTypes(accTypes[0]);
   if (parser.resolveOperands(lhsOperands, lhsTypes, lhsOperandsLoc, result.operands))
     return ::mlir::failure();
   if (parser.resolveOperands(rhsOperands, rhsTypes, rhsOperandsLoc, result.operands))
@@ -2167,24 +2167,24 @@ void TileMulIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 
 void TileMulIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << lhs();
+  _odsPrinter << getLhs();
   if ((*this)->getAttr("isZextLhs")) {
   _odsPrinter << ' ' << "zext";
   }
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  _odsPrinter << rhs();
+  _odsPrinter << getRhs();
   if ((*this)->getAttr("isZextRhs")) {
   _odsPrinter << ' ' << "zext";
   }
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  _odsPrinter << acc();
+  _odsPrinter << getAcc();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"isZextLhs", "isZextRhs"});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = lhs().getType();
+    auto type = getLhs().getType();
     if (auto validType = type.dyn_cast<::mlir::VectorType>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -2193,7 +2193,7 @@ void TileMulIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ",";
   _odsPrinter << ' ';
   {
-    auto type = rhs().getType();
+    auto type = getRhs().getType();
     if (auto validType = type.dyn_cast<::mlir::VectorType>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -2202,7 +2202,7 @@ void TileMulIOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ",";
   _odsPrinter << ' ';
   {
-    auto type = acc().getType();
+    auto type = getAcc().getType();
     if (auto validType = type.dyn_cast<::mlir::VectorType>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -2258,15 +2258,15 @@ std::pair<unsigned, unsigned> TileStoreOpAdaptor::getODSOperandIndexAndLength(un
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TileStoreOpAdaptor::base() {
+::mlir::Value TileStoreOpAdaptor::getBase() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::ValueRange TileStoreOpAdaptor::indices() {
+::mlir::ValueRange TileStoreOpAdaptor::getIndices() {
   return getODSOperands(1);
 }
 
-::mlir::Value TileStoreOpAdaptor::val() {
+::mlir::Value TileStoreOpAdaptor::getVal() {
   return *getODSOperands(2).begin();
 }
 
@@ -2302,31 +2302,31 @@ std::pair<unsigned, unsigned> TileStoreOp::getODSOperandIndexAndLength(unsigned 
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TileStoreOp::base() {
+::mlir::TypedValue<::mlir::MemRefType> TileStoreOp::getBase() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Operation::operand_range TileStoreOp::indices() {
+::mlir::Operation::operand_range TileStoreOp::getIndices() {
   return getODSOperands(1);
 }
 
-::mlir::Value TileStoreOp::val() {
+::mlir::TypedValue<::mlir::VectorType> TileStoreOp::getVal() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::MutableOperandRange TileStoreOp::baseMutable() {
+::mlir::MutableOperandRange TileStoreOp::getBaseMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange TileStoreOp::indicesMutable() {
+::mlir::MutableOperandRange TileStoreOp::getIndicesMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange TileStoreOp::valMutable() {
+::mlir::MutableOperandRange TileStoreOp::getValMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -2450,7 +2450,7 @@ void TileStoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getIndexType();
   if (parser.resolveOperands(baseOperands, baseTypes, baseOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(indicesOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(indicesOperands, odsBuildableType0, indicesOperandsLoc, result.operands))
     return ::mlir::failure();
   if (parser.resolveOperands(valOperands, valTypes, valOperandsLoc, result.operands))
     return ::mlir::failure();
@@ -2459,18 +2459,18 @@ void TileStoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
 
 void TileStoreOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << base();
+  _odsPrinter << getBase();
   _odsPrinter << "[";
-  _odsPrinter << indices();
+  _odsPrinter << getIndices();
   _odsPrinter << "]";
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  _odsPrinter << val();
+  _odsPrinter << getVal();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = base().getType();
+    auto type = getBase().getType();
     if (auto validType = type.dyn_cast<::mlir::MemRefType>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -2479,7 +2479,7 @@ void TileStoreOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ",";
   _odsPrinter << ' ';
   {
-    auto type = val().getType();
+    auto type = getVal().getType();
     if (auto validType = type.dyn_cast<::mlir::VectorType>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -2551,7 +2551,7 @@ std::pair<unsigned, unsigned> TileZeroOp::getODSResultIndexAndLength(unsigned in
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TileZeroOp::res() {
+::mlir::TypedValue<::mlir::VectorType> TileZeroOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -2614,7 +2614,7 @@ void TileZeroOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::VectorType>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else

@@ -1,2 +1,2 @@
-#define LLVM_REVISION "4dcbe11411c4fcb7959b25c6604774b2045e13f0"
-#define LLVM_REPOSITORY "https://hub.fastgit.org/llvm/llvm-project.git"
+#define LLVM_REVISION "3cb0686798d6867f9824ba12d553bf861e547da7"
+#define LLVM_REPOSITORY "https://gitee.com/mirrors/llvm-project.git"

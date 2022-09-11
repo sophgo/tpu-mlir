@@ -72,28 +72,8 @@ MLIR_CAPI_EXPORTED void mlirRegisterLinalgLinalgNamedOpConversion();
 
 
 /* Create Linalg Pass. */
-MLIR_CAPI_EXPORTED MlirPass mlirCreateLinalgLinalgPromotion();
-MLIR_CAPI_EXPORTED void mlirRegisterLinalgLinalgPromotion();
-
-
-/* Create Linalg Pass. */
 MLIR_CAPI_EXPORTED MlirPass mlirCreateLinalgLinalgStrategyDecomposePass();
 MLIR_CAPI_EXPORTED void mlirRegisterLinalgLinalgStrategyDecomposePass();
-
-
-/* Create Linalg Pass. */
-MLIR_CAPI_EXPORTED MlirPass mlirCreateLinalgLinalgStrategyEnablePass();
-MLIR_CAPI_EXPORTED void mlirRegisterLinalgLinalgStrategyEnablePass();
-
-
-/* Create Linalg Pass. */
-MLIR_CAPI_EXPORTED MlirPass mlirCreateLinalgLinalgStrategyGeneralizePass();
-MLIR_CAPI_EXPORTED void mlirRegisterLinalgLinalgStrategyGeneralizePass();
-
-
-/* Create Linalg Pass. */
-MLIR_CAPI_EXPORTED MlirPass mlirCreateLinalgLinalgStrategyInterchangePass();
-MLIR_CAPI_EXPORTED void mlirRegisterLinalgLinalgStrategyInterchangePass();
 
 
 /* Create Linalg Pass. */
@@ -109,11 +89,6 @@ MLIR_CAPI_EXPORTED void mlirRegisterLinalgLinalgStrategyPadPass();
 /* Create Linalg Pass. */
 MLIR_CAPI_EXPORTED MlirPass mlirCreateLinalgLinalgStrategyPeelPass();
 MLIR_CAPI_EXPORTED void mlirRegisterLinalgLinalgStrategyPeelPass();
-
-
-/* Create Linalg Pass. */
-MLIR_CAPI_EXPORTED MlirPass mlirCreateLinalgLinalgStrategyPromotePass();
-MLIR_CAPI_EXPORTED void mlirRegisterLinalgLinalgStrategyPromotePass();
 
 
 /* Create Linalg Pass. */
@@ -137,8 +112,8 @@ MLIR_CAPI_EXPORTED void mlirRegisterLinalgLinalgStrategyVectorizePass();
 
 
 /* Create Linalg Pass. */
-MLIR_CAPI_EXPORTED MlirPass mlirCreateLinalgLinalgTiling();
-MLIR_CAPI_EXPORTED void mlirRegisterLinalgLinalgTiling();
+MLIR_CAPI_EXPORTED MlirPass mlirCreateLinalgLinalgTilingPass();
+MLIR_CAPI_EXPORTED void mlirRegisterLinalgLinalgTilingPass();
 
 
 

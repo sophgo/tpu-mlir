@@ -41,6 +41,7 @@ struct OpAsmOpInterfaceInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteOp;
     void getAsmResultNames(::mlir::Operation *tablegen_opaque_val, ::mlir::OpAsmSetValueNameFn setNameFn) const;
     void getAsmBlockArgumentNames(::mlir::Operation *tablegen_opaque_val, ::mlir::Region&region, ::mlir::OpAsmSetValueNameFn setNameFn) const;
     void getAsmBlockNames(::mlir::Operation *tablegen_opaque_val, ::mlir::OpAsmSetBlockNameFn setNameFn) const;
@@ -55,23 +56,129 @@ public:
   using ::mlir::OpInterface<OpAsmOpInterface, detail::OpAsmOpInterfaceInterfaceTraits>::OpInterface;
   template <typename ConcreteOp>
   struct Trait : public detail::OpAsmOpInterfaceTrait<ConcreteOp> {};
+  /// Get a special name to use when printing the results of this operation.
+  /// The given callback is invoked with a specific result value that starts a
+  /// result "pack", and the name to give this result pack. To signal that a
+  /// result pack should use the default naming scheme, a None can be passed
+  /// in instead of the name.
+  /// 
+  /// For example, if you have an operation that has four results and you want
+  /// to split these into three distinct groups you could do the following:
+  /// 
+  /// ```c++
+  ///   setNameFn(getResult(0), "first_result");
+  ///   setNameFn(getResult(1), "middle_results");
+  ///   setNameFn(getResult(3), ""); // use the default numbering.
+  /// ```
+  /// 
+  /// This would print the operation as follows:
+  /// 
+  /// ```mlir
+  ///   %first_result, %middle_results:2, %0 = "my.op" ...
+  /// ```
   void getAsmResultNames(::mlir::OpAsmSetValueNameFn setNameFn);
+  /// Get a special name to use when printing the block arguments for a region
+  /// immediately nested under this operation.
   void getAsmBlockArgumentNames(::mlir::Region& region, ::mlir::OpAsmSetValueNameFn setNameFn);
+  /// Get the name to use for a given block inside a region attached to this
+  /// operation.
+  /// 
+  /// For example if this operation has multiple blocks:
+  /// 
+  /// ```mlir
+  ///   some.op() ({
+  ///     ^bb0:
+  ///       ...
+  ///     ^bb1:
+  ///       ...
+  ///   })
+  /// ```
+  /// 
+  /// the method will be invoked on each of the blocks allowing the op to
+  /// print:
+  /// 
+  /// ```mlir
+  ///   some.op() ({
+  ///     ^custom_foo_name:
+  ///       ...
+  ///     ^custom_bar_name:
+  ///       ...
+  ///   })
+  /// ```
   void getAsmBlockNames(::mlir::OpAsmSetBlockNameFn setNameFn);
+  /// Return the default dialect used when printing/parsing operations in
+  /// regions nested under this operation. This allows for eliding the dialect
+  /// prefix from the operation name, for example it would be possible to omit
+  /// the `spv.` prefix from all operations within a SpirV module if this method
+  /// returned `spv`. The default implementation returns an empty string which
+  /// is ignored.
   ::llvm::StringRef getDefaultDialect();
 };
 namespace detail {
   template <typename ConcreteOp>
   struct OpAsmOpInterfaceTrait : public ::mlir::OpInterface<OpAsmOpInterface, detail::OpAsmOpInterfaceInterfaceTraits>::Trait<ConcreteOp> {
+    /// Get a special name to use when printing the results of this operation.
+    /// The given callback is invoked with a specific result value that starts a
+    /// result "pack", and the name to give this result pack. To signal that a
+    /// result pack should use the default naming scheme, a None can be passed
+    /// in instead of the name.
+    /// 
+    /// For example, if you have an operation that has four results and you want
+    /// to split these into three distinct groups you could do the following:
+    /// 
+    /// ```c++
+    ///   setNameFn(getResult(0), "first_result");
+    ///   setNameFn(getResult(1), "middle_results");
+    ///   setNameFn(getResult(3), ""); // use the default numbering.
+    /// ```
+    /// 
+    /// This would print the operation as follows:
+    /// 
+    /// ```mlir
+    ///   %first_result, %middle_results:2, %0 = "my.op" ...
+    /// ```
     void getAsmResultNames(::mlir::OpAsmSetValueNameFn setNameFn) {
       return;
     }
+    /// Get a special name to use when printing the block arguments for a region
+    /// immediately nested under this operation.
     void getAsmBlockArgumentNames(::mlir::Region& region, ::mlir::OpAsmSetValueNameFn setNameFn) {
       return;
     }
+    /// Get the name to use for a given block inside a region attached to this
+    /// operation.
+    /// 
+    /// For example if this operation has multiple blocks:
+    /// 
+    /// ```mlir
+    ///   some.op() ({
+    ///     ^bb0:
+    ///       ...
+    ///     ^bb1:
+    ///       ...
+    ///   })
+    /// ```
+    /// 
+    /// the method will be invoked on each of the blocks allowing the op to
+    /// print:
+    /// 
+    /// ```mlir
+    ///   some.op() ({
+    ///     ^custom_foo_name:
+    ///       ...
+    ///     ^custom_bar_name:
+    ///       ...
+    ///   })
+    /// ```
     void getAsmBlockNames(::mlir::OpAsmSetBlockNameFn setNameFn) {
       ;
     }
+    /// Return the default dialect used when printing/parsing operations in
+    /// regions nested under this operation. This allows for eliding the dialect
+    /// prefix from the operation name, for example it would be possible to omit
+    /// the `spv.` prefix from all operations within a SpirV module if this method
+    /// returned `spv`. The default implementation returns an empty string which
+    /// is ignored.
     static ::llvm::StringRef getDefaultDialect() {
       return "";
     }

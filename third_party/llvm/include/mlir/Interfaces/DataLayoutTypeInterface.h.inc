@@ -47,6 +47,7 @@ struct DataLayoutTypeInterfaceInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteType>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteType;
     unsigned getTypeSize(::mlir::Type tablegen_opaque_val, const ::mlir::DataLayout &dataLayout, ::mlir::DataLayoutEntryListRef params) const;
     bool areCompatible(::mlir::Type tablegen_opaque_val, ::mlir::DataLayoutEntryListRef oldLayout, ::mlir::DataLayoutEntryListRef newLayout) const;
     ::mlir::LogicalResult verifyEntries(::mlir::Type tablegen_opaque_val, ::mlir::DataLayoutEntryListRef entries, ::mlir::Location loc) const;
@@ -60,23 +61,32 @@ public:
   using ::mlir::TypeInterface<DataLayoutTypeInterface, detail::DataLayoutTypeInterfaceInterfaceTraits>::TypeInterface;
   template <typename ConcreteType>
   struct Trait : public detail::DataLayoutTypeInterfaceTrait<ConcreteType> {};
+  /// Returns the size of this type in bytes.
   unsigned getTypeSize(const ::mlir::DataLayout & dataLayout, ::mlir::DataLayoutEntryListRef params) const;
+  /// Returns the size of this type in bits.
   unsigned getTypeSizeInBits(const ::mlir::DataLayout & dataLayout, ::mlir::DataLayoutEntryListRef params) const;
+  /// Returns the ABI-required alignment for this type, in bytes
   unsigned getABIAlignment(const ::mlir::DataLayout & dataLayout, ::mlir::DataLayoutEntryListRef params) const;
+  /// Returns the preferred alignment for this type, in bytes.
   unsigned getPreferredAlignment(const ::mlir::DataLayout & dataLayout, ::mlir::DataLayoutEntryListRef params) const;
+  /// Returns true if the two lists of entries are compatible, that is, that `newLayout` spec entries can be nested in an op with `oldLayout` spec entries.
   bool areCompatible(::mlir::DataLayoutEntryListRef oldLayout, ::mlir::DataLayoutEntryListRef newLayout) const;
+  /// Verifies that the given list of entries is valid for this type.
   ::mlir::LogicalResult verifyEntries(::mlir::DataLayoutEntryListRef entries, ::mlir::Location loc) const;
 };
 namespace detail {
   template <typename ConcreteType>
   struct DataLayoutTypeInterfaceTrait : public ::mlir::TypeInterface<DataLayoutTypeInterface, detail::DataLayoutTypeInterfaceInterfaceTraits>::Trait<ConcreteType> {
+    /// Returns the size of this type in bytes.
     unsigned getTypeSize(const ::mlir::DataLayout & dataLayout, ::mlir::DataLayoutEntryListRef params) const {
       unsigned bits = (*static_cast<const ConcreteType *>(this)).getTypeSizeInBits(dataLayout, params);
         return ::llvm::divideCeil(bits, 8);
     }
+    /// Returns true if the two lists of entries are compatible, that is, that `newLayout` spec entries can be nested in an op with `oldLayout` spec entries.
     bool areCompatible(::mlir::DataLayoutEntryListRef oldLayout, ::mlir::DataLayoutEntryListRef newLayout) const {
       return true;
     }
+    /// Verifies that the given list of entries is valid for this type.
     ::mlir::LogicalResult verifyEntries(::mlir::DataLayoutEntryListRef entries, ::mlir::Location loc) const {
       return ::mlir::success();
     }

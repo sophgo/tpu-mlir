@@ -18,20 +18,24 @@
 #ifdef GET_ATTRDEF_CLASSES
 #undef GET_ATTRDEF_CLASSES
 
-static ::mlir::OptionalParseResult generatedAttributeParser(::mlir::AsmParser &parser, ::llvm::StringRef mnemonic, ::mlir::Type type, ::mlir::Attribute &value) {
-  if (mnemonic == ::mlir::linalg::BinaryFnAttr::getMnemonic()) {
-    value = ::mlir::linalg::BinaryFnAttr::parse(parser, type);
-    return ::mlir::success(!!value);
-  }
-  if (mnemonic == ::mlir::linalg::TypeFnAttr::getMnemonic()) {
-    value = ::mlir::linalg::TypeFnAttr::parse(parser, type);
-    return ::mlir::success(!!value);
-  }
-  if (mnemonic == ::mlir::linalg::UnaryFnAttr::getMnemonic()) {
-    value = ::mlir::linalg::UnaryFnAttr::parse(parser, type);
-    return ::mlir::success(!!value);
-  }
-  return {};
+static ::mlir::OptionalParseResult generatedAttributeParser(::mlir::AsmParser &parser, ::llvm::StringRef *mnemonic, ::mlir::Type type, ::mlir::Attribute &value) {
+  return ::mlir::AsmParser::KeywordSwitch<::mlir::OptionalParseResult>(parser)
+    .Case(::mlir::linalg::BinaryFnAttr::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::linalg::BinaryFnAttr::parse(parser, type);
+      return ::mlir::success(!!value);
+    })
+    .Case(::mlir::linalg::TypeFnAttr::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::linalg::TypeFnAttr::parse(parser, type);
+      return ::mlir::success(!!value);
+    })
+    .Case(::mlir::linalg::UnaryFnAttr::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::linalg::UnaryFnAttr::parse(parser, type);
+      return ::mlir::success(!!value);
+    })
+    .Default([&](llvm::StringRef keyword, llvm::SMLoc) {
+      *mnemonic = keyword;
+      return llvm::None;
+    });
 }
 
 static ::mlir::LogicalResult generatedAttributePrinter(::mlir::Attribute def, ::mlir::AsmPrinter &printer) {
@@ -58,7 +62,7 @@ namespace linalg {
 namespace detail {
 struct BinaryFnAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<::mlir::linalg::BinaryFn>;
-  BinaryFnAttrStorage(::mlir::linalg::BinaryFn value) : ::mlir::AttributeStorage(), value(value) {}
+  BinaryFnAttrStorage(::mlir::linalg::BinaryFn value) : value(value) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (value == std::get<0>(tblgenKey));
@@ -81,6 +85,7 @@ BinaryFnAttr BinaryFnAttr::get(::mlir::MLIRContext *context, ::mlir::linalg::Bin
 }
 
 ::mlir::Attribute BinaryFnAttr::parse(::mlir::AsmParser &odsParser, ::mlir::Type odsType) {
+  ::mlir::Builder odsBuilder(odsParser.getContext());
   ::mlir::FailureOr<::mlir::linalg::BinaryFn> _result_value;
   ::llvm::SMLoc odsLoc = odsParser.getCurrentLocation();
   (void) odsLoc;
@@ -106,10 +111,11 @@ BinaryFnAttr BinaryFnAttr::get(::mlir::MLIRContext *context, ::mlir::linalg::Bin
   if (odsParser.parseGreater()) return {};
   assert(::mlir::succeeded(_result_value));
   return BinaryFnAttr::get(odsParser.getContext(),
-      *_result_value);
+      ::mlir::linalg::BinaryFn((*_result_value)));
 }
 
 void BinaryFnAttr::print(::mlir::AsmPrinter &odsPrinter) const {
+  ::mlir::Builder odsBuilder(getContext());
   odsPrinter << "<";
   odsPrinter << stringifyBinaryFn(getValue());
   odsPrinter << ">";
@@ -127,7 +133,7 @@ namespace linalg {
 namespace detail {
 struct TypeFnAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<::mlir::linalg::TypeFn>;
-  TypeFnAttrStorage(::mlir::linalg::TypeFn value) : ::mlir::AttributeStorage(), value(value) {}
+  TypeFnAttrStorage(::mlir::linalg::TypeFn value) : value(value) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (value == std::get<0>(tblgenKey));
@@ -150,6 +156,7 @@ TypeFnAttr TypeFnAttr::get(::mlir::MLIRContext *context, ::mlir::linalg::TypeFn 
 }
 
 ::mlir::Attribute TypeFnAttr::parse(::mlir::AsmParser &odsParser, ::mlir::Type odsType) {
+  ::mlir::Builder odsBuilder(odsParser.getContext());
   ::mlir::FailureOr<::mlir::linalg::TypeFn> _result_value;
   ::llvm::SMLoc odsLoc = odsParser.getCurrentLocation();
   (void) odsLoc;
@@ -175,10 +182,11 @@ TypeFnAttr TypeFnAttr::get(::mlir::MLIRContext *context, ::mlir::linalg::TypeFn 
   if (odsParser.parseGreater()) return {};
   assert(::mlir::succeeded(_result_value));
   return TypeFnAttr::get(odsParser.getContext(),
-      *_result_value);
+      ::mlir::linalg::TypeFn((*_result_value)));
 }
 
 void TypeFnAttr::print(::mlir::AsmPrinter &odsPrinter) const {
+  ::mlir::Builder odsBuilder(getContext());
   odsPrinter << "<";
   odsPrinter << stringifyTypeFn(getValue());
   odsPrinter << ">";
@@ -196,7 +204,7 @@ namespace linalg {
 namespace detail {
 struct UnaryFnAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<::mlir::linalg::UnaryFn>;
-  UnaryFnAttrStorage(::mlir::linalg::UnaryFn value) : ::mlir::AttributeStorage(), value(value) {}
+  UnaryFnAttrStorage(::mlir::linalg::UnaryFn value) : value(value) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (value == std::get<0>(tblgenKey));
@@ -219,6 +227,7 @@ UnaryFnAttr UnaryFnAttr::get(::mlir::MLIRContext *context, ::mlir::linalg::Unary
 }
 
 ::mlir::Attribute UnaryFnAttr::parse(::mlir::AsmParser &odsParser, ::mlir::Type odsType) {
+  ::mlir::Builder odsBuilder(odsParser.getContext());
   ::mlir::FailureOr<::mlir::linalg::UnaryFn> _result_value;
   ::llvm::SMLoc odsLoc = odsParser.getCurrentLocation();
   (void) odsLoc;
@@ -244,10 +253,11 @@ UnaryFnAttr UnaryFnAttr::get(::mlir::MLIRContext *context, ::mlir::linalg::Unary
   if (odsParser.parseGreater()) return {};
   assert(::mlir::succeeded(_result_value));
   return UnaryFnAttr::get(odsParser.getContext(),
-      *_result_value);
+      ::mlir::linalg::UnaryFn((*_result_value)));
 }
 
 void UnaryFnAttr::print(::mlir::AsmPrinter &odsPrinter) const {
+  ::mlir::Builder odsBuilder(getContext());
   odsPrinter << "<";
   odsPrinter << stringifyUnaryFn(getValue());
   odsPrinter << ">";
@@ -268,12 +278,10 @@ namespace linalg {
                                       ::mlir::Type type) const {
   ::llvm::SMLoc typeLoc = parser.getCurrentLocation();
   ::llvm::StringRef attrTag;
-  if (::mlir::failed(parser.parseKeyword(&attrTag)))
-    return {};
   {
     ::mlir::Attribute attr;
-    auto parseResult = generatedAttributeParser(parser, attrTag, type, attr);
-    if (parseResult.hasValue())
+    auto parseResult = generatedAttributeParser(parser, &attrTag, type, attr);
+    if (parseResult.has_value())
       return attr;
   }
   

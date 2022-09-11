@@ -14,8 +14,8 @@ add_mlir_library(TPUMLIRInitAll
   LINK_LIBS PUBLIC
   MLIRIR
   MLIRSupport
-  MLIRFunc
-  MLIRQuant
+  MLIRFuncDialect
+  MLIRQuantDialect
   MLIRInferenceInterface
   TPUMLIRTop
   TPUMLIRTpu

@@ -26,16 +26,33 @@ enum class CombiningKind : uint32_t {
 ::llvm::Optional<CombiningKind> symbolizeCombiningKind(uint32_t);
 std::string stringifyCombiningKind(CombiningKind);
 ::llvm::Optional<CombiningKind> symbolizeCombiningKind(::llvm::StringRef);
-inline CombiningKind operator|(CombiningKind lhs, CombiningKind rhs) {
-  return static_cast<CombiningKind>(static_cast<uint32_t>(lhs) | static_cast<uint32_t>(rhs));
+
+inline constexpr CombiningKind operator|(CombiningKind a, CombiningKind b) {
+  return static_cast<CombiningKind>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
 }
-inline CombiningKind operator&(CombiningKind lhs, CombiningKind rhs) {
-  return static_cast<CombiningKind>(static_cast<uint32_t>(lhs) & static_cast<uint32_t>(rhs));
+inline constexpr CombiningKind operator&(CombiningKind a, CombiningKind b) {
+  return static_cast<CombiningKind>(static_cast<uint32_t>(a) & static_cast<uint32_t>(b));
 }
-inline bool bitEnumContains(CombiningKind bits, CombiningKind bit) {
+inline constexpr CombiningKind operator^(CombiningKind a, CombiningKind b) {
+  return static_cast<CombiningKind>(static_cast<uint32_t>(a) ^ static_cast<uint32_t>(b));
+}
+inline constexpr CombiningKind operator~(CombiningKind bits) {
+  // Ensure only bits that can be present in the enum are set
+  return static_cast<CombiningKind>(~static_cast<uint32_t>(bits) & static_cast<uint32_t>(2047u));
+}
+inline constexpr bool bitEnumContainsAll(CombiningKind bits, CombiningKind bit) {
+  return (bits & bit) == bit;
+}
+inline constexpr bool bitEnumContainsAny(CombiningKind bits, CombiningKind bit) {
   return (static_cast<uint32_t>(bits) & static_cast<uint32_t>(bit)) != 0;
 }
-
+inline constexpr CombiningKind bitEnumClear(CombiningKind bits, CombiningKind bit) {
+  return bits & ~bit;
+}
+inline constexpr CombiningKind bitEnumSet(CombiningKind bits, CombiningKind bit, /*optional*/bool value=true) {
+  return value ? (bits | bit) : bitEnumClear(bits, bit);
+}
+  
 inline std::string stringifyEnum(CombiningKind enumValue) {
   return stringifyCombiningKind(enumValue);
 }

@@ -20,28 +20,32 @@
 #ifdef GET_TYPEDEF_CLASSES
 #undef GET_TYPEDEF_CLASSES
 
-static ::mlir::OptionalParseResult generatedTypeParser(::mlir::AsmParser &parser, ::llvm::StringRef mnemonic, ::mlir::Type &value) {
-  if (mnemonic == ::mlir::pdl::AttributeType::getMnemonic()) {
-    value = ::mlir::pdl::AttributeType::get(parser.getContext());
-    return ::mlir::success(!!value);
-  }
-  if (mnemonic == ::mlir::pdl::OperationType::getMnemonic()) {
-    value = ::mlir::pdl::OperationType::get(parser.getContext());
-    return ::mlir::success(!!value);
-  }
-  if (mnemonic == ::mlir::pdl::RangeType::getMnemonic()) {
-    value = ::mlir::pdl::RangeType::parse(parser);
-    return ::mlir::success(!!value);
-  }
-  if (mnemonic == ::mlir::pdl::TypeType::getMnemonic()) {
-    value = ::mlir::pdl::TypeType::get(parser.getContext());
-    return ::mlir::success(!!value);
-  }
-  if (mnemonic == ::mlir::pdl::ValueType::getMnemonic()) {
-    value = ::mlir::pdl::ValueType::get(parser.getContext());
-    return ::mlir::success(!!value);
-  }
-  return {};
+static ::mlir::OptionalParseResult generatedTypeParser(::mlir::AsmParser &parser, ::llvm::StringRef *mnemonic, ::mlir::Type &value) {
+  return ::mlir::AsmParser::KeywordSwitch<::mlir::OptionalParseResult>(parser)
+    .Case(::mlir::pdl::AttributeType::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::pdl::AttributeType::get(parser.getContext());
+      return ::mlir::success(!!value);
+    })
+    .Case(::mlir::pdl::OperationType::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::pdl::OperationType::get(parser.getContext());
+      return ::mlir::success(!!value);
+    })
+    .Case(::mlir::pdl::RangeType::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::pdl::RangeType::parse(parser);
+      return ::mlir::success(!!value);
+    })
+    .Case(::mlir::pdl::TypeType::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::pdl::TypeType::get(parser.getContext());
+      return ::mlir::success(!!value);
+    })
+    .Case(::mlir::pdl::ValueType::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::pdl::ValueType::get(parser.getContext());
+      return ::mlir::success(!!value);
+    })
+    .Default([&](llvm::StringRef keyword, llvm::SMLoc) {
+      *mnemonic = keyword;
+      return llvm::None;
+    });
 }
 
 static ::mlir::LogicalResult generatedTypePrinter(::mlir::Type def, ::mlir::AsmPrinter &printer) {
@@ -134,11 +138,9 @@ namespace pdl {
 ::mlir::Type PDLDialect::parseType(::mlir::DialectAsmParser &parser) const {
   ::llvm::SMLoc typeLoc = parser.getCurrentLocation();
   ::llvm::StringRef mnemonic;
-  if (parser.parseKeyword(&mnemonic))
-    return ::mlir::Type();
   ::mlir::Type genType;
-  auto parseResult = generatedTypeParser(parser, mnemonic, genType);
-  if (parseResult.hasValue())
+  auto parseResult = generatedTypeParser(parser, &mnemonic, genType);
+  if (parseResult.has_value())
     return genType;
   
   parser.emitError(typeLoc) << "unknown  type `"

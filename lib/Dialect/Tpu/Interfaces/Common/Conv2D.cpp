@@ -97,7 +97,7 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
     auto sType = Module::getStorageType(output());
     Module::getNCHW(output(), n, c, h, w);
     auto o_qtype = Quant::getUniformQuantizedType(output());
-    auto rshift_v = Module::getI64Array(rshift().getValue());
+    auto rshift_v = Module::getI64Array(rshift().value());
     auto multiplier_v = Module::getI64Array(multiplier(), rshift_v->size(), 1);
     bool per_axis = rshift_v->size() == c;
     auto mode = quant_mode();

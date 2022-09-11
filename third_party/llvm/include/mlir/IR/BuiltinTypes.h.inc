@@ -109,6 +109,7 @@ public:
   ArrayRef<Type> getInputs() const;
   ArrayRef<Type> getResults() const;
   void walkImmediateSubElements(llvm::function_ref<void(mlir::Attribute)> walkAttrsFn, llvm::function_ref<void(mlir::Type)> walkTypesFn) const;
+  ::mlir::Type replaceImmediateSubElements(::llvm::ArrayRef<::mlir::Attribute> replAttrs, ::llvm::ArrayRef<::mlir::Type> replTypes) const;
 };
 class IndexType : public ::mlir::Type::TypeBase<IndexType, ::mlir::Type, ::mlir::TypeStorage> {
 public:
@@ -199,6 +200,7 @@ public:
   MemRefLayoutAttrInterface getLayout() const;
   Attribute getMemorySpace() const;
   void walkImmediateSubElements(llvm::function_ref<void(mlir::Attribute)> walkAttrsFn, llvm::function_ref<void(mlir::Type)> walkTypesFn) const;
+  ::mlir::Type replaceImmediateSubElements(::llvm::ArrayRef<::mlir::Attribute> replAttrs, ::llvm::ArrayRef<::mlir::Type> replTypes) const;
 };
 class NoneType : public ::mlir::Type::TypeBase<NoneType, ::mlir::Type, ::mlir::TypeStorage> {
 public:
@@ -247,6 +249,7 @@ public:
   Type getElementType() const;
   Attribute getEncoding() const;
   void walkImmediateSubElements(llvm::function_ref<void(mlir::Attribute)> walkAttrsFn, llvm::function_ref<void(mlir::Type)> walkTypesFn) const;
+  ::mlir::Type replaceImmediateSubElements(::llvm::ArrayRef<::mlir::Attribute> replAttrs, ::llvm::ArrayRef<::mlir::Type> replTypes) const;
 };
 namespace detail {
 struct TupleTypeStorage;
@@ -278,6 +281,7 @@ public:
   static TupleType get(::mlir::MLIRContext *context);
   ArrayRef<Type> getTypes() const;
   void walkImmediateSubElements(llvm::function_ref<void(mlir::Attribute)> walkAttrsFn, llvm::function_ref<void(mlir::Type)> walkTypesFn) const;
+  ::mlir::Type replaceImmediateSubElements(::llvm::ArrayRef<::mlir::Attribute> replAttrs, ::llvm::ArrayRef<::mlir::Type> replTypes) const;
 };
 namespace detail {
 struct UnrankedMemRefTypeStorage;
@@ -310,6 +314,7 @@ public:
   Type getElementType() const;
   Attribute getMemorySpace() const;
   void walkImmediateSubElements(llvm::function_ref<void(mlir::Attribute)> walkAttrsFn, llvm::function_ref<void(mlir::Type)> walkTypesFn) const;
+  ::mlir::Type replaceImmediateSubElements(::llvm::ArrayRef<::mlir::Attribute> replAttrs, ::llvm::ArrayRef<::mlir::Type> replTypes) const;
 };
 namespace detail {
 struct UnrankedTensorTypeStorage;
@@ -335,6 +340,7 @@ public:
   static ::mlir::LogicalResult verify(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, Type elementType);
   Type getElementType() const;
   void walkImmediateSubElements(llvm::function_ref<void(mlir::Attribute)> walkAttrsFn, llvm::function_ref<void(mlir::Type)> walkTypesFn) const;
+  ::mlir::Type replaceImmediateSubElements(::llvm::ArrayRef<::mlir::Attribute> replAttrs, ::llvm::ArrayRef<::mlir::Type> replTypes) const;
 };
 namespace detail {
 struct VectorTypeStorage;
@@ -379,6 +385,7 @@ public:
   Type getElementType() const;
   unsigned getNumScalableDims() const;
   void walkImmediateSubElements(llvm::function_ref<void(mlir::Attribute)> walkAttrsFn, llvm::function_ref<void(mlir::Type)> walkTypesFn) const;
+  ::mlir::Type replaceImmediateSubElements(::llvm::ArrayRef<::mlir::Attribute> replAttrs, ::llvm::ArrayRef<::mlir::Type> replTypes) const;
 };
 } // namespace mlir
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::BFloat16Type)

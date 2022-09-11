@@ -25,6 +25,35 @@ namespace mlir {
 // Type Converter
 //===----------------------------------------------------------------------===//
 
+struct SPIRVConversionOptions {
+  /// The number of bits to store a boolean value.
+  unsigned boolNumBits{8};
+
+  /// Whether to emulate non-32-bit scalar types with 32-bit scalar types if
+  /// no native support.
+  ///
+  /// Non-32-bit scalar types require special hardware support that may not
+  /// exist on all GPUs. This is reflected in SPIR-V as that non-32-bit scalar
+  /// types require special capabilities or extensions. This option controls
+  /// whether to use 32-bit types to emulate, if a scalar type of a certain
+  /// bitwidth is not supported in the target environment. This requires the
+  /// runtime to also feed in data with a matched bitwidth and layout for
+  /// interface types. The runtime can do that by inspecting the SPIR-V
+  /// module.
+  ///
+  /// If the original scalar type has less than 32-bit, a multiple of its
+  /// values will be packed into one 32-bit value to be memory efficient.
+  bool emulateNon32BitScalarTypes{true};
+
+  /// Use 64-bit integers to convert index types.
+  bool use64bitIndex{false};
+
+  /// Whether to enable fast math mode during conversion. If true, various
+  /// patterns would assume no NaN/infinity numbers as inputs, and thus there
+  /// will be no special guards emitted to check and handle such cases.
+  bool enableFastMathMode{false};
+};
+
 /// Type conversion from builtin types to SPIR-V types for shader interface.
 ///
 /// For memref types, this converter additionally performs type wrapping to
@@ -32,58 +61,20 @@ namespace mlir {
 /// pointers to structs.
 class SPIRVTypeConverter : public TypeConverter {
 public:
-  struct Options {
-    /// Whether to emulate non-32-bit scalar types with 32-bit scalar types if
-    /// no native support.
-    ///
-    /// Non-32-bit scalar types require special hardware support that may not
-    /// exist on all GPUs. This is reflected in SPIR-V as that non-32-bit scalar
-    /// types require special capabilities or extensions. This option controls
-    /// whether to use 32-bit types to emulate, if a scalar type of a certain
-    /// bitwidth is not supported in the target environment. This requires the
-    /// runtime to also feed in data with a matched bitwidth and layout for
-    /// interface types. The runtime can do that by inspecting the SPIR-V
-    /// module.
-    ///
-    /// If the original scalar type has less than 32-bit, a multiple of its
-    /// values will be packed into one 32-bit value to be memory efficient.
-    bool emulateNon32BitScalarTypes{true};
-
-    /// Use 64-bit integers to convert index types.
-    bool use64bitIndex{false};
-
-    /// The number of bits to store a boolean value. It is eight bits by
-    /// default.
-    unsigned boolNumBits{8};
-
-    // Note: we need this instead of inline initializers because of
-    // https://bugs.llvm.org/show_bug.cgi?id=36684
-    Options()
-
-    {}
-  };
-
   explicit SPIRVTypeConverter(spirv::TargetEnvAttr targetAttr,
-                              Options options = {});
+                              const SPIRVConversionOptions &options = {});
 
   /// Gets the SPIR-V correspondence for the standard index type.
   Type getIndexType() const;
 
-  /// Returns the corresponding memory space for memref given a SPIR-V storage
-  /// class.
-  static unsigned getMemorySpaceForStorageClass(spirv::StorageClass);
-
-  /// Returns the SPIR-V storage class given a memory space for memref. Return
-  /// llvm::None if the memory space does not map to any SPIR-V storage class.
-  static Optional<spirv::StorageClass>
-  getStorageClassForMemorySpace(unsigned space);
+  const spirv::TargetEnv &getTargetEnv() const { return targetEnv; }
 
   /// Returns the options controlling the SPIR-V type converter.
-  const Options &getOptions() const;
+  const SPIRVConversionOptions &getOptions() const { return options; }
 
 private:
   spirv::TargetEnv targetEnv;
-  Options options;
+  SPIRVConversionOptions options;
 
   MLIRContext *getContext() const;
 };

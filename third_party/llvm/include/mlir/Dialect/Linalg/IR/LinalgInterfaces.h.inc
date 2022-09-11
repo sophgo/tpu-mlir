@@ -8,6 +8,762 @@
 
 namespace mlir {
 namespace linalg {
+class DestinationStyleOpInterface;
+namespace detail {
+struct DestinationStyleOpInterfaceInterfaceTraits {
+  struct Concept {
+    ValueRange (*inputs)(const Concept *impl, ::mlir::Operation *);
+    int64_t (*getNumInputs)(const Concept *impl, ::mlir::Operation *);
+    ValueRange (*outputs)(const Concept *impl, ::mlir::Operation *);
+    int64_t (*getNumOutputs)(const Concept *impl, ::mlir::Operation *);
+    int64_t (*getNumInputsAndOutputs)(const Concept *impl, ::mlir::Operation *);
+    OpOperandVector (*getInputOperands)(const Concept *impl, ::mlir::Operation *);
+    OpOperand*(*getInputOperand)(const Concept *impl, ::mlir::Operation *, int64_t);
+    OpOperandVector (*getInputBufferOperands)(const Concept *impl, ::mlir::Operation *);
+    OpOperandVector (*getInputTensorOperands)(const Concept *impl, ::mlir::Operation *);
+    OpOperandVector (*getOutputOperands)(const Concept *impl, ::mlir::Operation *);
+    OpOperand*(*getOutputOperand)(const Concept *impl, ::mlir::Operation *, int64_t);
+    void (*setOutputOperand)(const Concept *impl, ::mlir::Operation *, int64_t, Value);
+    OpOperandVector (*getOutputBufferOperands)(const Concept *impl, ::mlir::Operation *);
+    OpOperandVector (*getOutputTensorOperands)(const Concept *impl, ::mlir::Operation *);
+    SmallVector<MemRefType> (*getOutputBufferTypes)(const Concept *impl, ::mlir::Operation *);
+    SmallVector<RankedTensorType> (*getOutputTensorTypes)(const Concept *impl, ::mlir::Operation *);
+    OpOperandVector (*getInputAndOutputOperands)(const Concept *impl, ::mlir::Operation *);
+    bool (*isInputTensor)(const Concept *impl, ::mlir::Operation *, OpOperand *);
+    bool (*isOutputTensor)(const Concept *impl, ::mlir::Operation *, OpOperand *);
+    bool (*isScalar)(const Concept *impl, ::mlir::Operation *, OpOperand*);
+    OpResult (*getTiedOpResult)(const Concept *impl, ::mlir::Operation *, OpOperand*);
+    bool (*hasBufferSemantics)(const Concept *impl, ::mlir::Operation *);
+    bool (*hasTensorSemantics)(const Concept *impl, ::mlir::Operation *);
+    Operation *(*clone)(const Concept *impl, ::mlir::Operation *, OpBuilder &, Location, TypeRange, ValueRange);
+    Operation *(*cloneWithoutRegions)(const Concept *impl, ::mlir::Operation *, OpBuilder &, Location, TypeRange, ValueRange);
+  };
+  template<typename ConcreteOp>
+  class Model : public Concept {
+  public:
+    using Interface = ::mlir::linalg::DestinationStyleOpInterface;
+    Model() : Concept{inputs, getNumInputs, outputs, getNumOutputs, getNumInputsAndOutputs, getInputOperands, getInputOperand, getInputBufferOperands, getInputTensorOperands, getOutputOperands, getOutputOperand, setOutputOperand, getOutputBufferOperands, getOutputTensorOperands, getOutputBufferTypes, getOutputTensorTypes, getInputAndOutputOperands, isInputTensor, isOutputTensor, isScalar, getTiedOpResult, hasBufferSemantics, hasTensorSemantics, clone, cloneWithoutRegions} {}
+
+    static inline ValueRange inputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline int64_t getNumInputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ValueRange outputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline int64_t getNumOutputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline int64_t getNumInputsAndOutputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline OpOperandVector getInputOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline OpOperand*getInputOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, int64_t i);
+    static inline OpOperandVector getInputBufferOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline OpOperandVector getInputTensorOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline OpOperandVector getOutputOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline OpOperand*getOutputOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, int64_t i);
+    static inline void setOutputOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, int64_t i, Value value);
+    static inline OpOperandVector getOutputBufferOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline OpOperandVector getOutputTensorOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline SmallVector<MemRefType> getOutputBufferTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline SmallVector<RankedTensorType> getOutputTensorTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline OpOperandVector getInputAndOutputOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline bool isInputTensor(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * opOperand);
+    static inline bool isOutputTensor(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * opOperand);
+    static inline bool isScalar(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand* opOperand);
+    static inline OpResult getTiedOpResult(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand* opOperand);
+    static inline bool hasBufferSemantics(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline bool hasTensorSemantics(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline Operation *clone(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands);
+    static inline Operation *cloneWithoutRegions(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands);
+  };
+  template<typename ConcreteOp>
+  class FallbackModel : public Concept {
+  public:
+    using Interface = ::mlir::linalg::DestinationStyleOpInterface;
+    FallbackModel() : Concept{inputs, getNumInputs, outputs, getNumOutputs, getNumInputsAndOutputs, getInputOperands, getInputOperand, getInputBufferOperands, getInputTensorOperands, getOutputOperands, getOutputOperand, setOutputOperand, getOutputBufferOperands, getOutputTensorOperands, getOutputBufferTypes, getOutputTensorTypes, getInputAndOutputOperands, isInputTensor, isOutputTensor, isScalar, getTiedOpResult, hasBufferSemantics, hasTensorSemantics, clone, cloneWithoutRegions} {}
+
+    static inline ValueRange inputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline int64_t getNumInputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ValueRange outputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline int64_t getNumOutputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline int64_t getNumInputsAndOutputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline OpOperandVector getInputOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline OpOperand*getInputOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, int64_t i);
+    static inline OpOperandVector getInputBufferOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline OpOperandVector getInputTensorOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline OpOperandVector getOutputOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline OpOperand*getOutputOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, int64_t i);
+    static inline void setOutputOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, int64_t i, Value value);
+    static inline OpOperandVector getOutputBufferOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline OpOperandVector getOutputTensorOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline SmallVector<MemRefType> getOutputBufferTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline SmallVector<RankedTensorType> getOutputTensorTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline OpOperandVector getInputAndOutputOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline bool isInputTensor(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * opOperand);
+    static inline bool isOutputTensor(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * opOperand);
+    static inline bool isScalar(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand* opOperand);
+    static inline OpResult getTiedOpResult(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand* opOperand);
+    static inline bool hasBufferSemantics(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline bool hasTensorSemantics(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline Operation *clone(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands);
+    static inline Operation *cloneWithoutRegions(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands);
+  };
+  template<typename ConcreteModel, typename ConcreteOp>
+  class ExternalModel : public FallbackModel<ConcreteModel> {
+  public:
+    using ConcreteEntity = ConcreteOp;
+    int64_t getNumInputs(::mlir::Operation *tablegen_opaque_val) const;
+    int64_t getNumOutputs(::mlir::Operation *tablegen_opaque_val) const;
+    int64_t getNumInputsAndOutputs(::mlir::Operation *tablegen_opaque_val) const;
+    OpOperandVector getInputOperands(::mlir::Operation *tablegen_opaque_val) const;
+    OpOperand*getInputOperand(::mlir::Operation *tablegen_opaque_val, int64_t i) const;
+    OpOperandVector getInputBufferOperands(::mlir::Operation *tablegen_opaque_val) const;
+    OpOperandVector getInputTensorOperands(::mlir::Operation *tablegen_opaque_val) const;
+    OpOperandVector getOutputOperands(::mlir::Operation *tablegen_opaque_val) const;
+    OpOperand*getOutputOperand(::mlir::Operation *tablegen_opaque_val, int64_t i) const;
+    void setOutputOperand(::mlir::Operation *tablegen_opaque_val, int64_t i, Value value) const;
+    OpOperandVector getOutputBufferOperands(::mlir::Operation *tablegen_opaque_val) const;
+    OpOperandVector getOutputTensorOperands(::mlir::Operation *tablegen_opaque_val) const;
+    SmallVector<MemRefType> getOutputBufferTypes(::mlir::Operation *tablegen_opaque_val) const;
+    SmallVector<RankedTensorType> getOutputTensorTypes(::mlir::Operation *tablegen_opaque_val) const;
+    OpOperandVector getInputAndOutputOperands(::mlir::Operation *tablegen_opaque_val) const;
+    bool isInputTensor(::mlir::Operation *tablegen_opaque_val, OpOperand *opOperand) const;
+    bool isOutputTensor(::mlir::Operation *tablegen_opaque_val, OpOperand *opOperand) const;
+    bool isScalar(::mlir::Operation *tablegen_opaque_val, OpOperand*opOperand) const;
+    OpResult getTiedOpResult(::mlir::Operation *tablegen_opaque_val, OpOperand*opOperand) const;
+    bool hasBufferSemantics(::mlir::Operation *tablegen_opaque_val) const;
+    bool hasTensorSemantics(::mlir::Operation *tablegen_opaque_val) const;
+  };
+};template <typename ConcreteOp>
+struct DestinationStyleOpInterfaceTrait;
+
+} // namespace detail
+class DestinationStyleOpInterface : public ::mlir::OpInterface<DestinationStyleOpInterface, detail::DestinationStyleOpInterfaceInterfaceTraits> {
+public:
+  using ::mlir::OpInterface<DestinationStyleOpInterface, detail::DestinationStyleOpInterfaceInterfaceTraits>::OpInterface;
+  template <typename ConcreteOp>
+  struct Trait : public detail::DestinationStyleOpInterfaceTrait<ConcreteOp> {};
+  /// Return the input shape operands.
+  ValueRange inputs();
+  /// Return the number of inputs.
+  int64_t getNumInputs();
+  /// Return the output shape operands.
+  ValueRange outputs();
+  /// Return the number of outputs.
+  int64_t getNumOutputs();
+  /// Return the number of inputs and outputs.
+  int64_t getNumInputsAndOutputs();
+  /// Return the input operands.
+  OpOperandVector getInputOperands();
+  /// Return the `i`-th input operand.
+  OpOperand*getInputOperand(int64_t i);
+  /// Return the subset of input operands that are of buffer type.
+  OpOperandVector getInputBufferOperands();
+  /// Return the subset of input operands that are of tensor type.
+  OpOperandVector getInputTensorOperands();
+  /// Return the output operands.
+  OpOperandVector getOutputOperands();
+  /// Return the `i`-th output operand.
+  OpOperand*getOutputOperand(int64_t i);
+  /// Set the `i`-th output operand.
+  void setOutputOperand(int64_t i, Value value);
+  /// Return the subset of output operands that are of buffer type.
+  OpOperandVector getOutputBufferOperands();
+  /// Return the subset of output operands that are of tensor type.
+  OpOperandVector getOutputTensorOperands();
+  /// Return the types of the subset of output operands that are of buffer type.
+  SmallVector<MemRefType> getOutputBufferTypes();
+  /// Return the types of the subset of output operands that are of tensor type.
+  SmallVector<RankedTensorType> getOutputTensorTypes();
+  /// Return the range over input and output operands.
+  OpOperandVector getInputAndOutputOperands();
+  /// Return true if `opOperand` is an input tensor.
+  bool isInputTensor(OpOperand * opOperand);
+  /// Return true if `opOperand` is an output tensor.
+  bool isOutputTensor(OpOperand * opOperand);
+  /// Return true if the `opOperand` is a scalar value.
+  bool isScalar(OpOperand* opOperand);
+  /// Return the result tied to `opOperand`.
+  OpResult getTiedOpResult(OpOperand* opOperand);
+  /// Return whether the op has only MemRef input and outputs.
+  bool hasBufferSemantics();
+  /// Return whether the op has only RankedTensor input and outputs.
+  bool hasTensorSemantics();
+  /// Clone the current operation with the given location and operands. This
+  /// is used to abstract away the optional underlying region creation. This
+  /// does not change the balance between input, output_buffer and
+  /// init_tensors operands.
+  Operation *clone(OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands);
+  /// Clone the current operation with the given location, operands
+  /// and BlockAndValueMapping but leave the regions empty. This is
+  /// used to abstract away the optional underlying region creation.
+  /// This does not change the balance between input, output_buffer
+  /// and init_tensors operands.
+  Operation *cloneWithoutRegions(OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands);
+};
+namespace detail {
+  template <typename ConcreteOp>
+  struct DestinationStyleOpInterfaceTrait : public ::mlir::OpInterface<DestinationStyleOpInterface, detail::DestinationStyleOpInterfaceInterfaceTraits>::Trait<ConcreteOp> {
+    /// Return the number of inputs.
+    int64_t getNumInputs() {
+      return (*static_cast<ConcreteOp *>(this)).getInputs().size();
+    }
+    /// Return the number of outputs.
+    int64_t getNumOutputs() {
+      return (*static_cast<ConcreteOp *>(this)).outputs().size();
+    }
+    /// Return the number of inputs and outputs.
+    int64_t getNumInputsAndOutputs() {
+      return this->getOperation()->getNumOperands();
+    }
+    /// Return the input operands.
+    OpOperandVector getInputOperands() {
+      int64_t numInputs = getNumInputs();
+        OpOperandVector result;
+        result.reserve(numInputs);
+        llvm::transform(
+          this->getOperation()->getOpOperands().take_front(numInputs),
+          std::back_inserter(result),
+          [](OpOperand &opOperand) { return &opOperand; });
+        return result;
+    }
+    /// Return the `i`-th input operand.
+    OpOperand*getInputOperand(int64_t i) {
+      assert(i >= 0 && i < getNumInputs());
+        return &this->getOperation()->getOpOperand(i);
+    }
+    /// Return the subset of input operands that are of buffer type.
+    OpOperandVector getInputBufferOperands() {
+      OpOperandVector result;
+        result.reserve(getNumInputs());
+        llvm::copy_if(getInputOperands(),
+          std::back_inserter(result),
+          [](OpOperand *opOperand) {
+            return opOperand->get().getType().template isa<MemRefType>();
+          });
+        return result;
+    }
+    /// Return the subset of input operands that are of tensor type.
+    OpOperandVector getInputTensorOperands() {
+      OpOperandVector result;
+        result.reserve(getNumInputs());
+        llvm::copy_if(getInputOperands(),
+          std::back_inserter(result),
+          [](OpOperand *opOperand) {
+            return opOperand->get().getType().template isa<RankedTensorType>();
+          });
+        return result;
+    }
+    /// Return the output operands.
+    OpOperandVector getOutputOperands() {
+      int64_t numOutputs = getNumOutputs();
+        OpOperandVector result;
+        result.reserve(numOutputs);
+        llvm::transform(
+          this->getOperation()->getOpOperands()
+            .take_back(numOutputs),
+          std::back_inserter(result),
+          [](OpOperand &opOperand) { return &opOperand; });
+        return result;
+    }
+    /// Return the `i`-th output operand.
+    OpOperand*getOutputOperand(int64_t i) {
+      assert(i >= 0 && i < getNumOutputs());
+        return &this->getOperation()->getOpOperand(getNumInputs() + i);
+    }
+    /// Set the `i`-th output operand.
+    void setOutputOperand(int64_t i, Value value) {
+      assert(i >= 0 && i < getNumOutputs());
+        this->getOperation()->setOperand(getNumInputs() + i, value);
+    }
+    /// Return the subset of output operands that are of buffer type.
+    OpOperandVector getOutputBufferOperands() {
+      OpOperandVector result;
+        result.reserve(getNumOutputs());
+        llvm::copy_if(getOutputOperands(),
+          std::back_inserter(result),
+          [](OpOperand *opOperand) {
+            return opOperand->get().getType().template isa<MemRefType>();
+          });
+        return result;
+    }
+    /// Return the subset of output operands that are of tensor type.
+    OpOperandVector getOutputTensorOperands() {
+      OpOperandVector result;
+        result.reserve(getNumOutputs());
+        llvm::copy_if(getOutputOperands(),
+          std::back_inserter(result),
+          [](OpOperand *opOperand) {
+            return opOperand->get().getType().template isa<RankedTensorType>();
+          });
+        return result;
+    }
+    /// Return the types of the subset of output operands that are of buffer type.
+    SmallVector<MemRefType> getOutputBufferTypes() {
+      SmallVector<MemRefType> result;
+        result.reserve(getNumOutputs());
+        llvm::transform(getOutputBufferOperands(),
+          std::back_inserter(result),
+          [](OpOperand *opOperands) {
+            return opOperands->get().getType().cast<MemRefType>();
+          });
+        return result;
+    }
+    /// Return the types of the subset of output operands that are of tensor type.
+    SmallVector<RankedTensorType> getOutputTensorTypes() {
+      SmallVector<RankedTensorType> result;
+        result.reserve(getNumOutputs());
+        llvm::transform(getOutputTensorOperands(),
+          std::back_inserter(result),
+          [](OpOperand *opOperands) {
+            return opOperands->get().getType().cast<RankedTensorType>();
+          });
+        return result;
+    }
+    /// Return the range over input and output operands.
+    OpOperandVector getInputAndOutputOperands() {
+      int64_t numInputsAndOutputs = getNumInputsAndOutputs();
+        OpOperandVector result;
+        result.reserve(numInputsAndOutputs);
+        llvm::transform(
+          this->getOperation()->getOpOperands(),
+          std::back_inserter(result),
+          [](OpOperand &opOperand) { return &opOperand; });
+        return result;
+    }
+    /// Return true if `opOperand` is an input tensor.
+    bool isInputTensor(OpOperand * opOperand) {
+      if (!opOperand->get().getType().template isa<RankedTensorType>())
+          return false;
+        if (opOperand->getOperandNumber() < (*static_cast<ConcreteOp *>(this)).getNumInputs())
+          return true;
+        return false;
+    }
+    /// Return true if `opOperand` is an output tensor.
+    bool isOutputTensor(OpOperand * opOperand) {
+      if (!opOperand->get().getType().template isa<RankedTensorType>())
+          return false;
+        if (opOperand->getOperandNumber() >= (*static_cast<ConcreteOp *>(this)).getNumInputs())
+          return true;
+        return false;
+    }
+    /// Return true if the `opOperand` is a scalar value.
+    bool isScalar(OpOperand* opOperand) {
+      assert(opOperand->getOwner() == this->getOperation());
+        return !opOperand->get().getType().template isa<ShapedType>();
+    }
+    /// Return the result tied to `opOperand`.
+    OpResult getTiedOpResult(OpOperand* opOperand) {
+      assert(opOperand->getOwner() == this->getOperation());
+        int64_t resultIndex = opOperand->getOperandNumber() - getNumInputs();
+        assert(resultIndex >= 0 &&
+               resultIndex < this->getOperation()->getNumResults() );
+        return this->getOperation()->getResult(resultIndex);
+    }
+    /// Return whether the op has only MemRef input and outputs.
+    bool hasBufferSemantics() {
+      return this->getOperation()->getNumResults() == 0 &&
+          llvm::all_of(this->getOperation()->getOpOperands(),
+            [&](OpOperand &opOperand) {
+              return isScalar(&opOperand) ||
+                     opOperand.get().getType().template isa<MemRefType>();
+            });
+    }
+    /// Return whether the op has only RankedTensor input and outputs.
+    bool hasTensorSemantics() {
+      return llvm::all_of(this->getOperation()->getOpOperands(),
+          [&](OpOperand &opOperand) {
+            return isScalar(&opOperand) ||
+                   opOperand.get().getType().template isa<RankedTensorType>();
+          });
+    }
+    static ::mlir::LogicalResult verifyRegionTrait(::mlir::Operation *op) {
+      return detail::verifyDestinationStyleOpInterface(op);
+    }
+  };
+}// namespace detail
+template<typename ConcreteOp>
+ValueRange detail::DestinationStyleOpInterfaceInterfaceTraits::Model<ConcreteOp>::inputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).inputs();
+}
+template<typename ConcreteOp>
+int64_t detail::DestinationStyleOpInterfaceInterfaceTraits::Model<ConcreteOp>::getNumInputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getNumInputs();
+}
+template<typename ConcreteOp>
+ValueRange detail::DestinationStyleOpInterfaceInterfaceTraits::Model<ConcreteOp>::outputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).outputs();
+}
+template<typename ConcreteOp>
+int64_t detail::DestinationStyleOpInterfaceInterfaceTraits::Model<ConcreteOp>::getNumOutputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getNumOutputs();
+}
+template<typename ConcreteOp>
+int64_t detail::DestinationStyleOpInterfaceInterfaceTraits::Model<ConcreteOp>::getNumInputsAndOutputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getNumInputsAndOutputs();
+}
+template<typename ConcreteOp>
+OpOperandVector detail::DestinationStyleOpInterfaceInterfaceTraits::Model<ConcreteOp>::getInputOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getInputOperands();
+}
+template<typename ConcreteOp>
+OpOperand*detail::DestinationStyleOpInterfaceInterfaceTraits::Model<ConcreteOp>::getInputOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, int64_t i) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getInputOperand(i);
+}
+template<typename ConcreteOp>
+OpOperandVector detail::DestinationStyleOpInterfaceInterfaceTraits::Model<ConcreteOp>::getInputBufferOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getInputBufferOperands();
+}
+template<typename ConcreteOp>
+OpOperandVector detail::DestinationStyleOpInterfaceInterfaceTraits::Model<ConcreteOp>::getInputTensorOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getInputTensorOperands();
+}
+template<typename ConcreteOp>
+OpOperandVector detail::DestinationStyleOpInterfaceInterfaceTraits::Model<ConcreteOp>::getOutputOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getOutputOperands();
+}
+template<typename ConcreteOp>
+OpOperand*detail::DestinationStyleOpInterfaceInterfaceTraits::Model<ConcreteOp>::getOutputOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, int64_t i) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getOutputOperand(i);
+}
+template<typename ConcreteOp>
+void detail::DestinationStyleOpInterfaceInterfaceTraits::Model<ConcreteOp>::setOutputOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, int64_t i, Value value) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).setOutputOperand(i, value);
+}
+template<typename ConcreteOp>
+OpOperandVector detail::DestinationStyleOpInterfaceInterfaceTraits::Model<ConcreteOp>::getOutputBufferOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getOutputBufferOperands();
+}
+template<typename ConcreteOp>
+OpOperandVector detail::DestinationStyleOpInterfaceInterfaceTraits::Model<ConcreteOp>::getOutputTensorOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getOutputTensorOperands();
+}
+template<typename ConcreteOp>
+SmallVector<MemRefType> detail::DestinationStyleOpInterfaceInterfaceTraits::Model<ConcreteOp>::getOutputBufferTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getOutputBufferTypes();
+}
+template<typename ConcreteOp>
+SmallVector<RankedTensorType> detail::DestinationStyleOpInterfaceInterfaceTraits::Model<ConcreteOp>::getOutputTensorTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getOutputTensorTypes();
+}
+template<typename ConcreteOp>
+OpOperandVector detail::DestinationStyleOpInterfaceInterfaceTraits::Model<ConcreteOp>::getInputAndOutputOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getInputAndOutputOperands();
+}
+template<typename ConcreteOp>
+bool detail::DestinationStyleOpInterfaceInterfaceTraits::Model<ConcreteOp>::isInputTensor(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * opOperand) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).isInputTensor(opOperand);
+}
+template<typename ConcreteOp>
+bool detail::DestinationStyleOpInterfaceInterfaceTraits::Model<ConcreteOp>::isOutputTensor(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * opOperand) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).isOutputTensor(opOperand);
+}
+template<typename ConcreteOp>
+bool detail::DestinationStyleOpInterfaceInterfaceTraits::Model<ConcreteOp>::isScalar(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand* opOperand) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).isScalar(opOperand);
+}
+template<typename ConcreteOp>
+OpResult detail::DestinationStyleOpInterfaceInterfaceTraits::Model<ConcreteOp>::getTiedOpResult(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand* opOperand) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getTiedOpResult(opOperand);
+}
+template<typename ConcreteOp>
+bool detail::DestinationStyleOpInterfaceInterfaceTraits::Model<ConcreteOp>::hasBufferSemantics(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).hasBufferSemantics();
+}
+template<typename ConcreteOp>
+bool detail::DestinationStyleOpInterfaceInterfaceTraits::Model<ConcreteOp>::hasTensorSemantics(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).hasTensorSemantics();
+}
+template<typename ConcreteOp>
+Operation *detail::DestinationStyleOpInterfaceInterfaceTraits::Model<ConcreteOp>::clone(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands) {
+  BlockAndValueMapping bvm;
+        OperationState state(
+          loc, ConcreteOp::getOperationName(), operands, resultTypes,
+          (llvm::cast<ConcreteOp>(tablegen_opaque_val))->getAttrs());
+        for (Region &r : (llvm::cast<ConcreteOp>(tablegen_opaque_val))->getRegions())
+          r.cloneInto(state.addRegion(), bvm);
+        return b.create(state);
+}
+template<typename ConcreteOp>
+Operation *detail::DestinationStyleOpInterfaceInterfaceTraits::Model<ConcreteOp>::cloneWithoutRegions(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands) {
+  OperationState state(
+          loc, ConcreteOp::getOperationName(), operands, resultTypes,
+          (llvm::cast<ConcreteOp>(tablegen_opaque_val))->getAttrs());
+        for (size_t cnt = 0, e = (llvm::cast<ConcreteOp>(tablegen_opaque_val))->getNumRegions(); cnt < e; ++cnt)
+          state.addRegion();
+        return b.create(state);
+}
+template<typename ConcreteOp>
+ValueRange detail::DestinationStyleOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::inputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->inputs(tablegen_opaque_val);
+}
+template<typename ConcreteOp>
+int64_t detail::DestinationStyleOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getNumInputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->getNumInputs(tablegen_opaque_val);
+}
+template<typename ConcreteOp>
+ValueRange detail::DestinationStyleOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::outputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->outputs(tablegen_opaque_val);
+}
+template<typename ConcreteOp>
+int64_t detail::DestinationStyleOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getNumOutputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->getNumOutputs(tablegen_opaque_val);
+}
+template<typename ConcreteOp>
+int64_t detail::DestinationStyleOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getNumInputsAndOutputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->getNumInputsAndOutputs(tablegen_opaque_val);
+}
+template<typename ConcreteOp>
+OpOperandVector detail::DestinationStyleOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getInputOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->getInputOperands(tablegen_opaque_val);
+}
+template<typename ConcreteOp>
+OpOperand*detail::DestinationStyleOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getInputOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, int64_t i) {
+  return static_cast<const ConcreteOp *>(impl)->getInputOperand(tablegen_opaque_val, i);
+}
+template<typename ConcreteOp>
+OpOperandVector detail::DestinationStyleOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getInputBufferOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->getInputBufferOperands(tablegen_opaque_val);
+}
+template<typename ConcreteOp>
+OpOperandVector detail::DestinationStyleOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getInputTensorOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->getInputTensorOperands(tablegen_opaque_val);
+}
+template<typename ConcreteOp>
+OpOperandVector detail::DestinationStyleOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getOutputOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->getOutputOperands(tablegen_opaque_val);
+}
+template<typename ConcreteOp>
+OpOperand*detail::DestinationStyleOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getOutputOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, int64_t i) {
+  return static_cast<const ConcreteOp *>(impl)->getOutputOperand(tablegen_opaque_val, i);
+}
+template<typename ConcreteOp>
+void detail::DestinationStyleOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::setOutputOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, int64_t i, Value value) {
+  return static_cast<const ConcreteOp *>(impl)->setOutputOperand(tablegen_opaque_val, i, value);
+}
+template<typename ConcreteOp>
+OpOperandVector detail::DestinationStyleOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getOutputBufferOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->getOutputBufferOperands(tablegen_opaque_val);
+}
+template<typename ConcreteOp>
+OpOperandVector detail::DestinationStyleOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getOutputTensorOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->getOutputTensorOperands(tablegen_opaque_val);
+}
+template<typename ConcreteOp>
+SmallVector<MemRefType> detail::DestinationStyleOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getOutputBufferTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->getOutputBufferTypes(tablegen_opaque_val);
+}
+template<typename ConcreteOp>
+SmallVector<RankedTensorType> detail::DestinationStyleOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getOutputTensorTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->getOutputTensorTypes(tablegen_opaque_val);
+}
+template<typename ConcreteOp>
+OpOperandVector detail::DestinationStyleOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getInputAndOutputOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->getInputAndOutputOperands(tablegen_opaque_val);
+}
+template<typename ConcreteOp>
+bool detail::DestinationStyleOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::isInputTensor(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * opOperand) {
+  return static_cast<const ConcreteOp *>(impl)->isInputTensor(tablegen_opaque_val, opOperand);
+}
+template<typename ConcreteOp>
+bool detail::DestinationStyleOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::isOutputTensor(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * opOperand) {
+  return static_cast<const ConcreteOp *>(impl)->isOutputTensor(tablegen_opaque_val, opOperand);
+}
+template<typename ConcreteOp>
+bool detail::DestinationStyleOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::isScalar(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand* opOperand) {
+  return static_cast<const ConcreteOp *>(impl)->isScalar(tablegen_opaque_val, opOperand);
+}
+template<typename ConcreteOp>
+OpResult detail::DestinationStyleOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getTiedOpResult(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand* opOperand) {
+  return static_cast<const ConcreteOp *>(impl)->getTiedOpResult(tablegen_opaque_val, opOperand);
+}
+template<typename ConcreteOp>
+bool detail::DestinationStyleOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::hasBufferSemantics(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->hasBufferSemantics(tablegen_opaque_val);
+}
+template<typename ConcreteOp>
+bool detail::DestinationStyleOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::hasTensorSemantics(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->hasTensorSemantics(tablegen_opaque_val);
+}
+template<typename ConcreteOp>
+Operation *detail::DestinationStyleOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::clone(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands) {
+  return static_cast<const ConcreteOp *>(impl)->clone(tablegen_opaque_val, b, loc, resultTypes, operands);
+}
+template<typename ConcreteOp>
+Operation *detail::DestinationStyleOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::cloneWithoutRegions(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands) {
+  return static_cast<const ConcreteOp *>(impl)->cloneWithoutRegions(tablegen_opaque_val, b, loc, resultTypes, operands);
+}
+template<typename ConcreteModel, typename ConcreteOp>
+int64_t detail::DestinationStyleOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getNumInputs(::mlir::Operation *tablegen_opaque_val) const {
+return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getInputs().size();
+}
+template<typename ConcreteModel, typename ConcreteOp>
+int64_t detail::DestinationStyleOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getNumOutputs(::mlir::Operation *tablegen_opaque_val) const {
+return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).outputs().size();
+}
+template<typename ConcreteModel, typename ConcreteOp>
+int64_t detail::DestinationStyleOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getNumInputsAndOutputs(::mlir::Operation *tablegen_opaque_val) const {
+return this->getOperation()->getNumOperands();
+}
+template<typename ConcreteModel, typename ConcreteOp>
+OpOperandVector detail::DestinationStyleOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getInputOperands(::mlir::Operation *tablegen_opaque_val) const {
+int64_t numInputs = getNumInputs();
+        OpOperandVector result;
+        result.reserve(numInputs);
+        llvm::transform(
+          this->getOperation()->getOpOperands().take_front(numInputs),
+          std::back_inserter(result),
+          [](OpOperand &opOperand) { return &opOperand; });
+        return result;
+}
+template<typename ConcreteModel, typename ConcreteOp>
+OpOperand*detail::DestinationStyleOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getInputOperand(::mlir::Operation *tablegen_opaque_val, int64_t i) const {
+assert(i >= 0 && i < getNumInputs());
+        return &this->getOperation()->getOpOperand(i);
+}
+template<typename ConcreteModel, typename ConcreteOp>
+OpOperandVector detail::DestinationStyleOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getInputBufferOperands(::mlir::Operation *tablegen_opaque_val) const {
+OpOperandVector result;
+        result.reserve(getNumInputs());
+        llvm::copy_if(getInputOperands(),
+          std::back_inserter(result),
+          [](OpOperand *opOperand) {
+            return opOperand->get().getType().template isa<MemRefType>();
+          });
+        return result;
+}
+template<typename ConcreteModel, typename ConcreteOp>
+OpOperandVector detail::DestinationStyleOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getInputTensorOperands(::mlir::Operation *tablegen_opaque_val) const {
+OpOperandVector result;
+        result.reserve(getNumInputs());
+        llvm::copy_if(getInputOperands(),
+          std::back_inserter(result),
+          [](OpOperand *opOperand) {
+            return opOperand->get().getType().template isa<RankedTensorType>();
+          });
+        return result;
+}
+template<typename ConcreteModel, typename ConcreteOp>
+OpOperandVector detail::DestinationStyleOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getOutputOperands(::mlir::Operation *tablegen_opaque_val) const {
+int64_t numOutputs = getNumOutputs();
+        OpOperandVector result;
+        result.reserve(numOutputs);
+        llvm::transform(
+          this->getOperation()->getOpOperands()
+            .take_back(numOutputs),
+          std::back_inserter(result),
+          [](OpOperand &opOperand) { return &opOperand; });
+        return result;
+}
+template<typename ConcreteModel, typename ConcreteOp>
+OpOperand*detail::DestinationStyleOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getOutputOperand(::mlir::Operation *tablegen_opaque_val, int64_t i) const {
+assert(i >= 0 && i < getNumOutputs());
+        return &this->getOperation()->getOpOperand(getNumInputs() + i);
+}
+template<typename ConcreteModel, typename ConcreteOp>
+void detail::DestinationStyleOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::setOutputOperand(::mlir::Operation *tablegen_opaque_val, int64_t i, Value value) const {
+assert(i >= 0 && i < getNumOutputs());
+        this->getOperation()->setOperand(getNumInputs() + i, value);
+}
+template<typename ConcreteModel, typename ConcreteOp>
+OpOperandVector detail::DestinationStyleOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getOutputBufferOperands(::mlir::Operation *tablegen_opaque_val) const {
+OpOperandVector result;
+        result.reserve(getNumOutputs());
+        llvm::copy_if(getOutputOperands(),
+          std::back_inserter(result),
+          [](OpOperand *opOperand) {
+            return opOperand->get().getType().template isa<MemRefType>();
+          });
+        return result;
+}
+template<typename ConcreteModel, typename ConcreteOp>
+OpOperandVector detail::DestinationStyleOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getOutputTensorOperands(::mlir::Operation *tablegen_opaque_val) const {
+OpOperandVector result;
+        result.reserve(getNumOutputs());
+        llvm::copy_if(getOutputOperands(),
+          std::back_inserter(result),
+          [](OpOperand *opOperand) {
+            return opOperand->get().getType().template isa<RankedTensorType>();
+          });
+        return result;
+}
+template<typename ConcreteModel, typename ConcreteOp>
+SmallVector<MemRefType> detail::DestinationStyleOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getOutputBufferTypes(::mlir::Operation *tablegen_opaque_val) const {
+SmallVector<MemRefType> result;
+        result.reserve(getNumOutputs());
+        llvm::transform(getOutputBufferOperands(),
+          std::back_inserter(result),
+          [](OpOperand *opOperands) {
+            return opOperands->get().getType().cast<MemRefType>();
+          });
+        return result;
+}
+template<typename ConcreteModel, typename ConcreteOp>
+SmallVector<RankedTensorType> detail::DestinationStyleOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getOutputTensorTypes(::mlir::Operation *tablegen_opaque_val) const {
+SmallVector<RankedTensorType> result;
+        result.reserve(getNumOutputs());
+        llvm::transform(getOutputTensorOperands(),
+          std::back_inserter(result),
+          [](OpOperand *opOperands) {
+            return opOperands->get().getType().cast<RankedTensorType>();
+          });
+        return result;
+}
+template<typename ConcreteModel, typename ConcreteOp>
+OpOperandVector detail::DestinationStyleOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getInputAndOutputOperands(::mlir::Operation *tablegen_opaque_val) const {
+int64_t numInputsAndOutputs = getNumInputsAndOutputs();
+        OpOperandVector result;
+        result.reserve(numInputsAndOutputs);
+        llvm::transform(
+          this->getOperation()->getOpOperands(),
+          std::back_inserter(result),
+          [](OpOperand &opOperand) { return &opOperand; });
+        return result;
+}
+template<typename ConcreteModel, typename ConcreteOp>
+bool detail::DestinationStyleOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::isInputTensor(::mlir::Operation *tablegen_opaque_val, OpOperand *opOperand) const {
+if (!opOperand->get().getType().template isa<RankedTensorType>())
+          return false;
+        if (opOperand->getOperandNumber() < (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getNumInputs())
+          return true;
+        return false;
+}
+template<typename ConcreteModel, typename ConcreteOp>
+bool detail::DestinationStyleOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::isOutputTensor(::mlir::Operation *tablegen_opaque_val, OpOperand *opOperand) const {
+if (!opOperand->get().getType().template isa<RankedTensorType>())
+          return false;
+        if (opOperand->getOperandNumber() >= (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getNumInputs())
+          return true;
+        return false;
+}
+template<typename ConcreteModel, typename ConcreteOp>
+bool detail::DestinationStyleOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::isScalar(::mlir::Operation *tablegen_opaque_val, OpOperand*opOperand) const {
+assert(opOperand->getOwner() == this->getOperation());
+        return !opOperand->get().getType().template isa<ShapedType>();
+}
+template<typename ConcreteModel, typename ConcreteOp>
+OpResult detail::DestinationStyleOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getTiedOpResult(::mlir::Operation *tablegen_opaque_val, OpOperand*opOperand) const {
+assert(opOperand->getOwner() == this->getOperation());
+        int64_t resultIndex = opOperand->getOperandNumber() - getNumInputs();
+        assert(resultIndex >= 0 &&
+               resultIndex < this->getOperation()->getNumResults() );
+        return this->getOperation()->getResult(resultIndex);
+}
+template<typename ConcreteModel, typename ConcreteOp>
+bool detail::DestinationStyleOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::hasBufferSemantics(::mlir::Operation *tablegen_opaque_val) const {
+return this->getOperation()->getNumResults() == 0 &&
+          llvm::all_of(this->getOperation()->getOpOperands(),
+            [&](OpOperand &opOperand) {
+              return isScalar(&opOperand) ||
+                     opOperand.get().getType().template isa<MemRefType>();
+            });
+}
+template<typename ConcreteModel, typename ConcreteOp>
+bool detail::DestinationStyleOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::hasTensorSemantics(::mlir::Operation *tablegen_opaque_val) const {
+return llvm::all_of(this->getOperation()->getOpOperands(),
+          [&](OpOperand &opOperand) {
+            return isScalar(&opOperand) ||
+                   opOperand.get().getType().template isa<RankedTensorType>();
+          });
+}
+} // namespace linalg
+} // namespace mlir
+namespace mlir {
+namespace linalg {
 class ContractionOpInterface;
 namespace detail {
 struct ContractionOpInterfaceInterfaceTraits {
@@ -45,6 +801,7 @@ struct ContractionOpInterfaceInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteOp;
   };
 };template <typename ConcreteOp>
 struct ContractionOpInterfaceTrait;
@@ -55,10 +812,18 @@ public:
   using ::mlir::OpInterface<ContractionOpInterface, detail::ContractionOpInterfaceInterfaceTraits>::OpInterface;
   template <typename ConcreteOp>
   struct Trait : public detail::ContractionOpInterfaceTrait<ConcreteOp> {};
+  /// Returns the left-hand side operand.
   Value lhs();
+  /// Returns the right-hand side operand.
   Value rhs();
+  /// Returns whether the given op has indexing maps that correspond to a
+  /// row-major matmul operation.
   bool isRowMajorMatmul();
+  /// Returns whether the given op has indexing maps that correspond to a
+  /// column-major matmul operation.
   bool isColumnMajorMatmul();
+  /// Returns whether the given op has indexing maps that correspond to a
+  /// row-major batch matmul operation.
   bool isRowMajorBatchMatmul();
 };
 namespace detail {
@@ -79,15 +844,15 @@ Value detail::ContractionOpInterfaceInterfaceTraits::Model<ConcreteOp>::rhs(cons
 }
 template<typename ConcreteOp>
 bool detail::ContractionOpInterfaceInterfaceTraits::Model<ConcreteOp>::isRowMajorMatmul(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return mlir::isRowMajorMatmul((llvm::cast<ConcreteOp>(tablegen_opaque_val)).indexing_maps());
+  return mlir::isRowMajorMatmul((llvm::cast<ConcreteOp>(tablegen_opaque_val)).getIndexingMaps());
 }
 template<typename ConcreteOp>
 bool detail::ContractionOpInterfaceInterfaceTraits::Model<ConcreteOp>::isColumnMajorMatmul(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return mlir::isColumnMajorMatmul((llvm::cast<ConcreteOp>(tablegen_opaque_val)).indexing_maps());
+  return mlir::isColumnMajorMatmul((llvm::cast<ConcreteOp>(tablegen_opaque_val)).getIndexingMaps());
 }
 template<typename ConcreteOp>
 bool detail::ContractionOpInterfaceInterfaceTraits::Model<ConcreteOp>::isRowMajorBatchMatmul(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return mlir::isRowMajorBatchMatmul((llvm::cast<ConcreteOp>(tablegen_opaque_val)).indexing_maps());
+  return mlir::isRowMajorBatchMatmul((llvm::cast<ConcreteOp>(tablegen_opaque_val)).getIndexingMaps());
 }
 template<typename ConcreteOp>
 Value detail::ContractionOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::lhs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
@@ -141,6 +906,7 @@ struct ConvolutionOpInterfaceInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteOp;
     Value image(::mlir::Operation *tablegen_opaque_val) const;
     Value filter(::mlir::Operation *tablegen_opaque_val) const;
   };
@@ -153,15 +919,19 @@ public:
   using ::mlir::OpInterface<ConvolutionOpInterface, detail::ConvolutionOpInterfaceInterfaceTraits>::OpInterface;
   template <typename ConcreteOp>
   struct Trait : public detail::ConvolutionOpInterfaceTrait<ConcreteOp> {};
+  /// Return the image operand.
   Value image();
+  /// Return the filter operand.
   Value filter();
 };
 namespace detail {
   template <typename ConcreteOp>
   struct ConvolutionOpInterfaceTrait : public ::mlir::OpInterface<ConvolutionOpInterface, detail::ConvolutionOpInterfaceInterfaceTraits>::Trait<ConcreteOp> {
+    /// Return the image operand.
     Value image() {
       return (*static_cast<ConcreteOp *>(this)).getOperation()->getOperand(0);
     }
+    /// Return the filter operand.
     Value filter() {
       return (*static_cast<ConcreteOp *>(this)).getOperation()->getOperand(1);
     }
@@ -229,6 +999,7 @@ struct FillOpInterfaceInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteOp;
     Value value(::mlir::Operation *tablegen_opaque_val) const;
     Value output(::mlir::Operation *tablegen_opaque_val) const;
     Value result(::mlir::Operation *tablegen_opaque_val) const;
@@ -242,19 +1013,25 @@ public:
   using ::mlir::OpInterface<FillOpInterface, detail::FillOpInterfaceInterfaceTraits>::OpInterface;
   template <typename ConcreteOp>
   struct Trait : public detail::FillOpInterfaceTrait<ConcreteOp> {};
+  /// Return the fill value.
   Value value();
+  /// Return the output operand.
   Value output();
+  /// Return the result.
   Value result();
 };
 namespace detail {
   template <typename ConcreteOp>
   struct FillOpInterfaceTrait : public ::mlir::OpInterface<FillOpInterface, detail::FillOpInterfaceInterfaceTraits>::Trait<ConcreteOp> {
+    /// Return the fill value.
     Value value() {
       return (*static_cast<ConcreteOp *>(this)).getOperation()->getOperand(0);
     }
+    /// Return the output operand.
     Value output() {
       return (*static_cast<ConcreteOp *>(this)).getOperation()->getOperand(1);
     }
+    /// Return the result.
     Value result() {
       if ((*static_cast<ConcreteOp *>(this)).getOperation()->getResults().empty())
           return nullptr;
@@ -319,56 +1096,30 @@ struct LinalgOpInterfaceTraits {
     void (*getWindowDims)(const Concept *impl, ::mlir::Operation *, SmallVectorImpl<unsigned> &);
     unsigned (*getNumLoops)(const Concept *impl, ::mlir::Operation *);
     bool (*hasSingleReductionLoop)(const Concept *impl, ::mlir::Operation *);
-    ValueRange (*inputs)(const Concept *impl, ::mlir::Operation *);
-    int64_t (*getNumInputs)(const Concept *impl, ::mlir::Operation *);
-    ValueRange (*outputs)(const Concept *impl, ::mlir::Operation *);
-    int64_t (*getNumOutputs)(const Concept *impl, ::mlir::Operation *);
-    int64_t (*getNumInputsAndOutputs)(const Concept *impl, ::mlir::Operation *);
-    OpOperandVector (*getInputOperands)(const Concept *impl, ::mlir::Operation *);
-    OpOperand*(*getInputOperand)(const Concept *impl, ::mlir::Operation *, int64_t);
-    OpOperandVector (*getInputBufferOperands)(const Concept *impl, ::mlir::Operation *);
-    OpOperandVector (*getInputTensorOperands)(const Concept *impl, ::mlir::Operation *);
-    OpOperandVector (*getOutputOperands)(const Concept *impl, ::mlir::Operation *);
-    OpOperand*(*getOutputOperand)(const Concept *impl, ::mlir::Operation *, int64_t);
-    void (*setOutputOperand)(const Concept *impl, ::mlir::Operation *, int64_t, Value);
-    OpOperandVector (*getOutputBufferOperands)(const Concept *impl, ::mlir::Operation *);
-    OpOperandVector (*getOutputTensorOperands)(const Concept *impl, ::mlir::Operation *);
-    SmallVector<MemRefType> (*getOutputBufferTypes)(const Concept *impl, ::mlir::Operation *);
-    SmallVector<RankedTensorType> (*getOutputTensorTypes)(const Concept *impl, ::mlir::Operation *);
-    OpOperandVector (*getInputAndOutputOperands)(const Concept *impl, ::mlir::Operation *);
     bool (*payloadUsesValueFromOperand)(const Concept *impl, ::mlir::Operation *, OpOperand *);
-    bool (*isInputTensor)(const Concept *impl, ::mlir::Operation *, OpOperand *);
-    bool (*isOutputTensor)(const Concept *impl, ::mlir::Operation *, OpOperand *);
     bool (*isInitTensor)(const Concept *impl, ::mlir::Operation *, OpOperand *);
     int64_t (*getRank)(const Concept *impl, ::mlir::Operation *, OpOperand*);
     Block::BlockArgListType (*getRegionOutputArgs)(const Concept *impl, ::mlir::Operation *);
     ArrayRef<int64_t> (*getShape)(const Concept *impl, ::mlir::Operation *, OpOperand*);
-    bool (*isScalar)(const Concept *impl, ::mlir::Operation *, OpOperand*);
     BlockArgument (*getTiedBlockArgument)(const Concept *impl, ::mlir::Operation *, OpOperand *);
+    OpOperand *(*getTiedOpOperand)(const Concept *impl, ::mlir::Operation *, BlockArgument);
     AffineMap (*getTiedIndexingMap)(const Concept *impl, ::mlir::Operation *, OpOperand*);
     AffineMap (*getTiedIndexingMapForResult)(const Concept *impl, ::mlir::Operation *, OpResult);
-    OpResult (*getTiedOpResult)(const Concept *impl, ::mlir::Operation *, OpOperand*);
     OpOperand *(*getTiedYieldValue)(const Concept *impl, ::mlir::Operation *, OpOperand*);
     Block*(*getBlock)(const Concept *impl, ::mlir::Operation *);
     ArrayAttr (*iterator_types)(const Concept *impl, ::mlir::Operation *);
     bool (*hasDynamicIndexingMaps)(const Concept *impl, ::mlir::Operation *);
     LogicalResult (*verifyIndexingMapRequiredAttributes)(const Concept *impl, ::mlir::Operation *);
-    ArrayAttr (*indexing_maps)(const Concept *impl, ::mlir::Operation *);
-    SmallVector<AffineMap> (*getIndexingMaps)(const Concept *impl, ::mlir::Operation *);
+    ArrayAttr (*getIndexingMaps)(const Concept *impl, ::mlir::Operation *);
+    SmallVector<AffineMap> (*getIndexingMapsArray)(const Concept *impl, ::mlir::Operation *);
     bool (*hasDynamicShape)(const Concept *impl, ::mlir::Operation *);
-    bool (*hasBufferSemantics)(const Concept *impl, ::mlir::Operation *);
-    bool (*hasTensorSemantics)(const Concept *impl, ::mlir::Operation *);
     std::string (*getLibraryCallName)(const Concept *impl, ::mlir::Operation *);
     bool (*hasIndexSemantics)(const Concept *impl, ::mlir::Operation *);
     AffineMap (*getLoopsToShapesMap)(const Concept *impl, ::mlir::Operation *);
     AffineMap (*getShapesToLoopsMap)(const Concept *impl, ::mlir::Operation *);
     bool (*canOpOperandsBeDropped)(const Concept *impl, ::mlir::Operation *, ArrayRef<OpOperand *>);
-    std::pair<int64_t, int64_t> (*getResultsPositionInLoopsToShapeMap)(const Concept *impl, ::mlir::Operation *);
     SmallVector<int64_t> (*getStaticShape)(const Concept *impl, ::mlir::Operation *);
     SmallVector<int64_t, 4> (*getStaticLoopRanges)(const Concept *impl, ::mlir::Operation *);
-    Operation *(*clone)(const Concept *impl, ::mlir::Operation *, OpBuilder &, Location, TypeRange, ValueRange);
-    Operation *(*cloneWithMapper)(const Concept *impl, ::mlir::Operation *, OpBuilder &, Location, TypeRange, ValueRange, BlockAndValueMapping &);
-    Operation *(*cloneWithoutRegions)(const Concept *impl, ::mlir::Operation *, OpBuilder &, Location, TypeRange, ValueRange);
     std::function<void(ImplicitLocOpBuilder &, Block &, ArrayRef<NamedAttribute>)> (*getRegionBuilder)();
     bool (*hasOnlyProjectedPermutations)(const Concept *impl, ::mlir::Operation *);
   };
@@ -376,7 +1127,7 @@ struct LinalgOpInterfaceTraits {
   class Model : public Concept {
   public:
     using Interface = ::mlir::linalg::LinalgOp;
-    Model() : Concept{getNumParallelLoops, getParallelDims, getNumReductionLoops, getReductionDims, getNumWindowLoops, getWindowDims, getNumLoops, hasSingleReductionLoop, inputs, getNumInputs, outputs, getNumOutputs, getNumInputsAndOutputs, getInputOperands, getInputOperand, getInputBufferOperands, getInputTensorOperands, getOutputOperands, getOutputOperand, setOutputOperand, getOutputBufferOperands, getOutputTensorOperands, getOutputBufferTypes, getOutputTensorTypes, getInputAndOutputOperands, payloadUsesValueFromOperand, isInputTensor, isOutputTensor, isInitTensor, getRank, getRegionOutputArgs, getShape, isScalar, getTiedBlockArgument, getTiedIndexingMap, getTiedIndexingMapForResult, getTiedOpResult, getTiedYieldValue, getBlock, iterator_types, hasDynamicIndexingMaps, verifyIndexingMapRequiredAttributes, indexing_maps, getIndexingMaps, hasDynamicShape, hasBufferSemantics, hasTensorSemantics, getLibraryCallName, hasIndexSemantics, getLoopsToShapesMap, getShapesToLoopsMap, canOpOperandsBeDropped, getResultsPositionInLoopsToShapeMap, getStaticShape, getStaticLoopRanges, clone, cloneWithMapper, cloneWithoutRegions, getRegionBuilder, hasOnlyProjectedPermutations} {}
+    Model() : Concept{getNumParallelLoops, getParallelDims, getNumReductionLoops, getReductionDims, getNumWindowLoops, getWindowDims, getNumLoops, hasSingleReductionLoop, payloadUsesValueFromOperand, isInitTensor, getRank, getRegionOutputArgs, getShape, getTiedBlockArgument, getTiedOpOperand, getTiedIndexingMap, getTiedIndexingMapForResult, getTiedYieldValue, getBlock, iterator_types, hasDynamicIndexingMaps, verifyIndexingMapRequiredAttributes, getIndexingMaps, getIndexingMapsArray, hasDynamicShape, getLibraryCallName, hasIndexSemantics, getLoopsToShapesMap, getShapesToLoopsMap, canOpOperandsBeDropped, getStaticShape, getStaticLoopRanges, getRegionBuilder, hasOnlyProjectedPermutations} {}
 
     static inline unsigned getNumParallelLoops(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline void getParallelDims(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, SmallVectorImpl<unsigned> & res);
@@ -386,56 +1137,30 @@ struct LinalgOpInterfaceTraits {
     static inline void getWindowDims(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, SmallVectorImpl<unsigned> & res);
     static inline unsigned getNumLoops(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline bool hasSingleReductionLoop(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline ValueRange inputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline int64_t getNumInputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline ValueRange outputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline int64_t getNumOutputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline int64_t getNumInputsAndOutputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline OpOperandVector getInputOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline OpOperand*getInputOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, int64_t i);
-    static inline OpOperandVector getInputBufferOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline OpOperandVector getInputTensorOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline OpOperandVector getOutputOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline OpOperand*getOutputOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, int64_t i);
-    static inline void setOutputOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, int64_t i, Value value);
-    static inline OpOperandVector getOutputBufferOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline OpOperandVector getOutputTensorOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline SmallVector<MemRefType> getOutputBufferTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline SmallVector<RankedTensorType> getOutputTensorTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline OpOperandVector getInputAndOutputOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline bool payloadUsesValueFromOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * opOperand);
-    static inline bool isInputTensor(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * opOperand);
-    static inline bool isOutputTensor(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * opOperand);
     static inline bool isInitTensor(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * opOperand);
     static inline int64_t getRank(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand* opOperand);
     static inline Block::BlockArgListType getRegionOutputArgs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline ArrayRef<int64_t> getShape(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand* opOperand);
-    static inline bool isScalar(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand* opOperand);
     static inline BlockArgument getTiedBlockArgument(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * opOperand);
+    static inline OpOperand *getTiedOpOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, BlockArgument blockArgument);
     static inline AffineMap getTiedIndexingMap(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand* opOperand);
     static inline AffineMap getTiedIndexingMapForResult(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpResult result);
-    static inline OpResult getTiedOpResult(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand* opOperand);
     static inline OpOperand *getTiedYieldValue(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand* opOperand);
     static inline Block*getBlock(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline ArrayAttr iterator_types(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline bool hasDynamicIndexingMaps(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline LogicalResult verifyIndexingMapRequiredAttributes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline ArrayAttr indexing_maps(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline SmallVector<AffineMap> getIndexingMaps(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ArrayAttr getIndexingMaps(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline SmallVector<AffineMap> getIndexingMapsArray(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline bool hasDynamicShape(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline bool hasBufferSemantics(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline bool hasTensorSemantics(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline std::string getLibraryCallName(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline bool hasIndexSemantics(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline AffineMap getLoopsToShapesMap(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline AffineMap getShapesToLoopsMap(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline bool canOpOperandsBeDropped(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ArrayRef<OpOperand *> droppedOperands);
-    static inline std::pair<int64_t, int64_t> getResultsPositionInLoopsToShapeMap(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline SmallVector<int64_t> getStaticShape(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline SmallVector<int64_t, 4> getStaticLoopRanges(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline Operation *clone(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands);
-    static inline Operation *cloneWithMapper(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands, BlockAndValueMapping & bvm);
-    static inline Operation *cloneWithoutRegions(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands);
     static inline std::function<void(ImplicitLocOpBuilder &, Block &, ArrayRef<NamedAttribute>)> getRegionBuilder();
     static inline bool hasOnlyProjectedPermutations(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
   };
@@ -443,7 +1168,7 @@ struct LinalgOpInterfaceTraits {
   class FallbackModel : public Concept {
   public:
     using Interface = ::mlir::linalg::LinalgOp;
-    FallbackModel() : Concept{getNumParallelLoops, getParallelDims, getNumReductionLoops, getReductionDims, getNumWindowLoops, getWindowDims, getNumLoops, hasSingleReductionLoop, inputs, getNumInputs, outputs, getNumOutputs, getNumInputsAndOutputs, getInputOperands, getInputOperand, getInputBufferOperands, getInputTensorOperands, getOutputOperands, getOutputOperand, setOutputOperand, getOutputBufferOperands, getOutputTensorOperands, getOutputBufferTypes, getOutputTensorTypes, getInputAndOutputOperands, payloadUsesValueFromOperand, isInputTensor, isOutputTensor, isInitTensor, getRank, getRegionOutputArgs, getShape, isScalar, getTiedBlockArgument, getTiedIndexingMap, getTiedIndexingMapForResult, getTiedOpResult, getTiedYieldValue, getBlock, iterator_types, hasDynamicIndexingMaps, verifyIndexingMapRequiredAttributes, indexing_maps, getIndexingMaps, hasDynamicShape, hasBufferSemantics, hasTensorSemantics, getLibraryCallName, hasIndexSemantics, getLoopsToShapesMap, getShapesToLoopsMap, canOpOperandsBeDropped, getResultsPositionInLoopsToShapeMap, getStaticShape, getStaticLoopRanges, clone, cloneWithMapper, cloneWithoutRegions, getRegionBuilder, hasOnlyProjectedPermutations} {}
+    FallbackModel() : Concept{getNumParallelLoops, getParallelDims, getNumReductionLoops, getReductionDims, getNumWindowLoops, getWindowDims, getNumLoops, hasSingleReductionLoop, payloadUsesValueFromOperand, isInitTensor, getRank, getRegionOutputArgs, getShape, getTiedBlockArgument, getTiedOpOperand, getTiedIndexingMap, getTiedIndexingMapForResult, getTiedYieldValue, getBlock, iterator_types, hasDynamicIndexingMaps, verifyIndexingMapRequiredAttributes, getIndexingMaps, getIndexingMapsArray, hasDynamicShape, getLibraryCallName, hasIndexSemantics, getLoopsToShapesMap, getShapesToLoopsMap, canOpOperandsBeDropped, getStaticShape, getStaticLoopRanges, getRegionBuilder, hasOnlyProjectedPermutations} {}
 
     static inline unsigned getNumParallelLoops(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline void getParallelDims(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, SmallVectorImpl<unsigned> & res);
@@ -453,62 +1178,37 @@ struct LinalgOpInterfaceTraits {
     static inline void getWindowDims(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, SmallVectorImpl<unsigned> & res);
     static inline unsigned getNumLoops(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline bool hasSingleReductionLoop(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline ValueRange inputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline int64_t getNumInputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline ValueRange outputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline int64_t getNumOutputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline int64_t getNumInputsAndOutputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline OpOperandVector getInputOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline OpOperand*getInputOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, int64_t i);
-    static inline OpOperandVector getInputBufferOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline OpOperandVector getInputTensorOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline OpOperandVector getOutputOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline OpOperand*getOutputOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, int64_t i);
-    static inline void setOutputOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, int64_t i, Value value);
-    static inline OpOperandVector getOutputBufferOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline OpOperandVector getOutputTensorOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline SmallVector<MemRefType> getOutputBufferTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline SmallVector<RankedTensorType> getOutputTensorTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline OpOperandVector getInputAndOutputOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline bool payloadUsesValueFromOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * opOperand);
-    static inline bool isInputTensor(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * opOperand);
-    static inline bool isOutputTensor(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * opOperand);
     static inline bool isInitTensor(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * opOperand);
     static inline int64_t getRank(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand* opOperand);
     static inline Block::BlockArgListType getRegionOutputArgs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline ArrayRef<int64_t> getShape(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand* opOperand);
-    static inline bool isScalar(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand* opOperand);
     static inline BlockArgument getTiedBlockArgument(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * opOperand);
+    static inline OpOperand *getTiedOpOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, BlockArgument blockArgument);
     static inline AffineMap getTiedIndexingMap(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand* opOperand);
     static inline AffineMap getTiedIndexingMapForResult(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpResult result);
-    static inline OpResult getTiedOpResult(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand* opOperand);
     static inline OpOperand *getTiedYieldValue(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand* opOperand);
     static inline Block*getBlock(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline ArrayAttr iterator_types(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline bool hasDynamicIndexingMaps(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline LogicalResult verifyIndexingMapRequiredAttributes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline ArrayAttr indexing_maps(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline SmallVector<AffineMap> getIndexingMaps(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ArrayAttr getIndexingMaps(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline SmallVector<AffineMap> getIndexingMapsArray(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline bool hasDynamicShape(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline bool hasBufferSemantics(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline bool hasTensorSemantics(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline std::string getLibraryCallName(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline bool hasIndexSemantics(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline AffineMap getLoopsToShapesMap(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline AffineMap getShapesToLoopsMap(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline bool canOpOperandsBeDropped(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ArrayRef<OpOperand *> droppedOperands);
-    static inline std::pair<int64_t, int64_t> getResultsPositionInLoopsToShapeMap(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline SmallVector<int64_t> getStaticShape(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline SmallVector<int64_t, 4> getStaticLoopRanges(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline Operation *clone(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands);
-    static inline Operation *cloneWithMapper(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands, BlockAndValueMapping & bvm);
-    static inline Operation *cloneWithoutRegions(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands);
     static inline std::function<void(ImplicitLocOpBuilder &, Block &, ArrayRef<NamedAttribute>)> getRegionBuilder();
     static inline bool hasOnlyProjectedPermutations(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
   };
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteOp;
     unsigned getNumParallelLoops(::mlir::Operation *tablegen_opaque_val) const;
     void getParallelDims(::mlir::Operation *tablegen_opaque_val, SmallVectorImpl<unsigned> &res) const;
     unsigned getNumReductionLoops(::mlir::Operation *tablegen_opaque_val) const;
@@ -517,47 +1217,26 @@ struct LinalgOpInterfaceTraits {
     void getWindowDims(::mlir::Operation *tablegen_opaque_val, SmallVectorImpl<unsigned> &res) const;
     unsigned getNumLoops(::mlir::Operation *tablegen_opaque_val) const;
     bool hasSingleReductionLoop(::mlir::Operation *tablegen_opaque_val) const;
-    int64_t getNumInputs(::mlir::Operation *tablegen_opaque_val) const;
-    int64_t getNumOutputs(::mlir::Operation *tablegen_opaque_val) const;
-    int64_t getNumInputsAndOutputs(::mlir::Operation *tablegen_opaque_val) const;
-    OpOperandVector getInputOperands(::mlir::Operation *tablegen_opaque_val) const;
-    OpOperand*getInputOperand(::mlir::Operation *tablegen_opaque_val, int64_t i) const;
-    OpOperandVector getInputBufferOperands(::mlir::Operation *tablegen_opaque_val) const;
-    OpOperandVector getInputTensorOperands(::mlir::Operation *tablegen_opaque_val) const;
-    OpOperandVector getOutputOperands(::mlir::Operation *tablegen_opaque_val) const;
-    OpOperand*getOutputOperand(::mlir::Operation *tablegen_opaque_val, int64_t i) const;
-    void setOutputOperand(::mlir::Operation *tablegen_opaque_val, int64_t i, Value value) const;
-    OpOperandVector getOutputBufferOperands(::mlir::Operation *tablegen_opaque_val) const;
-    OpOperandVector getOutputTensorOperands(::mlir::Operation *tablegen_opaque_val) const;
-    SmallVector<MemRefType> getOutputBufferTypes(::mlir::Operation *tablegen_opaque_val) const;
-    SmallVector<RankedTensorType> getOutputTensorTypes(::mlir::Operation *tablegen_opaque_val) const;
-    OpOperandVector getInputAndOutputOperands(::mlir::Operation *tablegen_opaque_val) const;
     bool payloadUsesValueFromOperand(::mlir::Operation *tablegen_opaque_val, OpOperand *opOperand) const;
-    bool isInputTensor(::mlir::Operation *tablegen_opaque_val, OpOperand *opOperand) const;
-    bool isOutputTensor(::mlir::Operation *tablegen_opaque_val, OpOperand *opOperand) const;
     bool isInitTensor(::mlir::Operation *tablegen_opaque_val, OpOperand *opOperand) const;
     int64_t getRank(::mlir::Operation *tablegen_opaque_val, OpOperand*opOperand) const;
     Block::BlockArgListType getRegionOutputArgs(::mlir::Operation *tablegen_opaque_val) const;
     ArrayRef<int64_t> getShape(::mlir::Operation *tablegen_opaque_val, OpOperand*opOperand) const;
-    bool isScalar(::mlir::Operation *tablegen_opaque_val, OpOperand*opOperand) const;
     BlockArgument getTiedBlockArgument(::mlir::Operation *tablegen_opaque_val, OpOperand *opOperand) const;
+    OpOperand *getTiedOpOperand(::mlir::Operation *tablegen_opaque_val, BlockArgument blockArgument) const;
     AffineMap getTiedIndexingMap(::mlir::Operation *tablegen_opaque_val, OpOperand*opOperand) const;
     AffineMap getTiedIndexingMapForResult(::mlir::Operation *tablegen_opaque_val, OpResult result) const;
-    OpResult getTiedOpResult(::mlir::Operation *tablegen_opaque_val, OpOperand*opOperand) const;
     OpOperand *getTiedYieldValue(::mlir::Operation *tablegen_opaque_val, OpOperand*opOperand) const;
     Block*getBlock(::mlir::Operation *tablegen_opaque_val) const;
     ArrayAttr iterator_types(::mlir::Operation *tablegen_opaque_val) const;
     bool hasDynamicIndexingMaps(::mlir::Operation *tablegen_opaque_val) const;
     LogicalResult verifyIndexingMapRequiredAttributes(::mlir::Operation *tablegen_opaque_val) const;
-    SmallVector<AffineMap> getIndexingMaps(::mlir::Operation *tablegen_opaque_val) const;
+    SmallVector<AffineMap> getIndexingMapsArray(::mlir::Operation *tablegen_opaque_val) const;
     bool hasDynamicShape(::mlir::Operation *tablegen_opaque_val) const;
-    bool hasBufferSemantics(::mlir::Operation *tablegen_opaque_val) const;
-    bool hasTensorSemantics(::mlir::Operation *tablegen_opaque_val) const;
     std::string getLibraryCallName(::mlir::Operation *tablegen_opaque_val) const;
     AffineMap getLoopsToShapesMap(::mlir::Operation *tablegen_opaque_val) const;
     AffineMap getShapesToLoopsMap(::mlir::Operation *tablegen_opaque_val) const;
     bool canOpOperandsBeDropped(::mlir::Operation *tablegen_opaque_val, ArrayRef<OpOperand *> droppedOperands) const;
-    std::pair<int64_t, int64_t> getResultsPositionInLoopsToShapeMap(::mlir::Operation *tablegen_opaque_val) const;
     SmallVector<int64_t> getStaticShape(::mlir::Operation *tablegen_opaque_val) const;
     SmallVector<int64_t, 4> getStaticLoopRanges(::mlir::Operation *tablegen_opaque_val) const;
   };
@@ -570,70 +1249,119 @@ public:
   using ::mlir::OpInterface<LinalgOp, detail::LinalgOpInterfaceTraits>::OpInterface;
   template <typename ConcreteOp>
   struct Trait : public detail::LinalgOpTrait<ConcreteOp> {};
+  /// Return the number of parallel loops.
   unsigned getNumParallelLoops();
+  /// Return the dims that are parallel loops.
   void getParallelDims(SmallVectorImpl<unsigned> & res);
+  /// Return the number of reduction loops.
   unsigned getNumReductionLoops();
+  /// Return the dims that are reduction loops.
   void getReductionDims(SmallVectorImpl<unsigned> & res);
+  /// Return the number of window loops.
   unsigned getNumWindowLoops();
+  /// Return the dims that are window loops.
   void getWindowDims(SmallVectorImpl<unsigned> & res);
+  /// Return the total number of loops within the current operation.
   unsigned getNumLoops();
+  /// Returns true if the current operation has only one loop and it's a
+  /// reduction loop.
   bool hasSingleReductionLoop();
-  ValueRange inputs();
-  int64_t getNumInputs();
-  ValueRange outputs();
-  int64_t getNumOutputs();
-  int64_t getNumInputsAndOutputs();
-  OpOperandVector getInputOperands();
-  OpOperand*getInputOperand(int64_t i);
-  OpOperandVector getInputBufferOperands();
-  OpOperandVector getInputTensorOperands();
-  OpOperandVector getOutputOperands();
-  OpOperand*getOutputOperand(int64_t i);
-  void setOutputOperand(int64_t i, Value value);
-  OpOperandVector getOutputBufferOperands();
-  OpOperandVector getOutputTensorOperands();
-  SmallVector<MemRefType> getOutputBufferTypes();
-  SmallVector<RankedTensorType> getOutputTensorTypes();
-  OpOperandVector getInputAndOutputOperands();
+  /// Return true if the payload uses the value loaded from `opOperand`. This
+  /// is useful to avoid loading from "write-only" memory that may be
+  /// uninitialized, as well as properly cloning "read-write" operands.
   bool payloadUsesValueFromOperand(OpOperand * opOperand);
-  bool isInputTensor(OpOperand * opOperand);
-  bool isOutputTensor(OpOperand * opOperand);
+  /// Return true if `opOperand` is an init tensor. This is true when it is
+  /// an output tensor operand whose value is used in the payload region.
   bool isInitTensor(OpOperand * opOperand);
+  /// Return the `opOperand` rank or zero for scalars.
   int64_t getRank(OpOperand* opOperand);
+  /// Return the output block arguments of the region.
   Block::BlockArgListType getRegionOutputArgs();
+  /// Return the `opOperand` shape or an empty vector for scalars.
   ArrayRef<int64_t> getShape(OpOperand* opOperand);
-  bool isScalar(OpOperand* opOperand);
+  /// Return the block argument for an `opOperand`.
   BlockArgument getTiedBlockArgument(OpOperand * opOperand);
+  /// Return the operand for a `blockArgument`.
+  OpOperand *getTiedOpOperand(BlockArgument blockArgument);
+  /// Return the input or output indexing map for `opOperand`.
   AffineMap getTiedIndexingMap(OpOperand* opOperand);
+  /// Return the indexing map for a `result`.
   AffineMap getTiedIndexingMapForResult(OpResult result);
-  OpResult getTiedOpResult(OpOperand* opOperand);
+  /// Return the value yielded by the region corresponding to an output
+  /// `opOperand`.
   OpOperand *getTiedYieldValue(OpOperand* opOperand);
+  /// Return the single block constituting the body of the operation by
+  /// calling the getBody method on the concrete operation.
   Block*getBlock();
+  /// Return the iterator types attribute within the current operation.
   ArrayAttr iterator_types();
+  /// Return true if the indexing map is depending on the current op instance.
+  /// This means that the indexing map is dynamically synthesized by using the
+  /// op instance's concrete attributes, instead of being static for all
+  /// instances of the same op kind.
   bool hasDynamicIndexingMaps();
+  /// Verify all attributes used by indexing maps are valid.
   LogicalResult verifyIndexingMapRequiredAttributes();
-  ArrayAttr indexing_maps();
-  SmallVector<AffineMap> getIndexingMaps();
+  /// Return the indexing maps attribute within the current operation.
+  ArrayAttr getIndexingMaps();
+  /// Return the indexing maps within the current operation.
+  SmallVector<AffineMap> getIndexingMapsArray();
+  /// Return true if any of the operands has a dynamic shape.
   bool hasDynamicShape();
-  bool hasBufferSemantics();
-  bool hasTensorSemantics();
+  /// Return the name registered for this op when lowering to an external
+  /// library call.
   std::string getLibraryCallName();
+  /// Return whether the op accesses the iteration indices.
   bool hasIndexSemantics();
+  /// Hook to provide a custom AffineMap used to compute all the operand
+  /// subshapes given loop bounds. This is used to answer the question: "given
+  /// an iteration space over the codomain, what are the subshapes of the
+  /// operands involved in the computation".
+  /// The default behavior is to just concatenate all the indexing maps.
+  /// A custom AffineMap allows providing a map that can be used to
+  /// compute subshapes even in cases where the concatenation of indexing maps
+  /// (i.e. the data traversal order) is not a simple permutation of the loop
+  /// traversal order. It is then possible to define ops with skewed data
+  /// traversal order for which we can still easily compute hyperrectangular
+  /// loop bounds and subviews.
   AffineMap getLoopsToShapesMap();
+  /// Hook to provide a custom AffineMap used to construct the
+  /// hyperrectangular loop iteration space given all the operand subshapes.
+  /// This is used to answer the question:
+  /// "Given a list of operand ranges, what is the subportion of the iteration
+  /// space involved in the computation".
+  /// This is the inverse problem of `getLoopsToShapesMap`.
+  /// Return the empty AffineMap when such an AffineMap cannot be constructed.
+  /// The default behavior is based on a very simple inference procedure that
+  /// only works with permutation affine maps.
+  /// A more advanced Tensor-Comprehension like inference is possible but has
+  /// proven to be ambiguous in unfavorable case.
+  /// A safer and more robust alternative is to allow each op to define
+  /// its own AffineMap.
   AffineMap getShapesToLoopsMap();
+  /// Checks if the given operands can be dropped, and the remaining
+  /// operands can still compute the bounds of the op.
   bool canOpOperandsBeDropped(ArrayRef<OpOperand *> droppedOperands);
-  std::pair<int64_t, int64_t> getResultsPositionInLoopsToShapeMap();
+  /// Like `getShape`, but only returns statically-known information, without
+  /// generating any new IR. For each shape dimension, returns >=0 if that
+  /// dimension is statically known, or ShapeType::kDynamicSize otherwise.
   SmallVector<int64_t> getStaticShape();
+  /// Returns the statically-known loop ranges. Composes
+  /// `getShapesToLoopsMap()` with the result of `getStaticShape`.
+  /// Returns ShapeType::kDynamicSize for non-statically-known loop ranges.
+  /// This is expected to be called by a valid Linalg op
   SmallVector<int64_t, 4> getStaticLoopRanges();
-  Operation *clone(OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands);
-  Operation *cloneWithMapper(OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands, BlockAndValueMapping & bvm);
-  Operation *cloneWithoutRegions(OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands);
+  /// Returns the region builder for constructing the body for linalg.generic.
+  /// Returns a null function if this named op does not define a region
+  /// builder.
   std::function<void(ImplicitLocOpBuilder &, Block &, ArrayRef<NamedAttribute>)> getRegionBuilder();
+  /// Return true if all the indexing maps are projected permutations.
+  /// Otherwise return false.
   bool hasOnlyProjectedPermutations();
 
     /// Return the flat list of all operand dimension sizes in the order they
     /// appear in the operands.
-    SmallVector<Value, 4> createFlatListOfOperandDims(OpBuilder &, Location);
+    SmallVector<OpFoldResult> createFlatListOfOperandDims(OpBuilder &, Location);
 
     /// Return the flat list of all operands' static dimension sizes in the
     /// order they appear in the operands. All operand dimension sizes have to
@@ -659,6 +1387,140 @@ public:
     ArrayAttr getIteratorTypes() { return iterator_types(); }
 
     //========================================================================//
+    // Forwarding functions to access interface methods from the
+    // DestinationStyleOpInterface.
+    // MLIR currently does not support dependent interfaces or interface
+    // inheritance. By construction all ops with StructuredOpInterface must
+    // implement DestinationStyleOpInterface.
+    // TODO: reevalute the need for a cast when a better mechanism exists.
+    //========================================================================//
+
+    ValueRange inputs() {
+      return cast<DestinationStyleOpInterface>(*this->getOperation()).inputs();
+    }
+
+    int64_t getNumInputs() {
+      return cast<DestinationStyleOpInterface>(*this->getOperation())
+          .getNumInputs();
+    }
+
+    ValueRange outputs() {
+      return cast<DestinationStyleOpInterface>(*this->getOperation()).outputs();
+    }
+
+    int64_t getNumOutputs() {
+      return cast<DestinationStyleOpInterface>(*this->getOperation())
+          .getNumOutputs();
+    }
+
+    int64_t getNumInputsAndOutputs() {
+      return cast<DestinationStyleOpInterface>(*this->getOperation())
+          .getNumInputsAndOutputs();
+    }
+
+    OpOperandVector getInputOperands() {
+      return cast<DestinationStyleOpInterface>(*this->getOperation())
+          .getInputOperands();
+    }
+
+    OpOperand *getInputOperand(int64_t i) {
+      return cast<DestinationStyleOpInterface>(*this->getOperation())
+          .getInputOperand(i);
+    }
+
+    OpOperandVector getInputBufferOperands() {
+      return cast<DestinationStyleOpInterface>(*this->getOperation())
+          .getInputBufferOperands();
+    }
+
+    OpOperandVector getInputTensorOperands() {
+      return cast<DestinationStyleOpInterface>(*this->getOperation())
+          .getInputTensorOperands();
+    }
+
+    OpOperandVector getOutputOperands() {
+      return cast<DestinationStyleOpInterface>(*this->getOperation())
+          .getOutputOperands();
+    }
+
+    OpOperand *getOutputOperand(int64_t i) {
+      return cast<DestinationStyleOpInterface>(*this->getOperation())
+          .getOutputOperand(i);
+    }
+
+    void setOutputOperand(int64_t i, Value value) {
+      return cast<DestinationStyleOpInterface>(*this->getOperation())
+          .setOutputOperand(i, value);
+    }
+
+    OpOperandVector getOutputBufferOperands() {
+      return cast<DestinationStyleOpInterface>(*this->getOperation())
+          .getOutputBufferOperands();
+    }
+
+    OpOperandVector getOutputTensorOperands() {
+      return cast<DestinationStyleOpInterface>(*this->getOperation())
+          .getOutputTensorOperands();
+    }
+
+    SmallVector<MemRefType> getOutputBufferTypes() {
+      return cast<DestinationStyleOpInterface>(*this->getOperation())
+          .getOutputBufferTypes();
+    }
+
+    SmallVector<RankedTensorType> getOutputTensorTypes() {
+      return cast<DestinationStyleOpInterface>(*this->getOperation())
+          .getOutputTensorTypes();
+    }
+
+    OpOperandVector getInputAndOutputOperands() {
+      return cast<DestinationStyleOpInterface>(*this->getOperation())
+          .getInputAndOutputOperands();
+    }
+
+    bool isInputTensor(OpOperand *opOperand) {
+      return cast<DestinationStyleOpInterface>(*this->getOperation())
+          .isInputTensor(opOperand);
+    }
+
+    bool isOutputTensor(OpOperand *opOperand) {
+      return cast<DestinationStyleOpInterface>(*this->getOperation())
+          .isOutputTensor(opOperand);
+    }
+
+    bool isScalar(OpOperand *opOperand) {
+      return cast<DestinationStyleOpInterface>(*this->getOperation())
+          .isScalar(opOperand);
+    }
+
+    OpResult getTiedOpResult(OpOperand *opOperand) {
+      return cast<DestinationStyleOpInterface>(*this->getOperation())
+          .getTiedOpResult(opOperand);
+    }
+
+    bool hasBufferSemantics() {
+      return cast<DestinationStyleOpInterface>(*this->getOperation())
+          .hasBufferSemantics();
+    }
+
+    bool hasTensorSemantics() {
+      return cast<DestinationStyleOpInterface>(*this->getOperation())
+          .hasTensorSemantics();
+    }
+
+    Operation *clone(OpBuilder & b, Location loc, TypeRange resultTypes,
+                     ValueRange operands) {
+      return cast<DestinationStyleOpInterface>(*this->getOperation())
+          .clone(b, loc, resultTypes, operands);
+    }
+
+    Operation *cloneWithoutRegions(OpBuilder & b, Location loc,
+                                   TypeRange resultTypes, ValueRange operands) {
+      return cast<DestinationStyleOpInterface>(*this->getOperation())
+          .cloneWithoutRegions(b, loc, resultTypes, operands);
+    }
+
+    //========================================================================//
     // Helper functions to mutate the `operand_segment_sizes` attribute.
     // These are useful when cloning and changing operand types.
     //========================================================================//
@@ -679,171 +1541,60 @@ public:
 namespace detail {
   template <typename ConcreteOp>
   struct LinalgOpTrait : public ::mlir::OpInterface<LinalgOp, detail::LinalgOpInterfaceTraits>::Trait<ConcreteOp> {
+    /// Return the number of parallel loops.
     unsigned getNumParallelLoops() {
       return getNumIterators(getParallelIteratorTypeName(),
                                (*static_cast<ConcreteOp *>(this)).iterator_types());
     }
+    /// Return the dims that are parallel loops.
     void getParallelDims(SmallVectorImpl<unsigned> & res) {
       return getDimsOfType((*static_cast<ConcreteOp *>(this)), getParallelIteratorTypeName(), res);
     }
+    /// Return the number of reduction loops.
     unsigned getNumReductionLoops() {
       return getNumIterators(getReductionIteratorTypeName(),
                                (*static_cast<ConcreteOp *>(this)).iterator_types());
     }
+    /// Return the dims that are reduction loops.
     void getReductionDims(SmallVectorImpl<unsigned> & res) {
       return getDimsOfType((*static_cast<ConcreteOp *>(this)), getReductionIteratorTypeName(), res);
     }
+    /// Return the number of window loops.
     unsigned getNumWindowLoops() {
       return getNumIterators(getWindowIteratorTypeName(),
                                (*static_cast<ConcreteOp *>(this)).iterator_types());
     }
+    /// Return the dims that are window loops.
     void getWindowDims(SmallVectorImpl<unsigned> & res) {
       return getDimsOfType((*static_cast<ConcreteOp *>(this)).getOperation(), getWindowIteratorTypeName(), res);
     }
+    /// Return the total number of loops within the current operation.
     unsigned getNumLoops() {
       return getNumIterators((*static_cast<ConcreteOp *>(this)).iterator_types());
     }
+    /// Returns true if the current operation has only one loop and it's a
+    /// reduction loop.
     bool hasSingleReductionLoop() {
       auto iters = (*static_cast<ConcreteOp *>(this)).iterator_types();
         return iters.size() == 1 &&
                getNumIterators(getReductionIteratorTypeName(), iters) == 1;
     }
-    int64_t getNumInputs() {
-      return (*static_cast<ConcreteOp *>(this)).inputs().size();
-    }
-    int64_t getNumOutputs() {
-      return (*static_cast<ConcreteOp *>(this)).outputs().size();
-    }
-    int64_t getNumInputsAndOutputs() {
-      return this->getOperation()->getNumOperands();
-    }
-    OpOperandVector getInputOperands() {
-      int64_t numInputs = getNumInputs();
-        OpOperandVector result;
-        result.reserve(numInputs);
-        llvm::transform(
-          this->getOperation()->getOpOperands().take_front(numInputs),
-          std::back_inserter(result),
-          [](OpOperand &opOperand) { return &opOperand; });
-        return result;
-    }
-    OpOperand*getInputOperand(int64_t i) {
-      assert(i >= 0 && i < getNumInputs());
-        return &this->getOperation()->getOpOperand(i);
-    }
-    OpOperandVector getInputBufferOperands() {
-      OpOperandVector result;
-        result.reserve(getNumInputs());
-        llvm::copy_if(getInputOperands(),
-          std::back_inserter(result),
-          [](OpOperand *opOperand) {
-            return opOperand->get().getType().template isa<MemRefType>();
-          });
-        return result;
-    }
-    OpOperandVector getInputTensorOperands() {
-      OpOperandVector result;
-        result.reserve(getNumInputs());
-        llvm::copy_if(getInputOperands(),
-          std::back_inserter(result),
-          [](OpOperand *opOperand) {
-            return opOperand->get().getType().template isa<RankedTensorType>();
-          });
-        return result;
-    }
-    OpOperandVector getOutputOperands() {
-      int64_t numOutputs = getNumOutputs();
-        OpOperandVector result;
-        result.reserve(numOutputs);
-        llvm::transform(
-          this->getOperation()->getOpOperands()
-            .take_back(numOutputs),
-          std::back_inserter(result),
-          [](OpOperand &opOperand) { return &opOperand; });
-        return result;
-    }
-    OpOperand*getOutputOperand(int64_t i) {
-      assert(i >= 0 && i < getNumOutputs());
-        return &this->getOperation()->getOpOperand(getNumInputs() + i);
-    }
-    void setOutputOperand(int64_t i, Value value) {
-      assert(i >= 0 && i < getNumOutputs());
-        this->getOperation()->setOperand(getNumInputs() + i, value);
-    }
-    OpOperandVector getOutputBufferOperands() {
-      OpOperandVector result;
-        result.reserve(getNumOutputs());
-        llvm::copy_if(getOutputOperands(),
-          std::back_inserter(result),
-          [](OpOperand *opOperand) {
-            return opOperand->get().getType().template isa<MemRefType>();
-          });
-        return result;
-    }
-    OpOperandVector getOutputTensorOperands() {
-      OpOperandVector result;
-        result.reserve(getNumOutputs());
-        llvm::copy_if(getOutputOperands(),
-          std::back_inserter(result),
-          [](OpOperand *opOperand) {
-            return opOperand->get().getType().template isa<RankedTensorType>();
-          });
-        return result;
-    }
-    SmallVector<MemRefType> getOutputBufferTypes() {
-      SmallVector<MemRefType> result;
-        result.reserve(getNumOutputs());
-        llvm::transform(getOutputBufferOperands(),
-          std::back_inserter(result),
-          [](OpOperand *opOperands) {
-            return opOperands->get().getType().cast<MemRefType>();
-          });
-        return result;
-    }
-    SmallVector<RankedTensorType> getOutputTensorTypes() {
-      SmallVector<RankedTensorType> result;
-        result.reserve(getNumOutputs());
-        llvm::transform(getOutputTensorOperands(),
-          std::back_inserter(result),
-          [](OpOperand *opOperands) {
-            return opOperands->get().getType().cast<RankedTensorType>();
-          });
-        return result;
-    }
-    OpOperandVector getInputAndOutputOperands() {
-      int64_t numInputsAndOutputs = getNumInputsAndOutputs();
-        OpOperandVector result;
-        result.reserve(numInputsAndOutputs);
-        llvm::transform(
-          this->getOperation()->getOpOperands(),
-          std::back_inserter(result),
-          [](OpOperand &opOperand) { return &opOperand; });
-        return result;
-    }
+    /// Return true if the payload uses the value loaded from `opOperand`. This
+    /// is useful to avoid loading from "write-only" memory that may be
+    /// uninitialized, as well as properly cloning "read-write" operands.
     bool payloadUsesValueFromOperand(OpOperand * opOperand) {
       unsigned bbArgNumber = opOperand->getOperandNumber();
         // Init tensors have uses.
         return !getBlock()->getArgument(bbArgNumber).use_empty();
     }
-    bool isInputTensor(OpOperand * opOperand) {
-      if (!opOperand->get().getType().template isa<RankedTensorType>())
-          return false;
-        if (opOperand->getOperandNumber() < (*static_cast<ConcreteOp *>(this)).getNumInputs())
-          return true;
-        return false;
-    }
-    bool isOutputTensor(OpOperand * opOperand) {
-      if (!opOperand->get().getType().template isa<RankedTensorType>())
-          return false;
-        if (opOperand->getOperandNumber() >= (*static_cast<ConcreteOp *>(this)).getNumInputs())
-          return true;
-        return false;
-    }
+    /// Return true if `opOperand` is an init tensor. This is true when it is
+    /// an output tensor operand whose value is used in the payload region.
     bool isInitTensor(OpOperand * opOperand) {
       if (!(*static_cast<ConcreteOp *>(this)).isOutputTensor(opOperand))
           return false;
         return payloadUsesValueFromOperand(opOperand);
     }
+    /// Return the `opOperand` rank or zero for scalars.
     int64_t getRank(OpOperand* opOperand) {
       assert(opOperand->getOwner() == this->getOperation());
         if (auto shapedType =
@@ -851,9 +1602,17 @@ namespace detail {
           return shapedType.getRank();
         return 0;
     }
+    /// Return the output block arguments of the region.
     Block::BlockArgListType getRegionOutputArgs() {
-      return getBlock()->getArguments().take_back(this->getNumOutputs());
+      // MLIR currently does not support dependent interfaces or interface
+        // inheritance. By construction all ops with StructuredOpInterface must
+        // implement DestinationStyleOpInterface.
+        // TODO: reevalute the need for a cast when a better mechanism exists.
+        return getBlock()->getArguments().take_back(
+            cast<DestinationStyleOpInterface>(*this->getOperation())
+                .getNumOutputs());
     }
+    /// Return the `opOperand` shape or an empty vector for scalars.
     ArrayRef<int64_t> getShape(OpOperand* opOperand) {
       assert(opOperand->getOwner() == this->getOperation());
         if (auto shapedType =
@@ -861,109 +1620,146 @@ namespace detail {
           return shapedType.getShape();
         return {};
     }
-    bool isScalar(OpOperand* opOperand) {
-      assert(opOperand->getOwner() == this->getOperation());
-        return !opOperand->get().getType().template isa<ShapedType>();
-    }
+    /// Return the block argument for an `opOperand`.
     BlockArgument getTiedBlockArgument(OpOperand * opOperand) {
       assert(opOperand->getOwner() == this->getOperation());
         return getBlock()->getArgument(opOperand->getOperandNumber());
     }
+    /// Return the operand for a `blockArgument`.
+    OpOperand *getTiedOpOperand(BlockArgument blockArgument) {
+      assert(blockArgument.getOwner() == getBlock());
+        return &this->getOperation()->getOpOperand(
+            blockArgument.getArgNumber());
+    }
+    /// Return the input or output indexing map for `opOperand`.
     AffineMap getTiedIndexingMap(OpOperand* opOperand) {
       assert(opOperand->getOwner() == this->getOperation());
         auto indexingMaps =
-          (*static_cast<ConcreteOp *>(this)).indexing_maps().template getAsValueRange<AffineMapAttr>();
+          (*static_cast<ConcreteOp *>(this)).getIndexingMaps().template getAsValueRange<AffineMapAttr>();
         return *(indexingMaps.begin() + opOperand->getOperandNumber());
     }
+    /// Return the indexing map for a `result`.
     AffineMap getTiedIndexingMapForResult(OpResult result) {
       assert(result.getOwner() == this->getOperation());
         auto indexingMaps =
-          (*static_cast<ConcreteOp *>(this)).indexing_maps().template getAsValueRange<AffineMapAttr>();
-          return *(indexingMaps.begin() + getNumInputs() +
-              result.getResultNumber());
+          (*static_cast<ConcreteOp *>(this)).getIndexingMaps().template getAsValueRange<AffineMapAttr>();
+        // MLIR currently does not support dependent interfaces or interface
+        // inheritance. By construction all ops with StructuredOpInterface must
+        // implement DestinationStyleOpInterface.
+        // TODO: reevalute the need for a cast when a better mechanism exists.
+        return *(indexingMaps.begin() +
+                 cast<DestinationStyleOpInterface>(*this->getOperation())
+                     .getNumInputs() +
+                 result.getResultNumber());
     }
-    OpResult getTiedOpResult(OpOperand* opOperand) {
-      assert(opOperand->getOwner() == this->getOperation());
-        int64_t resultIndex = opOperand->getOperandNumber() - getNumInputs();
-        assert(resultIndex >= 0 &&
-               resultIndex < this->getOperation()->getNumResults() );
-        return this->getOperation()->getResult(resultIndex);
-    }
+    /// Return the value yielded by the region corresponding to an output
+    /// `opOperand`.
     OpOperand *getTiedYieldValue(OpOperand* opOperand) {
       assert(opOperand->getOwner() == this->getOperation());
-        int64_t resultIndex = opOperand->getOperandNumber() - getNumInputs();
+        // MLIR currently does not support dependent interfaces or interface
+        // inheritance. By construction all ops with StructuredOpInterface must
+        // implement DestinationStyleOpInterface.
+        // TODO: reevalute the need for a cast when a better mechanism exists.
+        int64_t resultIndex =
+            opOperand->getOperandNumber() -
+            cast<DestinationStyleOpInterface>(*this->getOperation())
+                .getNumInputs();
         assert(resultIndex >= 0 &&
                resultIndex < this->getOperation()->getNumResults());
         Operation *yieldOp = getBlock()->getTerminator();
         return &yieldOp->getOpOperand(resultIndex);
     }
+    /// Return the single block constituting the body of the operation by
+    /// calling the getBody method on the concrete operation.
     Block*getBlock() {
       // Assume the concrete operation implements the
         // SingleBlockImplicitTerminator trait.
         return (*static_cast<ConcreteOp *>(this)).getBody();
     }
+    /// Return the iterator types attribute within the current operation.
     ArrayAttr iterator_types() {
       return (*static_cast<ConcreteOp *>(this)).iterator_types();
     }
+    /// Return true if the indexing map is depending on the current op instance.
+    /// This means that the indexing map is dynamically synthesized by using the
+    /// op instance's concrete attributes, instead of being static for all
+    /// instances of the same op kind.
     bool hasDynamicIndexingMaps() {
       return false;
     }
+    /// Verify all attributes used by indexing maps are valid.
     LogicalResult verifyIndexingMapRequiredAttributes() {
       return success();
     }
-    SmallVector<AffineMap> getIndexingMaps() {
-      auto range = (*static_cast<ConcreteOp *>(this)).indexing_maps()
+    /// Return the indexing maps within the current operation.
+    SmallVector<AffineMap> getIndexingMapsArray() {
+      auto range = (*static_cast<ConcreteOp *>(this)).getIndexingMaps()
           .template getAsValueRange<AffineMapAttr>();
         return {range.begin(), range.end()};
     }
+    /// Return true if any of the operands has a dynamic shape.
     bool hasDynamicShape() {
       return llvm::any_of(getStaticShape(), ShapedType::isDynamic);
     }
-    bool hasBufferSemantics() {
-      return this->getOperation()->getNumResults() == 0 &&
-          llvm::all_of(this->getOperation()->getOpOperands(),
-            [&](OpOperand &opOperand) {
-              return isScalar(&opOperand) ||
-                     opOperand.get().getType().template isa<MemRefType>();
-            });
-    }
-    bool hasTensorSemantics() {
-      return llvm::all_of(this->getOperation()->getOpOperands(),
-          [&](OpOperand &opOperand) {
-            return isScalar(&opOperand) ||
-                   opOperand.get().getType().template isa<RankedTensorType>();
-          });
-    }
+    /// Return the name registered for this op when lowering to an external
+    /// library call.
     std::string getLibraryCallName() {
       return (*static_cast<ConcreteOp *>(this)).getLibraryCallName();
     }
+    /// Hook to provide a custom AffineMap used to compute all the operand
+    /// subshapes given loop bounds. This is used to answer the question: "given
+    /// an iteration space over the codomain, what are the subshapes of the
+    /// operands involved in the computation".
+    /// The default behavior is to just concatenate all the indexing maps.
+    /// A custom AffineMap allows providing a map that can be used to
+    /// compute subshapes even in cases where the concatenation of indexing maps
+    /// (i.e. the data traversal order) is not a simple permutation of the loop
+    /// traversal order. It is then possible to define ops with skewed data
+    /// traversal order for which we can still easily compute hyperrectangular
+    /// loop bounds and subviews.
     AffineMap getLoopsToShapesMap() {
-      auto r = (*static_cast<ConcreteOp *>(this)).indexing_maps().template getAsRange<AffineMapAttr>();
-        auto maps = llvm::to_vector<8>(
-            llvm::map_range(r, [](AffineMapAttr a) { return a.getValue(); }));
+      auto maps =  (*static_cast<ConcreteOp *>(this)).getIndexingMapsArray();
         return concatAffineMaps(maps);
     }
+    /// Hook to provide a custom AffineMap used to construct the
+    /// hyperrectangular loop iteration space given all the operand subshapes.
+    /// This is used to answer the question:
+    /// "Given a list of operand ranges, what is the subportion of the iteration
+    /// space involved in the computation".
+    /// This is the inverse problem of `getLoopsToShapesMap`.
+    /// Return the empty AffineMap when such an AffineMap cannot be constructed.
+    /// The default behavior is based on a very simple inference procedure that
+    /// only works with permutation affine maps.
+    /// A more advanced Tensor-Comprehension like inference is possible but has
+    /// proven to be ambiguous in unfavorable case.
+    /// A safer and more robust alternative is to allow each op to define
+    /// its own AffineMap.
     AffineMap getShapesToLoopsMap() {
       return inversePermutation(getLoopsToShapesMap());
     }
+    /// Checks if the given operands can be dropped, and the remaining
+    /// operands can still compute the bounds of the op.
     bool canOpOperandsBeDropped(ArrayRef<OpOperand *> droppedOperands) {
       return detail::canOpOperandsBeDroppedImpl((*static_cast<ConcreteOp *>(this)), droppedOperands);
     }
-    std::pair<int64_t, int64_t> getResultsPositionInLoopsToShapeMap() {
-      int64_t inputRankSum = 0;
-        int64_t outputRankSum = 0;
-        for(OpOperand *input : getInputOperands())
-          inputRankSum += getRank(input);
-        for(OpOperand *output : getOutputOperands())
-          outputRankSum += getRank(output);
-        return {inputRankSum, inputRankSum + outputRankSum};
-    }
+    /// Like `getShape`, but only returns statically-known information, without
+    /// generating any new IR. For each shape dimension, returns >=0 if that
+    /// dimension is statically known, or ShapeType::kDynamicSize otherwise.
     SmallVector<int64_t> getStaticShape() {
       SmallVector<int64_t> res;
-        for (OpOperand *opOperand : getInputAndOutputOperands())
+        // MLIR currently does not support dependent interfaces or interface
+        // inheritance. By construction all ops with StructuredOpInterface must
+        // implement DestinationStyleOpInterface.
+        // TODO: reevalute the need for a cast when a better mechanism exists.
+        auto iface = cast<DestinationStyleOpInterface>(*this->getOperation());
+        for (OpOperand *opOperand : iface.getInputAndOutputOperands())
           llvm::append_range(res, getShape(opOperand));
         return res;
     }
+    /// Returns the statically-known loop ranges. Composes
+    /// `getShapesToLoopsMap()` with the result of `getStaticShape`.
+    /// Returns ShapeType::kDynamicSize for non-statically-known loop ranges.
+    /// This is expected to be called by a valid Linalg op
     SmallVector<int64_t, 4> getStaticLoopRanges() {
       SmallVector<int64_t> viewSizes = getStaticShape();
         AffineMap invertedMap = getShapesToLoopsMap();
@@ -1008,84 +1804,8 @@ bool detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::hasSingleReductionLoop(
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).hasSingleReductionLoop();
 }
 template<typename ConcreteOp>
-ValueRange detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::inputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).inputs();
-}
-template<typename ConcreteOp>
-int64_t detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getNumInputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getNumInputs();
-}
-template<typename ConcreteOp>
-ValueRange detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::outputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).outputs();
-}
-template<typename ConcreteOp>
-int64_t detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getNumOutputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getNumOutputs();
-}
-template<typename ConcreteOp>
-int64_t detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getNumInputsAndOutputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getNumInputsAndOutputs();
-}
-template<typename ConcreteOp>
-OpOperandVector detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getInputOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getInputOperands();
-}
-template<typename ConcreteOp>
-OpOperand*detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getInputOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, int64_t i) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getInputOperand(i);
-}
-template<typename ConcreteOp>
-OpOperandVector detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getInputBufferOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getInputBufferOperands();
-}
-template<typename ConcreteOp>
-OpOperandVector detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getInputTensorOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getInputTensorOperands();
-}
-template<typename ConcreteOp>
-OpOperandVector detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getOutputOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getOutputOperands();
-}
-template<typename ConcreteOp>
-OpOperand*detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getOutputOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, int64_t i) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getOutputOperand(i);
-}
-template<typename ConcreteOp>
-void detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::setOutputOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, int64_t i, Value value) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).setOutputOperand(i, value);
-}
-template<typename ConcreteOp>
-OpOperandVector detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getOutputBufferOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getOutputBufferOperands();
-}
-template<typename ConcreteOp>
-OpOperandVector detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getOutputTensorOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getOutputTensorOperands();
-}
-template<typename ConcreteOp>
-SmallVector<MemRefType> detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getOutputBufferTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getOutputBufferTypes();
-}
-template<typename ConcreteOp>
-SmallVector<RankedTensorType> detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getOutputTensorTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getOutputTensorTypes();
-}
-template<typename ConcreteOp>
-OpOperandVector detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getInputAndOutputOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getInputAndOutputOperands();
-}
-template<typename ConcreteOp>
 bool detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::payloadUsesValueFromOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * opOperand) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).payloadUsesValueFromOperand(opOperand);
-}
-template<typename ConcreteOp>
-bool detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::isInputTensor(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * opOperand) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).isInputTensor(opOperand);
-}
-template<typename ConcreteOp>
-bool detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::isOutputTensor(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * opOperand) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).isOutputTensor(opOperand);
 }
 template<typename ConcreteOp>
 bool detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::isInitTensor(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * opOperand) {
@@ -1104,12 +1824,12 @@ ArrayRef<int64_t> detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getShape(c
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getShape(opOperand);
 }
 template<typename ConcreteOp>
-bool detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::isScalar(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand* opOperand) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).isScalar(opOperand);
-}
-template<typename ConcreteOp>
 BlockArgument detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getTiedBlockArgument(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * opOperand) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getTiedBlockArgument(opOperand);
+}
+template<typename ConcreteOp>
+OpOperand *detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getTiedOpOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, BlockArgument blockArgument) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getTiedOpOperand(blockArgument);
 }
 template<typename ConcreteOp>
 AffineMap detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getTiedIndexingMap(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand* opOperand) {
@@ -1118,10 +1838,6 @@ AffineMap detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getTiedIndexingMap
 template<typename ConcreteOp>
 AffineMap detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getTiedIndexingMapForResult(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpResult result) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getTiedIndexingMapForResult(result);
-}
-template<typename ConcreteOp>
-OpResult detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getTiedOpResult(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand* opOperand) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getTiedOpResult(opOperand);
 }
 template<typename ConcreteOp>
 OpOperand *detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getTiedYieldValue(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand* opOperand) {
@@ -1144,24 +1860,16 @@ LogicalResult detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::verifyIndexing
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).verifyIndexingMapRequiredAttributes();
 }
 template<typename ConcreteOp>
-ArrayAttr detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::indexing_maps(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).indexing_maps();
+ArrayAttr detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getIndexingMaps(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getIndexingMaps();
 }
 template<typename ConcreteOp>
-SmallVector<AffineMap> detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getIndexingMaps(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getIndexingMaps();
+SmallVector<AffineMap> detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getIndexingMapsArray(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getIndexingMapsArray();
 }
 template<typename ConcreteOp>
 bool detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::hasDynamicShape(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).hasDynamicShape();
-}
-template<typename ConcreteOp>
-bool detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::hasBufferSemantics(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).hasBufferSemantics();
-}
-template<typename ConcreteOp>
-bool detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::hasTensorSemantics(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).hasTensorSemantics();
 }
 template<typename ConcreteOp>
 std::string detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getLibraryCallName(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
@@ -1184,10 +1892,6 @@ bool detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::canOpOperandsBeDropped(
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).canOpOperandsBeDropped(droppedOperands);
 }
 template<typename ConcreteOp>
-std::pair<int64_t, int64_t> detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getResultsPositionInLoopsToShapeMap(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getResultsPositionInLoopsToShapeMap();
-}
-template<typename ConcreteOp>
 SmallVector<int64_t> detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getStaticShape(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getStaticShape();
 }
@@ -1196,40 +1900,12 @@ SmallVector<int64_t, 4> detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getS
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getStaticLoopRanges();
 }
 template<typename ConcreteOp>
-Operation *detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::clone(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands) {
-  BlockAndValueMapping bvm;
-        OperationState state(
-          loc, ConcreteOp::getOperationName(), operands, resultTypes,
-          (llvm::cast<ConcreteOp>(tablegen_opaque_val))->getAttrs());
-        for (Region &r : (llvm::cast<ConcreteOp>(tablegen_opaque_val))->getRegions())
-          r.cloneInto(state.addRegion(), bvm);
-        return b.create(state);
-}
-template<typename ConcreteOp>
-Operation *detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::cloneWithMapper(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands, BlockAndValueMapping & bvm) {
-  OperationState state(
-          loc, ConcreteOp::getOperationName(), operands, resultTypes,
-          (llvm::cast<ConcreteOp>(tablegen_opaque_val))->getAttrs());
-        for (Region &r : (llvm::cast<ConcreteOp>(tablegen_opaque_val))->getRegions())
-          r.cloneInto(state.addRegion(), bvm);
-        return b.create(state);
-}
-template<typename ConcreteOp>
-Operation *detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::cloneWithoutRegions(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands) {
-  OperationState state(
-          loc, ConcreteOp::getOperationName(), operands, resultTypes,
-          (llvm::cast<ConcreteOp>(tablegen_opaque_val))->getAttrs());
-        for (size_t cnt = 0, e = (llvm::cast<ConcreteOp>(tablegen_opaque_val))->getNumRegions(); cnt < e; ++cnt)
-          state.addRegion();
-        return b.create(state);
-}
-template<typename ConcreteOp>
 std::function<void(ImplicitLocOpBuilder &, Block &, ArrayRef<NamedAttribute>)> detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::getRegionBuilder() {
   return ConcreteOp::getRegionBuilder();
 }
 template<typename ConcreteOp>
 bool detail::LinalgOpInterfaceTraits::Model<ConcreteOp>::hasOnlyProjectedPermutations(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return llvm::all_of((llvm::cast<ConcreteOp>(tablegen_opaque_val)).getIndexingMaps(),
+  return llvm::all_of((llvm::cast<ConcreteOp>(tablegen_opaque_val)).getIndexingMapsArray(),
                             [](AffineMap map) { return map.isProjectedPermutation(); });
 }
 template<typename ConcreteOp>
@@ -1265,84 +1941,8 @@ bool detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::hasSingleReduct
   return static_cast<const ConcreteOp *>(impl)->hasSingleReductionLoop(tablegen_opaque_val);
 }
 template<typename ConcreteOp>
-ValueRange detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::inputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return static_cast<const ConcreteOp *>(impl)->inputs(tablegen_opaque_val);
-}
-template<typename ConcreteOp>
-int64_t detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getNumInputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return static_cast<const ConcreteOp *>(impl)->getNumInputs(tablegen_opaque_val);
-}
-template<typename ConcreteOp>
-ValueRange detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::outputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return static_cast<const ConcreteOp *>(impl)->outputs(tablegen_opaque_val);
-}
-template<typename ConcreteOp>
-int64_t detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getNumOutputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return static_cast<const ConcreteOp *>(impl)->getNumOutputs(tablegen_opaque_val);
-}
-template<typename ConcreteOp>
-int64_t detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getNumInputsAndOutputs(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return static_cast<const ConcreteOp *>(impl)->getNumInputsAndOutputs(tablegen_opaque_val);
-}
-template<typename ConcreteOp>
-OpOperandVector detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getInputOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return static_cast<const ConcreteOp *>(impl)->getInputOperands(tablegen_opaque_val);
-}
-template<typename ConcreteOp>
-OpOperand*detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getInputOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, int64_t i) {
-  return static_cast<const ConcreteOp *>(impl)->getInputOperand(tablegen_opaque_val, i);
-}
-template<typename ConcreteOp>
-OpOperandVector detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getInputBufferOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return static_cast<const ConcreteOp *>(impl)->getInputBufferOperands(tablegen_opaque_val);
-}
-template<typename ConcreteOp>
-OpOperandVector detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getInputTensorOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return static_cast<const ConcreteOp *>(impl)->getInputTensorOperands(tablegen_opaque_val);
-}
-template<typename ConcreteOp>
-OpOperandVector detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getOutputOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return static_cast<const ConcreteOp *>(impl)->getOutputOperands(tablegen_opaque_val);
-}
-template<typename ConcreteOp>
-OpOperand*detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getOutputOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, int64_t i) {
-  return static_cast<const ConcreteOp *>(impl)->getOutputOperand(tablegen_opaque_val, i);
-}
-template<typename ConcreteOp>
-void detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::setOutputOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, int64_t i, Value value) {
-  return static_cast<const ConcreteOp *>(impl)->setOutputOperand(tablegen_opaque_val, i, value);
-}
-template<typename ConcreteOp>
-OpOperandVector detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getOutputBufferOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return static_cast<const ConcreteOp *>(impl)->getOutputBufferOperands(tablegen_opaque_val);
-}
-template<typename ConcreteOp>
-OpOperandVector detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getOutputTensorOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return static_cast<const ConcreteOp *>(impl)->getOutputTensorOperands(tablegen_opaque_val);
-}
-template<typename ConcreteOp>
-SmallVector<MemRefType> detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getOutputBufferTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return static_cast<const ConcreteOp *>(impl)->getOutputBufferTypes(tablegen_opaque_val);
-}
-template<typename ConcreteOp>
-SmallVector<RankedTensorType> detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getOutputTensorTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return static_cast<const ConcreteOp *>(impl)->getOutputTensorTypes(tablegen_opaque_val);
-}
-template<typename ConcreteOp>
-OpOperandVector detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getInputAndOutputOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return static_cast<const ConcreteOp *>(impl)->getInputAndOutputOperands(tablegen_opaque_val);
-}
-template<typename ConcreteOp>
 bool detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::payloadUsesValueFromOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * opOperand) {
   return static_cast<const ConcreteOp *>(impl)->payloadUsesValueFromOperand(tablegen_opaque_val, opOperand);
-}
-template<typename ConcreteOp>
-bool detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::isInputTensor(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * opOperand) {
-  return static_cast<const ConcreteOp *>(impl)->isInputTensor(tablegen_opaque_val, opOperand);
-}
-template<typename ConcreteOp>
-bool detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::isOutputTensor(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * opOperand) {
-  return static_cast<const ConcreteOp *>(impl)->isOutputTensor(tablegen_opaque_val, opOperand);
 }
 template<typename ConcreteOp>
 bool detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::isInitTensor(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * opOperand) {
@@ -1361,12 +1961,12 @@ ArrayRef<int64_t> detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::ge
   return static_cast<const ConcreteOp *>(impl)->getShape(tablegen_opaque_val, opOperand);
 }
 template<typename ConcreteOp>
-bool detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::isScalar(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand* opOperand) {
-  return static_cast<const ConcreteOp *>(impl)->isScalar(tablegen_opaque_val, opOperand);
-}
-template<typename ConcreteOp>
 BlockArgument detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getTiedBlockArgument(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand * opOperand) {
   return static_cast<const ConcreteOp *>(impl)->getTiedBlockArgument(tablegen_opaque_val, opOperand);
+}
+template<typename ConcreteOp>
+OpOperand *detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getTiedOpOperand(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, BlockArgument blockArgument) {
+  return static_cast<const ConcreteOp *>(impl)->getTiedOpOperand(tablegen_opaque_val, blockArgument);
 }
 template<typename ConcreteOp>
 AffineMap detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getTiedIndexingMap(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand* opOperand) {
@@ -1375,10 +1975,6 @@ AffineMap detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getTiedInd
 template<typename ConcreteOp>
 AffineMap detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getTiedIndexingMapForResult(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpResult result) {
   return static_cast<const ConcreteOp *>(impl)->getTiedIndexingMapForResult(tablegen_opaque_val, result);
-}
-template<typename ConcreteOp>
-OpResult detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getTiedOpResult(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand* opOperand) {
-  return static_cast<const ConcreteOp *>(impl)->getTiedOpResult(tablegen_opaque_val, opOperand);
 }
 template<typename ConcreteOp>
 OpOperand *detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getTiedYieldValue(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpOperand* opOperand) {
@@ -1401,24 +1997,16 @@ LogicalResult detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::verify
   return static_cast<const ConcreteOp *>(impl)->verifyIndexingMapRequiredAttributes(tablegen_opaque_val);
 }
 template<typename ConcreteOp>
-ArrayAttr detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::indexing_maps(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return static_cast<const ConcreteOp *>(impl)->indexing_maps(tablegen_opaque_val);
+ArrayAttr detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getIndexingMaps(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->getIndexingMaps(tablegen_opaque_val);
 }
 template<typename ConcreteOp>
-SmallVector<AffineMap> detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getIndexingMaps(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return static_cast<const ConcreteOp *>(impl)->getIndexingMaps(tablegen_opaque_val);
+SmallVector<AffineMap> detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getIndexingMapsArray(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->getIndexingMapsArray(tablegen_opaque_val);
 }
 template<typename ConcreteOp>
 bool detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::hasDynamicShape(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return static_cast<const ConcreteOp *>(impl)->hasDynamicShape(tablegen_opaque_val);
-}
-template<typename ConcreteOp>
-bool detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::hasBufferSemantics(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return static_cast<const ConcreteOp *>(impl)->hasBufferSemantics(tablegen_opaque_val);
-}
-template<typename ConcreteOp>
-bool detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::hasTensorSemantics(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return static_cast<const ConcreteOp *>(impl)->hasTensorSemantics(tablegen_opaque_val);
 }
 template<typename ConcreteOp>
 std::string detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getLibraryCallName(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
@@ -1441,28 +2029,12 @@ bool detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::canOpOperandsBe
   return static_cast<const ConcreteOp *>(impl)->canOpOperandsBeDropped(tablegen_opaque_val, droppedOperands);
 }
 template<typename ConcreteOp>
-std::pair<int64_t, int64_t> detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getResultsPositionInLoopsToShapeMap(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return static_cast<const ConcreteOp *>(impl)->getResultsPositionInLoopsToShapeMap(tablegen_opaque_val);
-}
-template<typename ConcreteOp>
 SmallVector<int64_t> detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getStaticShape(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return static_cast<const ConcreteOp *>(impl)->getStaticShape(tablegen_opaque_val);
 }
 template<typename ConcreteOp>
 SmallVector<int64_t, 4> detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getStaticLoopRanges(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return static_cast<const ConcreteOp *>(impl)->getStaticLoopRanges(tablegen_opaque_val);
-}
-template<typename ConcreteOp>
-Operation *detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::clone(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands) {
-  return static_cast<const ConcreteOp *>(impl)->clone(tablegen_opaque_val, b, loc, resultTypes, operands);
-}
-template<typename ConcreteOp>
-Operation *detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::cloneWithMapper(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands, BlockAndValueMapping & bvm) {
-  return static_cast<const ConcreteOp *>(impl)->cloneWithMapper(tablegen_opaque_val, b, loc, resultTypes, operands, bvm);
-}
-template<typename ConcreteOp>
-Operation *detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::cloneWithoutRegions(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location loc, TypeRange resultTypes, ValueRange operands) {
-  return static_cast<const ConcreteOp *>(impl)->cloneWithoutRegions(tablegen_opaque_val, b, loc, resultTypes, operands);
 }
 template<typename ConcreteOp>
 std::function<void(ImplicitLocOpBuilder &, Block &, ArrayRef<NamedAttribute>)> detail::LinalgOpInterfaceTraits::FallbackModel<ConcreteOp>::getRegionBuilder() {
@@ -1510,153 +2082,10 @@ auto iters = (llvm::cast<ConcreteOp>(tablegen_opaque_val)).iterator_types();
                getNumIterators(getReductionIteratorTypeName(), iters) == 1;
 }
 template<typename ConcreteModel, typename ConcreteOp>
-int64_t detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getNumInputs(::mlir::Operation *tablegen_opaque_val) const {
-return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).inputs().size();
-}
-template<typename ConcreteModel, typename ConcreteOp>
-int64_t detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getNumOutputs(::mlir::Operation *tablegen_opaque_val) const {
-return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).outputs().size();
-}
-template<typename ConcreteModel, typename ConcreteOp>
-int64_t detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getNumInputsAndOutputs(::mlir::Operation *tablegen_opaque_val) const {
-return this->getOperation()->getNumOperands();
-}
-template<typename ConcreteModel, typename ConcreteOp>
-OpOperandVector detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getInputOperands(::mlir::Operation *tablegen_opaque_val) const {
-int64_t numInputs = getNumInputs();
-        OpOperandVector result;
-        result.reserve(numInputs);
-        llvm::transform(
-          this->getOperation()->getOpOperands().take_front(numInputs),
-          std::back_inserter(result),
-          [](OpOperand &opOperand) { return &opOperand; });
-        return result;
-}
-template<typename ConcreteModel, typename ConcreteOp>
-OpOperand*detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getInputOperand(::mlir::Operation *tablegen_opaque_val, int64_t i) const {
-assert(i >= 0 && i < getNumInputs());
-        return &this->getOperation()->getOpOperand(i);
-}
-template<typename ConcreteModel, typename ConcreteOp>
-OpOperandVector detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getInputBufferOperands(::mlir::Operation *tablegen_opaque_val) const {
-OpOperandVector result;
-        result.reserve(getNumInputs());
-        llvm::copy_if(getInputOperands(),
-          std::back_inserter(result),
-          [](OpOperand *opOperand) {
-            return opOperand->get().getType().template isa<MemRefType>();
-          });
-        return result;
-}
-template<typename ConcreteModel, typename ConcreteOp>
-OpOperandVector detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getInputTensorOperands(::mlir::Operation *tablegen_opaque_val) const {
-OpOperandVector result;
-        result.reserve(getNumInputs());
-        llvm::copy_if(getInputOperands(),
-          std::back_inserter(result),
-          [](OpOperand *opOperand) {
-            return opOperand->get().getType().template isa<RankedTensorType>();
-          });
-        return result;
-}
-template<typename ConcreteModel, typename ConcreteOp>
-OpOperandVector detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getOutputOperands(::mlir::Operation *tablegen_opaque_val) const {
-int64_t numOutputs = getNumOutputs();
-        OpOperandVector result;
-        result.reserve(numOutputs);
-        llvm::transform(
-          this->getOperation()->getOpOperands()
-            .take_back(numOutputs),
-          std::back_inserter(result),
-          [](OpOperand &opOperand) { return &opOperand; });
-        return result;
-}
-template<typename ConcreteModel, typename ConcreteOp>
-OpOperand*detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getOutputOperand(::mlir::Operation *tablegen_opaque_val, int64_t i) const {
-assert(i >= 0 && i < getNumOutputs());
-        return &this->getOperation()->getOpOperand(getNumInputs() + i);
-}
-template<typename ConcreteModel, typename ConcreteOp>
-void detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::setOutputOperand(::mlir::Operation *tablegen_opaque_val, int64_t i, Value value) const {
-assert(i >= 0 && i < getNumOutputs());
-        this->getOperation()->setOperand(getNumInputs() + i, value);
-}
-template<typename ConcreteModel, typename ConcreteOp>
-OpOperandVector detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getOutputBufferOperands(::mlir::Operation *tablegen_opaque_val) const {
-OpOperandVector result;
-        result.reserve(getNumOutputs());
-        llvm::copy_if(getOutputOperands(),
-          std::back_inserter(result),
-          [](OpOperand *opOperand) {
-            return opOperand->get().getType().template isa<MemRefType>();
-          });
-        return result;
-}
-template<typename ConcreteModel, typename ConcreteOp>
-OpOperandVector detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getOutputTensorOperands(::mlir::Operation *tablegen_opaque_val) const {
-OpOperandVector result;
-        result.reserve(getNumOutputs());
-        llvm::copy_if(getOutputOperands(),
-          std::back_inserter(result),
-          [](OpOperand *opOperand) {
-            return opOperand->get().getType().template isa<RankedTensorType>();
-          });
-        return result;
-}
-template<typename ConcreteModel, typename ConcreteOp>
-SmallVector<MemRefType> detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getOutputBufferTypes(::mlir::Operation *tablegen_opaque_val) const {
-SmallVector<MemRefType> result;
-        result.reserve(getNumOutputs());
-        llvm::transform(getOutputBufferOperands(),
-          std::back_inserter(result),
-          [](OpOperand *opOperands) {
-            return opOperands->get().getType().cast<MemRefType>();
-          });
-        return result;
-}
-template<typename ConcreteModel, typename ConcreteOp>
-SmallVector<RankedTensorType> detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getOutputTensorTypes(::mlir::Operation *tablegen_opaque_val) const {
-SmallVector<RankedTensorType> result;
-        result.reserve(getNumOutputs());
-        llvm::transform(getOutputTensorOperands(),
-          std::back_inserter(result),
-          [](OpOperand *opOperands) {
-            return opOperands->get().getType().cast<RankedTensorType>();
-          });
-        return result;
-}
-template<typename ConcreteModel, typename ConcreteOp>
-OpOperandVector detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getInputAndOutputOperands(::mlir::Operation *tablegen_opaque_val) const {
-int64_t numInputsAndOutputs = getNumInputsAndOutputs();
-        OpOperandVector result;
-        result.reserve(numInputsAndOutputs);
-        llvm::transform(
-          this->getOperation()->getOpOperands(),
-          std::back_inserter(result),
-          [](OpOperand &opOperand) { return &opOperand; });
-        return result;
-}
-template<typename ConcreteModel, typename ConcreteOp>
 bool detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::payloadUsesValueFromOperand(::mlir::Operation *tablegen_opaque_val, OpOperand *opOperand) const {
 unsigned bbArgNumber = opOperand->getOperandNumber();
         // Init tensors have uses.
         return !getBlock()->getArgument(bbArgNumber).use_empty();
-}
-template<typename ConcreteModel, typename ConcreteOp>
-bool detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::isInputTensor(::mlir::Operation *tablegen_opaque_val, OpOperand *opOperand) const {
-if (!opOperand->get().getType().template isa<RankedTensorType>())
-          return false;
-        if (opOperand->getOperandNumber() < (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getNumInputs())
-          return true;
-        return false;
-}
-template<typename ConcreteModel, typename ConcreteOp>
-bool detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::isOutputTensor(::mlir::Operation *tablegen_opaque_val, OpOperand *opOperand) const {
-if (!opOperand->get().getType().template isa<RankedTensorType>())
-          return false;
-        if (opOperand->getOperandNumber() >= (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getNumInputs())
-          return true;
-        return false;
 }
 template<typename ConcreteModel, typename ConcreteOp>
 bool detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::isInitTensor(::mlir::Operation *tablegen_opaque_val, OpOperand *opOperand) const {
@@ -1674,7 +2103,13 @@ assert(opOperand->getOwner() == this->getOperation());
 }
 template<typename ConcreteModel, typename ConcreteOp>
 Block::BlockArgListType detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getRegionOutputArgs(::mlir::Operation *tablegen_opaque_val) const {
-return getBlock()->getArguments().take_back(this->getNumOutputs());
+// MLIR currently does not support dependent interfaces or interface
+        // inheritance. By construction all ops with StructuredOpInterface must
+        // implement DestinationStyleOpInterface.
+        // TODO: reevalute the need for a cast when a better mechanism exists.
+        return getBlock()->getArguments().take_back(
+            cast<DestinationStyleOpInterface>(*this->getOperation())
+                .getNumOutputs());
 }
 template<typename ConcreteModel, typename ConcreteOp>
 ArrayRef<int64_t> detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getShape(::mlir::Operation *tablegen_opaque_val, OpOperand*opOperand) const {
@@ -1685,42 +2120,48 @@ assert(opOperand->getOwner() == this->getOperation());
         return {};
 }
 template<typename ConcreteModel, typename ConcreteOp>
-bool detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::isScalar(::mlir::Operation *tablegen_opaque_val, OpOperand*opOperand) const {
-assert(opOperand->getOwner() == this->getOperation());
-        return !opOperand->get().getType().template isa<ShapedType>();
-}
-template<typename ConcreteModel, typename ConcreteOp>
 BlockArgument detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getTiedBlockArgument(::mlir::Operation *tablegen_opaque_val, OpOperand *opOperand) const {
 assert(opOperand->getOwner() == this->getOperation());
         return getBlock()->getArgument(opOperand->getOperandNumber());
 }
 template<typename ConcreteModel, typename ConcreteOp>
+OpOperand *detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getTiedOpOperand(::mlir::Operation *tablegen_opaque_val, BlockArgument blockArgument) const {
+assert(blockArgument.getOwner() == getBlock());
+        return &this->getOperation()->getOpOperand(
+            blockArgument.getArgNumber());
+}
+template<typename ConcreteModel, typename ConcreteOp>
 AffineMap detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getTiedIndexingMap(::mlir::Operation *tablegen_opaque_val, OpOperand*opOperand) const {
 assert(opOperand->getOwner() == this->getOperation());
         auto indexingMaps =
-          (llvm::cast<ConcreteOp>(tablegen_opaque_val)).indexing_maps().template getAsValueRange<AffineMapAttr>();
+          (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getIndexingMaps().template getAsValueRange<AffineMapAttr>();
         return *(indexingMaps.begin() + opOperand->getOperandNumber());
 }
 template<typename ConcreteModel, typename ConcreteOp>
 AffineMap detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getTiedIndexingMapForResult(::mlir::Operation *tablegen_opaque_val, OpResult result) const {
 assert(result.getOwner() == this->getOperation());
         auto indexingMaps =
-          (llvm::cast<ConcreteOp>(tablegen_opaque_val)).indexing_maps().template getAsValueRange<AffineMapAttr>();
-          return *(indexingMaps.begin() + getNumInputs() +
-              result.getResultNumber());
-}
-template<typename ConcreteModel, typename ConcreteOp>
-OpResult detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getTiedOpResult(::mlir::Operation *tablegen_opaque_val, OpOperand*opOperand) const {
-assert(opOperand->getOwner() == this->getOperation());
-        int64_t resultIndex = opOperand->getOperandNumber() - getNumInputs();
-        assert(resultIndex >= 0 &&
-               resultIndex < this->getOperation()->getNumResults() );
-        return this->getOperation()->getResult(resultIndex);
+          (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getIndexingMaps().template getAsValueRange<AffineMapAttr>();
+        // MLIR currently does not support dependent interfaces or interface
+        // inheritance. By construction all ops with StructuredOpInterface must
+        // implement DestinationStyleOpInterface.
+        // TODO: reevalute the need for a cast when a better mechanism exists.
+        return *(indexingMaps.begin() +
+                 cast<DestinationStyleOpInterface>(*this->getOperation())
+                     .getNumInputs() +
+                 result.getResultNumber());
 }
 template<typename ConcreteModel, typename ConcreteOp>
 OpOperand *detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getTiedYieldValue(::mlir::Operation *tablegen_opaque_val, OpOperand*opOperand) const {
 assert(opOperand->getOwner() == this->getOperation());
-        int64_t resultIndex = opOperand->getOperandNumber() - getNumInputs();
+        // MLIR currently does not support dependent interfaces or interface
+        // inheritance. By construction all ops with StructuredOpInterface must
+        // implement DestinationStyleOpInterface.
+        // TODO: reevalute the need for a cast when a better mechanism exists.
+        int64_t resultIndex =
+            opOperand->getOperandNumber() -
+            cast<DestinationStyleOpInterface>(*this->getOperation())
+                .getNumInputs();
         assert(resultIndex >= 0 &&
                resultIndex < this->getOperation()->getNumResults());
         Operation *yieldOp = getBlock()->getTerminator();
@@ -1745,8 +2186,8 @@ LogicalResult detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, Conc
 return success();
 }
 template<typename ConcreteModel, typename ConcreteOp>
-SmallVector<AffineMap> detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getIndexingMaps(::mlir::Operation *tablegen_opaque_val) const {
-auto range = (llvm::cast<ConcreteOp>(tablegen_opaque_val)).indexing_maps()
+SmallVector<AffineMap> detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getIndexingMapsArray(::mlir::Operation *tablegen_opaque_val) const {
+auto range = (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getIndexingMaps()
           .template getAsValueRange<AffineMapAttr>();
         return {range.begin(), range.end()};
 }
@@ -1755,31 +2196,12 @@ bool detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::
 return llvm::any_of(getStaticShape(), ShapedType::isDynamic);
 }
 template<typename ConcreteModel, typename ConcreteOp>
-bool detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::hasBufferSemantics(::mlir::Operation *tablegen_opaque_val) const {
-return this->getOperation()->getNumResults() == 0 &&
-          llvm::all_of(this->getOperation()->getOpOperands(),
-            [&](OpOperand &opOperand) {
-              return isScalar(&opOperand) ||
-                     opOperand.get().getType().template isa<MemRefType>();
-            });
-}
-template<typename ConcreteModel, typename ConcreteOp>
-bool detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::hasTensorSemantics(::mlir::Operation *tablegen_opaque_val) const {
-return llvm::all_of(this->getOperation()->getOpOperands(),
-          [&](OpOperand &opOperand) {
-            return isScalar(&opOperand) ||
-                   opOperand.get().getType().template isa<RankedTensorType>();
-          });
-}
-template<typename ConcreteModel, typename ConcreteOp>
 std::string detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getLibraryCallName(::mlir::Operation *tablegen_opaque_val) const {
 return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getLibraryCallName();
 }
 template<typename ConcreteModel, typename ConcreteOp>
 AffineMap detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getLoopsToShapesMap(::mlir::Operation *tablegen_opaque_val) const {
-auto r = (llvm::cast<ConcreteOp>(tablegen_opaque_val)).indexing_maps().template getAsRange<AffineMapAttr>();
-        auto maps = llvm::to_vector<8>(
-            llvm::map_range(r, [](AffineMapAttr a) { return a.getValue(); }));
+auto maps =  (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getIndexingMapsArray();
         return concatAffineMaps(maps);
 }
 template<typename ConcreteModel, typename ConcreteOp>
@@ -1791,19 +2213,14 @@ bool detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::
 return detail::canOpOperandsBeDroppedImpl((llvm::cast<ConcreteOp>(tablegen_opaque_val)), droppedOperands);
 }
 template<typename ConcreteModel, typename ConcreteOp>
-std::pair<int64_t, int64_t> detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getResultsPositionInLoopsToShapeMap(::mlir::Operation *tablegen_opaque_val) const {
-int64_t inputRankSum = 0;
-        int64_t outputRankSum = 0;
-        for(OpOperand *input : getInputOperands())
-          inputRankSum += getRank(input);
-        for(OpOperand *output : getOutputOperands())
-          outputRankSum += getRank(output);
-        return {inputRankSum, inputRankSum + outputRankSum};
-}
-template<typename ConcreteModel, typename ConcreteOp>
 SmallVector<int64_t> detail::LinalgOpInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getStaticShape(::mlir::Operation *tablegen_opaque_val) const {
 SmallVector<int64_t> res;
-        for (OpOperand *opOperand : getInputAndOutputOperands())
+        // MLIR currently does not support dependent interfaces or interface
+        // inheritance. By construction all ops with StructuredOpInterface must
+        // implement DestinationStyleOpInterface.
+        // TODO: reevalute the need for a cast when a better mechanism exists.
+        auto iface = cast<DestinationStyleOpInterface>(*this->getOperation());
+        for (OpOperand *opOperand : iface.getInputAndOutputOperands())
           llvm::append_range(res, getShape(opOperand));
         return res;
 }

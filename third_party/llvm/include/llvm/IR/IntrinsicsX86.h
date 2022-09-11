@@ -13,7 +13,7 @@ namespace llvm {
 namespace Intrinsic {
 enum X86Intrinsics : unsigned {
 // Enum values for intrinsics
-    x86_3dnow_pavgusb = 9536,                         // llvm.x86.3dnow.pavgusb
+    x86_3dnow_pavgusb = 9661,                         // llvm.x86.3dnow.pavgusb
     x86_3dnow_pf2id,                           // llvm.x86.3dnow.pf2id
     x86_3dnow_pfacc,                           // llvm.x86.3dnow.pfacc
     x86_3dnow_pfadd,                           // llvm.x86.3dnow.pfadd
@@ -1070,6 +1070,7 @@ enum X86Intrinsics : unsigned {
     x86_rdpid,                                 // llvm.x86.rdpid
     x86_rdpkru,                                // llvm.x86.rdpkru
     x86_rdpmc,                                 // llvm.x86.rdpmc
+    x86_rdpru,                                 // llvm.x86.rdpru
     x86_rdrand_16,                             // llvm.x86.rdrand.16
     x86_rdrand_32,                             // llvm.x86.rdrand.32
     x86_rdrand_64,                             // llvm.x86.rdrand.64

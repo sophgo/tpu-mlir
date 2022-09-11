@@ -40,7 +40,6 @@ void TpuDialect::initialize() {
 // Tpu Operator Definitions.
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Dialect/Tpu/IR/TpuEnum.cpp.inc"
-#include "tpu_mlir/Dialect/Tpu/IR/TpuStruct.cpp.inc"
 
 #define GET_ATTRDEF_CLASSES
 #include "tpu_mlir/Dialect/Tpu/IR/TpuAttr.cpp.inc"

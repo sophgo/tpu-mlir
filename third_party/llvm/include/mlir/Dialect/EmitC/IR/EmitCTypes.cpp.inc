@@ -17,16 +17,20 @@
 #ifdef GET_TYPEDEF_CLASSES
 #undef GET_TYPEDEF_CLASSES
 
-static ::mlir::OptionalParseResult generatedTypeParser(::mlir::AsmParser &parser, ::llvm::StringRef mnemonic, ::mlir::Type &value) {
-  if (mnemonic == ::mlir::emitc::OpaqueType::getMnemonic()) {
-    value = ::mlir::emitc::OpaqueType::parse(parser);
-    return ::mlir::success(!!value);
-  }
-  if (mnemonic == ::mlir::emitc::PointerType::getMnemonic()) {
-    value = ::mlir::emitc::PointerType::parse(parser);
-    return ::mlir::success(!!value);
-  }
-  return {};
+static ::mlir::OptionalParseResult generatedTypeParser(::mlir::AsmParser &parser, ::llvm::StringRef *mnemonic, ::mlir::Type &value) {
+  return ::mlir::AsmParser::KeywordSwitch<::mlir::OptionalParseResult>(parser)
+    .Case(::mlir::emitc::OpaqueType::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::emitc::OpaqueType::parse(parser);
+      return ::mlir::success(!!value);
+    })
+    .Case(::mlir::emitc::PointerType::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::emitc::PointerType::parse(parser);
+      return ::mlir::success(!!value);
+    })
+    .Default([&](llvm::StringRef keyword, llvm::SMLoc) {
+      *mnemonic = keyword;
+      return llvm::None;
+    });
 }
 
 static ::mlir::LogicalResult generatedTypePrinter(::mlir::Type def, ::mlir::AsmPrinter &printer) {
@@ -110,6 +114,7 @@ PointerType PointerType::get(Type pointee) {
 }
 
 ::mlir::Type PointerType::parse(::mlir::AsmParser &odsParser) {
+  ::mlir::Builder odsBuilder(odsParser.getContext());
   ::mlir::FailureOr<Type> _result_pointee;
   ::llvm::SMLoc odsLoc = odsParser.getCurrentLocation();
   (void) odsLoc;
@@ -126,10 +131,11 @@ PointerType PointerType::get(Type pointee) {
   if (odsParser.parseGreater()) return {};
   assert(::mlir::succeeded(_result_pointee));
   return PointerType::get(odsParser.getContext(),
-      *_result_pointee);
+      Type((*_result_pointee)));
 }
 
 void PointerType::print(::mlir::AsmPrinter &odsPrinter) const {
+  ::mlir::Builder odsBuilder(getContext());
   odsPrinter << "<";
   odsPrinter << getPointee();
   odsPrinter << ">";
@@ -149,11 +155,9 @@ namespace emitc {
 ::mlir::Type EmitCDialect::parseType(::mlir::DialectAsmParser &parser) const {
   ::llvm::SMLoc typeLoc = parser.getCurrentLocation();
   ::llvm::StringRef mnemonic;
-  if (parser.parseKeyword(&mnemonic))
-    return ::mlir::Type();
   ::mlir::Type genType;
-  auto parseResult = generatedTypeParser(parser, mnemonic, genType);
-  if (parseResult.hasValue())
+  auto parseResult = generatedTypeParser(parser, &mnemonic, genType);
+  if (parseResult.has_value())
     return genType;
   
   parser.emitError(typeLoc) << "unknown  type `"

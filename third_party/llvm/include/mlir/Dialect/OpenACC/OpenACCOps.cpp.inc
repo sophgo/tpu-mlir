@@ -140,16 +140,12 @@ DataOpAdaptor::DataOpAdaptor(DataOp op) : odsOperands(op->getOperands()), odsAtt
 
 std::pair<unsigned, unsigned> DataOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, DataOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, DataOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::ValueRange DataOpAdaptor::getODSOperands(unsigned index) {
@@ -214,7 +210,7 @@ std::pair<unsigned, unsigned> DataOpAdaptor::getODSOperandIndexAndLength(unsigne
 ::mlir::acc::ClauseDefaultValueAttr DataOpAdaptor::defaultAttrAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, DataOp::defaultAttrAttrName(*odsOpName)).dyn_cast_or_null<::mlir::acc::ClauseDefaultValueAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional<::mlir::acc::ClauseDefaultValue> DataOpAdaptor::defaultAttr() {
@@ -249,9 +245,8 @@ std::pair<unsigned, unsigned> DataOpAdaptor::getODSOperandIndexAndLength(unsigne
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 12)
       return emitError(loc, "'acc.data' op ""'operand_segment_sizes' attribute for specifying operand segments must have 12 "
                 "elements, but got ") << numElements;
@@ -263,16 +258,12 @@ std::pair<unsigned, unsigned> DataOpAdaptor::getODSOperandIndexAndLength(unsigne
 }
 
 std::pair<unsigned, unsigned> DataOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::Operation::operand_range DataOp::getODSOperands(unsigned index) {
@@ -281,7 +272,7 @@ std::pair<unsigned, unsigned> DataOp::getODSOperandIndexAndLength(unsigned index
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value DataOp::ifCond() {
+::mlir::TypedValue<::mlir::IntegerType> DataOp::ifCond() {
   auto operands = getODSOperands(0);
   return operands.empty() ? ::mlir::Value() : *operands.begin();
 }
@@ -447,7 +438,7 @@ void DataOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
   odsState.addOperands(presentOperands);
   odsState.addOperands(deviceptrOperands);
   odsState.addOperands(attachOperands);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(ifCond ? 1 : 0), static_cast<int32_t>(copyOperands.size()), static_cast<int32_t>(copyinOperands.size()), static_cast<int32_t>(copyinReadonlyOperands.size()), static_cast<int32_t>(copyoutOperands.size()), static_cast<int32_t>(copyoutZeroOperands.size()), static_cast<int32_t>(createOperands.size()), static_cast<int32_t>(createZeroOperands.size()), static_cast<int32_t>(noCreateOperands.size()), static_cast<int32_t>(presentOperands.size()), static_cast<int32_t>(deviceptrOperands.size()), static_cast<int32_t>(attachOperands.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(ifCond ? 1 : 0), static_cast<int32_t>(copyOperands.size()), static_cast<int32_t>(copyinOperands.size()), static_cast<int32_t>(copyinReadonlyOperands.size()), static_cast<int32_t>(copyoutOperands.size()), static_cast<int32_t>(copyoutZeroOperands.size()), static_cast<int32_t>(createOperands.size()), static_cast<int32_t>(createZeroOperands.size()), static_cast<int32_t>(noCreateOperands.size()), static_cast<int32_t>(presentOperands.size()), static_cast<int32_t>(deviceptrOperands.size()), static_cast<int32_t>(attachOperands.size())}));
   if (defaultAttr) {
   odsState.addAttribute(defaultAttrAttrName(odsState.name), defaultAttr);
   }
@@ -468,7 +459,7 @@ void DataOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
   odsState.addOperands(presentOperands);
   odsState.addOperands(deviceptrOperands);
   odsState.addOperands(attachOperands);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(ifCond ? 1 : 0), static_cast<int32_t>(copyOperands.size()), static_cast<int32_t>(copyinOperands.size()), static_cast<int32_t>(copyinReadonlyOperands.size()), static_cast<int32_t>(copyoutOperands.size()), static_cast<int32_t>(copyoutZeroOperands.size()), static_cast<int32_t>(createOperands.size()), static_cast<int32_t>(createZeroOperands.size()), static_cast<int32_t>(noCreateOperands.size()), static_cast<int32_t>(presentOperands.size()), static_cast<int32_t>(deviceptrOperands.size()), static_cast<int32_t>(attachOperands.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(ifCond ? 1 : 0), static_cast<int32_t>(copyOperands.size()), static_cast<int32_t>(copyinOperands.size()), static_cast<int32_t>(copyinReadonlyOperands.size()), static_cast<int32_t>(copyoutOperands.size()), static_cast<int32_t>(copyoutZeroOperands.size()), static_cast<int32_t>(createOperands.size()), static_cast<int32_t>(createZeroOperands.size()), static_cast<int32_t>(noCreateOperands.size()), static_cast<int32_t>(presentOperands.size()), static_cast<int32_t>(deviceptrOperands.size()), static_cast<int32_t>(attachOperands.size())}));
   if (defaultAttr) {
   odsState.addAttribute(defaultAttrAttrName(odsState.name), defaultAttr);
   }
@@ -505,9 +496,8 @@ void DataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 12)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 12 "
                 "elements, but got ") << numElements;
@@ -669,7 +659,7 @@ void DataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       ifCondOperands.push_back(operand);
@@ -849,9 +839,9 @@ void DataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   if (parser.parseOptionalAttrDictWithKeyword(result.attributes))
     return ::mlir::failure();
   result.addRegion(std::move(regionRegion));
-  result.addAttribute("operand_segment_sizes", parser.getBuilder().getI32VectorAttr({static_cast<int32_t>(ifCondOperands.size()), static_cast<int32_t>(copyOperandsOperands.size()), static_cast<int32_t>(copyinOperandsOperands.size()), static_cast<int32_t>(copyinReadonlyOperandsOperands.size()), static_cast<int32_t>(copyoutOperandsOperands.size()), static_cast<int32_t>(copyoutZeroOperandsOperands.size()), static_cast<int32_t>(createOperandsOperands.size()), static_cast<int32_t>(createZeroOperandsOperands.size()), static_cast<int32_t>(noCreateOperandsOperands.size()), static_cast<int32_t>(presentOperandsOperands.size()), static_cast<int32_t>(deviceptrOperandsOperands.size()), static_cast<int32_t>(attachOperandsOperands.size())}));
+  result.addAttribute("operand_segment_sizes", parser.getBuilder().getDenseI32ArrayAttr({static_cast<int32_t>(ifCondOperands.size()), static_cast<int32_t>(copyOperandsOperands.size()), static_cast<int32_t>(copyinOperandsOperands.size()), static_cast<int32_t>(copyinReadonlyOperandsOperands.size()), static_cast<int32_t>(copyoutOperandsOperands.size()), static_cast<int32_t>(copyoutZeroOperandsOperands.size()), static_cast<int32_t>(createOperandsOperands.size()), static_cast<int32_t>(createZeroOperandsOperands.size()), static_cast<int32_t>(noCreateOperandsOperands.size()), static_cast<int32_t>(presentOperandsOperands.size()), static_cast<int32_t>(deviceptrOperandsOperands.size()), static_cast<int32_t>(attachOperandsOperands.size())}));
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getIntegerType(1);
-  if (parser.resolveOperands(ifCondOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(ifCondOperands, odsBuildableType0, ifCondOperandsLoc, result.operands))
     return ::mlir::failure();
   if (parser.resolveOperands(copyOperandsOperands, copyOperandsTypes, copyOperandsOperandsLoc, result.operands))
     return ::mlir::failure();
@@ -1013,16 +1003,12 @@ EnterDataOpAdaptor::EnterDataOpAdaptor(EnterDataOp op) : odsOperands(op->getOper
 
 std::pair<unsigned, unsigned> EnterDataOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, EnterDataOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, EnterDataOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::ValueRange EnterDataOpAdaptor::getODSOperands(unsigned index) {
@@ -1073,7 +1059,7 @@ std::pair<unsigned, unsigned> EnterDataOpAdaptor::getODSOperandIndexAndLength(un
 ::mlir::UnitAttr EnterDataOpAdaptor::asyncAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, EnterDataOp::asyncAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
-    return attr;
+  return attr;
 }
 
 bool EnterDataOpAdaptor::async() {
@@ -1084,7 +1070,7 @@ bool EnterDataOpAdaptor::async() {
 ::mlir::UnitAttr EnterDataOpAdaptor::waitAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, EnterDataOp::waitAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
-    return attr;
+  return attr;
 }
 
 bool EnterDataOpAdaptor::wait() {
@@ -1121,9 +1107,8 @@ bool EnterDataOpAdaptor::wait() {
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 8)
       return emitError(loc, "'acc.enter_data' op ""'operand_segment_sizes' attribute for specifying operand segments must have 8 "
                 "elements, but got ") << numElements;
@@ -1138,16 +1123,12 @@ bool EnterDataOpAdaptor::wait() {
 }
 
 std::pair<unsigned, unsigned> EnterDataOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::Operation::operand_range EnterDataOp::getODSOperands(unsigned index) {
@@ -1156,7 +1137,7 @@ std::pair<unsigned, unsigned> EnterDataOp::getODSOperandIndexAndLength(unsigned 
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value EnterDataOp::ifCond() {
+::mlir::TypedValue<::mlir::IntegerType> EnterDataOp::ifCond() {
   auto operands = getODSOperands(0);
   return operands.empty() ? ::mlir::Value() : *operands.begin();
 }
@@ -1295,7 +1276,7 @@ void EnterDataOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
   odsState.addOperands(createOperands);
   odsState.addOperands(createZeroOperands);
   odsState.addOperands(attachOperands);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(ifCond ? 1 : 0), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), static_cast<int32_t>(waitOperands.size()), static_cast<int32_t>(copyinOperands.size()), static_cast<int32_t>(createOperands.size()), static_cast<int32_t>(createZeroOperands.size()), static_cast<int32_t>(attachOperands.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(ifCond ? 1 : 0), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), static_cast<int32_t>(waitOperands.size()), static_cast<int32_t>(copyinOperands.size()), static_cast<int32_t>(createOperands.size()), static_cast<int32_t>(createZeroOperands.size()), static_cast<int32_t>(attachOperands.size())}));
   if (async) {
   odsState.addAttribute(asyncAttrName(odsState.name), async);
   }
@@ -1316,7 +1297,7 @@ void EnterDataOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
   odsState.addOperands(createOperands);
   odsState.addOperands(createZeroOperands);
   odsState.addOperands(attachOperands);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(ifCond ? 1 : 0), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), static_cast<int32_t>(waitOperands.size()), static_cast<int32_t>(copyinOperands.size()), static_cast<int32_t>(createOperands.size()), static_cast<int32_t>(createZeroOperands.size()), static_cast<int32_t>(attachOperands.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(ifCond ? 1 : 0), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), static_cast<int32_t>(waitOperands.size()), static_cast<int32_t>(copyinOperands.size()), static_cast<int32_t>(createOperands.size()), static_cast<int32_t>(createZeroOperands.size()), static_cast<int32_t>(attachOperands.size())}));
   if (async) {
   odsState.addAttribute(asyncAttrName(odsState.name), async);
   }
@@ -1339,7 +1320,7 @@ void EnterDataOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
   odsState.addOperands(createOperands);
   odsState.addOperands(createZeroOperands);
   odsState.addOperands(attachOperands);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(ifCond ? 1 : 0), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), static_cast<int32_t>(waitOperands.size()), static_cast<int32_t>(copyinOperands.size()), static_cast<int32_t>(createOperands.size()), static_cast<int32_t>(createZeroOperands.size()), static_cast<int32_t>(attachOperands.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(ifCond ? 1 : 0), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), static_cast<int32_t>(waitOperands.size()), static_cast<int32_t>(copyinOperands.size()), static_cast<int32_t>(createOperands.size()), static_cast<int32_t>(createZeroOperands.size()), static_cast<int32_t>(attachOperands.size())}));
   if (async) {
   odsState.addAttribute(asyncAttrName(odsState.name), odsBuilder.getUnitAttr());
   }
@@ -1360,7 +1341,7 @@ void EnterDataOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
   odsState.addOperands(createOperands);
   odsState.addOperands(createZeroOperands);
   odsState.addOperands(attachOperands);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(ifCond ? 1 : 0), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), static_cast<int32_t>(waitOperands.size()), static_cast<int32_t>(copyinOperands.size()), static_cast<int32_t>(createOperands.size()), static_cast<int32_t>(createZeroOperands.size()), static_cast<int32_t>(attachOperands.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(ifCond ? 1 : 0), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), static_cast<int32_t>(waitOperands.size()), static_cast<int32_t>(copyinOperands.size()), static_cast<int32_t>(createOperands.size()), static_cast<int32_t>(createZeroOperands.size()), static_cast<int32_t>(attachOperands.size())}));
   if (async) {
   odsState.addAttribute(asyncAttrName(odsState.name), odsBuilder.getUnitAttr());
   }
@@ -1407,9 +1388,8 @@ void EnterDataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 8)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 8 "
                 "elements, but got ") << numElements;
@@ -1536,7 +1516,7 @@ void EnterDataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       ifCondOperands.push_back(operand);
@@ -1554,7 +1534,7 @@ void EnterDataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       asyncOperandOperands.push_back(operand);
@@ -1567,7 +1547,7 @@ void EnterDataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
     ::mlir::Type optionalType;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalType(optionalType);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       asyncOperandTypes.push_back(optionalType);
@@ -1585,7 +1565,7 @@ void EnterDataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       waitDevnumOperands.push_back(operand);
@@ -1598,7 +1578,7 @@ void EnterDataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
     ::mlir::Type optionalType;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalType(optionalType);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       waitDevnumTypes.push_back(optionalType);
@@ -1684,9 +1664,9 @@ void EnterDataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   }
   if (parser.parseOptionalAttrDictWithKeyword(result.attributes))
     return ::mlir::failure();
-  result.addAttribute("operand_segment_sizes", parser.getBuilder().getI32VectorAttr({static_cast<int32_t>(ifCondOperands.size()), static_cast<int32_t>(asyncOperandOperands.size()), static_cast<int32_t>(waitDevnumOperands.size()), static_cast<int32_t>(waitOperandsOperands.size()), static_cast<int32_t>(copyinOperandsOperands.size()), static_cast<int32_t>(createOperandsOperands.size()), static_cast<int32_t>(createZeroOperandsOperands.size()), static_cast<int32_t>(attachOperandsOperands.size())}));
+  result.addAttribute("operand_segment_sizes", parser.getBuilder().getDenseI32ArrayAttr({static_cast<int32_t>(ifCondOperands.size()), static_cast<int32_t>(asyncOperandOperands.size()), static_cast<int32_t>(waitDevnumOperands.size()), static_cast<int32_t>(waitOperandsOperands.size()), static_cast<int32_t>(copyinOperandsOperands.size()), static_cast<int32_t>(createOperandsOperands.size()), static_cast<int32_t>(createZeroOperandsOperands.size()), static_cast<int32_t>(attachOperandsOperands.size())}));
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getIntegerType(1);
-  if (parser.resolveOperands(ifCondOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(ifCondOperands, odsBuildableType0, ifCondOperandsLoc, result.operands))
     return ::mlir::failure();
   if (parser.resolveOperands(asyncOperandOperands, asyncOperandTypes, asyncOperandOperandsLoc, result.operands))
     return ::mlir::failure();
@@ -1804,16 +1784,12 @@ ExitDataOpAdaptor::ExitDataOpAdaptor(ExitDataOp op) : odsOperands(op->getOperand
 
 std::pair<unsigned, unsigned> ExitDataOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ExitDataOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ExitDataOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::ValueRange ExitDataOpAdaptor::getODSOperands(unsigned index) {
@@ -1860,7 +1836,7 @@ std::pair<unsigned, unsigned> ExitDataOpAdaptor::getODSOperandIndexAndLength(uns
 ::mlir::UnitAttr ExitDataOpAdaptor::asyncAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, ExitDataOp::asyncAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
-    return attr;
+  return attr;
 }
 
 bool ExitDataOpAdaptor::async() {
@@ -1871,7 +1847,7 @@ bool ExitDataOpAdaptor::async() {
 ::mlir::UnitAttr ExitDataOpAdaptor::waitAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, ExitDataOp::waitAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
-    return attr;
+  return attr;
 }
 
 bool ExitDataOpAdaptor::wait() {
@@ -1882,7 +1858,7 @@ bool ExitDataOpAdaptor::wait() {
 ::mlir::UnitAttr ExitDataOpAdaptor::finalizeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, ExitDataOp::finalizeAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
-    return attr;
+  return attr;
 }
 
 bool ExitDataOpAdaptor::finalize() {
@@ -1923,9 +1899,8 @@ bool ExitDataOpAdaptor::finalize() {
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 7)
       return emitError(loc, "'acc.exit_data' op ""'operand_segment_sizes' attribute for specifying operand segments must have 7 "
                 "elements, but got ") << numElements;
@@ -1943,16 +1918,12 @@ bool ExitDataOpAdaptor::finalize() {
 }
 
 std::pair<unsigned, unsigned> ExitDataOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::Operation::operand_range ExitDataOp::getODSOperands(unsigned index) {
@@ -1961,7 +1932,7 @@ std::pair<unsigned, unsigned> ExitDataOp::getODSOperandIndexAndLength(unsigned i
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ExitDataOp::ifCond() {
+::mlir::TypedValue<::mlir::IntegerType> ExitDataOp::ifCond() {
   auto operands = getODSOperands(0);
   return operands.empty() ? ::mlir::Value() : *operands.begin();
 }
@@ -2106,7 +2077,7 @@ void ExitDataOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
   odsState.addOperands(copyoutOperands);
   odsState.addOperands(deleteOperands);
   odsState.addOperands(detachOperands);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(ifCond ? 1 : 0), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), static_cast<int32_t>(waitOperands.size()), static_cast<int32_t>(copyoutOperands.size()), static_cast<int32_t>(deleteOperands.size()), static_cast<int32_t>(detachOperands.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(ifCond ? 1 : 0), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), static_cast<int32_t>(waitOperands.size()), static_cast<int32_t>(copyoutOperands.size()), static_cast<int32_t>(deleteOperands.size()), static_cast<int32_t>(detachOperands.size())}));
   if (async) {
   odsState.addAttribute(asyncAttrName(odsState.name), async);
   }
@@ -2129,7 +2100,7 @@ void ExitDataOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
   odsState.addOperands(copyoutOperands);
   odsState.addOperands(deleteOperands);
   odsState.addOperands(detachOperands);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(ifCond ? 1 : 0), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), static_cast<int32_t>(waitOperands.size()), static_cast<int32_t>(copyoutOperands.size()), static_cast<int32_t>(deleteOperands.size()), static_cast<int32_t>(detachOperands.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(ifCond ? 1 : 0), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), static_cast<int32_t>(waitOperands.size()), static_cast<int32_t>(copyoutOperands.size()), static_cast<int32_t>(deleteOperands.size()), static_cast<int32_t>(detachOperands.size())}));
   if (async) {
   odsState.addAttribute(asyncAttrName(odsState.name), async);
   }
@@ -2154,7 +2125,7 @@ void ExitDataOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
   odsState.addOperands(copyoutOperands);
   odsState.addOperands(deleteOperands);
   odsState.addOperands(detachOperands);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(ifCond ? 1 : 0), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), static_cast<int32_t>(waitOperands.size()), static_cast<int32_t>(copyoutOperands.size()), static_cast<int32_t>(deleteOperands.size()), static_cast<int32_t>(detachOperands.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(ifCond ? 1 : 0), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), static_cast<int32_t>(waitOperands.size()), static_cast<int32_t>(copyoutOperands.size()), static_cast<int32_t>(deleteOperands.size()), static_cast<int32_t>(detachOperands.size())}));
   if (async) {
   odsState.addAttribute(asyncAttrName(odsState.name), odsBuilder.getUnitAttr());
   }
@@ -2177,7 +2148,7 @@ void ExitDataOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
   odsState.addOperands(copyoutOperands);
   odsState.addOperands(deleteOperands);
   odsState.addOperands(detachOperands);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(ifCond ? 1 : 0), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), static_cast<int32_t>(waitOperands.size()), static_cast<int32_t>(copyoutOperands.size()), static_cast<int32_t>(deleteOperands.size()), static_cast<int32_t>(detachOperands.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(ifCond ? 1 : 0), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), static_cast<int32_t>(waitOperands.size()), static_cast<int32_t>(copyoutOperands.size()), static_cast<int32_t>(deleteOperands.size()), static_cast<int32_t>(detachOperands.size())}));
   if (async) {
   odsState.addAttribute(asyncAttrName(odsState.name), odsBuilder.getUnitAttr());
   }
@@ -2231,9 +2202,8 @@ void ExitDataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 7)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 7 "
                 "elements, but got ") << numElements;
@@ -2353,7 +2323,7 @@ void ExitDataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       ifCondOperands.push_back(operand);
@@ -2371,7 +2341,7 @@ void ExitDataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       asyncOperandOperands.push_back(operand);
@@ -2384,7 +2354,7 @@ void ExitDataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
     ::mlir::Type optionalType;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalType(optionalType);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       asyncOperandTypes.push_back(optionalType);
@@ -2402,7 +2372,7 @@ void ExitDataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       waitDevnumOperands.push_back(operand);
@@ -2415,7 +2385,7 @@ void ExitDataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
     ::mlir::Type optionalType;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalType(optionalType);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       waitDevnumTypes.push_back(optionalType);
@@ -2486,9 +2456,9 @@ void ExitDataOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   }
   if (parser.parseOptionalAttrDictWithKeyword(result.attributes))
     return ::mlir::failure();
-  result.addAttribute("operand_segment_sizes", parser.getBuilder().getI32VectorAttr({static_cast<int32_t>(ifCondOperands.size()), static_cast<int32_t>(asyncOperandOperands.size()), static_cast<int32_t>(waitDevnumOperands.size()), static_cast<int32_t>(waitOperandsOperands.size()), static_cast<int32_t>(copyoutOperandsOperands.size()), static_cast<int32_t>(deleteOperandsOperands.size()), static_cast<int32_t>(detachOperandsOperands.size())}));
+  result.addAttribute("operand_segment_sizes", parser.getBuilder().getDenseI32ArrayAttr({static_cast<int32_t>(ifCondOperands.size()), static_cast<int32_t>(asyncOperandOperands.size()), static_cast<int32_t>(waitDevnumOperands.size()), static_cast<int32_t>(waitOperandsOperands.size()), static_cast<int32_t>(copyoutOperandsOperands.size()), static_cast<int32_t>(deleteOperandsOperands.size()), static_cast<int32_t>(detachOperandsOperands.size())}));
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getIntegerType(1);
-  if (parser.resolveOperands(ifCondOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(ifCondOperands, odsBuildableType0, ifCondOperandsLoc, result.operands))
     return ::mlir::failure();
   if (parser.resolveOperands(asyncOperandOperands, asyncOperandTypes, asyncOperandOperandsLoc, result.operands))
     return ::mlir::failure();
@@ -2595,16 +2565,12 @@ InitOpAdaptor::InitOpAdaptor(InitOp op) : odsOperands(op->getOperands()), odsAtt
 
 std::pair<unsigned, unsigned> InitOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, InitOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, InitOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::ValueRange InitOpAdaptor::getODSOperands(unsigned index) {
@@ -2646,9 +2612,8 @@ std::pair<unsigned, unsigned> InitOpAdaptor::getODSOperandIndexAndLength(unsigne
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 3)
       return emitError(loc, "'acc.init' op ""'operand_segment_sizes' attribute for specifying operand segments must have 3 "
                 "elements, but got ") << numElements;
@@ -2657,16 +2622,12 @@ std::pair<unsigned, unsigned> InitOpAdaptor::getODSOperandIndexAndLength(unsigne
 }
 
 std::pair<unsigned, unsigned> InitOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::Operation::operand_range InitOp::getODSOperands(unsigned index) {
@@ -2684,7 +2645,7 @@ std::pair<unsigned, unsigned> InitOp::getODSOperandIndexAndLength(unsigned index
   return operands.empty() ? ::mlir::Value() : *operands.begin();
 }
 
-::mlir::Value InitOp::ifCond() {
+::mlir::TypedValue<::mlir::IntegerType> InitOp::ifCond() {
   auto operands = getODSOperands(2);
   return operands.empty() ? ::mlir::Value() : *operands.begin();
 }
@@ -2723,7 +2684,7 @@ void InitOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     odsState.addOperands(deviceNumOperand);
   if (ifCond)
     odsState.addOperands(ifCond);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(deviceTypeOperands.size()), (deviceNumOperand ? 1 : 0), (ifCond ? 1 : 0)}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(deviceTypeOperands.size()), (deviceNumOperand ? 1 : 0), (ifCond ? 1 : 0)}));
 }
 
 void InitOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange deviceTypeOperands, /*optional*/::mlir::Value deviceNumOperand, /*optional*/::mlir::Value ifCond) {
@@ -2732,7 +2693,7 @@ void InitOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     odsState.addOperands(deviceNumOperand);
   if (ifCond)
     odsState.addOperands(ifCond);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(deviceTypeOperands.size()), (deviceNumOperand ? 1 : 0), (ifCond ? 1 : 0)}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(deviceTypeOperands.size()), (deviceNumOperand ? 1 : 0), (ifCond ? 1 : 0)}));
   assert(resultTypes.size() == 0u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -2759,9 +2720,8 @@ void InitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 3)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 3 "
                 "elements, but got ") << numElements;
@@ -2842,7 +2802,7 @@ void InitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       deviceNumOperandOperands.push_back(operand);
@@ -2855,7 +2815,7 @@ void InitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
     ::mlir::Type optionalType;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalType(optionalType);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       deviceNumOperandTypes.push_back(optionalType);
@@ -2873,7 +2833,7 @@ void InitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       ifCondOperands.push_back(operand);
@@ -2884,13 +2844,13 @@ void InitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   }
   if (parser.parseOptionalAttrDictWithKeyword(result.attributes))
     return ::mlir::failure();
-  result.addAttribute("operand_segment_sizes", parser.getBuilder().getI32VectorAttr({static_cast<int32_t>(deviceTypeOperandsOperands.size()), static_cast<int32_t>(deviceNumOperandOperands.size()), static_cast<int32_t>(ifCondOperands.size())}));
+  result.addAttribute("operand_segment_sizes", parser.getBuilder().getDenseI32ArrayAttr({static_cast<int32_t>(deviceTypeOperandsOperands.size()), static_cast<int32_t>(deviceNumOperandOperands.size()), static_cast<int32_t>(ifCondOperands.size())}));
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getIntegerType(1);
   if (parser.resolveOperands(deviceTypeOperandsOperands, deviceTypeOperandsTypes, deviceTypeOperandsOperandsLoc, result.operands))
     return ::mlir::failure();
   if (parser.resolveOperands(deviceNumOperandOperands, deviceNumOperandTypes, deviceNumOperandOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(ifCondOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(ifCondOperands, odsBuildableType0, ifCondOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -2948,16 +2908,12 @@ LoopOpAdaptor::LoopOpAdaptor(LoopOp op) : odsOperands(op->getOperands()), odsAtt
 
 std::pair<unsigned, unsigned> LoopOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, LoopOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, LoopOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::ValueRange LoopOpAdaptor::getODSOperands(unsigned index) {
@@ -3005,7 +2961,7 @@ std::pair<unsigned, unsigned> LoopOpAdaptor::getODSOperandIndexAndLength(unsigne
 ::mlir::IntegerAttr LoopOpAdaptor::collapseAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, LoopOp::collapseAttrName(*odsOpName)).dyn_cast_or_null<::mlir::IntegerAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional<uint64_t> LoopOpAdaptor::collapse() {
@@ -3016,7 +2972,7 @@ std::pair<unsigned, unsigned> LoopOpAdaptor::getODSOperandIndexAndLength(unsigne
 ::mlir::UnitAttr LoopOpAdaptor::seqAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, LoopOp::seqAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
-    return attr;
+  return attr;
 }
 
 bool LoopOpAdaptor::seq() {
@@ -3027,7 +2983,7 @@ bool LoopOpAdaptor::seq() {
 ::mlir::UnitAttr LoopOpAdaptor::independentAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, LoopOp::independentAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
-    return attr;
+  return attr;
 }
 
 bool LoopOpAdaptor::independent() {
@@ -3038,7 +2994,7 @@ bool LoopOpAdaptor::independent() {
 ::mlir::UnitAttr LoopOpAdaptor::auto_Attr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, LoopOp::auto_AttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
-    return attr;
+  return attr;
 }
 
 bool LoopOpAdaptor::auto_() {
@@ -3049,7 +3005,7 @@ bool LoopOpAdaptor::auto_() {
 ::mlir::acc::ReductionOpAttr LoopOpAdaptor::reductionOpAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, LoopOp::reductionOpAttrName(*odsOpName)).dyn_cast_or_null<::mlir::acc::ReductionOpAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional<::mlir::acc::ReductionOp> LoopOpAdaptor::reductionOp() {
@@ -3060,15 +3016,11 @@ bool LoopOpAdaptor::auto_() {
 ::mlir::IntegerAttr LoopOpAdaptor::exec_mappingAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, LoopOp::exec_mappingAttrName(*odsOpName)).dyn_cast_or_null<::mlir::IntegerAttr>();
-    if (!attr)
-      attr = ::mlir::Builder(odsAttrs.getContext()).getIntegerAttr(::mlir::Builder(odsAttrs.getContext()).getIntegerType(64), 0);
-    return attr;
+  return attr;
 }
 
 uint64_t LoopOpAdaptor::exec_mapping() {
   auto attr = exec_mappingAttr();
-    if (!attr)
-      return ::mlir::Builder(odsAttrs.getContext()).getIntegerAttr(::mlir::Builder(odsAttrs.getContext()).getIntegerType(64), 0).getValue().getZExtValue();
   return attr.getValue().getZExtValue();
 }
 
@@ -3125,9 +3077,8 @@ uint64_t LoopOpAdaptor::exec_mapping() {
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 7)
       return emitError(loc, "'acc.loop' op ""'operand_segment_sizes' attribute for specifying operand segments must have 7 "
                 "elements, but got ") << numElements;
@@ -3154,16 +3105,12 @@ uint64_t LoopOpAdaptor::exec_mapping() {
 }
 
 std::pair<unsigned, unsigned> LoopOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::Operation::operand_range LoopOp::getODSOperands(unsigned index) {
@@ -3329,8 +3276,6 @@ bool LoopOp::auto_() {
 
 uint64_t LoopOp::exec_mapping() {
   auto attr = exec_mappingAttr();
-    if (!attr)
-      return ::mlir::Builder((*this)->getContext()).getIntegerAttr(::mlir::Builder((*this)->getContext()).getIntegerType(64), 0).getValue().getZExtValue();
   return attr.getValue().getZExtValue();
 }
 
@@ -3390,7 +3335,7 @@ void LoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
   odsState.addOperands(tileOperands);
   odsState.addOperands(privateOperands);
   odsState.addOperands(reductionOperands);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(gangNum ? 1 : 0), (gangStatic ? 1 : 0), (workerNum ? 1 : 0), (vectorLength ? 1 : 0), static_cast<int32_t>(tileOperands.size()), static_cast<int32_t>(privateOperands.size()), static_cast<int32_t>(reductionOperands.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(gangNum ? 1 : 0), (gangStatic ? 1 : 0), (workerNum ? 1 : 0), (vectorLength ? 1 : 0), static_cast<int32_t>(tileOperands.size()), static_cast<int32_t>(privateOperands.size()), static_cast<int32_t>(reductionOperands.size())}));
   if (collapse) {
   odsState.addAttribute(collapseAttrName(odsState.name), collapse);
   }
@@ -3425,7 +3370,7 @@ void LoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
   odsState.addOperands(tileOperands);
   odsState.addOperands(privateOperands);
   odsState.addOperands(reductionOperands);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(gangNum ? 1 : 0), (gangStatic ? 1 : 0), (workerNum ? 1 : 0), (vectorLength ? 1 : 0), static_cast<int32_t>(tileOperands.size()), static_cast<int32_t>(privateOperands.size()), static_cast<int32_t>(reductionOperands.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(gangNum ? 1 : 0), (gangStatic ? 1 : 0), (workerNum ? 1 : 0), (vectorLength ? 1 : 0), static_cast<int32_t>(tileOperands.size()), static_cast<int32_t>(privateOperands.size()), static_cast<int32_t>(reductionOperands.size())}));
   if (collapse) {
   odsState.addAttribute(collapseAttrName(odsState.name), collapse);
   }
@@ -3452,6 +3397,14 @@ void LoopOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   for (unsigned i = 0; i != 1; ++i)
     (void)odsState.addRegion();
   odsState.addTypes(resultTypes);
+}
+
+void LoopOp::populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes) {
+  auto attrNames = opName.getAttributeNames();
+  ::mlir::Builder odsBuilder(attrNames.front().getContext());
+  if (!attributes.get(attrNames[2])) {
+     attributes.append(attrNames[2], odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), 0));
+  }
 }
 
 ::mlir::LogicalResult LoopOp::verifyInvariantsImpl() {
@@ -3499,9 +3452,8 @@ void LoopOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 7)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 7 "
                 "elements, but got ") << numElements;
@@ -3637,16 +3589,12 @@ ParallelOpAdaptor::ParallelOpAdaptor(ParallelOp op) : odsOperands(op->getOperand
 
 std::pair<unsigned, unsigned> ParallelOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ParallelOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ParallelOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::ValueRange ParallelOpAdaptor::getODSOperands(unsigned index) {
@@ -3752,7 +3700,7 @@ std::pair<unsigned, unsigned> ParallelOpAdaptor::getODSOperandIndexAndLength(uns
 ::mlir::UnitAttr ParallelOpAdaptor::asyncAttrAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, ParallelOp::asyncAttrAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
-    return attr;
+  return attr;
 }
 
 bool ParallelOpAdaptor::asyncAttr() {
@@ -3763,7 +3711,7 @@ bool ParallelOpAdaptor::asyncAttr() {
 ::mlir::UnitAttr ParallelOpAdaptor::waitAttrAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, ParallelOp::waitAttrAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
-    return attr;
+  return attr;
 }
 
 bool ParallelOpAdaptor::waitAttr() {
@@ -3774,7 +3722,7 @@ bool ParallelOpAdaptor::waitAttr() {
 ::mlir::UnitAttr ParallelOpAdaptor::selfAttrAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, ParallelOp::selfAttrAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
-    return attr;
+  return attr;
 }
 
 bool ParallelOpAdaptor::selfAttr() {
@@ -3785,7 +3733,7 @@ bool ParallelOpAdaptor::selfAttr() {
 ::mlir::acc::ReductionOpAttr ParallelOpAdaptor::reductionOpAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, ParallelOp::reductionOpAttrName(*odsOpName)).dyn_cast_or_null<::mlir::acc::ReductionOpAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional<::mlir::acc::ReductionOp> ParallelOpAdaptor::reductionOp() {
@@ -3796,7 +3744,7 @@ bool ParallelOpAdaptor::selfAttr() {
 ::mlir::acc::ClauseDefaultValueAttr ParallelOpAdaptor::defaultAttrAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, ParallelOp::defaultAttrAttrName(*odsOpName)).dyn_cast_or_null<::mlir::acc::ClauseDefaultValueAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional<::mlir::acc::ClauseDefaultValue> ParallelOpAdaptor::defaultAttr() {
@@ -3853,9 +3801,8 @@ bool ParallelOpAdaptor::selfAttr() {
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 21)
       return emitError(loc, "'acc.parallel' op ""'operand_segment_sizes' attribute for specifying operand segments must have 21 "
                 "elements, but got ") << numElements;
@@ -3879,16 +3826,12 @@ bool ParallelOpAdaptor::selfAttr() {
 }
 
 std::pair<unsigned, unsigned> ParallelOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::Operation::operand_range ParallelOp::getODSOperands(unsigned index) {
@@ -3921,12 +3864,12 @@ std::pair<unsigned, unsigned> ParallelOp::getODSOperandIndexAndLength(unsigned i
   return operands.empty() ? ::mlir::Value() : *operands.begin();
 }
 
-::mlir::Value ParallelOp::ifCond() {
+::mlir::TypedValue<::mlir::IntegerType> ParallelOp::ifCond() {
   auto operands = getODSOperands(5);
   return operands.empty() ? ::mlir::Value() : *operands.begin();
 }
 
-::mlir::Value ParallelOp::selfCond() {
+::mlir::TypedValue<::mlir::IntegerType> ParallelOp::selfCond() {
   auto operands = getODSOperands(6);
   return operands.empty() ? ::mlir::Value() : *operands.begin();
 }
@@ -4240,7 +4183,7 @@ void ParallelOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
   odsState.addOperands(attachOperands);
   odsState.addOperands(gangPrivateOperands);
   odsState.addOperands(gangFirstPrivateOperands);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(async ? 1 : 0), static_cast<int32_t>(waitOperands.size()), (numGangs ? 1 : 0), (numWorkers ? 1 : 0), (vectorLength ? 1 : 0), (ifCond ? 1 : 0), (selfCond ? 1 : 0), static_cast<int32_t>(reductionOperands.size()), static_cast<int32_t>(copyOperands.size()), static_cast<int32_t>(copyinOperands.size()), static_cast<int32_t>(copyinReadonlyOperands.size()), static_cast<int32_t>(copyoutOperands.size()), static_cast<int32_t>(copyoutZeroOperands.size()), static_cast<int32_t>(createOperands.size()), static_cast<int32_t>(createZeroOperands.size()), static_cast<int32_t>(noCreateOperands.size()), static_cast<int32_t>(presentOperands.size()), static_cast<int32_t>(devicePtrOperands.size()), static_cast<int32_t>(attachOperands.size()), static_cast<int32_t>(gangPrivateOperands.size()), static_cast<int32_t>(gangFirstPrivateOperands.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(async ? 1 : 0), static_cast<int32_t>(waitOperands.size()), (numGangs ? 1 : 0), (numWorkers ? 1 : 0), (vectorLength ? 1 : 0), (ifCond ? 1 : 0), (selfCond ? 1 : 0), static_cast<int32_t>(reductionOperands.size()), static_cast<int32_t>(copyOperands.size()), static_cast<int32_t>(copyinOperands.size()), static_cast<int32_t>(copyinReadonlyOperands.size()), static_cast<int32_t>(copyoutOperands.size()), static_cast<int32_t>(copyoutZeroOperands.size()), static_cast<int32_t>(createOperands.size()), static_cast<int32_t>(createZeroOperands.size()), static_cast<int32_t>(noCreateOperands.size()), static_cast<int32_t>(presentOperands.size()), static_cast<int32_t>(devicePtrOperands.size()), static_cast<int32_t>(attachOperands.size()), static_cast<int32_t>(gangPrivateOperands.size()), static_cast<int32_t>(gangFirstPrivateOperands.size())}));
   if (asyncAttr) {
   odsState.addAttribute(asyncAttrAttrName(odsState.name), asyncAttr);
   }
@@ -4287,7 +4230,7 @@ void ParallelOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
   odsState.addOperands(attachOperands);
   odsState.addOperands(gangPrivateOperands);
   odsState.addOperands(gangFirstPrivateOperands);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(async ? 1 : 0), static_cast<int32_t>(waitOperands.size()), (numGangs ? 1 : 0), (numWorkers ? 1 : 0), (vectorLength ? 1 : 0), (ifCond ? 1 : 0), (selfCond ? 1 : 0), static_cast<int32_t>(reductionOperands.size()), static_cast<int32_t>(copyOperands.size()), static_cast<int32_t>(copyinOperands.size()), static_cast<int32_t>(copyinReadonlyOperands.size()), static_cast<int32_t>(copyoutOperands.size()), static_cast<int32_t>(copyoutZeroOperands.size()), static_cast<int32_t>(createOperands.size()), static_cast<int32_t>(createZeroOperands.size()), static_cast<int32_t>(noCreateOperands.size()), static_cast<int32_t>(presentOperands.size()), static_cast<int32_t>(devicePtrOperands.size()), static_cast<int32_t>(attachOperands.size()), static_cast<int32_t>(gangPrivateOperands.size()), static_cast<int32_t>(gangFirstPrivateOperands.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(async ? 1 : 0), static_cast<int32_t>(waitOperands.size()), (numGangs ? 1 : 0), (numWorkers ? 1 : 0), (vectorLength ? 1 : 0), (ifCond ? 1 : 0), (selfCond ? 1 : 0), static_cast<int32_t>(reductionOperands.size()), static_cast<int32_t>(copyOperands.size()), static_cast<int32_t>(copyinOperands.size()), static_cast<int32_t>(copyinReadonlyOperands.size()), static_cast<int32_t>(copyoutOperands.size()), static_cast<int32_t>(copyoutZeroOperands.size()), static_cast<int32_t>(createOperands.size()), static_cast<int32_t>(createZeroOperands.size()), static_cast<int32_t>(noCreateOperands.size()), static_cast<int32_t>(presentOperands.size()), static_cast<int32_t>(devicePtrOperands.size()), static_cast<int32_t>(attachOperands.size()), static_cast<int32_t>(gangPrivateOperands.size()), static_cast<int32_t>(gangFirstPrivateOperands.size())}));
   if (asyncAttr) {
   odsState.addAttribute(asyncAttrAttrName(odsState.name), asyncAttr);
   }
@@ -4336,7 +4279,7 @@ void ParallelOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
   odsState.addOperands(attachOperands);
   odsState.addOperands(gangPrivateOperands);
   odsState.addOperands(gangFirstPrivateOperands);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(async ? 1 : 0), static_cast<int32_t>(waitOperands.size()), (numGangs ? 1 : 0), (numWorkers ? 1 : 0), (vectorLength ? 1 : 0), (ifCond ? 1 : 0), (selfCond ? 1 : 0), static_cast<int32_t>(reductionOperands.size()), static_cast<int32_t>(copyOperands.size()), static_cast<int32_t>(copyinOperands.size()), static_cast<int32_t>(copyinReadonlyOperands.size()), static_cast<int32_t>(copyoutOperands.size()), static_cast<int32_t>(copyoutZeroOperands.size()), static_cast<int32_t>(createOperands.size()), static_cast<int32_t>(createZeroOperands.size()), static_cast<int32_t>(noCreateOperands.size()), static_cast<int32_t>(presentOperands.size()), static_cast<int32_t>(devicePtrOperands.size()), static_cast<int32_t>(attachOperands.size()), static_cast<int32_t>(gangPrivateOperands.size()), static_cast<int32_t>(gangFirstPrivateOperands.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(async ? 1 : 0), static_cast<int32_t>(waitOperands.size()), (numGangs ? 1 : 0), (numWorkers ? 1 : 0), (vectorLength ? 1 : 0), (ifCond ? 1 : 0), (selfCond ? 1 : 0), static_cast<int32_t>(reductionOperands.size()), static_cast<int32_t>(copyOperands.size()), static_cast<int32_t>(copyinOperands.size()), static_cast<int32_t>(copyinReadonlyOperands.size()), static_cast<int32_t>(copyoutOperands.size()), static_cast<int32_t>(copyoutZeroOperands.size()), static_cast<int32_t>(createOperands.size()), static_cast<int32_t>(createZeroOperands.size()), static_cast<int32_t>(noCreateOperands.size()), static_cast<int32_t>(presentOperands.size()), static_cast<int32_t>(devicePtrOperands.size()), static_cast<int32_t>(attachOperands.size()), static_cast<int32_t>(gangPrivateOperands.size()), static_cast<int32_t>(gangFirstPrivateOperands.size())}));
   if (asyncAttr) {
   odsState.addAttribute(asyncAttrAttrName(odsState.name), odsBuilder.getUnitAttr());
   }
@@ -4383,7 +4326,7 @@ void ParallelOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
   odsState.addOperands(attachOperands);
   odsState.addOperands(gangPrivateOperands);
   odsState.addOperands(gangFirstPrivateOperands);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(async ? 1 : 0), static_cast<int32_t>(waitOperands.size()), (numGangs ? 1 : 0), (numWorkers ? 1 : 0), (vectorLength ? 1 : 0), (ifCond ? 1 : 0), (selfCond ? 1 : 0), static_cast<int32_t>(reductionOperands.size()), static_cast<int32_t>(copyOperands.size()), static_cast<int32_t>(copyinOperands.size()), static_cast<int32_t>(copyinReadonlyOperands.size()), static_cast<int32_t>(copyoutOperands.size()), static_cast<int32_t>(copyoutZeroOperands.size()), static_cast<int32_t>(createOperands.size()), static_cast<int32_t>(createZeroOperands.size()), static_cast<int32_t>(noCreateOperands.size()), static_cast<int32_t>(presentOperands.size()), static_cast<int32_t>(devicePtrOperands.size()), static_cast<int32_t>(attachOperands.size()), static_cast<int32_t>(gangPrivateOperands.size()), static_cast<int32_t>(gangFirstPrivateOperands.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(async ? 1 : 0), static_cast<int32_t>(waitOperands.size()), (numGangs ? 1 : 0), (numWorkers ? 1 : 0), (vectorLength ? 1 : 0), (ifCond ? 1 : 0), (selfCond ? 1 : 0), static_cast<int32_t>(reductionOperands.size()), static_cast<int32_t>(copyOperands.size()), static_cast<int32_t>(copyinOperands.size()), static_cast<int32_t>(copyinReadonlyOperands.size()), static_cast<int32_t>(copyoutOperands.size()), static_cast<int32_t>(copyoutZeroOperands.size()), static_cast<int32_t>(createOperands.size()), static_cast<int32_t>(createZeroOperands.size()), static_cast<int32_t>(noCreateOperands.size()), static_cast<int32_t>(presentOperands.size()), static_cast<int32_t>(devicePtrOperands.size()), static_cast<int32_t>(attachOperands.size()), static_cast<int32_t>(gangPrivateOperands.size()), static_cast<int32_t>(gangFirstPrivateOperands.size())}));
   if (asyncAttr) {
   odsState.addAttribute(asyncAttrAttrName(odsState.name), odsBuilder.getUnitAttr());
   }
@@ -4454,9 +4397,8 @@ void ParallelOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 21)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 21 "
                 "elements, but got ") << numElements;
@@ -4672,16 +4614,12 @@ ShutdownOpAdaptor::ShutdownOpAdaptor(ShutdownOp op) : odsOperands(op->getOperand
 
 std::pair<unsigned, unsigned> ShutdownOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ShutdownOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ShutdownOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::ValueRange ShutdownOpAdaptor::getODSOperands(unsigned index) {
@@ -4723,9 +4661,8 @@ std::pair<unsigned, unsigned> ShutdownOpAdaptor::getODSOperandIndexAndLength(uns
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 3)
       return emitError(loc, "'acc.shutdown' op ""'operand_segment_sizes' attribute for specifying operand segments must have 3 "
                 "elements, but got ") << numElements;
@@ -4734,16 +4671,12 @@ std::pair<unsigned, unsigned> ShutdownOpAdaptor::getODSOperandIndexAndLength(uns
 }
 
 std::pair<unsigned, unsigned> ShutdownOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::Operation::operand_range ShutdownOp::getODSOperands(unsigned index) {
@@ -4761,7 +4694,7 @@ std::pair<unsigned, unsigned> ShutdownOp::getODSOperandIndexAndLength(unsigned i
   return operands.empty() ? ::mlir::Value() : *operands.begin();
 }
 
-::mlir::Value ShutdownOp::ifCond() {
+::mlir::TypedValue<::mlir::IntegerType> ShutdownOp::ifCond() {
   auto operands = getODSOperands(2);
   return operands.empty() ? ::mlir::Value() : *operands.begin();
 }
@@ -4800,7 +4733,7 @@ void ShutdownOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
     odsState.addOperands(deviceNumOperand);
   if (ifCond)
     odsState.addOperands(ifCond);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(deviceTypeOperands.size()), (deviceNumOperand ? 1 : 0), (ifCond ? 1 : 0)}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(deviceTypeOperands.size()), (deviceNumOperand ? 1 : 0), (ifCond ? 1 : 0)}));
 }
 
 void ShutdownOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange deviceTypeOperands, /*optional*/::mlir::Value deviceNumOperand, /*optional*/::mlir::Value ifCond) {
@@ -4809,7 +4742,7 @@ void ShutdownOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
     odsState.addOperands(deviceNumOperand);
   if (ifCond)
     odsState.addOperands(ifCond);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(deviceTypeOperands.size()), (deviceNumOperand ? 1 : 0), (ifCond ? 1 : 0)}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(deviceTypeOperands.size()), (deviceNumOperand ? 1 : 0), (ifCond ? 1 : 0)}));
   assert(resultTypes.size() == 0u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -4836,9 +4769,8 @@ void ShutdownOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 3)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 3 "
                 "elements, but got ") << numElements;
@@ -4919,7 +4851,7 @@ void ShutdownOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       deviceNumOperandOperands.push_back(operand);
@@ -4932,7 +4864,7 @@ void ShutdownOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
     ::mlir::Type optionalType;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalType(optionalType);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       deviceNumOperandTypes.push_back(optionalType);
@@ -4950,7 +4882,7 @@ void ShutdownOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       ifCondOperands.push_back(operand);
@@ -4961,13 +4893,13 @@ void ShutdownOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   }
   if (parser.parseOptionalAttrDictWithKeyword(result.attributes))
     return ::mlir::failure();
-  result.addAttribute("operand_segment_sizes", parser.getBuilder().getI32VectorAttr({static_cast<int32_t>(deviceTypeOperandsOperands.size()), static_cast<int32_t>(deviceNumOperandOperands.size()), static_cast<int32_t>(ifCondOperands.size())}));
+  result.addAttribute("operand_segment_sizes", parser.getBuilder().getDenseI32ArrayAttr({static_cast<int32_t>(deviceTypeOperandsOperands.size()), static_cast<int32_t>(deviceNumOperandOperands.size()), static_cast<int32_t>(ifCondOperands.size())}));
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getIntegerType(1);
   if (parser.resolveOperands(deviceTypeOperandsOperands, deviceTypeOperandsTypes, deviceTypeOperandsOperandsLoc, result.operands))
     return ::mlir::failure();
   if (parser.resolveOperands(deviceNumOperandOperands, deviceNumOperandTypes, deviceNumOperandOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(ifCondOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(ifCondOperands, odsBuildableType0, ifCondOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -5118,16 +5050,12 @@ UpdateOpAdaptor::UpdateOpAdaptor(UpdateOp op) : odsOperands(op->getOperands()), 
 
 std::pair<unsigned, unsigned> UpdateOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, UpdateOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, UpdateOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::ValueRange UpdateOpAdaptor::getODSOperands(unsigned index) {
@@ -5174,7 +5102,7 @@ std::pair<unsigned, unsigned> UpdateOpAdaptor::getODSOperandIndexAndLength(unsig
 ::mlir::UnitAttr UpdateOpAdaptor::asyncAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, UpdateOp::asyncAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
-    return attr;
+  return attr;
 }
 
 bool UpdateOpAdaptor::async() {
@@ -5185,7 +5113,7 @@ bool UpdateOpAdaptor::async() {
 ::mlir::UnitAttr UpdateOpAdaptor::waitAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, UpdateOp::waitAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
-    return attr;
+  return attr;
 }
 
 bool UpdateOpAdaptor::wait() {
@@ -5196,7 +5124,7 @@ bool UpdateOpAdaptor::wait() {
 ::mlir::UnitAttr UpdateOpAdaptor::ifPresentAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, UpdateOp::ifPresentAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
-    return attr;
+  return attr;
 }
 
 bool UpdateOpAdaptor::ifPresent() {
@@ -5237,9 +5165,8 @@ bool UpdateOpAdaptor::ifPresent() {
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 7)
       return emitError(loc, "'acc.update' op ""'operand_segment_sizes' attribute for specifying operand segments must have 7 "
                 "elements, but got ") << numElements;
@@ -5257,16 +5184,12 @@ bool UpdateOpAdaptor::ifPresent() {
 }
 
 std::pair<unsigned, unsigned> UpdateOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::Operation::operand_range UpdateOp::getODSOperands(unsigned index) {
@@ -5275,7 +5198,7 @@ std::pair<unsigned, unsigned> UpdateOp::getODSOperandIndexAndLength(unsigned ind
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value UpdateOp::ifCond() {
+::mlir::TypedValue<::mlir::IntegerType> UpdateOp::ifCond() {
   auto operands = getODSOperands(0);
   return operands.empty() ? ::mlir::Value() : *operands.begin();
 }
@@ -5420,7 +5343,7 @@ void UpdateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
   odsState.addOperands(deviceTypeOperands);
   odsState.addOperands(hostOperands);
   odsState.addOperands(deviceOperands);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(ifCond ? 1 : 0), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), static_cast<int32_t>(waitOperands.size()), static_cast<int32_t>(deviceTypeOperands.size()), static_cast<int32_t>(hostOperands.size()), static_cast<int32_t>(deviceOperands.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(ifCond ? 1 : 0), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), static_cast<int32_t>(waitOperands.size()), static_cast<int32_t>(deviceTypeOperands.size()), static_cast<int32_t>(hostOperands.size()), static_cast<int32_t>(deviceOperands.size())}));
   if (async) {
   odsState.addAttribute(asyncAttrName(odsState.name), async);
   }
@@ -5443,7 +5366,7 @@ void UpdateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
   odsState.addOperands(deviceTypeOperands);
   odsState.addOperands(hostOperands);
   odsState.addOperands(deviceOperands);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(ifCond ? 1 : 0), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), static_cast<int32_t>(waitOperands.size()), static_cast<int32_t>(deviceTypeOperands.size()), static_cast<int32_t>(hostOperands.size()), static_cast<int32_t>(deviceOperands.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(ifCond ? 1 : 0), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), static_cast<int32_t>(waitOperands.size()), static_cast<int32_t>(deviceTypeOperands.size()), static_cast<int32_t>(hostOperands.size()), static_cast<int32_t>(deviceOperands.size())}));
   if (async) {
   odsState.addAttribute(asyncAttrName(odsState.name), async);
   }
@@ -5468,7 +5391,7 @@ void UpdateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
   odsState.addOperands(deviceTypeOperands);
   odsState.addOperands(hostOperands);
   odsState.addOperands(deviceOperands);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(ifCond ? 1 : 0), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), static_cast<int32_t>(waitOperands.size()), static_cast<int32_t>(deviceTypeOperands.size()), static_cast<int32_t>(hostOperands.size()), static_cast<int32_t>(deviceOperands.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(ifCond ? 1 : 0), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), static_cast<int32_t>(waitOperands.size()), static_cast<int32_t>(deviceTypeOperands.size()), static_cast<int32_t>(hostOperands.size()), static_cast<int32_t>(deviceOperands.size())}));
   if (async) {
   odsState.addAttribute(asyncAttrName(odsState.name), odsBuilder.getUnitAttr());
   }
@@ -5491,7 +5414,7 @@ void UpdateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
   odsState.addOperands(deviceTypeOperands);
   odsState.addOperands(hostOperands);
   odsState.addOperands(deviceOperands);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(ifCond ? 1 : 0), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), static_cast<int32_t>(waitOperands.size()), static_cast<int32_t>(deviceTypeOperands.size()), static_cast<int32_t>(hostOperands.size()), static_cast<int32_t>(deviceOperands.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(ifCond ? 1 : 0), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), static_cast<int32_t>(waitOperands.size()), static_cast<int32_t>(deviceTypeOperands.size()), static_cast<int32_t>(hostOperands.size()), static_cast<int32_t>(deviceOperands.size())}));
   if (async) {
   odsState.addAttribute(asyncAttrName(odsState.name), odsBuilder.getUnitAttr());
   }
@@ -5545,9 +5468,8 @@ void UpdateOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 7)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 7 "
                 "elements, but got ") << numElements;
@@ -5667,7 +5589,7 @@ void UpdateOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       ifCondOperands.push_back(operand);
@@ -5685,7 +5607,7 @@ void UpdateOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       asyncOperandOperands.push_back(operand);
@@ -5698,7 +5620,7 @@ void UpdateOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
     ::mlir::Type optionalType;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalType(optionalType);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       asyncOperandTypes.push_back(optionalType);
@@ -5716,7 +5638,7 @@ void UpdateOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       waitDevnumOperands.push_back(operand);
@@ -5729,7 +5651,7 @@ void UpdateOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
     ::mlir::Type optionalType;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalType(optionalType);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       waitDevnumTypes.push_back(optionalType);
@@ -5800,9 +5722,9 @@ void UpdateOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   }
   if (parser.parseOptionalAttrDictWithKeyword(result.attributes))
     return ::mlir::failure();
-  result.addAttribute("operand_segment_sizes", parser.getBuilder().getI32VectorAttr({static_cast<int32_t>(ifCondOperands.size()), static_cast<int32_t>(asyncOperandOperands.size()), static_cast<int32_t>(waitDevnumOperands.size()), static_cast<int32_t>(waitOperandsOperands.size()), static_cast<int32_t>(deviceTypeOperandsOperands.size()), static_cast<int32_t>(hostOperandsOperands.size()), static_cast<int32_t>(deviceOperandsOperands.size())}));
+  result.addAttribute("operand_segment_sizes", parser.getBuilder().getDenseI32ArrayAttr({static_cast<int32_t>(ifCondOperands.size()), static_cast<int32_t>(asyncOperandOperands.size()), static_cast<int32_t>(waitDevnumOperands.size()), static_cast<int32_t>(waitOperandsOperands.size()), static_cast<int32_t>(deviceTypeOperandsOperands.size()), static_cast<int32_t>(hostOperandsOperands.size()), static_cast<int32_t>(deviceOperandsOperands.size())}));
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getIntegerType(1);
-  if (parser.resolveOperands(ifCondOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(ifCondOperands, odsBuildableType0, ifCondOperandsLoc, result.operands))
     return ::mlir::failure();
   if (parser.resolveOperands(asyncOperandOperands, asyncOperandTypes, asyncOperandOperandsLoc, result.operands))
     return ::mlir::failure();
@@ -5909,16 +5831,12 @@ WaitOpAdaptor::WaitOpAdaptor(WaitOp op) : odsOperands(op->getOperands()), odsAtt
 
 std::pair<unsigned, unsigned> WaitOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, WaitOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, WaitOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::ValueRange WaitOpAdaptor::getODSOperands(unsigned index) {
@@ -5953,7 +5871,7 @@ std::pair<unsigned, unsigned> WaitOpAdaptor::getODSOperandIndexAndLength(unsigne
 ::mlir::UnitAttr WaitOpAdaptor::asyncAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, WaitOp::asyncAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
-    return attr;
+  return attr;
 }
 
 bool WaitOpAdaptor::async() {
@@ -5980,9 +5898,8 @@ bool WaitOpAdaptor::async() {
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 4)
       return emitError(loc, "'acc.wait' op ""'operand_segment_sizes' attribute for specifying operand segments must have 4 "
                 "elements, but got ") << numElements;
@@ -5994,16 +5911,12 @@ bool WaitOpAdaptor::async() {
 }
 
 std::pair<unsigned, unsigned> WaitOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::Operation::operand_range WaitOp::getODSOperands(unsigned index) {
@@ -6026,7 +5939,7 @@ std::pair<unsigned, unsigned> WaitOp::getODSOperandIndexAndLength(unsigned index
   return operands.empty() ? ::mlir::Value() : *operands.begin();
 }
 
-::mlir::Value WaitOp::ifCond() {
+::mlir::TypedValue<::mlir::IntegerType> WaitOp::ifCond() {
   auto operands = getODSOperands(3);
   return operands.empty() ? ::mlir::Value() : *operands.begin();
 }
@@ -6090,7 +6003,7 @@ void WaitOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     odsState.addOperands(waitDevnum);
   if (ifCond)
     odsState.addOperands(ifCond);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(waitOperands.size()), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), (ifCond ? 1 : 0)}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(waitOperands.size()), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), (ifCond ? 1 : 0)}));
   if (async) {
   odsState.addAttribute(asyncAttrName(odsState.name), async);
   }
@@ -6104,7 +6017,7 @@ void WaitOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     odsState.addOperands(waitDevnum);
   if (ifCond)
     odsState.addOperands(ifCond);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(waitOperands.size()), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), (ifCond ? 1 : 0)}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(waitOperands.size()), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), (ifCond ? 1 : 0)}));
   if (async) {
   odsState.addAttribute(asyncAttrName(odsState.name), async);
   }
@@ -6120,7 +6033,7 @@ void WaitOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     odsState.addOperands(waitDevnum);
   if (ifCond)
     odsState.addOperands(ifCond);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(waitOperands.size()), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), (ifCond ? 1 : 0)}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(waitOperands.size()), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), (ifCond ? 1 : 0)}));
   if (async) {
   odsState.addAttribute(asyncAttrName(odsState.name), odsBuilder.getUnitAttr());
   }
@@ -6134,7 +6047,7 @@ void WaitOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     odsState.addOperands(waitDevnum);
   if (ifCond)
     odsState.addOperands(ifCond);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(waitOperands.size()), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), (ifCond ? 1 : 0)}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(waitOperands.size()), (asyncOperand ? 1 : 0), (waitDevnum ? 1 : 0), (ifCond ? 1 : 0)}));
   if (async) {
   odsState.addAttribute(asyncAttrName(odsState.name), odsBuilder.getUnitAttr());
   }
@@ -6168,9 +6081,8 @@ void WaitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 4)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 4 "
                 "elements, but got ") << numElements;
@@ -6267,7 +6179,7 @@ void WaitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       asyncOperandOperands.push_back(operand);
@@ -6280,7 +6192,7 @@ void WaitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
     ::mlir::Type optionalType;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalType(optionalType);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       asyncOperandTypes.push_back(optionalType);
@@ -6298,7 +6210,7 @@ void WaitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       waitDevnumOperands.push_back(operand);
@@ -6311,7 +6223,7 @@ void WaitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
     ::mlir::Type optionalType;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalType(optionalType);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       waitDevnumTypes.push_back(optionalType);
@@ -6329,7 +6241,7 @@ void WaitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       ifCondOperands.push_back(operand);
@@ -6340,7 +6252,7 @@ void WaitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   }
   if (parser.parseOptionalAttrDictWithKeyword(result.attributes))
     return ::mlir::failure();
-  result.addAttribute("operand_segment_sizes", parser.getBuilder().getI32VectorAttr({static_cast<int32_t>(waitOperandsOperands.size()), static_cast<int32_t>(asyncOperandOperands.size()), static_cast<int32_t>(waitDevnumOperands.size()), static_cast<int32_t>(ifCondOperands.size())}));
+  result.addAttribute("operand_segment_sizes", parser.getBuilder().getDenseI32ArrayAttr({static_cast<int32_t>(waitOperandsOperands.size()), static_cast<int32_t>(asyncOperandOperands.size()), static_cast<int32_t>(waitDevnumOperands.size()), static_cast<int32_t>(ifCondOperands.size())}));
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getIntegerType(1);
   if (parser.resolveOperands(waitOperandsOperands, waitOperandsTypes, waitOperandsOperandsLoc, result.operands))
     return ::mlir::failure();
@@ -6348,7 +6260,7 @@ void WaitOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
     return ::mlir::failure();
   if (parser.resolveOperands(waitDevnumOperands, waitDevnumTypes, waitDevnumOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(ifCondOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(ifCondOperands, odsBuildableType0, ifCondOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }

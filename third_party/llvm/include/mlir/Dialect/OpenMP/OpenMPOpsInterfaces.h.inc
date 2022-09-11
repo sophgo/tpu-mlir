@@ -33,6 +33,7 @@ struct OutlineableOpenMPOpInterfaceInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteOp;
   };
 };template <typename ConcreteOp>
 struct OutlineableOpenMPOpInterfaceTrait;
@@ -43,6 +44,7 @@ public:
   using ::mlir::OpInterface<OutlineableOpenMPOpInterface, detail::OutlineableOpenMPOpInterfaceInterfaceTraits>::OpInterface;
   template <typename ConcreteOp>
   struct Trait : public detail::OutlineableOpenMPOpInterfaceTrait<ConcreteOp> {};
+  /// Get alloca block
   ::mlir::Block*getAllocaBlock();
 };
 namespace detail {
@@ -66,7 +68,7 @@ class ReductionClauseInterface;
 namespace detail {
 struct ReductionClauseInterfaceInterfaceTraits {
   struct Concept {
-    ::mlir::Operation::operand_range (*getReductionVars)(const Concept *impl, ::mlir::Operation *);
+    ::mlir::SmallVector<::mlir::Value> (*getReductionVars)(const Concept *impl, ::mlir::Operation *);
   };
   template<typename ConcreteOp>
   class Model : public Concept {
@@ -74,7 +76,7 @@ struct ReductionClauseInterfaceInterfaceTraits {
     using Interface = ::mlir::omp::ReductionClauseInterface;
     Model() : Concept{getReductionVars} {}
 
-    static inline ::mlir::Operation::operand_range getReductionVars(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ::mlir::SmallVector<::mlir::Value> getReductionVars(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
   };
   template<typename ConcreteOp>
   class FallbackModel : public Concept {
@@ -82,11 +84,12 @@ struct ReductionClauseInterfaceInterfaceTraits {
     using Interface = ::mlir::omp::ReductionClauseInterface;
     FallbackModel() : Concept{getReductionVars} {}
 
-    static inline ::mlir::Operation::operand_range getReductionVars(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ::mlir::SmallVector<::mlir::Value> getReductionVars(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
   };
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteOp;
   };
 };template <typename ConcreteOp>
 struct ReductionClauseInterfaceTrait;
@@ -97,7 +100,8 @@ public:
   using ::mlir::OpInterface<ReductionClauseInterface, detail::ReductionClauseInterfaceInterfaceTraits>::OpInterface;
   template <typename ConcreteOp>
   struct Trait : public detail::ReductionClauseInterfaceTrait<ConcreteOp> {};
-  ::mlir::Operation::operand_range getReductionVars();
+  /// Get reduction vars
+  ::mlir::SmallVector<::mlir::Value> getReductionVars();
 };
 namespace detail {
   template <typename ConcreteOp>
@@ -105,11 +109,11 @@ namespace detail {
   };
 }// namespace detail
 template<typename ConcreteOp>
-::mlir::Operation::operand_range detail::ReductionClauseInterfaceInterfaceTraits::Model<ConcreteOp>::getReductionVars(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+::mlir::SmallVector<::mlir::Value> detail::ReductionClauseInterfaceInterfaceTraits::Model<ConcreteOp>::getReductionVars(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getReductionVars();
 }
 template<typename ConcreteOp>
-::mlir::Operation::operand_range detail::ReductionClauseInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getReductionVars(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+::mlir::SmallVector<::mlir::Value> detail::ReductionClauseInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getReductionVars(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return static_cast<const ConcreteOp *>(impl)->getReductionVars(tablegen_opaque_val);
 }
 } // namespace omp

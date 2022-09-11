@@ -35,6 +35,7 @@ struct DerivedAttributeOpInterfaceInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteOp;
   };
 };template <typename ConcreteOp>
 struct DerivedAttributeOpInterfaceTrait;
@@ -45,7 +46,10 @@ public:
   using ::mlir::OpInterface<DerivedAttributeOpInterface, detail::DerivedAttributeOpInterfaceInterfaceTraits>::OpInterface;
   template <typename ConcreteOp>
   struct Trait : public detail::DerivedAttributeOpInterfaceTrait<ConcreteOp> {};
+  /// Returns whether name corresponds to a derived attribute.
   bool isDerivedAttribute(::mlir::StringRef name);
+  /// Materializes the derived attributes. Returns null attribute where
+  /// unable to materialize a derived attribute as attribute.
   ::mlir::DictionaryAttr materializeDerivedAttributes();
 };
 namespace detail {

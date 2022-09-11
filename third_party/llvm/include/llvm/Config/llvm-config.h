@@ -67,7 +67,7 @@
 #define LLVM_USE_PERF 0
 
 /* Major version of the LLVM API */
-#define LLVM_VERSION_MAJOR 15
+#define LLVM_VERSION_MAJOR 16
 
 /* Minor version of the LLVM API */
 #define LLVM_VERSION_MINOR 0
@@ -76,7 +76,7 @@
 #define LLVM_VERSION_PATCH 0
 
 /* LLVM version string */
-#define LLVM_VERSION_STRING "15.0.0git"
+#define LLVM_VERSION_STRING "16.0.0git"
 
 /* Whether LLVM records statistics for use with GetStatistics(),
  * PrintStatistics() or PrintStatisticsJSON()
@@ -89,11 +89,20 @@
 /* Define if we have curl and want to use it */
 /* #undef LLVM_ENABLE_CURL */
 
+/* Define if we have cpp-httplib and want to use it */
+/* #undef LLVM_ENABLE_HTTPLIB */
+
 /* Define if zlib compression is available */
 #define LLVM_ENABLE_ZLIB 1
 
+/* Define if zstd compression is available */
+#define LLVM_ENABLE_ZSTD 0
+
 /* Define if LLVM was built with a dependency to the libtensorflow dynamic library */
 /* #undef LLVM_HAVE_TF_API */
+
+/* Define if LLVM is using tflite instead of libtensorflow */
+/* #undef LLVM_HAVE_TFLITE */
 
 /* Define to 1 if you have the <sysexits.h> header file. */
 #define HAVE_SYSEXITS_H 1

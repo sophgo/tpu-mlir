@@ -11,7 +11,7 @@ MlirPass mlirCreateLinalgConvertElementwiseToLinalg() {
   return wrap(mlir::createConvertElementwiseToLinalgPass().release());
 }
 void mlirRegisterLinalgConvertElementwiseToLinalg() {
-  registerConvertElementwiseToLinalgPass();
+  registerConvertElementwiseToLinalg();
 }
 
 
@@ -19,7 +19,7 @@ MlirPass mlirCreateLinalgLinalgBufferize() {
   return wrap(mlir::createLinalgBufferizePass().release());
 }
 void mlirRegisterLinalgLinalgBufferize() {
-  registerLinalgBufferizePass();
+  registerLinalgBufferize();
 }
 
 
@@ -27,7 +27,7 @@ MlirPass mlirCreateLinalgLinalgDetensorize() {
   return wrap(mlir::createLinalgDetensorizePass().release());
 }
 void mlirRegisterLinalgLinalgDetensorize() {
-  registerLinalgDetensorizePass();
+  registerLinalgDetensorize();
 }
 
 
@@ -35,7 +35,7 @@ MlirPass mlirCreateLinalgLinalgElementwiseOpFusion() {
   return wrap(mlir::createLinalgElementwiseOpFusionPass().release());
 }
 void mlirRegisterLinalgLinalgElementwiseOpFusion() {
-  registerLinalgElementwiseOpFusionPass();
+  registerLinalgElementwiseOpFusion();
 }
 
 
@@ -43,7 +43,7 @@ MlirPass mlirCreateLinalgLinalgFoldUnitExtentDims() {
   return wrap(mlir::createLinalgFoldUnitExtentDimsPass().release());
 }
 void mlirRegisterLinalgLinalgFoldUnitExtentDims() {
-  registerLinalgFoldUnitExtentDimsPass();
+  registerLinalgFoldUnitExtentDims();
 }
 
 
@@ -51,7 +51,7 @@ MlirPass mlirCreateLinalgLinalgGeneralization() {
   return wrap(mlir::createLinalgGeneralizationPass().release());
 }
 void mlirRegisterLinalgLinalgGeneralization() {
-  registerLinalgGeneralizationPass();
+  registerLinalgGeneralization();
 }
 
 
@@ -59,7 +59,7 @@ MlirPass mlirCreateLinalgLinalgInitTensorToAllocTensor() {
   return wrap(mlir::createLinalgInitTensorToAllocTensorPass().release());
 }
 void mlirRegisterLinalgLinalgInitTensorToAllocTensor() {
-  registerLinalgInitTensorToAllocTensorPass();
+  registerLinalgInitTensorToAllocTensor();
 }
 
 
@@ -67,7 +67,7 @@ MlirPass mlirCreateLinalgLinalgInlineScalarOperands() {
   return wrap(mlir::createLinalgInlineScalarOperandsPass().release());
 }
 void mlirRegisterLinalgLinalgInlineScalarOperands() {
-  registerLinalgInlineScalarOperandsPass();
+  registerLinalgInlineScalarOperands();
 }
 
 
@@ -75,7 +75,7 @@ MlirPass mlirCreateLinalgLinalgLowerToAffineLoops() {
   return wrap(mlir::createConvertLinalgToAffineLoopsPass().release());
 }
 void mlirRegisterLinalgLinalgLowerToAffineLoops() {
-  registerLinalgLowerToAffineLoopsPass();
+  registerLinalgLowerToAffineLoops();
 }
 
 
@@ -83,7 +83,7 @@ MlirPass mlirCreateLinalgLinalgLowerToLoops() {
   return wrap(mlir::createConvertLinalgToLoopsPass().release());
 }
 void mlirRegisterLinalgLinalgLowerToLoops() {
-  registerLinalgLowerToLoopsPass();
+  registerLinalgLowerToLoops();
 }
 
 
@@ -91,7 +91,7 @@ MlirPass mlirCreateLinalgLinalgLowerToParallelLoops() {
   return wrap(mlir::createConvertLinalgToParallelLoopsPass().release());
 }
 void mlirRegisterLinalgLinalgLowerToParallelLoops() {
-  registerLinalgLowerToParallelLoopsPass();
+  registerLinalgLowerToParallelLoops();
 }
 
 
@@ -99,15 +99,7 @@ MlirPass mlirCreateLinalgLinalgNamedOpConversion() {
   return wrap(mlir::createLinalgNamedOpConversionPass().release());
 }
 void mlirRegisterLinalgLinalgNamedOpConversion() {
-  registerLinalgNamedOpConversionPass();
-}
-
-
-MlirPass mlirCreateLinalgLinalgPromotion() {
-  return wrap(mlir::createLinalgPromotionPass().release());
-}
-void mlirRegisterLinalgLinalgPromotion() {
-  registerLinalgPromotionPass();
+  registerLinalgNamedOpConversion();
 }
 
 
@@ -115,31 +107,7 @@ MlirPass mlirCreateLinalgLinalgStrategyDecomposePass() {
   return wrap(mlir::createLinalgStrategyDecomposePass().release());
 }
 void mlirRegisterLinalgLinalgStrategyDecomposePass() {
-  registerLinalgStrategyDecomposePassPass();
-}
-
-
-MlirPass mlirCreateLinalgLinalgStrategyEnablePass() {
-  return wrap(mlir::createLinalgStrategyEnablePass().release());
-}
-void mlirRegisterLinalgLinalgStrategyEnablePass() {
-  registerLinalgStrategyEnablePassPass();
-}
-
-
-MlirPass mlirCreateLinalgLinalgStrategyGeneralizePass() {
-  return wrap(mlir::createLinalgStrategyGeneralizePass().release());
-}
-void mlirRegisterLinalgLinalgStrategyGeneralizePass() {
-  registerLinalgStrategyGeneralizePassPass();
-}
-
-
-MlirPass mlirCreateLinalgLinalgStrategyInterchangePass() {
-  return wrap(mlir::createLinalgStrategyInterchangePass().release());
-}
-void mlirRegisterLinalgLinalgStrategyInterchangePass() {
-  registerLinalgStrategyInterchangePassPass();
+  registerLinalgStrategyDecomposePass();
 }
 
 
@@ -147,7 +115,7 @@ MlirPass mlirCreateLinalgLinalgStrategyLowerVectorsPass() {
   return wrap(mlir::createLinalgStrategyLowerVectorsPass().release());
 }
 void mlirRegisterLinalgLinalgStrategyLowerVectorsPass() {
-  registerLinalgStrategyLowerVectorsPassPass();
+  registerLinalgStrategyLowerVectorsPass();
 }
 
 
@@ -155,7 +123,7 @@ MlirPass mlirCreateLinalgLinalgStrategyPadPass() {
   return wrap(mlir::createLinalgStrategyPadPass().release());
 }
 void mlirRegisterLinalgLinalgStrategyPadPass() {
-  registerLinalgStrategyPadPassPass();
+  registerLinalgStrategyPadPass();
 }
 
 
@@ -163,15 +131,7 @@ MlirPass mlirCreateLinalgLinalgStrategyPeelPass() {
   return wrap(mlir::createLinalgStrategyPeelPass().release());
 }
 void mlirRegisterLinalgLinalgStrategyPeelPass() {
-  registerLinalgStrategyPeelPassPass();
-}
-
-
-MlirPass mlirCreateLinalgLinalgStrategyPromotePass() {
-  return wrap(mlir::createLinalgStrategyPromotePass().release());
-}
-void mlirRegisterLinalgLinalgStrategyPromotePass() {
-  registerLinalgStrategyPromotePassPass();
+  registerLinalgStrategyPeelPass();
 }
 
 
@@ -179,7 +139,7 @@ MlirPass mlirCreateLinalgLinalgStrategyRemoveMarkersPass() {
   return wrap(mlir::createLinalgStrategyRemoveMarkersPass().release());
 }
 void mlirRegisterLinalgLinalgStrategyRemoveMarkersPass() {
-  registerLinalgStrategyRemoveMarkersPassPass();
+  registerLinalgStrategyRemoveMarkersPass();
 }
 
 
@@ -187,7 +147,7 @@ MlirPass mlirCreateLinalgLinalgStrategyTileAndFusePass() {
   return wrap(mlir::createLinalgStrategyTileAndFusePass().release());
 }
 void mlirRegisterLinalgLinalgStrategyTileAndFusePass() {
-  registerLinalgStrategyTileAndFusePassPass();
+  registerLinalgStrategyTileAndFusePass();
 }
 
 
@@ -195,7 +155,7 @@ MlirPass mlirCreateLinalgLinalgStrategyTilePass() {
   return wrap(mlir::createLinalgStrategyTilePass().release());
 }
 void mlirRegisterLinalgLinalgStrategyTilePass() {
-  registerLinalgStrategyTilePassPass();
+  registerLinalgStrategyTilePass();
 }
 
 
@@ -203,14 +163,14 @@ MlirPass mlirCreateLinalgLinalgStrategyVectorizePass() {
   return wrap(mlir::createLinalgStrategyVectorizePass().release());
 }
 void mlirRegisterLinalgLinalgStrategyVectorizePass() {
-  registerLinalgStrategyVectorizePassPass();
+  registerLinalgStrategyVectorizePass();
 }
 
 
-MlirPass mlirCreateLinalgLinalgTiling() {
+MlirPass mlirCreateLinalgLinalgTilingPass() {
   return wrap(mlir::createLinalgTilingPass().release());
 }
-void mlirRegisterLinalgLinalgTiling() {
+void mlirRegisterLinalgLinalgTilingPass() {
   registerLinalgTilingPass();
 }
 

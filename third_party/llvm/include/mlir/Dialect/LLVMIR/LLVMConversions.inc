@@ -18,8 +18,8 @@ if (auto op = dyn_cast<::mlir::LLVM::AllocaOp>(opInst)) {
                    : op.getType().cast<LLVMPointerType>().getElementType());
     auto *inst = builder.CreateAlloca(elementType, addrSpace, moduleTranslation.lookupValue(op.getArraySize()));
     
-    if (op.getAlignment().hasValue()) {
-      auto align = op.getAlignment().getValue();
+    if (op.getAlignment().has_value()) {
+      auto align = op.getAlignment().value();
       if (align != 0)
         inst->setAlignment(llvm::Align(align));
     }
@@ -130,13 +130,15 @@ builder.CreateFreeze(moduleTranslation.lookupValue(op.getVal()));
 if (auto op = dyn_cast<::mlir::LLVM::GEPOp>(opInst)) {
 
     SmallVector<llvm::Value *> indices;
-    indices.reserve(op.getStructIndices().size());
-    unsigned operandIdx = 0;
-    for (int32_t structIndex : op.getStructIndices().getValues<int32_t>()) {
-      if (structIndex == GEPOp::kDynamicIndex)
-        indices.push_back(moduleTranslation.lookupValues(op.getIndices())[operandIdx++]);
+    indices.reserve(op.getRawConstantIndices().size());
+    GEPIndicesAdaptor<decltype(moduleTranslation.lookupValues(op.getDynamicIndices()))>
+        gepIndices(op.getRawConstantIndicesAttr(), moduleTranslation.lookupValues(op.getDynamicIndices()));
+    for (PointerUnion<IntegerAttr, llvm::Value*> valueOrAttr : gepIndices) {
+      if (llvm::Value* value = valueOrAttr.dyn_cast<llvm::Value*>())
+        indices.push_back(value);
       else
-        indices.push_back(builder.getInt32(structIndex));
+        indices.push_back(
+            builder.getInt32(valueOrAttr.get<IntegerAttr>().getInt()));
     }
     Type baseElementType = op.getSourceElementType();
     llvm::Type *elementType = moduleTranslation.convertType(baseElementType);
@@ -175,8 +177,8 @@ if (auto op = dyn_cast<::mlir::LLVM::LoadOp>(opInst)) {
 
     auto *inst = builder.CreateLoad(moduleTranslation.convertType(op.getResult().getType()), moduleTranslation.lookupValue(op.getAddr()), op.getVolatile_());
   
-    if (op.getAlignment().hasValue()) {
-      auto align = op.getAlignment().getValue();
+    if (op.getAlignment().has_value()) {
+      auto align = op.getAlignment().value();
       if (align != 0)
         inst->setAlignment(llvm::Align(align));
     }
@@ -220,7 +222,7 @@ if (auto op = dyn_cast<::mlir::LLVM::ResumeOp>(opInst)) {
 if (auto op = dyn_cast<::mlir::LLVM::ReturnOp>(opInst)) {
 
     if (opInst.getNumOperands() != 0)
-      builder.CreateRet(moduleTranslation.lookupValues(op.getArgs())[0]);
+      builder.CreateRet(moduleTranslation.lookupValues(op.getArg())[0]);
     else
       builder.CreateRetVoid();
   
@@ -252,9 +254,7 @@ moduleTranslation.mapValue(op.getRes()) = builder.CreateShl(moduleTranslation.lo
 }
 if (auto op = dyn_cast<::mlir::LLVM::ShuffleVectorOp>(opInst)) {
 
-      SmallVector<unsigned, 4> position = extractPosition(op.getMask());
-      SmallVector<int, 4> mask(position.begin(), position.end());
-      moduleTranslation.mapValue(op.getRes()) = builder.CreateShuffleVector(moduleTranslation.lookupValue(op.getV1()), moduleTranslation.lookupValue(op.getV2()), mask);
+    moduleTranslation.mapValue(op.getRes()) = builder.CreateShuffleVector(moduleTranslation.lookupValue(op.getV1()), moduleTranslation.lookupValue(op.getV2()), op.getMask());
   
   return success();
 }
@@ -262,8 +262,8 @@ if (auto op = dyn_cast<::mlir::LLVM::StoreOp>(opInst)) {
 
     auto *inst = builder.CreateStore(moduleTranslation.lookupValue(op.getValue()), moduleTranslation.lookupValue(op.getAddr()), op.getVolatile_());
   
-    if (op.getAlignment().hasValue()) {
-      auto align = op.getAlignment().getValue();
+    if (op.getAlignment().has_value()) {
+      auto align = op.getAlignment().value();
       if (align != 0)
         inst->setAlignment(llvm::Align(align));
     }

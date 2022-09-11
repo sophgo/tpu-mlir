@@ -20,6 +20,11 @@ class BatchMatvecOp;
 } // namespace mlir
 namespace mlir {
 namespace linalg {
+class Conv1DNcwFcwOp;
+} // namespace linalg
+} // namespace mlir
+namespace mlir {
+namespace linalg {
 class Conv1DNwcWcfOp;
 } // namespace linalg
 } // namespace mlir
@@ -31,6 +36,16 @@ class Conv1DOp;
 namespace mlir {
 namespace linalg {
 class Conv2DNchwFchwOp;
+} // namespace linalg
+} // namespace mlir
+namespace mlir {
+namespace linalg {
+class Conv2DNgchwFgchwOp;
+} // namespace linalg
+} // namespace mlir
+namespace mlir {
+namespace linalg {
+class Conv2DNhwcFhwcOp;
 } // namespace linalg
 } // namespace mlir
 namespace mlir {
@@ -70,6 +85,16 @@ class DepthwiseConv1DNwcWcOp;
 } // namespace mlir
 namespace mlir {
 namespace linalg {
+class DepthwiseConv1DNwcWcmOp;
+} // namespace linalg
+} // namespace mlir
+namespace mlir {
+namespace linalg {
+class DepthwiseConv2DNchwChwOp;
+} // namespace linalg
+} // namespace mlir
+namespace mlir {
+namespace linalg {
 class DepthwiseConv2DNhwcHwcOp;
 } // namespace linalg
 } // namespace mlir
@@ -86,6 +111,16 @@ class DepthwiseConv2DNhwcHwcmOp;
 namespace mlir {
 namespace linalg {
 class DepthwiseConv2DNhwcHwcmQOp;
+} // namespace linalg
+} // namespace mlir
+namespace mlir {
+namespace linalg {
+class DepthwiseConv3DNdhwcDhwcOp;
+} // namespace linalg
+} // namespace mlir
+namespace mlir {
+namespace linalg {
+class DepthwiseConv3DNdhwcDhwcmOp;
 } // namespace linalg
 } // namespace mlir
 namespace mlir {
@@ -229,10 +264,13 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -241,7 +279,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class BatchMatmulOp : public ::mlir::Op<BatchMatmulOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
+class BatchMatmulOp : public ::mlir::Op<BatchMatmulOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -250,6 +288,14 @@ public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("operand_segment_sizes")};
     return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
   }
 
   ::mlir::StringAttr operand_segment_sizesAttrName() {
@@ -266,13 +312,19 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
@@ -314,7 +366,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -348,10 +400,13 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -360,7 +415,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class BatchMatvecOp : public ::mlir::Op<BatchMatvecOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
+class BatchMatvecOp : public ::mlir::Op<BatchMatvecOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -369,6 +424,14 @@ public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("operand_segment_sizes")};
     return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
   }
 
   ::mlir::StringAttr operand_segment_sizesAttrName() {
@@ -385,13 +448,19 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
@@ -433,7 +502,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -455,26 +524,33 @@ namespace mlir {
 namespace linalg {
 
 //===----------------------------------------------------------------------===//
-// ::mlir::linalg::Conv1DNwcWcfOp declarations
+// ::mlir::linalg::Conv1DNcwFcwOp declarations
 //===----------------------------------------------------------------------===//
 
-class Conv1DNwcWcfOpAdaptor {
+class Conv1DNcwFcwOpAdaptor {
 public:
-  Conv1DNwcWcfOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  Conv1DNcwFcwOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  Conv1DNwcWcfOpAdaptor(Conv1DNwcWcfOp op);
+  Conv1DNcwFcwOpAdaptor(Conv1DNcwFcwOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -483,15 +559,23 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class Conv1DNwcWcfOp : public ::mlir::Op<Conv1DNwcWcfOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class Conv1DNcwFcwOp : public ::mlir::Op<Conv1DNcwFcwOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
-  using Adaptor = Conv1DNwcWcfOpAdaptor;
+  using Adaptor = Conv1DNcwFcwOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("dilations"), ::llvm::StringRef("operand_segment_sizes"), ::llvm::StringRef("strides")};
     return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr getDilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getDilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
   }
 
   ::mlir::StringAttr dilationsAttrName() {
@@ -502,12 +586,28 @@ public:
     return getAttributeNameForIndex(name, 0);
   }
 
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
   ::mlir::StringAttr operand_segment_sizesAttrName() {
     return getAttributeNameForIndex(1);
   }
 
   static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr getStridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr getStridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
   }
 
   ::mlir::StringAttr stridesAttrName() {
@@ -519,29 +619,44 @@ public:
   }
 
   static constexpr ::llvm::StringLiteral getOperationName() {
-    return ::llvm::StringLiteral("linalg.conv_1d_nwc_wcf");
+    return ::llvm::StringLiteral("linalg.conv_1d_ncw_fcw");
   }
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
+  void setStridesAttr(::mlir::DenseIntElementsAttr attr);
   void stridesAttr(::mlir::DenseIntElementsAttr attr);
+  void setDilationsAttr(::mlir::DenseIntElementsAttr attr);
   void dilationsAttr(::mlir::DenseIntElementsAttr attr);
+  ::mlir::Attribute removeStridesAttr();
+  ::mlir::Attribute removeDilationsAttr();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
@@ -579,7 +694,202 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
+    static void regionBuilder(ImplicitLocOpBuilder &b,
+                              Block &block, ArrayRef<NamedAttribute> attrs);
+    static std::function<void(ImplicitLocOpBuilder &,
+                              Block &, ArrayRef<NamedAttribute>)>
+    getRegionBuilder() {
+      return regionBuilder;
+    }
+
+    // Generic methods.
+    static unsigned getNumRegionArgs();
+    std::string getLibraryCallName();
+
+      bool hasDynamicIndexingMaps();
+      LogicalResult verifyIndexingMapRequiredAttributes();
+
+};
+} // namespace linalg
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::Conv1DNcwFcwOp)
+
+namespace mlir {
+namespace linalg {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::linalg::Conv1DNwcWcfOp declarations
+//===----------------------------------------------------------------------===//
+
+class Conv1DNwcWcfOpAdaptor {
+public:
+  Conv1DNwcWcfOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  Conv1DNwcWcfOpAdaptor(Conv1DNwcWcfOp op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
+  ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
+  ::mlir::ValueRange outputs();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
+  ::mlir::DenseIntElementsAttr stridesAttr();
+  ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
+  ::mlir::DenseIntElementsAttr dilationsAttr();
+  ::mlir::DenseIntElementsAttr dilations();
+  ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
+  ::mlir::Region &region();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
+};
+class Conv1DNwcWcfOp : public ::mlir::Op<Conv1DNwcWcfOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = Conv1DNwcWcfOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("dilations"), ::llvm::StringRef("operand_segment_sizes"), ::llvm::StringRef("strides")};
+    return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr getDilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getDilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
+  ::mlir::StringAttr dilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr dilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr operand_segment_sizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr getStridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr getStridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
+  }
+
+  ::mlir::StringAttr stridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr stridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("linalg.conv_1d_nwc_wcf");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
+  ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
+  ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
+  ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
+  ::mlir::MutableOperandRange outputsMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
+  ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
+  ::mlir::Region &region();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
+  ::mlir::DenseIntElementsAttr stridesAttr();
+  ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
+  ::mlir::DenseIntElementsAttr dilationsAttr();
+  ::mlir::DenseIntElementsAttr dilations();
+  void setStridesAttr(::mlir::DenseIntElementsAttr attr);
+  void stridesAttr(::mlir::DenseIntElementsAttr attr);
+  void setDilationsAttr(::mlir::DenseIntElementsAttr attr);
+  void dilationsAttr(::mlir::DenseIntElementsAttr attr);
+  ::mlir::Attribute removeStridesAttr();
+  ::mlir::Attribute removeDilationsAttr();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
+  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
+  void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+private:
+  ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
+    return getAttributeNameForIndex((*this)->getName(), index);
+  }
+
+  static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
+    assert(index < 3 && "invalid attribute index");
+    return name.getRegisteredInfo()->getAttributeNames()[index];
+  }
+
+public:
+  // Return whether the op accesses the iteration indices.
+  bool hasIndexSemantics() {
+    return !this->getBody()->getOps<IndexOp>().empty();
+  }
+
+  LogicalResult reifyResultShapes(OpBuilder &b,
+      ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+        reifiedReturnShapes);
+  }
+
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
+    // Auto-generated.
+    ArrayAttr iterator_types();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -616,10 +926,13 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -628,7 +941,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class Conv1DOp : public ::mlir::Op<Conv1DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class Conv1DOp : public ::mlir::Op<Conv1DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -637,6 +950,14 @@ public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("operand_segment_sizes")};
     return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
   }
 
   ::mlir::StringAttr operand_segment_sizesAttrName() {
@@ -653,13 +974,19 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
@@ -701,7 +1028,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -735,14 +1062,21 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -751,7 +1085,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class Conv2DNchwFchwOp : public ::mlir::Op<Conv2DNchwFchwOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class Conv2DNchwFchwOp : public ::mlir::Op<Conv2DNchwFchwOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -762,6 +1096,14 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
+  ::mlir::StringAttr getDilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getDilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
   ::mlir::StringAttr dilationsAttrName() {
     return getAttributeNameForIndex(0);
   }
@@ -770,12 +1112,28 @@ public:
     return getAttributeNameForIndex(name, 0);
   }
 
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
   ::mlir::StringAttr operand_segment_sizesAttrName() {
     return getAttributeNameForIndex(1);
   }
 
   static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr getStridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr getStridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
   }
 
   ::mlir::StringAttr stridesAttrName() {
@@ -792,24 +1150,39 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
+  void setStridesAttr(::mlir::DenseIntElementsAttr attr);
   void stridesAttr(::mlir::DenseIntElementsAttr attr);
+  void setDilationsAttr(::mlir::DenseIntElementsAttr attr);
   void dilationsAttr(::mlir::DenseIntElementsAttr attr);
+  ::mlir::Attribute removeStridesAttr();
+  ::mlir::Attribute removeDilationsAttr();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
@@ -847,7 +1220,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -872,26 +1245,33 @@ namespace mlir {
 namespace linalg {
 
 //===----------------------------------------------------------------------===//
-// ::mlir::linalg::Conv2DNhwcHwcfOp declarations
+// ::mlir::linalg::Conv2DNgchwFgchwOp declarations
 //===----------------------------------------------------------------------===//
 
-class Conv2DNhwcHwcfOpAdaptor {
+class Conv2DNgchwFgchwOpAdaptor {
 public:
-  Conv2DNhwcHwcfOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  Conv2DNgchwFgchwOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  Conv2DNhwcHwcfOpAdaptor(Conv2DNhwcHwcfOp op);
+  Conv2DNgchwFgchwOpAdaptor(Conv2DNgchwFgchwOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -900,15 +1280,23 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class Conv2DNhwcHwcfOp : public ::mlir::Op<Conv2DNhwcHwcfOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class Conv2DNgchwFgchwOp : public ::mlir::Op<Conv2DNgchwFgchwOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
-  using Adaptor = Conv2DNhwcHwcfOpAdaptor;
+  using Adaptor = Conv2DNgchwFgchwOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("dilations"), ::llvm::StringRef("operand_segment_sizes"), ::llvm::StringRef("strides")};
     return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr getDilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getDilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
   }
 
   ::mlir::StringAttr dilationsAttrName() {
@@ -919,12 +1307,28 @@ public:
     return getAttributeNameForIndex(name, 0);
   }
 
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
   ::mlir::StringAttr operand_segment_sizesAttrName() {
     return getAttributeNameForIndex(1);
   }
 
   static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr getStridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr getStridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
   }
 
   ::mlir::StringAttr stridesAttrName() {
@@ -936,29 +1340,44 @@ public:
   }
 
   static constexpr ::llvm::StringLiteral getOperationName() {
-    return ::llvm::StringLiteral("linalg.conv_2d_nhwc_hwcf");
+    return ::llvm::StringLiteral("linalg.conv_2d_ngchw_fgchw");
   }
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
+  void setStridesAttr(::mlir::DenseIntElementsAttr attr);
   void stridesAttr(::mlir::DenseIntElementsAttr attr);
+  void setDilationsAttr(::mlir::DenseIntElementsAttr attr);
   void dilationsAttr(::mlir::DenseIntElementsAttr attr);
+  ::mlir::Attribute removeStridesAttr();
+  ::mlir::Attribute removeDilationsAttr();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
@@ -996,7 +1415,397 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
+    static void regionBuilder(ImplicitLocOpBuilder &b,
+                              Block &block, ArrayRef<NamedAttribute> attrs);
+    static std::function<void(ImplicitLocOpBuilder &,
+                              Block &, ArrayRef<NamedAttribute>)>
+    getRegionBuilder() {
+      return regionBuilder;
+    }
+
+    // Generic methods.
+    static unsigned getNumRegionArgs();
+    std::string getLibraryCallName();
+
+      bool hasDynamicIndexingMaps();
+      LogicalResult verifyIndexingMapRequiredAttributes();
+
+};
+} // namespace linalg
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::Conv2DNgchwFgchwOp)
+
+namespace mlir {
+namespace linalg {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::linalg::Conv2DNhwcFhwcOp declarations
+//===----------------------------------------------------------------------===//
+
+class Conv2DNhwcFhwcOpAdaptor {
+public:
+  Conv2DNhwcFhwcOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  Conv2DNhwcFhwcOpAdaptor(Conv2DNhwcFhwcOp op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
+  ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
+  ::mlir::ValueRange outputs();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
+  ::mlir::DenseIntElementsAttr stridesAttr();
+  ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
+  ::mlir::DenseIntElementsAttr dilationsAttr();
+  ::mlir::DenseIntElementsAttr dilations();
+  ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
+  ::mlir::Region &region();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
+};
+class Conv2DNhwcFhwcOp : public ::mlir::Op<Conv2DNhwcFhwcOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = Conv2DNhwcFhwcOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("dilations"), ::llvm::StringRef("operand_segment_sizes"), ::llvm::StringRef("strides")};
+    return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr getDilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getDilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
+  ::mlir::StringAttr dilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr dilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr operand_segment_sizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr getStridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr getStridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
+  }
+
+  ::mlir::StringAttr stridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr stridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("linalg.conv_2d_nhwc_fhwc");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
+  ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
+  ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
+  ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
+  ::mlir::MutableOperandRange outputsMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
+  ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
+  ::mlir::Region &region();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
+  ::mlir::DenseIntElementsAttr stridesAttr();
+  ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
+  ::mlir::DenseIntElementsAttr dilationsAttr();
+  ::mlir::DenseIntElementsAttr dilations();
+  void setStridesAttr(::mlir::DenseIntElementsAttr attr);
+  void stridesAttr(::mlir::DenseIntElementsAttr attr);
+  void setDilationsAttr(::mlir::DenseIntElementsAttr attr);
+  void dilationsAttr(::mlir::DenseIntElementsAttr attr);
+  ::mlir::Attribute removeStridesAttr();
+  ::mlir::Attribute removeDilationsAttr();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
+  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
+  void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+private:
+  ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
+    return getAttributeNameForIndex((*this)->getName(), index);
+  }
+
+  static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
+    assert(index < 3 && "invalid attribute index");
+    return name.getRegisteredInfo()->getAttributeNames()[index];
+  }
+
+public:
+  // Return whether the op accesses the iteration indices.
+  bool hasIndexSemantics() {
+    return !this->getBody()->getOps<IndexOp>().empty();
+  }
+
+  LogicalResult reifyResultShapes(OpBuilder &b,
+      ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+        reifiedReturnShapes);
+  }
+
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
+    // Auto-generated.
+    ArrayAttr iterator_types();
+    ArrayAttr getIndexingMaps();
+    static void regionBuilder(ImplicitLocOpBuilder &b,
+                              Block &block, ArrayRef<NamedAttribute> attrs);
+    static std::function<void(ImplicitLocOpBuilder &,
+                              Block &, ArrayRef<NamedAttribute>)>
+    getRegionBuilder() {
+      return regionBuilder;
+    }
+
+    // Generic methods.
+    static unsigned getNumRegionArgs();
+    std::string getLibraryCallName();
+
+      bool hasDynamicIndexingMaps();
+      LogicalResult verifyIndexingMapRequiredAttributes();
+
+};
+} // namespace linalg
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::Conv2DNhwcFhwcOp)
+
+namespace mlir {
+namespace linalg {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::linalg::Conv2DNhwcHwcfOp declarations
+//===----------------------------------------------------------------------===//
+
+class Conv2DNhwcHwcfOpAdaptor {
+public:
+  Conv2DNhwcHwcfOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  Conv2DNhwcHwcfOpAdaptor(Conv2DNhwcHwcfOp op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
+  ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
+  ::mlir::ValueRange outputs();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
+  ::mlir::DenseIntElementsAttr stridesAttr();
+  ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
+  ::mlir::DenseIntElementsAttr dilationsAttr();
+  ::mlir::DenseIntElementsAttr dilations();
+  ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
+  ::mlir::Region &region();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
+};
+class Conv2DNhwcHwcfOp : public ::mlir::Op<Conv2DNhwcHwcfOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = Conv2DNhwcHwcfOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("dilations"), ::llvm::StringRef("operand_segment_sizes"), ::llvm::StringRef("strides")};
+    return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr getDilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getDilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
+  ::mlir::StringAttr dilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr dilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr operand_segment_sizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr getStridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr getStridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
+  }
+
+  ::mlir::StringAttr stridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr stridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("linalg.conv_2d_nhwc_hwcf");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
+  ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
+  ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
+  ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
+  ::mlir::MutableOperandRange outputsMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
+  ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
+  ::mlir::Region &region();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
+  ::mlir::DenseIntElementsAttr stridesAttr();
+  ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
+  ::mlir::DenseIntElementsAttr dilationsAttr();
+  ::mlir::DenseIntElementsAttr dilations();
+  void setStridesAttr(::mlir::DenseIntElementsAttr attr);
+  void stridesAttr(::mlir::DenseIntElementsAttr attr);
+  void setDilationsAttr(::mlir::DenseIntElementsAttr attr);
+  void dilationsAttr(::mlir::DenseIntElementsAttr attr);
+  ::mlir::Attribute removeStridesAttr();
+  ::mlir::Attribute removeDilationsAttr();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
+  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
+  void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+private:
+  ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
+    return getAttributeNameForIndex((*this)->getName(), index);
+  }
+
+  static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
+    assert(index < 3 && "invalid attribute index");
+    return name.getRegisteredInfo()->getAttributeNames()[index];
+  }
+
+public:
+  // Return whether the op accesses the iteration indices.
+  bool hasIndexSemantics() {
+    return !this->getBody()->getOps<IndexOp>().empty();
+  }
+
+  LogicalResult reifyResultShapes(OpBuilder &b,
+      ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+        reifiedReturnShapes);
+  }
+
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
+    // Auto-generated.
+    ArrayAttr iterator_types();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -1033,14 +1842,21 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -1049,7 +1865,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class Conv2DNhwcHwcfQOp : public ::mlir::Op<Conv2DNhwcHwcfQOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class Conv2DNhwcHwcfQOp : public ::mlir::Op<Conv2DNhwcHwcfQOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -1060,6 +1876,14 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
+  ::mlir::StringAttr getDilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getDilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
   ::mlir::StringAttr dilationsAttrName() {
     return getAttributeNameForIndex(0);
   }
@@ -1068,12 +1892,28 @@ public:
     return getAttributeNameForIndex(name, 0);
   }
 
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
   ::mlir::StringAttr operand_segment_sizesAttrName() {
     return getAttributeNameForIndex(1);
   }
 
   static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr getStridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr getStridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
   }
 
   ::mlir::StringAttr stridesAttrName() {
@@ -1090,24 +1930,39 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
+  void setStridesAttr(::mlir::DenseIntElementsAttr attr);
   void stridesAttr(::mlir::DenseIntElementsAttr attr);
+  void setDilationsAttr(::mlir::DenseIntElementsAttr attr);
   void dilationsAttr(::mlir::DenseIntElementsAttr attr);
+  ::mlir::Attribute removeStridesAttr();
+  ::mlir::Attribute removeDilationsAttr();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
@@ -1145,7 +2000,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -1182,10 +2037,13 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -1194,7 +2052,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class Conv2DOp : public ::mlir::Op<Conv2DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class Conv2DOp : public ::mlir::Op<Conv2DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -1203,6 +2061,14 @@ public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("operand_segment_sizes")};
     return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
   }
 
   ::mlir::StringAttr operand_segment_sizesAttrName() {
@@ -1219,13 +2085,19 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
@@ -1267,7 +2139,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -1301,14 +2173,21 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -1317,7 +2196,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class Conv3DNdhwcDhwcfOp : public ::mlir::Op<Conv3DNdhwcDhwcfOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class Conv3DNdhwcDhwcfOp : public ::mlir::Op<Conv3DNdhwcDhwcfOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -1328,6 +2207,14 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
+  ::mlir::StringAttr getDilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getDilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
   ::mlir::StringAttr dilationsAttrName() {
     return getAttributeNameForIndex(0);
   }
@@ -1336,12 +2223,28 @@ public:
     return getAttributeNameForIndex(name, 0);
   }
 
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
   ::mlir::StringAttr operand_segment_sizesAttrName() {
     return getAttributeNameForIndex(1);
   }
 
   static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr getStridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr getStridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
   }
 
   ::mlir::StringAttr stridesAttrName() {
@@ -1358,24 +2261,39 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
+  void setStridesAttr(::mlir::DenseIntElementsAttr attr);
   void stridesAttr(::mlir::DenseIntElementsAttr attr);
+  void setDilationsAttr(::mlir::DenseIntElementsAttr attr);
   void dilationsAttr(::mlir::DenseIntElementsAttr attr);
+  ::mlir::Attribute removeStridesAttr();
+  ::mlir::Attribute removeDilationsAttr();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
@@ -1413,7 +2331,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -1450,10 +2368,13 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -1462,7 +2383,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class Conv3DOp : public ::mlir::Op<Conv3DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class Conv3DOp : public ::mlir::Op<Conv3DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -1471,6 +2392,14 @@ public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("operand_segment_sizes")};
     return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
   }
 
   ::mlir::StringAttr operand_segment_sizesAttrName() {
@@ -1487,13 +2416,19 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
@@ -1535,7 +2470,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -1569,12 +2504,17 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::linalg::TypeFnAttr getCastAttr();
+  ::mlir::linalg::TypeFn getCast();
   ::mlir::linalg::TypeFnAttr castAttr();
   ::mlir::linalg::TypeFn cast();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -1583,7 +2523,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class CopyOp : public ::mlir::Op<CopyOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
+class CopyOp : public ::mlir::Op<CopyOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -1594,12 +2534,28 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
+  ::mlir::StringAttr getCastAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getCastAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
   ::mlir::StringAttr castAttrName() {
     return getAttributeNameForIndex(0);
   }
 
   static ::mlir::StringAttr castAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
+  }
+
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
   }
 
   ::mlir::StringAttr operand_segment_sizesAttrName() {
@@ -1616,21 +2572,32 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
+  ::mlir::linalg::TypeFnAttr getCastAttr();
+  ::mlir::linalg::TypeFn getCast();
   ::mlir::linalg::TypeFnAttr castAttr();
   ::mlir::linalg::TypeFn cast();
+  void setCastAttr(::mlir::linalg::TypeFnAttr attr);
   void castAttr(::mlir::linalg::TypeFnAttr attr);
+  ::mlir::Attribute removeCastAttr();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute cast, ArrayRef<NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
@@ -1668,7 +2635,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -1702,14 +2669,21 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -1718,7 +2692,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class DepthwiseConv1DNwcWcOp : public ::mlir::Op<DepthwiseConv1DNwcWcOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class DepthwiseConv1DNwcWcOp : public ::mlir::Op<DepthwiseConv1DNwcWcOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -1729,6 +2703,14 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
+  ::mlir::StringAttr getDilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getDilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
   ::mlir::StringAttr dilationsAttrName() {
     return getAttributeNameForIndex(0);
   }
@@ -1737,12 +2719,28 @@ public:
     return getAttributeNameForIndex(name, 0);
   }
 
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
   ::mlir::StringAttr operand_segment_sizesAttrName() {
     return getAttributeNameForIndex(1);
   }
 
   static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr getStridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr getStridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
   }
 
   ::mlir::StringAttr stridesAttrName() {
@@ -1759,24 +2757,39 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
+  void setStridesAttr(::mlir::DenseIntElementsAttr attr);
   void stridesAttr(::mlir::DenseIntElementsAttr attr);
+  void setDilationsAttr(::mlir::DenseIntElementsAttr attr);
   void dilationsAttr(::mlir::DenseIntElementsAttr attr);
+  ::mlir::Attribute removeStridesAttr();
+  ::mlir::Attribute removeDilationsAttr();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
@@ -1814,7 +2827,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -1839,26 +2852,33 @@ namespace mlir {
 namespace linalg {
 
 //===----------------------------------------------------------------------===//
-// ::mlir::linalg::DepthwiseConv2DNhwcHwcOp declarations
+// ::mlir::linalg::DepthwiseConv1DNwcWcmOp declarations
 //===----------------------------------------------------------------------===//
 
-class DepthwiseConv2DNhwcHwcOpAdaptor {
+class DepthwiseConv1DNwcWcmOpAdaptor {
 public:
-  DepthwiseConv2DNhwcHwcOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  DepthwiseConv1DNwcWcmOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  DepthwiseConv2DNhwcHwcOpAdaptor(DepthwiseConv2DNhwcHwcOp op);
+  DepthwiseConv1DNwcWcmOpAdaptor(DepthwiseConv1DNwcWcmOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -1867,15 +2887,23 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class DepthwiseConv2DNhwcHwcOp : public ::mlir::Op<DepthwiseConv2DNhwcHwcOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class DepthwiseConv1DNwcWcmOp : public ::mlir::Op<DepthwiseConv1DNwcWcmOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
-  using Adaptor = DepthwiseConv2DNhwcHwcOpAdaptor;
+  using Adaptor = DepthwiseConv1DNwcWcmOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("dilations"), ::llvm::StringRef("operand_segment_sizes"), ::llvm::StringRef("strides")};
     return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr getDilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getDilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
   }
 
   ::mlir::StringAttr dilationsAttrName() {
@@ -1886,12 +2914,28 @@ public:
     return getAttributeNameForIndex(name, 0);
   }
 
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
   ::mlir::StringAttr operand_segment_sizesAttrName() {
     return getAttributeNameForIndex(1);
   }
 
   static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr getStridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr getStridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
   }
 
   ::mlir::StringAttr stridesAttrName() {
@@ -1903,29 +2947,44 @@ public:
   }
 
   static constexpr ::llvm::StringLiteral getOperationName() {
-    return ::llvm::StringLiteral("linalg.depthwise_conv_2d_nhwc_hwc");
+    return ::llvm::StringLiteral("linalg.depthwise_conv_1d_nwc_wcm");
   }
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
+  void setStridesAttr(::mlir::DenseIntElementsAttr attr);
   void stridesAttr(::mlir::DenseIntElementsAttr attr);
+  void setDilationsAttr(::mlir::DenseIntElementsAttr attr);
   void dilationsAttr(::mlir::DenseIntElementsAttr attr);
+  ::mlir::Attribute removeStridesAttr();
+  ::mlir::Attribute removeDilationsAttr();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
@@ -1963,7 +3022,397 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
+    static void regionBuilder(ImplicitLocOpBuilder &b,
+                              Block &block, ArrayRef<NamedAttribute> attrs);
+    static std::function<void(ImplicitLocOpBuilder &,
+                              Block &, ArrayRef<NamedAttribute>)>
+    getRegionBuilder() {
+      return regionBuilder;
+    }
+
+    // Generic methods.
+    static unsigned getNumRegionArgs();
+    std::string getLibraryCallName();
+
+      bool hasDynamicIndexingMaps();
+      LogicalResult verifyIndexingMapRequiredAttributes();
+
+};
+} // namespace linalg
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::DepthwiseConv1DNwcWcmOp)
+
+namespace mlir {
+namespace linalg {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::linalg::DepthwiseConv2DNchwChwOp declarations
+//===----------------------------------------------------------------------===//
+
+class DepthwiseConv2DNchwChwOpAdaptor {
+public:
+  DepthwiseConv2DNchwChwOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  DepthwiseConv2DNchwChwOpAdaptor(DepthwiseConv2DNchwChwOp op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
+  ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
+  ::mlir::ValueRange outputs();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
+  ::mlir::DenseIntElementsAttr stridesAttr();
+  ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
+  ::mlir::DenseIntElementsAttr dilationsAttr();
+  ::mlir::DenseIntElementsAttr dilations();
+  ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
+  ::mlir::Region &region();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
+};
+class DepthwiseConv2DNchwChwOp : public ::mlir::Op<DepthwiseConv2DNchwChwOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = DepthwiseConv2DNchwChwOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("dilations"), ::llvm::StringRef("operand_segment_sizes"), ::llvm::StringRef("strides")};
+    return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr getDilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getDilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
+  ::mlir::StringAttr dilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr dilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr operand_segment_sizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr getStridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr getStridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
+  }
+
+  ::mlir::StringAttr stridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr stridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("linalg.depthwise_conv_2d_nchw_chw");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
+  ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
+  ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
+  ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
+  ::mlir::MutableOperandRange outputsMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
+  ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
+  ::mlir::Region &region();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
+  ::mlir::DenseIntElementsAttr stridesAttr();
+  ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
+  ::mlir::DenseIntElementsAttr dilationsAttr();
+  ::mlir::DenseIntElementsAttr dilations();
+  void setStridesAttr(::mlir::DenseIntElementsAttr attr);
+  void stridesAttr(::mlir::DenseIntElementsAttr attr);
+  void setDilationsAttr(::mlir::DenseIntElementsAttr attr);
+  void dilationsAttr(::mlir::DenseIntElementsAttr attr);
+  ::mlir::Attribute removeStridesAttr();
+  ::mlir::Attribute removeDilationsAttr();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
+  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
+  void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+private:
+  ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
+    return getAttributeNameForIndex((*this)->getName(), index);
+  }
+
+  static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
+    assert(index < 3 && "invalid attribute index");
+    return name.getRegisteredInfo()->getAttributeNames()[index];
+  }
+
+public:
+  // Return whether the op accesses the iteration indices.
+  bool hasIndexSemantics() {
+    return !this->getBody()->getOps<IndexOp>().empty();
+  }
+
+  LogicalResult reifyResultShapes(OpBuilder &b,
+      ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+        reifiedReturnShapes);
+  }
+
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
+    // Auto-generated.
+    ArrayAttr iterator_types();
+    ArrayAttr getIndexingMaps();
+    static void regionBuilder(ImplicitLocOpBuilder &b,
+                              Block &block, ArrayRef<NamedAttribute> attrs);
+    static std::function<void(ImplicitLocOpBuilder &,
+                              Block &, ArrayRef<NamedAttribute>)>
+    getRegionBuilder() {
+      return regionBuilder;
+    }
+
+    // Generic methods.
+    static unsigned getNumRegionArgs();
+    std::string getLibraryCallName();
+
+      bool hasDynamicIndexingMaps();
+      LogicalResult verifyIndexingMapRequiredAttributes();
+
+};
+} // namespace linalg
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::DepthwiseConv2DNchwChwOp)
+
+namespace mlir {
+namespace linalg {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::linalg::DepthwiseConv2DNhwcHwcOp declarations
+//===----------------------------------------------------------------------===//
+
+class DepthwiseConv2DNhwcHwcOpAdaptor {
+public:
+  DepthwiseConv2DNhwcHwcOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  DepthwiseConv2DNhwcHwcOpAdaptor(DepthwiseConv2DNhwcHwcOp op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
+  ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
+  ::mlir::ValueRange outputs();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
+  ::mlir::DenseIntElementsAttr stridesAttr();
+  ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
+  ::mlir::DenseIntElementsAttr dilationsAttr();
+  ::mlir::DenseIntElementsAttr dilations();
+  ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
+  ::mlir::Region &region();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
+};
+class DepthwiseConv2DNhwcHwcOp : public ::mlir::Op<DepthwiseConv2DNhwcHwcOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = DepthwiseConv2DNhwcHwcOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("dilations"), ::llvm::StringRef("operand_segment_sizes"), ::llvm::StringRef("strides")};
+    return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr getDilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getDilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
+  ::mlir::StringAttr dilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr dilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr operand_segment_sizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr getStridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr getStridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
+  }
+
+  ::mlir::StringAttr stridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr stridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("linalg.depthwise_conv_2d_nhwc_hwc");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
+  ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
+  ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
+  ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
+  ::mlir::MutableOperandRange outputsMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
+  ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
+  ::mlir::Region &region();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
+  ::mlir::DenseIntElementsAttr stridesAttr();
+  ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
+  ::mlir::DenseIntElementsAttr dilationsAttr();
+  ::mlir::DenseIntElementsAttr dilations();
+  void setStridesAttr(::mlir::DenseIntElementsAttr attr);
+  void stridesAttr(::mlir::DenseIntElementsAttr attr);
+  void setDilationsAttr(::mlir::DenseIntElementsAttr attr);
+  void dilationsAttr(::mlir::DenseIntElementsAttr attr);
+  ::mlir::Attribute removeStridesAttr();
+  ::mlir::Attribute removeDilationsAttr();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
+  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
+  void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+private:
+  ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
+    return getAttributeNameForIndex((*this)->getName(), index);
+  }
+
+  static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
+    assert(index < 3 && "invalid attribute index");
+    return name.getRegisteredInfo()->getAttributeNames()[index];
+  }
+
+public:
+  // Return whether the op accesses the iteration indices.
+  bool hasIndexSemantics() {
+    return !this->getBody()->getOps<IndexOp>().empty();
+  }
+
+  LogicalResult reifyResultShapes(OpBuilder &b,
+      ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+        reifiedReturnShapes);
+  }
+
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
+    // Auto-generated.
+    ArrayAttr iterator_types();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -2000,14 +3449,21 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -2016,7 +3472,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class DepthwiseConv2DNhwcHwcQOp : public ::mlir::Op<DepthwiseConv2DNhwcHwcQOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class DepthwiseConv2DNhwcHwcQOp : public ::mlir::Op<DepthwiseConv2DNhwcHwcQOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -2027,6 +3483,14 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
+  ::mlir::StringAttr getDilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getDilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
   ::mlir::StringAttr dilationsAttrName() {
     return getAttributeNameForIndex(0);
   }
@@ -2035,12 +3499,28 @@ public:
     return getAttributeNameForIndex(name, 0);
   }
 
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
   ::mlir::StringAttr operand_segment_sizesAttrName() {
     return getAttributeNameForIndex(1);
   }
 
   static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr getStridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr getStridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
   }
 
   ::mlir::StringAttr stridesAttrName() {
@@ -2057,24 +3537,39 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
+  void setStridesAttr(::mlir::DenseIntElementsAttr attr);
   void stridesAttr(::mlir::DenseIntElementsAttr attr);
+  void setDilationsAttr(::mlir::DenseIntElementsAttr attr);
   void dilationsAttr(::mlir::DenseIntElementsAttr attr);
+  ::mlir::Attribute removeStridesAttr();
+  ::mlir::Attribute removeDilationsAttr();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
@@ -2112,7 +3607,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -2149,14 +3644,21 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -2165,7 +3667,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class DepthwiseConv2DNhwcHwcmOp : public ::mlir::Op<DepthwiseConv2DNhwcHwcmOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class DepthwiseConv2DNhwcHwcmOp : public ::mlir::Op<DepthwiseConv2DNhwcHwcmOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -2176,6 +3678,14 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
+  ::mlir::StringAttr getDilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getDilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
   ::mlir::StringAttr dilationsAttrName() {
     return getAttributeNameForIndex(0);
   }
@@ -2184,12 +3694,28 @@ public:
     return getAttributeNameForIndex(name, 0);
   }
 
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
   ::mlir::StringAttr operand_segment_sizesAttrName() {
     return getAttributeNameForIndex(1);
   }
 
   static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr getStridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr getStridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
   }
 
   ::mlir::StringAttr stridesAttrName() {
@@ -2206,24 +3732,39 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
+  void setStridesAttr(::mlir::DenseIntElementsAttr attr);
   void stridesAttr(::mlir::DenseIntElementsAttr attr);
+  void setDilationsAttr(::mlir::DenseIntElementsAttr attr);
   void dilationsAttr(::mlir::DenseIntElementsAttr attr);
+  ::mlir::Attribute removeStridesAttr();
+  ::mlir::Attribute removeDilationsAttr();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
@@ -2261,7 +3802,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -2298,14 +3839,21 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -2314,7 +3862,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class DepthwiseConv2DNhwcHwcmQOp : public ::mlir::Op<DepthwiseConv2DNhwcHwcmQOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class DepthwiseConv2DNhwcHwcmQOp : public ::mlir::Op<DepthwiseConv2DNhwcHwcmQOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -2325,6 +3873,14 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
+  ::mlir::StringAttr getDilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getDilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
   ::mlir::StringAttr dilationsAttrName() {
     return getAttributeNameForIndex(0);
   }
@@ -2333,12 +3889,28 @@ public:
     return getAttributeNameForIndex(name, 0);
   }
 
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
   ::mlir::StringAttr operand_segment_sizesAttrName() {
     return getAttributeNameForIndex(1);
   }
 
   static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr getStridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr getStridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
   }
 
   ::mlir::StringAttr stridesAttrName() {
@@ -2355,24 +3927,39 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
+  void setStridesAttr(::mlir::DenseIntElementsAttr attr);
   void stridesAttr(::mlir::DenseIntElementsAttr attr);
+  void setDilationsAttr(::mlir::DenseIntElementsAttr attr);
   void dilationsAttr(::mlir::DenseIntElementsAttr attr);
+  ::mlir::Attribute removeStridesAttr();
+  ::mlir::Attribute removeDilationsAttr();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
@@ -2410,7 +3997,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -2435,6 +4022,396 @@ namespace mlir {
 namespace linalg {
 
 //===----------------------------------------------------------------------===//
+// ::mlir::linalg::DepthwiseConv3DNdhwcDhwcOp declarations
+//===----------------------------------------------------------------------===//
+
+class DepthwiseConv3DNdhwcDhwcOpAdaptor {
+public:
+  DepthwiseConv3DNdhwcDhwcOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  DepthwiseConv3DNdhwcDhwcOpAdaptor(DepthwiseConv3DNdhwcDhwcOp op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
+  ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
+  ::mlir::ValueRange outputs();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
+  ::mlir::DenseIntElementsAttr stridesAttr();
+  ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
+  ::mlir::DenseIntElementsAttr dilationsAttr();
+  ::mlir::DenseIntElementsAttr dilations();
+  ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
+  ::mlir::Region &region();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
+};
+class DepthwiseConv3DNdhwcDhwcOp : public ::mlir::Op<DepthwiseConv3DNdhwcDhwcOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = DepthwiseConv3DNdhwcDhwcOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("dilations"), ::llvm::StringRef("operand_segment_sizes"), ::llvm::StringRef("strides")};
+    return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr getDilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getDilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
+  ::mlir::StringAttr dilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr dilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr operand_segment_sizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr getStridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr getStridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
+  }
+
+  ::mlir::StringAttr stridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr stridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("linalg.depthwise_conv_3d_ndhwc_dhwc");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
+  ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
+  ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
+  ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
+  ::mlir::MutableOperandRange outputsMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
+  ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
+  ::mlir::Region &region();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
+  ::mlir::DenseIntElementsAttr stridesAttr();
+  ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
+  ::mlir::DenseIntElementsAttr dilationsAttr();
+  ::mlir::DenseIntElementsAttr dilations();
+  void setStridesAttr(::mlir::DenseIntElementsAttr attr);
+  void stridesAttr(::mlir::DenseIntElementsAttr attr);
+  void setDilationsAttr(::mlir::DenseIntElementsAttr attr);
+  void dilationsAttr(::mlir::DenseIntElementsAttr attr);
+  ::mlir::Attribute removeStridesAttr();
+  ::mlir::Attribute removeDilationsAttr();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
+  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
+  void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+private:
+  ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
+    return getAttributeNameForIndex((*this)->getName(), index);
+  }
+
+  static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
+    assert(index < 3 && "invalid attribute index");
+    return name.getRegisteredInfo()->getAttributeNames()[index];
+  }
+
+public:
+  // Return whether the op accesses the iteration indices.
+  bool hasIndexSemantics() {
+    return !this->getBody()->getOps<IndexOp>().empty();
+  }
+
+  LogicalResult reifyResultShapes(OpBuilder &b,
+      ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+        reifiedReturnShapes);
+  }
+
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
+    // Auto-generated.
+    ArrayAttr iterator_types();
+    ArrayAttr getIndexingMaps();
+    static void regionBuilder(ImplicitLocOpBuilder &b,
+                              Block &block, ArrayRef<NamedAttribute> attrs);
+    static std::function<void(ImplicitLocOpBuilder &,
+                              Block &, ArrayRef<NamedAttribute>)>
+    getRegionBuilder() {
+      return regionBuilder;
+    }
+
+    // Generic methods.
+    static unsigned getNumRegionArgs();
+    std::string getLibraryCallName();
+
+      bool hasDynamicIndexingMaps();
+      LogicalResult verifyIndexingMapRequiredAttributes();
+
+};
+} // namespace linalg
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::DepthwiseConv3DNdhwcDhwcOp)
+
+namespace mlir {
+namespace linalg {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::linalg::DepthwiseConv3DNdhwcDhwcmOp declarations
+//===----------------------------------------------------------------------===//
+
+class DepthwiseConv3DNdhwcDhwcmOpAdaptor {
+public:
+  DepthwiseConv3DNdhwcDhwcmOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  DepthwiseConv3DNdhwcDhwcmOpAdaptor(DepthwiseConv3DNdhwcDhwcmOp op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
+  ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
+  ::mlir::ValueRange outputs();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
+  ::mlir::DenseIntElementsAttr stridesAttr();
+  ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
+  ::mlir::DenseIntElementsAttr dilationsAttr();
+  ::mlir::DenseIntElementsAttr dilations();
+  ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
+  ::mlir::Region &region();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
+};
+class DepthwiseConv3DNdhwcDhwcmOp : public ::mlir::Op<DepthwiseConv3DNdhwcDhwcmOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = DepthwiseConv3DNdhwcDhwcmOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("dilations"), ::llvm::StringRef("operand_segment_sizes"), ::llvm::StringRef("strides")};
+    return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr getDilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getDilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
+  ::mlir::StringAttr dilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr dilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr operand_segment_sizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr getStridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr getStridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
+  }
+
+  ::mlir::StringAttr stridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr stridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("linalg.depthwise_conv_3d_ndhwc_dhwcm");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
+  ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
+  ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
+  ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
+  ::mlir::MutableOperandRange outputsMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
+  ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
+  ::mlir::Region &region();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
+  ::mlir::DenseIntElementsAttr stridesAttr();
+  ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
+  ::mlir::DenseIntElementsAttr dilationsAttr();
+  ::mlir::DenseIntElementsAttr dilations();
+  void setStridesAttr(::mlir::DenseIntElementsAttr attr);
+  void stridesAttr(::mlir::DenseIntElementsAttr attr);
+  void setDilationsAttr(::mlir::DenseIntElementsAttr attr);
+  void dilationsAttr(::mlir::DenseIntElementsAttr attr);
+  ::mlir::Attribute removeStridesAttr();
+  ::mlir::Attribute removeDilationsAttr();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
+  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
+  void print(::mlir::OpAsmPrinter &p);
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+private:
+  ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
+    return getAttributeNameForIndex((*this)->getName(), index);
+  }
+
+  static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
+    assert(index < 3 && "invalid attribute index");
+    return name.getRegisteredInfo()->getAttributeNames()[index];
+  }
+
+public:
+  // Return whether the op accesses the iteration indices.
+  bool hasIndexSemantics() {
+    return !this->getBody()->getOps<IndexOp>().empty();
+  }
+
+  LogicalResult reifyResultShapes(OpBuilder &b,
+      ReifiedRankedShapedTypeDims &reifiedReturnShapes) {
+    return llvm::cast<LinalgOp>(getOperation()).reifyResultShapes(b,
+        reifiedReturnShapes);
+  }
+
+  void getSuccessorRegions(
+      Optional<unsigned> index, ArrayRef<Attribute> operands,
+      SmallVectorImpl<RegionSuccessor> &regions) {
+    // Op has a region, but conceptually the control flow does not enter the
+    // region.
+  }
+
+    // Auto-generated.
+    ArrayAttr iterator_types();
+    ArrayAttr getIndexingMaps();
+    static void regionBuilder(ImplicitLocOpBuilder &b,
+                              Block &block, ArrayRef<NamedAttribute> attrs);
+    static std::function<void(ImplicitLocOpBuilder &,
+                              Block &, ArrayRef<NamedAttribute>)>
+    getRegionBuilder() {
+      return regionBuilder;
+    }
+
+    // Generic methods.
+    static unsigned getNumRegionArgs();
+    std::string getLibraryCallName();
+
+      bool hasDynamicIndexingMaps();
+      LogicalResult verifyIndexingMapRequiredAttributes();
+
+};
+} // namespace linalg
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::linalg::DepthwiseConv3DNdhwcDhwcmOp)
+
+namespace mlir {
+namespace linalg {
+
+//===----------------------------------------------------------------------===//
 // ::mlir::linalg::DotOp declarations
 //===----------------------------------------------------------------------===//
 
@@ -2447,10 +4424,13 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -2459,7 +4439,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class DotOp : public ::mlir::Op<DotOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
+class DotOp : public ::mlir::Op<DotOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -2468,6 +4448,14 @@ public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("operand_segment_sizes")};
     return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
   }
 
   ::mlir::StringAttr operand_segment_sizesAttrName() {
@@ -2484,13 +4472,19 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
@@ -2532,7 +4526,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -2566,14 +4560,21 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::linalg::BinaryFnAttr getFunAttr();
+  ::mlir::linalg::BinaryFn getFun();
   ::mlir::linalg::BinaryFnAttr funAttr();
   ::mlir::linalg::BinaryFn fun();
+  ::mlir::linalg::TypeFnAttr getCastAttr();
+  ::mlir::linalg::TypeFn getCast();
   ::mlir::linalg::TypeFnAttr castAttr();
   ::mlir::linalg::TypeFn cast();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -2582,7 +4583,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class ElemwiseBinaryOp : public ::mlir::Op<ElemwiseBinaryOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
+class ElemwiseBinaryOp : public ::mlir::Op<ElemwiseBinaryOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -2593,6 +4594,14 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
+  ::mlir::StringAttr getCastAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getCastAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
   ::mlir::StringAttr castAttrName() {
     return getAttributeNameForIndex(0);
   }
@@ -2601,12 +4610,28 @@ public:
     return getAttributeNameForIndex(name, 0);
   }
 
+  ::mlir::StringAttr getFunAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getFunAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
   ::mlir::StringAttr funAttrName() {
     return getAttributeNameForIndex(1);
   }
 
   static ::mlir::StringAttr funAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
   }
 
   ::mlir::StringAttr operand_segment_sizesAttrName() {
@@ -2623,24 +4648,39 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
+  ::mlir::linalg::BinaryFnAttr getFunAttr();
+  ::mlir::linalg::BinaryFn getFun();
   ::mlir::linalg::BinaryFnAttr funAttr();
   ::mlir::linalg::BinaryFn fun();
+  ::mlir::linalg::TypeFnAttr getCastAttr();
+  ::mlir::linalg::TypeFn getCast();
   ::mlir::linalg::TypeFnAttr castAttr();
   ::mlir::linalg::TypeFn cast();
+  void setFunAttr(::mlir::linalg::BinaryFnAttr attr);
   void funAttr(::mlir::linalg::BinaryFnAttr attr);
+  void setCastAttr(::mlir::linalg::TypeFnAttr attr);
   void castAttr(::mlir::linalg::TypeFnAttr attr);
+  ::mlir::Attribute removeFunAttr();
+  ::mlir::Attribute removeCastAttr();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute fun, Attribute cast, ArrayRef<NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
@@ -2678,7 +4718,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -2712,14 +4752,21 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::linalg::UnaryFnAttr getFunAttr();
+  ::mlir::linalg::UnaryFn getFun();
   ::mlir::linalg::UnaryFnAttr funAttr();
   ::mlir::linalg::UnaryFn fun();
+  ::mlir::linalg::TypeFnAttr getCastAttr();
+  ::mlir::linalg::TypeFn getCast();
   ::mlir::linalg::TypeFnAttr castAttr();
   ::mlir::linalg::TypeFn cast();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -2728,7 +4775,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class ElemwiseUnaryOp : public ::mlir::Op<ElemwiseUnaryOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
+class ElemwiseUnaryOp : public ::mlir::Op<ElemwiseUnaryOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -2739,6 +4786,14 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
+  ::mlir::StringAttr getCastAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getCastAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
   ::mlir::StringAttr castAttrName() {
     return getAttributeNameForIndex(0);
   }
@@ -2747,12 +4802,28 @@ public:
     return getAttributeNameForIndex(name, 0);
   }
 
+  ::mlir::StringAttr getFunAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getFunAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
   ::mlir::StringAttr funAttrName() {
     return getAttributeNameForIndex(1);
   }
 
   static ::mlir::StringAttr funAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
   }
 
   ::mlir::StringAttr operand_segment_sizesAttrName() {
@@ -2769,24 +4840,39 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
+  ::mlir::linalg::UnaryFnAttr getFunAttr();
+  ::mlir::linalg::UnaryFn getFun();
   ::mlir::linalg::UnaryFnAttr funAttr();
   ::mlir::linalg::UnaryFn fun();
+  ::mlir::linalg::TypeFnAttr getCastAttr();
+  ::mlir::linalg::TypeFn getCast();
   ::mlir::linalg::TypeFnAttr castAttr();
   ::mlir::linalg::TypeFn cast();
+  void setFunAttr(::mlir::linalg::UnaryFnAttr attr);
   void funAttr(::mlir::linalg::UnaryFnAttr attr);
+  void setCastAttr(::mlir::linalg::TypeFnAttr attr);
   void castAttr(::mlir::linalg::TypeFnAttr attr);
+  ::mlir::Attribute removeFunAttr();
+  ::mlir::Attribute removeCastAttr();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute fun, Attribute cast, ArrayRef<NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
@@ -2824,7 +4910,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -2858,10 +4944,13 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -2870,7 +4959,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class FillOp : public ::mlir::Op<FillOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::FillOpInterface::Trait> {
+class FillOp : public ::mlir::Op<FillOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::FillOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -2879,6 +4968,14 @@ public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("operand_segment_sizes")};
     return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
   }
 
   ::mlir::StringAttr operand_segment_sizesAttrName() {
@@ -2895,13 +4992,19 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
@@ -2944,7 +5047,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -2978,10 +5081,13 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -2990,7 +5096,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class FillRng2DOp : public ::mlir::Op<FillRng2DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
+class FillRng2DOp : public ::mlir::Op<FillRng2DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -2999,6 +5105,14 @@ public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("operand_segment_sizes")};
     return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
   }
 
   ::mlir::StringAttr operand_segment_sizesAttrName() {
@@ -3015,13 +5129,19 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
@@ -3063,7 +5183,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -3097,18 +5217,29 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::ArrayAttr getIndexingMapsAttr();
+  ::mlir::ArrayAttr getIndexingMaps();
   ::mlir::ArrayAttr indexing_mapsAttr();
   ::mlir::ArrayAttr indexing_maps();
+  ::mlir::ArrayAttr getIteratorTypesAttr();
+  ::mlir::ArrayAttr getIteratorTypes();
   ::mlir::ArrayAttr iterator_typesAttr();
   ::mlir::ArrayAttr iterator_types();
+  ::mlir::StringAttr getDocAttr();
+  ::llvm::Optional< ::llvm::StringRef > getDoc();
   ::mlir::StringAttr docAttr();
   ::llvm::Optional< ::llvm::StringRef > doc();
+  ::mlir::StringAttr getLibraryCallAttr();
+  ::llvm::Optional< ::llvm::StringRef > getLibraryCall();
   ::mlir::StringAttr library_callAttr();
   ::llvm::Optional< ::llvm::StringRef > library_call();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -3117,7 +5248,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GenericOp : public ::mlir::Op<GenericOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
+class GenericOp : public ::mlir::Op<GenericOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3128,12 +5259,28 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
+  ::mlir::StringAttr getDocAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getDocAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
   ::mlir::StringAttr docAttrName() {
     return getAttributeNameForIndex(0);
   }
 
   static ::mlir::StringAttr docAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
+  }
+
+  ::mlir::StringAttr getIndexingMapsAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getIndexingMapsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
   }
 
   ::mlir::StringAttr indexing_mapsAttrName() {
@@ -3144,6 +5291,14 @@ public:
     return getAttributeNameForIndex(name, 1);
   }
 
+  ::mlir::StringAttr getIteratorTypesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr getIteratorTypesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
+  }
+
   ::mlir::StringAttr iterator_typesAttrName() {
     return getAttributeNameForIndex(2);
   }
@@ -3152,12 +5307,28 @@ public:
     return getAttributeNameForIndex(name, 2);
   }
 
+  ::mlir::StringAttr getLibraryCallAttrName() {
+    return getAttributeNameForIndex(3);
+  }
+
+  static ::mlir::StringAttr getLibraryCallAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 3);
+  }
+
   ::mlir::StringAttr library_callAttrName() {
     return getAttributeNameForIndex(3);
   }
 
   static ::mlir::StringAttr library_callAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 3);
+  }
+
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(4);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 4);
   }
 
   ::mlir::StringAttr operand_segment_sizesAttrName() {
@@ -3174,25 +5345,43 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
+  ::mlir::ArrayAttr getIndexingMapsAttr();
+  ::mlir::ArrayAttr getIndexingMaps();
   ::mlir::ArrayAttr indexing_mapsAttr();
   ::mlir::ArrayAttr indexing_maps();
+  ::mlir::ArrayAttr getIteratorTypesAttr();
+  ::mlir::ArrayAttr getIteratorTypes();
   ::mlir::ArrayAttr iterator_typesAttr();
   ::mlir::ArrayAttr iterator_types();
+  ::mlir::StringAttr getDocAttr();
+  ::llvm::Optional< ::llvm::StringRef > getDoc();
   ::mlir::StringAttr docAttr();
   ::llvm::Optional< ::llvm::StringRef > doc();
+  ::mlir::StringAttr getLibraryCallAttr();
+  ::llvm::Optional< ::llvm::StringRef > getLibraryCall();
   ::mlir::StringAttr library_callAttr();
   ::llvm::Optional< ::llvm::StringRef > library_call();
+  void setIndexingMapsAttr(::mlir::ArrayAttr attr);
   void indexing_mapsAttr(::mlir::ArrayAttr attr);
+  void setIteratorTypesAttr(::mlir::ArrayAttr attr);
   void iterator_typesAttr(::mlir::ArrayAttr attr);
+  void setDocAttr(::mlir::StringAttr attr);
   void docAttr(::mlir::StringAttr attr);
+  void setLibraryCallAttr(::mlir::StringAttr attr);
   void library_callAttr(::mlir::StringAttr attr);
   ::mlir::Attribute removeDocAttr();
   ::mlir::Attribute removeLibrary_callAttr();
@@ -3248,8 +5437,8 @@ public:
     };
   }
   std::string getLibraryCallName() {
-    return library_call().hasValue() ?
-      library_call()->str() : "op_has_no_registered_library_name";
+    return getLibraryCall() ?
+      getLibraryCall()->str() : "op_has_no_registered_library_name";
   }
 
   static std::function<void(ImplicitLocOpBuilder &,
@@ -3278,12 +5467,17 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::linalg::TypeFnAttr getCastAttr();
+  ::mlir::linalg::TypeFn getCast();
   ::mlir::linalg::TypeFnAttr castAttr();
   ::mlir::linalg::TypeFn cast();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -3292,7 +5486,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class MatmulOp : public ::mlir::Op<MatmulOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
+class MatmulOp : public ::mlir::Op<MatmulOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3303,12 +5497,28 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
+  ::mlir::StringAttr getCastAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getCastAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
   ::mlir::StringAttr castAttrName() {
     return getAttributeNameForIndex(0);
   }
 
   static ::mlir::StringAttr castAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
+  }
+
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
   }
 
   ::mlir::StringAttr operand_segment_sizesAttrName() {
@@ -3325,21 +5535,32 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
+  ::mlir::linalg::TypeFnAttr getCastAttr();
+  ::mlir::linalg::TypeFn getCast();
   ::mlir::linalg::TypeFnAttr castAttr();
   ::mlir::linalg::TypeFn cast();
+  void setCastAttr(::mlir::linalg::TypeFnAttr attr);
   void castAttr(::mlir::linalg::TypeFnAttr attr);
+  ::mlir::Attribute removeCastAttr();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute cast, ArrayRef<NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
@@ -3377,7 +5598,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -3411,10 +5632,13 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -3423,7 +5647,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class MatmulUnsignedOp : public ::mlir::Op<MatmulUnsignedOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
+class MatmulUnsignedOp : public ::mlir::Op<MatmulUnsignedOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3432,6 +5656,14 @@ public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("operand_segment_sizes")};
     return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
   }
 
   ::mlir::StringAttr operand_segment_sizesAttrName() {
@@ -3448,13 +5680,19 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
@@ -3496,7 +5734,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -3530,10 +5768,13 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -3542,7 +5783,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class MatvecOp : public ::mlir::Op<MatvecOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
+class MatvecOp : public ::mlir::Op<MatvecOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3551,6 +5792,14 @@ public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("operand_segment_sizes")};
     return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
   }
 
   ::mlir::StringAttr operand_segment_sizesAttrName() {
@@ -3567,13 +5816,19 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
@@ -3615,7 +5870,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -3649,10 +5904,13 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -3661,7 +5919,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class Mmt4DOp : public ::mlir::Op<Mmt4DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
+class Mmt4DOp : public ::mlir::Op<Mmt4DOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3670,6 +5928,14 @@ public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("operand_segment_sizes")};
     return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
   }
 
   ::mlir::StringAttr operand_segment_sizesAttrName() {
@@ -3686,13 +5952,19 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
@@ -3734,7 +6006,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -3768,14 +6040,21 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -3784,7 +6063,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class PoolingNchwMaxOp : public ::mlir::Op<PoolingNchwMaxOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class PoolingNchwMaxOp : public ::mlir::Op<PoolingNchwMaxOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3795,6 +6074,14 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
+  ::mlir::StringAttr getDilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getDilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
   ::mlir::StringAttr dilationsAttrName() {
     return getAttributeNameForIndex(0);
   }
@@ -3803,12 +6090,28 @@ public:
     return getAttributeNameForIndex(name, 0);
   }
 
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
   ::mlir::StringAttr operand_segment_sizesAttrName() {
     return getAttributeNameForIndex(1);
   }
 
   static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr getStridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr getStridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
   }
 
   ::mlir::StringAttr stridesAttrName() {
@@ -3825,24 +6128,39 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
+  void setStridesAttr(::mlir::DenseIntElementsAttr attr);
   void stridesAttr(::mlir::DenseIntElementsAttr attr);
+  void setDilationsAttr(::mlir::DenseIntElementsAttr attr);
   void dilationsAttr(::mlir::DenseIntElementsAttr attr);
+  ::mlir::Attribute removeStridesAttr();
+  ::mlir::Attribute removeDilationsAttr();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
@@ -3880,7 +6198,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -3917,14 +6235,21 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -3933,7 +6258,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class PoolingNchwSumOp : public ::mlir::Op<PoolingNchwSumOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class PoolingNchwSumOp : public ::mlir::Op<PoolingNchwSumOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -3944,6 +6269,14 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
+  ::mlir::StringAttr getDilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getDilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
   ::mlir::StringAttr dilationsAttrName() {
     return getAttributeNameForIndex(0);
   }
@@ -3952,12 +6285,28 @@ public:
     return getAttributeNameForIndex(name, 0);
   }
 
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
   ::mlir::StringAttr operand_segment_sizesAttrName() {
     return getAttributeNameForIndex(1);
   }
 
   static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr getStridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr getStridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
   }
 
   ::mlir::StringAttr stridesAttrName() {
@@ -3974,24 +6323,39 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
+  void setStridesAttr(::mlir::DenseIntElementsAttr attr);
   void stridesAttr(::mlir::DenseIntElementsAttr attr);
+  void setDilationsAttr(::mlir::DenseIntElementsAttr attr);
   void dilationsAttr(::mlir::DenseIntElementsAttr attr);
+  ::mlir::Attribute removeStridesAttr();
+  ::mlir::Attribute removeDilationsAttr();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
@@ -4029,7 +6393,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -4066,14 +6430,21 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -4082,7 +6453,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class PoolingNdhwcMaxOp : public ::mlir::Op<PoolingNdhwcMaxOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class PoolingNdhwcMaxOp : public ::mlir::Op<PoolingNdhwcMaxOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4093,6 +6464,14 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
+  ::mlir::StringAttr getDilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getDilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
   ::mlir::StringAttr dilationsAttrName() {
     return getAttributeNameForIndex(0);
   }
@@ -4101,12 +6480,28 @@ public:
     return getAttributeNameForIndex(name, 0);
   }
 
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
   ::mlir::StringAttr operand_segment_sizesAttrName() {
     return getAttributeNameForIndex(1);
   }
 
   static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr getStridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr getStridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
   }
 
   ::mlir::StringAttr stridesAttrName() {
@@ -4123,24 +6518,39 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
+  void setStridesAttr(::mlir::DenseIntElementsAttr attr);
   void stridesAttr(::mlir::DenseIntElementsAttr attr);
+  void setDilationsAttr(::mlir::DenseIntElementsAttr attr);
   void dilationsAttr(::mlir::DenseIntElementsAttr attr);
+  ::mlir::Attribute removeStridesAttr();
+  ::mlir::Attribute removeDilationsAttr();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
@@ -4178,7 +6588,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -4215,14 +6625,21 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -4231,7 +6648,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class PoolingNdhwcMinOp : public ::mlir::Op<PoolingNdhwcMinOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class PoolingNdhwcMinOp : public ::mlir::Op<PoolingNdhwcMinOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4242,6 +6659,14 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
+  ::mlir::StringAttr getDilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getDilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
   ::mlir::StringAttr dilationsAttrName() {
     return getAttributeNameForIndex(0);
   }
@@ -4250,12 +6675,28 @@ public:
     return getAttributeNameForIndex(name, 0);
   }
 
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
   ::mlir::StringAttr operand_segment_sizesAttrName() {
     return getAttributeNameForIndex(1);
   }
 
   static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr getStridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr getStridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
   }
 
   ::mlir::StringAttr stridesAttrName() {
@@ -4272,24 +6713,39 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
+  void setStridesAttr(::mlir::DenseIntElementsAttr attr);
   void stridesAttr(::mlir::DenseIntElementsAttr attr);
+  void setDilationsAttr(::mlir::DenseIntElementsAttr attr);
   void dilationsAttr(::mlir::DenseIntElementsAttr attr);
+  ::mlir::Attribute removeStridesAttr();
+  ::mlir::Attribute removeDilationsAttr();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
@@ -4327,7 +6783,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -4364,14 +6820,21 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -4380,7 +6843,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class PoolingNdhwcSumOp : public ::mlir::Op<PoolingNdhwcSumOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class PoolingNdhwcSumOp : public ::mlir::Op<PoolingNdhwcSumOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4391,6 +6854,14 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
+  ::mlir::StringAttr getDilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getDilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
   ::mlir::StringAttr dilationsAttrName() {
     return getAttributeNameForIndex(0);
   }
@@ -4399,12 +6870,28 @@ public:
     return getAttributeNameForIndex(name, 0);
   }
 
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
   ::mlir::StringAttr operand_segment_sizesAttrName() {
     return getAttributeNameForIndex(1);
   }
 
   static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr getStridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr getStridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
   }
 
   ::mlir::StringAttr stridesAttrName() {
@@ -4421,24 +6908,39 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
+  void setStridesAttr(::mlir::DenseIntElementsAttr attr);
   void stridesAttr(::mlir::DenseIntElementsAttr attr);
+  void setDilationsAttr(::mlir::DenseIntElementsAttr attr);
   void dilationsAttr(::mlir::DenseIntElementsAttr attr);
+  ::mlir::Attribute removeStridesAttr();
+  ::mlir::Attribute removeDilationsAttr();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
@@ -4476,7 +6978,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -4513,14 +7015,21 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -4529,7 +7038,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class PoolingNhwcMaxOp : public ::mlir::Op<PoolingNhwcMaxOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class PoolingNhwcMaxOp : public ::mlir::Op<PoolingNhwcMaxOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4540,6 +7049,14 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
+  ::mlir::StringAttr getDilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getDilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
   ::mlir::StringAttr dilationsAttrName() {
     return getAttributeNameForIndex(0);
   }
@@ -4548,12 +7065,28 @@ public:
     return getAttributeNameForIndex(name, 0);
   }
 
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
   ::mlir::StringAttr operand_segment_sizesAttrName() {
     return getAttributeNameForIndex(1);
   }
 
   static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr getStridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr getStridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
   }
 
   ::mlir::StringAttr stridesAttrName() {
@@ -4570,24 +7103,39 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
+  void setStridesAttr(::mlir::DenseIntElementsAttr attr);
   void stridesAttr(::mlir::DenseIntElementsAttr attr);
+  void setDilationsAttr(::mlir::DenseIntElementsAttr attr);
   void dilationsAttr(::mlir::DenseIntElementsAttr attr);
+  ::mlir::Attribute removeStridesAttr();
+  ::mlir::Attribute removeDilationsAttr();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
@@ -4625,7 +7173,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -4662,14 +7210,21 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -4678,7 +7233,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class PoolingNhwcMaxUnsignedOp : public ::mlir::Op<PoolingNhwcMaxUnsignedOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class PoolingNhwcMaxUnsignedOp : public ::mlir::Op<PoolingNhwcMaxUnsignedOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4689,6 +7244,14 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
+  ::mlir::StringAttr getDilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getDilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
   ::mlir::StringAttr dilationsAttrName() {
     return getAttributeNameForIndex(0);
   }
@@ -4697,12 +7260,28 @@ public:
     return getAttributeNameForIndex(name, 0);
   }
 
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
   ::mlir::StringAttr operand_segment_sizesAttrName() {
     return getAttributeNameForIndex(1);
   }
 
   static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr getStridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr getStridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
   }
 
   ::mlir::StringAttr stridesAttrName() {
@@ -4719,24 +7298,39 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
+  void setStridesAttr(::mlir::DenseIntElementsAttr attr);
   void stridesAttr(::mlir::DenseIntElementsAttr attr);
+  void setDilationsAttr(::mlir::DenseIntElementsAttr attr);
   void dilationsAttr(::mlir::DenseIntElementsAttr attr);
+  ::mlir::Attribute removeStridesAttr();
+  ::mlir::Attribute removeDilationsAttr();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
@@ -4774,7 +7368,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -4811,14 +7405,21 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -4827,7 +7428,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class PoolingNhwcMinOp : public ::mlir::Op<PoolingNhwcMinOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class PoolingNhwcMinOp : public ::mlir::Op<PoolingNhwcMinOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4838,6 +7439,14 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
+  ::mlir::StringAttr getDilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getDilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
   ::mlir::StringAttr dilationsAttrName() {
     return getAttributeNameForIndex(0);
   }
@@ -4846,12 +7455,28 @@ public:
     return getAttributeNameForIndex(name, 0);
   }
 
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
   ::mlir::StringAttr operand_segment_sizesAttrName() {
     return getAttributeNameForIndex(1);
   }
 
   static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr getStridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr getStridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
   }
 
   ::mlir::StringAttr stridesAttrName() {
@@ -4868,24 +7493,39 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
+  void setStridesAttr(::mlir::DenseIntElementsAttr attr);
   void stridesAttr(::mlir::DenseIntElementsAttr attr);
+  void setDilationsAttr(::mlir::DenseIntElementsAttr attr);
   void dilationsAttr(::mlir::DenseIntElementsAttr attr);
+  ::mlir::Attribute removeStridesAttr();
+  ::mlir::Attribute removeDilationsAttr();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
@@ -4923,7 +7563,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -4960,14 +7600,21 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -4976,7 +7623,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class PoolingNhwcMinUnsignedOp : public ::mlir::Op<PoolingNhwcMinUnsignedOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class PoolingNhwcMinUnsignedOp : public ::mlir::Op<PoolingNhwcMinUnsignedOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -4987,6 +7634,14 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
+  ::mlir::StringAttr getDilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getDilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
   ::mlir::StringAttr dilationsAttrName() {
     return getAttributeNameForIndex(0);
   }
@@ -4995,12 +7650,28 @@ public:
     return getAttributeNameForIndex(name, 0);
   }
 
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
   ::mlir::StringAttr operand_segment_sizesAttrName() {
     return getAttributeNameForIndex(1);
   }
 
   static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr getStridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr getStridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
   }
 
   ::mlir::StringAttr stridesAttrName() {
@@ -5017,24 +7688,39 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
+  void setStridesAttr(::mlir::DenseIntElementsAttr attr);
   void stridesAttr(::mlir::DenseIntElementsAttr attr);
+  void setDilationsAttr(::mlir::DenseIntElementsAttr attr);
   void dilationsAttr(::mlir::DenseIntElementsAttr attr);
+  ::mlir::Attribute removeStridesAttr();
+  ::mlir::Attribute removeDilationsAttr();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
@@ -5072,7 +7758,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -5109,14 +7795,21 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -5125,7 +7818,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class PoolingNhwcSumOp : public ::mlir::Op<PoolingNhwcSumOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
+class PoolingNhwcSumOp : public ::mlir::Op<PoolingNhwcSumOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ConvolutionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -5136,6 +7829,14 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
+  ::mlir::StringAttr getDilationsAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getDilationsAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
   ::mlir::StringAttr dilationsAttrName() {
     return getAttributeNameForIndex(0);
   }
@@ -5144,12 +7845,28 @@ public:
     return getAttributeNameForIndex(name, 0);
   }
 
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
+  }
+
   ::mlir::StringAttr operand_segment_sizesAttrName() {
     return getAttributeNameForIndex(1);
   }
 
   static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
+  }
+
+  ::mlir::StringAttr getStridesAttrName() {
+    return getAttributeNameForIndex(2);
+  }
+
+  static ::mlir::StringAttr getStridesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 2);
   }
 
   ::mlir::StringAttr stridesAttrName() {
@@ -5166,24 +7883,39 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
+  ::mlir::DenseIntElementsAttr getStridesAttr();
+  ::mlir::DenseIntElementsAttr getStrides();
   ::mlir::DenseIntElementsAttr stridesAttr();
   ::mlir::DenseIntElementsAttr strides();
+  ::mlir::DenseIntElementsAttr getDilationsAttr();
+  ::mlir::DenseIntElementsAttr getDilations();
   ::mlir::DenseIntElementsAttr dilationsAttr();
   ::mlir::DenseIntElementsAttr dilations();
+  void setStridesAttr(::mlir::DenseIntElementsAttr attr);
   void stridesAttr(::mlir::DenseIntElementsAttr attr);
+  void setDilationsAttr(::mlir::DenseIntElementsAttr attr);
   void dilationsAttr(::mlir::DenseIntElementsAttr attr);
+  ::mlir::Attribute removeStridesAttr();
+  ::mlir::Attribute removeDilationsAttr();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange operands, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, Attribute strides, Attribute dilations, ArrayRef<NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
@@ -5221,7 +7953,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -5258,10 +7990,13 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -5270,7 +8005,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class QuantizedBatchMatmulOp : public ::mlir::Op<QuantizedBatchMatmulOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
+class QuantizedBatchMatmulOp : public ::mlir::Op<QuantizedBatchMatmulOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -5279,6 +8014,14 @@ public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("operand_segment_sizes")};
     return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
   }
 
   ::mlir::StringAttr operand_segment_sizesAttrName() {
@@ -5295,13 +8038,19 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
@@ -5343,7 +8092,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -5377,10 +8126,13 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -5389,7 +8141,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class QuantizedMatmulOp : public ::mlir::Op<QuantizedMatmulOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
+class QuantizedMatmulOp : public ::mlir::Op<QuantizedMatmulOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -5398,6 +8150,14 @@ public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("operand_segment_sizes")};
     return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
   }
 
   ::mlir::StringAttr operand_segment_sizesAttrName() {
@@ -5414,13 +8174,19 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
@@ -5462,7 +8228,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,
@@ -5496,10 +8262,13 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getInputs();
   ::mlir::ValueRange inputs();
+  ::mlir::ValueRange getOutputs();
   ::mlir::ValueRange outputs();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::RegionRange getRegions();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -5508,7 +8277,7 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class VecmatOp : public ::mlir::Op<VecmatOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
+class VecmatOp : public ::mlir::Op<VecmatOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::SingleBlockImplicitTerminator<YieldOp>::Impl, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait, ::mlir::linalg::DestinationStyleOpInterface::Trait, ::mlir::linalg::LinalgOp::Trait, ::mlir::RegionBranchOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait, ::mlir::linalg::ContractionOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -5517,6 +8286,14 @@ public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
     static ::llvm::StringRef attrNames[] = {::llvm::StringRef("operand_segment_sizes")};
     return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
   }
 
   ::mlir::StringAttr operand_segment_sizesAttrName() {
@@ -5533,13 +8310,19 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getInputs();
   ::mlir::Operation::operand_range inputs();
+  ::mlir::Operation::operand_range getOutputs();
   ::mlir::Operation::operand_range outputs();
+  ::mlir::MutableOperandRange getInputsMutable();
   ::mlir::MutableOperandRange inputsMutable();
+  ::mlir::MutableOperandRange getOutputsMutable();
   ::mlir::MutableOperandRange outputsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getResultTensors();
   ::mlir::Operation::result_range result_tensors();
+  ::mlir::Region &getRegion();
   ::mlir::Region &region();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTensorTypes, ValueRange inputs, ValueRange outputs, ArrayRef<NamedAttribute> attributes = {});
@@ -5581,7 +8364,7 @@ public:
 
     // Auto-generated.
     ArrayAttr iterator_types();
-    ArrayAttr indexing_maps();
+    ArrayAttr getIndexingMaps();
     static void regionBuilder(ImplicitLocOpBuilder &b,
                               Block &block, ArrayRef<NamedAttribute> attrs);
     static std::function<void(ImplicitLocOpBuilder &,

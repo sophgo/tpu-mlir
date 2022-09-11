@@ -113,8 +113,9 @@ protected:
   tpu::StoreOp CreateStoreOp(lmem_info_t &linfo, int64_t id);
   void UpdateOpLgParam(group_lmem_t &group_lmem, lmem_info_t &linfo,
                        int64_t id);
-  tpu::LayerGroup getLgParam(lmem_info_t &linfo, int64_t id, int64_t stage,
-                             int64_t buffer_addr = 0, int64_t buffer_size = 0);
+  tpu::LayerGroupAttr getLgParam(lmem_info_t &linfo, int64_t id, int64_t stage,
+                                 int64_t buffer_addr = 0,
+                                 int64_t buffer_size = 0);
   bool need_none(group_lmem_t &group_lmem);
   void buildGroupOp(group_lmem_t &group_lmem);
 
@@ -124,8 +125,8 @@ protected:
 protected:
   std::shared_ptr<BasicTimeStep> time_step;
   std::vector<std::shared_ptr<BasicTimeStep>> time_steps;
-  std::shared_ptr<std::vector<mlir::Operation*>> group_ops;
-  std::vector<std::shared_ptr<std::vector<mlir::Operation*>>> groups_ops;
+  std::shared_ptr<std::vector<mlir::Operation *>> group_ops;
+  std::vector<std::shared_ptr<std::vector<mlir::Operation *>>> groups_ops;
   std::vector<group_lmem_t> all_lmems;
   std::vector<mlir::Operation *> all_ops;
   std::vector<mlir::Value> all_tensors;

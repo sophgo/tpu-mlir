@@ -484,7 +484,7 @@ std::string stringifyFastmathFlags(FastmathFlags symbol) {
 }
 
 ::llvm::Optional<FastmathFlags> symbolizeFastmathFlags(uint32_t value) {
-  if (value & ~static_cast<uint32_t>(1u | 2u | 4u | 8u | 16u | 32u | 64u | 127u)) return llvm::None;
+  if (value & ~static_cast<uint32_t>(127u)) return llvm::None;
   return static_cast<FastmathFlags>(value);
 }
 bool FastmathFlagsAttr::classof(::mlir::Attribute attr) {

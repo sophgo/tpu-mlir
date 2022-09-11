@@ -6,9 +6,11 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
+/// Get alloca block
 ::mlir::Block*mlir::omp::OutlineableOpenMPOpInterface::getAllocaBlock() {
       return getImpl()->getAllocaBlock(getImpl(), getOperation());
   }
-::mlir::Operation::operand_range mlir::omp::ReductionClauseInterface::getReductionVars() {
+/// Get reduction vars
+::mlir::SmallVector<::mlir::Value> mlir::omp::ReductionClauseInterface::getReductionVars() {
       return getImpl()->getReductionVars(getImpl(), getOperation());
   }
