@@ -335,7 +335,11 @@ class CaffeConverter(BaseConverter):
         input_shape = self.getShape(layer.bottom[0])
         output_shape = input_shape
         attrs = {'name': layer.name}
-        new_op = self.mlir.create_relu_op([op], output_shape, **attrs)
+        if layer.relu_param.HasField('negative_slope'):
+            attrs['alpha'] = layer.relu_param.negative_slope
+            new_op = self.mlir.create_leaky_relu_op([op], output_shape, **attrs)
+        else:
+            new_op = self.mlir.create_relu_op([op], output_shape, **attrs)
         self.addOperand(layer.top[0], new_op)
 
     def convert_pooling_op(self, layer):
@@ -606,7 +610,7 @@ class CaffeConverter(BaseConverter):
         output_shape[2] = int(input_shape[2] / stride)
         output_shape[3] = int(input_shape[3] / stride)
         attrs = {'name': layer.name}
-        new_op = self.mlir.create_reshape_op([in_op], output_shape, **attrs)
+        new_op = self.mlir.create_reorg_op([in_op], output_shape, **attrs)
         self.addOperand(layer.top[0], new_op)
 
     def convert_reshape_op(self, layer):
